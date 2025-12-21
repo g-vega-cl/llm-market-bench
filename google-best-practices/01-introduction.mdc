@@ -1,0 +1,15 @@
+---
+globs: .tsx,.ts
+alwaysApply: false
+---
+# Introduction
+
+## Introduction
+
+### Terminology notes
+
+This Style Guide uses [RFC 2119](https://tools.ietf.org/html/rfc2119) terminology when using the phrases *must*, *must not*, *should*, *should not*, and *may*. The terms *prefer* and *avoid* correspond to *should* and *should not*, respectively. Imperative and declarative statements are prescriptive and correspond to *must*.
+
+### Guide notes
+
+All examples given are **non-normative** and serve only to illustrate the normative language of the style guide. That is, while the examples are in Google Style, they may not illustrate the *only* stylish way to represent the code. Optional formatting choices made in examples must not be enforced as rules.

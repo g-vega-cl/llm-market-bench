@@ -14,8 +14,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
 
-# Load environment variables from .env file in the repository root
-env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+# Load environment variables from .env file in the apps/engine directory
+env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 try:

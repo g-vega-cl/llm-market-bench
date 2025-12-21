@@ -39,5 +39,9 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
 
           FINANCIAL_API_KEY: ${{ secrets.FINANCIAL_API_KEY }}
+
+          # Added for Newsletter Ingestion
+          GMAIL_CREDENTIALS_JSON: ${{ secrets.GMAIL_CREDENTIALS_JSON }}
+          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
         run: |
           python main.py ingest

@@ -14,8 +14,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file in the repository root
+env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 try:
     from bs4 import BeautifulSoup
@@ -23,9 +24,8 @@ except ImportError:
     BeautifulSoup = None
 
 # --- Configuration ---
-# Default paths based on research, but should be configurable via ENV
-GMAIL_CREDENTIALS_PATH = os.getenv("GMAIL_CREDENTIALS_PATH", "../../talking-investing-agents/gmail-mcp/google-credentials.json")
-GMAIL_TOKEN_PATH = os.getenv("GMAIL_TOKEN_PATH", "../../talking-investing-agents/gmail-mcp/token.json")
+GMAIL_CREDENTIALS_JSON = os.getenv("GMAIL_CREDENTIALS_JSON")
+GMAIL_TOKEN_JSON = os.getenv("GMAIL_TOKEN_JSON")
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 NEWSLETTER_SENDERS = [
@@ -36,21 +36,16 @@ NEWSLETTER_SENDERS = [
 
 def get_gmail_service():
     """Authenticates with Google and returns a Gmail service object."""
-    cred_path = Path(GMAIL_CREDENTIALS_PATH).resolve()
-    token_path = Path(GMAIL_TOKEN_PATH).resolve()
-
-    if not cred_path.exists():
-        print(f"CRITICAL: Gmail credentials not found at {cred_path}")
+    if not GMAIL_CREDENTIALS_JSON:
+        print("CRITICAL: GMAIL_CREDENTIALS_JSON not found in environment")
         return None
 
     creds = None
-    if token_path.exists():
-        with open(cred_path, 'r') as f:
-            secret_data = json.load(f)
-            secrets = secret_data.get('installed') or secret_data.get('web')
+    if GMAIL_TOKEN_JSON:
+        secret_data = json.loads(GMAIL_CREDENTIALS_JSON)
+        secrets = secret_data.get('installed') or secret_data.get('web')
         
-        with open(token_path, 'r') as token:
-            token_data = json.load(token)
+        token_data = json.loads(GMAIL_TOKEN_JSON)
         
         creds = Credentials(
             token=token_data.get('token'),
@@ -70,11 +65,24 @@ def get_gmail_service():
                 creds = None
         
         if not creds:
-            flow = InstalledAppFlow.from_client_secrets_file(str(cred_path), SCOPES)
-            creds = flow.run_local_server(port=0)
+            # Note: run_local_server requires reading from a file for flow.
+            # We'll write a temporary file if needed for the initial auth, 
+            # but ideally the token is already in .env.
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tf:
+                tf.write(GMAIL_CREDENTIALS_JSON)
+                temp_cred_path = tf.name
+            
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(temp_cred_path, SCOPES)
+                creds = flow.run_local_server(port=0)
+            finally:
+                if os.path.exists(temp_cred_path):
+                    os.remove(temp_cred_path)
         
-        with open(token_path, 'w') as token:
-            token.write(creds.to_json())
+        # In a real environment, we'd want the user to update their .env with the new token.
+        # For now, we print a reminder if the token was refreshed or newly created.
+        print("NOTE: Gmail token refreshed/created. Please update GMAIL_TOKEN_JSON in your .env if it has changed.")
             
     try:
         service = build('gmail', 'v1', credentials=creds)

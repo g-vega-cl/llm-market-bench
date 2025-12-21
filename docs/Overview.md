@@ -45,14 +45,17 @@ ai-wallstreet/
 
 ### Phase 1: Ingestion & Normalization
 
-**1. Scheduler (08:00 ET)**
+**1. Scheduler (08:00 ET)** ✅
 
 * **Tech:** GitHub Actions (Cron)
+* File: .github/workflows/ingest.yml
 
-**2. Newsletter Ingestion**
+**2. Newsletter Ingestion** ✅
 
 * **Tech:** Python / Gmail API
 * *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
+* File: apps/engine/ingest/newsletter.py
+* documentation: ./docs/newsletter-ingestion-walkthrough
 
 **3. Corporate Action Check**
 

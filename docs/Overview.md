@@ -57,7 +57,7 @@ ai-wallstreet/
 * File: apps/engine/ingest/newsletter.py
 * documentation: ./docs/newsletter-ingestion-walkthrough
 
-**3. Corporate Action Check**
+**3. Corporate Action Check** - PENDING - ⏳
 
 * **Tech:** Python / Market API
 * *Check for stock splits/dividends. Adjust the "Virtual Portfolio" holdings before the LLM sees them to prevent fake price-drop panics.*

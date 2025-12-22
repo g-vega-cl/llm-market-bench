@@ -1,23 +1,23 @@
-import sys
 import json
 import argparse
 from datetime import datetime
 from ingest.newsletter import ingest_newsletters
 from core.db import get_supabase_client, upsert_newsletter_snapshot
+from core.config import COMMAND_INGEST, logger
 
 def main():
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
-    parser.add_argument("command", choices=["ingest"], help="Action to perform")
+    parser.add_argument("command", choices=[COMMAND_INGEST], help="Action to perform")
     
     args = parser.parse_args()
     
-    if args.command == "ingest":
-        print(f"[{datetime.now().isoformat()}] Starting Newsletter Ingestion...")
+    if args.command == COMMAND_INGEST:
+        logger.info("Starting Newsletter Ingestion...")
         data = ingest_newsletters()
-        print(f"Successfully ingested {len(data)} newsletters.")
+        logger.info(f"Successfully ingested {len(data)} newsletters.")
         
         if data:
-            print(f"[{datetime.now().isoformat()}] Starting Database Snapshotting...")
+            logger.info("Starting Database Snapshotting...")
             sb_client = get_supabase_client()
             
             saved_count = 0
@@ -26,15 +26,9 @@ def main():
                     upsert_newsletter_snapshot(sb_client, item)
                     saved_count += 1
                 except Exception as e:
-                    print(f"Error saving snapshot for {item.get('source_id', 'unknown')}: {e}")
+                    logger.error(f"Error saving snapshot for {item.get('source_id', 'unknown')}: {e}")
             
-            print(f"Successfully saved {saved_count} snapshots to Supabase.")
-            
-            # For local verification, still save to a JSON file
-            output_file = f"ingest_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(output_file, 'w') as f:
-                json.dump(data, f, indent=2)
-            print(f"Verification data saved to {output_file}")
+            logger.info(f"Successfully saved {saved_count} snapshots to Supabase.")
 
 if __name__ == "__main__":
     main()

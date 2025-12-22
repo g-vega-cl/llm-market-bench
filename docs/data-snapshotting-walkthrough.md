@@ -8,9 +8,10 @@ The goal of this step was to save raw newsletter text and metadata into Supabase
 
 ## Architecture
 
-1.  **Ingestion**: `apps/engine/ingest/newsletter.py` fetches newsletters from Gmail.
-2.  **Orchestration**: `apps/engine/main.py` coordinates the flow.
-3.  **Storage**: `apps/engine/core/db.py` uses the Supabase Python SDK to save data.
+1.  **Configuration**: `apps/engine/core/config.py` centralizes environment loading and logging.
+2.  **Ingestion**: `apps/engine/ingest/newsletter.py` fetches newsletters and transforms them into `NewsletterSnapshot` dataclasses.
+3.  **Orchestration**: `apps/engine/main.py` coordinates the flow using structural logging.
+4.  **Storage**: `apps/engine/core/db.py` uses the Supabase Python SDK and `core.config` to save data.
 
 ## Implementation Details
 
@@ -45,9 +46,10 @@ The pipeline has been verified with a live connection to Supabase:
 - Verified idempotency by running the script multiple times.
 
 ## Files Created/Modified
-- `apps/engine/core/db.py` (New)
-- `apps/engine/main.py` (Modified)
-- `apps/engine/ingest/newsletter.py` (Modified)
-- `apps/engine/requirements.txt` (Modified)
-- `supabase/migrations/20231221000000_create_newsletters_table.sql` (New)
-- `.github/workflows/ingest.yml` (Modified)
+- `apps/engine/core/config.py` (New - Centralized Config)
+- `apps/engine/core/db.py` (Modified - Uses Config & Logging)
+- `apps/engine/main.py` (Modified - Uses Config & Logging)
+- `apps/engine/ingest/newsletter.py` (Modified - Dataclasses & Logging)
+- `apps/engine/requirements.txt` (Modified - BeautifulSoup4 explicit)
+- `supabase/migrations/20231221000000_create_newsletters_table.sql` (Existing)
+- `.github/workflows/ingest.yml` (Existing)

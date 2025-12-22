@@ -32,7 +32,9 @@ llm-market-bench/
     └── engine/
         ├── main.py       # Pipeline entry point
         ├── requirements.txt
-        ├── venv/         # Virtual environment
+        ├── core/
+        │   ├── config.py # Centralized config & logging
+        │   └── db.py     # Database utilities
         └── ingest/
             └── newsletter.py  # Ingestion logic
 ```
@@ -40,10 +42,12 @@ llm-market-bench/
 ### Core Logic: `newsletter.py`
 
 The logic in [newsletter.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/ingest/newsletter.py) follows these steps:
-1.  **Authentication**: Loads Gmail credentials and tokens from environment variables (`GMAIL_CREDENTIALS_JSON`, `GMAIL_TOKEN_JSON`).
-2.  **Filtering**: Queries for emails from trusted senders (Morning Brew, Daily Upside, etc.) received in the last 24 hours.
-3.  **Extraction**: Extracts the best available text version of the email body.
-4.  **Hashing**: Generates the `source_id` and `chunk_hash`.
+1.  **Configuration**: Loads Gmail credentials and constants from the centralized `core.config` module.
+2.  **Authentication**: Uses Google OAuth2 to authenticate and create a Gmail service object.
+3.  **Filtering**: Queries for emails from the `NEWSLETTER_SENDERS` list received in the last 24 hours.
+4.  **Extraction**: Extracts the best available text version of the email body, using `BeautifulSoup4` for HTML-to-text conversion.
+5.  **Refinement**: Transforms raw email data into a `NewsletterSnapshot` dataclass for type safety.
+6.  **Hashing**: Generates the unique `source_id` and SHA-256 `chunk_hash`.
 
 ### Execution: `main.py`
 
@@ -58,10 +62,11 @@ python main.py ingest
 ## Verification Results
 
 ### Success Criteria
-- [x] Successfully authenticates with Gmail using environment variables.
+- [x] Successfully authenticates with Gmail using environment variables via `core.config`.
 - [x] Fetches newsletters from the specified senders.
-- [x] Correctly extracts and cleans newsletter content.
+- [x] Correctly extracts and cleans newsletter content using `NewsletterSnapshot` dataclass.
 - [x] Generates unique `SourceID` and `ChunkHash` for each entry.
+- [x] Implements structured logging instead of `print` statements.
 
 ### Sample Output
 

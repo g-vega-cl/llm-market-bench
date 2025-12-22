@@ -62,11 +62,12 @@ ai-wallstreet/
 * **Tech:** Python / Market API
 * *Check for stock splits/dividends. Adjust the "Virtual Portfolio" holdings before the LLM sees them to prevent fake price-drop panics.*
 
-**4. Data Snapshotting (Idempotency Layer)**
+**4. Data Snapshotting (Idempotency Layer)** ✅
 
 * **Tech:** Supabase Postgres
 * *Save the raw newsletter text and current prices.*
 * **Constraint:** *Use a composite unique key (Date + SourceID) to prevent duplicate processing if the job restarts.*
+* documentation: ./docs/data-snapshotting-walkthrough
 
 ### Phase 2: The Consensus & Attribution Engine
 

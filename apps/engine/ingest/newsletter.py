@@ -5,6 +5,7 @@ import re
 import html
 import hashlib
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from google.auth.transport.requests import Request
@@ -167,7 +168,14 @@ def ingest_newsletters(newer_than_days: int = 1) -> List[Dict[str, Any]]:
             
             subject = headers.get('Subject', 'No Subject')
             sender = headers.get('From', 'Unknown')
-            date = headers.get('Date', datetime.now().isoformat())
+            raw_date = headers.get('Date')
+            
+            try:
+                date_dt = parsedate_to_datetime(raw_date)
+                date = date_dt.isoformat()
+            except Exception:
+                date = datetime.now().isoformat()
+                
             body = extract_email_body(msg['payload'])
             
             source_id = generate_source_id(date, sender, subject)

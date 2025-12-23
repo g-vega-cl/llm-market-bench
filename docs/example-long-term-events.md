@@ -36,3 +36,4 @@ Examples:
 * Strategic Reserve Volatility: Significant changes in national stockpiles of petroleum or grain that signal future supply shocks.
 * Antitrust and Regulatory Shifts: Major court rulings or legislative changes that break up corporate monopolies or alter industry liability.
 * Stock Splits and Dividends:
+* The FTSE100 outpaced the S&P500 in 2025, London's market resilience is turning heads globally.

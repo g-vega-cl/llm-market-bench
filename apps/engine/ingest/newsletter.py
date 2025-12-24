@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from email.utils import parsedate_to_datetime
@@ -295,13 +296,27 @@ def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
             maxResults=20
         ).execute()
         messages = results.get("messages", [])
-        logger.info(f"Found {len(messages)} messages.")
+        if not messages:
+            logger.info("No messages found matching the query.")
+            return []
+
+        logger.info(f"Found {len(messages)} messages. Starting processing...")
 
         snapshots = []
         for msg_ref in messages:
             snapshot = _process_message(service, msg_ref)
             if snapshot:
                 snapshots.append(asdict(snapshot))
+
+        # Summarize results by sender
+        if snapshots:
+            sender_counts = Counter(s["sender"] for s in snapshots)
+            stats = ", ".join(
+                [f"{count} from {sender}" for sender, count in sender_counts.items()]
+            )
+            logger.info(f"Successfully ingested {len(snapshots)} newsletters: {stats}")
+        else:
+            logger.info("No messages were successfully processed into snapshots.")
 
         return snapshots
     except HttpError as error:

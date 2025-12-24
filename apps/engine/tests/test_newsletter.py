@@ -1,6 +1,7 @@
 """Tests for ingest.newsletter module."""
 
 import pytest
+from unittest.mock import MagicMock, patch
 
 from ingest.newsletter import (
     clean_text,
@@ -60,3 +61,47 @@ def test_decode_base64_url():
     # "subjects?" -> base64url with '/' replaced by '_'
     encoded = "c3ViamVjdHM_"
     assert decode_base64_url(encoded) == "subjects?"
+
+
+def test_ingest_newsletters_summary(caplog):
+    """Test the summary logging in ingest_newsletters."""
+    with patch("ingest.newsletter.get_gmail_service") as mock_get_service, patch(
+        "ingest.newsletter._process_message"
+    ) as mock_process:
+
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        # Mock message list
+        mock_service.users().messages().list().execute.return_value = {
+            "messages": [{"id": "1"}, {"id": "2"}, {"id": "3"}]
+        }
+
+        # Mock snapshots
+        from ingest.newsletter import NewsletterSnapshot
+
+        mock_process.side_effect = [
+            NewsletterSnapshot(
+                "id1", "hash1", "sender@a.com", "at", "sub", "content", "at"
+            ),
+            NewsletterSnapshot(
+                "id2", "hash2", "sender@a.com", "at", "sub", "content", "at"
+            ),
+            NewsletterSnapshot(
+                "id3", "hash3", "sender@b.com", "at", "sub", "content", "at"
+            ),
+        ]
+
+        from ingest.newsletter import ingest_newsletters
+        import logging
+
+        caplog.set_level(logging.INFO)
+
+        ingest_newsletters(newer_than_days=1)
+
+        # Check logs
+        assert "Found 3 messages. Starting processing..." in caplog.text
+        assert (
+            "Successfully ingested 3 newsletters: 2 from sender@a.com, 1 from sender@b.com"
+            in caplog.text
+        )

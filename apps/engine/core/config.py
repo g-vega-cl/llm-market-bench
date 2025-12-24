@@ -1,6 +1,13 @@
-import os
+"""Configuration and environment setup for the AI Wall Street Engine.
+
+This module loads environment variables, configures logging, and defines
+constants used throughout the application.
+"""
+
 import logging
+import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # --- Paths ---
@@ -34,18 +41,21 @@ DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 # --- Gmail Configuration ---
 GMAIL_CREDENTIALS_JSON = os.getenv("GMAIL_CREDENTIALS_JSON")
 GMAIL_TOKEN_JSON = os.getenv("GMAIL_TOKEN_JSON")
-GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 # --- Newsletter Configuration ---
 NEWSLETTER_SENDERS = [
-    'no-reply@connect.etoro.com', 
-    'crew@morningbrew.com', 
-    'notifications@e-news.wealthsimple.com',
-    'squad@thedailyupside.com', 
-    'noreply@news.bloomberg.com', 
-    'newsletter+211@tradingcentral.com',
-    'daily@chartr.co'
+    "no-reply@connect.etoro.com",
+    "crew@morningbrew.com",
+    "notifications@e-news.wealthsimple.com",
+    "squad@thedailyupside.com",
+    "noreply@news.bloomberg.com",
+    "newsletter+211@tradingcentral.com",
+    "daily@chartr.co",
 ]
 
 # --- Commands ---
 COMMAND_INGEST = "ingest"
+
+# --- Content Constants ---
+NO_CONTENT_FOUND = "No content found"

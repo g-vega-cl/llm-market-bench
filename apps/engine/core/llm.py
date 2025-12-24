@@ -114,8 +114,12 @@ Return the result as a structured JSON object matching the schema."""
                 },
                 {"role": "user", "content": prompt}
             ],
-            "max_retries": 2
+            "max_retries": 2,
         }
+
+        # Anthropic requires max_tokens to be explicitly set
+        if provider == "anthropic":
+            args["max_tokens"] = 1024
 
         resp_awaitable = client.chat.completions.create(**args)
 

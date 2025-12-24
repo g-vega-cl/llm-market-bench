@@ -14,6 +14,7 @@ We use Supabase's `pgvector` extension to store and search embeddings.
 - **Columns**: `id`, `content` (text), `embedding` (vector), `metadata` (jsonb), `created_at`.
 - **Search Algorithm**: Cosine similarity using an HNSW index.
 - **RPC Function**: `match_memories` (handles the similarity search logic).
+- **Security (RLS)**: Row Level Security is enabled. Access is restricted to the `service_role` via a dedicated policy to ensure the public `anon` key cannot read embeddings.
 
 ### 2. Embedding Model (Google Gemini)
 We use Google's `text-embedding-004` model to generate 768-dimensional embeddings.
@@ -41,6 +42,8 @@ A verification script was created at `apps/engine/tests/test_memory_rag.py`. It 
 1.  Seeds a test memory (e.g., "The Federal Reserve kept interest rates unchanged...").
 2.  Queries the engine with a related question ("What did the Fed do recently?").
 3.  Asserts that the correct memory is retrieved.
+
+**Result**: ✅ Success. Confirmed that Gemini embeddings are generated and pgvector similarity search returns the expected context.
 
 ### Manual Verification
 1.  Check logs for `Starting analysis tasks...` to see the context being passed.

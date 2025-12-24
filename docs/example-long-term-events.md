@@ -37,3 +37,7 @@ Examples:
 * Antitrust and Regulatory Shifts: Major court rulings or legislative changes that break up corporate monopolies or alter industry liability.
 * Stock Splits and Dividends:
 * The FTSE100 outpaced the S&P500 in 2025, London's market resilience is turning heads globally.
+* Every 1% reduction in labor costs for the S&P 500 implies ~2% upside to EPS, on average.Healthcare, consumer staples, and consumer discretionary benefit more than the index, while tech and communication services - despite leading AI development - see below-average EPS leverage from labor savings.
+
+## Technology & Innovation
+* GLP-1 drugs in pill form coming soon, companies like NVO, Eli Lilly, and Amgen are racing to get to market first.

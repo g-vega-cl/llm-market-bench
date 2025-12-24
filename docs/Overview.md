@@ -84,11 +84,12 @@ ai-wallstreet/
 * **Validation:** **Python Pydantic + Instructor**
 * *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 * *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
+* documentation: ./docs/llm-analysis-walkthrough.md
 
 **6. RAG Context Retrieval**
 
 * **Tech:** **Supabase pgvector**
-* *Before analyzing today's news, the engine queries the vector store for the top 5 most relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
+* *Before analyzing today's news, the engine queries the vector store for relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
 
 **7. Decision Attribution Layer**
 

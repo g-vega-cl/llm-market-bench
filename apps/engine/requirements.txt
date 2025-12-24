@@ -4,3 +4,9 @@ beautifulsoup4
 python-dotenv
 supabase
 pytest
+pytest-asyncio
+instructor
+openai
+anthropic
+pydantic
+google-generativeai

@@ -19,6 +19,18 @@ logger = logging.getLogger("engine")
 SUPABASE_URL = os.getenv("SUPABASE_PROJECT_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
+# --- LLM API Keys ---
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+
+# --- Model Selection ---
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+
 # --- Gmail Configuration ---
 GMAIL_CREDENTIALS_JSON = os.getenv("GMAIL_CREDENTIALS_JSON")
 GMAIL_TOKEN_JSON = os.getenv("GMAIL_TOKEN_JSON")

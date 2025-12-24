@@ -14,34 +14,37 @@ def main():
     if args.command == COMMAND_INGEST:
         logger.info("Starting Newsletter Ingestion...")
         data = ingest_newsletters()
+        if not data:
+            logger.warning("No new newsletters found to ingest. Skipping snapshotting and analysis.")
+            return
+
         logger.info(f"Successfully ingested {len(data)} newsletters.")
         
-        if data:
-            logger.info("Starting Database Snapshotting...")
-            sb_client = get_supabase_client()
-            
-            saved_count = 0
-            for item in data:
-                try:
-                    upsert_newsletter_snapshot(sb_client, item)
-                    saved_count += 1
-                except Exception as e:
-                    logger.error(f"Error saving snapshot for {item.get('source_id', 'unknown')}: {e}")
-            
-            logger.info(f"Successfully saved {saved_count} snapshots to Supabase.")
-            
-            # --- Parallel LLM Analysis ---
-            logger.info("Starting Parallel LLM Analysis...")
-            import asyncio
-            from analyze import analyze_chunks
-            
+        logger.info("Starting Database Snapshotting...")
+        sb_client = get_supabase_client()
+        
+        saved_count = 0
+        for item in data:
             try:
-                decisions = asyncio.run(analyze_chunks(data))
-                logger.info(f"Analysis complete. Generated {len(decisions)} decisions.")
-                for d in decisions:
-                    logger.info(f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): {d.reasoning[:50]}...")
+                upsert_newsletter_snapshot(sb_client, item)
+                saved_count += 1
             except Exception as e:
-                logger.error(f"Analysis failed: {e}")
+                logger.error(f"Error saving snapshot for {item.get('source_id', 'unknown')}: {e}")
+        
+        logger.info(f"Successfully saved {saved_count} snapshots to Supabase.")
+        
+        # --- Parallel LLM Analysis ---
+        logger.info("Starting Parallel LLM Analysis...")
+        import asyncio
+        from analyze import analyze_chunks
+        
+        try:
+            decisions = asyncio.run(analyze_chunks(data))
+            logger.info(f"Analysis complete. Generated {len(decisions)} decisions.")
+            for d in decisions:
+                logger.info(f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): {d.reasoning[:50]}...")
+        except Exception as e:
+            logger.error(f"Analysis failed: {e}")
 
 if __name__ == "__main__":
     main()

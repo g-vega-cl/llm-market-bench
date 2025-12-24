@@ -2,7 +2,7 @@
 import instructor
 from openai import OpenAI, AsyncOpenAI
 from anthropic import AsyncAnthropic
-import google.generativeai as genai
+from google import genai
 import os
 import logging
 from .models import DecisionObject
@@ -13,30 +13,32 @@ logger = logging.getLogger("engine")
 # --- Client Factories ---
 
 def get_openai_client():
-    return instructor.from_openai(AsyncOpenAI(api_key=config.OPENAI_API_KEY))
+    return instructor.from_openai(AsyncOpenAI(
+        api_key=config.OPENAI_API_KEY,
+        timeout=60.0 # 60s timeout
+    ))
 
 def get_anthropic_client():
-    return instructor.from_anthropic(AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY))
+    return instructor.from_anthropic(AsyncAnthropic(
+        api_key=config.ANTHROPIC_API_KEY,
+        timeout=60.0
+    ))
 
 def get_deepseek_client():
     # DeepSeek uses the OpenAI SDK as its official Python client
-    # Ref: https://api-docs.deepseek.com/
     return instructor.from_openai(
         AsyncOpenAI(
             api_key=config.DEEPSEEK_API_KEY, 
-            base_url="https://api.deepseek.com"
+            base_url="https://api.deepseek.com",
+            timeout=60.0
         ),
         mode=instructor.Mode.JSON
     )
 
-def get_gemini_client(model_name: str = config.GEMINI_MODEL):
-    # Using the official Google Generative AI SDK
-    # Ref: https://ai.google.dev/gemini-api/docs/structured-output?lang=python
-    genai.configure(api_key=config.GEMINI_API_KEY)
-    return instructor.from_gemini(
-        genai.GenerativeModel(model_name),
-        mode=instructor.Mode.GEMINI_JSON,
-    )
+def get_gemini_client():
+    # Using the new official Google Gen AI SDK
+    client = genai.Client(api_key=config.GEMINI_API_KEY)
+    return instructor.from_genai(client)
 
 # --- Analysis Functions ---
 
@@ -52,7 +54,7 @@ async def analyze_with_provider(provider: str, model_name: str, text: str, sourc
     elif provider == "deepseek":
         client = get_deepseek_client()
     elif provider == "gemini":
-        client = get_gemini_client(model_name)
+        client = get_gemini_client()
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
@@ -67,29 +69,25 @@ async def analyze_with_provider(provider: str, model_name: str, text: str, sourc
     """
 
     try:
-        # Note: instructor.from_gemini returns a client that works slightly differently or 
-        # wraps the call. For Gemini, it's often a synchronous-looking call or handled by the wrapper.
-        # However, for consistency in our async pipeline, we check if we need to await.
+        # Note: instructor handles common interface for create()
         
-        if provider == "gemini":
-            # instructor.from_gemini currently uses the synchronous SDK wrapper mostly, 
-            # but it supports response_model.
-            resp = client.chat.completions.create(
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                response_model=DecisionObject,
-            )
+        args = {
+            "model": model_name,
+            "response_model": DecisionObject,
+            "messages": [
+                {"role": "system", "content": "You are a hedge fund trading algorithm. Analyze news strictly."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_retries": 2
+        }
+
+        # For Gemini, the new genai SDK wrapper with instructor supports await for chat.completions.create
+        resp_awaitable = client.chat.completions.create(**args)
+        
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            resp = await resp_awaitable
         else:
-            resp = await client.chat.completions.create(
-                model=model_name,
-                response_model=DecisionObject,
-                messages=[
-                    {"role": "system", "content": "You are a hedge fund trading algorithm. Analyze news strictly."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_retries=2
-            )
+            resp = resp_awaitable
             
         resp.source_id = source_id 
         return resp

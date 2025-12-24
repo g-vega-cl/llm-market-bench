@@ -56,6 +56,7 @@ ai-wallstreet/
 * **Tech:** GitHub Actions / Pytest
 * **Logic:** *Automatically runs unit tests for core configuration and ingestion utilities on every pull request and push to the `main` branch. This serves as a security/stability gate for the engine.*
 * File: .github/workflows/ci.yml
+* documentation: ./docs/testing.md
 
 **2. Newsletter Ingestion** ✅
 

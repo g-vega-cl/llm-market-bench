@@ -61,37 +61,26 @@ def get_gmail_service():
                 scopes=token_data.get('scopes', GMAIL_SCOPES)
             )
         except Exception as e:
-            logger.error(f"Error parsing GMAIL credentials or token: {e}")
+            logger.error(f"AUTHENTICATION FAILURE: Error parsing GMAIL credentials or token: {e}")
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
             except Exception as e:
-                logger.error(f"Error refreshing token: {e}")
+                logger.error(f"TOKEN REFRESH FAILURE: Could not refresh Google token: {e}")
                 creds = None
         
         if not creds:
-            import tempfile
-            import os
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tf:
-                tf.write(GMAIL_CREDENTIALS_JSON)
-                temp_cred_path = tf.name
-            
-            try:
-                flow = InstalledAppFlow.from_client_secrets_file(temp_cred_path, GMAIL_SCOPES)
-                creds = flow.run_local_server(port=0)
-            finally:
-                if os.path.exists(temp_cred_path):
-                    os.remove(temp_cred_path)
-        
-        logger.info("Gmail token refreshed/created. Please update GMAIL_TOKEN_JSON in your .env if it has changed.")
+            logger.error("NO VALID GMAIL CREDENTIALS: Manual re-authentication required or check GMAIL_TOKEN_JSON.")
+            # We don't want to run_local_server in a headless environment (GitHub Actions)
+            return None
             
     try:
         service = build('gmail', 'v1', credentials=creds)
         return service
     except HttpError as error:
-        logger.error(f'An error occurred building the Gmail service: {error}')
+        logger.error(f'GMAIL SERVICE BUILD ERROR: {error}')
         return None
 
 def decode_base64_url(data: str) -> str:

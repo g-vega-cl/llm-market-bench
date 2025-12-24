@@ -5,8 +5,9 @@ python-dotenv
 supabase
 pytest
 pytest-asyncio
-instructor
+instructor>=1.13.0
 openai
 anthropic
-pydantic
-google-generativeai
+pydantic<2.12.0
+google-genai
+pyiceberg>=0.10.0

@@ -79,23 +79,24 @@ ai-wallstreet/
 
 ### Phase 2: The Consensus & Attribution Engine
 
-**5. Parallel LLM Analysis (Structured Output)**
+**5. Parallel LLM Analysis (Structured Output)** ✅
 
-* **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
-* **Validation:** **Python Pydantic + Instructor**
-* *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
-* *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
-* documentation: ./docs/llm-analysis-walkthrough.md
+*   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
+*   **Validation:** **Python Pydantic + Instructor**
+*   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
+*   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
+*   documentation: ./docs/llm-analysis-walkthrough.md
 
-**6. RAG Context Retrieval**
+**6. RAG Context Retrieval** ✅
 
-* **Tech:** **Supabase pgvector**
-* *Before analyzing today's news, the engine queries the vector store for relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
+*   **Tech:** **Supabase pgvector**
+*   *Before analyzing today's news, the engine queries the vector store for relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
+*   documentation: ./docs/rag-context-retrieval.md
 
 **7. Decision Attribution Layer**
 
-* **Tech:** Python Logic / Supabase
-* **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
+*   **Tech:** Python Logic / Supabase
+*   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
 
 **8. Event Consensus Protocol**
 

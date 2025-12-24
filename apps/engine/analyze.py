@@ -15,6 +15,7 @@ from core.config import (
     DEEPSEEK_MODEL,
 )
 from core.models import DecisionObject
+from memory.store import retrieve_context
 
 logger = logging.getLogger("engine")
 
@@ -44,9 +45,8 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
         source_id = chunk.get("source_id")
         text = chunk.get("content")
 
-        if not source_id or not text:
-            logger.warning(f"Skipping malformed chunk: {chunk.keys()}")
-            continue
+        # Retrieve historical context once per chunk
+        context = retrieve_context(text)
 
         for config in MODELS:
             provider = config["provider"]
@@ -56,7 +56,8 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
                 provider=provider,
                 model_name=model,
                 text=text,
-                source_id=source_id
+                source_id=source_id,
+                context=context
             ))
 
     if not tasks:

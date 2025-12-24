@@ -71,7 +71,8 @@ async def analyze_with_provider(
     provider: str,
     model_name: str,
     text: str,
-    source_id: str
+    source_id: str,
+    context: str = ""
 ) -> DecisionObject:
     """Analyzes text using the specified provider and returns a DecisionObject.
 
@@ -98,7 +99,10 @@ async def analyze_with_provider(
 You must provide a confidence score (0-100) and your reasoning.
 The source_id for this news is: {source_id}
 
-News Snippet:
+### Historical Context (Relevant Past Events):
+{context if context else "No relevant historical context found."}
+
+### News Snippet:
 "{text}"
 
 Return the result as a structured JSON object matching the schema."""

@@ -19,6 +19,9 @@ Examples:
 * Supply Chain "Friend-shoring": The intentional movement of manufacturing to politically aligned countries to reduce geopolitical risk.
 * Resource Nationalization: Countries seizing control of internal assets like lithium or oil from foreign corporations to secure domestic supply.
 * Government gridlock: When a country's legislature is unable to pass legislation, leading to economic uncertainty, e.g; France's recent political gridlock (2025).
+* President trump will likely find new areas that could be considered as "security" to add tariffs. Specially if china dominates. Eg, drones, robots, etc...
+* US's Venezuela's pressure and navy buildup in the region.
+* China's Belt and Road Initiative (BRI): A global infrastructure development program that extends Chinese influence and economic leverage.
 
 ## Social & Structural Shifts       
 * Demographic Changes: Long-term shifts in population age and growth that dictate labor availability and consumer demand.

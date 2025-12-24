@@ -36,8 +36,9 @@ ai-wallstreet/
 ├── packages/
 │   └── database/            # Shared Supabase types/schemas
 ├── supabase/                # SQL Migrations, RLS policies, & Vector setup
-└── .github/
-    └── workflows/           # Cron schedules (08:00 ingest, 09:30 execute)
+    └── workflows/           # CI/CD & Cron schedules
+        ├── ci.yml           # Automated testing on PR/Push
+        └── ingest.yml       # Daily ingestion (08:00 ET)
 
 ```
 
@@ -49,6 +50,12 @@ ai-wallstreet/
 
 * **Tech:** GitHub Actions (Cron)
 * File: .github/workflows/ingest.yml
+
+**1a. Quality Assurance (CI/CD)** ✅
+
+* **Tech:** GitHub Actions / Pytest
+* **Logic:** *Automatically runs unit tests for core configuration and ingestion utilities on every pull request and push to the `main` branch. This serves as a security/stability gate for the engine.*
+* File: .github/workflows/ci.yml
 
 **2. Newsletter Ingestion** ✅
 
@@ -189,27 +196,41 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 
 ```mermaid
 graph TD
-    A[Gmail Newsletters] --> B[Data Snapshot + Chunk IDs]
-    B --> C{Context Retrieval}
-    C <-->|Query History| V[Supabase pgvector]
-    
-    C --> D1[OpenAI + Instructor]
-    C --> D2[Claude + Instructor]
-    C --> D3[Gemini + Instructor]
-    C --> D4[DeepSeek + Instructor]
-    
-    D1 & D2 & D3 & D4 --> AT[Decision Attribution Layer]
-    AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]
-    
-    AT --> E{Validation & Consensus}
-    E -->|Fail| F[Reject (Hallucination Guardrails)]
-    E -->|Pass| G[Global Timeline]
-    E -->|Pass| H[Execution Engine]
-    
-    H --> I[Supabase Ledger]
-    I -->|Link TradeID| DB
-    I --> J[TanStack Start Dashboard]
-    G --> J
-    K[User Comments] -->|Supabase Auth| J
+    subgraph "Development & CI/CD"
+        DEV[Developer Code Change] --> CI[GitHub Actions: ci.yml]
+        CI -->|Pass| MAIN[Merge to main]
+    end
 
+    subgraph "Daily Pipeline (Phase 1)"
+        CRON[Cron Schedule 08:00 ET] --> INGEST[ingest.yml]
+        INGEST --> A[Gmail Newsletters]
+        A --> B[Data Snapshot + Chunk IDs]
+    end
+
+    subgraph "Reasoning & Consensus (Phase 2)"
+        B --> C{Context Retrieval}
+        C <-->|Query History| V[Supabase pgvector]
+        
+        C --> D1[OpenAI + Instructor]
+        C --> D2[Claude + Instructor]
+        C --> D3[Gemini + Instructor]
+        C --> D4[DeepSeek + Instructor]
+        
+        D1 & D2 & D3 & D4 --> AT[Decision Attribution Layer]
+        AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]
+        
+        AT --> E{Validation & Consensus}
+    end
+
+    subgraph "Execution & Feedback (Phase 3 & 4)"
+        E -->|Fail| F[Reject (Hallucination Guardrails)]
+        E -->|Pass| G[Global Timeline]
+        E -->|Pass| H[Execution Engine]
+        
+        H --> I[Supabase Ledger]
+        I -->|Link TradeID| DB
+        I --> J[TanStack Start Dashboard]
+        G --> J
+        K[User Comments] -->|Supabase Auth| J
+    end
 ```

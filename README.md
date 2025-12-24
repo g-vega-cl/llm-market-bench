@@ -58,4 +58,7 @@ Ensure you have a `.env` file in `apps/engine/` with the following variables:
 
 ## Automation
 
-The project uses GitHub Actions for daily automated ingestion. See [.github/workflows/ingest.yml](.github/workflows/ingest.yml) for details.
+The project uses GitHub Actions for automation:
+
+- **CI Testing**: [.github/workflows/ci.yml](.github/workflows/ci.yml) - Automatically runs the engine test suite on every push or pull request to the `main` branch.
+- **Daily Ingestion**: [.github/workflows/ingest.yml](.github/workflows/ingest.yml) - Handles the daily cron schedule for newsletter ingestion (08:00 ET).

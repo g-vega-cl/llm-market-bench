@@ -44,6 +44,9 @@ To run the automated test suite for the engine:
     python3 -m pytest
     ```
 
+> [!NOTE]
+> The test suite currently covers core configuration and ingestion utilities. Database interaction tests have been omitted to avoid third-party dependency warnings with the supabase official testing library and prioritize a secure, minimal dependency footprint for automated verification.
+
 ### Environment Configuration
 
 Ensure you have a `.env` file in `apps/engine/` with the following variables:

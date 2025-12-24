@@ -3,3 +3,4 @@ google-auth-oauthlib
 beautifulsoup4
 python-dotenv
 supabase
+pytest

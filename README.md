@@ -30,6 +30,20 @@ To run the ingestion and upload to Supabase locally:
     python3 main.py ingest
     ```
 
+### Testing
+
+To run the automated test suite for the engine:
+
+1.  **Activate the virtual environment** (if not already done):
+    ```bash
+    source venv/bin/activate
+    ```
+
+2.  **Run tests**:
+    ```bash
+    python3 -m pytest
+    ```
+
 ### Environment Configuration
 
 Ensure you have a `.env` file in `apps/engine/` with the following variables:

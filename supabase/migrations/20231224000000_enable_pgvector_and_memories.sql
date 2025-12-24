@@ -43,3 +43,11 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- Enable RLS
+ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
+
+-- Policy to allow the service role to do everything
+CREATE POLICY "Allow service role full access" ON memories
+    USING (auth.role() = 'service_role')
+    WITH CHECK (auth.role() = 'service_role');

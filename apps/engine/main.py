@@ -11,6 +11,7 @@ from analyze import analyze_chunks
 from core.config import COMMAND_INGEST, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from ingest.newsletter import ingest_newsletters
+from attribution.service import save_decision
 
 
 def main():
@@ -59,11 +60,20 @@ def main():
         try:
             decisions = asyncio.run(analyze_chunks(data))
             logger.info(f"Analysis complete. Generated {len(decisions)} decisions.")
+            
+            saved_decisions = 0
             for d in decisions:
-                logger.info(
-                    f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "
-                    f"{d.reasoning[:50]}..."
-                )
+                try:
+                    save_decision(sb_client, d)
+                    saved_decisions += 1
+                    logger.info(
+                        f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "
+                        f"Saved attribution for {d.model_provider}/{d.model_name}"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to save decision for {d.ticker}: {e}")
+            
+            logger.info(f"Successfully saved {saved_decisions}/{len(decisions)} decisions.")
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
 

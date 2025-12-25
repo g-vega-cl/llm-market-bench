@@ -40,6 +40,14 @@ class DecisionObject(BaseModel):
         ...,
         description="ID of the source newsletter chunk"
     )
+    model_provider: str | None = Field(
+        None,
+        description="LLM provider that generated the decision"
+    )
+    model_name: str | None = Field(
+        None,
+        description="Specific model name that generated the decision"
+    )
 
     @field_validator("ticker")
     @classmethod

@@ -73,11 +73,19 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     valid_decisions = []
-    for res in results:
-        if isinstance(res, Exception):
-            logger.error(f"Analysis task failed: {res}")
-        elif isinstance(res, DecisionObject):
-            valid_decisions.append(res)
+    task_idx = 0
+    for chunk in chunks:
+        for config in MODELS:
+            res = results[task_idx]
+            task_idx += 1
+
+            if isinstance(res, Exception):
+                logger.error(f"Analysis task failed for {config['provider']}: {res}")
+            elif isinstance(res, DecisionObject):
+                # Ensure model metadata is attached for attribution
+                res.model_provider = config["provider"]
+                res.model_name = config["model"]
+                valid_decisions.append(res)
 
     logger.info(f"Completed analysis. {len(valid_decisions)}/{len(tasks)} successful.")
     return valid_decisions

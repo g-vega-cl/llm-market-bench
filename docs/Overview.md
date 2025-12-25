@@ -93,10 +93,11 @@ ai-wallstreet/
 *   *Before analyzing today's news, the engine queries the vector store for relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
 *   documentation: ./docs/rag-context-retrieval.md
 
-**7. Decision Attribution Layer**
+**7. Decision Attribution Layer** ✅
 
 *   **Tech:** Python Logic / Supabase
 *   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
+*   documentation: ./docs/decision-attribution-walkthrough.md
 
 **8. Event Consensus Protocol**
 

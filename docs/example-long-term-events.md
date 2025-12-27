@@ -1,4 +1,4 @@
-# Things to keep in mind
+# Events to keep in mind
 Keep a log of long term background events that shape markets, every time one event like this happens we should add it to our list:
 
 Examples:

@@ -68,14 +68,17 @@ class TestAnalysisOrchestration:
     async def test_analyze_chunks_orchestration(self, monkeypatch):
         """Test that analyze_chunks calls analyze_with_provider for each model and chunk."""
 
-        async def mock_analyze(provider, model_name, text, source_id):
-            return DecisionObject(
-                signal="BUY",
-                confidence=80,
-                reasoning=f"{provider} says buy",
-                ticker="AAPL",
-                source_id=source_id,
-            )
+        async def mock_analyze(provider, model_name, chunks, context=None):
+            # Return a list of decisions, one per chunk for simplicity in mock
+            return [
+                DecisionObject(
+                    signal="BUY",
+                    confidence=80,
+                    reasoning=f"{provider} says buy",
+                    ticker="AAPL",
+                    source_id=chunk.get("source_id", "unknown"),
+                ) for chunk in chunks
+            ]
 
         monkeypatch.setattr("core.llm.analyze_with_provider", mock_analyze)
 
@@ -90,14 +93,16 @@ class TestAnalysisOrchestration:
     async def test_analyze_chunks_skips_malformed(self, monkeypatch, caplog):
         """Test that malformed chunks are skipped with a warning."""
 
-        async def mock_analyze(provider, model_name, text, source_id):
-            return DecisionObject(
-                signal="HOLD",
-                confidence=50,
-                reasoning="Test",
-                ticker="TEST",
-                source_id=source_id,
-            )
+        async def mock_analyze(provider, model_name, chunks, context=None):
+            return [
+                DecisionObject(
+                    signal="HOLD",
+                    confidence=50,
+                    reasoning="Test",
+                    ticker="TEST",
+                    source_id=chunk.get("source_id", "unknown"),
+                ) for chunk in chunks
+            ]
 
         monkeypatch.setattr("core.llm.analyze_with_provider", mock_analyze)
 

@@ -4,10 +4,17 @@ This document outlines the testing infrastructure for the `llm-market-bench` eng
 
 ## Quick Start
 
+### Global (Root)
 To run the full suite from the repository root:
-
 ```bash
 python3 -m pytest
+```
+
+### Engine (App)
+To run tests while working specifically in the engine directory:
+```bash
+cd apps/engine
+venv/bin/python -m pytest
 ```
 
 To run with verbose output:
@@ -22,7 +29,8 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 
 ### 1. Analysis Logic (`test_analysis_logic.py`)
 - **Schema Validation**: Ensures the `DecisionObject` Pydantic model correctly validates LLM outputs.
-- **Orchestration**: Verifies that `analyze_chunks` correctly spawns tasks for each model/chunk combination.
+- **Orchestration**: Verifies that `analyze_chunks` correctly spawns tasks for each model and filters out malformed input.
+- **Batch Processing**: Validates that all chunks are analyzed in the same LLM call.
 
 ### 2. Resilience & Hardening (`test_resilience.py`)
 - **Individual Task Failures**: Confirms that if one model fails (e.g., API timeout), the pipeline continues to process results from other models.

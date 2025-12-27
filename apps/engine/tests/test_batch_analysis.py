@@ -14,9 +14,9 @@ def mock_llm_analyze():
 
 @pytest.fixture
 def mock_retrieve_context():
-    """Mock the retrieve_context function."""
-    with patch("analyze.retrieve_context") as m:
-        m.return_value = "Mocked Context"
+    """Mock the retrieve_context_batch function."""
+    with patch("analyze.retrieve_context_batch") as m:
+        m.return_value = ["Mocked Context"]
         yield m
 
 @pytest.mark.asyncio

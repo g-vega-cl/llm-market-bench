@@ -43,8 +43,20 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
         logger.warning("No chunks to analyze.")
         return []
 
-    # 1. Aggregate historical context from all chunks (Single Batch Call)
-    queries = [chunk.get("content", "") for chunk in chunks if chunk.get("content")]
+    # 1. Filter malformed chunks and aggregate historical context
+    valid_chunks = [
+        c for c in chunks 
+        if c.get("source_id") and c.get("content")
+    ]
+    
+    if len(valid_chunks) < len(chunks):
+        logger.warning(f"Skipped {len(chunks) - len(valid_chunks)} malformed chunks.")
+
+    if not valid_chunks:
+        logger.warning("No valid chunks to analyze after filtering.")
+        return []
+
+    queries = [chunk["content"] for chunk in valid_chunks]
     
     if queries:
         context_results = retrieve_context_batch(queries)
@@ -62,7 +74,7 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
         tasks.append(llm.analyze_with_provider(
             provider=provider,
             model_name=model,
-            chunks=chunks,
+            chunks=valid_chunks,
             context=aggregated_context
         ))
 

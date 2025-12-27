@@ -1,5 +1,6 @@
 """Integration test for RAG context retrieval."""
 
+import pytest
 import asyncio
 import logging
 from memory.store import add_memory, retrieve_context
@@ -8,6 +9,7 @@ from core.db import get_supabase_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("test")
 
+@pytest.mark.asyncio
 async def test_memory_flow():
     """Verify that we can add and retrieve memories."""
     

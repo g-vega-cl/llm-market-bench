@@ -13,16 +13,19 @@ from core.models import DecisionObject
 async def test_individual_task_failure_does_not_halt_pipeline():
     """Verify that one model failing doesn't stop others."""
 
-    async def mock_analyze(provider, model_name, text, source_id):
+    async def mock_analyze(provider, model_name, chunks, context=None):
         if provider == "openai":
             raise Exception("OpenAI is down")
-        return DecisionObject(
-            signal="BUY",
-            confidence=90,
-            reasoning="Success",
-            ticker="AAPL",
-            source_id=source_id,
-        )
+        
+        return [
+            DecisionObject(
+                signal="BUY",
+                confidence=90,
+                reasoning="Success",
+                ticker="AAPL",
+                source_id=chunk.get("source_id", "unknown"),
+            ) for chunk in chunks
+        ]
 
     chunks = [{"source_id": "chunk_1", "content": "test"}]
 

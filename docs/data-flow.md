@@ -211,9 +211,22 @@ newsletter_snapshots table after Phase 1:
 
 ---
 
-## Phase 2: Context Retrieval & Embedding
+## Phase 2: Filtering & Context Retrieval
 
-### Step 2.1: Extract Query Texts
+### Step 2.1: Filter Malformed Chunks
+
+**File**: `apps/engine/analyze.py:46-55`
+
+Before analysis, the engine validates all chunks to ensure they possess both a `source_id` and `content`. Any newsletter that failed to parse correctly during ingestion is skipped here to ensure the stability of the RAG and LLM stages.
+
+```python
+valid_chunks = [
+    c for c in chunks 
+    if c.get("source_id") and c.get("content")
+]
+```
+
+### Step 2.2: Extract Query Texts
 
 **File**: `apps/engine/analyze.py:47`
 

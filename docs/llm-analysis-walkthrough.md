@@ -46,10 +46,11 @@ class DecisionObject(BaseModel):
 To minimize latency and costs, the system uses a **Batch-Parallel** approach. Instead of querying models for every individual news snippet, all chunks are bundled into a single batch per provider.
 
 1.  **Ingestion**: News chunks are fetched from Gmail.
-2.  **RAG Batching**: Gemini embeddings are generated for ALL chunks in a single batch call.
-3.  **Dispatch**: Each LLM (OpenAI, Claude, Gemini, DeepSeek) is called exactly **once** with the entire news batch and aggregated historical context.
-4.  **Validation**: `Instructor` validates the model's list of decisions against the Pydantic schema.
-5.  **Aggregation**: Validated `DecisionObject` outputs are saved for the Consensus phase.
+2.  **Filtering**: Chunks are validated to ensure they contain both `source_id` and `content`. Malformed chunks are skipped to prevent pipeline errors.
+3.  **RAG Batching**: Gemini embeddings are generated for ALL valid chunks in a single batch call.
+4.  **Dispatch**: Each LLM (OpenAI, Claude, Gemini, DeepSeek) is called exactly **once** with the entire news batch and aggregated historical context.
+5.  **Validation**: `Instructor` validates the model's list of decisions against the Pydantic schema.
+6.  **Aggregation**: Validated `DecisionObject` outputs are saved for the Consensus phase.
 
 ## 5. Verification
 

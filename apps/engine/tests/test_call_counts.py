@@ -24,8 +24,10 @@ async def test_consolidated_call_counts():
     # Mock LLM response (DecisionsResponse is the response_model)
     mock_response = DecisionsResponse(decisions=[])
     
-    # Patch all provider clients
-    with patch("google.genai.Client", return_value=mock_gemini_client), \
+    # Patch all provider clients and their underlying SDK classes
+    with patch("core.llm.AsyncOpenAI"), \
+         patch("core.llm.AsyncAnthropic"), \
+         patch("google.genai.Client", return_value=mock_gemini_client), \
          patch("instructor.from_openai") as mock_openai, \
          patch("instructor.from_anthropic") as mock_anthropic, \
          patch("instructor.from_genai") as mock_instructor_gemini, \

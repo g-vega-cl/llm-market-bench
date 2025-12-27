@@ -44,7 +44,7 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
         return []
 
     # 1. Aggregate historical context from all chunks (Single Batch Call)
-    queries = [chunk.get("content", "")[:200] for chunk in chunks if chunk.get("content")]
+    queries = [chunk.get("content", "") for chunk in chunks if chunk.get("content")]
     
     if queries:
         context_results = retrieve_context_batch(queries)

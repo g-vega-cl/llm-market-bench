@@ -23,17 +23,17 @@ We use Google's `text-embedding-004` model to generate 768-dimensional embedding
 
 ### 3. Retrieval Logic
 The retrieval logic is encapsulated in `apps/engine/memory/store.py`.
-- **Function**: `retrieve_context(query_text, limit=3)`.
+- **Function**: `retrieve_context_batch(queries, limit=3)`.
 - **Logic**:
-    1.  Embed the query text (current news chunk).
-    2.  Call the `match_memories` RPC on Supabase.
-    3.  Return a formatted string of the most relevant past events.
+    1.  **Batch Embedding**: Use Gemini's `embed_content` to batch-generate embeddings for all news chunks in a single API call.
+    2.  **Parallel Search**: For each embedding, call the `match_memories` RPC on Supabase.
+    3.  **Aggregation**: Return a list of formatted strings, one for each news chunk.
 
 ### 4. Pipeline Integration
 The retrieval is integrated into the parallel analysis orchestrator.
 - **Module**: `apps/engine/analyze.py`.
-- **Change**: Added a call to `retrieve_context` for each news chunk before dispatching tasks to the LLM providers.
-- **Prompt Injection**: In `apps/engine/core/llm.py`, the retrieved context is injected into the LLM prompt under a `### Historical Context` section.
+- **Change**: Added a single call to `retrieve_context_batch` for all news chunks before dispatching tasks to the LLM providers.
+- **Prompt Injection**: In `apps/engine/core/llm.py`, the retrieved context is aggregated and injected into the LLM prompt under a `### Historical Context` section.
 
 ## Verification
 

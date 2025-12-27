@@ -83,6 +83,7 @@ ai-wallstreet/
 
 *   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
 *   **Validation:** **Python Pydantic + Instructor**
+*   **Efficiency:** **Batch Processing** (Each LLM is called exactly ONCE with all daily news chunks to minimize latency and costs).
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
 *   documentation: ./docs/llm-analysis-walkthrough.md
@@ -215,10 +216,10 @@ graph TD
         B --> C{Context Retrieval}
         C <-->|Query History| V[Supabase pgvector]
         
-        C --> D1[OpenAI + Instructor]
-        C --> D2[Claude + Instructor]
-        C --> D3[Gemini + Instructor]
-        C --> D4[DeepSeek + Instructor]
+        C --> D1[OpenAI Batch Analysis]
+        C --> D2[Claude Batch Analysis]
+        C --> D3[Gemini Batch Analysis]
+        C --> D4[DeepSeek Batch Analysis]
         
         D1 & D2 & D3 & D4 --> AT[Decision Attribution Layer]
         AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]

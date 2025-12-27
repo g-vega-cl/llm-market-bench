@@ -41,14 +41,15 @@ class DecisionObject(BaseModel):
     source_id: str   # Link to the raw news chunk
 ```
 
-## 4. Parallel Orchestration
+## 4. Parallel Orchestration (Consolidated Mode)
 
-The system uses `asyncio.gather` to query all enabled models concurrently for every newsletter chunk.
+To minimize latency and costs, the system uses a **Batch-Parallel** approach. Instead of querying models for every individual news snippet, all chunks are bundled into a single batch per provider.
 
 1.  **Ingestion**: News chunks are fetched from Gmail.
-2.  **Dispatch**: Each chunk is sent to all 4 LLMs in parallel.
-3.  **Validation**: Pydantic validates the response; malformed outputs are caught.
-4.  **Aggregation**: Valid decisions are collected for the next phase (Consensus).
+2.  **RAG Batching**: Gemini embeddings are generated for ALL chunks in a single batch call.
+3.  **Dispatch**: Each LLM (OpenAI, Claude, Gemini, DeepSeek) is called exactly **once** with the entire news batch and aggregated historical context.
+4.  **Validation**: `Instructor` validates the model's list of decisions against the Pydantic schema.
+5.  **Aggregation**: Validated `DecisionObject` outputs are saved for the Consensus phase.
 
 ## 5. Verification
 

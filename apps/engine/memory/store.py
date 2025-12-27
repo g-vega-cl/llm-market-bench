@@ -4,54 +4,66 @@ import logging
 from typing import Any, Optional
 from supabase import Client
 from core.db import get_supabase_client
-from .embeddings import get_embedding
+from .embeddings import get_embedding, get_embeddings_batch
 
 logger = logging.getLogger("engine")
 
 def retrieve_context(query_text: str, limit: int = 3) -> str:
-    """Retrieves relevant past events/reasoning from the vector store.
+    """Retrieves relevant past events/reasoning for a single text snippet."""
+    results = retrieve_context_batch([query_text], limit=limit)
+    return results[0] if results else ""
+
+def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
+    """Retrieves relevant past events/reasoning for multiple snippets in fewer calls.
 
     Args:
-        query_text: The text to search for (e.g., a news chunk).
-        limit: Number of relevant snippets to return.
+        queries: List of text snippets to search for.
+        limit: Number of relevant snippets to return per query.
 
     Returns:
-        A formatted string of relevant context found.
+        A list of formatted strings, one for each query.
     """
+    if not queries:
+        return []
+
     try:
-        embedding = get_embedding(query_text)
-        if not embedding:
-            return ""
+        # 1. Batch generate embeddings (1 API Call)
+        embeddings = get_embeddings_batch(queries)
+        if not embeddings:
+            return ["" for _ in queries]
 
         client = get_supabase_client()
-        
-        # We use the rpc call to search_memories which we will define in the migration
-        # or we can use the direct supabase-py interface if it supports vector search.
-        # Currently, the best way with supabase-py is to use a Postgres function (RPC).
-        # Let's assume we'll add a search_memories function to our migration.
-        
-        response = client.rpc(
-            "match_memories",
-            {
-                "query_embedding": embedding,
-                "match_threshold": 0.5,
-                "match_count": limit,
-            }
-        ).execute()
+        results = []
 
-        if not response.data:
-            return ""
+        # 2. Query Supabase for each embedding (DB calls are generally safe/fast,
+        # but we could also optimize this with a single custom PG function if needed).
+        # For now, consolidating the LLM API call is the primary goal.
+        for embedding in embeddings:
+            response = client.rpc(
+                "match_memories",
+                {
+                    "query_embedding": embedding,
+                    "match_threshold": 0.5,
+                    "match_count": limit,
+                }
+            ).execute()
 
-        context_parts = []
-        for item in response.data:
-            content = item.get("content", "")
-            if content:
-                context_parts.append(f"- {content}")
+            if not response.data:
+                results.append("")
+                continue
 
-        return "\n".join(context_parts)
+            context_parts = []
+            for item in response.data:
+                content = item.get("content", "")
+                if content:
+                    context_parts.append(f"- {content}")
+            
+            results.append("\n".join(context_parts))
+
+        return results
     except Exception as e:
-        logger.error(f"Error retrieving context: {e}")
-        return ""
+        logger.error(f"Error in retrieve_context_batch: {e}")
+        return ["" for _ in queries]
 
 def add_memory(content: str, metadata: Optional[dict[str, Any]] = None) -> bool:
     """Adds a new text chunk to the memory store.

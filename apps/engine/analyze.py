@@ -15,7 +15,7 @@ from core.config import (
     DEEPSEEK_MODEL,
 )
 from core.models import DecisionObject
-from memory.store import retrieve_context
+from memory.store import retrieve_context_batch
 
 logger = logging.getLogger("engine")
 
@@ -39,53 +39,59 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
         List of DecisionObject instances from successful analyses.
         Failed analyses are logged but do not halt the pipeline.
     """
-    tasks = []
-
-    for chunk in chunks:
-        source_id = chunk.get("source_id")
-        text = chunk.get("content")
-
-        # Retrieve historical context once per chunk
-        context = retrieve_context(text)
-
-        for config in MODELS:
-            provider = config["provider"]
-            model = config["model"]
-
-            tasks.append(llm.analyze_with_provider(
-                provider=provider,
-                model_name=model,
-                text=text,
-                source_id=source_id,
-                context=context
-            ))
-
-    if not tasks:
-        logger.warning("No analysis tasks created.")
+    if not chunks:
+        logger.warning("No chunks to analyze.")
         return []
 
+    # 1. Aggregate historical context from all chunks (Single Batch Call)
+    queries = [chunk.get("content", "")[:200] for chunk in chunks if chunk.get("content")]
+    
+    if queries:
+        context_results = retrieve_context_batch(queries)
+        aggregated_context = "\n".join([c for c in context_results if c])
+    else:
+        aggregated_context = ""
+
+    tasks = []
+
+    # 2. Create one analysis task per model (Batch Mode)
+    for config in MODELS:
+        provider = config["provider"]
+        model = config["model"]
+
+        tasks.append(llm.analyze_with_provider(
+            provider=provider,
+            model_name=model,
+            chunks=chunks,
+            context=aggregated_context
+        ))
+
     logger.info(
-        f"Starting {len(tasks)} analysis tasks across "
+        f"Starting {len(tasks)} batch analysis tasks across "
         f"{len(chunks)} chunks and {len(MODELS)} models."
     )
 
-    # Run all tasks in parallel, collecting exceptions instead of raising
+    # 3. Run all tasks in parallel
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     valid_decisions = []
-    task_idx = 0
-    for chunk in chunks:
-        for config in MODELS:
-            res = results[task_idx]
-            task_idx += 1
+    
+    # 4. Process results
+    for i, res in enumerate(results):
+        config = MODELS[i]
+        
+        if isinstance(res, Exception):
+            logger.error(f"Batch analysis task failed for {config['provider']}: {res}")
+        elif isinstance(res, list):
+            # Inspect specifically for lists of DecisionObjects
+            for decision in res:
+                if isinstance(decision, DecisionObject):
+                    # Ensure model metadata is attached for attribution
+                    decision.model_provider = config["provider"]
+                    decision.model_name = config["model"]
+                    valid_decisions.append(decision)
+                else:
+                    logger.warning(f"Unexpected item in response from {config['provider']}: {type(decision)}")
 
-            if isinstance(res, Exception):
-                logger.error(f"Analysis task failed for {config['provider']}: {res}")
-            elif isinstance(res, DecisionObject):
-                # Ensure model metadata is attached for attribution
-                res.model_provider = config["provider"]
-                res.model_name = config["model"]
-                valid_decisions.append(res)
-
-    logger.info(f"Completed analysis. {len(valid_decisions)}/{len(tasks)} successful.")
+    logger.info(f"Completed analysis. Generated {len(valid_decisions)} decisions from batch processing.")
     return valid_decisions

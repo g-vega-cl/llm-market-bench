@@ -70,20 +70,19 @@ _CLIENT_FACTORIES = {
 async def analyze_with_provider(
     provider: str,
     model_name: str,
-    text: str,
-    source_id: str,
+    chunks: list[dict],
     context: str = ""
-) -> DecisionObject:
-    """Analyzes text using the specified provider and returns a DecisionObject.
+) -> list[DecisionObject]:
+    """Analyzes a batch of newsletter chunks using the specified provider.
 
     Args:
         provider: The LLM provider name (openai, anthropic, gemini, deepseek).
         model_name: The specific model identifier for the provider.
-        text: The financial news text to analyze.
-        source_id: The unique identifier of the source newsletter chunk.
+        chunks: List of dictionaries containing 'source_id' and 'content'.
+        context: Aggregated historical context.
 
     Returns:
-        A DecisionObject containing the trading signal, confidence, and reasoning.
+        A list of DecisionObject instances giving trading signals.
 
     Raises:
         ValueError: If the provider is not recognized.
@@ -95,26 +94,43 @@ async def analyze_with_provider(
 
     client = factory()
 
-    prompt = f"""Analyze the following financial news snippet and determine a trading signal (BUY, SELL, HOLD) for the relevant ticker.
-You must provide a confidence score (0-100) and your reasoning.
-The source_id for this news is: {source_id}
+    # Construct batch prompt
+    news_content = ""
+    for chunk in chunks:
+        news_content += f"""
+---
+Source ID: {chunk['source_id']}
+Content: {chunk['content']}
+---
+"""
+
+    prompt = f"""You are a hedge fund trading algorithm. Next you will see a batch of financial news snippets and your current portfolio (if any). 
+    Analyze the current portfolio and the news snippets and the state of the market, find trading and investmentideas with a high profit potential.
+    look for relevant companies and tickers and determine a trading signal:
+    *BUY: Only buy if we don't already have the stock in our portfolio.
+    *SELL: Only sell if we have the stock in our portfolio.
+    *HOLD: Do not buy or sell the stock.
+    You must provide a confidence score (0-100) and your reasoning for each decision.
+    Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
 
 ### Historical Context (Relevant Past Events):
 {context if context else "No relevant historical context found."}
 
-### News Snippet:
-"{text}"
+### News Batch:
+{news_content}
 
-Return the result as a structured JSON object matching the schema."""
+Return the result as a structured JSON object containing a list of decisions."""
 
     try:
+        from .models import DecisionsResponse
+
         args = {
             "model": model_name,
-            "response_model": DecisionObject,
+            "response_model": DecisionsResponse,
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a hedge fund trading algorithm. Analyze news strictly."
+                    "content": "You are a hedge fund trading algorithm. Analyze news strictly and return a list of decisions."
                 },
                 {"role": "user", "content": prompt}
             ],
@@ -123,8 +139,9 @@ Return the result as a structured JSON object matching the schema."""
 
         # Anthropic requires max_tokens to be explicitly set
         if provider == "anthropic":
-            args["max_tokens"] = 1024
+            args["max_tokens"] = 4096  # Increased for batch processing
 
+        print(f"Calling LLM provider: {provider} with model: {model_name}")
         resp_awaitable = client.chat.completions.create(**args)
 
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
@@ -132,8 +149,9 @@ Return the result as a structured JSON object matching the schema."""
         else:
             resp = resp_awaitable
 
-        return resp
+        # Return the list of decisions from the container
+        return resp.decisions
 
     except Exception as e:
-        logger.error(f"Error analyzing with {provider}/{model_name}: {e}")
+        logger.error(f"Error analyzing batch with {provider}/{model_name}: {e}")
         raise

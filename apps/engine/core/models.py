@@ -54,3 +54,11 @@ class DecisionObject(BaseModel):
     def upper_case_ticker(cls, v: str) -> str:
         """Normalize ticker symbols to uppercase."""
         return v.upper()
+
+
+class DecisionsResponse(BaseModel):
+    """Container for multiple trading decisions from a batch analysis."""
+    decisions: list[DecisionObject] = Field(
+        ...,
+        description="List of trading decisions generated from the batch of news"
+    )

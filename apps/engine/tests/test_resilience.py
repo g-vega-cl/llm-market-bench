@@ -13,11 +13,12 @@ from core.models import DecisionObject
 async def test_individual_task_failure_does_not_halt_pipeline():
     """Verify that one model failing doesn't stop others."""
 
+    from core.models import DecisionsResponse
     async def mock_analyze(provider, model_name, chunks, context=None):
         if provider == "openai":
             raise Exception("OpenAI is down")
         
-        return [
+        decisions = [
             DecisionObject(
                 signal="BUY",
                 confidence=90,
@@ -26,15 +27,17 @@ async def test_individual_task_failure_does_not_halt_pipeline():
                 source_id=chunk.get("source_id", "unknown"),
             ) for chunk in chunks
         ]
+        return DecisionsResponse(decisions=decisions, macro_events=[])
 
     chunks = [{"source_id": "chunk_1", "content": "test"}]
 
-    with patch("core.llm.analyze_with_provider", side_effect=mock_analyze):
-        results = await analyze_chunks(chunks)
+    with patch("core.llm.analyze_with_provider", side_effect=mock_analyze), \
+         patch("analyze.retrieve_context_batch", return_value=[""]):
+        decisions, events = await analyze_chunks(chunks)
 
     # 4 models total. OpenAI failed, so we should have 3 results.
-    assert len(results) == 3
-    for r in results:
+    assert len(decisions) == 3
+    for r in decisions:
         assert r.ticker == "AAPL"
 
 

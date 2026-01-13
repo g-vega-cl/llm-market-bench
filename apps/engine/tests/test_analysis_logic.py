@@ -68,9 +68,10 @@ class TestAnalysisOrchestration:
     async def test_analyze_chunks_orchestration(self, monkeypatch):
         """Test that analyze_chunks calls analyze_with_provider for each model and chunk."""
 
+        from core.models import DecisionsResponse
         async def mock_analyze(provider, model_name, chunks, context=None):
-            # Return a list of decisions, one per chunk for simplicity in mock
-            return [
+            # Return a DecisionsResponse object
+            decisions = [
                 DecisionObject(
                     signal="BUY",
                     confidence=80,
@@ -79,22 +80,24 @@ class TestAnalysisOrchestration:
                     source_id=chunk.get("source_id", "unknown"),
                 ) for chunk in chunks
             ]
+            return DecisionsResponse(decisions=decisions, macro_events=[])
 
         monkeypatch.setattr("core.llm.analyze_with_provider", mock_analyze)
 
         chunks = [{"source_id": "chunk_1", "content": "Apple is doing great."}]
 
-        results = await analyze_chunks(chunks)
+        decisions, events = await analyze_chunks(chunks)
 
-        assert len(results) > 0
-        assert isinstance(results[0], DecisionObject)
-        assert results[0].source_id == "chunk_1"
+        assert len(decisions) > 0
+        assert isinstance(decisions[0], DecisionObject)
+        assert decisions[0].source_id == "chunk_1"
 
     async def test_analyze_chunks_skips_malformed(self, monkeypatch, caplog):
         """Test that malformed chunks are skipped with a warning."""
 
+        from core.models import DecisionsResponse
         async def mock_analyze(provider, model_name, chunks, context=None):
-            return [
+            decisions = [
                 DecisionObject(
                     signal="HOLD",
                     confidence=50,
@@ -103,6 +106,7 @@ class TestAnalysisOrchestration:
                     source_id=chunk.get("source_id", "unknown"),
                 ) for chunk in chunks
             ]
+            return DecisionsResponse(decisions=decisions, macro_events=[])
 
         monkeypatch.setattr("core.llm.analyze_with_provider", mock_analyze)
 
@@ -111,6 +115,7 @@ class TestAnalysisOrchestration:
             {"content": "Some text"},  # Missing source_id
         ]
 
-        results = await analyze_chunks(chunks)
+        decisions, events = await analyze_chunks(chunks)
 
-        assert len(results) == 0
+        assert len(decisions) == 0
+        assert len(events) == 0

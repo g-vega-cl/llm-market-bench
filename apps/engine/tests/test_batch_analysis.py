@@ -34,7 +34,11 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
             ticker="GOOGL", source_id="src_2"
         )
     ]
-    mock_llm_analyze.return_value = mock_decisions
+    from core.models import DecisionsResponse
+    mock_llm_analyze.return_value = DecisionsResponse(
+        decisions=mock_decisions,
+        macro_events=[]
+    )
     
     chunks = [
         {"source_id": "src_1", "content": "AAPL earnings up"},
@@ -42,10 +46,10 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
     ]
     
     # Run analysis
-    results = await analyze_chunks(chunks)
+    decisions, events = await analyze_chunks(chunks)
     
     # Verify we got all decisions
-    assert len(results) >= 8  # 4 models * 2 decisions each = 8 total
+    assert len(decisions) >= 8  # 4 models * 2 decisions each = 8 total
     
     # Verify analyze_with_provider was called 4 times (once per model)
     assert mock_llm_analyze.call_count == 4
@@ -59,5 +63,5 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
     assert "Mocked Context" in call_args["context"]
 
     # Verify attribution metadata was attached
-    assert results[0].model_provider is not None
-    assert results[0].model_name is not None
+    assert decisions[0].model_provider is not None
+    assert decisions[0].model_name is not None

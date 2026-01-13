@@ -81,6 +81,8 @@ async def _close_client(client, provider: str):
             underlying = client.client
             if hasattr(underlying, 'close'):
                 await underlying.close()
+            elif hasattr(underlying, '_async_httpx_client'):
+                await underlying._async_httpx_client.aclose()
     except Exception as e:
         logger.debug(f"Failed to close {provider} client: {e}")
 

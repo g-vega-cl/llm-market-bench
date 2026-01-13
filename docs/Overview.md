@@ -113,7 +113,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **9. Trend & Concept Momentum Analysis** 🆕
 *   **Tech:** Supabase pgvector / Python
-*   **Vectorized Frequency:** Instead of just counting keywords, the engine embeds the "Concept" (e.g., "NVIDIA Blackwell Delay") and performs a similarity search against the memories table to find semantically related mentions over a rolling 30-day window.
+*   **Vectorized Frequency:** Instead of just counting keywords, the engine embeds the "Concept" (e.g., "NVIDIA Blackwell Delay") and performs a similarity search against the memories table to find semantically related mentions over a rolling 90-day window.
 *   **Trend Archeology:** Each mention is stored with a first_seen_at timestamp.
 *   **Momentum Scoring:** The engine calculates a "Velocity Score" based on mention frequency acceleration. (e.g., If "Interest Rate Cut" was mentioned twice last week but 15 times this morning, it is flagged as an Emerging Trend).
 *   **Data Structure:** Updates a concept_metrics table tracking concept_vector, mention_count, first_mention_date, and velocity_score.

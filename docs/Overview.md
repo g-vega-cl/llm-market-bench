@@ -102,10 +102,14 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
 *   documentation: ./docs/decision-attribution-walkthrough.md
 
-**8. Event Consensus Protocol**
+**8. Event Consensus Protocol** ✅
 
-* **Tech:** Python Logic
-* *Compare events from all 4 models. If 2+ models identify "Fed Rate Hike," it's promoted to the **Global Timeline**. Outlier events are discarded.*
+*   **Tech:** Python / Gemini Embeddings / OpenAI Synthesis
+*   **Semantic Grouping:** Uses **Vector Embeddings** and **Cosine Similarity** to group events with different names but similar meanings (e.g., "Fed Hike" vs "Interest Rate Hike").
+*   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
+*   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
+*   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if 2+ models identify it.
+*   documentation: ./docs/event-consensus-walkthrough.md
 
 **9. Pre-Market Validation (Hallucination Guardrails)**
 
@@ -226,7 +230,11 @@ graph TD
         D1 & D2 & D3 & D4 --> AT[Decision Attribution Layer]
         AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]
         
-        AT --> E{Validation & Consensus}
+        AT --> CP{Event Consensus Protocol}
+        CP -->|Semantic Grouping + Dedupe| SYN[LLM Synthesis]
+        SYN -->|Promote 2+ Agreement| G[Global Timeline]
+        
+        SYN --> E{Hallucination Guardrails}
     end
 
     subgraph "Execution & Feedback (Phase 3 & 4)"

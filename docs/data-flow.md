@@ -742,6 +742,49 @@ Key Features:
 
 ---
 
+## Phase 5: Event Consensus (Consolidating the Global Timeline)
+
+### Step 5.1: Semantic Grouping
+
+**File**: `apps/engine/consensus.py`
+
+The LLMs also identify "Macro Events." Because different models use different words, we group them semantically rather than by strict strings.
+
+```python
+# Grouping Logic:
+# Model A: "Fed Rate Hike"
+# Model B: "Interest Rate Increase"
+# Result: Similiarity 0.94 -> SAME GROUP
+```
+
+### Step 5.2: Temporal Deduplication
+
+**File**: `apps/engine/memory/store.py:99-140`
+
+Before promoting a new event, we check if a similar event was added in the last 48 hours to prevent "Redundant RAG noise."
+
+### Step 5.3: LLM Synthesis
+
+**File**: `apps/engine/core/llm.py:165-217`
+
+For events that reach consensus (2+ models), we perform a final synthesis pass:
+
+```json
+// Synthesized Output
+{
+  "name": "Fed Policy Tightening",
+  "summary": "Multiple models observe hawkish Fed signals likely to impact tech valuations in the near term."
+}
+```
+
+**Phase 5 Summary**:
+- **Semantic Grouping**: Via Gemini Embeddings (`text-embedding-004`)
+- **Deduplication**: Against Supabase `memories` table
+- **Synthesis**: Final professional naming via OpenAI
+- **Promotion**: Saved as an immutable market event for future RAG retrieval
+
+---
+
 ## Complete Pipeline Summary
 
 ### API Calls Summary

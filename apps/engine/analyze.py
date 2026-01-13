@@ -14,7 +14,7 @@ from core.config import (
     GEMINI_MODEL,
     DEEPSEEK_MODEL,
 )
-from core.models import DecisionObject
+from core.models import DecisionObject, MacroEvent
 from memory.store import retrieve_context_batch
 
 logger = logging.getLogger("engine")
@@ -28,7 +28,7 @@ MODELS = [
 ]
 
 
-async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
+async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list[MacroEvent]]:
     """Orchestrate the parallel analysis of newsletter chunks using multiple LLMs.
 
     Args:
@@ -36,12 +36,12 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
             'source_id' and 'content' keys.
 
     Returns:
-        List of DecisionObject instances from successful analyses.
+        Tuple of (list of DecisionObject, list of MacroEvent).
         Failed analyses are logged but do not halt the pipeline.
     """
     if not chunks:
         logger.warning("No chunks to analyze.")
-        return []
+        return [], []
 
     # 1. Filter malformed chunks and aggregate historical context
     valid_chunks = [
@@ -54,7 +54,7 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
 
     if not valid_chunks:
         logger.warning("No valid chunks to analyze after filtering.")
-        return []
+        return [], []
 
     queries = [chunk["content"] for chunk in valid_chunks]
     
@@ -87,6 +87,7 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     valid_decisions = []
+    valid_events = []
     
     # 4. Process results
     for i, res in enumerate(results):
@@ -94,16 +95,22 @@ async def analyze_chunks(chunks: list[dict]) -> list[DecisionObject]:
         
         if isinstance(res, Exception):
             logger.error(f"Batch analysis task failed for {config['provider']}: {res}")
-        elif isinstance(res, list):
-            # Inspect specifically for lists of DecisionObjects
-            for decision in res:
-                if isinstance(decision, DecisionObject):
-                    # Ensure model metadata is attached for attribution
-                    decision.model_provider = config["provider"]
-                    decision.model_name = config["model"]
-                    valid_decisions.append(decision)
-                else:
-                    logger.warning(f"Unexpected item in response from {config['provider']}: {type(decision)}")
+        else:
+            # res is a DecisionsResponse object
+            # Process decisions
+            for decision in res.decisions:
+                decision.model_provider = config["provider"]
+                decision.model_name = config["model"]
+                valid_decisions.append(decision)
+            
+            # Process macro events
+            for event in res.macro_events:
+                event.model_provider = config["provider"]
+                event.model_name = config["model"]
+                valid_events.append(event)
 
-    logger.info(f"Completed analysis. Generated {len(valid_decisions)} decisions from batch processing.")
-    return valid_decisions
+    logger.info(
+        f"Completed analysis. Generated {len(valid_decisions)} decisions "
+        f"and {len(valid_events)} macro events from batch processing."
+    )
+    return valid_decisions, valid_events

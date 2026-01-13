@@ -56,9 +56,33 @@ class DecisionObject(BaseModel):
         return v.upper()
 
 
+class MacroEvent(BaseModel):
+    """Represents a broad market theme or event identified by LLM analysis.
+
+    Attributes:
+        event_name: Short name for the event (e.g., "Fed Rate Hike").
+        impact: Expected market impact (BULLISH, BEARISH, or NEUTRAL).
+        confidence: Confidence score between 0 and 100.
+        reasoning: Explanation for why this is a significant event.
+        source_id: ID of the source newsletter chunk for attribution.
+    """
+
+    event_name: str = Field(..., description="Short name for the event")
+    impact: Literal["BULLISH", "BEARISH", "NEUTRAL"]
+    confidence: int = Field(..., ge=0, le=100)
+    reasoning: str = Field(..., description="Explanation of the event's significance")
+    source_id: str = Field(..., description="ID of the source newsletter chunk")
+    model_provider: str | None = Field(None)
+    model_name: str | None = Field(None)
+
+
 class DecisionsResponse(BaseModel):
-    """Container for multiple trading decisions from a batch analysis."""
+    """Container for trading decisions and macro events from a batch analysis."""
     decisions: list[DecisionObject] = Field(
-        ...,
+        default_factory=list,
         description="List of trading decisions generated from the batch of news"
+    )
+    macro_events: list[MacroEvent] = Field(
+        default_factory=list,
+        description="List of broad market events or themes identified"
     )

@@ -9,6 +9,7 @@ Examples:
 * The Velocity of Money: Measuring how fast money circulates through the economy to indicate real economic health versus stagnation.
 * Currency De-pegging: When a nation is forced to abandon a fixed exchange rate, usually leading to massive market volatility.
 * Central Bank Digital Currencies (CBDCs): The structural move toward digitized government currencies that could bypass traditional banking systems.
+* K-shaped economy: 
 
 ## Government & Geopolitical Events
 * Fiscal Spending & "Big Bills": Massive government legislative plans that inject capital into specific infrastructure or social sectors.
@@ -30,6 +31,7 @@ Examples:
 * Wealth Concentration Ratios: Tracking the gap between asset owners and wage earners as a predictor of social instability.
 * Energy Transition Milestones: Shifts in global subsidies and infrastructure moving from fossil fuels to renewables or nuclear.
 * Agricultural Disruption: Long-term changes in water rights and soil viability in major global breadbasket regions.
+* Decrease in vices: From cannabis to tobacco and betting to liquor, vices faced major roadblocks last year as consumers saved their beer money for essentials and regulators tried to adapt to rapidly changing markets.
 
 ## Market Valuation & Asset Indicators
 * The Buffett Indicator: Monitoring the ratio of total stock market capitalization to a nation's GDP to identify broad overvaluation.

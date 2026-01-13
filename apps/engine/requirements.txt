@@ -12,3 +12,4 @@ pydantic<2.12.0
 google-genai
 jsonref
 pyiceberg>=0.10.0
+numpy

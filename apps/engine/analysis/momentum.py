@@ -12,6 +12,42 @@ from core import config
 
 logger = logging.getLogger("engine")
 
+async def decay_stale_concepts(sb_client: Client, decay_days: int = None):
+    """Apply time-based decay to velocity scores of concepts not updated recently.
+
+    Concepts that haven't been mentioned in `decay_days` have their velocity
+    reduced by 50% (half-life decay model).
+
+    Args:
+        sb_client: Supabase client instance.
+        decay_days: Number of days of inactivity before decay applies.
+            Defaults to MOMENTUM_DECAY_HALF_LIFE_DAYS from config.
+    """
+    decay_days = decay_days or config.MOMENTUM_DECAY_HALF_LIFE_DAYS
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=decay_days)).isoformat()
+
+    try:
+        # Fetch stale concepts with velocity > 0.01 (skip already-decayed concepts)
+        response = sb_client.table("concept_metrics").select(
+            "id", "concept_name", "velocity_score", "last_mention_at"
+        ).lt("last_mention_at", cutoff).gt("velocity_score", 0.01).execute()
+
+        if not response.data:
+            logger.info("No stale concepts to decay.")
+            return
+
+        for concept in response.data:
+            new_velocity = concept["velocity_score"] * 0.5
+            sb_client.table("concept_metrics").update({
+                "velocity_score": new_velocity,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", concept["id"]).execute()
+
+        logger.info(f"Decayed velocity for {len(response.data)} stale concepts.")
+    except Exception as e:
+        logger.error(f"Error decaying stale concepts: {e}")
+
+
 async def analyze_momentum(sb_client: Client, consensus_events: list[dict]):
     """Orchestrates momentum analysis for all new consensus events.
     

@@ -9,7 +9,7 @@ import asyncio
 
 from analyze import analyze_chunks
 from consensus import process_consensus
-from analysis.momentum import analyze_momentum
+from analysis.momentum import analyze_momentum, decay_stale_concepts
 from core.config import COMMAND_INGEST, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from ingest.newsletter import ingest_newsletters
@@ -55,6 +55,12 @@ async def run_ingest():
             f"Analysis complete. Generated {len(decisions)} decisions "
             f"and {len(macro_events)} raw macro events."
         )
+
+        if not decisions and not macro_events:
+            logger.warning(
+                "No decisions or events generated from analysis. "
+                "Check LLM provider connectivity and API keys."
+            )
         
         # --- Event Consensus Protocol ---
         logger.info("Running Event Consensus Protocol...")
@@ -64,6 +70,10 @@ async def run_ingest():
         # --- Trend & Concept Momentum Analysis ---
         logger.info("Starting Trend & Concept Momentum Analysis...")
         await analyze_momentum(sb_client, consensus_events)
+
+        # --- Decay Stale Concepts ---
+        logger.info("Applying decay to stale concepts...")
+        await decay_stale_concepts(sb_client)
 
         # --- Decision Attribution ---
         saved_decisions = 0

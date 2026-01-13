@@ -297,7 +297,11 @@ def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
         ).execute()
         messages = results.get("messages", [])
         if not messages:
-            logger.info("No messages found matching the query.")
+            logger.info(
+                f"No messages found matching query. "
+                f"Senders checked: {len(NEWSLETTER_SENDERS)}, "
+                f"Time window: {newer_than_days} day(s)."
+            )
             return []
 
         logger.info(f"Found {len(messages)} messages. Starting processing...")

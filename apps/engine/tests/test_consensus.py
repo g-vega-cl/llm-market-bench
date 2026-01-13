@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from core.models import MacroEvent
-from consensus import process_consensus
+from consensus import process_consensus, _resolve_impact_tie
 
 @pytest.fixture
 def sample_events():
@@ -156,8 +156,38 @@ async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_emb
     ]
     
     consensus_events = await process_consensus(events, threshold=3)
-    
+
     assert len(consensus_events) == 1
     assert consensus_events[0]["event_name"] == "Semantic Synthesized"
     assert len(consensus_events[0]["models_involved"]) == 3
     assert mock_add_memory.called
+
+
+# --- Tests for _resolve_impact_tie helper ---
+
+def test_resolve_impact_tie_clear_winner():
+    """Test that a clear winner is returned when one impact has most votes."""
+    impact_counts = {"BULLISH": 3, "BEARISH": 1, "NEUTRAL": 1}
+    assert _resolve_impact_tie(impact_counts) == "BULLISH"
+
+
+def test_resolve_impact_tie_returns_neutral_on_tie():
+    """Test that NEUTRAL is returned when BULLISH and BEARISH are tied."""
+    impact_counts = {"BULLISH": 2, "BEARISH": 2}
+    assert _resolve_impact_tie(impact_counts) == "NEUTRAL"
+
+
+def test_resolve_impact_tie_prefers_neutral_in_three_way_tie():
+    """Test that NEUTRAL is preferred when all three impacts are tied."""
+    impact_counts = {"BULLISH": 2, "BEARISH": 2, "NEUTRAL": 2}
+    assert _resolve_impact_tie(impact_counts) == "NEUTRAL"
+
+
+def test_resolve_impact_tie_empty_dict():
+    """Test that NEUTRAL is returned for empty impact counts."""
+    assert _resolve_impact_tie({}) == "NEUTRAL"
+
+
+def test_resolve_impact_tie_single_impact():
+    """Test that the single impact is returned when only one exists."""
+    assert _resolve_impact_tie({"BEARISH": 5}) == "BEARISH"

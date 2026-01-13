@@ -24,6 +24,29 @@ def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     b = np.array(v2)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
+
+def _resolve_impact_tie(impact_counts: dict[str, int]) -> str:
+    """Resolve impact when there's a tie, defaulting to NEUTRAL.
+
+    Args:
+        impact_counts: Dictionary mapping impact types to their counts.
+
+    Returns:
+        The majority impact, or NEUTRAL if there's a tie.
+    """
+    if not impact_counts:
+        return "NEUTRAL"
+
+    max_count = max(impact_counts.values())
+    top_impacts = [k for k, v in impact_counts.items() if v == max_count]
+
+    # Clear winner
+    if len(top_impacts) == 1:
+        return top_impacts[0]
+
+    # Tie: if NEUTRAL is one of the top, prefer it; otherwise default to NEUTRAL
+    return "NEUTRAL"
+
 async def process_consensus(events: list[MacroEvent], threshold: int = 2, sim_threshold: float = 0.85) -> list[dict]:
     """Process a list of macro events and identify consensus using semantic grouping,
     deduplication, and LLM synthesis.
@@ -105,7 +128,7 @@ async def process_consensus(events: list[MacroEvent], threshold: int = 2, sim_th
                 reasonings.append(occ.reasoning)
                 source_ids.add(occ.source_id)
 
-            majority_impact = max(impact_counts, key=impact_counts.get)
+            majority_impact = _resolve_impact_tie(impact_counts)
             
             # --- Temporal Deduplication ---
             # Check if a similar event was recently recorded

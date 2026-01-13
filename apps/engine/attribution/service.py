@@ -17,15 +17,19 @@ def save_decision(
 ) -> dict[str, Any]:
     """Save a trading decision to the database for attribution.
 
+    Uses upsert to handle duplicate decisions idempotently. A decision is
+    considered duplicate if it has the same source_id, ticker, signal,
+    model_provider, and model_name.
+
     Args:
         client: The Supabase client instance.
         decision: The DecisionObject containing the trading signal and metadata.
 
     Returns:
-        The inserted row data as a dictionary.
+        The upserted row data as a dictionary.
 
     Raises:
-        Exception: If the insert operation fails.
+        Exception: If the upsert operation fails.
     """
     payload = {
         "source_id": decision.source_id,
@@ -38,12 +42,15 @@ def save_decision(
     }
 
     try:
-        response = client.table("decisions").insert(payload).execute()
-        
+        response = client.table("decisions").upsert(
+            payload,
+            on_conflict="source_id,ticker,signal,model_provider,model_name"
+        ).execute()
+
         if not response.data:
             logger.warning(f"Decision for {decision.ticker} saved but no data returned.")
             return {}
-            
+
         return response.data[0]
     except Exception as e:
         logger.error(f"Failed to save decision for {decision.ticker}: {e}")

@@ -90,10 +90,20 @@ def add_memory(content: str, metadata: Optional[dict[str, Any]] = None) -> bool:
         client.table("memories").insert(payload).execute()
         return True
     except Exception as e:
-        # Check for unique constraint violation (idempotency)
-        if "unique_content" in str(e):
-            logger.info(f"Memory already exists: {content[:50]}...")
+        error_str = str(e).lower()
+        # Check for various unique constraint violation patterns
+        is_duplicate = any(pattern in error_str for pattern in [
+            "unique_content",           # Named constraint
+            "unique constraint",        # Generic PostgreSQL
+            "duplicate key",            # PostgreSQL error
+            "violates unique",          # PostgreSQL violation message
+            "23505",                    # PostgreSQL unique violation code
+        ])
+
+        if is_duplicate:
+            logger.info(f"Memory already exists (idempotent): {content[:50]}...")
             return True
+
         logger.error(f"Error adding memory: {e}")
         return False
 def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48) -> bool:

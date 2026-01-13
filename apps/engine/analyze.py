@@ -109,6 +109,20 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                 event.model_name = config["model"]
                 valid_events.append(event)
 
+    # Check for total or partial LLM failures
+    if not valid_decisions and not valid_events:
+        exception_count = sum(1 for r in results if isinstance(r, Exception))
+        if exception_count == len(MODELS):
+            logger.error(
+                f"CRITICAL: All {len(MODELS)} LLM providers failed. "
+                f"No decisions or events generated. Pipeline continuing but data is incomplete."
+            )
+        elif exception_count > 0:
+            logger.warning(
+                f"{exception_count}/{len(MODELS)} LLM providers failed. "
+                f"No results generated from successful providers."
+            )
+
     logger.info(
         f"Completed analysis. Generated {len(valid_decisions)} decisions "
         f"and {len(valid_events)} macro events from batch processing."

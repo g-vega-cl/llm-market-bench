@@ -10,15 +10,15 @@ from attribution.service import save_decision
 def mock_supabase():
     """Fixture for a mocked Supabase client."""
     client = MagicMock()
-    # Mock the table().insert().execute() chain
+    # Mock the table().upsert().execute() chain (changed from insert to upsert)
     table_mock = MagicMock()
-    insert_mock = MagicMock()
+    upsert_mock = MagicMock()
     execute_mock = MagicMock()
-    
+
     client.table.return_value = table_mock
-    table_mock.insert.return_value = insert_mock
-    insert_mock.execute.return_value = execute_mock
-    
+    table_mock.upsert.return_value = upsert_mock
+    upsert_mock.execute.return_value = execute_mock
+
     execute_mock.data = [{"id": "test-id"}]
     return client
 
@@ -39,20 +39,22 @@ def test_save_decision_success(mock_supabase):
     
     assert result == {"id": "test-id"}
     mock_supabase.table.assert_called_once_with("decisions")
-    mock_supabase.table().insert.assert_called_once()
-    
+    mock_supabase.table().upsert.assert_called_once()
+
     # Check payload
-    args, _ = mock_supabase.table().insert.call_args
+    args, kwargs = mock_supabase.table().upsert.call_args
     payload = args[0]
     assert payload["ticker"] == "AAPL"
     assert payload["model_provider"] == "openai"
     assert payload["source_id"] == "news_123"
+    # Check on_conflict is set for idempotency
+    assert kwargs.get("on_conflict") == "source_id,ticker,signal,model_provider,model_name"
 
 
 def test_save_decision_error(mock_supabase):
     """Test error handling when saving fails."""
-    mock_supabase.table().insert().execute.side_effect = Exception("DB Error")
-    
+    mock_supabase.table().upsert().execute.side_effect = Exception("DB Error")
+
     decision = DecisionObject(
         signal="SELL",
         confidence=50,
@@ -60,6 +62,6 @@ def test_save_decision_error(mock_supabase):
         ticker="TSLA",
         source_id="news_456"
     )
-    
+
     with pytest.raises(Exception, match="DB Error"):
         save_decision(mock_supabase, decision)

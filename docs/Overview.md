@@ -30,6 +30,7 @@ ai-wallstreet/
 │       ├── core/            # LLM clients (Instructor/Pydantic models)
 │       ├── ingest/          # Newsletter scrapers
 │       ├── attribution/     # Decision mapping & audit trail logic
+│       ├── analysis/        # Trend & momentum analysis logic
 │       ├── execution/       # Broker API & Idempotency logic
 │       ├── memory/          # RAG logic for pgvector
 │       └── main.py          # Entry point for Cron jobs
@@ -88,6 +89,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Efficiency:** **Batch Processing** (Each LLM is called exactly ONCE with all daily news chunks to minimize latency and costs).
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
+*   **Fault Tolerance:** If individual LLM providers fail, the pipeline continues with successful results. CRITICAL alerts are logged if all 4 providers fail.
 *   documentation: ./docs/llm-analysis-walkthrough.md
 
 **6. RAG Context Retrieval** ✅
@@ -100,6 +102,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 *   **Tech:** Python Logic / Supabase
 *   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
+*   **Idempotency:** *Uses UPSERT with unique constraint on `(source_id, ticker, signal, model_provider, model_name)` to prevent duplicate decisions if the pipeline reruns.*
 *   documentation: ./docs/decision-attribution-walkthrough.md
 
 **8. Event Consensus Protocol** ✅
@@ -109,6 +112,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if 2+ models identify it.
+*   **Impact Tie-Breaker:** When models are split between BULLISH and BEARISH, the system defaults to NEUTRAL to avoid non-deterministic behavior.
 *   documentation: ./docs/event-consensus-walkthrough.md
 
 **9. Trend & Concept Momentum Analysis** ✅
@@ -117,8 +121,12 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Semantic Merging:** Prevents data fragmentation by automatically merging concepts with $> 0.90$ similarity into a single "Master Concept" record.
 *   **Trend Archeology:** Each mention is stored with a first_seen_at timestamp and a cumulative 90-day frequency count.
 *   **Momentum Scoring:** The engine calculates a "Velocity Score" based on mention frequency acceleration (Recent 24h vs. 7-day baseline).
+*   **Velocity Decay:** Stale concepts have their velocity scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
 *   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score.
 *   documentation: ./docs/trend-momentum-analysis.md
+
+**9.a. General Review**
+* documentation: ./docs/claude-step-9-and-before-review.md
 
 **10. Pre-Market Validation (Hallucination Guardrails)**
 

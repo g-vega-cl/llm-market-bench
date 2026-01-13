@@ -9,6 +9,7 @@ import asyncio
 
 from analyze import analyze_chunks
 from consensus import process_consensus
+from analysis.momentum import analyze_momentum
 from core.config import COMMAND_INGEST, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from ingest.newsletter import ingest_newsletters
@@ -59,6 +60,10 @@ async def run_ingest():
         logger.info("Running Event Consensus Protocol...")
         consensus_events = await process_consensus(macro_events)
         logger.info(f"Consensus protocol finished. Promoted {len(consensus_events)} events to memory.")
+
+        # --- Trend & Concept Momentum Analysis ---
+        logger.info("Starting Trend & Concept Momentum Analysis...")
+        await analyze_momentum(sb_client, consensus_events)
 
         # --- Decision Attribution ---
         saved_decisions = 0

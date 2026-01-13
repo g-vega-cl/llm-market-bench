@@ -59,3 +59,9 @@ COMMAND_INGEST = "ingest"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"
+
+# --- Momentum Analysis Configuration ---
+MOMENTUM_SIMILARITY_THRESHOLD = 0.85
+MOMENTUM_BASELINE_DAYS = 7
+MOMENTUM_EXTENDED_WINDOW_DAYS = 90
+MOMENTUM_CONCEPT_MERGE_THRESHOLD = 0.90

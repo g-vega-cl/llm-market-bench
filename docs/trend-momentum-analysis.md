@@ -18,11 +18,24 @@ $$Velocity = \frac{Recent Mentions (Last 24h)}{Average Daily Mentions (Previous 
 - **Low Velocity (< 1.0):** Indicates a fading or stable concept.
 - **Emerging Trends:** Concepts with no prior history receive a high initial score to flag them for immediate attention.
 
-### 3. Trend Archeology
-Each concept is tracked with:
-- `first_mention_at`: The timestamp when the concept was first identified by any model.
-- `last_mention_at`: The most recent appearance.
-- `mention_count`: Cumulative number of times this specific semantic cluster has appeared.
+### 3. Semantic Concept Merging
+To prevent data fragmentation (e.g., tracking "Fed Rate Hike" and "Interest Rate Increase" as two different trends), the engine performs a semantic search on the `concept_metrics` table before updating.
+- If an existing concept has **> 90% semantic similarity**, the new mention is merged into the existing entry.
+- This ensures a clean, consolidated "Global Timeline" where related news clusters under a single master concept.
+
+### 4. Trend Archeology & 90-Day History
+The engine tracks concepts over a rolling **90-day window**:
+- `first_mention_at`: Discovery timestamp of the absolute first occurrence of the concept cluster.
+- `last_mention_at`: Timestamp of the most recent occurrence.
+- `mention_count`: Total cumulative count of semantic appearances across all tracked newsletters.
+- **Extended Context**: Future RAG queries leverage this history to understand the longevity and evolution of a market theme.
+
+## Configuration & Tuning
+
+Key thresholds and lookback windows can be tuned in `apps/engine/core/config.py`:
+- `MOMENTUM_SIMILARITY_THRESHOLD`: Sensitivity for counting mentions (default 0.85).
+- `MOMENTUM_CONCEPT_MERGE_THRESHOLD`: Sensitivity for merging two concept names (default 0.90).
+- `MOMENTUM_BASELINE_DAYS`: The historical window size for velocity calculation (default 7 days).
 
 ## Data Schema & Storage
 

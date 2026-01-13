@@ -111,7 +111,14 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if 2+ models identify it.
 *   documentation: ./docs/event-consensus-walkthrough.md
 
-**9. Pre-Market Validation (Hallucination Guardrails)**
+**9. Trend & Concept Momentum Analysis** 🆕
+*   **Tech:** Supabase pgvector / Python
+*   **Vectorized Frequency:** Instead of just counting keywords, the engine embeds the "Concept" (e.g., "NVIDIA Blackwell Delay") and performs a similarity search against the memories table to find semantically related mentions over a rolling 30-day window.
+*   **Trend Archeology:** Each mention is stored with a first_seen_at timestamp.
+*   **Momentum Scoring:** The engine calculates a "Velocity Score" based on mention frequency acceleration. (e.g., If "Interest Rate Cut" was mentioned twice last week but 15 times this morning, it is flagged as an Emerging Trend).
+*   **Data Structure:** Updates a concept_metrics table tracking concept_vector, mention_count, first_mention_date, and velocity_score.
+
+**10. Pre-Market Validation (Hallucination Guardrails)**
 
 * **Tech:** Python / Financial Modeling Prep API
 * **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
@@ -120,52 +127,52 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 3: Market Execution
 
-**10. Execution Trigger (09:30 ET)**
+**11. Execution Trigger (09:30 ET)**
 
 * **Tech:** GitHub Actions
 * *Fire the second job at the official market open.*
 
-**11. Trade Settlement**
+**12. Trade Settlement**
 
 * **Tech:** Python / Market Data API
 * *Fetch the official "Open Price." Move orders from `PENDING` to `FILLED` in the ledger.*
 
-**12. Attribution Locking**
+**13. Attribution Locking**
 
 * **Tech:** Supabase Postgres
 * *Update the `decisions` table to link the now-filled `TradeID` to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Trade**.*
 
-**13. Ledger & Equity Curve Update**
+**14. Ledger & Equity Curve Update**
 
 * **Tech:** Supabase Postgres
 * *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
 * **Idempotency:** *Enforce database constraints on `(model_id, date)` to ensure performance is never double-counted.*
 
-**14. Long-term Memory Embedding**
+**15. Long-term Memory Embedding**
 
 * **Tech:** **Supabase pgvector (OpenAI text-embedding-3-small)**
 * *Embed consensus events and the attributed reasoning for future RAG retrieval.*
 
 ### Phase 4: Frontend & Feedback
 
-**15. Interactive Dashboard**
+**16. Interactive Dashboard**
 
 * **Tech:** **TanStack Start (Vite + React)**
 * *Server-side rendering for SEO, client-side hydration for interactivity.*
 * **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
 * *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
 
-**16. Community Interaction**
+**17. Community Interaction**
 * **Tech:** **Supabase Auth**
 * *Users log in to comment on trades.*
 * **Security:** *Postgres Row Level Security (RLS) ensures only authenticated users can post, and only Admins can write to the Ledger.*
 
-**17.Observability & Health**
+**18. Observability & Health**
 
 * **Tech:** Sentry
 * *Log parsing failures or API timeouts.*
 
-**16. Analytics & Growth**
+**19. Analytics & Growth**
 
 * **Tech:** PostHog
 * *Track which AI's reasoning page is most read.*
@@ -232,7 +239,10 @@ graph TD
         
         AT --> CP{Event Consensus Protocol}
         CP -->|Semantic Grouping + Dedupe| SYN[LLM Synthesis]
-        SYN -->|Promote 2+ Agreement| G[Global Timeline]
+        
+        SYN --> TM[Trend & Momentum Analysis]
+        TM -->|Update Velocity| CM[(Concept Metrics)]
+        TM -->|Promote 2+ Agreement| G[Global Timeline]
         
         SYN --> E{Hallucination Guardrails}
     end

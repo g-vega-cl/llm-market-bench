@@ -30,7 +30,8 @@ The system uses a plug-and-play architecture. The `FinancialProvider` abstract b
 
 - **Interface**: `apps/engine/execution/providers/base.py`
 - **FMP Implementation**: `apps/engine/execution/providers/fmp.py`
-- **Optimization**: Uses the `/stable/quote` endpoint which consolidates price and market cap into a **single API call**, reducing latency and quota usage.
+- **yfinance Implementation**: `apps/engine/execution/providers/yfinance.py`
+- **Optimization**: Uses the `/stable/quote` endpoint (FMP) or consolidated Ticker info (yfinance) to fetch price and market cap in a **single logical pass**, reducing latency and quota usage.
 
 ### Anti-Rate Limiting (Throttling)
 To prevent hitting API rate limits during bulk analysis, the engine implements configurable throttling via `FINANCIAL_API_THROTTLE_SECONDS`. 
@@ -42,8 +43,8 @@ The following environment variables and constants control the validation behavio
 |----------|---------|-------------|
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
 | `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
-| `FINANCIAL_PROVIDER` | `"fmp"` | Which API implementation to use. |
-| `FINANCIAL_API_THROTTLE_SECONDS` | `0.0` | Delay between consecutive API calls (in seconds). |
+| `FINANCIAL_PROVIDER` | `"yfinance"` | Which API implementation to use (`fmp` or `yfinance`). |
+| `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration
 Integrated in `apps/engine/main.py`. If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped before it ever hits the database or the broker.

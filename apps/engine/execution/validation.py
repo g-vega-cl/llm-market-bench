@@ -12,6 +12,7 @@ from core.config import (
 )
 from .providers.base import FinancialProvider, TickerData
 from .providers.fmp import FMPProvider
+from .providers.yfinance import YFinanceProvider
 
 
 class ValidationStatus(Enum):
@@ -35,10 +36,12 @@ def get_financial_provider() -> FinancialProvider:
     """Factory to return the configured financial provider."""
     if FINANCIAL_PROVIDER == "fmp":
         return FMPProvider()
+    elif FINANCIAL_PROVIDER == "yfinance":
+        return YFinanceProvider()
     
     # Default/Fallback
-    logger.warning(f"Unknown financial provider '{FINANCIAL_PROVIDER}'. Defaulting to FMP.")
-    return FMPProvider()
+    logger.warning(f"Unknown financial provider '{FINANCIAL_PROVIDER}'. Defaulting to yfinance.")
+    return YFinanceProvider()
 
 
 async def validate_decision(ticker: str, ai_price: Optional[float]) -> ValidationResult:

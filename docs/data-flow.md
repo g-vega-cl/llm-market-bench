@@ -651,6 +651,52 @@ valid_decisions = [
 
 ---
 
+---
+
+## Phase 3.5: Pre-Market Validation (Hallucination Guardrails)
+
+### Step 3.4: Verify Against Real-Market Data
+
+**File**: `apps/engine/execution/validation.py`
+
+Before any decision is saved or executed, it passes through a validation layer using real-market data (Financial Modeling Prep API).
+
+```python
+# For each DecisionObject:
+validation = await validate_decision(d.ticker, d.price)
+```
+
+#### Guardrail A: Ticker Existence
+- Checks if the ticker is valid and currently trading.
+- **Result**: Rejects if non-existent (prevents AI "phantom ticker" hallucinations).
+
+#### Guardrail B: Price Banding
+- Compares AI's suggested price with the current market price.
+- **Threshold**: Max 10% deviation allowed.
+- **Result**: Rejects if AI thinks AAPL is $50 when it's $150.
+
+#### Guardrail C: Liquidity Check
+- Checks the Market Capitalization of the company.
+- **Threshold**: Min $2 Billion.
+- **Result**: Rejects "Penny Stocks" or illiquid small-caps to protect the virtual portfolio.
+
+**Validation Result**:
+```json
+{
+  "ticker": "TSLA",
+  "status": "PASSED",
+  "market_price": 240.50,
+  "market_cap": 750000000000.0
+}
+```
+
+**Phase 3.5 Summary**:
+- **Tech**: Multi-provider Plug-and-Play architecture.
+- **API Usage**: 1 API call per unique ticker.
+- **Outcome**: Only realistic, liquid, and existing stock trades proceed to Phase 4.
+
+---
+
 ## Phase 4: Save Decisions with Attribution
 
 ### Step 4.1: Save Each Decision

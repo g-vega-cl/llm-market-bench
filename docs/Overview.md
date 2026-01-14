@@ -128,12 +128,14 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **9.a. General Review**
 * documentation: ./docs/claude-step-9-and-before-review.md
 
-**10. Pre-Market Validation (Hallucination Guardrails)**
+**10. Pre-Market Validation (Hallucination Guardrails)** ✅
 
 * **Tech:** Python / Financial Modeling Prep API
 * **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
 * **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
 * **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
+* documentation: ./docs/pre-market-validation.md
+* File: `apps/engine/execution/validation.py`
 
 ### Phase 3: Market Execution
 

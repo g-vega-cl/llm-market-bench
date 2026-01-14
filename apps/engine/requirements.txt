@@ -13,3 +13,4 @@ google-genai
 jsonref
 pyiceberg>=0.10.0
 numpy
+httpx

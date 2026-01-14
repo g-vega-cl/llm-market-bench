@@ -14,6 +14,7 @@ from core.config import COMMAND_INGEST, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from ingest.newsletter import ingest_newsletters
 from attribution.service import save_decision
+from execution.validation import validate_decision, ValidationStatus
 
 
 async def run_ingest():
@@ -75,10 +76,23 @@ async def run_ingest():
         logger.info("Applying decay to stale concepts...")
         await decay_stale_concepts(sb_client)
 
-        # --- Decision Attribution ---
+        # --- Decision Attribution & Validation ---
         saved_decisions = 0
+        rejected_decisions = 0
+        
         for d in decisions:
             try:
+                # --- Pre-Market Validation (Guardrails) ---
+                validation = await validate_decision(d.ticker, d.price)
+                
+                if validation.status != ValidationStatus.PASSED:
+                    logger.warning(
+                        f"[{d.ticker}] REJECTED: {validation.reason} "
+                        f"({d.model_provider}/{d.model_name})"
+                    )
+                    rejected_decisions += 1
+                    continue
+
                 save_decision(sb_client, d)
                 saved_decisions += 1
                 logger.info(
@@ -88,7 +102,10 @@ async def run_ingest():
             except Exception as e:
                 logger.error(f"Failed to save decision for {d.ticker}: {e}")
 
-        logger.info(f"Successfully saved {saved_decisions}/{len(decisions)} decisions.")
+        logger.info(
+            f"Pipeline complete. Saved {saved_decisions} decisions, "
+            f"Rejected {rejected_decisions} decisions."
+        )
     except Exception as e:
         logger.error(f"Analysis or Consensus failed: {e}")
 

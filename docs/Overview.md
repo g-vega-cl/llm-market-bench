@@ -134,6 +134,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
 * **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
 * **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
+* **Optimization:** Unified FMP `stable/quote` call with built-in **request throttling** to prevent rate limits.
 * documentation: ./docs/pre-market-validation.md
 * File: `apps/engine/execution/validation.py`
 
@@ -209,6 +210,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `GEMINI_API_KEY` | Google Gemini 1.5 Pro API Key | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek-V3 API Key | Trading Analysis |
 |  | `FINANCIAL_API_KEY` | e.g., Financial Modeling Prep / Alpha Vantage | Price Data & Validation |
+|  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Default: 0.0) | Rate Limit Prevention |
 | **Web** | `VITE_SUPABASE_ANON_KEY` | Supabase Client Key | Frontend Auth & Data Fetching |
 
 > [!CAUTION]

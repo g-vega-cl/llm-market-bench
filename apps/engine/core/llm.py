@@ -135,6 +135,7 @@ Content: {chunk['content']}
            * SELL: Only sell if we have the stock in our portfolio.
            * HOLD: Do not buy or sell the stock.
            Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
+           If a specific stock price is mentioned or can be clearly inferred for the ticker, include it in the 'price' field; otherwise leave it null.
 
         2. Macro Events: Identify major global themes, macro-economic shifts, or significant events mentioned in the news (e.g., "Fed Rate Hike", "AI Demand Surge", "Geopolitical Tension").
            For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.

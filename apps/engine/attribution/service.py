@@ -39,6 +39,7 @@ def save_decision(
         "reasoning": decision.reasoning,
         "model_provider": decision.model_provider,
         "model_name": decision.model_name,
+        "price": getattr(decision, "price", None),
     }
 
     try:

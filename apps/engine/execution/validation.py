@@ -41,11 +41,11 @@ def get_financial_provider() -> FinancialProvider:
     return FMPProvider()
 
 
-async def validate_decision(ticker: str, ai_price: float) -> ValidationResult:
+async def validate_decision(ticker: str, ai_price: Optional[float]) -> ValidationResult:
     """Validate a single trade decision against market guardrails.
     
     Guardrail A: Ticker Existence
-    Guardrail B: Price Banding
+    Guardrail B: Price Banding (Skipped if ai_price is None)
     Guardrail C: Liquidity
     """
     provider = get_financial_provider()
@@ -70,17 +70,19 @@ async def validate_decision(ticker: str, ai_price: float) -> ValidationResult:
 
     # Guardrail B: Price Banding
     # Reject if deviation is > MAX_PRICE_DEVIATION_PCT
-    price_diff = abs(ai_price - data.price)
-    deviation_pct = (price_diff / data.price) * 100 if data.price > 0 else 0
-    
-    if deviation_pct > MAX_PRICE_DEVIATION_PCT:
-        return ValidationResult(
-            ticker=ticker,
-            status=ValidationStatus.REJECTED_PRICE_DEVIATION,
-            reason=f"Price deviation too high: {deviation_pct:.1f}% (AI: ${ai_price}, Market: ${data.price})",
-            market_price=data.price,
-            market_cap=data.market_cap
-        )
+    # ONLY if ai_price is provided.
+    if ai_price is not None:
+        price_diff = abs(ai_price - data.price)
+        deviation_pct = (price_diff / data.price) * 100 if data.price > 0 else 0
+        
+        if deviation_pct > MAX_PRICE_DEVIATION_PCT:
+            return ValidationResult(
+                ticker=ticker,
+                status=ValidationStatus.REJECTED_PRICE_DEVIATION,
+                reason=f"Price deviation too high: {deviation_pct:.1f}% (AI: ${ai_price}, Market: ${data.price})",
+                market_price=data.price,
+                market_cap=data.market_cap
+            )
 
     # Guardrail C: Liquidity (Market Cap)
     market_cap_billions = data.market_cap / 1_000_000_000

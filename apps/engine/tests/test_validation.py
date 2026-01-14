@@ -83,3 +83,26 @@ async def test_validate_decision_liquidity():
         
         assert result.status == ValidationStatus.REJECTED_LIQUIDITY
         assert "Insufficient liquidity" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_validate_decision_no_ai_price():
+    """Test that validating without an AI price skips banding but checks liquidity."""
+    mock_data = TickerData(
+        ticker="MSFT",
+        price=400.0,
+        market_cap=3_000_000_000_000.0,
+        exists=True
+    )
+    
+    with patch("execution.validation.get_financial_provider") as mock_get:
+        mock_provider = AsyncMock()
+        mock_provider.get_ticker_data.return_value = mock_data
+        mock_get.return_value = mock_provider
+        
+        # ai_price is None
+        result = await validate_decision("MSFT", None)
+        
+        assert result.status == ValidationStatus.PASSED
+        assert result.ticker == "MSFT"
+        assert result.market_price == 400.0

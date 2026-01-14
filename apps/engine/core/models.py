@@ -48,6 +48,10 @@ class DecisionObject(BaseModel):
         None,
         description="Specific model name that generated the decision"
     )
+    price: float | None = Field(
+        None,
+        description="The stock price mentioned or inferred from the news"
+    )
 
     @field_validator("ticker")
     @classmethod

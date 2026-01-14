@@ -25,14 +25,15 @@ LLMs, while powerful, can occasionally:
 - **Limit**: **Minimum $2 Billion**.
 - **Action**: Reject trades for companies with insufficient market cap.
 
-## Technical Architecture
-
 ### Modular Provider Interface
 The system uses a plug-and-play architecture. The `FinancialProvider` abstract base class allows us to swap API providers (e.g., from FMP to Polygon or Alpha Vantage) without rewriting the core validation logic.
 
 - **Interface**: `apps/engine/execution/providers/base.py`
 - **FMP Implementation**: `apps/engine/execution/providers/fmp.py`
-- **Service Layer**: `apps/engine/execution/validation.py`
+- **Optimization**: Uses the `/stable/quote` endpoint which consolidates price and market cap into a **single API call**, reducing latency and quota usage.
+
+### Anti-Rate Limiting (Throttling)
+To prevent hitting API rate limits during bulk analysis, the engine implements configurable throttling via `FINANCIAL_API_THROTTLE_SECONDS`. 
 
 ## Configuration
 The following environment variables and constants control the validation behavior:
@@ -42,6 +43,7 @@ The following environment variables and constants control the validation behavio
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
 | `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
 | `FINANCIAL_PROVIDER` | `"fmp"` | Which API implementation to use. |
+| `FINANCIAL_API_THROTTLE_SECONDS` | `0.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration
 Integrated in `apps/engine/main.py`. If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped before it ever hits the database or the broker.

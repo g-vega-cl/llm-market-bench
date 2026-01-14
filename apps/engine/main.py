@@ -83,7 +83,7 @@ async def run_ingest():
         for d in decisions:
             try:
                 # --- Pre-Market Validation (Guardrails) ---
-                validation = await validate_decision(d.ticker, d.price)
+                validation = await validate_decision(d.ticker, getattr(d, "price", None))
                 
                 if validation.status != ValidationStatus.PASSED:
                     logger.warning(

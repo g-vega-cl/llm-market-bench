@@ -31,7 +31,7 @@ ai-wallstreet/
 │       ├── ingest/          # Newsletter scrapers
 │       ├── attribution/     # Decision mapping & audit trail logic
 │       ├── analysis/        # Trend & momentum analysis logic
-│       ├── execution/       # Broker API & Idempotency logic
+│       ├── execution/       # Trade Settlement & Idempotency logic
 │       ├── memory/          # RAG logic for pgvector
 │       └── main.py          # Entry point for Cron jobs
 ├── packages/
@@ -39,7 +39,7 @@ ai-wallstreet/
 ├── supabase/                # SQL Migrations, RLS policies, & Vector setup
     └── workflows/           # CI/CD & Cron schedules
         ├── ci.yml           # Automated testing on PR/Push
-        └── ingest.yml       # Daily ingestion (08:00 ET)
+        └── ingest.yml       # Daily consolidated pipeline (09:35 ET)
 
 ```
 
@@ -49,9 +49,10 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 1: Ingestion & Normalization
 
-**1. Scheduler (08:00 ET)** ✅
+**1. Daily Trigger (09:35 ET)** ✅
 
 * **Tech:** GitHub Actions (Cron)
+* **Goal:** Fire the pipeline 5 minutes after market open to capture live prices.
 * File: .github/workflows/ingest.yml
 
 **1a. Quality Assurance (CI/CD)** ✅
@@ -140,17 +141,16 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * documentation: ./docs/pre-market-validation.md
 * File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
 
-### Phase 3: Market Execution
+### Phase 3: Market Execution (Sequential)
 
-**11. Execution Trigger (09:30 ET)**
+**11. Order Finalization**
 
-* **Tech:** GitHub Actions
-* *Fire the second job at the official market open.*
+* **Logic:** *Directly following Phase 2, the engine prepares to settle trades using the prices verified during validation.*
 
 **12. Trade Settlement**
 
 * **Tech:** Python / Market Data API
-* *Fetch the official "Open Price." Move orders from `PENDING` to `FILLED` in the ledger.*
+* *Move orders from `PENDING` to `FILLED` in the ledger using the prices verified during the analysis loop.*
 
 **13. Attribution Locking**
 

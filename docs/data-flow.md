@@ -718,19 +718,20 @@ decisions table:
 ### Execution Timeline
 
 ```
-Time 0ms:     Start Gmail fetch (ingest_newsletters)
+Time 0ms:     Start (09:35 ET) - Gmail fetch (ingest_newsletters)
 Time 100ms:   Receive 4 message IDs
 Time 300ms:   Complete fetching all 4 messages
 Time 350ms:   Finish processing and insert to newsletter_snapshots
 Time 360ms:   Extract queries and start Gemini embedding
 Time 500ms:   Receive embeddings
 Time 550ms:   Complete vector similarity searches
-Time 600ms:   Start 4 LLM provider calls in parallel
+Time 600ms:   Start 4 LLM provider calls in parallel (includes real-time tool calling)
 Time 6500ms:  All 4 LLM calls complete (longest is ~6 seconds)
-Time 6600ms:  Process results and attach metadata
-Time 6750ms:  Save all 10-15 decisions to decisions table
-Time 6800ms:  Pipeline complete
-
+Time 6600ms:  Process results, validation, and attach metadata
+Time 6750ms:  Trade Settlement (Move to FILLED using verified price)
+Time 6800ms:  Save all 10-15 decisions with absolute attribution
+Time 6850ms:  Pipeline complete
+```
 Total Pipeline Time: ~6.8 seconds
 (Would be 12+ seconds without batch embedding optimization)
 ```

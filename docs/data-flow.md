@@ -412,34 +412,18 @@ aggregated_context = """
 
 ---
 
-## Phase 3: LLM Analysis (Parallel Batch Calls)
+## Phase 3: LLM Analysis (Active Tool Loop)
 
 ### Step 3.1: Build Enriched Prompt
 
-**File**: `apps/engine/core/llm.py:97-122`
+**File**: `apps/engine/core/llm.py`
 
 ```python
-news_content = ""
-for chunk in chunks:  # chunks = 4 newsletters
-    news_content += f"""
----
-Source ID: {chunk['source_id']}
-Content: {chunk['content']}
----
-"""
+prompt = f"""You are a hedge fund trading algorithm. 
+CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
+This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
 
-# news_content includes all 4 newsletters with their source_ids
-
-prompt = f"""You are a hedge fund trading algorithm. Next you will see a batch of financial news snippets and your current portfolio (if any).
-Analyze the current portfolio and the news snippets and the state of the market, find trading and investment ideas with a high profit potential.
-look for relevant companies and tickers and determine a trading signal:
-*BUY: Only buy if we don't already have the stock in our portfolio.
-*SELL: Only sell if we have the stock in our portfolio.
-*HOLD: Do not buy or sell the stock.
-You must provide a confidence score (0-100) and your reasoning for each decision.
-Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
-
-### Historical Context (Relevant Past Events):
+### Historical Context:
 {aggregated_context}
 
 ### News Batch:
@@ -447,238 +431,89 @@ Each decision MUST include the exact 'Source ID' of the snippet that triggered i
 Source ID: news_newsletter1_a7f92c4e
 Content: Tesla stock expected to rally due to...
 ---
-Source ID: news_newsletter2_b1d83f7a
-Content: Fed rate hike may trigger market...
----
-Source ID: news_newsletter3_c9e17b3f
-Content: AI boom creating unprecedented...
----
-Source ID: news_newsletter4_d4a2c85b
-Content: Crypto market crash warning...
----
-
-Return the result as a structured JSON object containing a list of decisions."""
+...
+"""
 ```
 
-**Key aspects of the prompt**:
-1. All 4 newsletters sent together (batch processing)
-2. Historical context injected from vector retrieval
-3. Each newsletter has a Source ID for attribution
-4. Instructions for trading signals (BUY/SELL/HOLD)
-5. Requires confidence scores and reasoning
+### Step 3.2: Parallel Multi-Step Tool Execution
 
----
+**File**: `apps/engine/core/llm.py`
 
-### Step 3.2: Send to 4 LLMs in Parallel
+Each LLM provider is called in a loop. If a model wants to trade, it pauses to call the **Stock Tool**.
 
-**File**: `apps/engine/analyze.py:58-75`
+```mermaid
+sequenceDiagram
+    participant LLM as LLM Provider (gpt-4o/claude-3.5)
+    participant Core as Engine Core (llm.py)
+    participant MDM as MarketDataManager (Cache-First)
+    participant DB as Supabase (market_data_cache)
+    participant API as External API (yfinance/FMP)
 
-All 4 LLM providers are called simultaneously with the same enriched prompt:
+    Core->>LLM: 1. Send News Batch + Tools Definition
+    LLM-->>Core: 2. Tool Call: get_stock_quote(ticker='TSLA')
+    Core->>MDM: 3. Execute get_quote('TSLA')
+    MDM->>DB: 4. Check Cache (fresh within 4h?)
+    DB-->>MDM: 5. Cache Miss / Stale
+    MDM->>API: 6. Fetch from Provider
+    API-->>MDM: 7. Return Price/Market Cap
+    MDM->>DB: 8. Upsert Cache
+    MDM-->>Core: 9. Return Data
+    Core->>LLM: 10. Send Tool Result back to History
+    LLM-->>Core: 11. Final Decision (Verified & Structured)
+```
+
+### Step 3.3: Structured Extraction (Instructor)
+
+**File**: `apps/engine/core/llm.py`
+
+After the tool loop finishes, the engine performs one final pass to ensure the output perfectly matches the Pydantic `DecisionsResponse` schema.
 
 ```python
-# Create 4 async tasks
-tasks = [
-    llm.analyze_with_provider(
-        provider="openai",
-        model_name="gpt-4-turbo",
-        chunks=chunks,        # All 4 newsletters
-        context=aggregated_context
-    ),
-    llm.analyze_with_provider(
-        provider="anthropic",
-        model_name="claude-3-5-sonnet",
-        chunks=chunks,
-        context=aggregated_context
-    ),
-    llm.analyze_with_provider(
-        provider="gemini",
-        model_name="gemini-2.0",
-        chunks=chunks,
-        context=aggregated_context
-    ),
-    llm.analyze_with_provider(
-        provider="deepseek",
-        model_name="deepseek-chat",
-        chunks=chunks,
-        context=aggregated_context
-    )
-]
-
-# Run all 4 tasks in parallel (not sequentially)
-results = await asyncio.gather(*tasks, return_exceptions=True)
-```
-
-**Individual API Calls**:
-
-```
-OpenAI API Call #1 (gpt-4-turbo):
-├─ Input: prompt + all 4 newsletters + historical context
-├─ Time: ~3-5 seconds
-└─ Returns:
-   {
-     "decisions": [
-       {
-         "signal": "BUY",
-         "confidence": 85,
-         "reasoning": "Tesla fundamentals strong + positive sentiment",
-         "ticker": "TSLA",
-         "source_id": "news_newsletter1_a7f92c4e"
-       },
-       {
-         "signal": "HOLD",
-         "confidence": 60,
-         "reasoning": "Fed action creates uncertainty",
-         "ticker": "SPY",
-         "source_id": "news_newsletter2_b1d83f7a"
-       },
-       {
-         "signal": "BUY",
-         "confidence": 78,
-         "reasoning": "AI demand surge validates growth thesis",
-         "ticker": "NVDA",
-         "source_id": "news_newsletter3_c9e17b3f"
-       }
-     ]
-   }
-
-Claude API Call #2 (claude-3-5-sonnet):
-├─ Input: Same prompt + all 4 newsletters + historical context
-├─ Time: ~2-4 seconds
-└─ Returns:
-   {
-     "decisions": [
-       {
-         "signal": "BUY",
-         "confidence": 92,
-         "reasoning": "AI is transformational, NVDA undervalued",
-         "ticker": "NVDA",
-         "source_id": "news_newsletter3_c9e17b3f"
-       },
-       {
-         "signal": "SELL",
-         "confidence": 78,
-         "reasoning": "Crypto cycle top confirmed by technicals",
-         "ticker": "BTC",
-         "source_id": "news_newsletter4_d4a2c85b"
-       }
-     ]
-   }
-
-Gemini API Call #3 (gemini-2.0):
-├─ Input: Same prompt
-├─ Time: ~3-6 seconds
-└─ Returns: Different insights with different reasoning
-
-DeepSeek API Call #4 (deepseek-chat):
-├─ Input: Same prompt
-├─ Time: ~4-7 seconds
-└─ Returns: Different insights
-
-Total Execution Time: ~6-7 seconds (parallel, not sequential 18-22s)
-```
-
-**Total Decisions Generated**: 10-15 decisions across all 4 LLMs
-
----
-
-### Step 3.3: Process Results and Add Metadata
-
-**File**: `apps/engine/analyze.py:77-97`
-
-```python
-valid_decisions = []
-
-for i, res in enumerate(results):
-    config = MODELS[i]  # Get the model config for this result
-
-    if isinstance(res, Exception):
-        logger.error(f"Batch analysis failed for {config['provider']}")
-    elif isinstance(res, list):
-        for decision in res:
-            if isinstance(decision, DecisionObject):
-                # Attach model metadata for attribution
-                decision.model_provider = config["provider"]    # e.g., "openai"
-                decision.model_name = config["model"]          # e.g., "gpt-4-turbo"
-                valid_decisions.append(decision)
-
-# Final list of DecisionObjects with complete metadata:
 valid_decisions = [
     DecisionObject(
         signal="BUY",
         confidence=85,
-        reasoning="Tesla fundamentals strong + positive sentiment",
+        reasoning="Verified price is reasonable ($240.50).",
         ticker="TSLA",
         source_id="news_newsletter1_a7f92c4e",
+        price=240.50, # Automatically filled from Tool Result
         model_provider="openai",
-        model_name="gpt-4-turbo"
+        model_name="gpt-4o"
     ),
-    DecisionObject(
-        signal="HOLD",
-        confidence=60,
-        reasoning="Fed action creates uncertainty",
-        ticker="SPY",
-        source_id="news_newsletter2_b1d83f7a",
-        model_provider="openai",
-        model_name="gpt-4-turbo"
-    ),
-    DecisionObject(
-        signal="BUY",
-        confidence=92,
-        reasoning="AI is transformational, NVDA undervalued",
-        ticker="NVDA",
-        source_id="news_newsletter3_c9e17b3f",
-        model_provider="anthropic",
-        model_name="claude-3-5-sonnet"
-    ),
-    DecisionObject(
-        signal="SELL",
-        confidence=78,
-        reasoning="Crypto cycle top confirmed by technicals",
-        ticker="BTC",
-        source_id="news_newsletter4_d4a2c85b",
-        model_provider="anthropic",
-        model_name="claude-3-5-sonnet"
-    ),
-    # ... 6-11 more decisions
+    ...
 ]
 ```
 
 **Phase 3 Summary**:
-- 4 LLM API calls (1 per provider)
-- All executed in parallel with same prompt
-- 10-15 decisions generated
-- Each decision has full metadata (provider, model, source_id)
+- **Active Reasoning**: Models verify data *before* committing to a decision.
+- **Unified Tool Interface**: Handle OpenAI, Anthropic, and Gemini tool schemas in one loop.
+- **Cache Integration**: Real-time tools hit the `market_data_cache` first to keep the UI fast.
 
 ---
 
 ---
 
-## Phase 3.5: Pre-Market Validation (Hallucination Guardrails)
+## Phase 3.5: Pre-Market Validation (Cache-First Core)
 
 ### Step 3.4: Verify Against Real-Market Data
 
-**File**: `apps/engine/execution/validation.py`
+**File**: `apps/engine/execution/market_data.py`
 
-Before any decision is saved or executed, it passes through a validation layer using real-market data (Financial Modeling Prep API).
+This layer ensures that every ticker is liquid and real. It is utilized both as a **Tool** by LLMs and as a **Final Post-Gauntlet** by the engine.
 
-```python
-# For each DecisionObject:
-validation = await validate_decision(d.ticker, d.price)
-```
+#### Cache-First Logic:
+1. **Check Persistence**: Query `market_data_cache` in Supabase.
+2. **TTL Verification**: If `fetched_at` is older than 4 hours, proceed to fetch.
+3. **External Fetch**: Hit `yfinance` or `FMP` via `FinancialProvider` interface.
+4. **Update Cache**: Upsert the fresh data back to Supabase.
 
-#### Guardrail A: Ticker Existence
-- Checks if the ticker is valid and currently trading.
-- **Result**: Rejects if non-existent (prevents AI "phantom ticker" hallucinations).
+#### The Three Guardrails:
 
-#### Guardrail B: Price Banding
-- Compares AI's suggested price with the current market price.
-- **Threshold**: Max 10% deviation allowed.
-- **Result**: Rejects if AI thinks AAPL is $50 when it's $150.
-
-#### Guardrail C: Liquidity Check
-- Checks the Market Capitalization of the company.
-- **Threshold**: Min $2 Billion.
-- **Result**: Rejects "Penny Stocks" or illiquid small-caps to protect the virtual portfolio.
+| Guardrail | Logic | Goal |
+| --- | --- | --- |
+| **A: Existence** | `if not data or not data.exists` | Reject non-existent/delisted tickers. |
+| **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.15` | Reject hallucinated prices (>15% deviation). |
+| **C: Liquidity** | `if market_cap < 2_000_000_000` | Reject "Penny Stocks" (Market Cap < $2B). |
 
 **Validation Result**:
 ```json
@@ -686,14 +521,15 @@ validation = await validate_decision(d.ticker, d.price)
   "ticker": "TSLA",
   "status": "PASSED",
   "market_price": 240.50,
-  "market_cap": 750000000000.0
+  "market_cap": 750000000000.0,
+  "cached": true
 }
 ```
 
 **Phase 3.5 Summary**:
-- **Tech**: Multi-provider Plug-and-Play architecture.
-- **API Usage**: 1 API call per unique ticker.
-- **Outcome**: Only realistic, liquid, and existing stock trades proceed to Phase 4.
+- **Efficiency**: Reduces external API calls by $>90%$ for repeated tickers.
+- **Safety**: Prevents portfolio contamination from illiquid or fake tickers.
+- **Persistence**: Centralized market data source for both Python Engine and Frontend.
 
 ---
 

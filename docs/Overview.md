@@ -86,7 +86,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 *   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
 *   **Validation:** **Python Pydantic + Instructor**
-*   **Efficiency:** **Batch Processing** (Each LLM is called exactly ONCE with all daily news chunks to minimize latency and costs).
+*   **Active Tool Calling:** LLMs utilize the `get_stock_quote` tool *during* analysis to verify ticker existence, real-time pricing, and liquidity before making a recommendation.
+*   **Efficiency:** **Batch Processing** (Each LLM is called in a tool-calling loop with all daily news chunks to minimize latency and costs).
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
 *   **Fault Tolerance:** If individual LLM providers fail, the pipeline continues with successful results. CRITICAL alerts are logged if all 4 providers fail.
@@ -130,13 +131,14 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **10. Pre-Market Validation (Hallucination Guardrails)** ✅
 
-* **Tech:** Python / Financial Modeling Prep or yfinance
+* **Tech:** Python / `MarketDataManager` / yfinance or FMP
+* **Cache-First Architecture:** Uses a `market_data_cache` table in Supabase (4-hour TTL) to minimize external API dependencies and prevent rate limits.
 * **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
 * **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
 * **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
-* **Optimization:** Unified FMP `stable/quote` or `yfinance` Ticker data with built-in **request throttling** to prevent rate limits. `yfinance` provides a robust, zero-cost fallback/alternative to FMP.
+* **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution.
 * documentation: ./docs/pre-market-validation.md
-* File: `apps/engine/execution/validation.py`
+* File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
 
 ### Phase 3: Market Execution
 

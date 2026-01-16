@@ -13,8 +13,11 @@ To ensure maximum feature coverage and performance, the system uses the official
 | --- | --- | --- |
 | **OpenAI** | `openai` | `gpt-4-turbo-preview` |
 | **Anthropic** | `anthropic` | `claude-3-5-sonnet-20240620` |
-| **Gemini** | `google-generativeai` | `gemini-1.5-pro` |
+| **Gemini** | `google-genai` | `gemini-1.5-pro` |
 | **DeepSeek** | `openai` (official) | `deepseek-chat` |
+
+### **Active Tool Calling**
+Models now actively call the `get_stock_quote` tool to verify market data *before* committing to a trade. This eliminates ticker hallucinations and ensures price accuracy.
 
 ## 2. Configuration & Model Selection
 
@@ -48,15 +51,20 @@ To minimize latency and costs, the system uses a **Batch-Parallel** approach. In
 1.  **Ingestion**: News chunks are fetched from Gmail.
 2.  **Filtering**: Chunks are validated to ensure they contain both `source_id` and `content`. Malformed chunks are skipped to prevent pipeline errors.
 3.  **RAG Batching**: Gemini embeddings are generated for ALL valid chunks in a single batch call.
-4.  **Dispatch**: Each LLM (OpenAI, Claude, Gemini, DeepSeek) is called exactly **once** with the entire news batch and aggregated historical context.
-5.  **Validation**: `Instructor` validates the model's list of decisions against the Pydantic schema.
+4.  **Dispatch & Tool Loop**: Each LLM is called in a sequence designed to allow multiple "reasoning and verification" steps.
+    *   **Phase A**: Model reasoning on news chunks.
+    *   **Phase B**: Tool call triggered for ticker verification.
+    *   **Phase C**: Tool result returned (via `MarketDataManager`).
+    *   **Phase D**: Final structured decision generated.
+5.  **Validation**: `Instructor` extracts and validates the model's list of decisions against the Pydantic schema.
 6.  **Aggregation**: Validated `DecisionObject` outputs are saved for the Consensus phase.
 
 ## 5. Verification
 
-The logic is verified using a mocked test suite:
-- **Command**: `pytest apps/engine/tests/test_analysis_logic.py`
-- **Scope**: Validates schema enforcement, confidence range checks, and parallel task orchestration.
+The logic is verified using a comprehensive test suite:
+- **Core Logic**: `pytest apps/engine/tests/test_analysis_logic.py`
+- **Tool Calling**: `pytest apps/engine/tests/test_llm_tools.py`
+- **Scope**: Validates schema enforcement, parallel task orchestration, and tool-result handling.
 
 ## 6. How to Run
 

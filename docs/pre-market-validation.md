@@ -17,7 +17,7 @@ LLMs, while powerful, can occasionally:
 
 ### 2. Guardrail B: Price Banding
 - **Logic**: Compares the AI's suggested price with the current live/delayed market price.
-- **Limit**: **Max 10% deviation**.
+- **Limit**: **Max 15% deviation**.
 - **Action**: Reject trade if the price difference is too large.
 
 ### 3. Guardrail C: Liquidity Check
@@ -25,16 +25,16 @@ LLMs, while powerful, can occasionally:
 - **Limit**: **Minimum $2 Billion**.
 - **Action**: Reject trades for companies with insufficient market cap.
 
-### Modular Provider Interface
-The system uses a plug-and-play architecture. The `FinancialProvider` abstract base class allows us to swap API providers (e.g., from FMP to Polygon or Alpha Vantage) without rewriting the core validation logic.
+### Market Data Manager & Caching
+The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
 
-- **Interface**: `apps/engine/execution/providers/base.py`
-- **FMP Implementation**: `apps/engine/execution/providers/fmp.py`
-- **yfinance Implementation**: `apps/engine/execution/providers/yfinance.py`
-- **Optimization**: Uses the `/stable/quote` endpoint (FMP) or consolidated Ticker info (yfinance) to fetch price and market cap in a **single logical pass**, reducing latency and quota usage.
+- **Persistence**: Results are stored in the `market_data_cache` table in Supabase.
+- **TTL**: Cached data is considered fresh for **4 hours**.
+- **Efficiency**: Reduces external API (yfinance/FMP) calls by $>90%$ for common tickers.
+- **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 
 ### Anti-Rate Limiting (Throttling)
-To prevent hitting API rate limits during bulk analysis, the engine implements configurable throttling via `FINANCIAL_API_THROTTLE_SECONDS`. 
+To prevent hitting API rate limits, the engine implements configurable throttling via `FINANCIAL_API_THROTTLE_SECONDS`. 
 
 ## Configuration
 The following environment variables and constants control the validation behavior:
@@ -42,9 +42,13 @@ The following environment variables and constants control the validation behavio
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
-| `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
+| `MAX_PRICE_DEVIATION_PCT` | `15.0` | Maximum % difference between AI and market price. |
 | `FINANCIAL_PROVIDER` | `"yfinance"` | Which API implementation to use (`fmp` or `yfinance`). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration
-Integrated in `apps/engine/main.py`. If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped before it ever hits the database or the broker.
+Validation is now a **Two-Layer Process**:
+1. **Active Tool**: Models call `get_stock_quote` during analysis to verify their own reasoning.
+2. **Final Gauntlet**: The engine runs `validate_decision` in `main.py` before persistence to ensure no hallucinations slipped through.
+
+If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped.

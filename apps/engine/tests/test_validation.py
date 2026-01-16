@@ -16,10 +16,9 @@ async def test_validate_decision_pass():
         exists=True
     )
     
-    with patch("execution.validation.get_financial_provider") as mock_get:
-        mock_provider = AsyncMock()
-        mock_provider.get_ticker_data.return_value = mock_data
-        mock_get.return_value = mock_provider
+    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
+        mock_manager = mock_manager_cls.return_value
+        mock_manager.get_quote = AsyncMock(return_value=mock_data)
         
         # AI suggests $155 (within 15% of $150)
         result = await validate_decision("AAPL", 155.0)
@@ -31,10 +30,9 @@ async def test_validate_decision_pass():
 @pytest.mark.asyncio
 async def test_validate_decision_hallucination():
     """Test that a non-existent ticker is rejected."""
-    with patch("execution.validation.get_financial_provider") as mock_get:
-        mock_provider = AsyncMock()
-        mock_provider.get_ticker_data.return_value = None
-        mock_get.return_value = mock_provider
+    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
+        mock_manager = mock_manager_cls.return_value
+        mock_manager.get_quote = AsyncMock(return_value=None)
         
         result = await validate_decision("FAKE", 100.0)
         
@@ -52,10 +50,9 @@ async def test_validate_decision_price_deviation():
         exists=True
     )
     
-    with patch("execution.validation.get_financial_provider") as mock_get:
-        mock_provider = AsyncMock()
-        mock_provider.get_ticker_data.return_value = mock_data
-        mock_get.return_value = mock_provider
+    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
+        mock_manager = mock_manager_cls.return_value
+        mock_manager.get_quote = AsyncMock(return_value=mock_data)
         
         # AI suggests $50 (deviation > 15%)
         result = await validate_decision("TSLA", 50.0)
@@ -74,10 +71,9 @@ async def test_validate_decision_liquidity():
         exists=True
     )
     
-    with patch("execution.validation.get_financial_provider") as mock_get:
-        mock_provider = AsyncMock()
-        mock_provider.get_ticker_data.return_value = mock_data
-        mock_get.return_value = mock_provider
+    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
+        mock_manager = mock_manager_cls.return_value
+        mock_manager.get_quote = AsyncMock(return_value=mock_data)
         
         result = await validate_decision("PENY", 1.0)
         
@@ -95,10 +91,9 @@ async def test_validate_decision_no_ai_price():
         exists=True
     )
     
-    with patch("execution.validation.get_financial_provider") as mock_get:
-        mock_provider = AsyncMock()
-        mock_provider.get_ticker_data.return_value = mock_data
-        mock_get.return_value = mock_provider
+    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
+        mock_manager = mock_manager_cls.return_value
+        mock_manager.get_quote = AsyncMock(return_value=mock_data)
         
         # ai_price is None
         result = await validate_decision("MSFT", None)

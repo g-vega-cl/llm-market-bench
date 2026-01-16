@@ -5,14 +5,11 @@ from typing import List, Optional, Tuple
 from pydantic import BaseModel
 
 from core.config import (
-    FINANCIAL_PROVIDER,
     MIN_MARKET_CAP_BILLIONS,
     MAX_PRICE_DEVIATION_PCT,
     logger
 )
-from .providers.base import FinancialProvider, TickerData
-from .providers.fmp import FMPProvider
-from .providers.yfinance import YFinanceProvider
+from .market_data import MarketDataManager
 
 
 class ValidationStatus(Enum):
@@ -32,35 +29,23 @@ class ValidationResult(BaseModel):
     market_cap: Optional[float] = None
 
 
-def get_financial_provider() -> FinancialProvider:
-    """Factory to return the configured financial provider."""
-    if FINANCIAL_PROVIDER == "fmp":
-        return FMPProvider()
-    elif FINANCIAL_PROVIDER == "yfinance":
-        return YFinanceProvider()
-    
-    # Default/Fallback
-    logger.warning(f"Unknown financial provider '{FINANCIAL_PROVIDER}'. Defaulting to yfinance.")
-    return YFinanceProvider()
-
-
 async def validate_decision(ticker: str, ai_price: Optional[float]) -> ValidationResult:
     """Validate a single trade decision against market guardrails.
     
     Guardrail A: Ticker Existence
-    Guardrail B: Price Banding (Skipped if ai_price is None)
+    Guardrail B: Price Banding (Skipped if ai_price is None or 0)
     Guardrail C: Liquidity
     """
-    provider = get_financial_provider()
+    manager = MarketDataManager()
     
     try:
-        data = await provider.get_ticker_data(ticker)
+        data = await manager.get_quote(ticker)
     except Exception as e:
-        logger.error(f"Provider error while validating {ticker}: {e}")
+        logger.error(f"Error while validating {ticker}: {e}")
         return ValidationResult(
             ticker=ticker,
             status=ValidationStatus.ERROR_PROVIDER,
-            reason=f"Provider error: {str(e)}"
+            reason=f"Processing error: {str(e)}"
         )
 
     # Guardrail A: Existence
@@ -68,13 +53,13 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
         return ValidationResult(
             ticker=ticker,
             status=ValidationStatus.REJECTED_HALLUCINATION,
-            reason=f"Ticker '{ticker}' not found in market data."
+            reason=f"Ticker '{ticker}' not found in market data cache or providers."
         )
 
     # Guardrail B: Price Banding
     # Reject if deviation is > MAX_PRICE_DEVIATION_PCT
-    # ONLY if ai_price is provided.
-    if ai_price is not None:
+    # ONLY if ai_price is provided and > 0.
+    if ai_price and ai_price > 0:
         price_diff = abs(ai_price - data.price)
         deviation_pct = (price_diff / data.price) * 100 if data.price > 0 else 0
         

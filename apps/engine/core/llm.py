@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from . import config
 from .models import DecisionObject, DecisionsResponse
+from execution.market_data import MarketDataManager
 
 logger = logging.getLogger("engine")
 
@@ -87,6 +88,60 @@ async def _close_client(client, provider: str):
         logger.debug(f"Failed to close {provider} client: {e}")
 
 
+# --- Tool Definitions ---
+
+STOCK_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "get_stock_quote",
+        "description": "Get real-time price and market cap for a stock ticker to verify its existence and liquidity.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string", 
+                    "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)"
+                }
+            },
+            "required": ["ticker"]
+        }
+    }
+}
+
+STOCK_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "get_stock_quote",
+    "description": "Get real-time price and market cap for a stock ticker to verify its existence and liquidity.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)"
+            }
+        },
+        "required": ["ticker"]
+    }
+}
+
+# --- Tool Execution Wrapper ---
+
+async def execute_stock_tool(ticker: str) -> str:
+    """Executes the stock tool and returns a stringified result for the LLM."""
+    manager = MarketDataManager()
+    try:
+        data = await manager.get_quote(ticker)
+        if not data or not data.exists:
+            return f"Error: Ticker '{ticker}' not found."
+        return (
+            f"Ticker: {data.ticker}\n"
+            f"Current Price: ${data.price:.2f}\n"
+            f"Market Cap: ${data.market_cap / 1e9:.2f}B\n"
+            f"Status: VALID"
+        )
+    except Exception as e:
+        return f"Error fetching data for {ticker}: {str(e)}"
+
+
 # --- Analysis Functions ---
 
 async def analyze_with_provider(
@@ -130,12 +185,16 @@ Content: {chunk['content']}
         prompt = f"""You are a hedge fund trading algorithm. Next you will see a batch of financial news snippets and your current portfolio (if any).
         Analyze the current portfolio and the news snippets and the state of the market, find trading and investment ideas with a high profit potential.
 
+        CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
+        This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price to prevent hallucinations.
+        If the tool returns an error or shows the ticker is illiquid, DO NOT recommend a trade for it.
+
         1. Trading Signals: Look for relevant companies and tickers and determine a trading signal:
            * BUY: Only buy if we don't already have the stock in our portfolio.
            * SELL: Only sell if we have the stock in our portfolio.
            * HOLD: Do not buy or sell the stock.
            Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
-           If a specific stock price is mentioned or can be clearly inferred for the ticker, include it in the 'price' field; otherwise leave it null.
+           Use the price returned by the tool for the 'price' field.
 
         2. Macro Events: Identify major global themes, macro-economic shifts, or significant events mentioned in the news (e.g., "Fed Rate Hike", "AI Demand Surge", "Geopolitical Tension").
            For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.
@@ -151,33 +210,122 @@ Content: {chunk['content']}
 
 Return the result as a structured JSON object containing a list of 'decisions' and a list of 'macro_events'."""
 
-        args = {
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a hedge fund trading algorithm. Use tools to verify market data and return structured decisions."
+            },
+            {"role": "user", "content": prompt}
+        ]
+
+        # Tool execution loop
+        max_tool_steps = 5
+        for _ in range(max_tool_steps):
+            args = {
+                "model": model_name,
+                "messages": messages,
+            }
+
+            # Add provider-specific tool definitions
+            if provider in ["openai", "deepseek"]:
+                args["tools"] = [STOCK_TOOL_DEFINITION_OPENAI]
+            elif provider == "anthropic":
+                args["tools"] = [STOCK_TOOL_DEFINITION_ANTHROPIC]
+                args["max_tokens"] = 8000
+                # Anthropic requires system prompt separately
+                if messages[0]["role"] == "system":
+                    args["system"] = messages[0]["content"]
+                    args["messages"] = messages[1:]
+            elif provider == "gemini":
+                # Instructor's GenAI wrapper handles tools via response_model best.
+                pass
+
+            # Call the LLM (using the unwrapped client for intermediate steps if needed, 
+            # but instructor's .client is the raw client)
+            raw_client = client.client
+
+            if provider in ["openai", "deepseek"]:
+                resp = await raw_client.chat.completions.create(**args)
+                msg = resp.choices[0].message
+                # Convert to dict for safety and persistence in next rounds
+                messages.append(msg.model_dump())
+
+                if not msg.tool_calls:
+                    break
+
+                for tool_call in msg.tool_calls:
+                    if tool_call.function.name == "get_stock_quote":
+                        import json
+                        call_args = json.loads(tool_call.function.arguments)
+                        result = await execute_stock_tool(call_args["ticker"])
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": result
+                        })
+
+            elif provider == "anthropic":
+                resp = await raw_client.messages.create(**args)
+                # Append assistant response as a structured dict
+                assistant_content = []
+                for content_block in resp.content:
+                    if content_block.type == "text":
+                        assistant_content.append({"type": "text", "text": content_block.text})
+                    elif content_block.type == "tool_use":
+                        assistant_content.append({
+                            "type": "tool_use",
+                            "id": content_block.id,
+                            "name": content_block.name,
+                            "input": content_block.input
+                        })
+                
+                messages.append({"role": "assistant", "content": assistant_content})
+                
+                tool_uses = [c for c in resp.content if c.type == "tool_use"]
+                if not tool_uses:
+                    break
+                
+                for tool_use in tool_uses:
+                    if tool_use.name == "get_stock_quote":
+                        result = await execute_stock_tool(tool_use.input["ticker"])
+                        messages.append({
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use.id,
+                                    "content": result
+                                }
+                            ]
+                        })
+            else:
+                # Fallback for Gemini/others if direct tool loop isn't implemented
+                break
+
+        # Final structured extraction using Instructor
+        logger.debug(f"Executing final extraction for {provider}/{model_name}")
+        
+        final_args = {
             "model": model_name,
             "response_model": DecisionsResponse,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a hedge fund trading algorithm. Analyze news strictly and return a list of decisions."
-                },
-                {"role": "user", "content": prompt}
-            ],
+            "messages": messages,
             "max_retries": 2,
         }
-
-        # Anthropic requires max_tokens to be explicitly set
+        
         if provider == "anthropic":
-            args["max_tokens"] = 8000  # Increased for batch processing
+            final_args["max_tokens"] = 8000
+            if messages[0]["role"] == "system":
+                final_args["system"] = messages[0]["content"]
+                final_args["messages"] = messages[1:]
 
-        print(f"Calling LLM provider: {provider} with model: {model_name}")
-        resp_awaitable = client.chat.completions.create(**args)
+        resp_awaitable = client.chat.completions.create(**final_args)
 
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            resp = await resp_awaitable
+            final_resp = await resp_awaitable
         else:
-            resp = resp_awaitable
+            final_resp = resp_awaitable
 
-        # Return the complete response container
-        return resp
+        return final_resp
 
     except Exception as e:
         logger.error(f"Error analyzing batch with {provider}/{model_name}: {e}")

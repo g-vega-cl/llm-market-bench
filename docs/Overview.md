@@ -88,6 +88,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
 *   **Validation:** **Python Pydantic + Instructor**
 *   **Active Tool Calling:** LLMs utilize the `get_stock_quote` tool *during* analysis to verify ticker existence, real-time pricing, and liquidity before making a recommendation.
+*   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make "Allocation %" decisions rather than just static share counts.*
 *   **Efficiency:** **Batch Processing** (Each LLM is called in a tool-calling loop with all daily news chunks to minimize latency and costs).
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
@@ -143,11 +144,11 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 3: Market Execution (Sequential)
 
-**11. Portfolio Management & Reg T Validation** ✅
+**11. Pre-Execution Margin Validation** ✅
 
 * **Tech:** Python / Supabase / Reg T Logic
-* **Logic:** *The engine tracks a persistent $10,000 portfolio for each LLM. Before execution, it calculates "Regulation T" Buying Power (4x Excess Liquidity).*
-* **Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make "Allocation %" decisions rather than just static share counts.*
+* **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
+* **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances.*
 * **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 * documentation: ./docs/portfolio-management-walkthrough.md
 

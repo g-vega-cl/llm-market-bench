@@ -144,7 +144,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 3: Market Execution (Sequential)
 
-**11. Pre-Execution Margin Validation** ✅
+**11. Pre-Execution Margin Validation** 
 
 * **Tech:** Python / Supabase / Reg T Logic
 * **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*

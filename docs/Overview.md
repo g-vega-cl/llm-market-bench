@@ -144,18 +144,20 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 3: Market Execution (Sequential)
 
-**11. Pre-Execution Margin Validation** 
+**11. Pre-Execution Margin Validation** ✅
 
 * **Tech:** Python / Supabase / Reg T Logic
 * **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
-* **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances.*
+* **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
 * **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 * documentation: ./docs/portfolio-management-walkthrough.md
 
-**12. Trade Settlement**
+**12. Trade Settlement** ✅
 
-* **Tech:** Python / Market Data API
-* *Move orders from `PENDING` to `FILLED` in the ledger using the prices verified during the analysis loop.*
+* **Tech:** Python / Portfolio Class
+* **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
+* **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions` in Supabase. Moves state from "Decision" to "Realized Holdings".*
+* documentation: ./docs/trade-settlement-walkthrough.md
 
 **13. Attribution Locking**
 

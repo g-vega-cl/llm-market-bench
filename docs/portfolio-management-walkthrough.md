@@ -14,9 +14,25 @@ We strictly follow **Reg T** calculations for margin accounts.
 | **Total Equity** | `Cash + Market Value of Positions` | The Net Liquidation Value (NLV). |
 | **Maintenance Margin** | `0.25 * Market Value of Longs` | The minimum equity required to hold positions (25%). |
 | **Excess Liquidity** | `Total Equity - Maintenance Margin` | How much "buffer" you have before a margin call. |
-| **Buying Power** | `4 * Excess Liquidity` | The max amount of stock you can buy intraday (4:1 Leverage). |
+| **Available Funds** | `Equity - Initial Margin` | Capital available to open new positions. |
+| **SMA** | `Max(Prior SMA, Available Funds)` | Special Memorandum Account. Ratchets up with gains, holds steady on losses. |
+| **Buying Power** | `4 * Available Funds` | The max amount of stock you can buy intraday (4:1 Leverage). |
 
-*Implementation: `apps/engine/execution/portfolio.py`*
+### 2a. Reg T Validation (Pre-Execution)
+Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_validation.py`) to ensure:
+1. **Trade Cost <= Buying Power**
+2. **Account not in Liquidation**
+
+*Implementation: `apps/engine/execution/reg_t_validation.py`*
+
+### 2b. Validation Logic (Pass/Fail Scenarios)
+The validation logic strictly enforces the Buying Power limit.
+
+| Scenario | Condition | Result | Reason |
+| :--- | :--- | :--- | :--- |
+| **Leveraged Buy** | Cost > Cash but < Buying Power | **PASS** | Valid use of Reg T leverage (2:1 to 4:1). |
+| **Excessive Buy** | Cost > Buying Power | **FAIL** | Trade exceeds legal margin limits. |
+| **Liquidation** | Available Funds < 0 | **FAIL** | Account is in margin call/deficit state. |
 
 ## 3. Persistent State (Database)
 State is preserved in Supabase so agents "carry over" their positions to the next day.
@@ -42,6 +58,8 @@ Before the LLM analyzes news, we insert a snapshot of its financial health.
 Cash Balance: $10,000.00
 Total Equity: $10,000.00
 Buying Power: $40,000.00
+SMA: $10,000.00
+Excess Liquidity: $10,000.00
 Maintenance Margin: $0.00
 
 Current Positions:

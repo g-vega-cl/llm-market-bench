@@ -21,12 +21,7 @@ class Position:
     average_cost_basis: float
 
 
-@dataclass
-class RegTMetrics:
-    total_equity: float
-    maintenance_margin: float
-    excess_liquidity: float
-    buying_power: float
+from .reg_t_validation import calculate_reg_t_metrics, validate_trade_compliance, RegTMetrics, ValidationResult
 
 
 class Portfolio:
@@ -36,6 +31,7 @@ class Portfolio:
         self.owner_id = owner_id
         self.id: Optional[UUID] = None
         self.cash_balance: float = 10000.00
+        self.sma: float = 0.0
         self.positions: Dict[str, Position] = {}
         # Metrics cache
         self.metrics: Optional[RegTMetrics] = None
@@ -51,13 +47,21 @@ class Portfolio:
             data = res.data[0]
             self.id = data["id"]
             self.cash_balance = float(data["cash_balance"])
+            self.sma = float(data.get("sma", 0.0))
             # Load positions
             self._await_load_positions(supabase)
         else:
             # Create new
+            # For a new $10k account, SMA starts equal to Cash? 
+            # Or 0? Usually SMA starts at 0 and grows with income/interest or is created by excess equity?
+            # Reg T: SMA = Cash on deposit. if 10k cash dep, SMA=10k.
+            # Let's start with 10k default if cash is 10k
+            self.sma = 10000.00
+            
             res = supabase.table("portfolios").insert({
                 "owner_id": self.owner_id,
-                "cash_balance": 10000.00
+                "cash_balance": 10000.00,
+                "sma": 10000.00
             }).execute()
             if res.data:
                 self.id = res.data[0]["id"]
@@ -82,46 +86,27 @@ class Portfolio:
     def calculate_reg_t_metrics(self, current_prices: Dict[str, float]) -> RegTMetrics:
         """Calculates Reg T margin metrics based on current market prices.
         
-        Logic reference: docs/account-buying-power-reg-t4-calculations.md
+        Delegates to the granular logic in reg_t_validation.py.
         """
-        stock_value = 0.0
-        for ticker, pos in self.positions.items():
-            price = current_prices.get(ticker, 0.0)
-            if price == 0.0:
-                logger.warning(f"No price found for {ticker}, assuming $0 for margin calc.")
-            stock_value += pos.quantity * price
-
-        total_equity = self.cash_balance + stock_value
+        # Convert to format needed by Reg T module: list or dict of raw values
+        # The module expects dict[str, dict] where dict has 'quantity'
+        # We have dict[str, Position]
         
-        # Reg T Initial Margin is typically 50% for Longs
-        # Maintenance Margin is typically 25% for Longs
-        # The doc suggests Maintenance Margin is what drives Excess Liquidity for BP?
-        # Let's align with the Doc's Scenario 1:
-        # Stock Value: $9950.24. MM: $2487.56. (This is 25%)
-        
-        maintenance_margin = stock_value * 0.25
-        
-        # Excess Liquidity = Equity - Maintenance Margin
-        # (Note: In strict Reg T, it's Euity - Reg T Margin, but IBKR/Docs use MM for some internal calculations.
-        # However, Scenario 1 BP is 4x Excess. If Excess = Equity - IM, then BP = 4 * (Equity-IM)?
-        # Doc S1: Equity 10k, IM 2487. Excess 7512. BP 30049.
-        # 30049 / 7512 = ~4.0.
-        # Excess there is Equity - MM.
-        # So we use MM = 0.25 * Stock Value.
-        
-        excess_liquidity = total_equity - maintenance_margin
-        
-        # Buying Power = 4 * Excess Liquidity
-        # (Capped at 0 if negative)
-        buying_power = max(0.0, excess_liquidity * 4.0)
-
-        # Update detailed metrics
-        self.metrics = RegTMetrics(
-            total_equity=total_equity,
-            maintenance_margin=maintenance_margin,
-            excess_liquidity=excess_liquidity,
-            buying_power=buying_power
+        pos_for_calc = {}
+        for t, p in self.positions.items():
+            pos_for_calc[t] = {"quantity": p.quantity}
+            
+        self.metrics = calculate_reg_t_metrics(
+            cash_balance=self.cash_balance,
+            positions=pos_for_calc,
+            current_prices=current_prices,
+            previous_sma=self.sma
         )
+        # Update our internal state SMA to the result of the calculation (Ratchet Up)
+        # BUT: calculate_metrics doesn't include todays trades effects on SMA yet (spend).
+        # It calculates the state based on "Current Holdings".
+        self.sma = self.metrics.sma 
+        
         return self.metrics
 
     def get_portfolio_summary(self, current_prices: Dict[str, float]) -> str:
@@ -132,7 +117,8 @@ class Portfolio:
             f"Cash Balance: ${self.cash_balance:,.2f}",
             f"Total Equity: ${metrics.total_equity:,.2f}",
             f"Buying Power: ${metrics.buying_power:,.2f}",
-            f"Maintenance Margin: ${metrics.maintenance_margin:,.2f}",
+            f"SMA: ${metrics.sma:,.2f}",
+            f"Maintenance Margin: ${metrics.maintenance_margin_req:,.2f}",
             "\nCurrent Positions:"
         ]
         
@@ -160,6 +146,138 @@ class Portfolio:
             "total_equity": self.metrics.total_equity,
             "buying_power": self.metrics.buying_power,
             "excess_liquidity": self.metrics.excess_liquidity,
-            "maintenance_margin": self.metrics.maintenance_margin,
+            "maintenance_margin": self.metrics.maintenance_margin_req,
+            "sma": self.metrics.sma,
             "last_updated_at": "now()"
         }).eq("id", self.id).execute()
+
+    def validate_trade(self, ticker: str, quantity: int, price: float) -> ValidationResult:
+        """Validates a potential trade against current Reg T buying power."""
+        if not self.metrics:
+            # Should imply we need to calculate
+            # For safe usage, assume 0 prices if not provided, or better, fail.
+            # But the caller should have updated metrics recently.
+            logger.warning("Validating trade with stale metrics (None). Assuming 0 BP.")
+            return ValidationResult(passed=False, reason="Metrics not initialized.")
+
+        cost = price * quantity
+        return validate_trade_compliance(
+            portfolio_metrics=self.metrics,
+            estimated_trade_cost=cost,
+            ticker=ticker,
+            price=price
+        )
+
+    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str):
+        """Executes the trade by updating cash and positions.
+        
+        Args:
+            ticker: Symbol.
+            quantity: Number of shares (always positive).
+            price: Execution price.
+            signal: "BUY" or "SELL".
+        """
+        if not self.id:
+            logger.error("Cannot execute trade on uninitialized portfolio.")
+            return
+
+        total_cost = price * quantity
+        supabase = get_supabase_client()
+        
+        # Update local state first
+        if signal.upper() == "BUY":
+            self.cash_balance -= total_cost
+            
+            # Update Position
+            if ticker in self.positions:
+                pos = self.positions[ticker]
+                old_cost = pos.average_cost_basis * pos.quantity
+                new_cost = old_cost + total_cost
+                pos.quantity += quantity
+                pos.average_cost_basis = new_cost / pos.quantity
+            else:
+                self.positions[ticker] = Position(
+                    ticker=ticker,
+                    quantity=quantity,
+                    average_cost_basis=price
+                )
+            # Update SMA: Buying reduces SMA by 50% of the trade value (Since Reg T IM is 50%)
+            # Reg T Rule: SMA is reduced by the Margin Requirement of the new trade.
+            margin_req = total_cost * 0.50
+            self.sma -= margin_req
+                
+        elif signal.upper() == "SELL":
+            self.cash_balance += total_cost
+            
+            # Update Position
+            if ticker in self.positions:
+                pos = self.positions[ticker]
+                if pos.quantity < quantity:
+                    logger.warning(
+                        f"Overselling {ticker}! Held: {pos.quantity}, Sell: {quantity}. "
+                        "Allowing short (negative qty) logic if intended, but alerting."
+                    )
+                
+                # Realized P/L calculation could happen here
+                # Cost basis doesn't change on sell (FIFO/Avg assumed constant per unit)
+                pos.quantity -= quantity
+                if pos.quantity == 0:
+                    del self.positions[ticker]
+            else:
+                logger.warning(f"Selling {ticker} but not held! Opening Short Position.")
+                # Short logic: Negative quantity?
+                # For now, let's just track negative quantity
+                self.positions[ticker] = Position(
+                    ticker=ticker,
+                    quantity=-quantity,
+                    average_cost_basis=price
+                )
+            
+            # Update SMA: Selling releases margin. SMA increases by 50% of proceeds?
+            # Or rather, SMA state is recalculated?
+            # If we sell, Cash increases.
+            # Reg T: SMA increases by amount of line released?
+            # Let's simplify: SMA += 50% of Proceeds (since we got cash back and released 50% req).
+            margin_released = total_cost * 0.50
+            self.sma += margin_released
+        
+        # Persist changes
+        try:
+            # 1. Update Portfolio Cash & SMA
+            supabase.table("portfolios").update({
+                "cash_balance": self.cash_balance,
+                "sma": self.sma,
+                "last_updated_at": "now()"
+            }).eq("id", self.id).execute()
+            
+            # 2. Update/Insert/Delete Position
+            current_pos = self.positions.get(ticker)
+            if current_pos:
+                supabase.table("portfolio_positions").upsert({
+                    "portfolio_id": str(self.id),
+                    "ticker": ticker,
+                    "quantity": current_pos.quantity,
+                    "average_cost_basis": current_pos.average_cost_basis,
+                    "last_updated_at": "now()"
+                }).execute()
+            else:
+                 # It was deleted (position closed)
+                 # We need to explicitly delete from DB matching portfolio_id + ticker
+                 supabase.table("portfolio_positions").delete().match({
+                     "portfolio_id": str(self.id),
+                     "ticker": ticker
+                 }).execute()
+                 
+            # 3. Recalculate metrics with new cash/state (Assuming price is same)
+            # We effectively cheat and say current prices are what we just traded at
+            # or we need the full price map. 
+            # Ideally caller does a full refresh, but we should at least save the cash change.
+            # We will call save_metrics() if we had prices, but we don't have full map here.
+            # It's okay, next loop will refresh.
+            
+            logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
+            
+        except Exception as e:
+            logger.error(f"DB Error executing trade for {ticker}: {e}")
+            # In real system: Rollback local state
+

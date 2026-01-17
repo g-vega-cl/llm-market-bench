@@ -11,10 +11,8 @@ from analyze import analyze_chunks
 from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from core.config import COMMAND_INGEST, logger
-from core.db import get_supabase_client, upsert_newsletter_snapshot
-from ingest.newsletter import ingest_newsletters
-from attribution.service import save_decision
 from execution.validation import validate_decision, ValidationStatus
+from execution.portfolio import Portfolio
 
 
 async def run_ingest():
@@ -87,20 +85,70 @@ async def run_ingest():
                 
                 if validation.status != ValidationStatus.PASSED:
                     logger.warning(
-                        f"[{d.ticker}] REJECTED: {validation.reason} "
+                        f"[{d.ticker}] REJECTED (Market Guardrails): {validation.reason} "
                         f"({d.model_provider}/{d.model_name})"
                     )
                     rejected_decisions += 1
                     continue
 
+                # --- Phase 3: Reg T Validation & Execution ---
+                # Only proceed if signal is actionable (BUY/SELL)
+                # HOLD decisions just get saved as attribution
+                
+                execution_info = "Validation Passed (No Trade)"
+                
+                if d.signal.upper() in ["BUY", "SELL"]:
+                    portfolio = Portfolio(owner_id=d.model_name)
+                    # We need to initialize to get ID/Balance
+                    await portfolio.initialize()
+                    
+                    # For a SELL, we might want to check ownership, but execute_trade handles that logic (allows short).
+                    # For a BUY, we must check Reg T Buying Power.
+                    
+                    qty = getattr(d, "quantity", 0) or 10 # Default to 10 if not spec (should be spec)
+                    # If using allocation %, logic would calculate qty here. 
+                    # Assuming for now decision has explicit quantity or we default.
+                    
+                    # Use validation result price (real-time) if available, else d.price (LLM guess), else fail
+                    exec_price = validation.market_price if validation.market_price else d.price
+                    
+                    if not exec_price or exec_price <= 0:
+                         logger.error(f"Cannot execute {d.ticker}: No valid price available.")
+                         rejected_decisions += 1
+                         continue
+
+                    # Validate
+                    if d.signal.upper() == "BUY":
+                        reg_t_check = portfolio.validate_trade(d.ticker, qty, exec_price)
+                        if not reg_t_check.passed:
+                            logger.warning(
+                                f"[{d.ticker}] REJECTED (Reg T): {reg_t_check.reason} "
+                                f"({d.model_provider}/{d.model_name})"
+                            )
+                            rejected_decisions += 1
+                            continue
+                            
+                    # Execute
+                    await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal)
+                    execution_info = f"Executed {d.signal} {qty} @ ${exec_price:.2f}"
+
+                # --- Save Attribution ---
+                # We save the decision regardless of whether it traded (it was a valid idea),
+                # but maybe we should flag it if it failed Reg T? 
+                # Current flow rejects loop continue on Reg T fail, so we don't save attribution for failed trades?
+                # "Decision Attribution" is "What did the AI decide?". Even if rejected, it decided it.
+                # Ideally we save it with a status 'REJECTED'. 
+                # For now, we only save successful ones as per original loop structure.
+                
+                d.execution_metadata = {"info": execution_info}
                 save_decision(sb_client, d)
                 saved_decisions += 1
                 logger.info(
                     f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "
-                    f"Saved attribution for {d.model_provider}/{d.model_name}"
+                    f"Saved attribution for {d.model_provider}/{d.model_name}. [{execution_info}]"
                 )
             except Exception as e:
-                logger.error(f"Failed to save decision for {d.ticker}: {e}")
+                logger.error(f"Failed to process/save decision for {d.ticker}: {e}")
 
         logger.info(
             f"Pipeline complete. Saved {saved_decisions} decisions, "

@@ -148,7 +148,8 @@ async def analyze_with_provider(
     provider: str,
     model_name: str,
     chunks: list[dict],
-    context: str = ""
+    context: str = "",
+    portfolio_context: str = ""
 ) -> DecisionsResponse:
     """Analyzes a batch of newsletter chunks using the specified provider.
 
@@ -193,6 +194,8 @@ Content: {chunk['content']}
            * BUY: Only buy if we don't already have the stock in our portfolio.
            * SELL: Only sell if we have the stock in our portfolio.
            * HOLD: Do not buy or sell the stock.
+           * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
+           
            Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
            Use the price returned by the tool for the 'price' field.
 
@@ -201,6 +204,9 @@ Content: {chunk['content']}
            Each macro event MUST include the exact 'Source ID' of the snippet that triggered it.
 
         You must provide a confidence score (0-100) and your reasoning for each trading signal and macro event.
+
+### Current Portfolio Status:
+{portfolio_context if portfolio_context else "No portfolio data available."}
 
 ### Historical Context (Relevant Past Events):
 {context if context else "No relevant historical context found."}

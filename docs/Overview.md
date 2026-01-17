@@ -143,9 +143,13 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 3: Market Execution (Sequential)
 
-**11. Order Finalization**
+**11. Portfolio Management & Reg T Validation** ✅
 
-* **Logic:** *Directly following Phase 2, the engine prepares to settle trades using the prices verified during validation.*
+* **Tech:** Python / Supabase / Reg T Logic
+* **Logic:** *The engine tracks a persistent $10,000 portfolio for each LLM. Before execution, it calculates "Regulation T" Buying Power (4x Excess Liquidity).*
+* **Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make "Allocation %" decisions rather than just static share counts.*
+* **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
+* documentation: ./docs/portfolio-management-walkthrough.md
 
 **12. Trade Settlement**
 

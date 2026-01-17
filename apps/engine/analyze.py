@@ -15,6 +15,8 @@ from core.config import (
     DEEPSEEK_MODEL,
 )
 from core.models import DecisionObject, MacroEvent
+from execution.portfolio import Portfolio
+from execution.market_data import MarketDataManager
 from memory.store import retrieve_context_batch
 
 logger = logging.getLogger("engine")
@@ -71,11 +73,33 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         provider = config["provider"]
         model = config["model"]
 
+        # Initialize Portfolio & Context
+        portfolio = Portfolio(owner_id=model)  # Using model name as owner_id
+        await portfolio.initialize()
+        
+        # Get current prices for portfolio holdings
+        # Note: In a real scenario, we'd batch fetch these. 
+        # For now, we can rely on MarketDataManager's caching if we had a list of tickers.
+        # But we need specific current prices to calculate equity.
+        market_data = MarketDataManager()
+        current_prices = {}
+        for ticker in portfolio.positions.keys():
+            quote = await market_data.get_quote(ticker)
+            if quote:
+                current_prices[ticker] = quote.price
+
+        # Update metrics and save
+        portfolio.calculate_reg_t_metrics(current_prices)
+        await portfolio.save_metrics()
+        
+        portfolio_ctx = portfolio.get_portfolio_summary(current_prices)
+
         tasks.append(llm.analyze_with_provider(
             provider=provider,
             model_name=model,
             chunks=valid_chunks,
-            context=aggregated_context
+            context=aggregated_context,
+            portfolio_context=portfolio_ctx
         ))
 
     logger.info(

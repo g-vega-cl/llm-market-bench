@@ -52,6 +52,12 @@ class DecisionObject(BaseModel):
         None,
         description="The stock price mentioned or inferred from the news"
     )
+    allocation_percentage: int | None = Field(
+        None,
+        ge=0,
+        le=100,
+        description="Percentage of portfolio buying power to allocate to this trade (0-100)"
+    )
 
     @field_validator("ticker")
     @classmethod

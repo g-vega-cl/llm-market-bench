@@ -30,7 +30,7 @@ async def test_consolidated_call_counts():
          patch("google.genai.Client", return_value=mock_gemini_client), \
          patch("instructor.from_openai") as mock_openai, \
          patch("instructor.from_anthropic") as mock_anthropic, \
-         patch("instructor.from_genai") as mock_instructor_gemini, \
+         patch("instructor.from_genai") as mock_from_genai, \
          patch("memory.store.get_supabase_client") as mock_sb, \
          patch("analyze.Portfolio") as mock_portfolio_class, \
          patch("analyze.MarketDataManager") as mock_market_data_class:
@@ -40,9 +40,9 @@ async def test_consolidated_call_counts():
         from unittest.mock import AsyncMock
         
         # Mock the instructor-wrapped clients
-        mock_instructor_openai = MagicMock()
-        mock_instructor_anthropic = MagicMock()
-        mock_instructor_gemini = MagicMock()
+        mock_wrapped_openai = MagicMock()
+        mock_wrapped_anthropic = MagicMock()
+        mock_wrapped_gemini = MagicMock()
         
         # Mock the underlying raw clients (accessed via .client in the tool loop)
         mock_raw_openai = MagicMock()
@@ -56,18 +56,18 @@ async def test_consolidated_call_counts():
         ))
         
         # Set up the instructor clients to have the raw clients
-        mock_instructor_openai.client = mock_raw_openai
-        mock_instructor_openai.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_wrapped_openai.client = mock_raw_openai
+        mock_wrapped_openai.chat.completions.create = AsyncMock(return_value=mock_response)
         
-        mock_instructor_anthropic.client = mock_raw_anthropic
-        mock_instructor_anthropic.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_wrapped_anthropic.client = mock_raw_anthropic
+        mock_wrapped_anthropic.chat.completions.create = AsyncMock(return_value=mock_response)
         
-        mock_instructor_gemini.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_wrapped_gemini.chat.completions.create = AsyncMock(return_value=mock_response)
         
         # Return the instructor clients from the from_* functions
-        mock_openai.return_value = mock_instructor_openai
-        mock_anthropic.return_value = mock_instructor_anthropic
-        mock_instructor_gemini.return_value = mock_instructor_gemini
+        mock_openai.return_value = mock_wrapped_openai
+        mock_anthropic.return_value = mock_wrapped_anthropic
+        mock_from_genai.return_value = mock_wrapped_gemini
         
         # Mock Supabase RPC call
         mock_sb.return_value.rpc.return_value.execute.return_value.data = []
@@ -98,13 +98,13 @@ async def test_consolidated_call_counts():
         
         # 2. LLM Analysis Calls: Should be called exactly ONCE per provider (4 in total)
         # OpenAI provider (OpenAI and DeepSeek use the same SDK factory here)
-        assert mock_openai.return_value.chat.completions.create.call_count == 2 # 1 for OpenAI, 1 for DeepSeek
+        assert mock_wrapped_openai.chat.completions.create.call_count == 2 # 1 for OpenAI, 1 for DeepSeek
         
         # Anthropic provider
-        assert mock_anthropic.return_value.chat.completions.create.call_count == 1
+        assert mock_wrapped_anthropic.chat.completions.create.call_count == 1
         
         # Gemini provider
-        assert mock_instructor_gemini.return_value.chat.completions.create.call_count == 1
+        assert mock_wrapped_gemini.chat.completions.create.call_count == 1
         
         print("\nVerification Passed: 1 embedding call and 4 analysis calls made.")
 

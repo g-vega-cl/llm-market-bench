@@ -244,7 +244,8 @@ Return the result as a structured JSON object containing a list of 'decisions' a
                     args["messages"] = messages[1:]
             elif provider == "gemini":
                 # Instructor's GenAI wrapper handles tools via response_model best.
-                pass
+                # Skip manual tool loop and proceed directly to final structured extraction.
+                break
 
             # Call the LLM (using the unwrapped client for intermediate steps if needed, 
             # but instructor's .client is the raw client)
@@ -304,9 +305,6 @@ Return the result as a structured JSON object containing a list of 'decisions' a
                                 }
                             ]
                         })
-            else:
-                # Fallback for Gemini/others if direct tool loop isn't implemented
-                break
 
         # Final structured extraction using Instructor
         logger.debug(f"Executing final extraction for {provider}/{model_name}")

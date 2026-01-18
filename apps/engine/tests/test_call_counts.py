@@ -31,15 +31,60 @@ async def test_consolidated_call_counts():
          patch("instructor.from_openai") as mock_openai, \
          patch("instructor.from_anthropic") as mock_anthropic, \
          patch("instructor.from_genai") as mock_instructor_gemini, \
-         patch("memory.store.get_supabase_client") as mock_sb:
+         patch("memory.store.get_supabase_client") as mock_sb, \
+         patch("analyze.Portfolio") as mock_portfolio_class, \
+         patch("analyze.MarketDataManager") as mock_market_data_class:
 
         # Set up Instructor mocks to return the same mock response
-        mock_openai.return_value.chat.completions.create.return_value = mock_response
-        mock_anthropic.return_value.chat.completions.create.return_value = mock_response
-        mock_instructor_gemini.return_value.chat.completions.create.return_value = mock_response
+        # The create() method needs to be an AsyncMock since it's awaited
+        from unittest.mock import AsyncMock
+        
+        # Mock the instructor-wrapped clients
+        mock_instructor_openai = MagicMock()
+        mock_instructor_anthropic = MagicMock()
+        mock_instructor_gemini = MagicMock()
+        
+        # Mock the underlying raw clients (accessed via .client in the tool loop)
+        mock_raw_openai = MagicMock()
+        mock_raw_openai.chat.completions.create = AsyncMock(return_value=MagicMock(
+            choices=[MagicMock(message=MagicMock(tool_calls=None, model_dump=lambda: {"role": "assistant", "content": "done"}))]
+        ))
+        
+        mock_raw_anthropic = MagicMock()
+        mock_raw_anthropic.messages.create = AsyncMock(return_value=MagicMock(
+            content=[MagicMock(type="text", text="done")]
+        ))
+        
+        # Set up the instructor clients to have the raw clients
+        mock_instructor_openai.client = mock_raw_openai
+        mock_instructor_openai.chat.completions.create = AsyncMock(return_value=mock_response)
+        
+        mock_instructor_anthropic.client = mock_raw_anthropic
+        mock_instructor_anthropic.chat.completions.create = AsyncMock(return_value=mock_response)
+        
+        mock_instructor_gemini.chat.completions.create = AsyncMock(return_value=mock_response)
+        
+        # Return the instructor clients from the from_* functions
+        mock_openai.return_value = mock_instructor_openai
+        mock_anthropic.return_value = mock_instructor_anthropic
+        mock_instructor_gemini.return_value = mock_instructor_gemini
         
         # Mock Supabase RPC call
         mock_sb.return_value.rpc.return_value.execute.return_value.data = []
+        
+        # Mock Portfolio and MarketDataManager
+        from unittest.mock import AsyncMock
+        mock_portfolio = MagicMock()
+        mock_portfolio.positions = {}
+        mock_portfolio.initialize = AsyncMock(return_value=None)
+        mock_portfolio.calculate_reg_t_metrics = MagicMock()
+        mock_portfolio.save_metrics = AsyncMock(return_value=None)
+        mock_portfolio.get_portfolio_summary = MagicMock(return_value="Portfolio: $10,000 cash")
+        mock_portfolio_class.return_value = mock_portfolio
+        
+        mock_market_data = MagicMock()
+        mock_market_data.get_quote = AsyncMock(return_value=None)
+        mock_market_data_class.return_value = mock_market_data
 
         # Run analysis
         await analyze_chunks(chunks)

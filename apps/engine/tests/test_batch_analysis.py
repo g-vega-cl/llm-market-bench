@@ -23,6 +23,8 @@ def mock_retrieve_context():
 async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
     """Test that analyze_chunks correctly batches decisions."""
     
+    from unittest.mock import MagicMock, patch
+    
     # Mock return value: multiple decisions from a single batch call
     mock_decisions = [
         DecisionObject(
@@ -45,8 +47,25 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
         {"source_id": "src_2", "content": "GOOGL earnings down"}
     ]
     
-    # Run analysis
-    decisions, events = await analyze_chunks(chunks)
+    # Mock Portfolio and MarketDataManager to avoid Supabase dependency
+    with patch("analyze.Portfolio") as mock_portfolio_class, \
+         patch("analyze.MarketDataManager") as mock_market_data_class:
+        
+        from unittest.mock import AsyncMock
+        mock_portfolio = MagicMock()
+        mock_portfolio.positions = {}
+        mock_portfolio.initialize = AsyncMock(return_value=None)
+        mock_portfolio.calculate_reg_t_metrics = MagicMock()
+        mock_portfolio.save_metrics = AsyncMock(return_value=None)
+        mock_portfolio.get_portfolio_summary = MagicMock(return_value="Portfolio: $10,000 cash")
+        mock_portfolio_class.return_value = mock_portfolio
+        
+        mock_market_data = MagicMock()
+        mock_market_data.get_quote = AsyncMock(return_value=None)
+        mock_market_data_class.return_value = mock_market_data
+        
+        # Run analysis
+        decisions, events = await analyze_chunks(chunks)
     
     # Verify we got all decisions
     assert len(decisions) >= 8  # 4 models * 2 decisions each = 8 total

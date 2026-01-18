@@ -10,9 +10,12 @@ import asyncio
 from analyze import analyze_chunks
 from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
+from attribution.service import save_decision
 from core.config import COMMAND_INGEST, logger
+from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, ValidationStatus
 from execution.portfolio import Portfolio
+from ingest.newsletter import ingest_newsletters
 
 
 async def run_ingest():

@@ -10,11 +10,12 @@ def test_reg_t_scenario_1_no_leverage():
     """
     Scenario 1: Basic Cash-Backed Purchase
     Cash: 10,000. Buy $9,950.24 stock.
-    Expected:
+    Expected (from docs/account-buying-power-reg-t4-calculations.md):
     - Equity: 10,000
     - Maint Margin (25%): 2,487.56
     - Excess Liquidity: 7,512.44
-    - Buying Power: 30,049.76 (~4x Excess)
+    - Available Funds: 5,024.88
+    - Buying Power: 20,099.52 (4x Available Funds)
     """
     p = Portfolio("test_agent")
     p.cash_balance = 49.76
@@ -25,20 +26,21 @@ def test_reg_t_scenario_1_no_leverage():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(10000.00, abs=0.10)
-    assert metrics.maintenance_margin == pytest.approx(2487.56, abs=0.10)
+    assert metrics.maintenance_margin_req == pytest.approx(2487.56, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(7512.44, abs=0.10)
-    assert metrics.buying_power == pytest.approx(30049.76, abs=1.0)
+    assert metrics.buying_power == pytest.approx(20099.52, abs=1.0)
 
 
 def test_reg_t_scenario_2_leveraged_profitable():
     """
     Scenario 2: Leveraged Position (Profitable)
     Cash: -2000. Stock Value: 12437.80.
-    Expected:
+    Expected (from docs/account-buying-power-reg-t4-calculations.md):
     - Equity: 10,437.80
     - Maint Margin: 3,109.45
     - Excess: 7,328.35
-    - BP: 29,313.40
+    - Available Funds: 4,218.90
+    - BP: 16,875.60 (4x Available Funds)
     """
     p = Portfolio("test_agent")
     p.cash_balance = -2000.00
@@ -49,20 +51,21 @@ def test_reg_t_scenario_2_leveraged_profitable():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(10437.80, abs=0.10)
-    assert metrics.maintenance_margin == pytest.approx(3109.45, abs=0.10)
+    assert metrics.maintenance_margin_req == pytest.approx(3109.45, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(7328.35, abs=0.10)
-    assert metrics.buying_power == pytest.approx(29313.40, abs=1.0)
+    assert metrics.buying_power == pytest.approx(16875.60, abs=1.0)
 
 
 def test_reg_t_scenario_3_leveraged_loss():
     """
     Scenario 3: Leveraged Position (Unrealized Loss)
     Cash: -3000. Stock Value: 12437.80.
-    Expected:
+    Expected (from docs/account-buying-power-reg-t4-calculations.md):
     - Equity: 9,437.80
     - Maint Margin: 3,109.45
     - Excess: 6,328.35
-    - BP: 25,313.40
+    - Available Funds: 3,218.90
+    - BP: 12,875.60 (4x Available Funds)
     """
     p = Portfolio("test_agent")
     p.cash_balance = -3000.00
@@ -73,9 +76,9 @@ def test_reg_t_scenario_3_leveraged_loss():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(9437.80, abs=0.10)
-    assert metrics.maintenance_margin == pytest.approx(3109.45, abs=0.10)
+    assert metrics.maintenance_margin_req == pytest.approx(3109.45, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(6328.35, abs=0.10)
-    assert metrics.buying_power == pytest.approx(25313.40, abs=1.0)
+    assert metrics.buying_power == pytest.approx(12875.60, abs=1.0)
 
 
 def test_reg_t_scenario_5_liquidation():
@@ -100,7 +103,7 @@ def test_reg_t_scenario_5_liquidation():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(2400.00, abs=0.10)
-    assert metrics.maintenance_margin == pytest.approx(7600.00, abs=0.10)
+    assert metrics.maintenance_margin_req == pytest.approx(7600.00, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(-5200.00, abs=0.10)
     assert metrics.buying_power == 0.00
 
@@ -193,7 +196,8 @@ async def test_initialize_new_portfolio():
         # Verify insert was called with $10k default
         mock_table.insert.assert_called_with({
             "owner_id": "new_agent",
-            "cash_balance": 10000.00
+            "cash_balance": 10000.00,
+            "sma": 10000.00
         })
         
     assert p.id == "uuid-new"

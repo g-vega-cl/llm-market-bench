@@ -69,7 +69,9 @@ class TestAnalysisOrchestration:
         """Test that analyze_chunks calls analyze_with_provider for each model and chunk."""
 
         from core.models import DecisionsResponse
-        async def mock_analyze(provider, model_name, chunks, context=None):
+        from unittest.mock import MagicMock, patch
+        
+        async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None):
             # Return a DecisionsResponse object
             decisions = [
                 DecisionObject(
@@ -86,7 +88,26 @@ class TestAnalysisOrchestration:
 
         chunks = [{"source_id": "chunk_1", "content": "Apple is doing great."}]
 
-        decisions, events = await analyze_chunks(chunks)
+        # Mock Portfolio and MarketDataManager to avoid Supabase dependency
+        with patch("analyze.Portfolio") as mock_portfolio_class, \
+             patch("analyze.MarketDataManager") as mock_market_data_class:
+            
+            # Mock portfolio instance
+            from unittest.mock import AsyncMock
+            mock_portfolio = MagicMock()
+            mock_portfolio.positions = {}
+            mock_portfolio.initialize = AsyncMock(return_value=None)
+            mock_portfolio.calculate_reg_t_metrics = MagicMock()
+            mock_portfolio.save_metrics = AsyncMock(return_value=None)
+            mock_portfolio.get_portfolio_summary = MagicMock(return_value="Portfolio: $10,000 cash")
+            mock_portfolio_class.return_value = mock_portfolio
+            
+            # Mock market data manager
+            mock_market_data = MagicMock()
+            mock_market_data.get_quote = AsyncMock(return_value=None)
+            mock_market_data_class.return_value = mock_market_data
+
+            decisions, events = await analyze_chunks(chunks)
 
         assert len(decisions) > 0
         assert isinstance(decisions[0], DecisionObject)
@@ -96,7 +117,9 @@ class TestAnalysisOrchestration:
         """Test that malformed chunks are skipped with a warning."""
 
         from core.models import DecisionsResponse
-        async def mock_analyze(provider, model_name, chunks, context=None):
+        from unittest.mock import MagicMock, patch
+        
+        async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None):
             decisions = [
                 DecisionObject(
                     signal="HOLD",
@@ -115,7 +138,24 @@ class TestAnalysisOrchestration:
             {"content": "Some text"},  # Missing source_id
         ]
 
-        decisions, events = await analyze_chunks(chunks)
+        # Mock Portfolio and MarketDataManager to avoid Supabase dependency
+        with patch("analyze.Portfolio") as mock_portfolio_class, \
+             patch("analyze.MarketDataManager") as mock_market_data_class:
+            
+            from unittest.mock import AsyncMock
+            mock_portfolio = MagicMock()
+            mock_portfolio.positions = {}
+            mock_portfolio.initialize = AsyncMock(return_value=None)
+            mock_portfolio.calculate_reg_t_metrics = MagicMock()
+            mock_portfolio.save_metrics = AsyncMock(return_value=None)
+            mock_portfolio.get_portfolio_summary = MagicMock(return_value="Portfolio: $10,000 cash")
+            mock_portfolio_class.return_value = mock_portfolio
+            
+            mock_market_data = MagicMock()
+            mock_market_data.get_quote = AsyncMock(return_value=None)
+            mock_market_data_class.return_value = mock_market_data
+
+            decisions, events = await analyze_chunks(chunks)
 
         assert len(decisions) == 0
         assert len(events) == 0

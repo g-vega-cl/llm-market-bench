@@ -13,7 +13,9 @@ from core.config import logger
 
 def save_decision(
     client: Client,
-    decision: DecisionObject
+    decision: DecisionObject,
+    status: str = "CREATED",
+    metadata: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """Save a trading decision to the database for attribution.
 
@@ -40,6 +42,8 @@ def save_decision(
         "model_provider": decision.model_provider,
         "model_name": decision.model_name,
         "price": getattr(decision, "price", None),
+        "status": status,
+        "metadata": metadata or {}
     }
 
     try:

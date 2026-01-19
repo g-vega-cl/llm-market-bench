@@ -91,6 +91,13 @@ async def run_ingest():
                         f"[{d.ticker}] REJECTED (Market Guardrails): {validation.reason} "
                         f"({d.model_provider}/{d.model_name})"
                     )
+                    # Save with REJECTED status
+                    save_decision(
+                        sb_client, 
+                        d, 
+                        status=validation.status.value,  # e.g. REJECTED_LIQUIDITY
+                        metadata={"reason": validation.reason}
+                    )
                     rejected_decisions += 1
                     continue
 
@@ -99,6 +106,8 @@ async def run_ingest():
                 # HOLD decisions just get saved as attribution
                 
                 execution_info = "Validation Passed (No Trade)"
+                status = "VALIDATED"
+                meta = {"info": execution_info}
                 
                 if d.signal.upper() in ["BUY", "SELL"]:
                     portfolio = Portfolio(owner_id=d.model_name)
@@ -128,23 +137,33 @@ async def run_ingest():
                                 f"[{d.ticker}] REJECTED (Reg T): {reg_t_check.reason} "
                                 f"({d.model_provider}/{d.model_name})"
                             )
+                            save_decision(
+                                sb_client,
+                                d,
+                                status="REJECTED_MARGIN",
+                                metadata={
+                                    "reason": reg_t_check.reason,
+                                    "max_shares": reg_t_check.max_affordable_shares
+                                }
+                            )
                             rejected_decisions += 1
                             continue
                             
                     # Execute
-                    await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal)
-                    execution_info = f"Executed {d.signal} {qty} @ ${exec_price:.2f}"
+                    trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal)
+                    
+                    if trade_id:
+                        execution_info = f"Executed {d.signal} {qty} @ ${exec_price:.2f}"
+                        status = "EXECUTED"
+                        meta = {"trade_id": str(trade_id), "info": execution_info}
+                    else:
+                        execution_info = "Execution Failed (DB Error)"
+                        status = "ERROR_EXECUTION"
+                        meta = {"info": execution_info}
 
                 # --- Save Attribution ---
-                # We save the decision regardless of whether it traded (it was a valid idea),
-                # but maybe we should flag it if it failed Reg T? 
-                # Current flow rejects loop continue on Reg T fail, so we don't save attribution for failed trades?
-                # "Decision Attribution" is "What did the AI decide?". Even if rejected, it decided it.
-                # Ideally we save it with a status 'REJECTED'. 
-                # For now, we only save successful ones as per original loop structure.
-                
-                d.execution_metadata = {"info": execution_info}
-                save_decision(sb_client, d)
+                # Now we save with the specific status derived from execution
+                save_decision(sb_client, d, status=status, metadata=meta)
                 saved_decisions += 1
                 logger.info(
                     f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "

@@ -667,6 +667,101 @@ For events that reach consensus (2+ models), we perform a final synthesis pass:
 
 ---
 
+## Phase 6: Trend & Concept Momentum Analysis
+
+### Step 6.1: Velocity Calculation
+
+**File**: `apps/engine/analysis/momentum.py`
+
+The engine tracks how fast a concept is accelerating in the global discourse.
+
+```python
+# Velocity Formula
+# Velocity = (Mentions in Last 24h) / (Avg Daily Mentions in Last 7 Days)
+```
+
+**Supabase RPC Call**: `match_memories_with_time`
+- Used twice: once for 24h window, once for 7-day window.
+
+### Step 6.2: Concept Merging & Decay
+
+**File**: `apps/engine/analysis/momentum.py`
+
+- **Merging**: New concepts are compared against existing ones in `concept_metrics`. If similarity > 0.90, they merge (increment count).
+- **Decay**: Halving the velocity of concepts not mentioned in the last 28 days (Half-Life).
+
+**Phase 6 Summary**:
+- Updates `concept_metrics` table.
+- Provides "Trending" signals for future dashboard use.
+
+---
+
+## Phase 7: Pre-Market Validation (Guardrails)
+
+### Step 7.1: The Three Guardrails
+
+**File**: `apps/engine/execution/validation.py`
+
+Before any trade is executed, it must pass a strict validation layer. This runs *after* the LLM decides but *before* money moves.
+
+| Guardrail | Check | Purpose |
+| --- | --- | --- |
+| **A: Existence** | `market_data.exists` | Prevent hallucinated tickers (e.g., "ABCD"). |
+| **B: Price Banding** | `abs(ai_price - real_price) < 15%` | Prevent price hallucinations. |
+| **C: Liquidity** | `Market Cap > $2B` | Prevent trading penny stocks. |
+
+```python
+# Validation Result
+{
+    "ticker": "TSLA",
+    "status": "PASSED",
+    "market_price": 242.10,
+    "market_cap": 755000000000
+}
+```
+
+---
+
+## Phase 8: Trade Execution (Sequential)
+
+### Step 8.1: Pre-Execution Margin Validation (Reg T)
+
+**File**: `apps/engine/execution/reg_t_validation.py`
+
+The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules.
+
+```python
+# Buying Power Check
+if trade_cost > portfolio.buying_power:
+    REJECT_TRADE("Insufficient Buying Power")
+```
+
+**Metrics Calculated**:
+- **Total Equity**: Cash + Stock Value
+- **Initial Margin**: 50% of Stock Value
+- **Maintenance Margin**: 25% of Stock Value
+- **SMA (Special Memorandum Account)**: The "Line of Credit" that ratchets up with gains but holds steady on losses.
+
+### Step 8.2: Trade Settlement
+
+**File**: `apps/engine/execution/portfolio.py`
+
+If validation passes, the trade is verified against the `portfolios` table.
+
+**Database Operations**:
+1. **Update Portfolio**: Reduce Cash (Buy) or Increase Cash (Sell).
+2. **Update Positions**: Upsert `portfolio_positions` row.
+3. **Update SMA**: Adjust based on margin requirements.
+
+```sql
+UPDATE portfolios 
+SET cash_balance = cash_balance - 24210.00, 
+    sma = sma - 12105.00 
+WHERE owner_id = 'gpt-4o';
+```
+
+---
+
 ## Complete Pipeline Summary
 
 ### API Calls Summary
@@ -689,86 +784,46 @@ LLM ANALYSIS PHASE:
 ├─ DeepSeek API Call #4: Batch analyze all 4 newsletters
 └─ Total: 4 LLM API calls (parallel execution)
 
-ATTRIBUTION PHASE:
-├─ Database Inserts #5-16: Save 10-15 decisions
-└─ Total: 10-15 DB writes
+MOMENTUM & CONSENSUS PHASE:
+├─ Gemini Embedding API: Embed new concepts for momentum tracking
+├─ Database RPCs: Historical frequency lookup
+└─ Total: Varies by number of concepts
 
-GRAND TOTAL:
+VALIDATION & EXECUTION PHASE:
+├─ Financial API (FMP/yfinance): Real-time price checks (Cached)
+├─ Supabase DB: Portfolio & Position updates
+└─ Total: 1-2 DB writes per trade
+
+GRAND TOTAL ESTIMATE:
 • Gmail: 5 API calls
-• Gemini Embeddings: 1 API call
-• Vector Database: 4 RPC calls (fast DB operations)
+• Gemini Embeddings: ~2 API calls
 • LLM Providers: 4 API calls (parallel)
-• Supabase: 19-20 total database operations
-```
-
-### Database Operations
-
-```
-newsletter_snapshots table:
-  4 inserts (one per newsletter, with source_id + chunk_hash)
-
-memories table:
-  (searched via RPC, not inserted in this phase)
-  could be updated later with new insights
-
-decisions table:
-  10-15 inserts (one per decision)
+• Supabase: ~30 total database operations
 ```
 
 ### Execution Timeline
 
 ```
-Time 0ms:     Start (09:35 ET) - Gmail fetch (ingest_newsletters)
-Time 100ms:   Receive 4 message IDs
-Time 300ms:   Complete fetching all 4 messages
-Time 350ms:   Finish processing and insert to newsletter_snapshots
-Time 360ms:   Extract queries and start Gemini embedding
-Time 500ms:   Receive embeddings
-Time 550ms:   Complete vector similarity searches
-Time 600ms:   Start 4 LLM provider calls in parallel (includes real-time tool calling)
-Time 6500ms:  All 4 LLM calls complete (longest is ~6 seconds)
-Time 6600ms:  Process results, validation, and attach metadata
-Time 6750ms:  Trade Settlement (Move to FILLED using verified price)
-Time 6800ms:  Save all 10-15 decisions with absolute attribution
-Time 6850ms:  Pipeline complete
+Time 0s:      Start (09:35 ET) - Gmail fetch
+Time 0.5s:    Ingestion & Snapshotting complete
+Time 1.0s:    Context Retrieval (Embeddings + RAG) complete
+Time 1.0s:    Start Parallel LLM Analysis
+Time 7.0s:    LLM Analysis complete (Decisions generated)
+Time 7.5s:    Event Consensus & Momentum Analysis complete
+Time 8.0s:    Pre-Market Validation (Guardrails) complete
+Time 8.2s:    Reg T Margin Check complete
+Time 8.5s:    Trade Settlement (DB Writes) complete
+Time 9.0s:    Pipeline complete
 ```
-Total Pipeline Time: ~6.8 seconds
-(Would be 12+ seconds without batch embedding optimization)
-```
-
-### Data Transformations
-
-```
-Gmail (raw emails)
-    ↓ (extract_email_body, clean_text)
-NewsletterSnapshot objects (4)
-    ↓ (insert to DB)
-newsletter_snapshots table rows (4)
-    ↓ (use full content as queries)
-Query texts (4 - full newsletter content)
-    ↓ (batch embed)
-Embeddings vectors (4 x 768-dim)
-    ↓ (vector similarity search)
-Context snippets (variable)
-    ↓ (aggregate)
-aggregated_context string
-    ↓ (combine with newsletters)
-Enriched prompt (single string with all 4 newsletters + context)
-    ↓ (send to 4 LLMs in parallel)
-DecisionObjects (10-15 across 4 models)
-    ↓ (attach model metadata)
-DecisionObjects with model_provider + model_name (10-15)
-    ↓ (insert to DB)
-decisions table rows (10-15)
-```
+Total Pipeline Time: ~9-10 seconds
 
 ### Key Optimizations
 
 1. **Batch Embedding**: 1 Gemini API call for 4 queries instead of 4 calls
-2. **Parallel LLM Analysis**: 4 LLM providers called simultaneously, not sequentially
-3. **Batch Newsletter Analysis**: Each LLM analyzes all 4 newsletters in one prompt
-4. **Vector Indexing**: HNSW index on pgvector for fast similarity search
-5. **Attribution Traceability**: source_id links decisions back to source newsletters
+2. **Parallel LLM Analysis**: 4 LLM providers called simultaneously
+3. **Cache-First Market Data**: Reduces financial API calls by >90%
+4. **Vector Indexing**: HNSW index on pgvector for millisecond retrieval
+5. **Attribution Traceability**: `source_id` links every dollar traded back to a specific sentence in a newsletter
 
 ---
 
@@ -780,8 +835,9 @@ decisions table rows (10-15)
 | `apps/engine/ingest/newsletter.py` | Gmail fetching and text processing |
 | `apps/engine/analyze.py` | RAG context retrieval + LLM orchestration |
 | `apps/engine/core/llm.py` | Multi-provider LLM clients |
-| `apps/engine/memory/embeddings.py` | Gemini batch embedding |
-| `apps/engine/memory/store.py` | Vector store retrieval logic |
+| `apps/engine/analysis/momentum.py` | Trend velocity and decay logic |
+| `apps/engine/execution/validation.py` | Existence, Pricing, and Liquidity guardrails |
+| `apps/engine/execution/portfolio.py` | Trade settlement and portfolio state |
+| `apps/engine/execution/reg_t_validation.py` | Margin account buying power math |
 | `apps/engine/attribution/service.py` | Decision persistence + attribution |
-| `supabase/migrations/20231221000000_*.sql` | Newsletter table schema |
-| `supabase/migrations/20231224000000_*.sql` | pgvector + memories table setup |
+

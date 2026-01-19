@@ -152,17 +152,18 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 * documentation: ./docs/portfolio-management-walkthrough.md
 
-**12. Trade Settlement** ✅
+**12. Trade Settlement & Ledgering** ✅
 
 * **Tech:** Python / Portfolio Class
 * **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
-* **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions` in Supabase. Moves state from "Decision" to "Realized Holdings".*
+* **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
+* **Rejection Logic:** *Decisions that fail Validation or Reg T checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_GUARDRAIL`) to preserve the full "Audit Trail" of AI intent.*
 * documentation: ./docs/trade-settlement-walkthrough.md
 
 **13. Attribution Locking**
 
 * **Tech:** Supabase Postgres
-* *Update the `decisions` table to link the now-filled `TradeID` to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Trade**.*
+* *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*
 
 **14. Ledger & Equity Curve Update**
 

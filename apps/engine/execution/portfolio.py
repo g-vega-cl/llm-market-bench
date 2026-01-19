@@ -168,14 +168,17 @@ class Portfolio:
             price=price
         )
 
-    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str):
-        """Executes the trade by updating cash and positions.
+    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str) -> Optional[UUID]:
+        """Executes the trade by updating cash, positions, and ledger.
         
         Args:
             ticker: Symbol.
             quantity: Number of shares (always positive).
             price: Execution price.
             signal: "BUY" or "SELL".
+            
+        Returns:
+            The UUID of the generated trade record, or None if failed.
         """
         if not self.id:
             logger.error("Cannot execute trade on uninitialized portfolio.")
@@ -277,7 +280,25 @@ class Portfolio:
             
             logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
             
+            # 4. Insert into Trades Ledger (Step 12 Requirement)
+            # This must stay inside the try block to ensure we only record successful DB updates
+            trade_res = supabase.table("trades").insert({
+                "portfolio_id": str(self.id),
+                "ticker": ticker,
+                "signal": signal,
+                "quantity": quantity,
+                "price": price,
+                "total_cost": total_cost,
+                "executed_at": "now()"
+            }).execute()
+            
+            trade_id = trade_res.data[0]["id"] if trade_res.data else None
+            logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
+            
+            return trade_id
+            
         except Exception as e:
             logger.error(f"DB Error executing trade for {ticker}: {e}")
             # In real system: Rollback local state
+            return None
 

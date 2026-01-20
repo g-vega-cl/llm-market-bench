@@ -160,10 +160,10 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Rejection Logic:** *Decisions that fail Validation or Reg T checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_GUARDRAIL`) to preserve the full "Audit Trail" of AI intent.*
 * documentation: ./docs/trade-settlement-walkthrough.md
 
-**13. Attribution Locking**
-
+**13. Attribution Locking** ✅
 * **Tech:** Supabase Postgres
 * *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*
+* documentation: ./docs/attribution-locking-walkthrough.md
 
 **14. Ledger & Equity Curve Update**
 

@@ -120,7 +120,9 @@ async def test_initialize_existing_portfolio():
     mock_res_portfolio = MagicMock()
     mock_res_portfolio.data = [{
         "id": "uuid-123",
-        "cash_balance": 15000.00
+        "cash_balance": 15000.00,
+        "buying_power": 45000.00,
+        "sma": 15000.00
     }]
     
     mock_res_positions = MagicMock()
@@ -143,6 +145,11 @@ async def test_initialize_existing_portfolio():
     assert p.cash_balance == 15000.00
     assert "AAPL" in p.positions
     assert p.positions["AAPL"].quantity == 10
+    
+    # Verify metrics hydration
+    assert p.metrics is not None
+    assert p.metrics.buying_power == 45000.00
+    assert p.metrics.sma == 15000.00
 
 
 @pytest.mark.asyncio

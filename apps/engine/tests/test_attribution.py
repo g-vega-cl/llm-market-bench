@@ -47,8 +47,32 @@ def test_save_decision_success(mock_supabase):
     assert payload["ticker"] == "AAPL"
     assert payload["model_provider"] == "openai"
     assert payload["source_id"] == "news_123"
+    assert "trade_id" in payload  # Check key exists
+    assert payload["trade_id"] is None
     # Check on_conflict is set for idempotency
     assert kwargs.get("on_conflict") == "source_id,ticker,signal,model_provider,model_name"
+
+
+def test_save_decision_with_trade_id(mock_supabase):
+    """Test saving decision with a linked trade ID."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=90,
+        reasoning="Momentum",
+        ticker="NVDA",
+        source_id="news_789",
+        model_provider="gemini",
+        model_name="gemini-1.5-pro"
+    )
+    
+    trade_id = "550e8400-e29b-41d4-a716-446655440000"
+    result = save_decision(mock_supabase, decision, trade_id=trade_id)
+    
+    args, kwargs = mock_supabase.table().upsert.call_args
+    payload = args[0]
+    
+    assert payload["ticker"] == "NVDA"
+    assert payload["trade_id"] == trade_id
 
 
 def test_save_decision_error(mock_supabase):

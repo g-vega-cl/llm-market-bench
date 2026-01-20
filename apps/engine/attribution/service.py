@@ -15,7 +15,8 @@ def save_decision(
     client: Client,
     decision: DecisionObject,
     status: str = "CREATED",
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None,
+    trade_id: str | None = None
 ) -> dict[str, Any]:
     """Save a trading decision to the database for attribution.
 
@@ -26,6 +27,9 @@ def save_decision(
     Args:
         client: The Supabase client instance.
         decision: The DecisionObject containing the trading signal and metadata.
+        status: The processing status of the decision.
+        metadata: Additional context or execution info.
+        trade_id: Optional ID of the executed trade (if any).
 
     Returns:
         The upserted row data as a dictionary.
@@ -43,7 +47,8 @@ def save_decision(
         "model_name": decision.model_name,
         "price": getattr(decision, "price", None),
         "status": status,
-        "metadata": metadata or {}
+        "metadata": metadata or {},
+        "trade_id": trade_id
     }
 
     try:

@@ -108,6 +108,7 @@ async def run_ingest():
                 execution_info = "Validation Passed (No Trade)"
                 status = "VALIDATED"
                 meta = {"info": execution_info}
+                trade_id = None
                 
                 if d.signal.upper() in ["BUY", "SELL"]:
                     portfolio = Portfolio(owner_id=d.model_name)
@@ -163,7 +164,14 @@ async def run_ingest():
 
                 # --- Save Attribution ---
                 # Now we save with the specific status derived from execution
-                save_decision(sb_client, d, status=status, metadata=meta)
+                # We pass trade_id explicitly to link the decision to the trade in the DB
+                save_decision(
+                    sb_client, 
+                    d, 
+                    status=status, 
+                    metadata=meta,
+                    trade_id=str(trade_id) if trade_id else None
+                )
                 saved_decisions += 1
                 logger.info(
                     f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "

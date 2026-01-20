@@ -38,6 +38,9 @@ We perform a transactional update to `supabase`:
 2.  **`portfolio_positions` table:**
     -   `UPSERT` the position row with new quantity/cost.
     -   OR `DELETE` the row if quantity is zero.
+3.  **`trades` table:**
+    -   `INSERT` immutable record of execution (Tic, Price, Qty, Side).
+    -   **Returns:** A unique `TradeID` (UUID) used in Step 13.
 
 ## 4. Example Flow
 **Scenario:** Agent buys 10 AAPL @ $150.

@@ -48,6 +48,19 @@ class Portfolio:
             self.id = data["id"]
             self.cash_balance = float(data["cash_balance"])
             self.sma = float(data.get("sma", 0.0))
+            
+            # Reconstruct metrics if available in DB
+            if data.get("buying_power") is not None:
+                self.metrics = RegTMetrics(
+                    total_equity=float(data.get("total_equity", 0.0)),
+                    initial_margin_req=0.0,  # Not stored in DB
+                    maintenance_margin_req=float(data.get("maintenance_margin", 0.0)),
+                    available_funds=0.0,     # Not stored in DB
+                    excess_liquidity=float(data.get("excess_liquidity", 0.0)),
+                    sma=self.sma,
+                    buying_power=float(data["buying_power"])
+                )
+            
             # Load positions
             self._await_load_positions(supabase)
         else:

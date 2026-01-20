@@ -762,6 +762,71 @@ WHERE owner_id = 'gpt-4o';
 
 ---
 
+## Phase 9: Attribution Locking & Long-term Memory Embedding
+
+### Step 9.1: Attribution Locking (Linking Decision to Trade)
+
+**File**: `apps/engine/main.py:169-175`, `apps/engine/attribution/service.py`
+
+After a trade is successfully executed and a `TradeID` is generated, the engine must "lock" the attribution. This is critical for the audit trail: it ensures that we can always trace an executed trade back to the specific newsletter sentence and LLM reasoning that caused it.
+
+**Process**:
+1. `portfolio.execute_trade()` returns a UUID `trade_id`.
+2. `save_decision()` is called again with the `trade_id` and status `EXECUTED`.
+3. The database performs an `UPSERT` on the decision record, populating the `trade_id` foreign key.
+
+```python
+# Link Decision -> Trade
+save_decision(
+    sb_client, 
+    d, 
+    status="EXECUTED", 
+    metadata=meta,
+    trade_id=str(trade_id)
+)
+```
+
+### Step 9.2: Long-term Memory Embedding (Reasoning)
+
+**File**: `apps/engine/main.py:177-194`, `apps/engine/memory/store.py`
+
+The system vectorizes the *reasoning* behind the trade to create "Institutional Memory." This differs from News Ingestion (which embeds raw text) because it embeds the AI's *conclusions*.
+
+**Process**:
+1. Format reasoning: `DECISION REASONING: TSLA BUY | REASONING: Strong earnings...`
+2. Call Gemini `text-embedding-004` to generate the vector.
+3. Save to `memories` table with metadata linking to the `source_id` and `trade_id`.
+
+**Why this matters**: In future runs, Step 2.3 (Context Retrieval) will pull this reasoning back as "Historical Context," helping the AI maintain a consistent world view.
+
+---
+
+## Phase 10: Performance Ledger & Equity Curve
+
+### Step 10.1: Daily Performance Snapshot
+
+**File**: `apps/engine/main.py:209-242`, `apps/engine/execution/portfolio.py`
+
+Once all trades for the day are finished, the engine calculates the daily performance metrics for every AI agent to enable the frontend "Equity Curve" visualization.
+
+**Process**:
+1. Get a list of all portfolios (OpenAI, Claude, etc.).
+2. Collect all unique tickers held across all portfolios.
+3. Fetch current market prices for all tickers (using `MarketDataManager` cache).
+4. For each portfolio, calculate:
+   - **Net Liquidation Value (NLV)**: `Cash + (Sum of Position Quantity * Market Price)`
+   - **Daily P&L**: Change in NLV vs. Previous Day.
+5. Create an immutable row in the `performance_snapshots` table for today's date and model.
+
+```python
+# Record immutable snapshot
+await portfolio.record_performance_snapshot(price_map)
+```
+
+**Result**: We now have a point-in-time record of every model's net worth, enabling historical performance charts.
+
+---
+
 ## Complete Pipeline Summary
 
 ### API Calls Summary
@@ -794,6 +859,11 @@ VALIDATION & EXECUTION PHASE:
 ├─ Supabase DB: Portfolio & Position updates
 └─ Total: 1-2 DB writes per trade
 
+SUMMARY & MEMORY PHASE:
+├─ Gemini Embedding API: Vectorize trade reasoning for Step 15
+├─ Supabase DB: Record daily performance snapshots for Step 14
+└─ Total: 1 Embedding call + 4 Snapshot writes
+
 GRAND TOTAL ESTIMATE:
 • Gmail: 5 API calls
 • Gemini Embeddings: ~2 API calls
@@ -813,9 +883,11 @@ Time 7.5s:    Event Consensus & Momentum Analysis complete
 Time 8.0s:    Pre-Market Validation (Guardrails) complete
 Time 8.2s:    Reg T Margin Check complete
 Time 8.5s:    Trade Settlement (DB Writes) complete
-Time 9.0s:    Pipeline complete
+Time 8.7s:    Attribution Locking & Memory Embedding complete
+Time 9.0s:    Daily Performance Snapshot complete
+Time 9.2s:    Pipeline complete
 ```
-Total Pipeline Time: ~9-10 seconds
+Total Pipeline Time: ~10-12 seconds
 
 ### Key Optimizations
 
@@ -835,9 +907,13 @@ Total Pipeline Time: ~9-10 seconds
 | `apps/engine/ingest/newsletter.py` | Gmail fetching and text processing |
 | `apps/engine/analyze.py` | RAG context retrieval + LLM orchestration |
 | `apps/engine/core/llm.py` | Multi-provider LLM clients |
+| `apps/engine/memory/store.py` | pgvector interaction and memory management |
+| `apps/engine/memory/embeddings.py` | Gemini batch embedding client |
+| `apps/engine/consensus.py` | Semantic grouping and event synthesis |
 | `apps/engine/analysis/momentum.py` | Trend velocity and decay logic |
+| `apps/engine/execution/market_data.py` | Cache-first financial data provider |
 | `apps/engine/execution/validation.py` | Existence, Pricing, and Liquidity guardrails |
-| `apps/engine/execution/portfolio.py` | Trade settlement and portfolio state |
+| `apps/engine/execution/portfolio.py` | Trade settlement and performance snapshots |
 | `apps/engine/execution/reg_t_validation.py` | Margin account buying power math |
 | `apps/engine/attribution/service.py` | Decision persistence + attribution |
 

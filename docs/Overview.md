@@ -170,7 +170,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Tech:** Supabase Postgres
 * *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
 * **Idempotency:** *Enforce database constraints on `(model_id, date)` to ensure performance is never double-counted.*
-* documentation: [step-14-ledger-equity-curve.md](./step-14-ledger-equity-curve.md)
+* documentation: [step-14-ledger-equity-curve.md](./docs/step-14-ledger-equity-curve.md)
 
 **15. Long-term Memory Embedding** ✅
 
@@ -274,14 +274,20 @@ graph TD
         SYN --> E{Hallucination Guardrails}
     end
 
-    subgraph "Execution & Feedback (Phase 3 & 4)"
+    subgraph "Execution & Memory (Phase 3 & 4)"
         E -->|Fail| F[Reject (Hallucination Guardrails)]
         E -->|Pass| G[Global Timeline]
         E -->|Pass| H[Execution Engine]
         
         H --> I[Supabase Ledger]
         I -->|Link TradeID| DB
-        I --> J[TanStack Start Dashboard]
+        
+        I --> LS[Performance Snapshot]
+        LS --> J[TanStack Start Dashboard]
+        
+        I --> ME[Memory Embedding]
+        ME -->|Vectorize reasoning| V
+        
         G --> J
         K[User Comments] -->|Supabase Auth| J
     end

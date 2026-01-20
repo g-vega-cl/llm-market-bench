@@ -315,3 +315,37 @@ class Portfolio:
             # In real system: Rollback local state
             return None
 
+    async def record_performance_snapshot(self, current_prices: Dict[str, float]):
+        """Records an immutable daily performance snapshot of the portfolio."""
+        if not self.id:
+            logger.error("Cannot snapshot uninitialized portfolio.")
+            return
+
+        # Ensure we have the latest metrics
+        metrics = self.calculate_reg_t_metrics(current_prices)
+        
+        supabase = get_supabase_client()
+        try:
+            # We use UPSERT with the unique constraint on (portfolio_id, date)
+            # to ensure idempotency.
+            res = supabase.table("portfolio_performance").upsert({
+                "portfolio_id": str(self.id),
+                "total_equity": metrics.total_equity,
+                "cash_balance": self.cash_balance,
+                "buying_power": metrics.buying_power,
+                "sma": metrics.sma,
+                "initial_margin_req": metrics.initial_margin_req,
+                "maintenance_margin_req": metrics.maintenance_margin_req,
+                "available_funds": metrics.available_funds,
+                "excess_liquidity": metrics.excess_liquidity,
+                "date": "now()" # Database will handle date if not provided, but we can be explicit
+            }).execute()
+            
+            if res.data:
+                logger.info(
+                    f"Performance snapshot saved for {self.owner_id}. "
+                    f"Equity: ${metrics.total_equity:,.2f}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to save performance snapshot for {self.owner_id}: {e}")
+

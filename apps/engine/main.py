@@ -184,6 +184,42 @@ async def run_ingest():
             f"Pipeline complete. Saved {saved_decisions} decisions, "
             f"Rejected {rejected_decisions} decisions."
         )
+
+        # --- Phase 4: Ledger & Equity Curve Update (Step 14) ---
+        logger.info("Starting Daily Performance Snapshot...")
+        # Get all portfolios from DB to ensure we cover everyone even if no trades today
+        # In a more robust system, this list could come from config
+        port_res = sb_client.table("portfolios").select("owner_id").execute()
+        owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
+        
+        if not owners:
+            logger.warning("No portfolios found to snapshot.")
+        else:
+            # We need current prices for all held positions across all portfolios
+            # To be efficient, we'll collect all unique tickers first
+            all_tickers = set()
+            for owner in owners:
+                p = Portfolio(owner_id=owner)
+                await p.initialize()
+                all_tickers.update(p.positions.keys())
+            
+            # Fetch current prices for all tickers
+            from execution.market_data import MarketDataManager
+            mdm = MarketDataManager()
+            price_map = {}
+            for ticker in all_tickers:
+                data = await mdm.get_ticker_data(ticker)
+                if data:
+                    price_map[ticker] = data.price
+            
+            # Record snapshots
+            for owner in owners:
+                p = Portfolio(owner_id=owner)
+                await p.initialize()
+                await p.record_performance_snapshot(price_map)
+
+        logger.info("Performance snapshots complete.")
+
     except Exception as e:
         logger.error(f"Analysis or Consensus failed: {e}")
 

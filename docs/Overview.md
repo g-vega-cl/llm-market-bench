@@ -172,10 +172,11 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Idempotency:** *Enforce database constraints on `(model_id, date)` to ensure performance is never double-counted.*
 * documentation: [step-14-ledger-equity-curve.md](./step-14-ledger-equity-curve.md)
 
-**15. Long-term Memory Embedding**
+**15. Long-term Memory Embedding** ✅
 
-* **Tech:** **Supabase pgvector (OpenAI text-embedding-3-small)**
+* **Tech:** **Supabase pgvector (Google Gemini text-embedding-004)**
 * *Embed consensus events and the attributed reasoning for future RAG retrieval.*
+* documentation: [step-15-long-term-memory-embedding.md](./step-15-long-term-memory-embedding.md)
 
 ### Phase 4: Frontend & Feedback
 

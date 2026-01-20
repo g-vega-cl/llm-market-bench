@@ -326,8 +326,10 @@ class Portfolio:
         
         supabase = get_supabase_client()
         try:
-            # We use UPSERT with the unique constraint on (portfolio_id, date)
-            # to ensure idempotency.
+            # We use an explicit date and on_conflict to ensure idempotency.
+            from datetime import date
+            today = date.today().isoformat()
+
             res = supabase.table("portfolio_performance").upsert({
                 "portfolio_id": str(self.id),
                 "total_equity": metrics.total_equity,
@@ -338,8 +340,8 @@ class Portfolio:
                 "maintenance_margin_req": metrics.maintenance_margin_req,
                 "available_funds": metrics.available_funds,
                 "excess_liquidity": metrics.excess_liquidity,
-                "date": "now()" # Database will handle date if not provided, but we can be explicit
-            }).execute()
+                "date": today
+            }, on_conflict="portfolio_id,date").execute()
             
             if res.data:
                 logger.info(

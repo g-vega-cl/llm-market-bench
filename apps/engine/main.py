@@ -16,6 +16,7 @@ from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, ValidationStatus
 from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
+from memory.store import add_memory
 
 
 async def run_ingest():
@@ -172,6 +173,26 @@ async def run_ingest():
                     metadata=meta,
                     trade_id=str(trade_id) if trade_id else None
                 )
+                
+                # --- Step 15: Long-term Memory Embedding ---
+                if d.reasoning:
+                    memory_content = (
+                        f"DECISION REASONING: {d.ticker} {d.signal} | "
+                        f"REASONING: {d.reasoning}"
+                    )
+                    add_memory(
+                        content=memory_content,
+                        metadata={
+                            "type": "decision_reasoning",
+                            "ticker": d.ticker,
+                            "signal": d.signal,
+                            "model_provider": d.model_provider,
+                            "model_name": d.model_name,
+                            "source_id": d.source_id,
+                            "trade_id": str(trade_id) if trade_id else None
+                        }
+                    )
+
                 saved_decisions += 1
                 logger.info(
                     f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "

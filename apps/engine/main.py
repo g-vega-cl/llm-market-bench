@@ -229,7 +229,7 @@ async def run_ingest():
             mdm = MarketDataManager()
             price_map = {}
             for ticker in all_tickers:
-                data = await mdm.get_ticker_data(ticker)
+                data = await mdm.get_quote(ticker)
                 if data:
                     price_map[ticker] = data.price
             

@@ -273,8 +273,7 @@ class Portfolio:
                     "portfolio_id": str(self.id),
                     "ticker": ticker,
                     "quantity": current_pos.quantity,
-                    "average_cost_basis": current_pos.average_cost_basis,
-                    "last_updated_at": "now()"
+                    "average_cost_basis": current_pos.average_cost_basis
                 }).execute()
             else:
                  # It was deleted (position closed)

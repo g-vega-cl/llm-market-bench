@@ -123,3 +123,98 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Buying Power** | $0.00 | - |
 | **SMA** | $0.00 | - |
 
+----------
+# Calculations:
+This document provides the technical formulas for an **Interactive Brokers (IBKR) Reg T Margin Account**, specifically defining the logic used in the Special Memorandum Account (SMA) and related margin metrics.
+
+---
+
+## Technical Reference: IBKR Reg T Margin Formulas
+
+### 1. Fundamental Equity Metrics
+
+* **Net Liquidation Value (NLV):** Total value of assets if liquidated at current market price.
+* *Formula:* `Cash + Stock Value + Options Value + Bond Value + Fund Value + Accrued Interest/Dividends`
+
+
+* **Equity with Loan Value (ELV):** The value of the account available to be used as collateral for a margin loan.
+* *Formula:* `Total Cash Value + Stock Value + Bond Value + Fund Value + (European/Asian Options Value)`
+* *Note:* For standard marginable US stocks, **ELV = NLV**. US stock options generally have no loan value.
+
+
+
+### 2. Margin Requirements
+
+* **Initial Margin (IM):** The equity required to open a new position (Regulation T standard).
+* *Formula:* `Market Value of Securities (MVS) × 50.0%` (for most marginable stocks)
+
+
+* **Maintenance Margin (MM):** The equity required to keep a position open.
+* *Formula:* `Market Value of Securities (MVS) × 25.0%` (Standard IBKR house requirement; may be higher for volatile stocks)
+
+
+
+### 3. Real-Time Trading Metrics
+
+* **Available Funds:** The amount available to open *new* positions.
+* *Formula:* `Equity with Loan Value (ELV) - Initial Margin (IM)`
+
+
+* **Excess Liquidity:** The "cushion" before liquidation occurs.
+* *Formula:* `Equity with Loan Value (ELV) - Maintenance Margin (MM)`
+
+
+* **Buying Power (Intraday):** The maximum dollar amount of stock you can purchase.
+* *Formula:* `Available Funds × 4` (Assumes a 25% intraday initial margin; note that this reverts to 2x at the end of the day based on Reg T 50% IM).
+
+
+
+---
+
+## 4. Special Memorandum Account (SMA)
+
+The SMA is a "line of credit" representing the excess equity in a margin account. It is a **memorandum account**, meaning it does not reflect actual cash but rather the maximum amount you could withdraw or use for further purchases.
+
+### Core SMA Calculation Rules:
+
+IBKR calculates SMA as the **Greater** of the following two values:
+
+1. **Market-Driven SMA:**
+* `Prior Day SMA +/- Change in Day's Cash +/- Today's Trades Initial Margin Requirements`
+* *Note:* Cash increases (deposits/dividends) increase SMA 1:1. Buying stock reduces SMA by the 50% IM requirement.
+
+
+2. **Equity-Driven SMA (End of Day):**
+* `Equity with Loan Value (ELV) - Reg T Margin (50% of Market Value)`
+
+
+
+### Critical SMA Constraints:
+
+* **The "No-Loss" Rule:** SMA does **not** decrease simply because the market price of your stocks goes down. It only decreases through withdrawals or new purchases.
+* **Market Gains:** If the stock price rises, the SMA increases at the end of the day if `(ELV - 50% MVS)` is greater than the current SMA.
+* **EOD Requirement:** At the close of the US trading day (15:50–17:20 ET), the SMA balance must be **≥ 0**. If it is negative, IBKR will liquidate positions to bring the account into compliance.
+
+---
+
+## Applied Formula Summary Table
+
+| Metric | Technical Formula | Purpose |
+| --- | --- | --- |
+| **Cash** | `Initial Deposit - (Shares × Purchase Price)` | Actual currency balance (Negative = Debt) |
+| **NLV** | `Cash + Market Value of Securities` | Total account liquidation value |
+| **IM** | `MVS × 0.50` | Reg T cost to open a position |
+| **MM** | `MVS × 0.25` | Min. equity to avoid liquidation |
+| **Excess Liquidity** | `NLV - MM` | Safety margin for existing positions |
+| **Available Funds** | `NLV - IM` | Capacity for new trades |
+| **Buying Power** | `Available Funds × 4` | Intraday purchase capacity |
+| **SMA** | `Max(Prior SMA + ∆Cash - IM_trades, NLV - (MVS × 0.50))` | Reg T credit line / Overnight compliance |
+
+### Example Walkthrough (Scenario 2 Logic)
+
+* **Initial SMA:** $10,000 (Initial deposit)
+* **Trade:** Buy $12,000 of stock.
+* **SMA Change:** SMA decreases by Initial Margin ($6,000). New SMA = **$4,000**.
+* **Market Rise:** Stock rises to $12,437.80.
+* **End of Day Check:** `ELV ($10,437.80) - 50% MVS ($6,218.90) = $4,218.90`.
+* **Result:** Since $4,218.90 is higher than the existing $4,000, the **SMA is updated to $4,218.90**.

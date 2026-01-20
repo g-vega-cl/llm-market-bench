@@ -52,7 +52,14 @@ def calculate_reg_t_metrics(
     stock_value = 0.0
     
     for ticker, pos in positions.items():
-        qty = pos.get("quantity", 0)
+        # Handle both dicts (from DB) and Position objects (from Portfolio class)
+        if hasattr(pos, "quantity"):
+            qty = pos.quantity
+        elif isinstance(pos, dict):
+            qty = pos.get("quantity", 0)
+        else:
+            qty = 0
+
         price = current_prices.get(ticker, 0.0)
         if price <= 0:
             logger.warning(f"Invalid price for {ticker}: {price}. Using 0 for margin calc.")

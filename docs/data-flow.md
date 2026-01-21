@@ -724,30 +724,19 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 
 ## Phase 8: Trade Execution (Sequential)
 
-### Step 8.1: Pre-Execution Margin Validation (Reg T)
+### Step 8.1: Pre-Execution Margin & Ownership Validation
+The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules and enforces **Portfolio Ownership** for SELL signals.
 
-**File**: `apps/engine/execution/reg_t_validation.py`
+1. **Ownership Check:** If `Signal == SELL`, verify ticker is in `portfolio_positions`. Reject if not found (`REJECTED_OWNERSHIP`).
+2. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
 
-The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules.
+### Step 8.2: Quantity Calculation & Settlement
+The engine converts the LLM's `allocation_percentage` into a share count:
+- **BUY:** Uses `Allocation % * Buying Power`.
+- **SELL:** Uses `Allocation % * Position Quantity`.
+- **Fallback:** Defaults to 5% allocation. If still 0 shares, defaults to 1 share.
 
-```python
-# Buying Power Check
-if trade_cost > portfolio.buying_power:
-    REJECT_TRADE("Insufficient Buying Power")
-```
-
-**Metrics Calculated**:
-- **Total Equity**: Cash + Stock Value
-- **Total Equity**: Cash + Stock Value
-- **Initial Margin**: 57% of Stock Value
-- **Maintenance Margin**: 33% of Stock Value
-- **SMA (Special Memorandum Account)**: The "Line of Credit" that ratchets up with gains but holds steady on losses.
-
-### Step 8.2: Trade Settlement
-
-**File**: `apps/engine/execution/portfolio.py`
-
-If validation passes, the trade is verified against the `portfolios` table.
+If validation passes, the trade is settled into the `portfolios` table.
 
 **Database Operations**:
 1. **Update Portfolio**: Reduce Cash (Buy) or Increase Cash (Sell).

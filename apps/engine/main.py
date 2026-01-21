@@ -113,17 +113,24 @@ async def run_ingest():
                 
                 if d.signal.upper() in ["BUY", "SELL"]:
                     portfolio = Portfolio(owner_id=d.model_name)
-                    # We need to initialize to get ID/Balance
                     await portfolio.initialize()
                     
-                    # For a SELL, we might want to check ownership, but execute_trade handles that logic (allows short).
-                    # For a BUY, we must check Reg T Buying Power.
-                    
-                    qty = getattr(d, "quantity", 0) or 10 # Default to 10 if not spec (should be spec)
-                    # If using allocation %, logic would calculate qty here. 
-                    # Assuming for now decision has explicit quantity or we default.
-                    
-                    # Use validation result price (real-time) if available, else d.price (LLM guess), else fail
+                    # --- SELL Ownership Guardrail ---
+                    if d.signal.upper() == "SELL" and d.ticker not in portfolio.positions:
+                        logger.warning(
+                            f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker. "
+                            f"({d.model_provider}/{d.model_name})"
+                        )
+                        save_decision(
+                            sb_client,
+                            d,
+                            status="REJECTED_OWNERSHIP",
+                            metadata={"reason": "Ticker not held in portfolio."}
+                        )
+                        rejected_decisions += 1
+                        continue
+
+                    # --- Quantity Calculation (Allocation % or Default) ---
                     exec_price = validation.market_price if validation.market_price else d.price
                     
                     if not exec_price or exec_price <= 0:
@@ -131,7 +138,40 @@ async def run_ingest():
                          rejected_decisions += 1
                          continue
 
-                    # Validate
+                    qty = 0
+                    alloc_pct = d.allocation_percentage if d.allocation_percentage and d.allocation_percentage > 0 else 5 # Fallback to 5%
+                    
+                    if d.signal.upper() == "BUY":
+                        # Use current buying power if metrics are available, else initialize
+                        if not portfolio.metrics:
+                            all_pos_tickers = list(portfolio.positions.keys())
+                            if d.ticker not in all_pos_tickers:
+                                all_pos_tickers.append(d.ticker)
+                            
+                            from execution.market_data import MarketDataManager
+                            mdm = MarketDataManager()
+                            p_map = {t: (await mdm.get_quote(t)).price for t in all_pos_tickers if (await mdm.get_quote(t))}
+                            portfolio.calculate_reg_t_metrics(p_map)
+                        
+                        bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                        usd_to_spend = (alloc_pct / 100.0) * bp
+                        qty = int(usd_to_spend / exec_price)
+                    elif d.signal.upper() == "SELL":
+                        pos = portfolio.positions.get(d.ticker)
+                        if pos:
+                            qty = int((alloc_pct / 100.0) * pos.quantity)
+                    
+                    # Last line of defense: if allocation (1st choice or 5% fallback) is 0, default to 1 share
+                    if qty <= 0:
+                        qty = getattr(d, "quantity", 0) or 1
+
+                    # Final check for qty still being 0 (e.g. allocation % of empty position)
+                    if qty <= 0:
+                         logger.warning(f"[{d.ticker}] Skipping {d.signal}: Calculated quantity is 0.")
+                         rejected_decisions += 1
+                         continue
+
+                    # --- Reg T Validation (BUY ONLY) ---
                     if d.signal.upper() == "BUY":
                         reg_t_check = portfolio.validate_trade(d.ticker, qty, exec_price)
                         if not reg_t_check.passed:
@@ -159,9 +199,10 @@ async def run_ingest():
                         status = "EXECUTED"
                         meta = {"trade_id": str(trade_id), "info": execution_info}
                     else:
-                        execution_info = "Execution Failed (DB Error)"
+                        execution_info = "Execution Failed (DB Error/Guardrail)"
                         status = "ERROR_EXECUTION"
                         meta = {"info": execution_info}
+
 
                 # --- Save Attribution ---
                 # Now we save with the specific status derived from execution

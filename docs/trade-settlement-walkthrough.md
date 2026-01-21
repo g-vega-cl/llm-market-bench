@@ -20,13 +20,15 @@ Implementation: `apps/engine/execution/portfolio.py` -> `execute_trade()`
 4.  **SMA Update:** `SMA = SMA - (57% * Total Cost)`. (Buying consumes margin line).
 
 ### SELL Execution
-1.  **Proceeds Calculation:** `Total Proceeds = Quantity * Execution Price`
-2.  **Cash Update:** `New Cash = Old Cash + Total Proceeds`
-3.  **Position Update:**
+1.  **Ownership Check:** Verify ticker is held in `portfolio_positions`. Reject if not owned (`REJECTED_OWNERSHIP`).
+2.  **Quantity Capping:** If requested sell quantity > owned quantity, cap the trade to the total owned amount (close position).
+3.  **Proceeds Calculation:** `Total Proceeds = Final Quantity * Execution Price`
+4.  **Cash Update:** `New Cash = Old Cash + Total Proceeds`
+5.  **Position Update:**
     -   Reduce `Quantity`.
     -   If `Quantity` becomes 0, remove position from database.
     -   *Note: Cost Basis does not change during a SELL (First-In-First-Out or Weighted Avg remains constant per share).*
-4.  **SMA Update:** `SMA = SMA + (57% * Proceeds)`. (Selling releases margin).
+6.  **SMA Update:** `SMA = SMA + (57% * Proceeds)`. (Selling releases margin).
 
 ## 3. Database Updates
 We perform a transactional update to `supabase`:
@@ -38,9 +40,11 @@ We perform a transactional update to `supabase`:
 2.  **`portfolio_positions` table:**
     -   `UPSERT` the position row with new quantity/cost.
     -   OR `DELETE` the row if quantity is zero.
-3.  **`trades` table:**
-    -   `INSERT` immutable record of execution (Tic, Price, Qty, Side).
-    -   **Returns:** A unique `TradeID` (UUID) used in Step 13.
+## 4. Quantity Calculation (Allocation %)
+Before settlement, the engine converts the LLM's `allocation_percentage` into a share count:
+- **BUY:** `Qty = (Allocation % * Buying Power) / Market Price`.
+- **SELL:** `Qty = (Allocation % * Current Quantity)`.
+- **Fallback:** If `allocation_percentage` is missing, use **5%**. If resulting `Qty` is 0, default to **1 share**.
 
 ## 4. Example Flow
 **Scenario:** Agent buys 10 AAPL @ $150.

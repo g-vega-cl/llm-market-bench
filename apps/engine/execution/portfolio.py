@@ -225,31 +225,29 @@ class Portfolio:
             self.sma -= margin_req
                 
         elif signal.upper() == "SELL":
-            self.cash_balance += total_cost
-            
             # Update Position
             if ticker in self.positions:
                 pos = self.positions[ticker]
-                if pos.quantity < quantity:
-                    logger.warning(
-                        f"Overselling {ticker}! Held: {pos.quantity}, Sell: {quantity}. "
-                        "Allowing short (negative qty) logic if intended, but alerting."
-                    )
                 
-                # Realized P/L calculation could happen here
-                # Cost basis doesn't change on sell (FIFO/Avg assumed constant per unit)
+                # Guardrail: Cannot sell more than owned
+                if quantity > pos.quantity:
+                    logger.warning(
+                        f"Attempted to sell {quantity} shares of {ticker} but only held {pos.quantity}. "
+                        "Capping sell to owned quantity."
+                    )
+                    quantity = pos.quantity
+                
+                # Recalculate total_cost based on potentially capped quantity
+                total_cost = price * quantity
+                self.cash_balance += total_cost
+
                 pos.quantity -= quantity
                 if pos.quantity == 0:
                     del self.positions[ticker]
             else:
-                logger.warning(f"Selling {ticker} but not held! Opening Short Position.")
-                # Short logic: Negative quantity?
-                # For now, let's just track negative quantity
-                self.positions[ticker] = Position(
-                    ticker=ticker,
-                    quantity=-quantity,
-                    average_cost_basis=price
-                )
+                logger.warning(f"REJECTED: Selling {ticker} but not held in portfolio.")
+                return None
+
             
             # Update SMA: Selling releases margin. SMA increases by 57% of proceeds?
             # Or rather, SMA state is recalculated?

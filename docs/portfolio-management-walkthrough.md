@@ -73,12 +73,22 @@ Current Positions:
 ```
 
 ## 5. Decision Making (Allocation %)
-LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
-- **Example:** "Buy NVDA, Allocation: 10%"
-- **Engine Logic:** Calculates `10% * Buying Power` and places an order for that dollar amount.
+LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision. 
+- **BUY Logic:** The engine calculates `Allocation % * Buying Power` to determine the total USD to spend, then calculates the share quantity based on the current market price.
+- **SELL Logic:** The engine calculates `Allocation % * Current Position Quantity`. A 100% allocation results in a full exit of the position.
+- **Dynamic Fallbacks:** 
+    - If `allocation_percentage` is missing, the system defaults to **5%**.
+    - If a 5% allocation would result in 0 shares (due to high stock price vs. portolio size), the system defaults to **1 share**.
+
+## 5a. Portfolio Ownership Guardrails (SELL)
+To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks:
+1. **Pipeline Check:** Before execution, the engine verifies the ticker is in the model's `portfolio_positions`.
+2. **Execution Check:** If a model attempts to sell more than it owns (e.g. "Sell 20 shares" while holding 10), the trade is capped at the owned quantity (10 shares), and the position is closed.
+3. **Audit Trail:** Unauthorized SELL attempts are logged in the `decisions` table with status `REJECTED_OWNERSHIP`.
 
 ## 6. Verification
-We verify this logic with 6 standard scenarios (see `account-buying-power-reg-t4-calculations.md`), ensuring the system correctly handles:
+We verify this logic with standard scenarios and dedicated guardrail tests (see `apps/engine/tests/test_sell_guardrails.py`), ensuring the system correctly handles:
 - Leverage (Borrowing)
 - Margin Calls (Liquidation scenarios)
-- Fresh Accounts ($10k Cash)
+- **SELL Ownership Enforcement** (Preventing naked shorts)
+- **Allocation-to-Quantity conversion**

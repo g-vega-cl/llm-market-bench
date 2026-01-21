@@ -146,24 +146,24 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **11. Pre-Execution Margin Validation** ✅
 
-* **Tech:** Python / Supabase / Reg T Logic
-* **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
-* **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
-* **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
-* documentation: ./docs/portfolio-management-walkthrough.md
+*   **Tech:** Python / Supabase / Reg T Logic
+*   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
+*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
+*   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
+*   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions (e.g., "Use 10% of BP for this trade") rather than just static share counts.*
+*   documentation: ./docs/portfolio-management-walkthrough.md
 
 **12. Trade Settlement & Ledgering** ✅
 
-* **Tech:** Python / Portfolio Class
-* **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
-* **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
-* **Rejection Logic:** *Decisions that fail Validation or Reg T checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_GUARDRAIL`) to preserve the full "Audit Trail" of AI intent.*
-* documentation: ./docs/trade-settlement-walkthrough.md
+*   **Tech:** Python / Portfolio Class
+*   **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
+*   **Guardrail:** *Enforces **Portfolio Ownership** for SELL signals; if an LLM tries to sell a ticker it doesn't own, the trade is rejected.*
+*   **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
+*   **Rejection Logic:** *Decisions that fail Validation, Reg T, or **Ownership** checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`) to preserve the full "Audit Trail" of AI intent.*
+*   documentation: ./docs/trade-settlement-walkthrough.md
 
 **12a. Real-time P&L Tracking (SQL View)** ✅
 
-* **Tech:** Supabase Postgres View
-* **Logic:** *Dynamically calculates unrealized P&L by comparing `average_cost_basis` in `portfolio_positions` with the latest price in `market_data_cache`. This avoids data staleness and redundancy.*
 * **Outcome:** Provides live Profit/Loss USD and % for all active positions.
 
 **13. Attribution Locking** ✅

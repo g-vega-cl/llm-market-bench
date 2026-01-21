@@ -38,6 +38,14 @@ ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
 
+# Weights for consensus protocol (higher = more influence)
+MODEL_WEIGHTS = {
+    OPENAI_MODEL: 1.0,
+    ANTHROPIC_MODEL: 1.0,
+    GEMINI_MODEL: 1.0,
+    DEEPSEEK_MODEL: 1.0,
+}
+
 # --- Gmail Configuration ---
 GMAIL_CREDENTIALS_JSON = os.getenv("GMAIL_CREDENTIALS_JSON")
 GMAIL_TOKEN_JSON = os.getenv("GMAIL_TOKEN_JSON")

@@ -12,11 +12,13 @@ from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from attribution.service import save_decision
 from core.config import COMMAND_INGEST, logger
+COMMAND_POST_MORTEM = "post-mortem"
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, ValidationStatus
 from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
 from memory.store import add_memory
+from analysis.post_mortem import perform_post_mortems
 
 
 async def run_ingest():
@@ -288,12 +290,17 @@ async def run_ingest():
         logger.error(f"Analysis or Consensus failed: {e}")
 
 
+async def run_post_mortem():
+    """Runs the post-mortem analysis for historical trades."""
+    await perform_post_mortems(days_back=5)
+
+
 def main():
     """Main entry point for the AI Wall Street Engine CLI."""
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST],
+        choices=[COMMAND_INGEST, COMMAND_POST_MORTEM],
         help="Action to perform"
     )
 
@@ -301,6 +308,8 @@ def main():
 
     if args.command == COMMAND_INGEST:
         asyncio.run(run_ingest())
+    elif args.command == COMMAND_POST_MORTEM:
+        asyncio.run(run_post_mortem())
 
 
 if __name__ == "__main__":

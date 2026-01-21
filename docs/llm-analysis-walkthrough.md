@@ -41,6 +41,8 @@ class DecisionObject(BaseModel):
     confidence: int  # Range: 0-100
     reasoning: str   # Qualitative explanation
     ticker: str      # Stock Symbol
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"]
+    catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "LONG_TERM"]
     source_id: str   # Link to the raw news chunk
 ```
 

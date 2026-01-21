@@ -313,8 +313,22 @@ def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
                 snapshots.append(asdict(snapshot))
 
         # Summarize results by sender
+        sender_counts = Counter(s["sender"] for s in snapshots)
+        
+        # --- Semantic Fragility Monitoring ---
+        # Detect if any configured senders produced ZERO snapshots
+        # This could indicate a major template change that BROKE our parser
+        for sender in NEWSLETTER_SENDERS:
+            # Simple check: does any snapshot's sender string contain our configured sender substring?
+            found = any(sender.lower() in s["sender"].lower() for s in snapshots)
+            if not found:
+                logger.warning(
+                    f"SEMANTIC FRAGILITY ALERT: Configured sender '{sender}' yielded 0 valid snapshots "
+                    f"despite {len(messages)} total messages being found in this window. "
+                    f"Check if the newsletter template has changed!"
+                )
+
         if snapshots:
-            sender_counts = Counter(s["sender"] for s in snapshots)
             stats = ", ".join(
                 [f"{count} from {sender}" for sender, count in sender_counts.items()]
             )

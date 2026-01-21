@@ -13,14 +13,16 @@ class DecisionObject(BaseModel):
     """Represents a trading decision from LLM analysis.
 
     This model captures the structured output from an LLM analyzing
-    financial news, including the trading signal, confidence level,
-    reasoning, and source attribution.
+    financial news, including the trading signal, catalyst type,
+    expected duration, and source attribution.
 
     Attributes:
         signal: The trading action (BUY, SELL, or HOLD).
         confidence: Confidence score between 0 and 100.
         reasoning: Explanation of the decision based on the analyzed text.
         ticker: Stock ticker symbol (automatically uppercased).
+        catalyst_type: The primary driver of the trade (MACRO, EARNINGS, etc.).
+        catalyst_duration: Expected timeframe for the catalyst (INTRADAY, etc.).
         source_id: ID of the source newsletter chunk for attribution.
     """
 
@@ -36,6 +38,14 @@ class DecisionObject(BaseModel):
         description="Explanation of the decision based on the text"
     )
     ticker: str = Field(..., description="Stock ticker symbol")
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"] = Field(
+        "OTHER",
+        description="The primary driver for this decision"
+    )
+    catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "LONG_TERM"] = Field(
+        "SHORT_TERM",
+        description="The expected market impact timeframe"
+    )
     source_id: str = Field(
         ...,
         description="ID of the source newsletter chunk"
@@ -72,6 +82,7 @@ class MacroEvent(BaseModel):
     Attributes:
         event_name: Short name for the event (e.g., "Fed Rate Hike").
         impact: Expected market impact (BULLISH, BEARISH, or NEUTRAL).
+        catalyst_type: The category of market event.
         confidence: Confidence score between 0 and 100.
         reasoning: Explanation for why this is a significant event.
         source_id: ID of the source newsletter chunk for attribution.
@@ -79,6 +90,10 @@ class MacroEvent(BaseModel):
 
     event_name: str = Field(..., description="Short name for the event")
     impact: Literal["BULLISH", "BEARISH", "NEUTRAL"]
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"] = Field(
+        "MACRO",
+        description="The category of market event"
+    )
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")
     source_id: str = Field(..., description="ID of the source newsletter chunk")

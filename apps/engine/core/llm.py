@@ -195,12 +195,15 @@ Content: {chunk['content']}
            * SELL: Only sell if we have the stock in our portfolio.
            * HOLD: Do not buy or sell the stock.
            * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
+           * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, OTHER).
+           * DURATION: Estimate 'catalyst_duration' (INTRADAY, SHORT_TERM, LONG_TERM).
            
            Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
            Use the price returned by the tool for the 'price' field.
 
         2. Macro Events: Identify major global themes, macro-economic shifts, or significant events mentioned in the news (e.g., "Fed Rate Hike", "AI Demand Surge", "Geopolitical Tension").
            For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.
+           Also categorize the 'catalyst_type' for the event.
            Each macro event MUST include the exact 'Source ID' of the snippet that triggered it.
 
         You must provide a confidence score (0-100) and your reasoning for each trading signal and macro event.

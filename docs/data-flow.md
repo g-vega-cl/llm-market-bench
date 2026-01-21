@@ -9,7 +9,9 @@ The pipeline has four main phases:
 1. **Ingestion**: Fetch newsletters from Gmail, clean them, generate unique identifiers
 2. **Context Retrieval**: Embed queries and retrieve historical context from vector store
 3. **LLM Analysis**: Send enriched prompts to 4 LLM providers in parallel
-4. **Attribution**: Save decisions with complete traceability back to source
+4. **Attribution & Consensus**: Save decisions with traceability and determine global market events
+5. **Validation & Execution**: Enforce guardrails and reconcile trades in the ledger
+6. **Reinforcement**: Perform post-mortem analysis on past trades to improve future reasoning
 
 ---
 
@@ -86,10 +88,10 @@ Processing Steps:
 **API Usage**: 4 Gmail API calls (one per message)
 
 **Code Flow**:
-- `ingest_newsletters()` calls `_process_message()` for each message ID
 - `_process_message()` extracts headers, parses email body
 - `extract_email_body()` handles base64 decoding and HTML parsing
 - `clean_text()` normalizes the output
+- **Semantic Monitoring**: `ingest_newsletters()` tracks the yield per configured sender. If a sender produces 0 vignettes while others succeed, a `SEMANTIC FRAGILITY ALERT` is logged.
 
 ---
 
@@ -475,6 +477,8 @@ valid_decisions = [
         confidence=85,
         reasoning="Verified price is reasonable ($240.50).",
         ticker="TSLA",
+        catalyst_type="EARNINGS",
+        catalyst_duration="SHORT_TERM",
         source_id="news_newsletter1_a7f92c4e",
         price=240.50, # Automatically filled from Tool Result
         model_provider="openai",
@@ -661,9 +665,10 @@ For events that reach consensus (2+ models), we perform a final synthesis pass:
 
 **Phase 5 Summary**:
 - **Semantic Grouping**: Via Gemini Embeddings (`text-embedding-004`)
+- **Weighted Voting**: Each model's "vote" (BULLISH/BEARISH) is multiplied by its `MODEL_WEIGHTS` (defined in `config.py`) to determine the group's consensus impact.
 - **Deduplication**: Against Supabase `memories` table
 - **Synthesis**: Final professional naming via OpenAI
-- **Promotion**: Saved as an immutable market event for future RAG retrieval
+- **Promotion**: Saved as an immutable market event for future RAG retrieval (requires cumulative weight $\ge 2.0$)
 
 ---
 
@@ -826,6 +831,27 @@ await portfolio.record_performance_snapshot(price_map)
 
 ---
 
+## Phase 11: Regret-Driven Reinforcement (Post-Mortem)
+
+### Step 11.1: Historical Performance Audit
+
+**File**: `apps/engine/analysis/post_mortem.py`, `apps/engine/main.py:run_post_mortem`
+
+To enable self-correction, the engine periodically audits its own performance. This closes the loop between "Theory" and "Profit".
+
+**Process**:
+1. **Query History**: Fetch all trades executed exactly 5 days ago.
+2. **Fetch Returns**: Get the current market price (from cache) for each trade's ticker.
+3. **Analyze Outcome**: Compare the entry price and reasoning to the actual 5-day price action.
+4. **LLM Reflection**: Call the OpenAI post-mortem model with:
+   - "You bought X because of [Reasoning]. Current price is [Y]. Was this correct?"
+5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-mortem).
+6. **RAG Feed**: This lesson is embedded into the `memories` table (pgvector) with `type: "post_mortem"`.
+
+**Result**: Future LLM decisions on the same ticker/sector will retrieve this lesson as RAG context, preventing the "same mistake twice."
+
+---
+
 ## Complete Pipeline Summary
 
 ### API Calls Summary
@@ -863,11 +889,16 @@ SUMMARY & MEMORY PHASE:
 ├─ Supabase DB: Record daily performance snapshots for Step 14
 └─ Total: 1 Embedding call + 4 Snapshot writes
 
+REINFORCEMENT PHASE (Weekly/Post-Run):
+├─ Gemini Embedding API: Vectorize post-mortem lessons
+├─ Supabase DB: Retrieve 5-day old trades
+└─ Total: 1 Embedding call + N Reflection calls
+
 GRAND TOTAL ESTIMATE:
 • Gmail: 5 API calls
-• Gemini Embeddings: ~2 API calls
-• LLM Providers: 4 API calls (parallel)
-• Supabase: ~30 total database operations
+• Gemini Embeddings: ~3 API calls
+• LLM Providers: 4-8 API calls (parallel)
+• Supabase: ~40 total database operations
 ```
 
 ### Execution Timeline
@@ -884,7 +915,8 @@ Time 8.2s:    Reg T Margin Check complete
 Time 8.5s:    Trade Settlement (DB Writes) complete
 Time 8.7s:    Attribution Locking & Memory Embedding complete
 Time 9.0s:    Daily Performance Snapshot & Portfolio Refresh complete
-Time 9.2s:    Pipeline complete
+Time 10.0s:   Post-Mortem Reinforcement complete (if triggered)
+Time 10.2s:   Pipeline complete
 ```
 Total Pipeline Time: ~10-12 seconds
 
@@ -915,4 +947,5 @@ Total Pipeline Time: ~10-12 seconds
 | `apps/engine/execution/portfolio.py` | Trade settlement and performance snapshots |
 | `apps/engine/execution/reg_t_validation.py` | Margin account buying power math |
 | `apps/engine/attribution/service.py` | Decision persistence + attribution |
+| `apps/engine/analysis/post_mortem.py` | Regret-driven reinforcement logic |
 

@@ -16,6 +16,10 @@ The Newsletter Ingestion component is responsible for retrieving unread financia
 *   **Attribution Groundwork**:
     *   **`SourceID`**: A unique identifier for each newsletter (e.g., `news_sender_hash`).
     *   **`ChunkHash`**: A SHA-256 fingerprint of the content for auditability.
+*   **Semantic Fragility Monitoring**: 
+    *   Tracks the successful yield per configured sender.
+    *   Logs a high-priority `WARNING` if a previously active sender yields 0 valid content chunks while others succeed.
+    *   Detects if a newsletter's structure has changed enough to break the extraction parser.
 
 ---
 

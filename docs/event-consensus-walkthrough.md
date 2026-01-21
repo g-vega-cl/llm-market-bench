@@ -9,8 +9,12 @@ The protocol runs in four distinct stages after the parallel LLM analysis is com
 ### 1. Semantic Grouping
 Because different LLMs use different terminology (e.g., "Fed Hike" vs. "Interest Rate Increase"), the engine uses **Gemini Embeddings (`text-embedding-004`)** and **Cosine Similarity** (threshold > 0.85) to cluster events that signify the same real-world catalyst.
 
-### 2. Consensus Determination
-An event group only reaches "Consensus" if it is identified by at least **2 out of 4** distinct LLM models. This filters out hallucinations or niche observations from individual models.
+### 2. Weighted Consensus Determination
+An event group reaches "Consensus" based on the **Cumulative Model Weight** of the models that identified it. 
+
+- **Weighting**: Each model (OpenAI, Claude, etc.) has a configured weight in `config.py` (Default: 1.0).
+- **Threshold**: The cumulative weight must be $\ge 2.0$ for the event to be promoted.
+- **Tie-Breaking**: When models disagree on the **Impact** (BULLISH vs. BEARISH), the system calculates a weighted majority rather than a simple vote count. This ensures more sophisticated models have a proportional influence on the final synthesized signal.
 
 ### 3. Temporal Deduplication
 To prevent "RAG noise" and redundant signals, the engine queries the `memories` table to check if a semantically similar event was already promoted in the last **48 hours**. If a match is found, the new event is discarded.

@@ -67,7 +67,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Tech:** Python / Gmail API
 * *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
 * File: apps/engine/ingest/newsletter.py
-* documentation: ./docs/newsletter-ingestion-walkthrough
+* **Semantic Monitoring:** *Structured logging alerts (Semantic Fragility Alert) if a previously active sender yields 0 valid content chunks, detecting parsing template changes.*
+* documentation: ./docs/newsletter-ingestion-walkthrough.md
 
 **3. Corporate Action Check** - PENDING - ⏳
 
@@ -89,6 +90,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Validation:** **Python Pydantic + Instructor**
 *   **Active Tool Calling:** LLMs utilize the `get_stock_quote` tool *during* analysis to verify ticker existence, real-time pricing, and liquidity before making a recommendation.
 *   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make "Allocation %" decisions rather than just static share counts.*
+*   **Catalyst Scoring:** *LLMs categorize trades into types (**MACRO, EARNINGS, M&A, PRODUCT, REGULATORY**) and estimate target **Duration** (INTRADAY, SHORT_TERM, LONG_TERM) for enhanced strategy filtering.*
 *   **Efficiency:** **Batch Processing** (Each LLM is called in a tool-calling loop with all daily news chunks to minimize latency and costs).
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
@@ -114,8 +116,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Semantic Grouping:** Uses **Vector Embeddings** and **Cosine Similarity** to group events with different names but similar meanings (e.g., "Fed Hike" vs "Interest Rate Hike").
 *   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
-*   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if 2+ models identify it.
-*   **Impact Tie-Breaker:** When models are split between BULLISH and BEARISH, the system defaults to NEUTRAL to avoid non-deterministic behavior.
+*   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0). 
+*   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.
 *   documentation: ./docs/event-consensus-walkthrough.md
 
 **9. Trend & Concept Momentum Analysis** ✅
@@ -208,6 +210,13 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 * **Tech:** PostHog
 * *Track which AI's reasoning page is most read.*
+
+**20. Regret-Driven Reinforcement (Post-Mortem)** ✅
+
+* **Tech:** Python / OpenAI / pgvector
+* **Logic:** *Exactly 5 days after a trade, the engine performs a "Post-Mortem." It compares the AI's reasoning to the actual 5-day price performance.*
+* **Outcome:** *Generates "Lessons Learned" and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or strategic errors in future RAG retrievals.*
+* File: `apps/engine/analysis/post_mortem.py`
 
 ---
 

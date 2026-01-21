@@ -761,6 +761,14 @@ SET cash_balance = cash_balance - 24210.00,
 WHERE owner_id = 'gpt-4o';
 ```
 
+### Step 8.3: Real-time P&L Tracking (Dynamic View)
+
+The system does not store P&L as a static column to avoid staleness. Instead, a SQL View calculates it on-the-fly.
+
+**SQL View**: `position_pnl`
+- **Calculation**: `(market_data_cache.price - portfolio_positions.average_cost_basis) * quantity`
+- **Accessibility**: Available to the frontend and analysis engine for real-time performance tracking.
+
 ---
 
 ## Phase 9: Attribution Locking & Long-term Memory Embedding

@@ -49,6 +49,12 @@ Tracks exact holdings.
 - `quantity`: Number of shares.
 - `average_cost_basis`: Weighted average price paid.
 
+### `position_pnl` View (Real-time P&L)
+A dynamic SQL view that calculates Profit/Loss without data duplication.
+- `unrealized_pnl_usd`: Current dollar profit or loss.
+- `unrealized_pnl_pct`: Percentage return based on cost basis.
+- `current_price`: Latest price from the `market_data_cache`.
+
 ## 4. LLM Prompt Injection
 Before the LLM analyzes news, we insert a snapshot of its financial health.
 

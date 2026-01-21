@@ -160,6 +160,12 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Rejection Logic:** *Decisions that fail Validation or Reg T checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_GUARDRAIL`) to preserve the full "Audit Trail" of AI intent.*
 * documentation: ./docs/trade-settlement-walkthrough.md
 
+**12a. Real-time P&L Tracking (SQL View)** ✅
+
+* **Tech:** Supabase Postgres View
+* **Logic:** *Dynamically calculates unrealized P&L by comparing `average_cost_basis` in `portfolio_positions` with the latest price in `market_data_cache`. This avoids data staleness and redundancy.*
+* **Outcome:** Provides live Profit/Loss USD and % for all active positions.
+
 **13. Attribution Locking** ✅
 * **Tech:** Supabase Postgres
 * *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*

@@ -6,48 +6,48 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 
 * **Net Liquidation Value (NLV):** `Cash + Market Value of Securities`
 * **Equity with Loan Value (ELV):** Same as NLV for marginable stocks.
-* **Initial Margin (IM):** `MVS × 50%` (Reg T standard for new positions).
-* **Maintenance Margin (MM):** `MVS × 25%` (Standard IBKR requirement).
+* **Initial Margin (IM):** `MVS × 57%` (Reg T standard for new positions).
+* **Maintenance Margin (MM):** `MVS × 33%` (Standard IBKR requirement).
 * **Excess Liquidity:** `NLV - Maintenance Margin`
 * **Available Funds:** `NLV - Initial Margin`
 * **Buying Power (Intraday):** `Available Funds × 4`
-* **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - IM)`.
+* **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - (MVS × 0.57))`.
 
 ---
 
 ## Scenario 1: Near-Full Cash Allocation (No Leverage)
 
-*The account uses almost all available cash to buy QQQ. No debt is incurred.*
+*Buying $9,950.24 of QQQ with $10,000 cash.*
 
 | Metric | Value | Calculation |
 | --- | --- | --- |
 | **Cash** | $49.76 | $10,000 - $9,950.24 |
 | **Market Value (MVS)** | $9,950.24 | 16 shares × $621.89 |
 | **Equity (NLV)** | **$10,000.00** | $49.76 + $9,950.24 |
-| **Initial Margin (IM)** | $4,975.12 | $9,950.24 × 50% |
-| **Maint. Margin (MM)** | $2,487.56 | $9,950.24 × 25% |
-| **Excess Liquidity** | $7,512.44 | $10,000 - $2,487.56 |
-| **Available Funds** | $5,024.88 | $10,000 - $4,975.12 |
-| **Buying Power** | $20,099.52 | $5,024.88 × 4 |
-| **SMA** | $5,024.88 | $10,000 - $4,975.12 |
+| **Initial Margin (IM)** | $5,671.64 | $9,950.24 × 57% |
+| **Maint. Margin (MM)** | $3,283.58 | $9,950.24 × 33% |
+| **Excess Liquidity** | $6,716.42 | $10,000 - $3,283.58 |
+| **Available Funds** | $4,328.36 | $10,000 - $5,671.64 |
+| **Buying Power** | $17,313.44 | $4,328.36 × 4 |
+| **SMA** | $4,328.36 | $10,000 - $5,671.64 |
 
 ---
 
-## Scenario 2: Profitable Leveraged Position
+## Scenario 2: Leveraged Position (3.8x Leverage)
 
-*The account spent $12,000 (borrowing $2,000). The stock price rose from $600 to $621.89.*
+*Buying $38,000 worth of stock with $10,000 cash.*
 
 | Metric | Value | Calculation |
 | --- | --- | --- |
-| **Cash** | -$2,000.00 | $10,000 - (20 × $600) |
-| **Market Value (MVS)** | $12,437.80 | 20 shares × $621.89 |
-| **Equity (NLV)** | **$10,437.80** | -$2,000 + $12,437.80 |
-| **Initial Margin (IM)** | $6,218.90 | $12,437.80 × 50% |
-| **Maint. Margin (MM)** | $3,109.45 | $12,437.80 × 25% |
-| **Excess Liquidity** | $7,328.35 | $10,437.80 - $3,109.45 |
-| **Available Funds** | $4,218.90 | $10,437.80 - $6,218.90 |
-| **Buying Power** | $16,875.60 | $4,218.90 × 4 |
-| **SMA** | $4,437.80 | Higher of (Prior SMA or $10,437.8 - $6,000) |
+| **Cash** | -$28,000.00 | $10,000 - $38,000 |
+| **Market Value (MVS)** | $38,000.00 | — |
+| **Equity (NLV)** | **$10,000.00** | -$28,000 + $38,000 |
+| **Initial Margin (IM)** | $21,660.00 | $38,000 × 57% |
+| **Maint. Margin (MM)** | $12,540.00 | $38,000 × 33% |
+| **Excess Liquidity** | -$2,540.00 | **IMMEDIATE LIQUIDATION** |
+| **Available Funds** | -$11,660.00 | $10,000 - $21,660 |
+| **Buying Power** | $0.00 | Cannot open new positions |
+| **SMA** | -$11,660.00 | Reg T violation |
 
 ---
 
@@ -60,12 +60,12 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | -$3,000.00 | $10,000 - (20 × $650) |
 | **Market Value (MVS)** | $12,437.80 | 20 shares × $621.89 |
 | **Equity (NLV)** | **$9,437.80** | -$3,000 + $12,437.80 |
-| **Initial Margin (IM)** | $6,218.90 | $12,437.80 × 50% |
-| **Maint. Margin (MM)** | $3,109.45 | $12,437.80 × 25% |
-| **Excess Liquidity** | $6,328.35 | $9,437.80 - $3,109.45 |
-| **Available Funds** | $3,218.90 | $9,437.80 - $6,218.90 |
-| **Buying Power** | $12,875.60 | $3,218.90 × 4 |
-| **SMA** | $3,500.00 | SMA doesn't drop with market loss unless IM increases |
+| **Initial Margin (IM)** | $7,089.55 | $12,437.80 × 57% |
+| **Maint. Margin (MM)** | $4,104.47 | $12,437.80 × 33% |
+| **Excess Liquidity** | $5,333.33 | $9,437.80 - $4,104.47 |
+| **Available Funds** | $2,348.25 | $9,437.80 - $7,089.55 |
+| **Buying Power** | $9,393.00 | $2,348.25 × 4 |
+| **SMA** | $2,348.25 | SMA doesn't drop with market loss unless IM increases |
 
 ---
 
@@ -80,12 +80,12 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **MVS (PLTR)** | $3,421.80 | 20 × $171.09 |
 | **Total MVS** | $5,287.47 | $1,865.67 + $3,421.80 |
 | **Equity (NLV)** | **$9,887.47** | $4,600 + $5,287.47 |
-| **Initial Margin (IM)** | $2,643.74 | $5,287.47 × 50% |
-| **Maint. Margin (MM)** | $1,321.87 | $5,287.47 × 25% |
-| **Excess Liquidity** | $8,565.60 | $9,887.47 - $1,321.87 |
-| **Available Funds** | $7,243.73 | $9,887.47 - $2,643.74 |
-| **Buying Power** | $28,974.92 | $7,243.73 × 4 |
-| **SMA** | $7,243.73 | Cash balance + Market cushion |
+| **Initial Margin (IM)** | $3,013.86 | $5,287.47 × 57% |
+| **Maint. Margin (MM)** | $1,744.86 | $5,287.47 × 33% |
+| **Excess Liquidity** | $8,142.61 | $9,887.47 - $1,744.86 |
+| **Available Funds** | $6,873.61 | $9,887.47 - $3,013.86 |
+| **Buying Power** | $27,494.44 | $6,873.61 × 4 |
+| **SMA** | $6,873.61 | Cash balance + Market cushion |
 
 ---
 
@@ -96,14 +96,14 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | Metric | Value | Calculation |
 | --- | --- | --- |
 | **Cash** | -$28,000.00 | $10,000 - $38,000 |
-| **Market Value (MVS)** | $38,000.00 | - |
+| **Market Value (MVS)** | $38,000.00 | — |
 | **Equity (NLV)** | **$10,000.00** | -$28,000 + $38,000 |
-| **Initial Margin (IM)** | $19,000.00 | $38,000 × 50% |
-| **Maint. Margin (MM)** | $9,500.00 | $38,000 × 25% |
-| **Excess Liquidity** | $500.00 | $10,000 - $9,500 |
-| **Available Funds** | -$9,000.00 | $10,000 - $19,000 (Cannot open new trades) |
+| **Initial Margin (IM)** | $21,660.00 | $38,000 × 57% |
+| **Maint. Margin (MM)** | $12,540.00 | $38,000 × 33% |
+| **Excess Liquidity** | -$2,540.00 | $10,000 - $12,540 (Reg T violation) |
+| **Available Funds** | -$11,660.00 | $10,000 - $21,660 (Cannot open new trades) |
 | **Buying Power** | $0.00 | Negative Available Funds = $0 BP |
-| **SMA** | $0.00 | Reg T violation if held overnight |
+| **SMA** | -$11,660.00 | Immediate liquidation required |
 
 ---
 
@@ -116,12 +116,27 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | -$28,000.00 | Unchanged |
 | **Market Value (MVS)** | $36,100.00 | $38,000 × 0.95 |
 | **Equity (NLV)** | **$8,100.00** | -$28,000 + $36,100 |
-| **Initial Margin (IM)** | $18,050.00 | $36,100 × 50% |
-| **Maint. Margin (MM)** | $9,025.00 | $36,100 × 25% |
-| **Excess Liquidity** | **-$925.00** | **CRITICAL: Liquidation likely** |
-| **Available Funds** | -$9,950.00 | - |
-| **Buying Power** | $0.00 | - |
-| **SMA** | $0.00 | - |
+| **Initial Margin (IM)** | $20,577.00 | $36,100 × 57% |
+| **Maint. Margin (MM)** | $11,913.00 | $36,100 × 33% |
+| **Excess Liquidity** | **-$3,813.00** | **CRITICAL: Liquidation required** |
+| **Available Funds** | -$12,477.00 | — |
+| **Buying Power** | $0.00 | — |
+| **SMA** | -$12,477.00 | — |
+
+
+## Scenario 7: Portfolio Snapshot
+
+*Based on equity of $194,700 and specific holdings.*
+
+| Metric | Calculation | Value |
+| --- | --- | --- |
+| **Net Market Value** | All long/short positions | $245,651.99 |
+| **Gross Exposure** | Total gross value of positions | $316,179.99 |
+| **Cash Balance** | $194,700 - $245,651.99 | -$50,951.99 |
+| **Maintenance Margin** | $316,179.99 × 0.33 | $104,339.40 |
+| **Excess Liquidity** | $194,700 - $104,339.40 | $90,360.60 |
+| **SMA** | $194,700 - ($316,179.99 × 0.57) | $14,477.41 |
+| **Buying Power** | $14,477.41 × 4 | $57,909.64 |
 
 ----------
 # Calculations:
@@ -146,11 +161,11 @@ This document provides the technical formulas for an **Interactive Brokers (IBKR
 ### 2. Margin Requirements
 
 * **Initial Margin (IM):** The equity required to open a new position (Regulation T standard).
-* *Formula:* `Market Value of Securities (MVS) × 50.0%` (for most marginable stocks)
+* *Formula:* `Market Value of Securities (MVS) × 57.0%` (for most marginable stocks)
 
 
 * **Maintenance Margin (MM):** The equity required to keep a position open.
-* *Formula:* `Market Value of Securities (MVS) × 25.0%` (Standard IBKR house requirement; may be higher for volatile stocks)
+* *Formula:* `Market Value of Securities (MVS) × 33.0%` (Standard IBKR house requirement; may be higher for volatile stocks)
 
 
 
@@ -185,14 +200,14 @@ IBKR calculates SMA as the **Greater** of the following two values:
 
 
 2. **Equity-Driven SMA (End of Day):**
-* `Equity with Loan Value (ELV) - Reg T Margin (50% of Market Value)`
+* `Equity with Loan Value (ELV) - Reg T Margin (57% of Market Value)`
 
 
 
 ### Critical SMA Constraints:
 
 * **The "No-Loss" Rule:** SMA does **not** decrease simply because the market price of your stocks goes down. It only decreases through withdrawals or new purchases.
-* **Market Gains:** If the stock price rises, the SMA increases at the end of the day if `(ELV - 50% MVS)` is greater than the current SMA.
+* **Market Gains:** If the stock price rises, the SMA increases at the end of the day if `(ELV - 57% MVS)` is greater than the current SMA.
 * **EOD Requirement:** At the close of the US trading day (15:50–17:20 ET), the SMA balance must be **≥ 0**. If it is negative, IBKR will liquidate positions to bring the account into compliance.
 
 ---
@@ -203,18 +218,20 @@ IBKR calculates SMA as the **Greater** of the following two values:
 | --- | --- | --- |
 | **Cash** | `Initial Deposit - (Shares × Purchase Price)` | Actual currency balance (Negative = Debt) |
 | **NLV** | `Cash + Market Value of Securities` | Total account liquidation value |
-| **IM** | `MVS × 0.50` | Reg T cost to open a position |
-| **MM** | `MVS × 0.25` | Min. equity to avoid liquidation |
+| **IM** | `MVS × 0.57` | Reg T cost to open a position |
+| **MM** | `MVS × 0.33` | Min. equity to avoid liquidation |
 | **Excess Liquidity** | `NLV - MM` | Safety margin for existing positions |
 | **Available Funds** | `NLV - IM` | Capacity for new trades |
 | **Buying Power** | `Available Funds × 4` | Intraday purchase capacity |
-| **SMA** | `Max(Prior SMA + ∆Cash - IM_trades, NLV - (MVS × 0.50))` | Reg T credit line / Overnight compliance |
+| **SMA** | `Max(Prior SMA + ∆Cash - IM_trades, NLV - (MVS × 0.57))` | Reg T credit line / Overnight compliance |
 
-### Example Walkthrough (Scenario 2 Logic)
+### Example Walkthrough (Scenario 3 Logic)
 
 * **Initial SMA:** $10,000 (Initial deposit)
 * **Trade:** Buy $12,000 of stock.
-* **SMA Change:** SMA decreases by Initial Margin ($6,000). New SMA = **$4,000**.
+* **SMA Change:** SMA decreases by Initial Margin ($12,000 × 0.57 = $6,840). New SMA = **$3,160**.
 * **Market Rise:** Stock rises to $12,437.80.
-* **End of Day Check:** `ELV ($10,437.80) - 50% MVS ($6,218.90) = $4,218.90`.
-* **Result:** Since $4,218.90 is higher than the existing $4,000, the **SMA is updated to $4,218.90**.
+* **End of Day Check:** `ELV ($10,437.80) - 57% MVS ($7,089.55) = $3,348.25`.
+* **Result:** Since $3,348.25 is higher than the existing $3,160, the **SMA is updated to $3,348.25**.
+
+---

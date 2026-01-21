@@ -41,7 +41,9 @@ async def test_record_performance_snapshot():
         assert call_args["maintenance_margin_req"] == 500.00
         assert call_args["available_funds"] == 6000.00
         assert call_args["excess_liquidity"] == 6500.00
-        assert call_args["date"] == "now()"
+        from datetime import date
+        today = date.today().isoformat()
+        assert call_args["date"] == today
 
 @pytest.mark.asyncio
 async def test_record_performance_snapshot_idempotency():

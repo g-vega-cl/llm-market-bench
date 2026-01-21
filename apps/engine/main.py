@@ -238,6 +238,8 @@ async def run_ingest():
                 p = Portfolio(owner_id=owner)
                 await p.initialize()
                 await p.record_performance_snapshot(price_map)
+                # Persist final calculated metrics back to the main portfolios table
+                await p.save_metrics()
 
         logger.info("Performance snapshots complete.")
 

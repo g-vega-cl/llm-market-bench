@@ -163,6 +163,8 @@ class Portfolio:
             "sma": self.metrics.sma,
             "last_updated_at": "now()"
         }).eq("id", self.id).execute()
+        
+        logger.info(f"Updated portfolios summary table for {self.owner_id}.")
 
     def validate_trade(self, ticker: str, quantity: int, price: float) -> ValidationResult:
         """Validates a potential trade against current Reg T buying power."""

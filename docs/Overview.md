@@ -168,8 +168,9 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **14. Ledger & Equity Curve Update** ✅
 
 * **Tech:** Supabase Postgres
-* *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
-* **Idempotency:** *Enforce database constraints on `(model_id, date)` to ensure performance is never double-counted.*
+* **Action:** *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
+* **Update:** *Crucially, it also updates the main `portfolios` summary table with the final calculated Reg T metrics (Equity, Moving SMA, Maintenance Margin) following all executions.*
+* **Idempotency:** *Enforce database constraints on `(portfolio_id, date)` to ensure performance is never double-counted.*
 * documentation: [step-14-ledger-equity-curve.md](./docs/step-14-ledger-equity-curve.md)
 
 **15. Long-term Memory Embedding** ✅

@@ -175,3 +175,33 @@ def test_trade_validation_logic():
     res_liquid = validate_trade_compliance(metrics_liquid, 100.00, "QQQ", 38000.0)
     assert res_liquid.passed is False
     assert "Insufficient Buying Power" in res_liquid.reason
+    assert "Available BP: $0.00" in res_liquid.reason
+
+
+def test_calculate_reg_t_metrics_with_object_positions():
+    """Verify that calculate_reg_t_metrics correctly handles objects with .quantity."""
+    class MockPosition:
+        def __init__(self, qty):
+            self.quantity = qty
+
+    cash = 1000.0
+    # Mix of dict and object access
+    positions = {
+        "AAPL": MockPosition(10),
+        "MSFT": {"quantity": 5}
+    }
+    prices = {
+        "AAPL": 150.0, # 1500
+        "MSFT": 300.0  # 1500
+    }
+    # Total Value: 3000
+    # Equity: 4000
+    # MM (25%): 750
+    # IM (50%): 1500
+    
+    metrics = calculate_reg_t_metrics(cash, positions, prices)
+    
+    assert metrics.total_equity == 4000.0
+    assert metrics.maintenance_margin_req == 750.0
+    assert metrics.initial_margin_req == 1500.0
+    assert metrics.available_funds == 2500.0

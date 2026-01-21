@@ -4,14 +4,14 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 
 ## Core Calculation Rules
 
-* **Net Liquidation Value (NLV):** 
+* **Net Liquidation Value (NLV):** `Cash + Market Value of Securities`
 * **Equity with Loan Value (ELV):** Same as NLV for marginable stocks.
-* **Initial Margin (IM):**  (Reg T standard for new positions).
-* **Maintenance Margin (MM):**  (Standard IBKR requirement).
-* **Excess Liquidity:** 
-* **Available Funds:** 
-* **Buying Power (Intraday):** 
-* **SMA (Simplified for Examples):** .
+* **Initial Margin (IM):** `MVS × 50%` (Reg T standard for new positions).
+* **Maintenance Margin (MM):** `MVS × 25%` (Standard IBKR requirement).
+* **Excess Liquidity:** `NLV - Maintenance Margin`
+* **Available Funds:** `NLV - Initial Margin`
+* **Buying Power (Intraday):** `Available Funds × 4`
+* **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - IM)`.
 
 ---
 

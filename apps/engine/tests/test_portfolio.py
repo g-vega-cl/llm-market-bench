@@ -210,3 +210,61 @@ async def test_initialize_new_portfolio():
     assert p.id == "uuid-new"
     assert p.cash_balance == 10000.00
 
+
+@pytest.mark.asyncio
+async def test_save_metrics():
+    """Test that save_metrics persists calculated metrics to the portfolios table."""
+    p = Portfolio("test_agent")
+    p.id = "portfolio-123"
+    p.metrics = RegTMetrics(
+        total_equity=12000.0,
+        initial_margin_req=5000.0,
+        maintenance_margin_req=2500.0,
+        available_funds=7000.0,
+        excess_liquidity=9500.0,
+        sma=10000.0,
+        buying_power=28000.0
+    )
+    
+    mock_db = MagicMock()
+    mock_table = MagicMock()
+    mock_db.table.return_value = mock_table
+    
+    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
+        await p.save_metrics()
+        
+        # Verify update call
+        mock_table.update.assert_called_once()
+        update_payload = mock_table.update.call_args[0][0]
+        
+        assert update_payload["total_equity"] == 12000.0
+        assert update_payload["maintenance_margin"] == 2500.0
+        assert update_payload["buying_power"] == 28000.0
+        assert update_payload["sma"] == 10000.0
+        
+        # Verify filtering
+        mock_table.update.return_value.eq.assert_called_with("id", "portfolio-123")
+
+
+def test_calculate_reg_t_metrics_with_positions():
+    """Test that calculate_reg_t_metrics works with Position objects."""
+    p = Portfolio("test_agent")
+    p.cash_balance = 5000.0
+    p.positions = {
+        "AAPL": Position("AAPL", 10, 150.0),
+        "MSFT": Position("MSFT", 5, 300.0)
+    }
+    
+    current_prices = {
+        "AAPL": 160.0,  # Value: 1600
+        "MSFT": 320.0   # Value: 1600
+    }
+    # Total Stock Value: 3200
+    # Total Equity: 5000 + 3200 = 8200
+    # Maintenance Margin (25%): 3200 * 0.25 = 800
+    
+    metrics = p.calculate_reg_t_metrics(current_prices)
+    
+    assert metrics.total_equity == 8200.0
+    assert metrics.maintenance_margin_req == 800.0
+

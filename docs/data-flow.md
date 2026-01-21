@@ -817,6 +817,7 @@ Once all trades for the day are finished, the engine calculates the daily perfor
    - **Net Liquidation Value (NLV)**: `Cash + (Sum of Position Quantity * Market Price)`
    - **Daily P&L**: Change in NLV vs. Previous Day.
 5. Create an immutable row in the `performance_snapshots` table for today's date and model.
+6. **Final Update**: Persist the calculated Reg T metrics (Equity, Buying Power, Maintenance Margin, SMA) back to the main `portfolios` summary table to ensure it reflects the end-of-day state.
 
 ```python
 # Record immutable snapshot
@@ -884,7 +885,7 @@ Time 8.0s:    Pre-Market Validation (Guardrails) complete
 Time 8.2s:    Reg T Margin Check complete
 Time 8.5s:    Trade Settlement (DB Writes) complete
 Time 8.7s:    Attribution Locking & Memory Embedding complete
-Time 9.0s:    Daily Performance Snapshot complete
+Time 9.0s:    Daily Performance Snapshot & Portfolio Refresh complete
 Time 9.2s:    Pipeline complete
 ```
 Total Pipeline Time: ~10-12 seconds

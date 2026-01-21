@@ -738,8 +738,9 @@ if trade_cost > portfolio.buying_power:
 
 **Metrics Calculated**:
 - **Total Equity**: Cash + Stock Value
-- **Initial Margin**: 50% of Stock Value
-- **Maintenance Margin**: 25% of Stock Value
+- **Total Equity**: Cash + Stock Value
+- **Initial Margin**: 57% of Stock Value
+- **Maintenance Margin**: 33% of Stock Value
 - **SMA (Special Memorandum Account)**: The "Line of Credit" that ratchets up with gains but holds steady on losses.
 
 ### Step 8.2: Trade Settlement
@@ -756,7 +757,7 @@ If validation passes, the trade is verified against the `portfolios` table.
 ```sql
 UPDATE portfolios 
 SET cash_balance = cash_balance - 24210.00, 
-    sma = sma - 12105.00 
+    sma = sma - 13799.70 
 WHERE owner_id = 'gpt-4o';
 ```
 

@@ -219,9 +219,9 @@ class Portfolio:
                     quantity=quantity,
                     average_cost_basis=price
                 )
-            # Update SMA: Buying reduces SMA by 50% of the trade value (Since Reg T IM is 50%)
+            # Update SMA: Buying reduces SMA by 57% of the trade value (Since Reg T IM is 57%)
             # Reg T Rule: SMA is reduced by the Margin Requirement of the new trade.
-            margin_req = total_cost * 0.50
+            margin_req = total_cost * 0.57
             self.sma -= margin_req
                 
         elif signal.upper() == "SELL":
@@ -251,12 +251,12 @@ class Portfolio:
                     average_cost_basis=price
                 )
             
-            # Update SMA: Selling releases margin. SMA increases by 50% of proceeds?
+            # Update SMA: Selling releases margin. SMA increases by 57% of proceeds?
             # Or rather, SMA state is recalculated?
             # If we sell, Cash increases.
             # Reg T: SMA increases by amount of line released?
-            # Let's simplify: SMA += 50% of Proceeds (since we got cash back and released 50% req).
-            margin_released = total_cost * 0.50
+            # Let's simplify: SMA += 57% of Proceeds (since we got cash back and released 57% req).
+            margin_released = total_cost * 0.57
             self.sma += margin_released
         
         # Persist changes

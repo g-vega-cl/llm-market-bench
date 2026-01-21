@@ -25,17 +25,17 @@ def test_scenario_1_near_full_cash_no_leverage():
     # In this test, we verify that the CALCULATED surplus is correct.
     # If we assume previous_sma was correctly updated to 5024.88 by the trade.
     
-    metrics = calculate_reg_t_metrics(cash, positions, prices, previous_sma=5024.88)
+    metrics = calculate_reg_t_metrics(cash, positions, prices, previous_sma=4328.36)
     
     assert metrics.total_equity == pytest.approx(10000.00, abs=0.1)
-    assert metrics.initial_margin_req == pytest.approx(4975.12, abs=0.1)
-    assert metrics.maintenance_margin_req == pytest.approx(2487.56, abs=0.1)
-    # Available Funds = 10000 - 4975.12 = 5024.88
-    assert metrics.available_funds == pytest.approx(5024.88, abs=0.1)
-    # BP = 4 * Avail Funds = 20099.52
-    assert metrics.buying_power == pytest.approx(20099.52, abs=1.0)
+    assert metrics.initial_margin_req == pytest.approx(5671.64, abs=0.1)
+    assert metrics.maintenance_margin_req == pytest.approx(3283.58, abs=0.1)
+    # Available Funds = 10000 - 5671.64 = 4328.36
+    assert metrics.available_funds == pytest.approx(4328.36, abs=0.1)
+    # BP = 4 * Avail Funds = 17313.44
+    assert metrics.buying_power == pytest.approx(17313.44, abs=1.0)
     # SMA should match Available Funds here since no gains to ratchet it higher
-    assert metrics.sma == pytest.approx(5024.88, abs=0.1)
+    assert metrics.sma == pytest.approx(4328.36, abs=0.1)
 
 
 def test_scenario_2_profitable_leveraged():
@@ -50,20 +50,20 @@ def test_scenario_2_profitable_leveraged():
     prices = {"QQQ": 621.89}
     
     # Previous SMA Calculation:
-    # Start 10k. Buy 12k (Cost). SMA -= 6k. Prev SMA = 4000.
-    previous_sma = 4000.00 
+    # Start 10k. Buy 12k (Cost). SMA -= 57% of 12k (6840). Prev SMA = 3160.
+    previous_sma = 3160.00 
     
     metrics = calculate_reg_t_metrics(cash, positions, prices, previous_sma=previous_sma)
     
     assert metrics.total_equity == pytest.approx(10437.80, abs=0.1)
-    # IM = 6218.90
-    assert metrics.initial_margin_req == pytest.approx(6218.90, abs=0.1)
-    # Surplus = Eq - IM = 10437.8 - 6218.9 = 4218.90
-    # SMA Ratchet: Max(4000, 4218.90) -> 4218.90
-    assert metrics.sma == pytest.approx(4218.90, abs=0.1)
+    # IM = 12437.80 * 0.57 = 7089.55
+    assert metrics.initial_margin_req == pytest.approx(7089.55, abs=0.1)
+    # Surplus = Eq - IM = 10437.8 - 7089.55 = 3348.25
+    # SMA Ratchet: Max(3160, 3348.25) -> 3348.25
+    assert metrics.sma == pytest.approx(3348.25, abs=0.1)
     
-    # BP = 4 * Available Funds (4218.90) = 16875.60
-    assert metrics.buying_power == pytest.approx(16875.60, abs=1.0)
+    # BP = 4 * Available Funds (3348.25) = 13393.00
+    assert metrics.buying_power == pytest.approx(13393.00, abs=1.0)
 
 
 def test_scenario_3_loss_leveraged():
@@ -78,23 +78,23 @@ def test_scenario_3_loss_leveraged():
     prices = {"QQQ": 621.89}
     
     # Previous SMA logic:
-    # Start 10k. Buy 13k. SMA -= 6500. Prev SMA = 3500.
-    previous_sma = 3500.00
+    # Start 10k. Buy 12k. SMA -= 6840. Prev SMA = 3160.
+    previous_sma = 3160.00
     
     metrics = calculate_reg_t_metrics(cash, positions, prices, previous_sma=previous_sma)
     
     assert metrics.total_equity == pytest.approx(9437.80, abs=0.1)
-    # IM = 6218.90 (50% of market value)
-    # Surplus = Eq - IM = 9437.80 - 6218.90 = 3218.90.
+    # IM = 7089.55 (57% of market value)
+    # Surplus = Eq - IM = 9437.80 - 7089.55 = 2348.25.
     
     # RATCHET LOGIC TEST:
-    # Surplus (3218) < Previous SMA (3500).
-    # SMA should HOLD at 3500.
-    assert metrics.sma == pytest.approx(3500.00, abs=0.1)
+    # Surplus (2348.25) < Previous SMA (3160).
+    # SMA should HOLD at 3160.
+    assert metrics.sma == pytest.approx(3160.00, abs=0.1)
     
-    # BP is based on Available Funds (Surplus) = 3218.90 * 4 = 12875.60.
+    # BP is based on Available Funds (Surplus) = 2348.25 * 4 = 9393.00.
     # Note: BP uses current reality (Surplus), not the SMA historic high.
-    assert metrics.buying_power == pytest.approx(12875.60, abs=1.0)
+    assert metrics.buying_power == pytest.approx(9393.00, abs=1.0)
 
 
 def test_scenario_5_high_leverage():
@@ -117,12 +117,12 @@ def test_scenario_5_high_leverage():
     metrics = calculate_reg_t_metrics(cash, positions, prices, previous_sma=previous_sma)
     
     assert metrics.total_equity == pytest.approx(10000.00, abs=0.1)
-    assert metrics.initial_margin_req == pytest.approx(19000.00, abs=0.1)
+    assert metrics.initial_margin_req == pytest.approx(21660.00, abs=0.1)
     
-    # Available Funds = 10k - 19k = -9000.
-    assert metrics.available_funds == pytest.approx(-9000.00, abs=0.1)
+    # Available Funds = 10k - 21660 = -11660.
+    assert metrics.available_funds == pytest.approx(-11660.00, abs=0.1)
     
-    # SMA should be 0 (Max(0, -9000))
+    # SMA should be 0 (Max(0, -11660))
     assert metrics.sma == 0.0
     
     # BP should be 0
@@ -202,6 +202,6 @@ def test_calculate_reg_t_metrics_with_object_positions():
     metrics = calculate_reg_t_metrics(cash, positions, prices)
     
     assert metrics.total_equity == 4000.0
-    assert metrics.maintenance_margin_req == 750.0
-    assert metrics.initial_margin_req == 1500.0
-    assert metrics.available_funds == 2500.0
+    assert metrics.maintenance_margin_req == 3000.0 * 0.33
+    assert metrics.initial_margin_req == 3000.0 * 0.57
+    assert metrics.available_funds == 4000.0 - (3000.0 * 0.57)

@@ -17,7 +17,7 @@ Implementation: `apps/engine/execution/portfolio.py` -> `execute_trade()`
         -   Update **Average Cost Basis**: Weighted Average of (Old Cost) and (New Trade Price).
     -   If Ticker is new:
         -   Create new entry with `Quantity` and `Cost Basis = Execution Price`.
-4.  **SMA Update:** `SMA = SMA - (50% * Total Cost)`. (Buying consumes margin line).
+4.  **SMA Update:** `SMA = SMA - (57% * Total Cost)`. (Buying consumes margin line).
 
 ### SELL Execution
 1.  **Proceeds Calculation:** `Total Proceeds = Quantity * Execution Price`
@@ -26,7 +26,7 @@ Implementation: `apps/engine/execution/portfolio.py` -> `execute_trade()`
     -   Reduce `Quantity`.
     -   If `Quantity` becomes 0, remove position from database.
     -   *Note: Cost Basis does not change during a SELL (First-In-First-Out or Weighted Avg remains constant per share).*
-4.  **SMA Update:** `SMA = SMA + (50% * Proceeds)`. (Selling releases margin).
+4.  **SMA Update:** `SMA = SMA + (57% * Proceeds)`. (Selling releases margin).
 
 ## 3. Database Updates
 We perform a transactional update to `supabase`:

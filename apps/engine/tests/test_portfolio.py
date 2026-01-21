@@ -26,9 +26,9 @@ def test_reg_t_scenario_1_no_leverage():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(10000.00, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(2487.56, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(7512.44, abs=0.10)
-    assert metrics.buying_power == pytest.approx(20099.52, abs=1.0)
+    assert metrics.maintenance_margin_req == pytest.approx(3283.58, abs=0.10)
+    assert metrics.excess_liquidity == pytest.approx(6716.42, abs=0.10)
+    assert metrics.buying_power == pytest.approx(17313.44, abs=1.0)
 
 
 def test_reg_t_scenario_2_leveraged_profitable():
@@ -51,9 +51,9 @@ def test_reg_t_scenario_2_leveraged_profitable():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(10437.80, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(3109.45, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(7328.35, abs=0.10)
-    assert metrics.buying_power == pytest.approx(16875.60, abs=1.0)
+    assert metrics.maintenance_margin_req == pytest.approx(4104.47, abs=0.10)
+    assert metrics.excess_liquidity == pytest.approx(6333.33, abs=0.10)
+    assert metrics.buying_power == pytest.approx(13393.00, abs=1.0)
 
 
 def test_reg_t_scenario_3_leveraged_loss():
@@ -76,9 +76,9 @@ def test_reg_t_scenario_3_leveraged_loss():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(9437.80, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(3109.45, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(6328.35, abs=0.10)
-    assert metrics.buying_power == pytest.approx(12875.60, abs=1.0)
+    assert metrics.maintenance_margin_req == pytest.approx(4104.47, abs=0.10)
+    assert metrics.excess_liquidity == pytest.approx(5333.33, abs=0.10)
+    assert metrics.buying_power == pytest.approx(9393.00, abs=1.0)
 
 
 def test_reg_t_scenario_5_liquidation():
@@ -103,8 +103,8 @@ def test_reg_t_scenario_5_liquidation():
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == pytest.approx(2400.00, abs=0.10)
-    assert metrics.maintenance_margin_req == pytest.approx(7600.00, abs=0.10)
-    assert metrics.excess_liquidity == pytest.approx(-5200.00, abs=0.10)
+    assert metrics.maintenance_margin_req == pytest.approx(10032.00, abs=0.10)
+    assert metrics.excess_liquidity == pytest.approx(-7632.00, abs=0.10)
     assert metrics.buying_power == 0.00
 
 
@@ -261,10 +261,10 @@ def test_calculate_reg_t_metrics_with_positions():
     }
     # Total Stock Value: 3200
     # Total Equity: 5000 + 3200 = 8200
-    # Maintenance Margin (25%): 3200 * 0.25 = 800
+    # Maintenance Margin (33%): 3200 * 0.33 = 1056
     
     metrics = p.calculate_reg_t_metrics(current_prices)
     
     assert metrics.total_equity == 8200.0
-    assert metrics.maintenance_margin_req == 800.0
+    assert metrics.maintenance_margin_req == 1056.0
 

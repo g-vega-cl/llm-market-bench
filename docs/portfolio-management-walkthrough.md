@@ -12,9 +12,9 @@ We strictly follow **Reg T** calculations for margin accounts.
 | Metric | Calculation | Description |
 | :--- | :--- | :--- |
 | **Total Equity** | `Cash + Market Value of Positions` | The Net Liquidation Value (NLV). |
-| **Maintenance Margin** | `0.25 * Market Value of Longs` | The minimum equity required to hold positions (25%). |
+| **Maintenance Margin** | `0.33 * Market Value of Longs` | The minimum equity required to hold positions (33%). |
 | **Excess Liquidity** | `Total Equity - Maintenance Margin` | How much "buffer" you have before a margin call. |
-| **Available Funds** | `Equity - Initial Margin` | Capital available to open new positions. |
+| **Available Funds** | `Equity - (Initial Margin: 57%)` | Capital available to open new positions. |
 | **SMA** | `Max(Prior SMA, Available Funds)` | Special Memorandum Account. Ratchets up with gains, holds steady on losses. |
 | **Buying Power** | `4 * Available Funds` | The max amount of stock you can buy intraday (4:1 Leverage). |
 

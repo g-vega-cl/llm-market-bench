@@ -75,8 +75,8 @@ def calculate_reg_t_metrics(
     # For Buying Power calculations, BP = 4 * Excess Liquidity.
     # Excess Liquidity = Equity - Maintenance Margin.
     
-    maintenance_margin_req = stock_value * 0.25
-    initial_margin_req = stock_value * 0.50
+    maintenance_margin_req = stock_value * 0.33
+    initial_margin_req = stock_value * 0.57
     
     # Excess Liquidity = Equity - Maintenance Margin
     excess_liquidity = total_equity - maintenance_margin_req

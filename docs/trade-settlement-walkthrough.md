@@ -38,8 +38,10 @@ We perform a transactional update to `supabase`:
     -   Update `sma`.
     -   Update `last_updated_at`.
 2.  **`portfolio_positions` table:**
-    -   `UPSERT` the position row with new quantity/cost.
+    -   `UPSERT` the position row with new quantity/cost (Tickers are normalized to **UPPERCASE**).
     -   OR `DELETE` the row if quantity is zero.
+3.  **Reg T Metric Persistence:** 
+    -   Immediately after trade settlement, recalculate and save updated Equity, Buying Power, and SMA to the `portfolios` table for dashboard consistency.
 ## 4. Quantity Calculation (Allocation %)
 Before settlement, the engine converts the LLM's `allocation_percentage` into a share count:
 - **BUY:** `Qty = (Allocation % * Buying Power) / Market Price`.

@@ -141,7 +141,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
 * **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
 * **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
-* **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution.
+* **Guardrail E (Robust Price Fallback):** *In `calculate_reg_t_metrics`, if market data fails (price = 0), positions are valued at their `average_cost_basis`. This prevents "Negative Total Equity" hallucinations for margin accounts.*
+* **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution. **Ticker Casing** is normalized to uppercase across all layers for consistency.
 * documentation: ./docs/pre-market-validation.md
 * File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
 
@@ -162,6 +163,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
 *   **Guardrail:** *Enforces **Portfolio Ownership** for SELL signals; if an LLM tries to sell a ticker it doesn't own, the trade is rejected.*
 *   **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
+*   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
 *   **Rejection Logic:** *Decisions that fail Validation, Reg T, or **Ownership** checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`) to preserve the full "Audit Trail" of AI intent.*
 *   documentation: ./docs/trade-settlement-walkthrough.md
 

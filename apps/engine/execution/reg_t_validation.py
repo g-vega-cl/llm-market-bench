@@ -63,8 +63,19 @@ def calculate_reg_t_metrics(
 
         price = current_prices.get(ticker, 0.0)
         if price <= 0:
-            logger.warning(f"Invalid price for {ticker}: {price}. Using 0 for margin calc.")
-            price = 0.0
+            # FALLBACK: If market data is missing or invalid, use cost basis to prevent $0 valuation
+            # which leads to negative equity for margin accounts.
+            if hasattr(pos, "average_cost_basis"):
+                price = pos.average_cost_basis
+            elif isinstance(pos, dict):
+                price = float(pos.get("average_cost_basis", 0.0))
+            
+            if price > 0:
+                logger.warning(f"Market data missing for {ticker}. Falling back to cost basis (${price:.2f}) for margin calc.")
+            else:
+                logger.warning(f"Invalid price and no cost basis for {ticker}. Using 0 for margin calc.")
+                price = 0.0
+        
         stock_value += qty * price
 
     total_equity = cash_balance + stock_value

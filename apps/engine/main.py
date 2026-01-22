@@ -87,6 +87,7 @@ async def run_ingest():
         for d in decisions:
             try:
                 # --- Pre-Market Validation (Guardrails) ---
+                d.ticker = d.ticker.upper()
                 validation = await validate_decision(d.ticker, getattr(d, "price", None))
                 
                 if validation.status != ValidationStatus.PASSED:
@@ -262,24 +263,25 @@ async def run_ingest():
             # We need current prices for all held positions across all portfolios
             # To be efficient, we'll collect all unique tickers first
             all_tickers = set()
+            portfolios_to_snapshot = []
             for owner in owners:
                 p = Portfolio(owner_id=owner)
                 await p.initialize()
                 all_tickers.update(p.positions.keys())
+                portfolios_to_snapshot.append(p)
             
             # Fetch current prices for all tickers
             from execution.market_data import MarketDataManager
             mdm = MarketDataManager()
             price_map = {}
             for ticker in all_tickers:
+                # Use get_quote which handles caching
                 data = await mdm.get_quote(ticker)
                 if data:
                     price_map[ticker] = data.price
             
             # Record snapshots
-            for owner in owners:
-                p = Portfolio(owner_id=owner)
-                await p.initialize()
+            for p in portfolios_to_snapshot:
                 await p.record_performance_snapshot(price_map)
                 # Persist final calculated metrics back to the main portfolios table
                 await p.save_metrics()

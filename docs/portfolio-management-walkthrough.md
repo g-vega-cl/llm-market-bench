@@ -20,9 +20,10 @@ We strictly follow **Reg T** calculations for margin accounts.
 
 ### 2a. Reg T Validation (Pre-Execution)
 Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_validation.py`) to ensure:
-1. **Trade Cost <= Buying Power**
 2. **Projected SMA >= SMA Floor (10% of Total Equity)**
 3. **Account not in Liquidation**
+4. **Market Data Robustness:** If `current_prices` fail (price = 0), the system values positions at `average_cost_basis`. This prevents "Negative Equity" hallucinations for margin accounts.
+5. **Ticker Normalization:** All tickers are normalized to **UPPERCASE** across all validation and storage layers.
 
 *Implementation: `apps/engine/execution/reg_t_validation.py`*
 
@@ -42,14 +43,17 @@ State is preserved in Supabase so agents "carry over" their positions to the nex
 ### `portfolios` Table
 One row per AI Model (e.g., `gpt-4o`).
 - `cash_balance`: Starts at $10,000.
-- `buying_power`: Updated daily based on open positions.
-- `total_equity`: Real-time net worth.
+- `buying_power`: Updated after every trade and daily.
+- `total_equity`: Updated after every trade and daily.
+- `sma`: Stateful credit line updated after every trade and daily.
 
 ### `portfolio_positions` Table
 Tracks exact holdings.
 - `ticker`: e.g., "NVDA"
 - `quantity`: Number of shares.
 - `average_cost_basis`: Weighted average price paid.
+3. **Immediate Metric Persistence:**
+    - Recalculates and persists complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table immediately after every trade for dashboard consistency.
 
 ### `position_pnl` View (Real-time P&L)
 A dynamic SQL view that calculates Profit/Loss without data duplication.

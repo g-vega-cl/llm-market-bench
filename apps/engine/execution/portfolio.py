@@ -91,8 +91,9 @@ class Portfolio:
         # Assuming standard usage here.
         pos_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", self.id).execute()
         for p in pos_res.data:
-            self.positions[p["ticker"]] = Position(
-                ticker=p["ticker"],
+            ticker = p["ticker"].upper()
+            self.positions[ticker] = Position(
+                ticker=ticker,
                 quantity=p["quantity"],
                 average_cost_basis=float(p["average_cost_basis"])
             )
@@ -205,6 +206,7 @@ class Portfolio:
             logger.error("Cannot execute trade on uninitialized portfolio.")
             return
 
+        ticker = ticker.upper()
         total_cost = price * quantity
         supabase = get_supabase_client()
         
@@ -313,6 +315,20 @@ class Portfolio:
             trade_id = trade_res.data[0]["id"] if trade_res.data else None
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
             
+            # 5. IMMEDIATELY update and save metrics to ensure table consistency
+            # Use current price for this ticker and potentially stale prices for others
+            # Next full refresh will catch everything.
+            current_prices = {ticker: price}
+            for t, pos in self.positions.items():
+                if t != ticker:
+                    # In a real system we'd fetch a mini-map here, 
+                    # for now we rely on the fact that calculate_reg_t_metrics
+                    # will fall back to cost basis if we don't provide a price.
+                    pass
+            
+            self.calculate_reg_t_metrics(current_prices)
+            await self.save_metrics()
+
             return trade_id
             
         except Exception as e:

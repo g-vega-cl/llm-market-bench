@@ -14,6 +14,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 * **Buying Power (Intraday):** `Available Funds × 4`
 * **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - (MVS × 0.57))`
 * **SMA Floor (Guardrail):** `10% × Total Equity`. Trades pushing projected SMA below this floor are rejected..
+* **Market Data Robustness:** If `current_prices` for a ticker are missing or fail (price = 0), the system falls back to the position's `average_cost_basis`. This prevents "Negative Total Equity" hallucinations on margin accounts where debts (negative cash) would otherwise exceed a $0 asset valuation.
 
 ---
 

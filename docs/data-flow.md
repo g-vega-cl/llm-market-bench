@@ -714,6 +714,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **A: Existence** | `market_data.exists` | Prevent hallucinated tickers (e.g., "ABCD"). |
 | **B: Price Banding** | `abs(ai_price - real_price) < 15%` | Prevent price hallucinations. |
 | **C: Liquidity** | `Market Cap > $2B` | Prevent trading penny stocks. |
+| **E: Robustness** | `Fallback to Cost Basis` | Use `average_cost_basis` if market data fails (price = 0) to prevent negative equity. |
 
 ```python
 # Validation Result
@@ -747,6 +748,7 @@ If validation passes, the trade is settled into the `portfolios` table.
 1. **Update Portfolio**: Reduce Cash (Buy) or Increase Cash (Sell).
 2. **Update Positions**: Upsert `portfolio_positions` row.
 3. **Update SMA**: Adjust based on margin requirements.
+4. **Immediate Consistency**: Recalculate and persist complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table to ensure real-time dashboard accuracy.
 
 ```sql
 UPDATE portfolios 

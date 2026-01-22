@@ -5,6 +5,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 ## Core Calculation Rules
 
 * **Net Liquidation Value (NLV):** `Cash + Market Value of Securities`
+* **Realized Value:** `Cash + Total Cost Basis of Positions`. Effectively NLV excluding unrealized Profit/Loss.
 * **Equity with Loan Value (ELV):** Same as NLV for marginable stocks.
 * **Initial Margin (IM):** `MVS × 57%` (Reg T standard for new positions).
 * **Maintenance Margin (MM):** `MVS × 33%` (Standard IBKR requirement).
@@ -24,6 +25,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | $49.76 | $10,000 - $9,950.24 |
 | **Market Value (MVS)** | $9,950.24 | 16 shares × $621.89 |
 | **Equity (NLV)** | **$10,000.00** | $49.76 + $9,950.24 |
+| **Realized** | **$10,000.00** | $49.76 + $9,950.24 (Cost Basis) |
 | **Initial Margin (IM)** | $5,671.64 | $9,950.24 × 57% |
 | **Maint. Margin (MM)** | $3,283.58 | $9,950.24 × 33% |
 | **Excess Liquidity** | $6,716.42 | $10,000 - $3,283.58 |
@@ -42,6 +44,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | -$28,000.00 | $10,000 - $38,000 |
 | **Market Value (MVS)** | $38,000.00 | — |
 | **Equity (NLV)** | **$10,000.00** | -$28,000 + $38,000 |
+| **Realized** | **$10,000.00** | -$28,000 + $38,000 (Cost Basis) |
 | **Initial Margin (IM)** | $21,660.00 | $38,000 × 57% |
 | **Maint. Margin (MM)** | $12,540.00 | $38,000 × 33% |
 | **Excess Liquidity** | -$2,540.00 | **IMMEDIATE LIQUIDATION** |
@@ -60,6 +63,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | -$3,000.00 | $10,000 - (20 × $650) |
 | **Market Value (MVS)** | $12,437.80 | 20 shares × $621.89 |
 | **Equity (NLV)** | **$9,437.80** | -$3,000 + $12,437.80 |
+| **Realized** | **$10,000.00** | -$3,000 + $13,000 (Cost Basis) |
 | **Initial Margin (IM)** | $7,089.55 | $12,437.80 × 57% |
 | **Maint. Margin (MM)** | $4,104.47 | $12,437.80 × 33% |
 | **Excess Liquidity** | $5,333.33 | $9,437.80 - $4,104.47 |
@@ -80,6 +84,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **MVS (PLTR)** | $3,421.80 | 20 × $171.09 |
 | **Total MVS** | $5,287.47 | $1,865.67 + $3,421.80 |
 | **Equity (NLV)** | **$9,887.47** | $4,600 + $5,287.47 |
+| **Realized** | **$10,000.00** | $4,600 + ($1,800 + $3,600) |
 | **Initial Margin (IM)** | $3,013.86 | $5,287.47 × 57% |
 | **Maint. Margin (MM)** | $1,744.86 | $5,287.47 × 33% |
 | **Excess Liquidity** | $8,142.61 | $9,887.47 - $1,744.86 |
@@ -98,6 +103,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | -$28,000.00 | $10,000 - $38,000 |
 | **Market Value (MVS)** | $38,000.00 | — |
 | **Equity (NLV)** | **$10,000.00** | -$28,000 + $38,000 |
+| **Realized** | **$10,000.00** | -$28,000 + $38,000 (Cost) |
 | **Initial Margin (IM)** | $21,660.00 | $38,000 × 57% |
 | **Maint. Margin (MM)** | $12,540.00 | $38,000 × 33% |
 | **Excess Liquidity** | -$2,540.00 | $10,000 - $12,540 (Reg T violation) |
@@ -116,6 +122,7 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Cash** | -$28,000.00 | Unchanged |
 | **Market Value (MVS)** | $36,100.00 | $38,000 × 0.95 |
 | **Equity (NLV)** | **$8,100.00** | -$28,000 + $36,100 |
+| **Realized** | **$10,000.00** | -$28,000 + $38,000 (Cost) |
 | **Initial Margin (IM)** | $20,577.00 | $36,100 × 57% |
 | **Maint. Margin (MM)** | $11,913.00 | $36,100 × 33% |
 | **Excess Liquidity** | **-$3,813.00** | **CRITICAL: Liquidation required** |
@@ -136,8 +143,56 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 | **Maintenance Margin** | $316,179.99 × 0.33 | $104,339.40 |
 | **Excess Liquidity** | $194,700 - $104,339.40 | $90,360.60 |
 | **SMA** | $194,700 - ($316,179.99 × 0.57) | $14,477.41 |
+| **Realized** | Cash + Total Cost Basis | *Variable* |
 | **Buying Power** | $14,477.41 × 4 | $57,909.64 |
 
+---
+
+## Scenario 8: Trade Closure with Realized P/L
+
+*Based on a $10,000 account closing a trade with a $1,000 profit. No other positions held.*
+
+| Metric | Value | Calculation |
+| --- | --- | --- |
+| **Cash** | $11,000.00 | $10,000 (Initial) + $1,000 (Profit) |
+| **Market Value (MVS)** | $0.00 | No open positions |
+| **Equity (NLV)** | **$11,000.00** | $11,000 (Cash) + $0 (MVS) |
+| **Realized** | **$11,000.00** | Cash + Cost Basis ($0) |
+| **Initial Margin (IM)** | $0.00 | $0 × 57% |
+| **Maint. Margin (MM)** | $0.00 | $0 × 33% |
+| **Excess Liquidity** | $11,000.00 | $11,000 - $0 |
+| **Available Funds** | $11,000.00 | $11,000 - $0 |
+| **Buying Power** | $44,000.00 | $11,000 × 4 |
+| **SMA** | $11,000.00 | $11,000 - ($0 × 0.57) |
+
+---
+
+## Scenario 9: Portfolio Snapshot with Historical Loss
+
+*Holding 3 shares of QQQ (Value: $1,865.67) and 20 shares of PLTR (Value: $3,421.80). Account started at $10,000 but lost $1,000 on a past trade (Realized Value = $9,000).*
+
+| Metric | Value | Calculation |
+| --- | --- | --- |
+| **Cash** | $3,712.53 | $9,000 (Realized) - ($1,800 + $3,487.47 Cost Basis*) |
+| **MVS (QQQ)** | $1,865.67 | 3 × $621.89 |
+| **MVS (PLTR)** | $3,421.80 | 20 × $171.09 |
+| **Total MVS** | $5,287.47 | $1,865.67 + $3,421.80 |
+| **Equity (NLV)** | **$9,000.00** | $3,712.53 (Cash) + $5,287.47 (MVS) |
+| **Realized** | **$9,000.00** | Current Cash + Position Cost Basis |
+| **Initial Margin (IM)** | $3,013.86 | $5,287.47 × 57% |
+| **Maint. Margin (MM)** | $1,744.86 | $5,287.47 × 33% |
+| **Excess Liquidity** | $7,255.14 | $9,000 - $1,744.86 |
+| **Available Funds** | $5,986.14 | $9,000 - $3,013.86 |
+| **Buying Power** | $23,944.56 | $5,986.14 × 4 |
+| **SMA** | $5,986.14 | $9,000 - ($5,287.47 × 0.57) |
+
+**Note: In Scenario 9, the NLV reflects the total account value after the $1,000 loss was realized. The "Realized" row tracks your equity excluding current unrealized fluctuations.*
+
+---
+
+### Understanding the SMA Impact
+
+In **Scenario 9**, even though you have a "gain" on QQQ, your overall SMA is lower than Scenario 4 because your starting "Realized" equity was reduced by the previous $1,000 loss. SMA effectively tracks your **Buying Power "High Water Mark"** adjusted for cash movements and Reg T requirements.
 ----------
 # Calculations:
 This document provides the technical formulas for an **Interactive Brokers (IBKR) Reg T Margin Account**, specifically defining the logic used in the Special Memorandum Account (SMA) and related margin metrics.
@@ -221,6 +276,7 @@ IBKR calculates SMA as the **Greater** of the following two values:
 | **IM** | `MVS × 0.57` | Reg T cost to open a position |
 | **MM** | `MVS × 0.33` | Min. equity to avoid liquidation |
 | **Excess Liquidity** | `NLV - MM` | Safety margin for existing positions |
+| **Realized** | `Cash + Total Cost Basis` | Account value without unrealized P/L |
 | **Available Funds** | `NLV - IM` | Capacity for new trades |
 | **Buying Power** | `Available Funds × 4` | Intraday purchase capacity |
 | **SMA** | `Max(Prior SMA + ∆Cash - IM_trades, NLV - (MVS × 0.57))` | Reg T credit line / Overnight compliance |

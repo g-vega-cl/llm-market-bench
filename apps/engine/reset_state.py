@@ -37,6 +37,7 @@ async def reset_database():
             maintenance_margin = 0.0
             available_funds = 10000.00
             sma = 10000.00
+            realized = 10000.00
             
             supabase.table("portfolios").update({
                 "cash_balance": 10000.00,
@@ -45,6 +46,7 @@ async def reset_database():
                 "excess_liquidity": excess_liquidity,
                 "maintenance_margin": maintenance_margin,
                 "sma": sma,
+                "realized": realized,
                 "last_updated_at": "now()"
             }).eq("id", p["id"]).execute()
             logger.info(f"Reset portfolio for {p['owner_id']}")

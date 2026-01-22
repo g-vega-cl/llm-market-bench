@@ -14,7 +14,7 @@ def test_scenario_1_near_full_cash_no_leverage():
     Buying $9,950.24 stock with $10,000 cash.
     """
     cash = 49.76
-    positions = {"QQQ": {"quantity": 16}} # 16 * 621.89 = 9950.24
+    positions = {"QQQ": {"quantity": 16, "average_cost_basis": 621.89}} 
     prices = {"QQQ": 621.89}
     previous_sma = 10000.00 # Started with 10k? Or does it adjust? 
     # If we started with 10k, bought 9950, SMA drops by 4975 (50%).
@@ -36,6 +36,8 @@ def test_scenario_1_near_full_cash_no_leverage():
     assert metrics.buying_power == pytest.approx(17313.44, abs=1.0)
     # SMA should match Available Funds here since no gains to ratchet it higher
     assert metrics.sma == pytest.approx(4328.36, abs=0.1)
+    # Realized = 49.76 + 9950.24 = 10000.00
+    assert metrics.realized == pytest.approx(10000.00, abs=0.1)
 
 
 def test_scenario_2_profitable_leveraged():
@@ -46,7 +48,7 @@ def test_scenario_2_profitable_leveraged():
     Current Stock: 12,437.80.
     """
     cash = -2000.00
-    positions = {"QQQ": {"quantity": 20}} # 20 * 621.89 = 12437.80
+    positions = {"QQQ": {"quantity": 20, "average_cost_basis": 600.00}} 
     prices = {"QQQ": 621.89}
     
     # Previous SMA Calculation:
@@ -62,6 +64,10 @@ def test_scenario_2_profitable_leveraged():
     # SMA Ratchet: Max(3160, 3348.25) -> 3348.25
     assert metrics.sma == pytest.approx(3348.25, abs=0.1)
     
+    # Realized = -2000 + 12000 (Cost basis) = 10000.00
+    # Note: Scenario 2 bought $12k stock.
+    assert metrics.realized == pytest.approx(10000.00, abs=0.1)
+    
     # BP = 4 * Available Funds (3348.25) = 13393.00
     assert metrics.buying_power == pytest.approx(13393.00, abs=1.0)
 
@@ -74,7 +80,7 @@ def test_scenario_3_loss_leveraged():
     Stock: 12,437.80.
     """
     cash = -3000.00
-    positions = {"QQQ": {"quantity": 20}} 
+    positions = {"QQQ": {"quantity": 20, "average_cost_basis": 650.0} } 
     prices = {"QQQ": 621.89}
     
     # Previous SMA logic:
@@ -91,6 +97,9 @@ def test_scenario_3_loss_leveraged():
     # Surplus (2348.25) < Previous SMA (3160).
     # SMA should HOLD at 3160.
     assert metrics.sma == pytest.approx(3160.00, abs=0.1)
+
+    # Realized = -3000 + 13000 (Cost basis) = 10000.00
+    assert metrics.realized == pytest.approx(10000.00, abs=0.1)
     
     # BP is based on Available Funds (Surplus) = 2348.25 * 4 = 9393.00.
     # Note: BP uses current reality (Surplus), not the SMA historic high.

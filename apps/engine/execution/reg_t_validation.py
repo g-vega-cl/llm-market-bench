@@ -21,6 +21,7 @@ class RegTMetrics:
     available_funds: float
     excess_liquidity: float
     sma: float           # Special Memorandum Account (Stateful)
+    realized: float      # Realized Value (Cash + Cost Basis)
     buying_power: float
 
 
@@ -126,6 +127,20 @@ def calculate_reg_t_metrics(
     
     buying_power = max(0.0, available_funds * 4.0)
 
+    # Realized Value = Cash + Total Cost Basis
+    # We need to sum cost basis from positions
+    total_cost_basis = 0.0
+    for ticker, pos in positions.items():
+        if hasattr(pos, "average_cost_basis"):
+            cost_basis = pos.average_cost_basis * (pos.quantity if hasattr(pos, "quantity") else 0)
+        elif isinstance(pos, dict):
+            cost_basis = float(pos.get("average_cost_basis", 0.0)) * int(pos.get("quantity", 0))
+        else:
+            cost_basis = 0.0
+        total_cost_basis += cost_basis
+    
+    realized = cash_balance + total_cost_basis
+
     return RegTMetrics(
         total_equity=total_equity,
         initial_margin_req=initial_margin_req,
@@ -133,6 +148,7 @@ def calculate_reg_t_metrics(
         available_funds=available_funds,
         excess_liquidity=excess_liquidity,
         sma=sma,
+        realized=realized,
         buying_power=buying_power
     )
 

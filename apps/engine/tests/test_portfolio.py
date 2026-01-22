@@ -29,6 +29,7 @@ def test_reg_t_scenario_1_no_leverage():
     assert metrics.maintenance_margin_req == pytest.approx(3283.58, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(6716.42, abs=0.10)
     assert metrics.buying_power == pytest.approx(17313.44, abs=1.0)
+    assert metrics.realized == pytest.approx(10000.00, abs=0.10)
 
 
 def test_reg_t_scenario_2_leveraged_profitable():
@@ -54,6 +55,7 @@ def test_reg_t_scenario_2_leveraged_profitable():
     assert metrics.maintenance_margin_req == pytest.approx(4104.47, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(6333.33, abs=0.10)
     assert metrics.buying_power == pytest.approx(13393.00, abs=1.0)
+    assert metrics.realized == pytest.approx(10000.00, abs=0.10)
 
 
 def test_reg_t_scenario_3_leveraged_loss():
@@ -79,6 +81,7 @@ def test_reg_t_scenario_3_leveraged_loss():
     assert metrics.maintenance_margin_req == pytest.approx(4104.47, abs=0.10)
     assert metrics.excess_liquidity == pytest.approx(5333.33, abs=0.10)
     assert metrics.buying_power == pytest.approx(9393.00, abs=1.0)
+    assert metrics.realized == pytest.approx(10000.00, abs=0.10)
 
 
 def test_reg_t_scenario_5_liquidation():
@@ -122,7 +125,8 @@ async def test_initialize_existing_portfolio():
         "id": "uuid-123",
         "cash_balance": 15000.00,
         "buying_power": 45000.00,
-        "sma": 15000.00
+        "sma": 15000.00,
+        "realized": 10000.00
     }]
     
     mock_res_positions = MagicMock()
@@ -150,6 +154,7 @@ async def test_initialize_existing_portfolio():
     assert p.metrics is not None
     assert p.metrics.buying_power == 45000.00
     assert p.metrics.sma == 15000.00
+    assert p.metrics.realized == 10000.00
 
 
 @pytest.mark.asyncio
@@ -223,6 +228,7 @@ async def test_save_metrics():
         available_funds=7000.0,
         excess_liquidity=9500.0,
         sma=10000.0,
+        realized=11000.0,
         buying_power=28000.0
     )
     
@@ -241,6 +247,7 @@ async def test_save_metrics():
         assert update_payload["maintenance_margin"] == 2500.0
         assert update_payload["buying_power"] == 28000.0
         assert update_payload["sma"] == 10000.0
+        assert update_payload["realized"] == 11000.0
         
         # Verify filtering
         mock_table.update.return_value.eq.assert_called_with("id", "portfolio-123")

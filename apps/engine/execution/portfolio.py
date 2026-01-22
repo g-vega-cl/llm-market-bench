@@ -58,6 +58,7 @@ class Portfolio:
                     available_funds=0.0,     # Not stored in DB
                     excess_liquidity=float(data.get("excess_liquidity", 0.0)),
                     sma=self.sma,
+                    realized=float(data.get("realized", self.cash_balance)),
                     buying_power=float(data["buying_power"])
                 )
             
@@ -107,7 +108,10 @@ class Portfolio:
         
         pos_for_calc = {}
         for t, p in self.positions.items():
-            pos_for_calc[t] = {"quantity": p.quantity}
+            pos_for_calc[t] = {
+                "quantity": p.quantity,
+                "average_cost_basis": p.average_cost_basis
+            }
             
         self.metrics = calculate_reg_t_metrics(
             cash_balance=self.cash_balance,
@@ -131,6 +135,7 @@ class Portfolio:
             f"Total Equity: ${metrics.total_equity:,.2f}",
             f"Buying Power: ${metrics.buying_power:,.2f}",
             f"SMA: ${metrics.sma:,.2f}",
+            f"Realized Value (Cash + Cost Basis): ${metrics.realized:,.2f}",
             f"Maintenance Margin: ${metrics.maintenance_margin_req:,.2f}",
             "\nCurrent Positions:"
         ]
@@ -161,6 +166,7 @@ class Portfolio:
             "excess_liquidity": self.metrics.excess_liquidity,
             "maintenance_margin": self.metrics.maintenance_margin_req,
             "sma": self.metrics.sma,
+            "realized": self.metrics.realized,
             "last_updated_at": "now()"
         }).eq("id", self.id).execute()
         
@@ -339,6 +345,7 @@ class Portfolio:
                 "maintenance_margin_req": metrics.maintenance_margin_req,
                 "available_funds": metrics.available_funds,
                 "excess_liquidity": metrics.excess_liquidity,
+                "realized": metrics.realized,
                 "date": today
             }, on_conflict="portfolio_id,date").execute()
             

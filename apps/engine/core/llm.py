@@ -198,12 +198,12 @@ Content: {chunk['content']}
         Always calculate your projected SMA (Current SMA - [Trade Cost * 0.57]) before recommending a large BUY.
 
         1. Trading Signals: Look for relevant companies and tickers and determine a trading signal:
-           * BUY: Only buy if we don't already have the stock in our portfolio.
+           * BUY: Always consider if we already have the stock in our portfolio. Modify the ALLOCATION accordingly.
            * SELL: Only sell if we have the stock in our portfolio.
            * HOLD: Do not buy or sell the stock.
            * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
-           * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, OTHER).
-           * DURATION: Estimate 'catalyst_duration' (INTRADAY, SHORT_TERM, LONG_TERM).
+           * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, OTHER).
+           * DURATION: Estimate 'catalyst_duration' (SHORT_TERM, MEDIUM_TERM, LONG_TERM).
            
            Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
            Use the price returned by the tool for the 'price' field.

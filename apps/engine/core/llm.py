@@ -186,9 +186,16 @@ Content: {chunk['content']}
         prompt = f"""You are a hedge fund trading algorithm. Next you will see a batch of financial news snippets and your current portfolio (if any).
         Analyze the current portfolio and the news snippets and the state of the market, find trading and investment ideas with a high profit potential.
 
-        CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
+        CRITICAL: Use the `get_stock_quote` call for ANY ticker you intend to BUY or SELL. 
         This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price to prevent hallucinations.
         If the tool returns an error or shows the ticker is illiquid, DO NOT recommend a trade for it.
+
+        SMA MANAGEMENT RULES:
+        1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".
+        2. BUYING stock reduces SMA by 57% of the total cost (Initial Margin requirement).
+        3. SELLING stock increases SMA by 57% of the proceeds.
+        4. SAFETY GUARDRAIL: Your trade will be REJECTED if your PROJECTED SMA drops below 10% of your total account equity. 
+        Always calculate your projected SMA (Current SMA - [Trade Cost * 0.57]) before recommending a large BUY.
 
         1. Trading Signals: Look for relevant companies and tickers and determine a trading signal:
            * BUY: Only buy if we don't already have the stock in our portfolio.

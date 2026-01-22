@@ -12,7 +12,8 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 * **Excess Liquidity:** `NLV - Maintenance Margin`
 * **Available Funds:** `NLV - Initial Margin`
 * **Buying Power (Intraday):** `Available Funds × 4`
-* **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - (MVS × 0.57))`.
+* **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - (MVS × 0.57))`
+* **SMA Floor (Guardrail):** `10% × Total Equity`. Trades pushing projected SMA below this floor are rejected..
 
 ---
 
@@ -264,6 +265,7 @@ IBKR calculates SMA as the **Greater** of the following two values:
 * **The "No-Loss" Rule:** SMA does **not** decrease simply because the market price of your stocks goes down. It only decreases through withdrawals or new purchases.
 * **Market Gains:** If the stock price rises, the SMA increases at the end of the day if `(ELV - 57% MVS)` is greater than the current SMA.
 * **EOD Requirement:** At the close of the US trading day (15:50–17:20 ET), the SMA balance must be **≥ 0**. If it is negative, IBKR will liquidate positions to bring the account into compliance.
+* **Internal SMA Floor:** This engine enforces a custom safety floor of **10% of total equity**. Projected SMA after a trade must remain above this floor or the trade is rejected.
 
 ---
 

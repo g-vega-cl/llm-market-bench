@@ -214,3 +214,39 @@ def test_calculate_reg_t_metrics_with_object_positions():
     assert metrics.maintenance_margin_req == 3000.0 * 0.33
     assert metrics.initial_margin_req == 3000.0 * 0.57
     assert metrics.available_funds == 4000.0 - (3000.0 * 0.57)
+
+
+def test_sma_floor_protection():
+    """Verify that trades are rejected if projected SMA < 10% of total equity."""
+    # Setup: $10,000 Fresh Account
+    cash = 10000.00
+    positions = {}
+    prices = {}
+    previous_sma = 10000.00
+    
+    metrics = calculate_reg_t_metrics(cash, positions, prices, previous_sma=previous_sma)
+    
+    # 1. Test a large buy that hits the SMA floor
+    # Cost = $16,000. 
+    # Current SMA = $10,000. 
+    # Projected SMA = 10,000 - (16,000 * 0.57) = 10,000 - 9,120 = 880.
+    # Floor: 10% of $10,000 = $1,000.
+    # Result: Violation (880 < 1000)
+    res_violation = validate_trade_compliance(metrics, 16000.00, "AAPL", 150.00)
+    assert res_violation.passed is False
+    assert "SMA Floor Violation" in res_violation.reason
+    assert "Projected SMA: $880.00" in res_violation.reason
+    assert "Required Floor (10% Equity): $1,000.00" in res_violation.reason
+    
+    # 2. Test a slightly smaller buy that stays above the floor
+    # Cost = $15,000.
+    # Projected SMA = 10,000 - (15,000 * 0.57) = 10,000 - 8,550 = 1,450.
+    # Result: PASS (1450 >= 1000)
+    res_pass = validate_trade_compliance(metrics, 15000.00, "AAPL", 150.00)
+    assert res_pass.passed is True
+    
+    # 3. Verify max_affordable_shares calculation when floor is hit
+    # Max Affordable = (Current SMA - Floor) / (Price * 0.57)
+    # (10000 - 1000) / (150 * 0.57) = 9000 / 85.5 = 105.26
+    # Should be 105 shares.
+    assert res_violation.max_affordable_shares == 105

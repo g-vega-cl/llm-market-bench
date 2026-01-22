@@ -140,6 +140,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
 * **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
 * **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
+* **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
 * **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution.
 * documentation: ./docs/pre-market-validation.md
 * File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`

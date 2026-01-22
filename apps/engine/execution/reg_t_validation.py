@@ -186,5 +186,23 @@ def validate_trade_compliance(
             ),
             max_affordable_shares=int(portfolio_metrics.buying_power // price) if price > 0 else 0
         )
+
+    # --- SMA Floor Guardrail ---
+    # Rule: Projected SMA after trade must be >= 10% of Total Equity.
+    # Buying stock reduces SMA by 57% of the cost.
+    projected_sma = portfolio_metrics.sma - (estimated_trade_cost * 0.57)
+    sma_floor = portfolio_metrics.total_equity * 0.10
+
+    if projected_sma < sma_floor:
+        return ValidationResult(
+            passed=False,
+            reason=(
+                f"SMA Floor Violation for {ticker}. "
+                f"Projected SMA: ${projected_sma:,.2f}, "
+                f"Required Floor (10% Equity): ${sma_floor:,.2f}. "
+                "This trade would risk Reg T compliance."
+            ),
+            max_affordable_shares=int(max(0, (portfolio_metrics.sma - sma_floor) // (price * 0.57))) if price > 0 else 0
+        )
         
     return ValidationResult(passed=True)

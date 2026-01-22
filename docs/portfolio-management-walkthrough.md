@@ -21,7 +21,8 @@ We strictly follow **Reg T** calculations for margin accounts.
 ### 2a. Reg T Validation (Pre-Execution)
 Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_validation.py`) to ensure:
 1. **Trade Cost <= Buying Power**
-2. **Account not in Liquidation**
+2. **Projected SMA >= SMA Floor (10% of Total Equity)**
+3. **Account not in Liquidation**
 
 *Implementation: `apps/engine/execution/reg_t_validation.py`*
 
@@ -32,6 +33,7 @@ The validation logic strictly enforces the Buying Power limit.
 | :--- | :--- | :--- | :--- |
 | **Leveraged Buy** | Cost > Cash but < Buying Power | **PASS** | Valid use of Reg T leverage (2:1 to 4:1). |
 | **Excessive Buy** | Cost > Buying Power | **FAIL** | Trade exceeds legal margin limits. |
+| **SMA Floor Hit** | Projected SMA < 10% Equity | **FAIL** | Safety guardrail protecting Reg T compliance. |
 | **Liquidation** | Available Funds < 0 | **FAIL** | Account is in margin call/deficit state. |
 
 ## 3. Persistent State (Database)
@@ -55,8 +57,8 @@ A dynamic SQL view that calculates Profit/Loss without data duplication.
 - `unrealized_pnl_pct`: Percentage return based on cost basis.
 - `current_price`: Latest price from the `market_data_cache`.
 
-## 4. LLM Prompt Injection
-Before the LLM analyzes news, we insert a snapshot of its financial health.
+## 4. LLM Prompt Injection & Awareness
+Before the LLM analyzes news, we insert a snapshot of its financial health. The LLM is also given explicit instructions on **SMA Management Rules** and the **10% Safety Floor**.
 
 **System Prompt Addition:**
 ```text

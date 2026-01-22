@@ -25,6 +25,11 @@ LLMs, while powerful, can occasionally:
 - **Limit**: **Minimum $2 Billion**.
 - **Action**: Reject trades for companies with insufficient market cap.
 
+### 4. Guardrail D: SMA Floor (Margin Compliance)
+- **Logic**: Calculates the projected SMA after the trade (Current SMA - 57% of Cost).
+- **Limit**: **Minimum 10% of Total Equity**.
+- **Action**: Reject trades that would push the account too close to a Reg T violation.
+
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
 

@@ -30,18 +30,18 @@ Implementation: `apps/engine/execution/portfolio.py` -> `execute_trade()`
     -   *Note: Cost Basis does not change during a SELL (First-In-First-Out or Weighted Avg remains constant per share).*
 6.  **SMA Update:** `SMA = SMA + (57% * Proceeds)`. (Selling releases margin).
 
-## 3. Database Updates
-We perform a transactional update to `supabase`:
+## 3. Atomic Database Updates
+To prevent "Phantom Cash Losses" (where cash is deducted but no position is recorded), we follow a strict **"Commit at the End"** sequence. If any step fails, the function returns `None` and the Agent's Portfolio remains in its previous state.
 
-1.  **`portfolios` table:**
-    -   Update `cash_balance`.
-    -   Update `sma`.
-    -   Update `last_updated_at`.
-2.  **`portfolio_positions` table:**
+1.  **`portfolio_positions` table:**
     -   `UPSERT` the position row with new quantity/cost (Tickers are normalized to **UPPERCASE**).
-    -   OR `DELETE` the row if quantity is zero.
-3.  **Reg T Metric Persistence:** 
-    -   Immediately after trade settlement, recalculate and save updated Equity, Buying Power, and SMA to the `portfolios` table for dashboard consistency.
+    -   OR `DELETE` the row if quantity reached zero.
+2.  **`trades` table:**
+    -   Insert a new record to generate a unique `TradeID`. This serves as the source of truth for the audit trail.
+3.  **`portfolios` table (The "Commit"):**
+    -   **Only after** the previous two steps succeed, update the account's `cash_balance` and `sma`.
+4.  **Final Persistence:**
+    -   Recalculate and save updated metrics (Total Equity, Buying Power) to the `portfolios` table for dashboard consistency.
 ## 4. Quantity Calculation (Allocation %)
 Before settlement, the engine converts the LLM's `allocation_percentage` into a share count:
 - **BUY:** `Qty = (Allocation % * Buying Power) / Market Price`.

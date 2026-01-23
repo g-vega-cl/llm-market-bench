@@ -267,14 +267,7 @@ class Portfolio:
         
         # Persist changes
         try:
-            # 1. Update Portfolio Cash & SMA
-            supabase.table("portfolios").update({
-                "cash_balance": self.cash_balance,
-                "sma": self.sma,
-                "last_updated_at": "now()"
-            }).eq("id", self.id).execute()
-            
-            # 2. Update/Insert/Delete Position
+            # 1. Update/Insert/Delete Position
             current_pos = self.positions.get(ticker)
             if current_pos:
                 supabase.table("portfolio_positions").upsert({
@@ -285,23 +278,12 @@ class Portfolio:
                 }).execute()
             else:
                  # It was deleted (position closed)
-                 # We need to explicitly delete from DB matching portfolio_id + ticker
                  supabase.table("portfolio_positions").delete().match({
                      "portfolio_id": str(self.id),
                      "ticker": ticker
                  }).execute()
-                 
-            # 3. Recalculate metrics with new cash/state (Assuming price is same)
-            # We effectively cheat and say current prices are what we just traded at
-            # or we need the full price map. 
-            # Ideally caller does a full refresh, but we should at least save the cash change.
-            # We will call save_metrics() if we had prices, but we don't have full map here.
-            # It's okay, next loop will refresh.
             
-            logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
-            
-            # 4. Insert into Trades Ledger (Step 12 Requirement)
-            # This must stay inside the try block to ensure we only record successful DB updates
+            # 2. Insert into Trades Ledger
             trade_res = supabase.table("trades").insert({
                 "portfolio_id": str(self.id),
                 "ticker": ticker,
@@ -313,19 +295,20 @@ class Portfolio:
             }).execute()
             
             trade_id = trade_res.data[0]["id"] if trade_res.data else None
+            
+            # 3. ONLY NOW update Portfolio Cash & SMA (The "Commit" step)
+            # This ensures we don't deduct cash if the ledger or positions failed
+            supabase.table("portfolios").update({
+                "cash_balance": self.cash_balance,
+                "sma": self.sma,
+                "last_updated_at": "now()"
+            }).eq("id", self.id).execute()
+            
+            logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
             
-            # 5. IMMEDIATELY update and save metrics to ensure table consistency
-            # Use current price for this ticker and potentially stale prices for others
-            # Next full refresh will catch everything.
+            # 4. Update and save metrics to ensure table consistency
             current_prices = {ticker: price}
-            for t, pos in self.positions.items():
-                if t != ticker:
-                    # In a real system we'd fetch a mini-map here, 
-                    # for now we rely on the fact that calculate_reg_t_metrics
-                    # will fall back to cost basis if we don't provide a price.
-                    pass
-            
             self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 

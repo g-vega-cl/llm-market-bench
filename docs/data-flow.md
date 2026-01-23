@@ -744,10 +744,10 @@ The engine converts the LLM's `allocation_percentage` into a share count:
 
 If validation passes, the trade is settled into the `portfolios` table.
 
-**Database Operations**:
-1. **Update Portfolio**: Reduce Cash (Buy) or Increase Cash (Sell).
-2. **Update Positions**: Upsert `portfolio_positions` row.
-3. **Update SMA**: Adjust based on margin requirements.
+**Database Operations (Atomic "Commit at the End" Pattern)**:
+1. **Update Positions**: `UPSERT` into `portfolio_positions` (or `DELETE` if quantity is zero).
+2. **Ledger Update**: `INSERT` into `trades` table to record the execution.
+3. **Commit Portfolio**: **Only after steps 1 & 2 succeed**, update `cash_balance` and `sma` in the `portfolios` table.
 4. **Immediate Consistency**: Recalculate and persist complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table to ensure real-time dashboard accuracy.
 
 ```sql

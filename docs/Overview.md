@@ -163,6 +163,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
 *   **Guardrail:** *Enforces **Portfolio Ownership** for SELL signals; if an LLM tries to sell a ticker it doesn't own, the trade is rejected.*
 *   **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
+*   **Atomic Settlement Pattern:** *Follows a **"Commit at the End"** logic where `cash_balance` and `sma` are only persisted to the `portfolios` table if both the `portfolio_positions` update and the `trades` ledger entry succeed. This prevents "Phantom Deductions" if the DB connection fails mid-operation.*
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
 *   **Rejection Logic:** *Decisions that fail Validation, Reg T, or **Ownership** checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`) to preserve the full "Audit Trail" of AI intent.*
 *   documentation: ./docs/trade-settlement-walkthrough.md

@@ -33,7 +33,8 @@ ai-wallstreet/
 │       ├── analysis/        # Trend & momentum analysis logic
 │       ├── execution/       # Trade Settlement & Idempotency logic
 │       ├── memory/          # RAG logic for pgvector
-│       └── main.py          # Entry point for Cron jobs
+│       ├── main.py          # Entry point for Cron jobs (Full Pipeline)
+│       └── update_prices.py # Manual/Utility entry point (Price Update ONLY)
 ├── packages/
 │   └── database/            # Shared Supabase types/schemas
 ├── supabase/                # SQL Migrations, RLS policies, & Vector setup
@@ -51,36 +52,36 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **1. Daily Trigger (09:35 ET)** ✅
 
-* **Tech:** GitHub Actions (Cron)
-* **Goal:** Fire the pipeline 5 minutes after market open to capture live prices.
-* File: .github/workflows/ingest.yml
+*   **Tech:** GitHub Actions (Cron)
+*   **Goal:** Fire the pipeline 5 minutes after market open to capture live prices.
+*   File: .github/workflows/ingest.yml
 
 **1a. Quality Assurance (CI/CD)** ✅
 
-* **Tech:** GitHub Actions / Pytest
-* **Logic:** *Automatically runs unit tests for core configuration and ingestion utilities on every pull request and push to the `main` branch. This serves as a security/stability gate for the engine.*
-* File: .github/workflows/ci.yml
-* documentation: ./docs/testing.md
+*   **Tech:** GitHub Actions / Pytest
+*   **Logic:** *Automatically runs unit tests for core configuration and ingestion utilities on every pull request and push to the `main` branch. This serves as a security/stability gate for the engine.*
+*   File: .github/workflows/ci.yml
+*   documentation: ./docs/testing.md
 
 **2. Newsletter Ingestion** ✅
 
-* **Tech:** Python / Gmail API
-* *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
-* File: apps/engine/ingest/newsletter.py
-* **Semantic Monitoring:** *Structured logging alerts (Semantic Fragility Alert) if a previously active sender yields 0 valid content chunks, detecting parsing template changes.*
-* documentation: ./docs/newsletter-ingestion-walkthrough.md
+*   **Tech:** Python / Gmail API
+*   *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
+*   File: apps/engine/ingest/newsletter.py
+*   **Semantic Monitoring:** *Structured logging alerts (Semantic Fragility Alert) if a previously active sender yields 0 valid content chunks, detecting parsing template changes.*
+*   documentation: ./docs/newsletter-ingestion-walkthrough.md
 
 **3. Corporate Action Check** - PENDING - ⏳
 
-* **Tech:** Python / Market API
-* *Check for stock splits/dividends. Adjust the "Virtual Portfolio" holdings before the LLM sees them to prevent fake price-drop panics.*
+*   **Tech:** Python / Market API
+*   *Check for stock splits/dividends. Adjust the "Virtual Portfolio" holdings before the LLM sees them to prevent fake price-drop panics.*
 
 **4. Data Snapshotting (Idempotency Layer)** ✅
 
-* **Tech:** Supabase Postgres
-* *Save the raw newsletter text and current prices.*
-* **Constraint:** *Use a composite unique key (Date + SourceID) to prevent duplicate processing if the job restarts.*
-* documentation: ./docs/data-snapshotting-walkthrough
+*   **Tech:** Supabase Postgres
+*   *Save the raw newsletter text and current prices.*
+*   **Constraint:** *Use a composite unique key (Date + SourceID) to prevent duplicate processing if the job restarts.*
+*   documentation: ./docs/data-snapshotting-walkthrough
 
 ### Phase 2: The Consensus & Attribution Engine
 
@@ -116,7 +117,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Semantic Grouping:** Uses **Vector Embeddings** and **Cosine Similarity** to group events with different names but similar meanings (e.g., "Fed Hike" vs "Interest Rate Hike").
 *   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
-*   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0). 
+*   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
 *   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.
 *   documentation: ./docs/event-consensus-walkthrough.md
 
@@ -131,20 +132,20 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   documentation: ./docs/trend-momentum-analysis.md
 
 **9.a. General Review**
-* documentation: ./docs/claude-step-9-and-before-review.md
+*   documentation: ./docs/claude-step-9-and-before-review.md
 
 **10. Pre-Market Validation (Hallucination Guardrails)** ✅
 
-* **Tech:** Python / `MarketDataManager` / yfinance or FMP
-* **Cache-First Architecture:** Uses a `market_data_cache` table in Supabase (4-hour TTL) to minimize external API dependencies and prevent rate limits.
-* **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
-* **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
-* **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
-* **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
-* **Guardrail E (Robust Price Fallback):** *In `calculate_reg_t_metrics`, if market data fails (price = 0), positions are valued at their `average_cost_basis`. This prevents "Negative Total Equity" hallucinations for margin accounts.*
-* **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution. **Ticker Casing** is normalized to uppercase across all layers for consistency.
-* documentation: ./docs/pre-market-validation.md
-* File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
+*   **Tech:** Python / `MarketDataManager` / yfinance or FMP
+*   **Cache-First Architecture:** Uses a `market_data_cache` table in Supabase (4-hour TTL) to minimize external API dependencies and prevent rate limits.
+*   **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
+*   **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
+*   **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
+*   **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
+*   **Guardrail E (Robust Price Fallback):** *In `calculate_reg_t_metrics`, if market data fails (price = 0), positions are valued at their `average_cost_basis`. This prevents "Negative Total Equity" hallucinations for margin accounts.*
+*   **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution. **Ticker Casing** is normalized to uppercase across all layers for consistency.
+*   documentation: ./docs/pre-market-validation.md
+*   File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
 
 ### Phase 3: Market Execution (Sequential)
 
@@ -170,26 +171,33 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **12a. Real-time P&L Tracking (SQL View)** ✅
 
-* **Outcome:** Provides live Profit/Loss USD and % for all active positions.
+*   **Outcome:** Provides live Profit/Loss USD and % for all active positions.
 
 **13. Attribution Locking** ✅
-* **Tech:** Supabase Postgres
-* *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*
-* documentation: ./docs/attribution-locking-walkthrough.md
+*   **Tech:** Supabase Postgres
+*   *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*
+*   documentation: ./docs/attribution-locking-walkthrough.md
 
 **14. Ledger & Equity Curve Update** ✅
 
-* **Tech:** Supabase Postgres
-* **Action:** *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
-* **Update:** *Crucially, it also updates the main `portfolios` summary table with the final calculated Reg T metrics (Equity, Moving SMA, Maintenance Margin) following all executions.*
-* **Idempotency:** *Enforce database constraints on `(portfolio_id, date)` to ensure performance is never double-counted.*
-* documentation: [step-14-ledger-equity-curve.md](./docs/step-14-ledger-equity-curve.md)
+*   **Tech:** Supabase Postgres
+*   **Action:** *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
+*   **Update:** *Crucially, it also updates the main `portfolios` summary table with the final calculated Reg T metrics (Equity, Moving SMA, Maintenance Margin) following all executions.*
+*   **Idempotency:** *Enforce database constraints on `(portfolio_id, date)` to ensure performance is never double-counted.*
+*   documentation: [step-14-ledger-equity-curve.md](./docs/step-14-ledger-equity-curve.md)
+
+**14a. Price Update Utility (Non-LLM)** ✅
+
+*   **Tech:** Python / `update_prices.py`
+*   **Goal:** Refresh market prices and recalculate portfolio metrics without invoking the expensive LLM analysis loop.
+*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions.
+*   File: `apps/engine/update_prices.py`
 
 **15. Long-term Memory Embedding** ✅
 
-* **Tech:** **Supabase pgvector (Google Gemini text-embedding-004)**
-* *Embed consensus events and the attributed reasoning for future RAG retrieval.*
-* documentation: [step-15-long-term-memory-embedding.md](./step-15-long-term-memory-embedding.md)
+*   **Tech:** **Supabase pgvector (Google Gemini text-embedding-004)**
+*   *Embed consensus events and the attributed reasoning for future RAG retrieval.*
+*   documentation: [step-15-long-term-memory-embedding.md](./step-15-long-term-memory-embedding.md)
 
 ### Phase 4: Frontend & Feedback
 

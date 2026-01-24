@@ -44,7 +44,7 @@ ai-wallstreet/
 
 ```
 
-## 3. The 17-Step Daily Pipeline
+## 3. The 20-Step Daily Pipeline
 
 For a detailed step-by-step walkthrough with a concrete example of how data flows through the entire pipeline (from Gmail newsletters to trading decisions), see **[data-flow.md](./data-flow.md)**. This document traces 4 sample newsletters through each phase with actual API calls and database operations documented.
 

@@ -509,7 +509,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 1. **Check Persistence**: Query `market_data_cache` in Supabase.
 2. **TTL Verification**: If `fetched_at` is older than 4 hours, proceed to fetch.
 3. **External Fetch**: Hit `yfinance` or `FMP` via `FinancialProvider` interface.
-4. **Update Cache**: Upsert the fresh data back to Supabase.
+4. **Update Cache**: Upsert the fresh data back to `market_data_cache` and insert into `price_history` for a permanent record.
 
 #### The Three Guardrails:
 

@@ -137,7 +137,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **10. Pre-Market Validation (Hallucination Guardrails)** ✅
 
 *   **Tech:** Python / `MarketDataManager` / yfinance or FMP
-*   **Cache-First Architecture:** Uses a `market_data_cache` table in Supabase (4-hour TTL) to minimize external API dependencies and prevent rate limits.
+*   **Cache-First Architecture:** Uses a `market_data_cache` table in Supabase (4-hour TTL) to minimize external API dependencies and prevent rate limits. A permanent record of all fetched prices is stored in the `price_history` table for long-term analysis.
 *   **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
 *   **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
 *   **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*

@@ -33,8 +33,10 @@ LLMs, while powerful, can occasionally:
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
 
-- **Persistence**: Results are stored in the `market_data_cache` table in Supabase.
-- **TTL**: Cached data is considered fresh for **4 hours**.
+- **Persistence**:
+  - **Cache**: The latest price results are stored in the `market_data_cache` table in Supabase.
+  - **History**: A permanent record of every price fetch is stored in the `price_history` table for historical analysis.
+- **TTL**: Cached data in `market_data_cache` is considered fresh for **4 hours**.
 - **Efficiency**: Reduces external API (yfinance/FMP) calls by $>90%$ for common tickers.
 - **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 

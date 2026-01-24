@@ -11,7 +11,10 @@ An automated platform where four LLMs (**OpenAI, Claude, Gemini, DeepSeek**) com
 * **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
 * **The "Consensus" Effect:** Identifies where AI models agree or diverge on global risks.
 * **Decision Attribution:** Provides a machine-auditable trail from raw news chunk to final trade execution.
-* **Memory Integrity:** Tests if LLMs can maintain a consistent world view using Vector RAG (Retrieval-Augmented Generation).
+*   **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
+*   **The "Consensus" Effect:** Identifies where AI models agree or diverge on global risks.
+*   **Decision Attribution:** Provides a machine-auditable trail from raw news chunk to final trade execution.
+*   **Memory Integrity:** Tests if LLMs can maintain a consistent world view using Vector RAG (Retrieval-Augmented Generation).
 
 ## 2. Technical Architecture & Repo Structure
 
@@ -20,28 +23,26 @@ The project follows a **Monorepo** structure to keep the Python Data Engine and 
 **Repository Organization:**
 
 ```text
-ai-wallstreet/
+llm-market-bench/
 ├── apps/
-│   ├── web/                 # TanStack Start (Frontend)
+│   ├── web/                 # TanStack Start (Frontend - React + TS)
 │   │   ├── app/             # File-based routing
 │   │   ├── components/      # Shared UI components
-│   │   └── utils/           # TanStack Query hooks
+│   │   └── utils/           # TanStack Query & Supabase hooks
 │   └── engine/              # Python (The Backend Pipeline)
-│       ├── core/            # LLM clients (Instructor/Pydantic models)
+│       ├── core/            # LLM clients
 │       ├── ingest/          # Newsletter scrapers
-│       ├── attribution/     # Decision mapping & audit trail logic
-│       ├── analysis/        # Trend & momentum analysis logic
-│       ├── execution/       # Trade Settlement & Idempotency logic
-│       ├── memory/          # RAG logic for pgvector
-│       ├── main.py          # Entry point for Cron jobs (Full Pipeline)
-│       └── update_prices.py # Manual/Utility entry point (Price Update ONLY)
+│       ├── attribution/     # Decision mapping
+│       ├── analysis/        # Trend & momentum
+│       ├── execution/       # Trade Settlement
+│       ├── main.py          # Entry point
+│       └── update_prices.py # Utility
 ├── packages/
-│   └── database/            # Shared Supabase types/schemas
-├── supabase/                # SQL Migrations, RLS policies, & Vector setup
-    └── workflows/           # CI/CD & Cron schedules
-        ├── ci.yml           # Automated testing on PR/Push
-        └── ingest.yml       # Daily consolidated pipeline (09:35 ET)
-
+│   └── database/            # Shared Supabase types/schemas (PENDING)
+├── supabase/                # SQL Migrations, RLS policies
+├── package.json             # Root monorepo config
+├── pnpm-workspace.yaml      # PNPM Workspaces config
+└── README.md                # Project entry point
 ```
 
 ## 3. The 20-Step Daily Pipeline

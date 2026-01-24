@@ -78,14 +78,21 @@ class MarketDataManager:
             return None
 
     def _save_to_cache(self, data: TickerData):
-        """Internal helper to upsert data into the cache."""
+        """Internal helper to upsert data into the cache and record price history."""
         try:
+            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
             payload = {
                 "ticker": data.ticker,
                 "price": data.price,
                 "market_cap": data.market_cap,
-                "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                "fetched_at": now_iso
             }
+
+            # Upsert into the cache for fast lookups of the latest price
             self.client.table("market_data_cache").upsert(payload).execute()
+
+            # Insert into history table for a permanent record
+            self.client.table("price_history").insert(payload).execute()
+
         except Exception as e:
-            logger.error(f"Error saving market data cache for {data.ticker}: {e}")
+            logger.error(f"Error saving market data for {data.ticker}: {e}")

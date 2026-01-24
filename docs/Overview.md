@@ -62,7 +62,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Tech:** GitHub Actions / Pytest
 *   **Logic:** *Automatically runs unit tests for core configuration and ingestion utilities on every pull request and push to the `main` branch. This serves as a security/stability gate for the engine.*
 *   File: .github/workflows/ci.yml
-*   documentation: ./docs/testing.md
+*   documentation: ./docs/engine/testing.md
 
 **2. Newsletter Ingestion** ✅
 
@@ -70,7 +70,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
 *   File: apps/engine/ingest/newsletter.py
 *   **Semantic Monitoring:** *Structured logging alerts (Semantic Fragility Alert) if a previously active sender yields 0 valid content chunks, detecting parsing template changes.*
-*   documentation: ./docs/newsletter-ingestion-walkthrough.md
+*   documentation: ./docs/engine/newsletter-ingestion-walkthrough.md
 
 **3. Corporate Action Check** - PENDING - ⏳
 
@@ -82,7 +82,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Tech:** Supabase Postgres
 *   *Save the raw newsletter text and current prices.*
 *   **Constraint:** *Use a composite unique key (Date + SourceID) to prevent duplicate processing if the job restarts.*
-*   documentation: ./docs/data-snapshotting-walkthrough
+*   documentation: ./docs/engine/data-snapshotting-walkthrough
 
 ### Phase 2: The Consensus & Attribution Engine
 
@@ -97,20 +97,20 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
 *   **Fault Tolerance:** If individual LLM providers fail, the pipeline continues with successful results. CRITICAL alerts are logged if all 4 providers fail.
-*   documentation: ./docs/llm-analysis-walkthrough.md
+*   documentation: ./docs/engine/llm-analysis-walkthrough.md
 
 **6. RAG Context Retrieval** ✅
 
 *   **Tech:** **Supabase pgvector**
 *   *Before analyzing today's news, the engine queries the vector store for relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
-*   documentation: ./docs/rag-context-retrieval.md
+*   documentation: ./docs/engine/rag-context-retrieval.md
 
 **7. Decision Attribution Layer** ✅
 
 *   **Tech:** Python Logic / Supabase
 *   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
 *   **Idempotency:** *Uses UPSERT with unique constraint on `(source_id, ticker, signal, model_provider, model_name)` to prevent duplicate decisions if the pipeline reruns.*
-*   documentation: ./docs/decision-attribution-walkthrough.md
+*   documentation: ./docs/engine/decision-attribution-walkthrough.md
 
 **8. Event Consensus Protocol** ✅
 
@@ -120,7 +120,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
 *   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.
-*   documentation: ./docs/event-consensus-walkthrough.md
+*   documentation: ./docs/engine/event-consensus-walkthrough.md
 
 **9. Trend & Concept Momentum Analysis** ✅
 *   **Tech:** Supabase pgvector / Python
@@ -130,10 +130,10 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Momentum Scoring:** The engine calculates a "Velocity Score" based on mention frequency acceleration (Recent 24h vs. 7-day baseline).
 *   **Velocity Decay:** Stale concepts have their velocity scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
 *   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score.
-*   documentation: ./docs/trend-momentum-analysis.md
+*   documentation: ./docs/engine/trend-momentum-analysis.md
 
 **9.a. General Review**
-*   documentation: ./docs/claude-step-9-and-before-review.md
+*   documentation: ./docs/engine/claude-step-9-and-before-review.md
 
 **10. Pre-Market Validation (Hallucination Guardrails)** ✅
 
@@ -145,7 +145,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
 *   **Guardrail E (Robust Price Fallback):** *In `calculate_reg_t_metrics`, if market data fails (price = 0), positions are valued at their `average_cost_basis`. This prevents "Negative Total Equity" hallucinations for margin accounts.*
 *   **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution. **Ticker Casing** is normalized to uppercase across all layers for consistency.
-*   documentation: ./docs/pre-market-validation.md
+*   documentation: ./docs/engine/pre-market-validation.md
 *   File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
 
 ### Phase 3: Market Execution (Sequential)
@@ -157,7 +157,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions (e.g., "Use 10% of BP for this trade") rather than just static share counts.*
-*   documentation: ./docs/portfolio-management-walkthrough.md
+*   documentation: ./docs/engine/portfolio-management-walkthrough.md
 
 **12. Trade Settlement & Ledgering** ✅
 
@@ -168,7 +168,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Atomic Settlement Pattern:** *Follows a **"Commit at the End"** logic where `cash_balance` and `sma` are only persisted to the `portfolios` table if both the `portfolio_positions` update and the `trades` ledger entry succeed. This prevents "Phantom Deductions" if the DB connection fails mid-operation.*
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
 *   **Rejection Logic:** *Decisions that fail Validation, Reg T, or **Ownership** checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`) to preserve the full "Audit Trail" of AI intent.*
-*   documentation: ./docs/trade-settlement-walkthrough.md
+*   documentation: ./docs/engine/trade-settlement-walkthrough.md
 
 **12a. Real-time P&L Tracking (SQL View)** ✅
 
@@ -177,7 +177,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **13. Attribution Locking** ✅
 *   **Tech:** Supabase Postgres
 *   *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*
-*   documentation: ./docs/attribution-locking-walkthrough.md
+*   documentation: ./docs/engine/attribution-locking-walkthrough.md
 
 **14. Ledger & Equity Curve Update** ✅
 
@@ -185,7 +185,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Action:** *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
 *   **Update:** *Crucially, it also updates the main `portfolios` summary table with the final calculated Reg T metrics (Equity, Moving SMA, Maintenance Margin) following all executions.*
 *   **Idempotency:** *Enforce database constraints on `(portfolio_id, date)` to ensure performance is never double-counted.*
-*   documentation: [step-14-ledger-equity-curve.md](./docs/step-14-ledger-equity-curve.md)
+*   documentation: [step-14-ledger-equity-curve.md](./docs/engine/step-14-ledger-equity-curve.md)
 
 **14a. Price Update Utility (Non-LLM)** ✅
 

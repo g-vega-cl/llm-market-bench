@@ -1,64 +1,65 @@
-# llm-market-bench
+# AI Wall Street: LLM Market Benchmarking Platform
 
-This repository contains tools for AI-driven market analysis and benchmarking.
+An automated platform where four LLMs (**OpenAI, Claude, Gemini, DeepSeek**) compete in a virtual stock market. Every morning, they parse financial newsletters, debate major global events, and rebalance their portfolios.
 
-## Engine
+## 🚀 Project Overview
 
-The `apps/engine` directory contains the core processing logic, including newsletter ingestion and database snapshotting.
+This project benchmarks the reasoning capabilities of leading LLMs against the real-world performance of the S&P 500. It features a robust Python-based data engine and a modern React-based frontend.
 
-### Local Execution
+For a deep dive into the system design, see the **[Project Overview](./docs/Overview.md)**.
 
-To run the ingestion and upload to Supabase locally:
+## 📂 Repository Structure
 
-1.  **Navigate to the engine directory**:
-    ```bash
-    cd apps/engine
-    ```
+This is a monorepo managed with `pnpm`:
 
-2.  **Activate the virtual environment**:
-    ```bash
-    source venv/bin/activate
-    ```
+*   **`apps/engine`**: The Python pipeline (Ingestion, Analysis, Execution).
+*   **`apps/web`**: The TanStack Start dashboard (Frontend). [Read the Web Architecture Docs](./docs/web/README.md).
+*   **`supabase`**: SQL migrations and database configuration.
+*   **`docs`**: Technical documentation and walkthroughs.
 
-3.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+## 🛠️ Getting Started
 
-4.  **Run the ingest command**:
-    ```bash
-    python3 main.py ingest
-    ```
+### Prerequisites
+*   Python 3.10+
+*   Node.js 20+ & `pnpm`
+*   Supabase Account
 
-### Testing
+### Workspace Setup
+```bash
+pnpm install
+```
 
-To run the automated test suite for the engine:
+### Engine Execution
+The engine handles the daily pipeline:
+```bash
+cd apps/engine
+source venv/bin/activate
+pip install -r requirements.txt
+python3 main.py ingest
+```
 
-1.  **Activate the virtual environment** (if not already done):
-    ```bash
-    source venv/bin/activate
-    ```
+### Web Development
+To run the dashboard locally:
+```bash
+pnpm --filter web dev
+```
 
-2.  **Run tests**:
-    ```bash
-    python3 -m pytest
-    ```
+## 🧪 Testing
 
-> [!NOTE]
-> The test suite currently covers core configuration and ingestion utilities. Database interaction tests have been omitted to avoid third-party dependency warnings with the supabase official testing library and prioritize a secure, minimal dependency footprint for automated verification.
+We maintain a high stability gate for the core engine:
+```bash
+cd apps/engine
+python3 -m pytest
+```
 
-### Environment Configuration
+## ⚙️ Automation
 
-Ensure you have a `.env` file in `apps/engine/` with the following variables:
+*   **CI Testing**: Automatically runs on every push to `main`.
+*   **Daily Pipeline**: Triggered via GitHub Actions at 09:35 ET (5 minutes after market open).
 
-- `SUPABASE_PROJECT_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `GMAIL_CREDENTIALS_JSON`
-- `GMAIL_TOKEN_JSON`
+## 📄 Documentation
 
-## Automation
-
-The project uses GitHub Actions for automation:
-
-- **CI Testing**: [.github/workflows/ci.yml](.github/workflows/ci.yml) - Automatically runs the engine test suite on every push or pull request to the `main` branch.
-- **Daily Ingestion**: [.github/workflows/ingest.yml](.github/workflows/ingest.yml) - Handles the daily cron schedule for newsletter ingestion (08:00 ET).
+*   [System Overview](./docs/Overview.md)
+*   [Data Flow & Pipeline Walkthrough](./docs/data-flow.md)
+*   [Web Application Architecture](./docs/web/README.md)
+*   [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)

@@ -26,9 +26,11 @@ The project follows a **Monorepo** structure to keep the Python Data Engine and 
 llm-market-bench/
 ├── apps/
 │   ├── web/                 # TanStack Start (Frontend - React + TS)
-│   │   ├── app/             # File-based routing
-│   │   ├── components/      # Shared UI components
-│   │   └── utils/           # TanStack Query & Supabase hooks
+│   │   ├── src/             # Application source (Routes, Components, Utils)
+│   │   │   ├── routes/      # File-based routing
+│   │   │   ├── components/  # Shared UI components
+│   │   │   └── utils/       # Supabase SSR & SEO hooks
+│   │   └── package.json     # Web dependencies
 │   └── engine/              # Python (The Backend Pipeline)
 │       ├── core/            # LLM clients
 │       ├── ingest/          # Newsletter scrapers
@@ -202,17 +204,18 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ### Phase 4: Frontend & Feedback
 
-**16. Interactive Dashboard**
+**16. Interactive Dashboard** ✅
 
-* **Tech:** **TanStack Start (Vite + React)**
-* *Server-side rendering for SEO, client-side hydration for interactivity.*
-* **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
-* *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
+*   **Tech:** **TanStack Start (Vite + React)**
+*   *Server-side rendering for SEO, client-side hydration for interactivity.*
+*   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
+*   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
+*   **Documentation:** [Web Application Architecture](./web/README.md)
 
 **17. Community Interaction**
-* **Tech:** **Supabase Auth**
-* *Users log in to comment on trades.*
-* **Security:** *Postgres Row Level Security (RLS) ensures only authenticated users can post, and only Admins can write to the Ledger.*
+*   **Tech:** **Supabase Auth**
+*   *Users log in to comment on trades.*
+*   **Security:** *Postgres Row Level Security (RLS) ensures only authenticated users can post, and only Admins can write to the Ledger.*
 
 **18. Observability & Health**
 

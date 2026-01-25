@@ -37,6 +37,8 @@ Rich metadata is attached to each memory to enable filtered retrieval:
 | `model_name` | The specific model that generated the thought (e.g., `gpt-4o`) |
 | `source_id` | Foreign key to the original newsletter snapshot |
 | `trade_id` | Foreign key to the executed trade record (if applicable) |
+| `status` | `ACTIVE`, `RESOLVED`, or `SUPERSEDED` (for memory chains) |
+| `relevance_score` | Decay multiplier (default: 1.0, halves every 30 days) |
 
 ## Pipeline Integration
 
@@ -69,3 +71,8 @@ python3 tests/verify_step_15.py
 
 ### Retrieval Pattern
 During the next day's run, Step 6 (Context Retrieval) uses the same `text-embedding-004` model to query the `memories` table. Because the embeddings are consistent, today's reasoning becomes tonight's "Historical Context" for the LLM.
+
+### Memory Optimization
+The retrieval system includes two optimization mechanisms:
+1. **Status Filtering**: Only `ACTIVE` memories are retrieved. Memories marked as `RESOLVED` are excluded from LLM context.
+2. **Relevance Decay**: The `match_memories` RPC multiplies similarity scores by `relevance_score`, which decays by 50% every 30 days. This ensures old information has diminishing impact over time.

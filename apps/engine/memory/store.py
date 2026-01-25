@@ -200,6 +200,8 @@ def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48
         # Operator '<=>' is cosine distance (1 - similarity)
         response = client.table("memories").select("id, created_at, content").filter(
             "created_at", "gte", cutoff
+        ).filter(
+            "status", "eq", "ACTIVE"
         ).order(
             "embedding",  # Note: Sorting by vector in JS/Python client usually requires raw SQL
                           # but we can filter by time first then check similarity in code
@@ -218,6 +220,8 @@ def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48
         
         recent_embeddings_response = client.table("memories").select("embedding").filter(
             "created_at", "gte", cutoff
+        ).filter(
+            "status", "eq", "ACTIVE"
         ).execute()
         
         if not recent_embeddings_response.data:
@@ -240,3 +244,40 @@ def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48
     except Exception as e:
         logger.error(f"Error checking recent memories: {e}")
         return False
+
+def decay_memories(sb_client: Client, decay_days: int = None):
+    """Apply time-based decay to relevance scores of memories not updated recently.
+
+    Memories that haven't been mentioned in `decay_days` have their relevance
+    reduced by 50% (half-life decay model).
+
+    Args:
+        sb_client: Supabase client instance.
+        decay_days: Number of days of inactivity before decay applies.
+            Defaults to MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS from config.
+    """
+    from core import config
+    decay_days = decay_days or config.MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=decay_days)).isoformat()
+
+    try:
+        # Fetch active memories with relevance > threshold
+        response = sb_client.table("memories").select(
+            "id", "relevance_score", "created_at"
+        ).eq("status", "ACTIVE").lt("created_at", cutoff).gt("relevance_score", config.MEMORIES_DECAY_THRESHOLD).execute()
+
+        if not response.data:
+            logger.info("No stale memories to decay.")
+            return
+
+        decay_count = 0
+        for memory in response.data:
+            new_relevance = memory["relevance_score"] * 0.5
+            sb_client.table("memories").update({
+                "relevance_score": new_relevance
+            }).eq("id", memory["id"]).execute()
+            decay_count += 1
+
+        logger.info(f"Decayed relevance for {decay_count} stale memories.")
+    except Exception as e:
+        logger.error(f"Error decaying stale memories: {e}")

@@ -124,6 +124,9 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Memory Chains:** For each new event, the engine performs a "Relationship Analysis" against recent memories.
     *   **Linking:** Links new events to ancestors via `parent_id` (e.g., a "Retraction" linked to a "Threat").
     *   **Auto-Resolution:** Automatically marks ancestors as `RESOLVED` if the new event reverses or completes them.
+*   **Memory Optimization:** Memories marked as `RESOLVED` are excluded from LLM context retrieval, keeping analysis focused on active events.
+*   **Relevance Decay:** Memories have a `relevance_score` that decays by 50% every 30 days, reducing the impact of old information over time.
+*   **Future Event Tracking:** During synthesis, the LLM extracts explicitly mentioned future dates (e.g., "Q3 2026", "next summer") and saves them to a `future_events` table for proactive positioning.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
 *   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.

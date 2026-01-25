@@ -49,7 +49,7 @@ You must provide a confidence score (0-100) and your reasoning for each trading 
 Return the result as a structured JSON object containing a list of 'decisions' and a list of 'macro_events'."""
 
 
-SYNTHESIS_SYSTEM_PROMPT = "You are a senior financial analyst. Return structured JSON."
+SYNTHESIS_SYSTEM_PROMPT = "You are a senior financial analyst. Return structured JSON with name, summary, and any future date."
 
 SYNTHESIS_USER_PROMPT_TEMPLATE = """You are a senior financial analyst. Synthesize the following event reports into a single, professional market event entry.
 
@@ -61,8 +61,11 @@ MODEL OBSERVATIONS:
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
+3. Extract any explicitly mentioned future date or timeframe (e.g., "next summer", "Q3 2026", "November 20th", "by June").
+   - If a specific or approximate future date is mentioned, include it in 'future_date'.
+   - If no future timeframe is mentioned, set 'future_date' to null.
 
-Return ONLY a JSON object with 'name' and 'summary' keys."""
+Return ONLY a JSON object with 'name', 'summary', and 'future_date' keys."""
 
 
 RELATIONSHIP_SYSTEM_PROMPT = "You are a senior market analyst. Return structured JSON."

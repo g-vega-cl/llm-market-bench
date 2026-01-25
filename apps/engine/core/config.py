@@ -61,6 +61,9 @@ NEWSLETTER_SENDERS = [
     "newsletter+211@tradingcentral.com",
     "daily@chartr.co",
 ]
+# --- Memory Retention & Decay (Step 15+) ---
+MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS = 30  # Memories lose 50% relevance every 30 days
+MEMORIES_DECAY_THRESHOLD = 0.05  # Stop decaying if relevance drops below this
 
 # --- Commands ---
 COMMAND_INGEST = "ingest"

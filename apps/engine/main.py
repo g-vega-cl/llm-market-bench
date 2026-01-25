@@ -80,6 +80,11 @@ async def run_ingest():
         logger.info("Applying decay to stale concepts...")
         await decay_stale_concepts(sb_client)
 
+        # --- Decay Stale Memories ---
+        logger.info("Applying decay to stale memories...")
+        from memory.store import decay_memories
+        decay_memories(sb_client)
+
         # --- Decision Attribution & Validation ---
         saved_decisions = 0
         rejected_decisions = 0

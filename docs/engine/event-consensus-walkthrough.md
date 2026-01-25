@@ -26,7 +26,31 @@ For events that reach consensus, the engine performs a "Relationship Analysis" b
 - **Linking**: The new memory is linked via `parent_id`.
 - **Auto-Resolution**: If the relationship is a `REVERSAL` or `RESOLUTION`, the ancestor is automatically marked as `RESOLVED`. This prevents outdated narratives from cluttering upcoming RAG analyses.
 
-### 5. LLM Synthesis
+### 5. Memory Optimization & Future Event Tracking
+After linking and resolution, the system applies two additional optimizations:
+
+**A. Memory Status Filtering:**
+- Memories marked as `RESOLVED` are excluded from future LLM context retrieval
+- Only `ACTIVE` memories influence new analyses
+- This keeps RAG context focused on current, relevant events
+
+**B. Relevance Decay:**
+- Each memory has a `relevance_score` (default: 1.0)
+- Every 30 days, old memories have their score halved (1.0 → 0.5 → 0.25 → ...)
+- The `match_memories` RPC multiplies similarity by `relevance_score`, reducing old information's impact
+- Decay stops when score drops below 0.05
+
+**C. Future Event Extraction:**
+- During synthesis, the LLM checks for explicitly mentioned future dates
+- Examples: "Q3 2026", "next summer", "November 20th", "by June"
+- If found, saved to `future_events` table with:
+  - `event_name`: The synthesized event name
+  - `target_date`: The extracted timeframe
+  - `description`: Event summary
+  - `source_memory_id`: Link to the parent memory
+- Enables proactive positioning for upcoming events like product releases, elections, or regulatory approvals
+
+### 6. LLM Synthesis
 A final "Analyst Pass" (via Google Gemini) is performed to:
 - Create a professional, unified **Event Name** (max 5 words).
 - Write a 1-sentence **Summary** capturing the catalyst and market implication.
@@ -46,6 +70,17 @@ Consensus events are stored in the `memories` table with the following metadata:
 | `relationship_type` | `REVERSAL`, `UPDATE`, `RESOLUTION`, or `GENERAL` |
 | `source_ids` | List of newsletter chunk IDs that contributed to this consensus |
 | `raw_name` | The original representative name from the first model in the cluster |
+| `relevance_score` | Decay multiplier for context retrieval (default: 1.0, halves every 30 days) |
+
+### Future Events Table
+
+| Field | Description |
+| --- | --- |
+| `id` | UUID |
+| `event_name` | The synthesized event name |
+| `target_date` | Extracted future timeframe (e.g., "Q3 2026", "next summer") |
+| `description` | Event summary |
+| `source_memory_id` | Link to the parent memory in the `memories` table |
 
 ## Verification
 

@@ -39,6 +39,7 @@ async def synthesize_event(
         class SynthesisResponse(BaseModel):
             name: str
             summary: str
+            future_date: Optional[str] = None
 
         resp = await client.chat.completions.create(
             model=config.GEMINI_MODEL,
@@ -52,7 +53,7 @@ async def synthesize_event(
             ],
             max_retries=2,
         )
-        return {"name": resp.name, "summary": resp.summary}
+        return {"name": resp.name, "summary": resp.summary, "future_date": resp.future_date}
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)
         # Fallback to original if synthesis fails
@@ -62,6 +63,7 @@ async def synthesize_event(
                 f"Consensus reached on {event_name} with {impact} impact "
                 "based on model observations."
             ),
+            "future_date": None
         }
     finally:
         # Ensure client is properly closed

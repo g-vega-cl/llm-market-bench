@@ -213,7 +213,13 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
 *   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
 *   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
-*   **Documentation:** [Web Application Architecture](./web/README.md)
+*   **Documentation:** [Web Application Architecture](./web/README.md) and [Structure](./web/STRUCTURE.md)
+*   **Public Insights:** A public [Memories Page](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective, including consensus events and trade reasoning.
+
+**16a. Testing Infrastructure** ✅
+*   **Tech:** **Vitest + React Testing Library**
+*   **Goal:** Ensure UI reliability and logic correctness for complex frontend components.
+*   **Documentation:** [Frontend Testing](./web/testing.md)
 
 **17. Google Authentication** ✅
 *   **Tech:** **Supabase Auth (OAuth 2.0)**

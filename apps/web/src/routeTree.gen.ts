@@ -14,6 +14,7 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
@@ -41,6 +42,11 @@ const AuthedRoute = AuthedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
+  id: '/memories/',
+  path: '/memories/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/memories/': typeof MemoriesIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/memories': typeof MemoriesIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts': typeof AuthedPostsIndexRoute
 }
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/memories/': typeof MemoriesIndexRoute
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/posts'
     | '/auth/callback'
+    | '/memories/'
     | '/posts/$postId'
     | '/posts/'
   fileRoutesByTo: FileRoutesByTo
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/logout'
     | '/signup'
     | '/auth/callback'
+    | '/memories'
     | '/posts/$postId'
     | '/posts'
   id:
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authed/posts'
     | '/auth/callback'
+    | '/memories/'
     | '/_authed/posts/$postId'
     | '/_authed/posts/'
   fileRoutesById: FileRoutesById
@@ -135,6 +147,7 @@ export interface RootRouteChildren {
   LogoutRoute: typeof LogoutRoute
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  MemoriesIndexRoute: typeof MemoriesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/memories/': {
+      id: '/memories/'
+      path: '/memories'
+      fullPath: '/memories/'
+      preLoaderRoute: typeof MemoriesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -237,6 +257,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogoutRoute: LogoutRoute,
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  MemoriesIndexRoute: MemoriesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

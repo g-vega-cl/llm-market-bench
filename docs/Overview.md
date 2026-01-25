@@ -117,11 +117,13 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Idempotency:** *Uses UPSERT with unique constraint on `(source_id, ticker, signal, model_provider, model_name)` to prevent duplicate decisions if the pipeline reruns.*
 *   documentation: ./docs/engine/decision-attribution-walkthrough.md
 
-**8. Event Consensus Protocol** ✅
-
+**8. Event Consensus Protocol & Memory Chains** ✅
 *   **Tech:** Python / Gemini Embeddings / OpenAI Synthesis
 *   **Semantic Grouping:** Uses **Vector Embeddings** and **Cosine Similarity** to group events with different names but similar meanings (e.g., "Fed Hike" vs "Interest Rate Hike").
 *   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
+*   **Memory Chains:** For each new event, the engine performs a "Relationship Analysis" against recent memories.
+    *   **Linking:** Links new events to ancestors via `parent_id` (e.g., a "Retraction" linked to a "Threat").
+    *   **Auto-Resolution:** Automatically marks ancestors as `RESOLVED` if the new event reverses or completes them.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
 *   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.

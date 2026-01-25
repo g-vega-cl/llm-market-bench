@@ -387,7 +387,7 @@ async def synthesize_event(
             summary: str
 
         resp = await client.chat.completions.create(
-            model=config.OPENAI_MODEL,
+            model=config.GEMINI_MODEL,
             response_model=SynthesisResponse,
             messages=[
                 {"role": "system", "content": "You are a senior financial analyst. Return structured JSON."},
@@ -405,4 +405,76 @@ async def synthesize_event(
         }
     finally:
         # Ensure client is properly closed
+        await _close_client(client, "openai")
+
+
+async def analyze_event_relationship(
+    new_event: str,
+    potential_ancestors: list[dict]
+) -> dict[str, Any]:
+    """Analyzes the relationship between a new event and potential past events.
+
+    Args:
+        new_event: The summary of the new event.
+        potential_ancestors: List of candidate past events from memory.
+
+    Returns:
+        A dictionary with 'parent_id', 'relationship_type', and 'should_resolve' (bool).
+    """
+    if not potential_ancestors:
+        return {"parent_id": None, "relationship_type": None, "should_resolve": False}
+
+    client = get_openai_client()
+
+    try:
+        ancestors_text = ""
+        for i, acc in enumerate(potential_ancestors):
+            ancestors_text += f"\n[{i}] ID: {acc['id']}\nContent: {acc['content']}\n"
+
+        prompt = f"""You are a market logic validator. We have a NEW MARKET EVENT and several POTENTIAL ANCESTORS from our history.
+        Determine if the new event is an UPDATE, REVERSAL, or RESOLUTION of any of the past events.
+
+        NEW EVENT: {new_event}
+
+        POTENTIAL ANCESTORS:
+        {ancestors_text}
+
+        Your Task:
+        1. Identify if the new event directly relates to one of the ancestors.
+        2. If it relates, categorize the relationship:
+           - REVERSAL: The new event negates or contradicts the ancestor (e.g., "Tariff Threat" -> "Tariff Retracted").
+           - RESOLUTION: The new event completes or settles the ancestor (e.g., "M&A Offer" -> "Deal Closed").
+           - UPDATE: The new event provides new data on the same topic without reversing it (e.g., "Rate Hike Predicted" -> "Rate Hike Confirmed").
+        3. If REVERSAL or RESOLUTION, indicate 'should_resolve' = true.
+
+        Return ONLY a JSON object with:
+        - parent_index: The integer index (0, 1, ...) of the related ancestor, or null if none.
+        - relationship_type: "REVERSAL", "RESOLUTION", "UPDATE", or null.
+        - should_resolve: boolean.
+        """
+
+        class RelationshipResponse(BaseModel):
+            parent_index: Optional[int] = None
+            relationship_type: Optional[str] = None
+            should_resolve: bool = False
+
+        resp = await client.chat.completions.create(
+            model=config.OPENAI_MODEL,
+            response_model=RelationshipResponse,
+            messages=[
+                {"role": "system", "content": "You are a senior market analyst. Return structured JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            max_retries=2
+        )
+
+        result = {"parent_id": None, "relationship_type": resp.relationship_type, "should_resolve": resp.should_resolve}
+        if resp.parent_index is not None and 0 <= resp.parent_index < len(potential_ancestors):
+            result["parent_id"] = potential_ancestors[resp.parent_index]["id"]
+        
+        return result
+    except Exception as e:
+        logger.error(f"Event relationship analysis failed: {e}")
+        return {"parent_id": None, "relationship_type": None, "should_resolve": False}
+    finally:
         await _close_client(client, "openai")

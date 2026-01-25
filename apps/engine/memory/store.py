@@ -65,30 +65,75 @@ def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
         logger.error(f"Error in retrieve_context_batch: {e}")
         return ["" for _ in queries]
 
-def add_memory(content: str, metadata: Optional[dict[str, Any]] = None) -> bool:
+def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float = 0.5) -> list[dict]:
+    """Finds candidate memories that could be ancestors of a new event.
+
+    Args:
+        query_text: The text to search for.
+        limit: Max number of candidates.
+        threshold: Similarity threshold.
+
+    Returns:
+        List of memory records (id, content, status).
+    """
+    try:
+        embedding = get_embedding(query_text)
+        if not embedding:
+            return []
+
+        client = get_supabase_client()
+        response = client.rpc(
+            "match_memories",
+            {
+                "query_embedding": embedding,
+                "match_threshold": threshold,
+                "match_count": limit,
+            }
+        ).execute()
+
+        return response.data or []
+    except Exception as e:
+        logger.error(f"Error finding potential ancestors: {e}")
+        return []
+
+def add_memory(
+    content: str, 
+    metadata: Optional[dict[str, Any]] = None,
+    parent_id: Optional[str] = None,
+    status: str = "ACTIVE",
+    relationship_type: Optional[str] = None
+) -> str | None:
     """Adds a new text chunk to the memory store.
 
     Args:
         content: The text content to store.
         metadata: Optional metadata (source_id, etc).
+        parent_id: Optional reference to a previous memory ID.
+        status: The initial status of the memory (ACTIVE, RESOLVED, SUPERSEDED).
+        relationship_type: Type of relationship to parent (REVERSAL, UPDATE, RESOLUTION, GENERAL).
 
     Returns:
-        True if successful, False otherwise.
+        The ID of the new memory if successful, None otherwise.
     """
     try:
         embedding = get_embedding(content)
         if not embedding:
-            return False
+            return None
 
         client = get_supabase_client()
         payload = {
             "content": content,
             "embedding": embedding,
-            "metadata": metadata or {}
+            "metadata": metadata or {},
+            "status": status,
+            "parent_id": parent_id,
+            "relationship_type": relationship_type
         }
         
-        client.table("memories").insert(payload).execute()
-        return True
+        response = client.table("memories").insert(payload).execute()
+        if response.data:
+            return response.data[0]["id"]
+        return None
     except Exception as e:
         error_str = str(e).lower()
         # Check for various unique constraint violation patterns
@@ -102,9 +147,30 @@ def add_memory(content: str, metadata: Optional[dict[str, Any]] = None) -> bool:
 
         if is_duplicate:
             logger.info(f"Memory already exists (idempotent): {content[:50]}...")
-            return True
+            # If duplicate, we might want to return the existing ID
+            # For now, let's just return None or fetch it if needed.
+            # Simple approach: return None as it's not "newly added"
+            return None
 
         logger.error(f"Error adding memory: {e}")
+        return None
+
+def update_memory_status(memory_id: str, status: str) -> bool:
+    """Updates the status of an existing memory.
+
+    Args:
+        memory_id: The UUID of the memory to update.
+        status: The new status (ACTIVE, RESOLVED, SUPERSEDED).
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        client = get_supabase_client()
+        client.table("memories").update({"status": status}).eq("id", memory_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating memory status: {e}")
         return False
 def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48) -> bool:
     """Checks if a semantically similar memory exists within the last N hours.

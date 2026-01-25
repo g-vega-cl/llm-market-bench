@@ -630,7 +630,7 @@ Key Features:
 
 ## Phase 5: Event Consensus (Consolidating the Global Timeline)
 
-### Step 5.1: Semantic Grouping
+### Step 5.1: Semantic Grouping & Deduplication
 
 **File**: `apps/engine/consensus.py`
 
@@ -640,18 +640,23 @@ The LLMs also identify "Macro Events." Because different models use different wo
 # Grouping Logic:
 # Model A: "Fed Rate Hike"
 # Model B: "Interest Rate Increase"
-# Result: Similiarity 0.94 -> SAME GROUP
+# Result: Similarity 0.94 -> SAME GROUP
 ```
 
-### Step 5.2: Temporal Deduplication
+Before promoting, the engine also checks for temporal duplicates (Step 5.1a) against the `memories` table to prevent "Redundant RAG noise."
 
-**File**: `apps/engine/memory/store.py:99-140`
+### Step 5.2: Memory Chain & Relationship Analysis
 
-Before promoting a new event, we check if a similar event was added in the last 48 hours to prevent "Redundant RAG noise."
+**File**: `apps/engine/consensus.py`
+
+For each consensus group, the engine checks for related past events.
+1. **Ancestor Search**: Vector search (Similarity > 0.4).
+2. **Relationship Analysis**: LLM categorizes as `REVERSAL`, `RESOLUTION`, or `UPDATE`.
+3. **Auto-Resolution**: Mark ancestors as `RESOLVED` if reversed.
 
 ### Step 5.3: LLM Synthesis
 
-**File**: `apps/engine/core/llm.py:165-217`
+**File**: `apps/engine/core/llm.py`
 
 For events that reach consensus (2+ models), we perform a final synthesis pass:
 

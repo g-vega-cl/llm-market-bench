@@ -10,9 +10,9 @@ from typing import Any
 import numpy as np
 
 from core.models import MacroEvent
-from memory.store import add_memory, check_recent_memories
+from memory.store import add_memory, check_recent_memories, find_potential_ancestors, update_memory_status
 from memory.embeddings import get_embeddings_batch
-from core.llm import synthesize_event
+from core.llm import synthesize_event, analyze_event_relationship
 from core.config import MODEL_WEIGHTS
 
 logger = logging.getLogger("engine")
@@ -170,14 +170,22 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 "source_ids": list(source_ids)
             }
 
-            # 4. Promote to long-term memory
+            # 4. Analyze Relationship & Link Memory
+            potential_parents = find_potential_ancestors(synthesis["summary"], threshold=0.4)
+            relationship = await analyze_event_relationship(synthesis["summary"], potential_parents)
+            
+            parent_id = relationship.get("parent_id")
+            rel_type = relationship.get("relationship_type")
+            should_resolve = relationship.get("should_resolve", False)
+
+            # 5. Promote to long-term memory
             memory_content = (
                 f"MARKET EVENT: {consensus_data['event_name']} | "
                 f"IMPACT: {consensus_data['impact']} | "
                 f"SUMMARY: {consensus_data['reasoning']}"
             )
             
-            success = add_memory(
+            new_memory_id = add_memory(
                 content=memory_content,
                 metadata={
                     "type": "consensus_event",
@@ -186,12 +194,19 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "source_ids": consensus_data['source_ids'],
                     "raw_name": representative_name,
                     "cumulative_weight": cumulative_weight
-                }
+                },
+                parent_id=parent_id,
+                relationship_type=rel_type
             )
 
-            if success:
+            if new_memory_id:
                 consensus_reached.append(consensus_data)
-                logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']}")
+                logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']} (ID: {new_memory_id})")
+                
+                # If we should resolve the parent, do it now
+                if should_resolve and parent_id:
+                    update_memory_status(parent_id, "RESOLVED")
+                    logger.info(f"Marked ancestor event {parent_id} as RESOLVED.")
             else:
                 logger.error(f"Failed to promote consensus event: {consensus_data['event_name']}")
 

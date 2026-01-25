@@ -19,8 +19,15 @@ An event group reaches "Consensus" based on the **Cumulative Model Weight** of t
 ### 3. Temporal Deduplication
 To prevent "RAG noise" and redundant signals, the engine queries the `memories` table to check if a semantically similar event was already promoted in the last **48 hours**. If a match is found, the new event is discarded.
 
-### 4. LLM Synthesis
-For groups that reach consensus, a final "Analyst Pass" (via OpenAI GPT-4o-mini) is performed to:
+### 4. Relationship Analysis & Memory Chains
+For events that reach consensus, the engine performs a "Relationship Analysis" before promotion:
+- **Ancestor Search**: Queries the `memories` table for semantically related past events (Similarity > 0.4).
+- **LLM Relationship Check**: A fast LLM pass (`analyze_event_relationship`) determines if the new event is a `REVERSAL`, `RESOLUTION`, or `UPDATE` of any found ancestors.
+- **Linking**: The new memory is linked via `parent_id`.
+- **Auto-Resolution**: If the relationship is a `REVERSAL` or `RESOLUTION`, the ancestor is automatically marked as `RESOLVED`. This prevents outdated narratives from cluttering upcoming RAG analyses.
+
+### 5. LLM Synthesis
+A final "Analyst Pass" (via Google Gemini) is performed to:
 - Create a professional, unified **Event Name** (max 5 words).
 - Write a 1-sentence **Summary** capturing the catalyst and market implication.
 - Consolidate reasoning from all contributing models.
@@ -34,6 +41,9 @@ Consensus events are stored in the `memories` table with the following metadata:
 | `type` | Set to `"consensus_event"` |
 | `event_name` | The final synthesized professional name |
 | `impact` | Majority vote impact (BULLISH/BEARISH/NEUTRAL) |
+| `status` | `ACTIVE`, `RESOLVED`, or `SUPERSEDED` |
+| `parent_id` | UUID of the linked ancestor memory |
+| `relationship_type` | `REVERSAL`, `UPDATE`, `RESOLUTION`, or `GENERAL` |
 | `source_ids` | List of newsletter chunk IDs that contributed to this consensus |
 | `raw_name` | The original representative name from the first model in the cluster |
 

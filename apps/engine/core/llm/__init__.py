@@ -1,0 +1,47 @@
+"""LLM package for multi-provider analysis and event synthesis."""
+
+from execution.market_data import MarketDataManager
+from core.llm import analysis
+from core.llm import clients
+from core.llm import events
+from core.llm import prompts
+from core.llm import tools
+
+# Primary functions
+analyze_with_provider = analysis.analyze_with_provider
+synthesize_event = events.synthesize_event
+analyze_event_relationship = events.analyze_event_relationship
+
+# Client functions
+get_openai_client = clients.get_openai_client
+get_anthropic_client = clients.get_anthropic_client
+get_deepseek_client = clients.get_deepseek_client
+get_gemini_client = clients.get_gemini_client
+_close_client = clients.close_client
+
+# Constants and definitions
+_CLIENT_FACTORIES = clients.CLIENT_FACTORIES
+STOCK_TOOL_DEFINITION_OPENAI = tools.STOCK_TOOL_DEFINITION_OPENAI
+STOCK_TOOL_DEFINITION_ANTHROPIC = tools.STOCK_TOOL_DEFINITION_ANTHROPIC
+execute_stock_tool = tools.execute_stock_tool
+
+__all__ = [
+    "analysis",
+    "clients",
+    "events",
+    "prompts",
+    "tools",
+    "analyze_with_provider",
+    "synthesize_event",
+    "analyze_event_relationship",
+    "get_openai_client",
+    "get_anthropic_client",
+    "get_deepseek_client",
+    "get_gemini_client",
+    "_close_client",
+    "_CLIENT_FACTORIES",
+    "STOCK_TOOL_DEFINITION_OPENAI",
+    "STOCK_TOOL_DEFINITION_ANTHROPIC",
+    "execute_stock_tool",
+    "MarketDataManager",
+]

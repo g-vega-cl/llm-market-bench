@@ -1,0 +1,131 @@
+"""LLM logic for event synthesis and relationship analysis."""
+
+import logging
+from typing import Any, Optional
+
+from pydantic import BaseModel
+
+from core import config
+from core.llm import clients
+from core.llm import prompts
+
+logger = logging.getLogger("engine")
+
+
+async def synthesize_event(
+    event_name: str, impact: str, reasonings: list[str]
+) -> dict[str, str]:
+    """Synthesizes a unified event name and summary from model perspectives.
+
+    Args:
+        event_name: The raw representative event name.
+        impact: The majority impact (BULLISH/BEARISH/NEUTRAL).
+        reasonings: A list of reasoning strings from different models.
+
+    Returns:
+        A dictionary with 'name' and 'summary' keys.
+    """
+    client = clients.get_openai_client()
+
+    try:
+        combined_reasonings = "\n".join([f"- {r}" for r in reasonings])
+
+        prompt = prompts.SYNTHESIS_USER_PROMPT_TEMPLATE.format(
+            event_name=event_name,
+            impact=impact,
+            combined_reasonings=combined_reasonings,
+        )
+
+        class SynthesisResponse(BaseModel):
+            name: str
+            summary: str
+
+        resp = await client.chat.completions.create(
+            model=config.GEMINI_MODEL,
+            response_model=SynthesisResponse,
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.SYNTHESIS_SYSTEM_PROMPT,
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_retries=2,
+        )
+        return {"name": resp.name, "summary": resp.summary}
+    except Exception as e:
+        logger.error("Event synthesis failed: %s", e)
+        # Fallback to original if synthesis fails
+        return {
+            "name": event_name,
+            "summary": (
+                f"Consensus reached on {event_name} with {impact} impact "
+                "based on model observations."
+            ),
+        }
+    finally:
+        # Ensure client is properly closed
+        await clients.close_client(client, "openai")
+
+
+async def analyze_event_relationship(
+    new_event: str, potential_ancestors: list[dict]
+) -> dict[str, Any]:
+    """Analyzes the relationship between a new event and potential past events.
+
+    Args:
+        new_event: The summary of the new event.
+        potential_ancestors: List of candidate past events from memory.
+
+    Returns:
+        A dictionary with 'parent_id', 'relationship_type', and 'should_resolve' (bool).
+    """
+    if not potential_ancestors:
+        return {"parent_id": None, "relationship_type": None, "should_resolve": False}
+
+    client = clients.get_openai_client()
+
+    try:
+        ancestors_text = ""
+        for i, acc in enumerate(potential_ancestors):
+            ancestors_text += f"\n[{i}] ID: {acc['id']}\nContent: {acc['content']}\n"
+
+        prompt = prompts.RELATIONSHIP_USER_PROMPT_TEMPLATE.format(
+            new_event=new_event,
+            ancestors_text=ancestors_text,
+        )
+
+        class RelationshipResponse(BaseModel):
+            parent_index: Optional[int] = None
+            relationship_type: Optional[str] = None
+            should_resolve: bool = False
+
+        resp = await client.chat.completions.create(
+            model=config.OPENAI_MODEL,
+            response_model=RelationshipResponse,
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompts.RELATIONSHIP_SYSTEM_PROMPT,
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_retries=2,
+        )
+
+        result = {
+            "parent_id": None,
+            "relationship_type": resp.relationship_type,
+            "should_resolve": resp.should_resolve,
+        }
+        if resp.parent_index is not None and 0 <= resp.parent_index < len(
+            potential_ancestors
+        ):
+            result["parent_id"] = potential_ancestors[resp.parent_index]["id"]
+
+        return result
+    except Exception as e:
+        logger.error("Event relationship analysis failed: %s", e)
+        return {"parent_id": None, "relationship_type": None, "should_resolve": False}
+    finally:
+        await clients.close_client(client, "openai")

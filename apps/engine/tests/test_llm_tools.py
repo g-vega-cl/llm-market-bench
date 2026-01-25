@@ -53,8 +53,8 @@ async def test_analyze_with_provider_tool_loop():
         ]
     )
     
-    with patch("core.llm.MarketDataManager") as mock_manager_cls, \
-         patch("core.llm._CLIENT_FACTORIES") as mock_factories:
+    with patch("core.llm.tools.MarketDataManager") as mock_manager_cls, \
+         patch("core.llm.analysis.clients.CLIENT_FACTORIES") as mock_factories:
         
         # Mock MarketDataManager
         mock_manager = mock_manager_cls.return_value

@@ -62,25 +62,25 @@ def test_calculate_velocity_no_mentions(mock_supabase):
 
 def test_calculate_velocity_with_mentions(mock_supabase):
     """Test velocity calculation with simulated mentions."""
-    # First call (recent): 2 mentions
+    # First call (recent 7 days): 14 mentions
     recent_res = MagicMock()
-    recent_res.data = [{"id": 1}, {"id": 2}]
+    recent_res.data = [{"id": i} for i in range(1, 15)]
     
-    # Second call (total 8d): 9 mentions (implies 7 in baseline)
+    # Second call (total 37 days): 44 mentions (implies 30 in baseline)
     baseline_res = MagicMock()
-    baseline_res.data = [{"id": i} for i in range(1, 10)]
+    baseline_res.data = [{"id": i} for i in range(1, 45)]
     
     # Set side effect for the two sequential RPC calls
     mock_supabase.rpc().execute.side_effect = [recent_res, baseline_res]
     
     velocity = calculate_velocity(mock_supabase, [0.1]*768)
     
-    # recent_count = 2
-    # total_8d = 9
-    # baseline_count = 9 - 2 = 7
-    # avg_baseline = 7 / 7 = 1.0
-    # velocity = 2 / 1.0 = 2.0
-    assert velocity == 2.0
+    # recent_count = 14
+    # total_37d = 44
+    # baseline_count = 44 - 14 = 30
+    # avg_baseline = 30 / 30 = 1.0
+    # velocity = 14 / 1.0 = 14.0
+    assert velocity == 14.0
 
 def test_update_concept_metrics_new_record(mock_supabase):
     """Test updating metrics for a brand new concept."""
@@ -141,4 +141,6 @@ async def test_analyze_momentum(mock_supabase):
     with patch("analysis.momentum.get_embeddings_batch", return_value=mock_embeddings):
         await analyze_momentum(mock_supabase, consensus_events)
         # 1 concept * (2 velocity calls + 2 update calls) = 4 RPC calls total
+        # Velocity calls: 1 for recent 7d, 1 for baseline 37d
+        # Update calls: 1 for match_concepts, 1 for 90d mentions
         assert mock_supabase.rpc.call_count == 4

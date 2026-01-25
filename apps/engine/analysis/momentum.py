@@ -78,46 +78,46 @@ async def analyze_momentum(sb_client: Client, consensus_events: list[dict]):
 def calculate_velocity(sb_client: Client, embedding: list[float]) -> float:
     """Calculates a velocity score based on mention frequency acceleration.
     
-    Velocity = (Mentions in last 24h) / (Avg daily mentions in previous 7 days)
+    Velocity = (Mentions in last 7 days) / (Avg daily mentions in previous 30 days)
     """
     now = datetime.now(timezone.utc)
     
-    # Recent: last 24 hours
-    recent_cutoff = (now - timedelta(hours=24)).isoformat()
-    # Baseline: previous 7 days
-    baseline_cutoff = (now - timedelta(days=config.MOMENTUM_BASELINE_DAYS + 1)).isoformat()
+    # Recent: last 7 days
+    recent_cutoff = (now - timedelta(days=7)).isoformat()
+    # Baseline: previous 30 days (37 days total to get the full 30-day baseline)
+    baseline_cutoff = (now - timedelta(days=37)).isoformat()
 
     try:
-        # 1. Get recent mentions (last 24h)
+        # 1. Get recent mentions (last 7 days)
         recent_res = sb_client.rpc(
             "match_memories_with_time",
             {
                 "query_embedding": embedding,
                 "match_threshold": config.MOMENTUM_SIMILARITY_THRESHOLD,
-                "match_count": 100,
+                "match_count": 500,
                 "min_time": recent_cutoff
             }
         ).execute()
         recent_count = len(recent_res.data) if recent_res.data else 0
 
-        # 2. Get historical mentions (last N days total)
+        # 2. Get historical mentions (last 37 days total)
         baseline_res = sb_client.rpc(
             "match_memories_with_time",
             {
                 "query_embedding": embedding,
                 "match_threshold": config.MOMENTUM_SIMILARITY_THRESHOLD,
-                "match_count": 1000,
+                "match_count": 2000,
                 "min_time": baseline_cutoff
             }
         ).execute()
         
-        total_days_count = len(baseline_res.data) if baseline_res.data else 0
+        total_count = len(baseline_res.data) if baseline_res.data else 0
         
         # 3. Calculate baseline (total minus recent)
-        baseline_count = total_days_count - recent_count
+        baseline_count = total_count - recent_count
         
         # Normalize baseline to daily average. Use 0.1 floor to avoid division by zero.
-        avg_baseline_daily = max(baseline_count / float(config.MOMENTUM_BASELINE_DAYS), 0.1)
+        avg_baseline_daily = max(baseline_count / 30.0, 0.1)
         velocity = recent_count / avg_baseline_daily
         
         return velocity

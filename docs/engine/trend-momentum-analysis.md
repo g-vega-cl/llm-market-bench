@@ -12,9 +12,9 @@ Instead of simple keyword matching, the engine uses **Gemini Embeddings (`text-e
 ### 2. Momentum Scoring (Velocity)
 The engine calculates a **Velocity Score** for each concept using the following formula:
 
-$$Velocity = \frac{Recent Mentions (Last 24h)}{Average Daily Mentions (Previous 7 Days)}$$
+$$Velocity = \frac{Recent Mentions (Last 7 Days)}{Average Daily Mentions (Previous 30 Days)}$$
 
-- **High Velocity (> 2.0):** Indicates an "Emerging Trend" that is being mentioned significantly more today than its recent average.
+- **High Velocity (> 2.0):** Indicates an "Emerging Trend" that is being mentioned significantly more in the last 7 days than its 30-day average.
 - **Low Velocity (< 1.0):** Indicates a fading or stable concept.
 - **Emerging Trends:** Concepts with no prior history receive a high initial score to flag them for immediate attention.
 
@@ -35,7 +35,7 @@ The engine tracks concepts over a rolling **90-day window**:
 Key thresholds and lookback windows can be tuned in `apps/engine/core/config.py`:
 - `MOMENTUM_SIMILARITY_THRESHOLD`: Sensitivity for counting mentions (default 0.85).
 - `MOMENTUM_CONCEPT_MERGE_THRESHOLD`: Sensitivity for merging two concept names (default 0.90).
-- `MOMENTUM_BASELINE_DAYS`: The historical window size for velocity calculation (default 7 days).
+- `MOMENTUM_BASELINE_DAYS`: The historical window size for velocity calculation (default 30 days).
 
 ## Data Schema & Storage
 

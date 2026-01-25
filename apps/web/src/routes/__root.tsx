@@ -9,11 +9,11 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
-import { DefaultCatchBoundary } from '../components/DefaultCatchBoundary'
-import { NotFound } from '../components/NotFound'
+import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary'
+import { NotFound } from '~/components/ui/NotFound'
 import appCss from '../styles/app.css?url'
-import { seo } from '../utils/seo'
-import { getSupabaseServerClient } from '../utils/supabase'
+import { seo } from '~/lib/seo'
+import { getSupabaseServerClient } from '~/lib/supabase'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()

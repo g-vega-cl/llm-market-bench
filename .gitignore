@@ -5,3 +5,4 @@ __pycache__
 *.py[cod]
 *.pyc
 node_modules/
+dist/

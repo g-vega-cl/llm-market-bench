@@ -1,8 +1,8 @@
 import { redirect, createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { useMutation } from '../hooks/useMutation'
-import { Auth } from '../components/Auth'
-import { getSupabaseServerClient } from '../utils/supabase'
+import { Auth } from '~/shared/auth'
+import { getSupabaseServerClient } from '~/lib/supabase'
 
 export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(

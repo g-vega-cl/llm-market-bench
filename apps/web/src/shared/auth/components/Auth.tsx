@@ -1,4 +1,4 @@
-import { getSupabaseBrowserClient } from '../utils/supabase-client'
+import { getSupabaseBrowserClient } from '~/lib/supabase-client'
 
 export function Auth({
   actionText,

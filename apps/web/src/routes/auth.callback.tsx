@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseServerClient } from '../utils/supabase'
+import { getSupabaseServerClient } from '~/lib/supabase'
 
 const exchangeCodeFn = createServerFn({ method: 'GET' })
   .inputValidator((d: { code: string }) => d)

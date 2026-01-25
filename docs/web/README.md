@@ -12,59 +12,76 @@ The frontend of AI Wall Street is a high-performance, type-safe web application 
 | **Data Fetching** | [TanStack Query](https://tanstack.com/query) |
 | **Backend** | [Supabase](https://supabase.com/) (Auth, Postgres, Real-time) |
 | **Language** | TypeScript |
+| **Testing** | [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/) |
 
-## 2. Project Structure
+## 2. Pragmatic Architecture (Routes First)
+
+We prioritize **colocation** (keeping things near their usage) to ensure the codebase remains maintainable as it grows.
+
+### The Three Buckets
+
+| Bucket | Folder | Purpose |
+| --- | --- | --- |
+| **Domain & Composition** | `src/routes/` | **Routes own everything by default.** Logic, components, hooks, and queries used only on one page stay here. |
+| **Shared Domain** | `src/shared/` | Business concepts (e.g., Auth, Portfolios) used across **multiple** routes. |
+| **Design System** | `src/components/` | **Pure UI primitives only.** Zero domain knowledge, zero data fetching. Includes `ui/` and `layout/`. |
+
+### Simple Decision Tree
+1. **Is it purely for this page?** → Put it in the **Route** folder.
+2. **Is it a generic UI primitive (e.g. Button)?** → Put it in **`components/ui`**.
+3. **Is it a business component used on multiple pages?** → Put it in **`shared/`**.
+
+## 3. Project Structure
 
 ```text
 apps/web/
 ├── src/
 │   ├── routes/          # OWNERSHIP: Logic lives where it's used
-│   ├── shared/          # SHARED DOMAIN: Business concepts used across routes (Auth, etc.)
-│   ├── components/      # DESIGN SYSTEM: Pure UI primitives (ui/, layout/)
-│   ├── lib/             # INFRASTRUCTURE: Supabase clients, SEO, Query Client
+│   │   ├── portfolios/
+│   │   │   ├── route.tsx
+│   │   │   ├── PortfolioTable.tsx
+│   │   │   └── queries.ts # Route-local Supabase queries
+│   ├── shared/          # SHARED DOMAIN: Business concepts used across routes
+│   │   ├── auth/
+│   │   └── portfolios/
+│   ├── components/      # DESIGN SYSTEM: Pure UI primitives
+│   │   ├── ui/          # Button, Card, Badge
+│   │   └── layout/      # Sidebar, Header
+│   ├── lib/             # INFRASTRUCTURE: Supabase clients, SEO, Utils
 │   ├── hooks/           # GENERIC HOOKS: useMutation, useDebounce
 │   ├── styles/          # Global CSS and Tailwind configuration
-│   ├── router.tsx       # Router configuration
-│   └── routeTree.gen.ts # Automatically generated route tree
+│   └── router.tsx       # Router configuration
 └── vite.config.ts       # Vite and TanStack Start configuration
 ```
 
-## 3. Core Architectural Concepts
+## 4. Core Workflows
 
-### File-Based Routing
-We use **TanStack Router's** file-based routing system. Routes are defined in `src/routes`:
-*   `__root.tsx`: The layout wrapper, handling global state and the navigation bar.
-*   `_authed.tsx`: A layout group for routes requiring authentication.
-*   `index.tsx`: The main landing page.
-*   `login.tsx`, `signup.tsx`, `logout.tsx`: Authentication flows.
+### Adding a New Route
+1. Create a folder in `src/routes/` (e.g., `src/routes/my-feature`).
+2. Create `index.tsx` for the main route composition.
+3. Create a `components/` subfolder for route-specific UI.
+4. Define your `queries.ts` for data fetching.
 
-### Full-Stack Integration (TanStack Start)
-TanStack Start allows us to define "Server Functions" for secure backend operations.
-*   **Authentication Check:** Performed in `__root.tsx` using `beforeLoad` to ensure user sessions are valid before rendering protected content.
-*   **SSR & Hydration:** The application is server-side rendered for SEO and performance, then hydrated on the client for full interactivity.
+### SSR & Import Discipline
+*   **Absolute Rule**: Routes must **never** import from other routes.
+*   **SSR Safety**: Keep Loaders and `createServerFn` in routes or shared. Never perform data fetching inside `components/`.
+*   **Supabase SSR**: Use `getSupabaseServerClient` for Loaders/Server Functions and `getSupabaseBrowserClient` for client-side interactions.
 
-### Supabase Integration
-We use `@supabase/ssr` to manage session consistency between the server and client.
-*   **Server Client:** Configured in `src/lib/supabase.ts` for handling Cookies, SSR, and Server Functions.
-*   **Browser Client:** Configured in `src/lib/supabase-client.ts` for handling client-side events like OAuth redirects.
-*   **Environment Variables:** Uses `VITE_` prefixing for browser-exposed variables to comply with Vite's security model.
-*   **Row Level Security (RLS):** Ensures that users can only access their own data and public performance metrics.
-
-## 4. State Management
-
-*   **Server State:** Managed by **TanStack Query**. It handles caching, background refetching, and synchronization with our Supabase database.
-*   **Routing State:** Managed by **TanStack Router**, providing type-safe navigation and URL-driven state.
-
-## 5. Development Guide
+## 5. Development & Testing
 
 ### Local Setup
 1.  Ensure you have `pnpm` installed.
 2.  Install dependencies from the root: `pnpm install`.
-3.  Configure `.env` in `apps/web/.env` (see `Overview.md` for required keys).
+3.  Configure `.env` in `apps/web/.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. or build-time variables without the prefix like `SUPABASE_URL` and `SUPABASE_ANON_KEY`
 4.  Run the development server: `pnpm --filter web dev`.
 
-### Design System
-We follow a "Rich Aesthetics" approach using Tailwind CSS 4. Focus on:
+### Testing
+We use Vitest and React Testing Library. Tests are **colocated** next to the code they test using the `*.test.tsx` suffix.
+*   Run tests: `pnpm test`
+*   Full guide: [testing.md](./testing.md)
+
+### Design Aesthetics
+We follow a "Rich Aesthetics" approach using Tailwind CSS 4:
 *   Vibrant HSL-tailored colors.
 *   Glassmorphism effects for dashboard cards.
 *   Subtle micro-animations for interactive elements.

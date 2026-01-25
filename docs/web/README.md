@@ -18,11 +18,12 @@ The frontend of AI Wall Street is a high-performance, type-safe web application 
 ```text
 apps/web/
 ├── src/
-│   ├── components/      # UI components (DashboardCards, Charts, etc.)
-│   ├── routes/          # File-based routing (____root.tsx, index.tsx, etc.)
+│   ├── routes/          # OWNERSHIP: Logic lives where it's used
+│   ├── shared/          # SHARED DOMAIN: Business concepts used across routes (Auth, etc.)
+│   ├── components/      # DESIGN SYSTEM: Pure UI primitives (ui/, layout/)
+│   ├── lib/             # INFRASTRUCTURE: Supabase clients, SEO, Query Client
+│   ├── hooks/           # GENERIC HOOKS: useMutation, useDebounce
 │   ├── styles/          # Global CSS and Tailwind configuration
-│   ├── utils/           # Supabase client, SEO helpers, and API functions
-│   ├── hooks/           # Custom React hooks for data fetching
 │   ├── router.tsx       # Router configuration
 │   └── routeTree.gen.ts # Automatically generated route tree
 └── vite.config.ts       # Vite and TanStack Start configuration
@@ -44,8 +45,8 @@ TanStack Start allows us to define "Server Functions" for secure backend operati
 
 ### Supabase Integration
 We use `@supabase/ssr` to manage session consistency between the server and client.
-*   **Server Client:** Configured in `src/utils/supabase.ts` for handling Cookies, SSR, and Server Functions.
-*   **Browser Client:** Configured in `src/utils/supabase-client.ts` for handling client-side events like OAuth redirects.
+*   **Server Client:** Configured in `src/lib/supabase.ts` for handling Cookies, SSR, and Server Functions.
+*   **Browser Client:** Configured in `src/lib/supabase-client.ts` for handling client-side events like OAuth redirects.
 *   **Environment Variables:** Uses `VITE_` prefixing for browser-exposed variables to comply with Vite's security model.
 *   **Row Level Security (RLS):** Ensures that users can only access their own data and public performance metrics.
 

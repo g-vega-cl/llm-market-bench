@@ -26,10 +26,12 @@ The project follows a **Monorepo** structure to keep the Python Data Engine and 
 llm-market-bench/
 ├── apps/
 │   ├── web/                 # TanStack Start (Frontend - React + TS)
-│   │   ├── src/             # Application source (Routes, Components, Utils)
-│   │   │   ├── routes/      # File-based routing
-│   │   │   ├── components/  # Shared UI components
-│   │   │   └── utils/       # Supabase SSR & SEO hooks
+│   │   ├── src/             # Application source
+│   │   │   ├── routes/      # Route Ownership: Colocated UI & Logic
+│   │   │   ├── shared/      # Shared Domain: Auth, Portfolios (cross-route business logic)
+│   │   │   ├── components/  # Design System: Pure UI primitives (ui/, layout/)
+│   │   │   ├── lib/         # Infrastructure: Supabase, SEO, Query Client
+│   │   │   └── hooks/       # Generic hooks
 │   │   └── package.json     # Web dependencies
 │   └── engine/              # Python (The Backend Pipeline)
 │       ├── core/            # LLM clients
@@ -39,6 +41,7 @@ llm-market-bench/
 │       ├── execution/       # Trade Settlement
 │       ├── main.py          # Entry point
 │       └── update_prices.py # Utility
+
 ├── packages/
 │   └── database/            # Shared Supabase types/schemas (PENDING)
 ├── supabase/                # SQL Migrations, RLS policies

@@ -18,10 +18,10 @@ function MemoriesPage() {
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-12">
       <header className="mb-12">
-        <h1 className="text-4xl font-bold text-zinc-900 mb-4 tracking-tight">
+        <h1 className="text-4xl font-bold text-zinc-400 mb-4 tracking-tight">
           AI Memories & Insights
         </h1>
-        <p className="text-zinc-600 text-lg max-w-2xl">
+        <p className="text-zinc-400 text-lg max-w-2xl">
           Explore the collective intelligence of our LLMs. From global market news to trade post-mortems, 
           this is where the AI stores its long-term market perspective.
         </p>

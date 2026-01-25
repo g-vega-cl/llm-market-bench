@@ -18,9 +18,17 @@ npx gitpick TanStack/router/tree/main/examples/react/start-supabase-basic start-
 This example requires Supabase configuration. The `.env` file contains the necessary environment variables:
 
 ```env
+# Server-side (SSR)
 SUPABASE_URL=your-project-url
 SUPABASE_ANON_KEY=your-anon-key
+
+# Client-side (Browser) - Must be prefixed with VITE_
+VITE_SUPABASE_URL=your-project-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+> [!IMPORTANT]
+> **Vite Prefixing:** All environment variables that need to be accessed by the browser (components, hooks, browser-client) MUST start with `VITE_`.
 
 You'll need to:
 

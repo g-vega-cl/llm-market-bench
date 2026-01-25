@@ -212,22 +212,28 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
 *   **Documentation:** [Web Application Architecture](./web/README.md)
 
-**17. Community Interaction**
+**17. Google Authentication** ✅
+*   **Tech:** **Supabase Auth (OAuth 2.0)**
+*   **Goal:** Enable secure, one-click login for users using their Google accounts, integrated with the project's RLS policies.
+*   **Action:** Uses `signInWithOAuth` on the client side to handle the redirect flow and session management.
+*   **Implementation Best Practice:** Uses a dual-client approach (Server Client for SSR/Server Functions and Browser Client for OAuth redirects) to maintain session consistency.
+*   documentation: [auth-walkthrough.md](./engine/auth-walkthrough.md)
+
+**18. Community Interaction**
 *   **Tech:** **Supabase Auth**
 *   *Users log in to comment on trades.*
 *   **Security:** *Postgres Row Level Security (RLS) ensures only authenticated users can post, and only Admins can write to the Ledger.*
 
-**18. Observability & Health**
-
+**19. Observability & Health**
 * **Tech:** Sentry
 * *Log parsing failures or API timeouts.*
 
-**19. Analytics & Growth**
+**20. Analytics & Growth**
 
 * **Tech:** PostHog
 * *Track which AI's reasoning page is most read.*
 
-**20. Regret-Driven Reinforcement (Post-Mortem)** ✅
+**21. Regret-Driven Reinforcement (Post-Mortem)** ✅
 
 * **Tech:** Python / OpenAI / pgvector
 * **Logic:** *Exactly 5 days after a trade, the engine performs a "Post-Mortem." It compares the AI's reasoning to the actual 5-day price performance.*
@@ -256,7 +262,14 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `FINANCIAL_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
 |  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of price data source |
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
-| **Web** | `VITE_SUPABASE_ANON_KEY` | Supabase Client Key | Frontend Auth & Data Fetching |
+| **Web** | `VITE_SUPABASE_URL` | Supabase API URL (Exposed to Browser) | Frontend Auth & Data Fetching |
+|  | `VITE_SUPABASE_ANON_KEY` | Supabase Anon Key (Exposed to Browser) | Frontend Auth & Data Fetching |
+
+> [!TIP]
+> **Vite Prefixing:** Any environment variable used in the browser (client-side code) MUST be prefixed with `VITE_`. Vite automatically strips non-prefixed variables from the client bundle for security.
+
+> [!NOTE]
+> **Security of Anon Key:** It is standard practice and safe to expose the `Supabase URL` and `Anon Key` to the frontend. Security in Supabase is enforced via **Row Level Security (RLS)** at the database layer. NEVER expose the `SERVICE_ROLE_KEY` to the client.
 
 > [!CAUTION]
 > **Vite Prefixing:** Only variables prefixed with `VITE_` are exposed to the frontend. All Python/Engine keys **must not** have this prefix to prevent accidental exposure via client-side bundles.

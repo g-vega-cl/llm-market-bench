@@ -44,7 +44,9 @@ TanStack Start allows us to define "Server Functions" for secure backend operati
 
 ### Supabase Integration
 We use `@supabase/ssr` to manage session consistency between the server and client.
-*   **Server Client:** Configured in `src/utils/supabase.ts` to handle cookies and server-side auth.
+*   **Server Client:** Configured in `src/utils/supabase.ts` for handling Cookies, SSR, and Server Functions.
+*   **Browser Client:** Configured in `src/utils/supabase-client.ts` for handling client-side events like OAuth redirects.
+*   **Environment Variables:** Uses `VITE_` prefixing for browser-exposed variables to comply with Vite's security model.
 *   **Row Level Security (RLS):** Ensures that users can only access their own data and public performance metrics.
 
 ## 4. State Management

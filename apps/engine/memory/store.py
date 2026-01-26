@@ -1,6 +1,7 @@
 """Supabase pgvector store logic."""
 
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 from supabase import Client
 from core.db import get_supabase_client
@@ -184,8 +185,6 @@ def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48
         True if a similar memory exists, False otherwise.
     """
     try:
-        from datetime import datetime, timedelta, timezone
-        
         embedding = get_embedding(content)
         if not embedding:
             return False

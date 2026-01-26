@@ -222,17 +222,20 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Public Insights:** A public [Memories Page](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective, including consensus events and trade reasoning.
 
+**16a. Testing Infrastructure** ✅
+*   **Tech:** **Vitest + React Testing Library**
+*   **Goal:** Ensure UI reliability and logic correctness for complex frontend components.
+*   **Documentation:** [Frontend Testing](./web/testing.md)
+
 **16b. Concept Cluster Map** ✅
 *   **Tech:** **D3.js + React**
 *   **Visualizing Trends:** A 2D scatter plot visualizing semantic relationships between market concepts.
 *   **Coordinates:** Calculated via PCA (Principal Component Analysis) on the python backend to reduce 768-dim embeddings to 2D.
 *   **Route:** `/concepts`
-*   **Features:** Interactive tooltips, momentum coloring, and staggered entrance animation.
-
-**16a. Testing Infrastructure** ✅
-*   **Tech:** **Vitest + React Testing Library**
-*   **Goal:** Ensure UI reliability and logic correctness for complex frontend components.
-*   **Documentation:** [Frontend Testing](./web/testing.md)
+*   **Features:** 
+    *   **Hybrid Visualization:** Nodes are colored by **Velocity** (Red=Trending, Blue=Stable) to show momentum at a glance.
+    *   **Spatial Heatmap:** Background "islands" are colored by **Semantic Position** (Rainbow) to group related concepts.
+    *   **Interactive Topography:** Hovering over a background region highlights the entire cluster and identifies the Region Name, creating an explorable "Terrain Map" of the market.
 
 **17. Google Authentication** ✅
 *   **Tech:** **Supabase Auth (OAuth 2.0)**

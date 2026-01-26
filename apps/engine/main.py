@@ -158,7 +158,11 @@ async def run_ingest():
                             
                             from execution.market_data import MarketDataManager
                             mdm = MarketDataManager()
-                            p_map = {t: (await mdm.get_quote(t)).price for t in all_pos_tickers if (await mdm.get_quote(t))}
+                            p_map = {}
+                            for t in all_pos_tickers:
+                                q = await mdm.get_quote(t)
+                                if q:
+                                    p_map[t] = q.price
                             portfolio.calculate_reg_t_metrics(p_map)
                         
                         bp = portfolio.metrics.buying_power if portfolio.metrics else 0

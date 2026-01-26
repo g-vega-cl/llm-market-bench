@@ -36,15 +36,57 @@ class MarketDataManager:
         if cached_data:
             return cached_data
 
-        # 2. Fetch from Provider
+        # 2. Fetch from Provider with Exponential Backoff
         logger.info(f"Cache miss for {ticker}. Fetching from provider...")
-        data = await self.provider.get_ticker_data(ticker)
-        
-        if data and data.exists:
-            # 3. Save to Cache
-            self._save_to_cache(data)
-            return data
+        import asyncio
+        for attempt in range(1, 4):
+            try:
+                data = await self.provider.get_ticker_data(ticker)
+                
+                if data and data.exists:
+                    # 3. Save to Cache and Return
+                    self._save_to_cache(data)
+                    return data
+            except Exception as e:
+                logger.warning(f"Attempt {attempt}/3 failed for {ticker}: {e}")
             
+            # If we failed or got no data, wait before retrying (unless it's the last attempt)
+            if attempt < 3:
+                wait_time = 2 ** (attempt - 1)  # 1s, 2s, 4s...
+                logger.info(f"Retrying {ticker} in {wait_time}s...")
+                await asyncio.sleep(wait_time)
+
+        # 4. Fallback: Last Known Price from History
+        logger.warning(f"All retrieval attempts failed for {ticker}. Checking price history for fallback...")
+        last_known = self._get_last_known_price(ticker)
+        if last_known:
+             logger.info(f"Using last known price for {ticker}: ${last_known.price}")
+             return last_known
+
+        return None
+
+    def _get_last_known_price(self, ticker: str) -> Optional[TickerData]:
+        """Retrieves the most recent price from the history table."""
+        try:
+             # We want the latest entry from price_history
+             response = self.client.table("price_history") \
+                .select("*") \
+                .eq("ticker", ticker) \
+                .order("fetched_at", desc=True) \
+                .limit(1) \
+                .execute()
+             
+             if response.data:
+                 record = response.data[0]
+                 return TickerData(
+                     ticker=record["ticker"],
+                     price=float(record["price"]),
+                     market_cap=float(record["market_cap"]),
+                     exists=True
+                 )
+        except Exception as e:
+             logger.error(f"Error fetching last known price for {ticker}: {e}")
+        
         return None
 
     def _get_from_cache(self, ticker: str) -> Optional[TickerData]:

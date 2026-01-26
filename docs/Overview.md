@@ -140,6 +140,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Momentum Scoring:** The engine calculates a "Velocity Score" based on mention frequency acceleration (7-day mentions vs. 30-day baseline).
 *   **Velocity Decay:** Stale concepts have their velocity scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
 *   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score.
+*   **Visualization:** An automated script (`apps/engine/update_concepts.py`) calculates 2D PCA coordinates (`pca_x`, `pca_y`) for visualization on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
 *   documentation: ./docs/engine/trend-momentum-analysis.md
 
 **9.a. General Review**
@@ -220,6 +221,13 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Public Insights:** A public [Memories Page](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective, including consensus events and trade reasoning.
+
+**16b. Concept Cluster Map** ✅
+*   **Tech:** **D3.js + React**
+*   **Visualizing Trends:** A 2D scatter plot visualizing semantic relationships between market concepts.
+*   **Coordinates:** Calculated via PCA (Principal Component Analysis) on the python backend to reduce 768-dim embeddings to 2D.
+*   **Route:** `/concepts`
+*   **Features:** Interactive tooltips, momentum coloring, and staggered entrance animation.
 
 **16a. Testing Infrastructure** ✅
 *   **Tech:** **Vitest + React Testing Library**

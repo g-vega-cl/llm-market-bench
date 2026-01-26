@@ -48,6 +48,8 @@ Metrics are stored in the `concept_metrics` table:
 | `mention_count` | Total cumulative appearances |
 | `velocity_score` | The current 24h/7d acceleration score |
 | `first_mention_at` | Discovery timestamp |
+| `pca_x` | 2D coordinate (Principal Component 1) for visualization |
+| `pca_y` | 2D coordinate (Principal Component 2) for visualization |
 
 ## Verification
 

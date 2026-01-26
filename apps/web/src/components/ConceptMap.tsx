@@ -101,8 +101,8 @@ export function ConceptMap({ data }: { data: Concept[] }) {
         className="max-w-4xl border border-gray-200 rounded-xl bg-white shadow-sm"
       />
       {hovered && (
-        <div className="absolute top-4 right-4 p-4 bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-lg max-w-xs pointer-events-none">
-          <h3 className="font-bold text-lg mb-1">{hovered.concept_name}</h3>
+        <div className="absolute top-4 right-4 p-4 bg-white border border-gray-200 rounded-lg shadow-lg max-w-xs pointer-events-none">
+          <h3 className="font-bold text-md mb-1 text-gray-800">{hovered.concept_name}</h3>
           <div className="text-sm text-gray-600 space-y-1">
             <div className="flex justify-between">
               <span>Mentions:</span>

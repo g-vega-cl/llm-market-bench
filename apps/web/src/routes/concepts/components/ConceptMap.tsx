@@ -18,7 +18,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
 
   // Debug Stats
   const conceptCount = data.length
-  
+
   React.useEffect(() => {
     if (!data || data.length === 0 || !svgRef.current) return
 
@@ -34,7 +34,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
     // Scales
     const xExtent = d3.extent(data, (d) => d.pca_x!) as [number, number]
     const yExtent = d3.extent(data, (d) => d.pca_y!) as [number, number]
-    
+
     const xPad = (xExtent[1] - xExtent[0]) * 0.05
     const yPad = (yExtent[1] - yExtent[0]) * 0.05
 
@@ -60,11 +60,11 @@ export function ConceptMap({ data }: { data: Concept[] }) {
 
     // --- Spatial Color Scale (Background Only) ---
     const getSpatialColor = (x: number, y: number) => {
-        const dx = x - centerX
-        const dy = y - centerY
-        const angle = Math.atan2(dy, dx)
-        const t = (angle + Math.PI) / (2 * Math.PI)
-        return d3.interpolateRainbow(t)
+      const dx = x - centerX
+      const dy = y - centerY
+      const angle = Math.atan2(dy, dx)
+      const t = (angle + Math.PI) / (2 * Math.PI)
+      return d3.interpolateRainbow(t)
     }
 
     // --- Contours ---
@@ -73,37 +73,37 @@ export function ConceptMap({ data }: { data: Concept[] }) {
       .x((d) => xScale(d.pca_x!))
       .y((d) => yScale(d.pca_y!))
       .size([width, height])
-      .bandwidth(20) 
-      .thresholds(20) 
+      .bandwidth(20)
+      .thresholds(20)
       (data)
 
     // 2. Split MultiPolygons into Individual Polygons (Islands)
     // This ensures that two distant clusters at the same density level are treated as separate hover targets.
     type ContourFeature = {
-        type: "Feature",
-        geometry: { type: "Polygon", coordinates: any[][][] },
-        properties: { value: number } // Density value
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: any[][][] },
+      properties: { value: number } // Density value
     }
 
     const separateContours: ContourFeature[] = []
 
     contoursRaw.forEach(multiPoly => {
-        // multiPoly.coordinates is [Polygon1, Polygon2, ...]
-        // Where each Polygon is [Ring1, Ring2...]
-        multiPoly.coordinates.forEach(polygonCoords => {
-            separateContours.push({
-                type: "Feature",
-                geometry: {
-                    type: "Polygon",
-                    coordinates: polygonCoords
-                },
-                properties: { value: multiPoly.value }
-            })
+      // multiPoly.coordinates is [Polygon1, Polygon2, ...]
+      // Where each Polygon is [Ring1, Ring2...]
+      multiPoly.coordinates.forEach(polygonCoords => {
+        separateContours.push({
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: polygonCoords
+          },
+          properties: { value: multiPoly.value }
         })
+      })
     })
 
     const pathGenerator = d3.geoPath()
-    
+
     // Draw Individual Contours
     svg.append("g")
       .attr("class", "contours")
@@ -112,56 +112,56 @@ export function ConceptMap({ data }: { data: Concept[] }) {
       .enter().append("path")
       .attr("d", d => pathGenerator(d.geometry as any))
       .attr("fill", d => {
-          const centroid = pathGenerator.centroid(d.geometry as any)
-          if (!centroid || isNaN(centroid[0])) return "#eee"
-          return getSpatialColor(centroid[0], centroid[1])
+        const centroid = pathGenerator.centroid(d.geometry as any)
+        if (!centroid || isNaN(centroid[0])) return "#eee"
+        return getSpatialColor(centroid[0], centroid[1])
       })
       .attr("fill-opacity", d => 0.05 + (d.properties.value * 0.1))
       .attr("stroke", "white")
       .attr("stroke-width", 0.5)
       .attr("stroke-opacity", 0.1)
       .style("cursor", "crosshair")
-      .on("mouseenter", function(event, d) {
-          d3.select(this)
-             .transition().duration(100)
-             .attr("fill-opacity", 0.4)
-             .attr("stroke-opacity", 0.8)
+      .on("mouseenter", function (event, d) {
+        d3.select(this)
+          .transition().duration(100)
+          .attr("fill-opacity", 0.4)
+          .attr("stroke-opacity", 0.8)
 
-          const centroid = pathGenerator.centroid(d.geometry as any)
-          if (centroid && !isNaN(centroid[0])) {
-             const cx = centroid[0]
-             const cy = centroid[1]
-             
-             // Find dominant concept for THIS specific island
-             let closest: Concept | null = null
-             let minDist = Infinity
-             
-             for (const c of data) {
-                 const dx = xScale(c.pca_x!) - cx
-                 const dy = yScale(c.pca_y!) - cy
-                 const dist = dx*dx + dy*dy
-                 if (dist < minDist) {
-                     minDist = dist
-                     closest = c
-                 }
-             }
+        const centroid = pathGenerator.centroid(d.geometry as any)
+        if (centroid && !isNaN(centroid[0])) {
+          const cx = centroid[0]
+          const cy = centroid[1]
 
-             if (closest) {
-                 setHoveredCluster({
-                     text: closest.concept_name,
-                     x: cx,
-                     y: cy,
-                     color: getSpatialColor(cx, cy)
-                 })
-             }
+          // Find dominant concept for THIS specific island
+          let closest: Concept | null = null
+          let minDist = Infinity
+
+          for (const c of data) {
+            const dx = xScale(c.pca_x!) - cx
+            const dy = yScale(c.pca_y!) - cy
+            const dist = dx * dx + dy * dy
+            if (dist < minDist) {
+              minDist = dist
+              closest = c
+            }
           }
+
+          if (closest) {
+            setHoveredCluster({
+              text: closest.concept_name,
+              x: cx,
+              y: cy,
+              color: getSpatialColor(cx, cy)
+            })
+          }
+        }
       })
-      .on("mouseleave", function(event, d) {
-          d3.select(this)
-             .transition().duration(200)
-             .attr("fill-opacity", 0.05 + (d.properties.value * 0.1))
-             .attr("stroke-opacity", 0.1)
-          setHoveredCluster(null)
+      .on("mouseleave", function (event, d) {
+        d3.select(this)
+          .transition().duration(200)
+          .attr("fill-opacity", 0.05 + (d.properties.value * 0.1))
+          .attr("stroke-opacity", 0.1)
+        setHoveredCluster(null)
       })
 
 
@@ -173,7 +173,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
       .join('circle')
       .attr('cx', (d) => xScale(d.pca_x!))
       .attr('cy', (d) => yScale(d.pca_y!))
-      .attr('r', (d) => rScale(d.mention_count)) 
+      .attr('r', (d) => rScale(d.mention_count))
       .attr('fill', (d) => velocityScale(d.velocity_score)) // Back to Velocity
       .attr('fill-opacity', 0.9)
       .attr('stroke', '#fff')
@@ -215,16 +215,16 @@ export function ConceptMap({ data }: { data: Concept[] }) {
         viewBox="0 0 800 600"
         className="max-w-5xl border border-gray-200 rounded-xl bg-gray-50/30 shadow-sm"
       />
-      
+
       {/* Region Label - Now uses the cluster's specific color */}
       {hoveredCluster && !hoveredNode && (
-         <div 
-            className="absolute top-8 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full border border-gray-200 shadow-sm pointer-events-none transition-all flex items-center gap-2 bg-white/95 backdrop-blur"
-            style={{ borderLeft: `4px solid ${hoveredCluster.color}` }}
-         >
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: hoveredCluster.color }}>Region</span>
-            <span className="text-lg font-bold text-gray-800">{hoveredCluster.text}</span>
-         </div>
+        <div
+          className="absolute top-8 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full border border-gray-200 shadow-sm pointer-events-none transition-all flex items-center gap-2 bg-white/95 backdrop-blur"
+          style={{ borderLeft: `4px solid ${hoveredCluster.color}` }}
+        >
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: hoveredCluster.color }}>Region</span>
+          <span className="text-lg font-bold text-gray-800">{hoveredCluster.text}</span>
+        </div>
       )}
 
       {hoveredNode && (
@@ -236,9 +236,9 @@ export function ConceptMap({ data }: { data: Concept[] }) {
               <span className="font-mono">{hoveredNode.mention_count}</span>
             </div>
             <div className="flex justify-between">
-              <span>Velocity:</span>
+              <span>Momentum:</span>
               <span className="font-mono" style={{ color: d3.interpolateTurbo(hoveredNode.velocity_score / 5) }}>
-                {hoveredNode.velocity_score.toFixed(2)}x
+                {hoveredNode.velocity_score.toFixed(2)}
               </span>
             </div>
             <div className="text-xs text-gray-400 mt-2">

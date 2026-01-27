@@ -203,11 +203,6 @@ export function ConceptMap({ data }: { data: Concept[] }) {
 
   return (
     <div className="relative flex justify-center p-4">
-      {/* Debug Info Overlay */}
-      <div className="absolute top-6 left-6 z-10 text-[10px] text-gray-400 font-mono bg-white/50 p-1 rounded pointer-events-none">
-        {conceptCount} items
-      </div>
-
       <svg
         ref={svgRef}
         width="100%"

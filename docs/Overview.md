@@ -113,7 +113,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **7. Decision Attribution Layer** ✅
 
 *   **Tech:** Python Logic / Supabase
-*   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it.*
+*   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it. This table preserves the **individual perspective** of each LLM.*
 *   **Idempotency:** *Uses UPSERT with unique constraint on `(source_id, ticker, signal, model_provider, model_name)` to prevent duplicate decisions if the pipeline reruns.*
 *   documentation: ./docs/engine/decision-attribution-walkthrough.md
 
@@ -210,7 +210,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **15. Long-term Memory Embedding** ✅
 
 *   **Tech:** **Supabase pgvector (Google Gemini text-embedding-004)**
-*   *Embed consensus events and the attributed reasoning for future RAG retrieval.*
+*   **Consolidated RAG:** *Instead of embedding every individual model's reasoning (which causes vector noise), the engine groups decisions by ticker/signal and synthesizes a **Consensus Reasoning** block. This consolidated memory is then embedded for future RAG retrieval, ensuring the AI has a clear, unified view of its past strategy.*
 *   documentation: [step-15-long-term-memory-embedding.md](./step-15-long-term-memory-embedding.md)
 
 ### Phase 4: Frontend & Feedback

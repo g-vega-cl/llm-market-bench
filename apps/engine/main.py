@@ -89,6 +89,9 @@ async def run_ingest():
         saved_decisions = 0
         rejected_decisions = 0
         
+        # We collect all valid decisions to perform reasoning consensus later
+        actionable_decisions = []
+        
         for d in decisions:
             try:
                 # --- Pre-Market Validation (Guardrails) ---
@@ -227,24 +230,9 @@ async def run_ingest():
                     trade_id=str(trade_id) if trade_id else None
                 )
                 
-                # --- Step 15: Long-term Memory Embedding ---
-                if d.reasoning:
-                    memory_content = (
-                        f"DECISION REASONING: {d.ticker} {d.signal} | "
-                        f"REASONING: {d.reasoning}"
-                    )
-                    add_memory(
-                        content=memory_content,
-                        metadata={
-                            "type": "decision_reasoning",
-                            "ticker": d.ticker,
-                            "signal": d.signal,
-                            "model_provider": d.model_provider,
-                            "model_name": d.model_name,
-                            "source_id": d.source_id,
-                            "trade_id": str(trade_id) if trade_id else None
-                        }
-                    )
+                # Collect for consensus reasoning if executed or validated
+                if status in ["EXECUTED", "VALIDATED"]:
+                    actionable_decisions.append(d)
 
                 saved_decisions += 1
                 logger.info(
@@ -253,6 +241,28 @@ async def run_ingest():
                 )
             except Exception as e:
                 logger.error(f"Failed to process/save decision for {d.ticker}: {e}")
+
+        # --- Step 15: Consolidated Decision Reasoning Embedding ---
+        if actionable_decisions:
+            logger.info("Consolidating trade reasoning for memory...")
+            from consensus import process_decision_consensus
+            consolidated_reasonings = await process_decision_consensus(actionable_decisions)
+            
+            for cr in consolidated_reasonings:
+                memory_content = (
+                    f"DECISION REASONING: {cr['ticker']} {cr['signal']} | "
+                    f"CONSENSUS REASONING: {cr['reasoning']}"
+                )
+                add_memory(
+                    content=memory_content,
+                    metadata={
+                        "type": "decision_reasoning",
+                        "ticker": cr['ticker'],
+                        "signal": cr['signal'],
+                        "models_involved": cr['models_involved'],
+                        "source_ids": cr['source_ids']
+                    }
+                )
 
         logger.info(
             f"Pipeline complete. Saved {saved_decisions} decisions, "

@@ -11,10 +11,10 @@ To ensure maximum feature coverage and performance, the system uses the official
 
 | Provider | SDK / Client | Model Default |
 | --- | --- | --- |
-| **OpenAI** | `openai` | `gpt-4-turbo-preview` |
-| **Anthropic** | `anthropic` | `claude-3-5-sonnet-20240620` |
-| **Gemini** | `google-genai` | `gemini-1.5-pro` |
-| **DeepSeek** | `openai` (official) | `deepseek-chat` |
+| **OpenAI** | `openai` | `gpt-5-mini` |
+| **Anthropic** | `anthropic` | `claude-haiku-4-5` |
+| **Gemini** | `google-genai` | `gemini-3-flash-preview` |
+| **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
 
 ### **Active Tool Calling**
 Models now actively call the `get_stock_quote` tool to verify market data *before* committing to a trade. This eliminates ticker hallucinations and ensures price accuracy.
@@ -44,6 +44,8 @@ class DecisionObject(BaseModel):
     catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"]
     catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "LONG_TERM"]
     source_id: str   # Link to the raw news chunk
+    price: float | None  # Stock price (optional, for validation)
+    allocation_percentage: int | None  # % of buying power to allocate (0-100)
 ```
 
 ## 4. Parallel Orchestration (Consolidated Mode)

@@ -5,10 +5,10 @@ This document describes the implementation of Google Authentication using Supaba
 ## Implementation Details
 
 ### 1. Client-side Supabase Utility
-Created `apps/web/src/utils/supabase-client.ts` to provide a Supabase client that works in the browser. This is necessary for triggering the OAuth flow.
+Created `apps/web/src/lib/supabase-client.ts` to provide a Supabase client that works in the browser. This is necessary for triggering the OAuth flow.
 
 ### 2. Google Login Button
-Modified `apps/web/src/components/Auth.tsx` to include a "Sign in with Google" button. 
+Modified `apps/web/src/shared/auth/components/Auth.tsx` to include a "Sign in with Google" button. 
 - **Tech:** Uses `supabase.auth.signInWithOAuth`.
 - **Client Usage:** Uses the **Browser Client** (`getSupabaseBrowserClient`) to trigger the redirect flow from the frontend.
 - **Redirect:** Sends users to Google and specifies `/auth/callback` as the return URL.

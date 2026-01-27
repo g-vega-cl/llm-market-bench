@@ -1,5 +1,8 @@
  AI Wall Street - Comprehensive Code Review
 
+> [!NOTE]
+> **Historical Document**: This review was conducted in early January 2026. Sections 1-10 describe the state of the codebase at that time. **Most issues identified have since been resolved** — see Sections 11 and 12 ("Fixes Implemented") for details. The "What's Missing" table (Section 7) and "Cons" list (Section 8) are now largely outdated as Steps 10-14 (Pre-Market Validation, Execution, Portfolio Management) and the Frontend have been implemented.
+
   Executive Summary
 
   This is a well-architected LLM benchmarking platform with solid fundamentals. The 17-step pipeline is thoughtfully designed with proper attribution trails, consensus mechanisms, and idempotency layers. The codebase demonstrates production-grade patterns while remaining maintainable.

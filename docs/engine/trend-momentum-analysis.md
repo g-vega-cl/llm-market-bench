@@ -25,7 +25,7 @@ $$\text{Momentum} = \text{Intensity} \times \text{Growth}$$
 ### 3. Semantic Concept Merging & Prefixing
 To ensure high-precision matching, the engine performs two additional steps:
 - **Search Prefixing:** Before searching, the concept name is prefixed with `"MARKET EVENT:"` (e.g., `"MARKET EVENT: NVIDIA Blackwell Delay"`). This aligns the search query with the exact content format stored in the `memories` table, drastically improving cosine similarity.
-- **Deduplication:** To prevent data fragmentation (e.g., tracking "Fed Rate Hike" and "Interest Rate Increase" separately), the engine merges new mentions into existing concepts if they share **> 90% semantic similarity**.
+- **Deduplication:** To prevent data fragmentation (e.g., tracking "Fed Rate Hike" and "Interest Rate Increase" separately), the engine merges new mentions into existing concepts if they share **> 75% semantic similarity**.
 
 ### 4. Trend Archeology & 90-Day History
 The engine tracks concepts over a rolling **90-day window**:
@@ -38,7 +38,7 @@ The engine tracks concepts over a rolling **90-day window**:
 
 Key thresholds and lookback windows can be tuned in `apps/engine/core/config.py`:
 - `MOMENTUM_SIMILARITY_THRESHOLD`: Sensitivity for counting mentions (default 0.75).
-- `MOMENTUM_CONCEPT_MERGE_THRESHOLD`: Sensitivity for merging two concept names (default 0.90).
+- `MOMENTUM_CONCEPT_MERGE_THRESHOLD`: Sensitivity for merging two concept names (default 0.75).
 - `MOMENTUM_BASELINE_DAYS`: The historical window size (default 30 days).
 
 ## Data Schema & Storage

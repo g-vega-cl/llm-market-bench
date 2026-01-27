@@ -4,7 +4,7 @@ This document provides a detailed step-by-step walkthrough of the complete data 
 
 ## Overview
 
-The pipeline has four main phases:
+The pipeline has six main phases:
 
 1. **Ingestion**: Fetch newsletters from Gmail, clean them, generate unique identifiers
 2. **Context Retrieval**: Embed queries and retrieve historical context from vector store
@@ -32,7 +32,7 @@ Newsletter 4: "Crypto Crash Warning" (250 chars)
 
 ### Step 1.1: Fetch Message List from Gmail
 
-**File**: `apps/engine/ingest/newsletter.py:293-301`
+**File**: `apps/engine/ingest/newsletter.py` → `ingest_newsletters()`
 
 ```python
 # Gmail API Call #1
@@ -53,7 +53,7 @@ results = service.users().messages().list(
 
 ### Step 1.2: Fetch and Process Each Message
 
-**File**: `apps/engine/ingest/newsletter.py:228-272`
+**File**: `apps/engine/ingest/newsletter.py` → `_process_message()`
 
 ```
 For each of the 4 message IDs:
@@ -97,7 +97,7 @@ Processing Steps:
 
 ### Step 1.3: Generate Unique Identifiers
 
-**File**: `apps/engine/ingest/newsletter.py:199-225`
+**File**: `apps/engine/ingest/newsletter.py` → `generate_source_id()`, `generate_chunk_hash()`
 
 For each newsletter, generate two identifiers:
 
@@ -168,7 +168,7 @@ Newsletter 4:
 
 ### Step 1.4: Save to Supabase (newsletter_snapshots table)
 
-**File**: `apps/engine/main.py:41-55`
+**File**: `apps/engine/main.py` → `run_ingest()` (upsert loop)
 
 ```python
 # Database Insert #1-4 (one per newsletter)
@@ -217,7 +217,7 @@ newsletter_snapshots table after Phase 1:
 
 ### Step 2.1: Filter Malformed Chunks
 
-**File**: `apps/engine/analyze.py:46-55`
+**File**: `apps/engine/analyze.py` → `analyze_chunks()`
 
 Before analysis, the engine validates all chunks to ensure they possess both a `source_id` and `content`. Any newsletter that failed to parse correctly during ingestion is skipped here to ensure the stability of the RAG and LLM stages.
 
@@ -230,7 +230,7 @@ valid_chunks = [
 
 ### Step 2.2: Extract Query Texts
 
-**File**: `apps/engine/analyze.py:47`
+**File**: `apps/engine/analyze.py` → `analyze_chunks()`
 
 From the 4 stored newsletters, use the full content of each as queries for embedding:
 
@@ -258,7 +258,7 @@ queries = [
 
 ### Step 2.2: BATCH Embed All Queries (Single API Call)
 
-**File**: `apps/engine/memory/embeddings.py:27-55`
+**File**: `apps/engine/memory/embeddings.py` → `get_embeddings_batch()`
 
 This is the KEY OPTIMIZATION: all 4 queries embedded in ONE API call, not 4 separate calls.
 
@@ -292,7 +292,7 @@ embeddings = [
 
 ### Step 2.3: Query Vector Store (Retrieve Historical Context)
 
-**File**: `apps/engine/memory/store.py:16-66`
+**File**: `apps/engine/memory/store.py` → `retrieve_context_batch()`
 
 For each of the 4 embeddings, perform a vector similarity search:
 
@@ -381,7 +381,7 @@ response = client.rpc(...)
 
 ### Step 2.4: Aggregate Retrieved Context
 
-**File**: `apps/engine/analyze.py:50-51`
+**File**: `apps/engine/analyze.py` → `analyze_chunks()`
 
 Combine all retrieved context into a single string:
 
@@ -418,7 +418,7 @@ aggregated_context = """
 
 ### Step 3.1: Build Enriched Prompt
 
-**File**: `apps/engine/core/llm.py`
+**File**: `apps/engine/core/llm/`
 
 ```python
 prompt = f"""You are a hedge fund trading algorithm. 
@@ -439,7 +439,7 @@ Content: Tesla stock expected to rally due to...
 
 ### Step 3.2: Parallel Multi-Step Tool Execution
 
-**File**: `apps/engine/core/llm.py`
+**File**: `apps/engine/core/llm/`
 
 Each LLM provider is called in a loop. If a model wants to trade, it pauses to call the **Stock Tool**.
 
@@ -466,7 +466,7 @@ sequenceDiagram
 
 ### Step 3.3: Structured Extraction (Instructor)
 
-**File**: `apps/engine/core/llm.py`
+**File**: `apps/engine/core/llm/`
 
 After the tool loop finishes, the engine performs one final pass to ensure the output perfectly matches the Pydantic `DecisionsResponse` schema.
 
@@ -541,7 +541,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 
 ### Step 4.1: Save Each Decision
 
-**File**: `apps/engine/main.py:64-76`
+**File**: `apps/engine/main.py` → `run_ingest()` (decision save loop)
 
 ```python
 saved_decisions = 0
@@ -591,7 +591,7 @@ CREATE TABLE decisions (
     confidence INTEGER,                -- 0-100
     reasoning TEXT,                    -- Full LLM explanation
     model_provider TEXT,               -- "openai", "anthropic", "gemini", "deepseek"
-    model_name TEXT,                   -- "gpt-4-turbo", "claude-3-5-sonnet", etc.
+    model_name TEXT,                   -- "gpt-5-mini", "claude-haiku-4-5", etc.
     created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -602,14 +602,14 @@ CREATE TABLE decisions (
 ┌─────────────────────────┬────────┬────────┬─────┬────────────┬──────────┬──────────────────┐
 │ source_id               │ ticker │ signal │ conf│ reasoning  │ provider │ model_name       │
 ├─────────────────────────┼────────┼────────┼─────┼────────────┼──────────┼──────────────────┤
-│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 85  │ Tesla...   │ openai   │ gpt-4-turbo      │
-│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 92  │ Tesla...   │ anthropic│ claude-3-5-sonnet│
-│ news_newsletter2_b1d... │ SPY    │ HOLD   │ 60  │ Fed...     │ openai   │ gpt-4-turbo      │
-│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 78  │ AI...      │ openai   │ gpt-4-turbo      │
-│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 92  │ AI trans..│ anthropic│ claude-3-5-sonnet│
-│ news_newsletter4_d4a... │ BTC    │ SELL   │ 78  │ Crypto...  │ anthropic│ claude-3-5-sonnet│
-│ news_newsletter4_d4a... │ BTC    │ SELL   │ 82  │ Crypto...  │ gemini   │ gemini-2.0       │
-│ news_newsletter2_b1d... │ QQQ    │ SELL   │ 71  │ Tech...    │ deepseek │ deepseek-chat    │
+│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 85  │ Tesla...   │ openai   │ gpt-5-mini      │
+│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 92  │ Tesla...   │ anthropic│ claude-haiku-4-5│
+│ news_newsletter2_b1d... │ SPY    │ HOLD   │ 60  │ Fed...     │ openai   │ gpt-5-mini      │
+│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 78  │ AI...      │ openai   │ gpt-5-mini      │
+│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 92  │ AI trans..│ anthropic│ claude-haiku-4-5│
+│ news_newsletter4_d4a... │ BTC    │ SELL   │ 78  │ Crypto...  │ anthropic│ claude-haiku-4-5│
+│ news_newsletter4_d4a... │ BTC    │ SELL   │ 82  │ Crypto...  │ gemini   │ gemini-3-flash-preview       │
+│ news_newsletter2_b1d... │ QQQ    │ SELL   │ 71  │ Tech...    │ deepseek │ deepseek-reasoner    │
 │ ...                     │ ...    │ ...    │ ... │ ...        │ ...      │ ...              │
 └─────────────────────────┴────────┴────────┴─────┴────────────┴──────────┴──────────────────┘
 
@@ -656,7 +656,7 @@ For each consensus group, the engine checks for related past events.
 
 ### Step 5.3: LLM Synthesis
 
-**File**: `apps/engine/core/llm.py`
+**File**: `apps/engine/core/llm/`
 
 For events that reach consensus (2+ models), we perform a final synthesis pass:
 
@@ -697,7 +697,7 @@ The engine tracks how fast a concept is accelerating in the global discourse.
 
 **File**: `apps/engine/analysis/momentum.py`
 
-- **Merging**: New concepts are compared against existing ones in `concept_metrics`. If similarity > 0.90, they merge (increment count).
+- **Merging**: New concepts are compared against existing ones in `concept_metrics`. If similarity > 0.75, they merge (increment count).
 - **Decay**: Halving the velocity of concepts not mentioned in the last 28 days (Half-Life).
 
 **Phase 6 Summary**:
@@ -776,7 +776,7 @@ The system does not store P&L as a static column to avoid staleness. Instead, a 
 
 ### Step 9.1: Attribution Locking (Linking Decision to Trade)
 
-**File**: `apps/engine/main.py:169-175`, `apps/engine/attribution/service.py`
+**File**: `apps/engine/main.py` → `run_ingest()` (attribution locking), `apps/engine/attribution/service.py` → `save_decision()`
 
 After a trade is successfully executed and a `TradeID` is generated, the engine must "lock" the attribution. This is critical for the audit trail: it ensures that we can always trace an executed trade back to the specific newsletter sentence and LLM reasoning that caused it.
 
@@ -798,7 +798,7 @@ save_decision(
 
 ### Step 9.2: Long-term Memory Embedding (Reasoning)
 
-**File**: `apps/engine/main.py:177-194`, `apps/engine/memory/store.py`
+**File**: `apps/engine/main.py` → `run_ingest()` (memory embedding), `apps/engine/memory/store.py` → `add_memory()`
 
 The system vectorizes the *reasoning* behind the trade to create "Institutional Memory." This differs from News Ingestion (which embeds raw text) because it embeds the AI's *conclusions*.
 
@@ -815,7 +815,7 @@ The system vectorizes the *reasoning* behind the trade to create "Institutional 
 
 ### Step 10.1: Daily Performance Snapshot
 
-**File**: `apps/engine/main.py:209-242`, `apps/engine/execution/portfolio.py`
+**File**: `apps/engine/main.py` → `run_ingest()` (performance snapshot), `apps/engine/execution/portfolio.py` → `record_performance_snapshot()`
 
 Once all trades for the day are finished, the engine calculates the daily performance metrics for every AI agent to enable the frontend "Equity Curve" visualization.
 
@@ -945,7 +945,7 @@ Total Pipeline Time: ~10-12 seconds
 | `apps/engine/main.py` | Pipeline orchestration and entry point |
 | `apps/engine/ingest/newsletter.py` | Gmail fetching and text processing |
 | `apps/engine/analyze.py` | RAG context retrieval + LLM orchestration |
-| `apps/engine/core/llm.py` | Multi-provider LLM clients |
+| `apps/engine/core/llm/` | Multi-provider LLM clients |
 | `apps/engine/memory/store.py` | pgvector interaction and memory management |
 | `apps/engine/memory/embeddings.py` | Gemini batch embedding client |
 | `apps/engine/consensus.py` | Semantic grouping and event synthesis |

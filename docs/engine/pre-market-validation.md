@@ -17,7 +17,7 @@ LLMs, while powerful, can occasionally:
 
 ### 2. Guardrail B: Price Banding
 - **Logic**: Compares the AI's suggested price with the current live/delayed market price.
-- **Limit**: **Max 15% deviation**.
+- **Limit**: **Max 10% deviation**.
 - **Action**: Reject trade if the price difference is too large.
 
 ### 3. Guardrail C: Liquidity Check
@@ -49,7 +49,7 @@ The following environment variables and constants control the validation behavio
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
-| `MAX_PRICE_DEVIATION_PCT` | `15.0` | Maximum % difference between AI and market price. |
+| `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
 | `FINANCIAL_PROVIDER` | `"yfinance"` | Which API implementation to use (`fmp` or `yfinance`). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 

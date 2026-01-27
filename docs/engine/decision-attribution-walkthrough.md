@@ -15,7 +15,7 @@ A new `decisions` table was created in Supabase to store the structured output f
     - `confidence`: 0-100 confidence score.
     - `reasoning`: The LLM's full text justification.
     - `model_provider`: e.g., "openai", "claude".
-    - `model_name`: e.g., "gpt-4o", "claude-3-5-sonnet".
+    - `model_name`: e.g., "gpt-5-mini", "claude-haiku-4-5".
 
 ### Logic Changes
 1. **Model Updates:** The `DecisionObject` Pydantic model was expanded to include `model_provider` and `model_name`.
@@ -45,6 +45,6 @@ Unit tests were implemented in `apps/engine/tests/test_attribution.py` to verify
 ### Sample Pipeline Output
 When running the `ingest` command, the engine now logs successful attribution:
 ```text
-[AAPL] BUY (Conf: 85%): Saved attribution for openai/gpt-4o
-[NVDA] HOLD (Conf: 92%): Saved attribution for deepseek/deepseek-chat
+[AAPL] BUY (Conf: 85%): Saved attribution for openai/gpt-5-mini
+[NVDA] HOLD (Conf: 92%): Saved attribution for deepseek/deepseek-reasoner
 ```

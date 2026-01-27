@@ -33,7 +33,7 @@ The retrieval logic is encapsulated in `apps/engine/memory/store.py`.
 The retrieval is integrated into the parallel analysis orchestrator.
 - **Module**: `apps/engine/analyze.py`.
 - **Change**: Added a single call to `retrieve_context_batch` for all news chunks before dispatching tasks to the LLM providers.
-- **Prompt Injection**: In `apps/engine/core/llm.py`, the retrieved context is aggregated and injected into the LLM prompt under a `### Historical Context` section. 
+- **Prompt Injection**: In `apps/engine/core/llm/prompts.py`, the retrieved context is aggregated and injected into the LLM prompt under a `### Historical Context` section. 
 - **Chain Awareness**: The engine is now aware of "Memory Chains," meaning it understands whether an event is `ACTIVE` or `RESOLVED`. This allows the LLM to skip processing outdated narratives that have already been settled or retracted.
 
 ## Verification

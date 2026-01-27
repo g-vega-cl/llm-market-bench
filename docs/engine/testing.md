@@ -27,21 +27,69 @@ python3 -m pytest -v
 
 The engine tests are located in `apps/engine/tests/` and cover the following areas:
 
-### 1. Analysis Logic (`test_analysis_logic.py`)
-- **Schema Validation**: Ensures the `DecisionObject` Pydantic model correctly validates LLM outputs.
-- **Orchestration**: Verifies that `analyze_chunks` correctly spawns tasks for each model and filters out malformed input.
-- **Batch Processing**: Validates that all chunks are analyzed in the same LLM call.
+### 1. Analysis & LLM
 
-### 2. Resilience & Hardening (`test_resilience.py`)
-- **Individual Task Failures**: Confirms that if one model fails (e.g., API timeout), the pipeline continues to process results from other models.
-- **Ingestion Guardrails**: Verifies that the engine halts gracefully in `main.py` if no new newsletters are found, preventing empty data processing.
+| Test File | Coverage |
+|-----------|----------|
+| `test_analysis_logic.py` | Schema validation, `analyze_chunks` orchestration, batch processing |
+| `test_batch_analysis.py` | Validates all chunks are analyzed in a single LLM call per provider |
+| `test_llm_tools.py` | Tool calling interface for `get_stock_quote` across providers |
+| `test_call_counts.py` | Verifies API call efficiency and batching |
 
-### 3. Core Utilities (`test_newsletter.py`)
-- **Normalization**: Tests text cleaning, generating source IDs, and chunk hashing.
-- **Extraction**: Validates email body extraction and base64 decoding.
+### 2. Consensus & Memory
 
-### 4. Configuration (`test_config.py`)
-- **Environment Loading**: Ensures `.env` variables are correctly loaded and mapped to the configuration constants.
+| Test File | Coverage |
+|-----------|----------|
+| `test_consensus.py` | Semantic grouping, weighted voting, event promotion |
+| `test_consolidation.py` | Decision reasoning consolidation for RAG |
+| `test_memory_chains.py` | Parent-child relationships, auto-resolution of events |
+| `test_memory_optimization.py` | RESOLVED status filtering, relevance decay |
+| `test_memory_rag.py` | Vector similarity search, context retrieval |
+| `test_momentum.py` | Trend velocity calculation, concept merging, decay |
+
+### 3. Execution & Portfolio
+
+| Test File | Coverage |
+|-----------|----------|
+| `test_portfolio.py` | Portfolio initialization, position management, trade execution |
+| `test_reg_t_validation.py` | Buying power calculation, SMA floor enforcement |
+| `test_sell_guardrails.py` | Portfolio ownership validation for SELL signals |
+| `test_performance_snapshot.py` | Daily equity curve recording, idempotency |
+| `test_atomic_fix.py` | "Commit at the End" atomic settlement pattern |
+
+### 4. Validation & Market Data
+
+| Test File | Coverage |
+|-----------|----------|
+| `test_validation.py` | Existence, price banding, and liquidity guardrails |
+| `test_market_data.py` | Cache-first architecture, TTL expiration, fallback logic |
+| `test_yfinance_provider.py` | yfinance provider integration and error handling |
+
+### 5. Attribution & Pipeline
+
+| Test File | Coverage |
+|-----------|----------|
+| `test_attribution.py` | Decision persistence, UPSERT idempotency, trade linking |
+| `test_main_flow.py` | End-to-end pipeline orchestration |
+
+### 6. Resilience & Core
+
+| Test File | Coverage |
+|-----------|----------|
+| `test_resilience.py` | Individual LLM failures, graceful degradation |
+| `test_newsletter.py` | Text cleaning, source ID generation, chunk hashing |
+| `test_config.py` | Environment variable loading and validation |
+| `test_client_cleanup.py` | LLM client resource cleanup |
+| `test_fix_verification.py` | Regression tests for specific bug fixes |
+
+### 7. Verification Scripts
+
+These are manual verification scripts for specific features:
+
+| Script | Purpose |
+|--------|---------|
+| `verify_step_15.py` | Verifies reasoning is correctly embedded into long-term memory |
+| `verify_portfolio_upsert.py` | Verifies portfolio position upsert logic |
 
 ## Warning-Free Policy
 
@@ -55,4 +103,4 @@ We maintain a strict **Zero Warning** policy for the test suite. To achieve this
 Tests are automatically executed on every Push and Pull Request via GitHub Actions. A failure in any test prevents merging to the main branch.
 
 ---
-*Last Updated: December 2025*
+*Last Updated: January 2026*

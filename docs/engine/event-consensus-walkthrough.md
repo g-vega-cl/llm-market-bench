@@ -4,7 +4,7 @@ The **Event Consensus Protocol** is the mechanism that allows the engine to iden
 
 ## How It Works
 
-The protocol runs in four distinct stages after the parallel LLM analysis is complete:
+The protocol runs in seven distinct stages after the parallel LLM analysis is complete:
 
 ### 1. Semantic Grouping
 Because different LLMs use different terminology (e.g., "Fed Hike" vs. "Interest Rate Increase"), the engine uses **Gemini Embeddings (`text-embedding-004`)** and **Cosine Similarity** (threshold > 0.85) to cluster events that signify the same real-world catalyst.
@@ -32,7 +32,7 @@ New in Step 15, the consensus logic is also applied to trading decisions.
 - **Synthesis**: If multiple models agree, their raw reasonings are synthesized into a single, professional **Consensus Reasoning** block.
 - **RAG Impact**: This ensures that when the AI buys a stock, its future self sees exactly *why* the consensus was formed, without having to parse 4 divergent reasoning strings.
 
-### 5. Memory Optimization & Future Event Tracking
+### 6. Memory Optimization & Future Event Tracking
 After linking and resolution, the system applies two additional optimizations:
 
 **A. Memory Status Filtering:**
@@ -49,13 +49,10 @@ After linking and resolution, the system applies two additional optimizations:
 **C. Future Event Extraction:**
 - During synthesis, the LLM checks for explicitly mentioned future dates
 - Examples: "Q3 2026", "next summer", "November 20th", "by June"
-- If found, saved to the `target_date` column in the `memories` table for proactive positioning.
-  - `target_date`: The extracted timeframe
-  - `description`: Event summary
-  - `source_memory_id`: Link to the parent memory
+- If found, saved to the `target_date` column in the `memories` table for proactive positioning
 - Enables proactive positioning for upcoming events like product releases, elections, or regulatory approvals
 
-### 6. LLM Synthesis
+### 7. LLM Synthesis
 A final "Analyst Pass" (via Google Gemini) is performed to:
 - Create a professional, unified **Event Name** (max 5 words).
 - Write a 1-sentence **Summary** capturing the catalyst and market implication.
@@ -76,16 +73,7 @@ Consensus events are stored in the `memories` table with the following metadata:
 | `source_ids` | List of newsletter chunk IDs that contributed to this consensus |
 | `raw_name` | The original representative name from the first model in the cluster |
 | `relevance_score` | Decay multiplier for context retrieval (default: 1.0, halves every 30 days) |
-
-### Future Events Table
-
-| Field | Description |
-| --- | --- |
-| `id` | UUID |
-| `event_name` | The synthesized event name |
-| `target_date` | Extracted future timeframe (e.g., "Q3 2026", "next summer") |
-| `description` | Event summary |
-| `source_memory_id` | Link to the parent memory in the `memories` table |
+| `target_date` | Extracted future timeframe for proactive positioning (e.g., "Q3 2026", "next summer") |
 
 ## Verification
 

@@ -48,7 +48,7 @@ Before settlement, the engine converts the LLM's `allocation_percentage` into a 
 - **SELL:** `Qty = (Allocation % * Current Quantity)`.
 - **Fallback:** If `allocation_percentage` is missing, use **5%**. If resulting `Qty` is 0, default to **1 share**.
 
-## 4. Example Flow
+## 5. Example Flow
 **Scenario:** Agent buys 10 AAPL @ $150.
 *   **Initial:** Cash $10,000. Positions: None.
 *   **Execution:** Cost $1,500.

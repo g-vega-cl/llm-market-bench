@@ -102,7 +102,8 @@ def add_memory(
     metadata: Optional[dict[str, Any]] = None,
     parent_id: Optional[str] = None,
     status: str = "ACTIVE",
-    relationship_type: Optional[str] = None
+    relationship_type: Optional[str] = None,
+    target_date: Optional[str] = None
 ) -> str | None:
     """Adds a new text chunk to the memory store.
 
@@ -128,7 +129,8 @@ def add_memory(
             "metadata": metadata or {},
             "status": status,
             "parent_id": parent_id,
-            "relationship_type": relationship_type
+            "relationship_type": relationship_type,
+            "target_date": target_date
         }
         
         response = client.table("memories").insert(payload).execute()

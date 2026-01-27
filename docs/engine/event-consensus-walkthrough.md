@@ -43,8 +43,7 @@ After linking and resolution, the system applies two additional optimizations:
 **C. Future Event Extraction:**
 - During synthesis, the LLM checks for explicitly mentioned future dates
 - Examples: "Q3 2026", "next summer", "November 20th", "by June"
-- If found, saved to `future_events` table with:
-  - `event_name`: The synthesized event name
+- If found, saved to the `target_date` column in the `memories` table for proactive positioning.
   - `target_date`: The extracted timeframe
   - `description`: Event summary
   - `source_memory_id`: Link to the parent memory

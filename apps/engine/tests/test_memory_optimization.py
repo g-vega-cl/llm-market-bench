@@ -21,7 +21,7 @@ def test_future_date_extraction():
     # This is a placeholder test - actual testing would require:
     # 1. Mocking the LLM API call
     # 2. Verifying the SynthesisResponse includes future_date
-    # 3. Checking that future_events table receives the data
+    # 3. Checking that memories table receives the data in target_date column
     
     # For now, we document expected behavior
     for text, expected_date in test_cases:

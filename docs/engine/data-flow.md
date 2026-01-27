@@ -848,8 +848,9 @@ To enable self-correction, the engine periodically audits its own performance. T
 
 **Process**:
 1. **Query History**: Fetch all trades executed exactly 5 days ago.
-2. **Fetch Returns**: Get the current market price (from cache) for each trade's ticker.
+2. **Fetch Returns**: Get the current market price (from cache)
 3. **Analyze Outcome**: Compare the entry price and reasoning to the actual 5-day price action.
+
 4. **LLM Reflection**: Call the OpenAI post-mortem model with:
    - "You bought X because of [Reasoning]. Current price is [Y]. Was this correct?"
 5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-mortem).

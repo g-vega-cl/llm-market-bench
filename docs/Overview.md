@@ -126,7 +126,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
     *   **Auto-Resolution:** Automatically marks ancestors as `RESOLVED` if the new event reverses or completes them.
 *   **Memory Optimization:** Memories marked as `RESOLVED` are excluded from LLM context retrieval, keeping analysis focused on active events.
 *   **Relevance Decay:** Memories have a `relevance_score` that decays by 50% every 30 days, reducing the impact of old information over time.
-*   **Future Event Tracking:** During synthesis, the LLM extracts explicitly mentioned future dates (e.g., "Q3 2026", "next summer") and saves them to a `future_events` table for proactive positioning.
+*   **Consensus Projections:** During synthesis, the LLM extracts explicitly mentioned future dates (e.g., "Q3 2026", "next summer") and saves them to the `target_date` column in the `memories` table for proactive positioning.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
 *   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.
@@ -141,7 +141,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
     *   **Intensity:** Rewards sheer relevance/volume using a log scale: `log(recent_mentions + 1) + 1`.
     *   **Growth:** Rewards acceleration by comparing the 7-day daily average against a 30-day daily average.
 *   **Decay:** Stale concepts have their momentum scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
-*   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score (used to store Momentum Score).
+*   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score (used to store Momentum Score). This acts as an **Analytical Aggregation Layer** separate from the raw `memories`.
 *   **Visualization:** An automated script (`apps/engine/update_concepts.py`) calculates 2D PCA coordinates (`pca_x`, `pca_y`) for visualization on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
 *   documentation: ./docs/engine/trend-momentum-analysis.md
 

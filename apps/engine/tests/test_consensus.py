@@ -53,10 +53,14 @@ def sample_events():
 @patch("consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_check_recent, sample_events):
-    # Set up mock return values
-    mock_add_memory.return_value = True
+    # Mock return values
+    mock_add_memory.return_value = "new-uuid"
     mock_check_recent.return_value = False
-    mock_synthesize.return_value = {"name": "Synthesized Event", "summary": "Synthesized Summary"}
+    mock_synthesize.return_value = {
+        "name": "Synthesized Event", 
+        "summary": "Synthesized Summary",
+        "future_date": "June 2026"
+    }
     
     # Mock embeddings: 0 and 1 are same (Fed), 2 and 3 are different
     mock_get_embeddings.return_value = [
@@ -73,7 +77,11 @@ async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_emb
     assert len(consensus_events) == 1
     assert consensus_events[0]["event_name"] == "Synthesized Event"
     assert len(consensus_events[0]["models_involved"]) == 2 # openai_gpt-4 and anthropic_claude-3
-    assert mock_add_memory.called
+    
+    # Verify add_memory was called with target_date
+    mock_add_memory.assert_called_once()
+    kwargs = mock_add_memory.call_args.kwargs
+    assert kwargs["target_date"] == "June 2026"
 
 @patch("consensus.check_recent_memories")
 @patch("consensus.synthesize_event")

@@ -196,7 +196,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "cumulative_weight": cumulative_weight
                 },
                 parent_id=parent_id,
-                relationship_type=rel_type
+                relationship_type=rel_type,
+                target_date=synthesis.get("future_date")
             )
 
             if new_memory_id:
@@ -207,21 +208,6 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 if should_resolve and parent_id:
                     update_memory_status(parent_id, "RESOLVED")
                     logger.info(f"Marked ancestor event {parent_id} as RESOLVED.")
-                
-                # Save to future_events if a future date was extracted
-                if synthesis.get("future_date"):
-                    try:
-                        from core.db import get_supabase_client
-                        sb_client = get_supabase_client()
-                        sb_client.table("future_events").insert({
-                            "event_name": consensus_data['event_name'],
-                            "target_date": synthesis["future_date"],
-                            "description": consensus_data['reasoning'],
-                            "source_memory_id": new_memory_id
-                        }).execute()
-                        logger.info(f"Saved future event: {consensus_data['event_name']} -> {synthesis['future_date']}")
-                    except Exception as e:
-                        logger.error(f"Failed to save future event: {e}")
             else:
                 logger.error(f"Failed to promote consensus event: {consensus_data['event_name']}")
 

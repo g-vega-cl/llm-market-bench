@@ -269,7 +269,29 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 ---
 
-## 4. Environment & Security
+## 5. Maintenance & Utilities
+
+The engine provides several utility scripts for managing the system state and performing maintenance tasks without re-running the entire pipeline.
+
+### Resetting State
+
+If you need to reset the portfolios to their default state (e.g., $10,000 cash) and clear all active trades/positions while keeping the history:
+
+*   **Script:** `apps/engine/reset_state.py`
+*   **Usage:** `python reset_state.py`
+
+### Clearing the Database (Start from Scratch)
+
+To completely wipe the experimental data while preserving market price history and cache:
+
+*   **Script:** `apps/engine/clear_db.py`
+*   **Usage:** `python clear_db.py`
+*   **Preserved Tables:** `price_history`, `market_data_cache`.
+
+> [!CAUTION]
+> The `clear_db.py` script is destructive and cannot be undone. Use it only when you want to restart all LLM experiments from zero.
+
+## 6. Environment & Security
 ### Key Management Strategy
 
 We use a **Scoped `.env**` approach. Each service only has access to the variables it needs. For local development, use a `.env.example` as a template.

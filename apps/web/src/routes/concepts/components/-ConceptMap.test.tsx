@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
-import { ConceptMap, type Concept } from './ConceptMap'
+import { ConceptMap, type Concept } from './-ConceptMap'
 
 describe('ConceptMap', () => {
   const mockData: Concept[] = [

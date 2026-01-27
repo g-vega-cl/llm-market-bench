@@ -42,11 +42,14 @@ pnpm test:watch
 
 ## 5. Writing Tests
 
-We follow the **"Colocation"** principle defined in [STRUCTURE.md](./STRUCTURE.md). Tests should live next to the code they test.
+We follow the **"Colocation"** principle defined in [README.md](./README.md). Tests should live next to the code they test. 
+
+> [!IMPORTANT]
+> Files inside `src/routes` that are not actual routes (like tests, components, or utilities) **must** be prefixed with `-` to be ignored by the TanStack Router route tree generator (e.g., `-MyComponent.test.tsx`).
 
 ### Pattern: Component Testing
 
-Use the `*.test.tsx` suffix for component tests.
+Use the `*.test.tsx` suffix for component tests. Use `-*.test.tsx` if the test is located within the `src/routes` directory.
 
 ```tsx
 import { render, screen } from '@testing-library/react'

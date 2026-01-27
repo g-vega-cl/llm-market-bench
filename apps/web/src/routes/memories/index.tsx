@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { fetchMemories } from './queries'
-import { MemoriesList } from './components/MemoriesList'
+import { fetchMemories } from './-queries'
+import { MemoriesList } from './components/-MemoriesList'
 
 const getMemories = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchMemories()

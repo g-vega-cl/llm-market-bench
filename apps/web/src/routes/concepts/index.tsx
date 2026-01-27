@@ -2,7 +2,7 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getSupabaseServerClient } from '~/lib/supabase'
-import { ConceptMap, type Concept } from '~/routes/concepts/components/ConceptMap'
+import { ConceptMap, type Concept } from '~/routes/concepts/components/-ConceptMap'
 
 // --- Data Loading ---
 

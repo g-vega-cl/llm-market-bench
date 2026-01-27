@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { MemoryCard } from './MemoryCard'
+import { MemoryCard } from './-MemoryCard'
 
 export type Memory = {
   id: string

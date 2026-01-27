@@ -22,7 +22,7 @@ We prioritize **colocation** (keeping things near their usage) to ensure the cod
 
 | Bucket | Folder | Purpose |
 | --- | --- | --- |
-| **Domain & Composition** | `src/routes/` | **Routes own everything by default.** Logic, components, hooks, and queries used only on one page stay here. |
+| **Domain & Composition** | `src/routes/` | **Routes own everything by default.** Logic, components, hooks, and queries used only on one page stay here. *Note: Non-route files must be prefixed with `-` (e.g., `-queries.ts`) to be ignored by TanStack Router.* |
 | **Shared Domain** | `src/shared/` | Business concepts (e.g., Auth, Portfolios) used across **multiple** routes. |
 | **Design System** | `src/components/` | **Pure UI primitives only.** Zero domain knowledge, zero data fetching. Includes `ui/` and `layout/`. |
 
@@ -39,8 +39,8 @@ apps/web/
 │   ├── routes/          # OWNERSHIP: Logic lives where it's used
 │   │   ├── portfolios/
 │   │   │   ├── route.tsx
-│   │   │   ├── PortfolioTable.tsx
-│   │   │   └── queries.ts # Route-local Supabase queries
+│   │   │   ├── -PortfolioTable.tsx
+│   │   │   └── -queries.ts # Route-local Supabase queries (prefixed with -)
 │   ├── shared/          # SHARED DOMAIN: Business concepts used across routes
 │   │   ├── auth/
 │   │   └── portfolios/
@@ -58,9 +58,9 @@ apps/web/
 
 ### Adding a New Route
 1. Create a folder in `src/routes/` (e.g., `src/routes/my-feature`).
-2. Create `index.tsx` for the main route composition.
-3. Create a `components/` subfolder for route-specific UI.
-4. Define your `queries.ts` for data fetching.
+2. Create `index.tsx` (or `route.tsx`) for the main route composition.
+3. Create a `components/` subfolder for route-specific UI. Rename components with a `-` prefix (e.g., `-MyComponent.tsx`).
+4. Define your data fetching in `-queries.ts`.
 
 ### SSR & Import Discipline
 *   **Absolute Rule**: Routes must **never** import from other routes.

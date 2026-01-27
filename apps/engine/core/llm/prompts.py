@@ -61,8 +61,8 @@ MODEL OBSERVATIONS:
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
-3. Extract any explicitly mentioned future date or timeframe (e.g., "next summer", "Q3 2026", "November 20th", "by June").
-   - If a specific or approximate future date is mentioned, include it in 'future_date'.
+3. Extract any explicitly mentioned future date or timeframe (e.g., "next summer", "Q3 2026", "November 20th", "by June", "by the end of January").
+   - If a specific or approximate future date is mentioned (even in the current month), include it in 'future_date'.
    - If no future timeframe is mentioned, set 'future_date' to null.
 
 Return ONLY a JSON object with 'name', 'summary', and 'future_date' keys."""

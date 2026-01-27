@@ -25,7 +25,7 @@ async def synthesize_event(
     Returns:
         A dictionary with 'name' and 'summary' keys.
     """
-    client = clients.get_openai_client()
+    client = clients.get_gemini_client()
 
     try:
         combined_reasonings = "\n".join([f"- {r}" for r in reasonings])
@@ -41,7 +41,7 @@ async def synthesize_event(
             summary: str
             future_date: Optional[str] = None
 
-        resp = await client.chat.completions.create(
+        resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
             response_model=SynthesisResponse,
             messages=[
@@ -53,6 +53,13 @@ async def synthesize_event(
             ],
             max_retries=2,
         )
+
+        import asyncio
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            resp = await resp_awaitable
+        else:
+            resp = resp_awaitable
+
         return {"name": resp.name, "summary": resp.summary, "future_date": resp.future_date}
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)

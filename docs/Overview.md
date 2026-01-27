@@ -137,9 +137,11 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Vectorized Frequency:** Instead of just counting keywords, the engine embeds the "Concept" (e.g., "NVIDIA Blackwell Delay") and performs a similarity search against the memories table to find semantically related mentions over a rolling 90-day window.
 *   **Semantic Merging:** Prevents data fragmentation by automatically merging concepts with $> 0.90$ similarity into a single "Master Concept" record.
 *   **Trend Archeology:** Each mention is stored with a first_seen_at timestamp and a cumulative 90-day frequency count.
-*   **Momentum Scoring:** The engine calculates a "Velocity Score" based on mention frequency acceleration (7-day mentions vs. 30-day baseline).
-*   **Velocity Decay:** Stale concepts have their velocity scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
-*   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score.
+*   **Momentum Scoring:** The engine calculates a "Momentum Score" based on a hybrid formula: `Intensity * Growth`. 
+    *   **Intensity:** Rewards sheer relevance/volume using a log scale: `log(recent_mentions + 1) + 1`.
+    *   **Growth:** Rewards acceleration by comparing the 7-day daily average against a 30-day daily average.
+*   **Decay:** Stale concepts have their momentum scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
+*   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score (used to store Momentum Score).
 *   **Visualization:** An automated script (`apps/engine/update_concepts.py`) calculates 2D PCA coordinates (`pca_x`, `pca_y`) for visualization on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
 *   documentation: ./docs/engine/trend-momentum-analysis.md
 

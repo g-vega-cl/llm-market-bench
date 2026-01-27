@@ -75,12 +75,12 @@ def test_calculate_velocity_with_mentions(mock_supabase):
     
     velocity = calculate_velocity(mock_supabase, [0.1]*768)
     
-    # recent_count = 14
+    # recent_count = 14 -> avg_recent = 2.0, intensity = ln(14+1)+1 approx 3.708
     # total_37d = 44
     # baseline_count = 44 - 14 = 30
     # avg_baseline = 30 / 30 = 1.0
-    # velocity = 14 / 1.0 = 14.0
-    assert velocity == 14.0
+    # velocity (momentum) = 3.708 * 2.0 = 7.416
+    assert abs(velocity - 7.416) < 0.001
 
 def test_update_concept_metrics_new_record(mock_supabase):
     """Test updating metrics for a brand new concept."""

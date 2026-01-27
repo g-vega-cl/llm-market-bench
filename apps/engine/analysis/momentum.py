@@ -59,7 +59,8 @@ async def analyze_momentum(sb_client: Client, consensus_events: list[dict]):
         logger.info("No consensus events to analyze for momentum.")
         return
 
-    concept_names = [e["event_name"] for e in consensus_events]
+    # Format name to match memory storage pattern for better similarity
+    concept_names = [f"MARKET EVENT: {e['event_name']}" for e in consensus_events]
     logger.info(f"Analyzing momentum for {len(concept_names)} concepts...")
     
     try:
@@ -76,10 +77,13 @@ async def analyze_momentum(sb_client: Client, consensus_events: list[dict]):
             logger.error(f"Failed to process momentum for '{event['event_name']}': {e}")
 
 def calculate_velocity(sb_client: Client, embedding: list[float]) -> float:
-    """Calculates a velocity score based on mention frequency acceleration.
+    """Calculates a momentum score based on intensity and growth.
     
-    Velocity = (Mentions in last 7 days) / (Avg daily mentions in previous 30 days)
+    Formula: Momentum = (Intensity) * (Growth)
+    - Intensity = log(Recent Mentions + 1) + 1
+    - Growth = (Avg daily 7d) / max(Avg daily 30d, 0.1)
     """
+    import math
     now = datetime.now(timezone.utc)
     
     # Recent: last 7 days
@@ -118,9 +122,19 @@ def calculate_velocity(sb_client: Client, embedding: list[float]) -> float:
         
         # Normalize baseline to daily average. Use 0.1 floor to avoid division by zero.
         avg_baseline_daily = max(baseline_count / 30.0, 0.1)
-        velocity = recent_count / avg_baseline_daily
         
-        return velocity
+        # 4. Calculate Intensity (Volume-based)
+        # log scale keeps it sane but rewards volume
+        intensity = math.log(recent_count + 1) + 1.0
+        
+        # 5. Calculate Growth (Acceleration-based)
+        avg_recent_daily = recent_count / 7.0
+        growth = avg_recent_daily / avg_baseline_daily
+        
+        # Hybrid Score
+        momentum = intensity * growth
+        
+        return momentum
         
     except Exception as e:
         logger.error(f"Error calculating velocity: {e}")

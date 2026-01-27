@@ -463,8 +463,33 @@ tests/test_resilience.py             3 passed
 
 After deploying code changes, apply the database migration:
 
-```bash
-supabase db push
-# Or manually:
-# psql -d your_database -f supabase/migrations/20260114000000_add_decisions_unique_constraint.sql
-```
+## 12. Fixes Implemented (January 27, 2026)
+
+The following issues related to the Momentum/Velocity metric were addressed:
+
+### Fix 1: Hybrid Momentum Score (Intensity * Growth)
+
+**Problem:** The original `velocity_score` was purely acceleration-based. Stable but highly relevant topics (like "Iran Tensions") would drop to a 1.0 or 0 score if their growth flattened, losing their visibility on the map.
+
+**Solution:** Implemented a hybrid **Momentum Score**.
+- **Intensity:** $log(Recent Mentions + 1) + 1$. Rewards sheer volume/relevance.
+- **Growth:** $(Avg daily 7d) / max(Avg daily 30d, 0.1)$. Rewards acceleration.
+- **Final Score:** $Intensity \times Growth$.
+
+**File:** `apps/engine/analysis/momentum.py`
+
+### Fix 2: Resolved Embedding Format Mismatch
+
+**Problem:** Momentum searches were failing because the engine searched for raw concept names, while memories were stored with a `"MARKET EVENT:"` prefix. This dropped similarity below the threshold.
+
+**Solution:** Updated the momentum analysis and backfill scripts to search using the proper `"MARKET EVENT:"` prefix.
+
+**Files:** `apps/engine/analysis/momentum.py`, `apps/engine/recalculate_velocity.py`
+
+### Fix 3: Lowered Similarity Threshold
+
+**Problem:** 0.85 was too restrictive for counting semantically related mentions across different contributors.
+
+**Solution:** Lowered `MOMENTUM_SIMILARITY_THRESHOLD` to **0.75**.
+
+**File:** `apps/engine/core/config.py`

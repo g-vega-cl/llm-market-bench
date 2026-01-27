@@ -27,13 +27,13 @@ This is a monorepo managed with `pnpm`:
 ### Workspace Setup
 ```bash
 pnpm install
-```
+``
 
 ### Engine Execution
 The engine handles the daily pipeline:
 ```bash
 cd apps/engine
-source venv/bin/activate
+source market/bin/activate
 pip install -r requirements.txt
 python3 main.py ingest
 ```

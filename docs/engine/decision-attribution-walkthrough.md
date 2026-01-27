@@ -23,13 +23,16 @@ A new `decisions` table was created in Supabase to store the structured output f
 3. **Persistence Layer:** A new `attribution` module was added to handle database communication via the Supabase client.
 
 ## 3. The Audit Trail
-The following diagram illustrates how a trade is now attributed back to its source:
+The following diagram illustrates how a trade is now attributed back to its source. Note that the `decisions` table preserves the **individual perspective** and raw reasoning of each model, even if they reach a consensus later.
 
 ```mermaid
-graph LR
-    A[Newsletter Chunk] -->|SourceID| B(LLM Analysis)
-    B -->|Reasoning| C[Decision Table]
-    C -->|Attribution| D[Virtual Trade]
+graph TD
+    A[Newsletter Chunk] -->|SourceID| B1[OpenAI Analysis]
+    A -->|SourceID| B2[Claude Analysis]
+    B1 -->|Individual Reasoning| C1[Decisions Table]
+    B2 -->|Individual Reasoning| C2[Decisions Table]
+    C1 & C2 -->|Consolidation| M[(Memories Table - Consolidated RAG)]
+    C1 & C2 -->|Attribution| D[Virtual Trade]
 ```
 
 ## 4. Verification

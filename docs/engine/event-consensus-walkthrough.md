@@ -26,6 +26,12 @@ For events that reach consensus, the engine performs a "Relationship Analysis" b
 - **Linking**: The new memory is linked via `parent_id`.
 - **Auto-Resolution**: If the relationship is a `REVERSAL` or `RESOLUTION`, the ancestor is automatically marked as `RESOLVED`. This prevents outdated narratives from cluttering upcoming RAG analyses.
 
+### 5. Decision Reasoning Consolidation
+New in Step 15, the consensus logic is also applied to trading decisions.
+- **Grouping**: Decisions are grouped by `(ticker, signal)`.
+- **Synthesis**: If multiple models agree, their raw reasonings are synthesized into a single, professional **Consensus Reasoning** block.
+- **RAG Impact**: This ensures that when the AI buys a stock, its future self sees exactly *why* the consensus was formed, without having to parse 4 divergent reasoning strings.
+
 ### 5. Memory Optimization & Future Event Tracking
 After linking and resolution, the system applies two additional optimizations:
 

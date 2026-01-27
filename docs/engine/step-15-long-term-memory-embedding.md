@@ -23,8 +23,8 @@ When two or more models reach consensus on a macro event, a synthesized professi
 - **Type**: `consensus_event`
 
 #### B. Trade Reasoning (Step 15 Logic)
-Every time a model generates a trading decision (BUY/SELL/HOLD), its reasoning string is vectorized.
-- **Content Format**: `DECISION REASONING: [Ticker] [Signal] | REASONING: [Full LLM Reasoning]`
+When one or more models generate a trading decision (BUY/SELL), the engine groups them by ticker and signal. A single **Consensus Reasoning** block is synthesized from the contributing models and embedded. This prevents vector noise from near-identical entries.
+- **Content Format**: `DECISION REASONING: [Ticker] [Signal] | CONSENSUS REASONING: [Synthesized Summary]`
 - **Type**: `decision_reasoning`
 
 ### 3. Metadata Schema
@@ -34,31 +34,32 @@ Rich metadata is attached to each memory to enable filtered retrieval:
 | --- | --- |
 | `type` | `"consensus_event"` or `"decision_reasoning"` |
 | `ticker` | The stock symbol (for reasoning) |
-| `model_name` | The specific model that generated the thought (e.g., `gpt-4o`) |
-| `source_id` | Foreign key to the original newsletter snapshot |
-| `trade_id` | Foreign key to the executed trade record (if applicable) |
+| `models_involved` | List of models that contributed to this consensus (e.g., `["openai_gpt-4o", "claude-3-5-sonnet"]`) |
+| `source_ids` | List of original newsletter chunk IDs |
 | `status` | `ACTIVE`, `RESOLVED`, or `SUPERSEDED` (for memory chains) |
 | `relevance_score` | Decay multiplier (default: 1.0, halves every 30 days) |
 
 ## Pipeline Integration
 
-The logic is integrated into `apps/engine/main.py` immediately after a decision is successfully saved to the attribution layer.
+The logic is integrated into `apps/engine/main.py`. It collects all actionable decisions, calls `process_decision_consensus`, and saves the result to `memories`.
 
 ```python
-# Create memory content
-memory_content = f"DECISION REASONING: {d.ticker} {d.signal} | REASONING: {d.reasoning}"
+# Collect actionable decisions during the main loop
+actionable_decisions.append(d)
 
-# Vectorize and save to pgvector
-add_memory(
-    content=memory_content,
-    metadata={
-        "type": "decision_reasoning",
-        "ticker": d.ticker,
-        "model_name": d.model_name,
-        "source_id": d.source_id,
-        "trade_id": str(trade_id) if trade_id else None
-    }
-)
+# After all models finish:
+consolidated_reasonings = await process_decision_consensus(actionable_decisions)
+for cr in consolidated_reasonings:
+    add_memory(
+        content=f"DECISION REASONING: {cr['ticker']} {cr['signal']} | CONSENSUS REASONING: {cr['reasoning']}",
+        metadata={
+            "type": "decision_reasoning",
+            "ticker": cr['ticker'],
+            "signal": cr['signal'],
+            "models_involved": cr['models_involved'],
+            "source_ids": cr['source_ids']
+        }
+    )
 ```
 
 ## Verification & Retrieval

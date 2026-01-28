@@ -74,9 +74,17 @@ async def analyze_with_provider(
 
             # Add provider-specific tool definitions
             if provider in ["openai", "deepseek"]:
-                args["tools"] = [tools.STOCK_TOOL_DEFINITION_OPENAI]
+                args["tools"] = [
+                    tools.STOCK_TOOL_DEFINITION_OPENAI,
+                    tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
+                    tools.POSITION_PNL_TOOL_DEFINITION_OPENAI,
+                ]
             elif provider == "anthropic":
-                args["tools"] = [tools.STOCK_TOOL_DEFINITION_ANTHROPIC]
+                args["tools"] = [
+                    tools.STOCK_TOOL_DEFINITION_ANTHROPIC,
+                    tools.PRICE_HISTORY_TOOL_DEFINITION_ANTHROPIC,
+                    tools.POSITION_PNL_TOOL_DEFINITION_ANTHROPIC,
+                ]
                 args["max_tokens"] = 8000
                 # Anthropic requires system prompt separately
                 if messages[0]["role"] == "system":
@@ -100,14 +108,27 @@ async def analyze_with_provider(
                     break
 
                 for tool_call in msg.tool_calls:
+                    call_args = json.loads(tool_call.function.arguments)
                     if tool_call.function.name == "get_stock_quote":
-                        call_args = json.loads(tool_call.function.arguments)
                         result = await tools.execute_stock_tool(call_args["ticker"])
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": result,
-                        })
+                    elif tool_call.function.name == "get_price_history":
+                        result = await tools.execute_price_history_tool(
+                            call_args["ticker"], 
+                            call_args.get("days", 7)
+                        )
+                    elif tool_call.function.name == "get_position_pnl":
+                        result = await tools.execute_position_pnl_tool(
+                            call_args["ticker"], 
+                            owner_id=model_name
+                        )
+                    else:
+                        continue
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result,
+                    })
 
             elif provider == "anthropic":
                 resp = await raw_client.messages.create(**args)
@@ -133,16 +154,29 @@ async def analyze_with_provider(
                 for tool_use in tool_uses:
                     if tool_use.name == "get_stock_quote":
                         result = await tools.execute_stock_tool(tool_use.input["ticker"])
-                        messages.append({
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": tool_use.id,
-                                    "content": result,
-                                }
-                            ],
-                        })
+                    elif tool_use.name == "get_price_history":
+                        result = await tools.execute_price_history_tool(
+                            tool_use.input["ticker"], 
+                            tool_use.input.get("days", 7)
+                        )
+                    elif tool_use.name == "get_position_pnl":
+                        result = await tools.execute_position_pnl_tool(
+                            tool_use.input["ticker"], 
+                            owner_id=model_name
+                        )
+                    else:
+                        continue
+
+                    messages.append({
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_use.id,
+                                "content": result,
+                            }
+                        ],
+                    })
 
         # Final structured extraction using Instructor
         logger.debug("Executing final extraction for %s/%s", provider, model_name)

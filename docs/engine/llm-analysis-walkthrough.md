@@ -17,7 +17,10 @@ To ensure maximum feature coverage and performance, the system uses the official
 | **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
 
 ### **Active Tool Calling**
-Models now actively call the `get_stock_quote` tool to verify market data *before* committing to a trade. This eliminates ticker hallucinations and ensures price accuracy.
+Models now actively call multiple tools to verify market data and context *before* committing to a trade:
+- **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
+- **`get_price_history`**: (NEW) Fetches recent historical prices to determine if news is "priced in".
+- **`get_position_pnl`**: (NEW) Fetches current unrealized P&L and cost basis for existing positions to ensure trading winners and selling losers slowly.
 
 ## 2. Configuration & Model Selection
 
@@ -63,7 +66,19 @@ To minimize latency and costs, the system uses a **Batch-Parallel** approach. In
 5.  **Validation**: `Instructor` extracts and validates the model's list of decisions against the Pydantic schema.
 6.  **Aggregation**: Validated `DecisionObject` outputs are saved for the Consensus phase.
 
-## 5. Verification
+## 5. Sophisticated Trading Logic
+
+To move beyond simple "news-chasing," the system now enforces a multi-step qualitative verification process in the system prompt. Before recommending a trade, agents are instructed to leverage their tools to answer:
+
+1.  **Is this news already priced in?** (Using `get_price_history`)
+2.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
+3.  **What is the expected timeline for this catalyst to materialize?**
+4.  **What are the primary risks or counter-arguments to this trade?**
+5.  **How does this stock correlate with my existing portfolio?**
+
+This logic ensures that trades are based on predicted future movements rather than reacting to yesterday's news.
+
+## 6. Verification
 
 The logic is verified using a comprehensive test suite:
 - **Core Logic**: `pytest apps/engine/tests/test_analysis_logic.py`

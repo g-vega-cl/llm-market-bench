@@ -92,7 +92,16 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 *   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
 *   **Validation:** **Python Pydantic + Instructor**
-*   **Active Tool Calling:** LLMs utilize the `get_stock_quote` tool *during* analysis to verify ticker existence, real-time pricing, and liquidity before making a recommendation.
+*   **Active Tool Calling:** LLMs utilize multiple tools *during* analysis:
+    *   `get_stock_quote`: Verifies ticker existence, real-time pricing, and liquidity.
+    *   `get_price_history`: Fetches recent price history to determine if news is "priced in".
+    *   `get_position_pnl`: Fetches current unrealized P&L and cost basis for existing positions.
+*   **Sophisticated Trading Logic Injection:** *LLMs are instructed to answer critical questions before trading:*
+    *   Is this news already priced in?
+    *   If I already own this stock, has this trade been profitable?
+    *   What is the expected timeline for this catalyst to materialize?
+    *   What are the primary risks or counter-arguments to this trade?
+    *   How does this stock correlate with my existing portfolio?
 *   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make "Allocation %" decisions rather than just static share counts.*
 *   **Catalyst Scoring:** *LLMs categorize trades into types (**MACRO, EARNINGS, M&A, PRODUCT, REGULATORY**) and estimate target **Duration** (INTRADAY, SHORT_TERM, LONG_TERM) for enhanced strategy filtering.*
 *   **Efficiency:** **Batch Processing** (Each LLM is called in a tool-calling loop with all daily news chunks to minimize latency and costs).

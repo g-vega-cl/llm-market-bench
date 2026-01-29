@@ -111,3 +111,10 @@ python apps/engine/main.py ingest
 ```
 
 The engine will log the generated decisions from each model as they complete.
+
+## 7. Robustness & Fault Tolerance
+
+To ensure the pipeline continues even if individual models fail:
+
+- **Tool Execution Wrapping**: Tool calls (`get_stock_quote`, etc.) are wrapped in `try/except` blocks. If a model tries to call a tool with invalid arguments or the tool service fails, the engine logs a warning and proceeds with a "basic analysis" fallback rather than crashing the entire batch.
+- **Optional Schema Fields**: Newer metadata fields like `is_ongoing` or `historical_parallel` are marked as optional. If a model fails to extract them, the system defaults to `None` or `False` rather than rejecting the entire event.

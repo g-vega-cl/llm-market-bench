@@ -94,11 +94,11 @@ class MacroEvent(BaseModel):
         "MACRO",
         description="The category of market event"
     )
-    is_ongoing: bool = Field(
+    is_ongoing: bool | None = Field(
         False, 
         description="Whether the event is currently unfolding and unresolved (e.g. 'Trade War Escalating')"
     )
-    is_future_catalyst: bool = Field(
+    is_future_catalyst: bool | None = Field(
         False,
         description="Whether this event is a precursor or 'armada' for a future market move"
     )

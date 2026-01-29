@@ -99,7 +99,11 @@ async def analyze_with_provider(
             raw_client = client.client
 
             if provider in ["openai", "deepseek"]:
-                resp = await raw_client.chat.completions.create(**args)
+                try:
+                    resp = await raw_client.chat.completions.create(**args)
+                except Exception as e:
+                    logger.warning(f"Tool execution failed for {provider}/{model_name}, falling back to basic analysis: {e}")
+                    break
                 msg = resp.choices[0].message
                 # Convert to dict for safety and persistence in next rounds
                 messages.append(msg.model_dump())
@@ -131,7 +135,11 @@ async def analyze_with_provider(
                     })
 
             elif provider == "anthropic":
-                resp = await raw_client.messages.create(**args)
+                try:
+                    resp = await raw_client.messages.create(**args)
+                except Exception as e:
+                    logger.warning(f"Tool execution failed for {provider}/{model_name}, falling back to basic analysis: {e}")
+                    break
                 # Append assistant response as a structured dict
                 assistant_content = []
                 for content_block in resp.content:

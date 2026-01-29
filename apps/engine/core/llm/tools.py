@@ -1,6 +1,7 @@
 """Tool definitions and execution logic for LLMs."""
 
 from execution.market_data import MarketDataManager
+from core.db import get_supabase_client
 
 STOCK_TOOL_DEFINITION_OPENAI = {
     "type": "function",

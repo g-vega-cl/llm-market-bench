@@ -242,28 +242,6 @@ async def run_ingest():
             except Exception as e:
                 logger.error(f"Failed to process/save decision for {d.ticker}: {e}")
 
-        # --- Step 15: Consolidated Decision Reasoning Embedding ---
-        if actionable_decisions:
-            logger.info("Consolidating trade reasoning for memory...")
-            from consensus import process_decision_consensus
-            consolidated_reasonings = await process_decision_consensus(actionable_decisions)
-            
-            for cr in consolidated_reasonings:
-                memory_content = (
-                    f"DECISION REASONING: {cr['ticker']} {cr['signal']} | "
-                    f"CONSENSUS REASONING: {cr['reasoning']}"
-                )
-                add_memory(
-                    content=memory_content,
-                    metadata={
-                        "type": "decision_reasoning",
-                        "ticker": cr['ticker'],
-                        "signal": cr['signal'],
-                        "models_involved": cr['models_involved'],
-                        "source_ids": cr['source_ids']
-                    }
-                )
-
         logger.info(
             f"Pipeline complete. Saved {saved_decisions} decisions, "
             f"Rejected {rejected_decisions} decisions."

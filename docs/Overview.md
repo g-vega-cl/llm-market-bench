@@ -120,11 +120,13 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 *   **Tech:** Python Logic / Supabase
 *   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it. This table preserves the **individual perspective** of each LLM.*
+*   **Vector Attribution:** Store a **Vector Embedding** of the reasoning directly in the `decisions` table. This allows the AI to retrieve its specific trade justifications during future RAG retrieval without cluttering the global macro timeline.
 *   **Idempotency:** *Uses UPSERT with unique constraint on `(source_id, ticker, signal, model_provider, model_name)` to prevent duplicate decisions if the pipeline reruns.*
 *   documentation: ./engine/decision-attribution-walkthrough.md
 
 **8. Event Consensus Protocol & Memory Chains** ✅
 *   **Tech:** Python / Gemini Embeddings / OpenAI Synthesis
+*   **Global Timeline:** Promotes synthesized, professional macro events to the `memories` table. These focus strictly on events (e.g., "Fed Rate Cut", "Geopolitical Tension") that affect the broader market.
 *   **Semantic Grouping:** Uses **Vector Embeddings** and **Cosine Similarity** to group events with different names but similar meanings (e.g., "Fed Hike" vs "Interest Rate Hike").
 *   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
 *   **Memory Chains:** For each new event, the engine performs a "Relationship Analysis" against recent memories.
@@ -216,7 +218,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **15. Long-term Memory Embedding** ✅
 
 *   **Tech:** **Supabase pgvector (Google Gemini text-embedding-004)**
-*   **Consolidated RAG:** *Instead of embedding every individual model's reasoning (which causes vector noise), the engine groups decisions by ticker/signal and synthesizes a **Consensus Reasoning** block. This consolidated memory is then embedded for future RAG retrieval, ensuring the AI has a clear, unified view of its past strategy.*
+*   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
+*   **Retrieval:** *During analysis, the engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
 *   documentation: [step-15-long-term-memory-embedding.md](./engine/step-15-long-term-memory-embedding.md)
 
 ### Phase 4: Frontend & Feedback

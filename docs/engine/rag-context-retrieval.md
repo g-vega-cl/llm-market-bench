@@ -26,8 +26,8 @@ The retrieval logic is encapsulated in `apps/engine/memory/store.py`.
 - **Function**: `retrieve_context_batch(queries, limit=3)`.
 - **Logic**:
     1.  **Batch Embedding**: Use Gemini's `embed_content` to batch-generate embeddings for all news chunks in a single API call.
-    2.  **Parallel Search**: For each embedding, call the `match_memories` RPC on Supabase.
-    3.  **Aggregation**: Return a list of formatted strings, one for each news chunk.
+    2.  **Parallel Multi-Table Search**: For each embedding, call both the `match_memories` (Macro) and `match_decisions` (Trade Reasoning) RPCs on Supabase.
+    3.  **Labeling & Aggregation**: Context snippets are labeled with `[MARKET EVENT]` or `[PAST DECISION]` and merged into a clear historical profile for the LLM.
 
 ### 4. Pipeline Integration
 The retrieval is integrated into the parallel analysis orchestrator.

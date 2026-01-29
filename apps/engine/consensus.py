@@ -214,61 +214,6 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
     return consensus_reached
 
 
-async def process_decision_consensus(decisions: list[DecisionObject], sim_threshold: float = 0.85) -> list[dict]:
-    """Identify consensus among model trading decisions and synthesize reasoning.
 
-    Groups decisions by ticker and signal, then uses LLM synthesis if multiple
-    models agree to create a unified memory entry.
-
-    Args:
-        decisions: List of DecisionObject from all models.
-        sim_threshold: Threshold for semantic similarity.
-
-    Returns:
-        List of synthesized reasoning objects to be added to memory.
-    """
-    if not decisions:
-        return []
-
-    # 1. Group by Ticker and Signal
-    groups = defaultdict(list)
-    for d in decisions:
-        groups[(d.ticker, d.signal)].append(d)
-
-    consolidated = []
-
-    for (ticker, signal), occurrences in groups.items():
-        if signal == "HOLD":
-            continue  # We usually don't promote HOLDs to global memory unless specific reason
-
-        # Even if only one model made a decision, we might want it in memory for RAG,
-        # but the redundancy problem specifically happens when MANY models agree.
-        
-        unique_models = set(f"{occ.model_provider}_{occ.model_name}" for occ in occurrences)
-        reasonings = [occ.reasoning for occ in occurrences]
-        source_ids = list(set(occ.source_id for occ in occurrences))
-        
-        # If multiple models or even for single strong ones, we synthesize
-        # for a cleaner "market memory" than just raw model output.
-        logger.info(f"Consolidating reasoning for {ticker} {signal} (Models: {len(unique_models)})")
-        
-        # We reuse synthesize_event but we might need a specific trade synthesizer if this gets complex.
-        # For now, synthesize_event is flexible enough for a general reasoning block.
-        prompt_name = f"Consensus {signal} on {ticker}"
-        synthesis = await synthesize_event(
-            event_name=prompt_name,
-            impact="BULLISH" if signal == "BUY" else "BEARISH",
-            reasonings=reasonings
-        )
-        
-        consolidated.append({
-            "ticker": ticker,
-            "signal": signal,
-            "event_name": synthesis["name"],
-            "reasoning": synthesis["summary"],
-            "models_involved": list(unique_models),
-            "source_ids": source_ids,
-            "original_reasonings": reasonings
-        })
-
-    return consolidated
+if __name__ == "__main__":
+    pass

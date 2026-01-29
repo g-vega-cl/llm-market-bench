@@ -9,6 +9,7 @@ from supabase import Client
 
 from core.models import DecisionObject
 from core.config import logger
+from memory.embeddings import get_embedding
 
 
 def save_decision(
@@ -48,7 +49,8 @@ def save_decision(
         "price": getattr(decision, "price", None),
         "status": status,
         "metadata": metadata or {},
-        "trade_id": trade_id
+        "trade_id": trade_id,
+        "embedding": get_embedding(decision.reasoning) if decision.reasoning else None
     }
 
     try:

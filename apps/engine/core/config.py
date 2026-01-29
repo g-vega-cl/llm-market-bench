@@ -60,6 +60,7 @@ NEWSLETTER_SENDERS = [
     "noreply@news.bloomberg.com",
     "newsletter+211@tradingcentral.com",
     "daily@chartr.co",
+    "brewmarkets@morningbrew.com",
 ]
 # --- Memory Retention & Decay (Step 15+) ---
 MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS = 30  # Memories lose 50% relevance every 30 days

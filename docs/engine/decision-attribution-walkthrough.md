@@ -14,6 +14,7 @@ A new `decisions` table was created in Supabase to store the structured output f
     - `signal`: BUY, SELL, or HOLD.
     - `confidence`: 0-100 confidence score.
     - `reasoning`: The LLM's full text justification.
+    - `embedding`: **[NEW]** Vector embedding (768d) of the `reasoning` for RAG retrieval.
     - `model_provider`: e.g., "openai", "claude".
     - `model_name`: e.g., "gpt-5-mini", "claude-haiku-4-5".
 
@@ -31,8 +32,10 @@ graph TD
     A -->|SourceID| B2[Claude Analysis]
     B1 -->|Individual Reasoning| C1[Decisions Table]
     B2 -->|Individual Reasoning| C2[Decisions Table]
-    C1 & C2 -->|Consolidation| M[(Memories Table - Consolidated RAG)]
+    C1 & C2 -->|Direct Embedding| R[Decisions RAG - Strategy Context]
     C1 & C2 -->|Attribution| D[Virtual Trade]
+    
+    E[Macro Events] -->|Synthesize| M[Memories RAG - Macro Context]
 ```
 
 ## 4. Verification

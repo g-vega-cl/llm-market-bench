@@ -40,7 +40,8 @@ def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
         # but we could also optimize this with a single custom PG function if needed).
         # For now, consolidating the LLM API call is the primary goal.
         for embedding in embeddings:
-            response = client.rpc(
+            # 2a. Query Memories (Macro Events)
+            mem_response = client.rpc(
                 "match_memories",
                 {
                     "query_embedding": embedding,
@@ -49,17 +50,40 @@ def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
                 }
             ).execute()
 
-            if not response.data:
-                results.append("")
-                continue
+            # 2b. Query Decisions (Trade Reasoning)
+            dec_response = client.rpc(
+                "match_decisions",
+                {
+                    "query_embedding": embedding,
+                    "match_threshold": 0.5,
+                    "match_count": limit,
+                }
+            ).execute()
 
             context_parts = []
-            for item in response.data:
-                content = item.get("content", "")
-                if content:
-                    context_parts.append(f"- {content}")
             
-            results.append("\n".join(context_parts))
+            # Process Memories
+            if mem_response.data:
+                for item in mem_response.data:
+                    content = item.get("content", "")
+                    if content:
+                        context_parts.append(f"- [MARKET EVENT] {content}")
+            
+            # Process Decisions
+            if dec_response.data:
+                for item in dec_response.data:
+                    ticker = item.get("ticker", "UNKNOWN")
+                    signal = item.get("signal", "UNKNOWN")
+                    reasoning = item.get("reasoning", "")
+                    if reasoning:
+                        context_parts.append(f"- [PAST DECISION] {ticker} {signal}: {reasoning}")
+            
+            if not context_parts:
+                results.append("")
+            else:
+                # Limit to total limit per query (e.g. top 3 combined)
+                # For now, let's keep all from both but maybe truncate if too long
+                results.append("\n".join(context_parts[:limit*2]))
 
         return results
     except Exception as e:

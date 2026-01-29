@@ -4,76 +4,58 @@ This document describes the implementation of the Long-term Memory Embedding lay
 
 ## Overview
 
-While Step 7 and Step 12 focus on the "Audit Trail" (News → Decision → Trade), Step 15 focuses on "Institutional Memory." By vectorizing the reasoning behind every decision, the engine allows AI models to "remember" their past logic when analyzing new newsletters, ensuring consistency across trading sessions.
+Previously, Step 15 focused on "Consolidated Reasoning" where multiple model outputs were merged and stored in the `memories` table. To keep the `memories` table strictly focused on **Global Macro Events**, we have decoupled the architecture. 
+
+Individual trade reasoning is now stored and embedded directly within the `decisions` table. This allows the engine to preserve the unique perspective of each model while keeping the "Global Market Timeline" clean.
 
 ## Technical Implementation
 
-### 1. Unified Vector Store
-All memories are stored in the same Supabase `pgvector` table used for news retrieval.
-- **Table**: `memories`
-- **Embedding Model**: Google Gemini (`text-embedding-004`)
-- **Dimensions**: 768
+### 1. Decoupled Vector Storage
+The engine now utilizes two distinct sources for institutional memory:
 
-### 2. Dual-Layer Embedding
-The engine performs embeddings at two distinct points in the pipeline:
+| Source | Content Type | Vector Table | Label in RAG |
+| --- | --- | --- | --- |
+| **Market Events** | Macro catalysts, Geopolitics | `memories` | `[MARKET EVENT]` |
+| **Trade Reasoning** | Specific stock justifications | `decisions` | `[PAST DECISION]` |
 
-#### A. Consensus Events (Step 8 Logic)
-When two or more models reach consensus on a macro event, a synthesized professional summary is generated and embedded.
+### 2. Implementation Flow
+
+#### A. Trade Reasoning Attribution (Step 7/15)
+When a model generates a trading decision (BUY/SELL), the `save_decision` service automatically generates an embedding for its `reasoning` text.
+- **Provider**: Google Gemini (`text-embedding-004`)
+- **Storage**: `decisions.embedding` (VECTOR 768)
+
+#### B. Macro Events (Step 8)
+Synthesized professional market events are still promoted to the `memories` table after consensus.
 - **Content Format**: `MARKET EVENT: [Event Name] | IMPACT: [Impact] | SUMMARY: [Summary]`
-- **Type**: `consensus_event`
 
-#### B. Trade Reasoning (Step 15 Logic)
-When one or more models generate a trading decision (BUY/SELL), the engine groups them by ticker and signal. A single **Consensus Reasoning** block is synthesized from the contributing models and embedded. This prevents vector noise from near-identical entries.
-- **Content Format**: `DECISION REASONING: [Ticker] [Signal] | CONSENSUS REASONING: [Synthesized Summary]`
-- **Type**: `decision_reasoning`
+### 3. Retrieval Optimization (Dual-Search)
 
-### 3. Metadata Schema
-Rich metadata is attached to each memory to enable filtered retrieval:
+During the RAG retrieval phase (Step 6), the `store.py` logic performs a parallel search:
+1. It queries `match_memories` to find relevant macro environment history.
+2. It queries `match_decisions` to find relevant past trades or logic that might inform the current ticker.
 
-| Field | Description |
-| --- | --- |
-| `type` | `"consensus_event"` or `"decision_reasoning"` |
-| `ticker` | The stock symbol (for reasoning) |
-| `models_involved` | List of models that contributed to this consensus (e.g., `["openai_gpt-4o", "claude-3-5-sonnet"]`) |
-| `source_ids` | List of original newsletter chunk IDs |
-| `status` | `ACTIVE`, `RESOLVED`, or `SUPERSEDED` (for memory chains) |
-| `relevance_score` | Decay multiplier (default: 1.0, halves every 30 days) |
+These are then combined and injected into the LLM prompt, giving the model a rich, multi-layered "memory" of both the world and its own previous actions.
 
-## Pipeline Integration
+## Pipeline logic update
 
-The logic is integrated into `apps/engine/main.py`. It collects all actionable decisions, calls `process_decision_consensus`, and saves the result to `memories`.
+We have **removed** the redundant synthesis step that used to merge reasonings into the `memories` table. This reduces LLM API costs and prevents "Vector Noise" in the macro timeline.
 
 ```python
-# Collect actionable decisions during the main loop
-actionable_decisions.append(d)
-
-# After all models finish:
-consolidated_reasonings = await process_decision_consensus(actionable_decisions)
-for cr in consolidated_reasonings:
-    add_memory(
-        content=f"DECISION REASONING: {cr['ticker']} {cr['signal']} | CONSENSUS REASONING: {cr['reasoning']}",
-        metadata={
-            "type": "decision_reasoning",
-            "ticker": cr['ticker'],
-            "signal": cr['signal'],
-            "models_involved": cr['models_involved'],
-            "source_ids": cr['source_ids']
-        }
-    )
+# attribution/service.py
+def save_decision(...):
+    payload = {
+        "reasoning": decision.reasoning,
+        "embedding": get_embedding(decision.reasoning) # Direct embedding
+    }
+    client.table("decisions").upsert(payload)
 ```
 
-## Verification & Retrieval
+## Verification
 
 ### Automated Testing
-You can verify that reasoning is correctly being "remembered" by running:
+You can verify the combined retrieval logic by running the RAG test suite:
 ```bash
-python3 tests/verify_step_15.py
+python3 tests/test_memory_rag.py
 ```
-
-### Retrieval Pattern
-During the next day's run, Step 6 (Context Retrieval) uses the same `text-embedding-004` model to query the `memories` table. Because the embeddings are consistent, today's reasoning becomes tonight's "Historical Context" for the LLM.
-
-### Memory Optimization
-The retrieval system includes two optimization mechanisms:
-1. **Status Filtering**: Only `ACTIVE` memories are retrieved. Memories marked as `RESOLVED` are excluded from LLM context.
-2. **Relevance Decay**: The `match_memories` RPC multiplies similarity scores by `relevance_score`, which decays by 50% every 30 days. This ensures old information has diminishing impact over time.
+This test confirms that both `[MARKET EVENT]` and `[PAST DECISION]` entries are correctly retrieved and merged for a given query.

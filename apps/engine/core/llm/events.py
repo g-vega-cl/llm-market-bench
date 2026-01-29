@@ -40,6 +40,9 @@ async def synthesize_event(
             name: str
             summary: str
             future_date: Optional[str] = None
+            is_ongoing: bool = False
+            is_future_catalyst: bool = False
+            historical_parallel: Optional[str] = None
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
@@ -60,7 +63,14 @@ async def synthesize_event(
         else:
             resp = resp_awaitable
 
-        return {"name": resp.name, "summary": resp.summary, "future_date": resp.future_date}
+        return {
+            "name": resp.name, 
+            "summary": resp.summary, 
+            "future_date": resp.future_date,
+            "is_ongoing": resp.is_ongoing,
+            "is_future_catalyst": resp.is_future_catalyst,
+            "historical_parallel": resp.historical_parallel
+        }
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)
         # Fallback to original if synthesis fails
@@ -70,7 +80,10 @@ async def synthesize_event(
                 f"Consensus reached on {event_name} with {impact} impact "
                 "based on model observations."
             ),
-            "future_date": None
+            "future_date": None,
+            "is_ongoing": False,
+            "is_future_catalyst": False,
+            "historical_parallel": None
         }
     finally:
         # Ensure client is properly closed

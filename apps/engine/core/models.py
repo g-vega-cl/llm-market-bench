@@ -94,6 +94,18 @@ class MacroEvent(BaseModel):
         "MACRO",
         description="The category of market event"
     )
+    is_ongoing: bool = Field(
+        False, 
+        description="Whether the event is currently unfolding and unresolved (e.g. 'Trade War Escalating')"
+    )
+    is_future_catalyst: bool = Field(
+        False,
+        description="Whether this event is a precursor or 'armada' for a future market move"
+    )
+    historical_parallel: str | None = Field(
+        None,
+        description="A historical comparison mentioned (e.g. 'Like the 1970s stagflation')"
+    )
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")
     source_id: str = Field(..., description="ID of the source newsletter chunk")

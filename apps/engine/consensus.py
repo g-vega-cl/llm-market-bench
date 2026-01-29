@@ -10,7 +10,13 @@ from typing import Any
 import numpy as np
 
 from core.models import MacroEvent, DecisionObject
-from memory.store import add_memory, check_recent_memories, find_potential_ancestors, update_memory_status
+from memory.store import (
+    add_memory, 
+    check_recent_memories, 
+    find_potential_ancestors, 
+    update_memory_status,
+    add_future_event
+)
 from memory.embeddings import get_embeddings_batch
 from core.llm import synthesize_event, analyze_event_relationship
 from core.config import MODEL_WEIGHTS
@@ -134,8 +140,11 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 f"(Models: {len(unique_models)}, Weight: {cumulative_weight:.2f})"
             )
             
-            # Combine reasoning and determine majority impact (weighted)
+            # Combine reasoning and determine majority flags (weighted)
             impact_weights = defaultdict(float)
+            ongoing_votes = 0.0
+            catalyst_votes = 0.0
+            parallels = []
             reasonings = []
             source_ids = set()
             
@@ -144,30 +153,44 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 impact_weights[occ.impact] += weight
                 reasonings.append(occ.reasoning)
                 source_ids.add(occ.source_id)
+                
+                if occ.is_ongoing:
+                    ongoing_votes += weight
+                if occ.is_future_catalyst:
+                    catalyst_votes += weight
+                if occ.historical_parallel:
+                    parallels.append(occ.historical_parallel)
 
             majority_impact = _resolve_impact_tie(impact_weights)
             
             # --- Temporal Deduplication ---
-            # Check if a similar event was recently recorded
             if check_recent_memories(representative_name, threshold=sim_threshold):
                 logger.info(f"Skipping promotion for '{representative_name}' - similar event found in recent history.")
                 continue
 
             # --- LLM Synthesis ---
-            # Create a professional name and summary
             synthesis = await synthesize_event(
                 event_name=representative_name,
                 impact=majority_impact,
                 reasonings=reasonings
             )
             
+            # Use synthesized flags if available, otherwise majority vote
+            is_ongoing = synthesis.get("is_ongoing", ongoing_votes > (cumulative_weight / 2))
+            is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
+            historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
+
             consensus_data = {
                 "event_name": synthesis["name"],
                 "impact": majority_impact,
                 "reasoning": synthesis["summary"],
                 "models_involved": list(unique_models),
                 "cumulative_weight": cumulative_weight,
-                "source_ids": list(source_ids)
+                "source_ids": list(source_ids),
+                "is_ongoing": is_ongoing,
+                "is_future_catalyst": is_future_catalyst,
+                "historical_parallel": historical_parallel,
+                "future_date": synthesis.get("future_date")
             }
 
             # 4. Analyze Relationship & Link Memory
@@ -179,10 +202,12 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
             should_resolve = relationship.get("should_resolve", False)
 
             # 5. Promote to long-term memory
+            parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
+            ongoing_str = " [ONGOING]" if is_ongoing else ""
             memory_content = (
-                f"MARKET EVENT: {consensus_data['event_name']} | "
+                f"MARKET EVENT: {consensus_data['event_name']}{ongoing_str} | "
                 f"IMPACT: {consensus_data['impact']} | "
-                f"SUMMARY: {consensus_data['reasoning']}"
+                f"SUMMARY: {consensus_data['reasoning']}{parallel_str}"
             )
             
             new_memory_id = add_memory(
@@ -193,17 +218,31 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "impact": consensus_data['impact'],
                     "source_ids": consensus_data['source_ids'],
                     "raw_name": representative_name,
-                    "cumulative_weight": cumulative_weight
+                    "cumulative_weight": cumulative_weight,
+                    "is_ongoing": is_ongoing,
+                    "is_future_catalyst": is_future_catalyst,
+                    "historical_parallel": historical_parallel
                 },
                 parent_id=parent_id,
                 relationship_type=rel_type,
-                target_date=synthesis.get("future_date")
+                target_date=consensus_data.get("future_date")
             )
 
             if new_memory_id:
                 consensus_reached.append(consensus_data)
                 logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']} (ID: {new_memory_id})")
                 
+                # 6. Populate Future Events table if it's a future catalyst
+                if is_future_catalyst or consensus_data.get("future_date"):
+                    future_id = add_future_event(
+                        event_name=consensus_data['event_name'],
+                        target_date=consensus_data.get("future_date"),
+                        description=consensus_data['reasoning'],
+                        source_memory_id=new_memory_id
+                    )
+                    if future_id:
+                        logger.info(f"Recorded future event catalyst: {consensus_data['event_name']} (ID: {future_id})")
+
                 # If we should resolve the parent, do it now
                 if should_resolve and parent_id:
                     update_memory_status(parent_id, "RESOLVED")

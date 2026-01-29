@@ -36,7 +36,9 @@ DEEPSEEK_MODEL="deepseek-reasoner"
 
 ## 3. The Decision Data Model
 
-Every LLM must return a `DecisionObject` matching this schema:
+Every LLM returns two types of objects matching these schemas:
+
+### **Trading Decision Objects**
 
 ```python
 class DecisionObject(BaseModel):
@@ -49,6 +51,21 @@ class DecisionObject(BaseModel):
     source_id: str   # Link to the raw news chunk
     price: float | None  # Stock price (optional, for validation)
     allocation_percentage: int | None  # % of buying power to allocate (0-100)
+```
+
+### **Macro Event Objects**
+
+Models also identify broader market signals that don't trigger a specific ticker trade but inform the overall market regime:
+
+```python
+class MacroEvent(BaseModel):
+    event_name: str
+    impact: Literal["BULLISH", "BEARISH", "NEUTRAL"]
+    reasoning: str
+    is_ongoing: bool  # Whether the event is still unfolding (e.g. "Trade War Escalating")
+    is_future_catalyst: bool # Whether this is a precursor for a future move
+    historical_parallel: str | None # Comparison to past events (e.g. "1970s stagflation")
+    future_date: str | None # Extracted future timeframe
 ```
 
 ## 4. Parallel Orchestration (Consolidated Mode)

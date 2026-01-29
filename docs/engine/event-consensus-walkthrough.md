@@ -15,6 +15,7 @@ An event group reaches "Consensus" based on the **Cumulative Model Weight** of t
 - **Weighting**: Each model (OpenAI, Claude, etc.) has a configured weight in `config.py` (Default: 1.0).
 - **Threshold**: The cumulative weight must be $\ge 2.0$ for the event to be promoted.
 - **Tie-Breaking**: When models disagree on the **Impact** (BULLISH vs. BEARISH), the system calculates a weighted majority rather than a simple vote count. This ensures more sophisticated models have a proportional influence on the final synthesized signal.
+- **Attribute Voting**: Flags like `is_ongoing` and `is_future_catalyst` are also determined by weighted majority across models if the LLM synthesis does not explicitly state them.
 
 ### 3. Temporal Deduplication
 To prevent "RAG noise" and redundant signals, the engine queries the `memories` table to check if a semantically similar event was already promoted in the last **48 hours**. If a match is found, the new event is discarded.
@@ -25,6 +26,7 @@ For events that reach consensus, the engine performs a "Relationship Analysis" b
 - **LLM Relationship Check**: A fast LLM pass (`analyze_event_relationship`) determines if the new event is a `REVERSAL`, `RESOLUTION`, or `UPDATE` of any found ancestors.
 - **Linking**: The new memory is linked via `parent_id`.
 - **Auto-Resolution**: If the relationship is a `REVERSAL` or `RESOLUTION`, the ancestor is automatically marked as `RESOLVED`. This prevents outdated narratives from cluttering upcoming RAG analyses.
+- **Context Enrichment**: Memories are labeled with metadata such as `[ONGOING]` or `[Historical Parallel: ...]` to provide richer context for future RAG retrievals.
 
 ### 5. Decision Reasoning Consolidation
 New in Step 15, the consensus logic is also applied to trading decisions.
@@ -46,11 +48,10 @@ After linking and resolution, the system applies two additional optimizations:
 - The `match_memories` RPC multiplies similarity by `relevance_score`, reducing old information's impact
 - Decay stops when score drops below 0.05
 
-**C. Future Event Extraction:**
-- During synthesis, the LLM checks for explicitly mentioned future dates
-- Examples: "Q3 2026", "next summer", "November 20th", "by June"
-- If found, saved to the `target_date` column in the `memories` table for proactive positioning
-- Enables proactive positioning for upcoming events like product releases, elections, or regulatory approvals
+**C. Future Event Tracking:**
+- During synthesis, the LLM checks for explicitly mentioned future dates and catalysts.
+- **Proactive Positioning**: If an event is flagged as a `is_future_catalyst` or contains a `future_date` (e.g., "Q3 2026", "next summer"), it is recorded in the `future_events` table.
+- **Memory Linking**: These future catalysts are linked back to their source `memories` entry, allowing agents to track the "chain" from prediction to realization.
 
 ### 7. LLM Synthesis
 A final "Analyst Pass" (via Google Gemini) is performed to:
@@ -70,8 +71,10 @@ Consensus events are stored in the `memories` table with the following metadata:
 | `status` | `ACTIVE`, `RESOLVED`, or `SUPERSEDED` |
 | `parent_id` | UUID of the linked ancestor memory |
 | `relationship_type` | `REVERSAL`, `UPDATE`, `RESOLUTION`, or `GENERAL` |
+| `is_ongoing` | Boolean indicating if the event is currently unfolding |
+| `is_future_catalyst`| True if the event is a precursor for a future market move |
+| `historical_parallel`| Short description of any historical context mentioned |
 | `source_ids` | List of newsletter chunk IDs that contributed to this consensus |
-| `raw_name` | The original representative name from the first model in the cluster |
 | `relevance_score` | Decay multiplier for context retrieval (default: 1.0, halves every 30 days) |
 | `target_date` | Extracted future timeframe for proactive positioning (e.g., "Q3 2026", "next summer") |
 

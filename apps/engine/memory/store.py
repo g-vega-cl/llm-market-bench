@@ -199,6 +199,40 @@ def update_memory_status(memory_id: str, status: str) -> bool:
     except Exception as e:
         logger.error(f"Error updating memory status: {e}")
         return False
+
+def add_future_event(
+    event_name: str,
+    target_date: Optional[str] = None,
+    description: Optional[str] = None,
+    source_memory_id: Optional[str] = None
+) -> str | None:
+    """Adds a new future event catalyst to the store.
+
+    Args:
+        event_name: Professional name for the future event.
+        target_date: The explicitly mentioned future date or timeframe.
+        description: A short summary of why this is a future catalyst.
+        source_memory_id: The ID of the parent memory entry.
+
+    Returns:
+        The ID of the new future event if successful, None otherwise.
+    """
+    try:
+        client = get_supabase_client()
+        payload = {
+            "event_name": event_name,
+            "target_date": target_date,
+            "description": description,
+            "source_memory_id": source_memory_id
+        }
+        response = client.table("future_events").insert(payload).execute()
+        if response.data:
+            return response.data[0]["id"]
+        return None
+    except Exception as e:
+        logger.error(f"Error adding future event: {e}")
+        return None
+
 def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48) -> bool:
     """Checks if a semantically similar memory exists within the last N hours.
 

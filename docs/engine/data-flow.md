@@ -653,26 +653,33 @@ For each consensus group, the engine checks for related past events.
 1. **Ancestor Search**: Vector search (Similarity > 0.4).
 2. **Relationship Analysis**: LLM categorizes as `REVERSAL`, `RESOLUTION`, or `UPDATE`.
 3. **Auto-Resolution**: Mark ancestors as `RESOLVED` if reversed.
+4. **Context Enrichment**: Enriches memory strings with `[ONGOING]` and `[Historical Parallel]` labels for better RAG retrieval.
 
-### Step 5.3: LLM Synthesis
+### Step 5.3: LLM Synthesis & Future Tracking
 
 **File**: `apps/engine/core/llm/`
 
-For events that reach consensus (2+ models), we perform a final synthesis pass:
+For events that reach consensus (2+ models), we perform a final synthesis pass to unify naming and extract critical flags:
 
 ```json
 // Synthesized Output
 {
   "name": "Fed Policy Tightening",
-  "summary": "Multiple models observe hawkish Fed signals likely to impact tech valuations in the near term."
+  "summary": "Multiple models observe hawkish Fed signals...",
+  "is_ongoing": true,
+  "is_future_catalyst": true,
+  "historical_parallel": "Like the 1970s stagflation regime",
+  "future_date": "Q3 2026"
 }
 ```
 
+**Future Event Tracking**: If an event is flagged as a `is_future_catalyst` or contains a `future_date`, it is automatically recorded in the `future_events` table to enable proactive monitoring of upcoming market drivers.
+
 **Phase 5 Summary**:
 - **Semantic Grouping**: Via Gemini Embeddings (`text-embedding-004`)
-- **Weighted Voting**: Each model's "vote" (BULLISH/BEARISH) is multiplied by its `MODEL_WEIGHTS` (defined in `config.py`) to determine the group's consensus impact.
-- **Deduplication**: Against Supabase `memories` table
-- **Synthesis**: Final professional naming via OpenAI
+- **Weighted Voting**: Each model's "vote" (BULLISH/BEARISH) is multiplied by its `MODEL_WEIGHTS` (defined in `config.py`) to determine the group's consensus impact. 
+- **Attribute Synthesis**: Core attributes like `is_ongoing` and `historical_parallel` are extracted during the analyst pass.
+- **Future Tracking**: Populates the `future_events` table for long-term catalyst monitoring.
 - **Promotion**: Saved as an immutable market event for future RAG retrieval (requires cumulative weight $\ge 2.0$)
 
 ---

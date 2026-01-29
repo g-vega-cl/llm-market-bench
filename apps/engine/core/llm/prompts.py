@@ -46,6 +46,12 @@ SMA MANAGEMENT RULES:
 2. Macro Events: Identify major global themes, macro-economic shifts, or significant events mentioned in the news (e.g., "Fed Rate Hike", "AI Demand Surge", "Geopolitical Tension").
    For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.
    Also categorize the 'catalyst_type' for the event.
+   
+   CRITICAL FOCUS:
+   - Ongoing Unresolved Events: Mark 'is_ongoing' as true for events that are still unfolding (e.g., "President Trump warned Iran that a “massive armada” is on the way").
+   - Future Catalysts: Mark 'is_future_catalyst' as true if the event describes a future potential driver for the market.
+   - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
+   
    Each macro event MUST include the exact 'Source ID' of the snippet that triggered it.
 
 You must provide a confidence score (0-100) and your reasoning for each trading signal and macro event.
@@ -77,8 +83,12 @@ Your task:
 3. Extract any explicitly mentioned future date or timeframe (e.g., "next summer", "Q3 2026", "November 20th", "by June", "by the end of January").
    - If a specific or approximate future date is mentioned (even in the current month), include it in 'future_date'.
    - If no future timeframe is mentioned, set 'future_date' to null.
+4. Synthesize logical flags:
+   - 'is_ongoing': true if the consensus is that the event is unfolding.
+   - 'is_future_catalyst': true if this is a precursor for a future move.
+   - 'historical_parallel': a short string describing the parallel if identified by models.
 
-Return ONLY a JSON object with 'name', 'summary', and 'future_date' keys."""
+Return ONLY a JSON object with 'name', 'summary', 'future_date', 'is_ongoing', 'is_future_catalyst', and 'historical_parallel' keys."""
 
 
 RELATIONSHIP_SYSTEM_PROMPT = "You are a senior market analyst. Return structured JSON."

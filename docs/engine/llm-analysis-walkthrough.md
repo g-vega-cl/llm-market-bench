@@ -22,6 +22,16 @@ Models (**OpenAI, Anthropic, Gemini**) now actively call multiple tools to verif
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
 
+### **Handler Architecture**
+To improve code maintainability and adhere to Google's Python Style Guide, the tool execution logic has been refactored into provider-specific handlers:
+
+- **`apps/engine/core/llm/handlers/base.py`**: Common tool execution dispatcher.
+- **`apps/engine/core/llm/handlers/openai.py`**: Handles OpenAI and DeepSeek tool loops.
+- **`apps/engine/core/llm/handlers/anthropic.py`**: Handles Anthropic's specific message formats.
+- **`apps/engine/core/llm/handlers/gemini.py`**: Handles Gemini's complex content mapping and tool execution.
+
+This separation ensures that each provider's unique API requirements are isolated, making the codebase easier to test and extend.
+
 ## 2. Configuration & Model Selection
 
 Model versions can be configured via environment variables in `apps/engine/.env`. This allows for easy testing of newer models (e.g., `gemini-2.5-flash` or `gpt-5-mini`) without code changes.

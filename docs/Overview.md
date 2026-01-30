@@ -31,7 +31,13 @@ llm-market-bench/
 │   │   │   └── hooks/       # Generic hooks
 │   │   └── package.json     # Web dependencies
 │   └── engine/              # Python (The Backend Pipeline)
-│       ├── core/            # LLM clients
+│       ├── core/
+│       │   └── llm/         # LLM clients and handlers
+│       │       ├── handlers/  # Provider-specific tool execution (openai, anthropic, gemini)
+│       │       ├── analysis.py
+│       │       ├── clients.py
+│       │       ├── prompts.py
+│       │       └── tools.py
 │       ├── ingest/          # Newsletters & De-advertisement
 │       │   ├── newsletter.py
 │       │   └── cleaner.py

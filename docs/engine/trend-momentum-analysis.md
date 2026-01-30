@@ -52,7 +52,19 @@ Metrics are stored in the `concept_metrics` table:
 | `mention_count` | Total cumulative appearances |
 | `velocity_score` | Used to store the Hybrid Momentum Score |
 | `first_mention_at` | Discovery timestamp |
-| `pca_x` | 2D coordinate for the Cluster Map |
+| `pca_x`, `pca_y` | 2D coordinates for the Cluster Map (auto-calculated) |
+
+## Visualization: PCA Coordinate Calculation
+
+After momentum analysis completes, the daily pipeline automatically calculates 2D PCA (Principal Component Analysis) coordinates for all concepts. This dimensionality reduction transforms the 768-dimensional embeddings into 2D coordinates (`pca_x`, `pca_y`) that can be visualized on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
+
+**Implementation:** The PCA calculation is handled by `apps/engine/analysis/pca_utils.py` and is automatically invoked at the end of the `run_ingest` pipeline in `main.py`.
+
+**Manual Trigger:** If you need to recalculate coordinates outside the daily pipeline (e.g., after a database migration), you can run:
+```bash
+cd apps/engine
+python update_concepts.py
+```
 
 ## Verification
 

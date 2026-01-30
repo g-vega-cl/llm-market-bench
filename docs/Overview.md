@@ -160,7 +160,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
     *   **Growth:** Rewards acceleration by comparing the 7-day daily average against a 30-day daily average.
 *   **Decay:** Stale concepts have their momentum scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
 *   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score (used to store Momentum Score). This acts as an **Analytical Aggregation Layer** separate from the raw `memories`.
-*   **Visualization:** An automated script (`apps/engine/update_concepts.py`) calculates 2D PCA coordinates (`pca_x`, `pca_y`) for visualization on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
+*   **Visualization:** The daily pipeline automatically calculates 2D PCA coordinates (`pca_x`, `pca_y`) for all concepts, enabling real-time visualization on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
 *   documentation: ./engine/trend-momentum-analysis.md
 
 **9.a. General Review**

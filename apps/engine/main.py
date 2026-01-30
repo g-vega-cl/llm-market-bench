@@ -19,6 +19,7 @@ from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
 from memory.store import add_memory
 from analysis.post_mortem import perform_post_mortems
+from analysis.pca_utils import update_pca_coordinates
 
 
 async def run_ingest():
@@ -284,6 +285,10 @@ async def run_ingest():
                 await p.save_metrics()
 
         logger.info("Performance snapshots complete.")
+
+        # --- PCA Coordinate Update (for Frontend Map) ---
+        logger.info("Updating PCA coordinates for concept map...")
+        update_pca_coordinates(sb_client)
 
     except Exception as e:
         logger.error(f"Analysis or Consensus failed: {e}")

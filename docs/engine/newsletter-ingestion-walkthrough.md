@@ -13,6 +13,9 @@ The Newsletter Ingestion component is responsible for retrieving unread financia
     *   Handles both `text/plain` and `text/html` formats.
     *   Cleans and normalizes text (removing non-ASCII characters, collapsing whitespace).
     *   Converts HTML to readable text using `BeautifulSoup4`.
+*   **LLM-based De-advertisement**:
+    *   Uses a fast LLM (Gemini Flash) to identify and remove advertisements, referral links, and promotional fluff.
+    *   Strictly preserves financial news and analysis sections while stripping commercial content.
 *   **Attribution Groundwork**:
     *   **`SourceID`**: A unique identifier for each newsletter (e.g., `news_sender_hash`).
     *   **`ChunkHash`**: A SHA-256 fingerprint of the content for auditability.
@@ -40,7 +43,8 @@ llm-market-bench/
         │   ├── config.py # Centralized config & logging
         │   └── db.py     # Database utilities
         └── ingest/
-            └── newsletter.py  # Ingestion logic
+            ├── newsletter.py  # Ingestion logic
+            └── cleaner.py     # LLM De-advertisement pass
 ```
 
 ### Core Logic: `newsletter.py`
@@ -50,8 +54,9 @@ The logic in [newsletter.py](file:///Users/cesarvega/Documents/p-code/llm-market
 2.  **Authentication**: Uses Google OAuth2 to authenticate and create a Gmail service object.
 3.  **Filtering**: Queries for emails from the `NEWSLETTER_SENDERS` list received in the last 24 hours.
 4.  **Extraction**: Extracts the best available text version of the email body, using `BeautifulSoup4` for HTML-to-text conversion.
-5.  **Refinement**: Transforms raw email data into a `NewsletterSnapshot` dataclass for type safety.
-6.  **Hashing**: Generates the unique `source_id` and SHA-256 `chunk_hash`.
+5.  **Cleaning**: Performs a "De-advertisement" pass using Gemini Flash to strip commercial fluff while preserving news.
+6.  **Refinement**: Transforms raw email data into a `NewsletterSnapshot` dataclass for type safety.
+7.  **Hashing**: Generates the unique `source_id` and SHA-256 `chunk_hash`.
 
 ### Execution: `main.py`
 
@@ -95,3 +100,5 @@ Dependencies are listed in [requirements.txt](file:///Users/cesarvega/Documents/
 *   `google-auth-oauthlib`
 *   `beautifulsoup4`
 *   `python-dotenv`
+*   `google-genai`
+*   `instructor`

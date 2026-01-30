@@ -81,6 +81,7 @@ Processing Steps:
   3. Decode base64url (decode_base64_url)
   4. Parse HTML with BeautifulSoup
   5. Clean text (remove non-ASCII, normalize whitespace)
+  6. **LLM De-advertisement**: Pass text to Gemini Flash to remove sponsored subsections.
 
   Result: "Tesla stock expected to rally due to..."
 ```
@@ -90,7 +91,8 @@ Processing Steps:
 **Code Flow**:
 - `_process_message()` extracts headers, parses email body
 - `extract_email_body()` handles base64 decoding and HTML parsing
-- `clean_text()` normalizes the output
+- `clean_text()` normalizes the intermediate output
+- **Advertisement Removal**: `clean_newsletter_content()` (Gemini API) filters out non-financial commercial content.
 - **Semantic Monitoring**: `ingest_newsletters()` tracks the yield per configured sender. If a sender produces 0 vignettes while others succeed, a `SEMANTIC FRAGILITY ALERT` is logged.
 
 ---

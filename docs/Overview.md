@@ -32,7 +32,9 @@ llm-market-bench/
 │   │   └── package.json     # Web dependencies
 │   └── engine/              # Python (The Backend Pipeline)
 │       ├── core/            # LLM clients
-│       ├── ingest/          # Newsletter scrapers
+│       ├── ingest/          # Newsletters & De-advertisement
+│       │   ├── newsletter.py
+│       │   └── cleaner.py
 │       ├── attribution/     # Decision mapping
 │       ├── analysis/        # Trend & momentum
 │       ├── execution/       # Trade Settlement
@@ -68,9 +70,10 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **2. Newsletter Ingestion** ✅
 
-*   **Tech:** Python / Gmail API
+*   **Tech:** Python / Gmail API / Gemini API
 *   *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
-*   File: apps/engine/ingest/newsletter.py
+*   **LLM De-advertisement:** *Uses Gemini Flash to identify and remove advertisements, referral links, and promotional fluff from newsletter subsections before analysis.*
+*   File: apps/engine/ingest/newsletter.py, apps/engine/ingest/cleaner.py
 *   **Semantic Monitoring:** *Structured logging alerts (Semantic Fragility Alert) if a previously active sender yields 0 valid content chunks, detecting parsing template changes.*
 *   documentation: ./engine/newsletter-ingestion-walkthrough.md
 

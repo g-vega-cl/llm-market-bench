@@ -24,7 +24,7 @@ from analysis.post_mortem import perform_post_mortems
 async def run_ingest():
     """Runs the full ingestion and analysis pipeline."""
     logger.info("Starting Newsletter Ingestion...")
-    data = ingest_newsletters()
+    data = await ingest_newsletters()
 
     if not data:
         logger.warning(

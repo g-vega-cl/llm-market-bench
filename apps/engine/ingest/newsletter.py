@@ -19,7 +19,6 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
 from core.config import (
     GMAIL_CREDENTIALS_JSON,
     GMAIL_SCOPES,
@@ -28,6 +27,7 @@ from core.config import (
     NO_CONTENT_FOUND,
     logger,
 )
+from ingest.cleaner import clean_newsletter_content
 
 
 @dataclass
@@ -225,7 +225,7 @@ def generate_chunk_hash(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()
 
 
-def _process_message(
+async def _process_message(
     service: Any,
     msg_ref: dict[str, str]
 ) -> NewsletterSnapshot | None:
@@ -258,13 +258,16 @@ def _process_message(
 
         body = extract_email_body(msg["payload"])
 
+        # --- De-advertisement Pass ---
+        cleaned_body = await clean_newsletter_content(body)
+
         return NewsletterSnapshot(
             source_id=generate_source_id(date, sender, subject),
-            chunk_hash=generate_chunk_hash(body),
+            chunk_hash=generate_chunk_hash(cleaned_body),
             sender=sender,
             date=date,
             subject=subject,
-            content=body,
+            content=cleaned_body,
             ingested_at=datetime.now().isoformat(),
         )
     except Exception as e:
@@ -272,7 +275,7 @@ def _process_message(
         return None
 
 
-def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
+async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
     """Fetch and process newsletters from Gmail.
 
     Args:
@@ -308,7 +311,7 @@ def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
 
         snapshots = []
         for msg_ref in messages:
-            snapshot = _process_message(service, msg_ref)
+            snapshot = await _process_message(service, msg_ref)
             if snapshot:
                 snapshots.append(asdict(snapshot))
 

@@ -11,12 +11,13 @@ from core import config
 
 logger = logging.getLogger("engine")
 
+TIMEOUT = 180
 
 def get_openai_client():
     """Creates an async OpenAI client wrapped with Instructor."""
     return instructor.from_openai(AsyncOpenAI(
         api_key=config.OPENAI_API_KEY,
-        timeout=60.0
+        timeout=TIMEOUT
     ))
 
 
@@ -24,7 +25,7 @@ def get_anthropic_client():
     """Creates an async Anthropic client wrapped with Instructor."""
     return instructor.from_anthropic(AsyncAnthropic(
         api_key=config.ANTHROPIC_API_KEY,
-        timeout=60.0
+        timeout=TIMEOUT
     ))
 
 
@@ -37,7 +38,7 @@ def get_deepseek_client():
         AsyncOpenAI(
             api_key=config.DEEPSEEK_API_KEY,
             base_url="https://api.deepseek.com",
-            timeout=60.0
+            timeout=TIMEOUT
         ),
         mode=instructor.Mode.JSON
     )

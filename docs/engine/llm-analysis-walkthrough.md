@@ -72,7 +72,7 @@ class MacroEvent(BaseModel):
 
 To minimize latency and costs, the system uses a **Batch-Parallel** approach. Instead of querying models for every individual news snippet, all chunks are bundled into a single batch per provider.
 
-1.  **Ingestion**: News chunks are fetched from Gmail.
+1.  **Ingestion**: News chunks are fetched from Gmail and cleaned via the LLM De-advertisement pass (Gemini Flash).
 2.  **Filtering**: Chunks are validated to ensure they contain both `source_id` and `content`. Malformed chunks are skipped to prevent pipeline errors.
 3.  **RAG Batching**: Gemini embeddings are generated for ALL valid chunks in a single batch call.
 4.  **Dispatch & Tool Loop**: Each LLM is called in a sequence designed to allow multiple "reasoning and verification" steps.

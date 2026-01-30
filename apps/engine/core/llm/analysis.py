@@ -73,7 +73,7 @@ async def analyze_with_provider(
             }
 
             # Add provider-specific tool definitions
-            if provider in ["openai", "deepseek"]:
+            if provider == "openai":
                 args["tools"] = [
                     tools.STOCK_TOOL_DEFINITION_OPENAI,
                     tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
@@ -90,8 +90,9 @@ async def analyze_with_provider(
                 if messages[0]["role"] == "system":
                     args["system"] = messages[0]["content"]
                     args["messages"] = messages[1:]
-            elif provider == "gemini":
+            elif provider in ["gemini", "deepseek"]:
                 # Instructor's GenAI wrapper handles tools via response_model best.
+                # DeepSeek-reasoner does not support manual tools well in this loop.
                 # Skip manual tool loop and proceed directly to final structured extraction.
                 break
 

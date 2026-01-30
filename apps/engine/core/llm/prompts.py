@@ -114,3 +114,26 @@ Return ONLY a JSON object with:
 - relationship_type: "REVERSAL", "RESOLUTION", "UPDATE", or null.
 - should_resolve: boolean.
 """
+
+
+DE_ADVERTISEMENT_SYSTEM_PROMPT = (
+    "You are a specialized content filter for financial analysts. "
+    "Your goal is to remove advertisements and promotional fluff while strictly "
+    "preserving all financial news, market analysis, and data chunks."
+)
+
+DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE = """You are an expert editor for a financial news service. 
+I am going to give you a newsletter body that contains a mix of valuable financial news and irrelevant advertisements (sponsored sections, referral links, product promotions).
+
+YOUR TASK:
+1. Identify and remove any sections that are clearly advertisements, sponsored content, or promotional fluff.
+2. STICK TO THE FACTS: If a section is "sponsored" but contains actual market data or financial insights, KEEP it, but remove the "sponsored" branding.
+3. PRESERVE ALL ORIGINAL NEWS: Do not summarize. Keep the original wording and structure of the actual news and analysis.
+4. REMOVE: Referral programs ("Invite a friend"), merchandise ads, third-party product placements, and generic "sponsored by" blocks that contain no news value.
+
+NEWSLETTER CONTENT:
+---
+{content}
+---
+
+Return the results as a structured JSON object with the 'cleaned_content' (the filtered newsletter body) and 'ads_removed_count' (the number of advertisement blocks you identified and removed)."""

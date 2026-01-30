@@ -317,10 +317,10 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 | --- | --- | --- | --- |
 | **Global** | `DATABASE_URL` | Supabase Postgres Connection String | Engine, Database Migrations |
 |  | `SUPABASE_URL` | Supabase API URL | Web (Frontend), Engine |
-| **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: gpt-5-mini) | Trading Analysis, Embeddings |
-|  | `ANTHROPIC_API_KEY` | Claude API Key (Model: claude-haiku-4-5) | Trading Analysis |
-|  | `GEMINI_API_KEY` | Google Gemini API Key (Model: gemini-3-flash-preview) | Trading Analysis |
-|  | `DEEPSEEK_API_KEY` | DeepSeek-V3 API Key | Trading Analysis |
+| **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: `gpt-5-mini`) | Trading Analysis, Embeddings |
+|  | `ANTHROPIC_API_KEY` | Claude API Key (Model: `claude-haiku-4-5`) | Trading Analysis |
+|  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
+|  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
 |  | `FINANCIAL_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
 |  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of price data source |
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
@@ -335,6 +335,17 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 
 > [!CAUTION]
 > **Vite Prefixing:** Only variables prefixed with `VITE_` are exposed to the frontend. All Python/Engine keys **must not** have this prefix to prevent accidental exposure via client-side bundles.
+
+### Latest Model Configuration
+
+The engine is currently optimized for these specific versions:
+
+```bash
+OPENAI_MODEL="gpt-5-mini"
+ANTHROPIC_MODEL="claude-haiku-4-5"
+GEMINI_MODEL="gemini-3-flash-preview"
+DEEPSEEK_MODEL="deepseek-reasoner"
+```
 
 ### Local Setup Flow
 

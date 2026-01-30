@@ -253,6 +253,62 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
     return consensus_reached
 
 
+async def process_decision_consensus(decisions: list[DecisionObject]) -> list[dict]:
+    """Consolidates trading decisions from multiple models for the same ticker/signal.
+
+    Args:
+        decisions: List of DecisionObject instances from different models.
+
+    Returns:
+        List of consolidated decision dictionaries.
+    """
+    if not decisions:
+        return []
+
+    # 1. Filter and group by (ticker, signal)
+    # Skip HOLD signals as they don't require consolidation for execution
+    groups = defaultdict(list)
+    for d in decisions:
+        if d.signal.upper() == "HOLD":
+            continue
+        key = (d.ticker.upper(), d.signal.upper())
+        groups[key].append(d)
+
+    consolidated_results = []
+
+    # 2. Process each group
+    for (ticker, signal), occurrences in groups.items():
+        unique_models = set()
+        reasonings = []
+        source_ids = set()
+        
+        for occ in occurrences:
+            model_key = f"{occ.model_provider}_{occ.model_name}"
+            unique_models.add(model_key)
+            reasonings.append(occ.reasoning)
+            source_ids.add(occ.source_id)
+
+        # Use the synthesis logic to create a unified reasoning for this decision
+        # We repurpose synthesize_event for this, as it handles combining model perspectives
+        synthesis = await synthesize_event(
+            event_name=f"{signal} signal for {ticker}",
+            impact="BULLISH" if signal == "BUY" else "BEARISH",
+            reasonings=reasonings
+        )
+
+        consolidated_results.append({
+            "ticker": ticker,
+            "signal": signal,
+            "models_involved": list(unique_models),
+            "original_reasonings": reasonings,
+            "synthesized_name": synthesis["name"],
+            "synthesized_summary": synthesis["summary"],
+            "source_ids": list(source_ids)
+        })
+
+    return consolidated_results
+
+
 
 if __name__ == "__main__":
     pass

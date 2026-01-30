@@ -29,10 +29,27 @@ For events that reach consensus, the engine performs a "Relationship Analysis" b
 - **Context Enrichment**: Memories are labeled with metadata such as `[ONGOING]` or `[Historical Parallel: ...]` to provide richer context for future RAG retrievals.
 
 ### 5. Decision Reasoning Consolidation
-New in Step 15, the consensus logic is also applied to trading decisions.
-- **Grouping**: Decisions are grouped by `(ticker, signal)`.
-- **Synthesis**: If multiple models agree, their raw reasonings are synthesized into a single, professional **Consensus Reasoning** block.
-- **RAG Impact**: This ensures that when the AI buys a stock, its future self sees exactly *why* the consensus was formed, without having to parse 4 divergent reasoning strings.
+The consensus logic is also applied to trading decisions via the `process_decision_consensus` function.
+
+**Purpose**: When multiple LLM models generate trading decisions for the same ticker and signal (e.g., multiple BUY signals for AAPL), their individual reasonings are consolidated into a unified explanation.
+
+**Process**:
+- **Grouping**: Decisions are grouped by `(ticker, signal)` combination.
+- **Filtering**: `HOLD` signals are excluded from consolidation as they don't require execution.
+- **Synthesis**: For each group, the function uses `synthesize_event` to merge the raw reasonings from all contributing models into a single, professional **Consensus Reasoning** block.
+- **Output**: Returns a list of consolidated decision dictionaries containing:
+  - `ticker`: The stock ticker symbol
+  - `signal`: The trading action (BUY/SELL)
+  - `models_involved`: List of model identifiers that agreed on this decision
+  - `original_reasonings`: All individual model reasonings
+  - `synthesized_name`: Unified event name from synthesis
+  - `synthesized_summary`: Consolidated reasoning summary
+  - `source_ids`: Newsletter chunk IDs that contributed to the decision
+
+**RAG Impact**: This ensures that when the AI reviews past trades, it sees exactly *why* the consensus was formed, without having to parse multiple divergent reasoning strings. This improves the quality of future RAG retrievals and decision-making.
+
+**Implementation**: `apps/engine/consensus.py` - `process_decision_consensus()`
+
 
 ### 6. Memory Optimization & Future Event Tracking
 After linking and resolution, the system applies two additional optimizations:

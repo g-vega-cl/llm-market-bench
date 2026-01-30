@@ -41,7 +41,7 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 | Test File | Coverage |
 |-----------|----------|
 | `test_consensus.py` | Semantic grouping, weighted voting, event promotion |
-| `test_consolidation.py` | Decision reasoning consolidation for RAG |
+| `test_consolidation.py` | `process_decision_consensus` function: decision grouping by ticker/signal, synthesis of unified reasonings |
 | `test_memory_chains.py` | Parent-child relationships, auto-resolution of events |
 | `test_memory_optimization.py` | RESOLVED status filtering, relevance decay |
 | `test_memory_rag.py` | Vector similarity search, context retrieval |

@@ -98,6 +98,35 @@ We maintain a strict **Zero Warning** policy for the test suite. To achieve this
 - **SDK Migration**: Migrated from the deprecated `google-generativeai` to the modern `google-genai` package to eliminate `FutureWarning` noise.
 - **Transitive Dependency Fixes**: Pinned `pydantic<2.12.0` to resolve deprecation warnings triggered by third-party libraries (like `pyiceberg`) that have not yet updated their coding patterns.
 
+## Best Practices
+
+### Mocking External Dependencies
+
+To ensure tests run reliably in CI/CD environments without requiring API keys or external service access:
+
+**Gemini Embeddings**: Use `@pytest.fixture(autouse=True)` to mock `get_embedding` in attribution tests:
+```python
+@pytest.fixture(autouse=True)
+def mock_get_embedding():
+    """Mock get_embedding to avoid API calls."""
+    with patch("attribution.service.get_embedding") as mock:
+        mock.return_value = [0.1] * 768
+        yield mock
+```
+
+**Async Functions**: When mocking async functions like `ingest_newsletters`, use `AsyncMock` to ensure compatibility:
+```python
+from unittest.mock import AsyncMock
+monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
+```
+
+**Async Tests**: Mark tests that call async functions with `@pytest.mark.asyncio` and use `await`:
+```python
+@pytest.mark.asyncio
+async def test_ingest_newsletters_summary(caplog):
+    await ingest_newsletters(newer_than_days=1)
+```
+
 ## CI/CD Integration
 
 Tests are automatically executed on every Push and Pull Request via GitHub Actions. A failure in any test prevents merging to the main branch.

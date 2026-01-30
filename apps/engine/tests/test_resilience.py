@@ -62,9 +62,10 @@ async def test_individual_task_failure_does_not_halt_pipeline():
 def test_main_ingestion_guardrail(monkeypatch):
     """Test that main.py stops if no newsletters are returned."""
     from main import main
+    from unittest.mock import AsyncMock
 
     # Mock ingest_newsletters to return empty
-    monkeypatch.setattr("main.ingest_newsletters", lambda: [])
+    monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
     # Mock logger to verify it's called
     mock_logger = MagicMock()
     monkeypatch.setattr("main.logger", mock_logger)
@@ -81,9 +82,10 @@ def test_main_ingestion_guardrail(monkeypatch):
 def test_main_does_not_call_db_when_no_newsletters(monkeypatch):
     """Test that database operations are skipped when no newsletters found."""
     from main import main
+    from unittest.mock import AsyncMock
 
     # Mock ingest_newsletters to return empty
-    monkeypatch.setattr("main.ingest_newsletters", lambda: [])
+    monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
     # Mock logger
     mock_logger = MagicMock()
     monkeypatch.setattr("main.logger", mock_logger)

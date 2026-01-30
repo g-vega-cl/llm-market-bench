@@ -63,7 +63,8 @@ def test_decode_base64_url():
     assert decode_base64_url(encoded) == "subjects?"
 
 
-def test_ingest_newsletters_summary(caplog):
+@pytest.mark.asyncio
+async def test_ingest_newsletters_summary(caplog):
     """Test the summary logging in ingest_newsletters."""
     with patch("ingest.newsletter.get_gmail_service") as mock_get_service, patch(
         "ingest.newsletter._process_message"
@@ -97,7 +98,7 @@ def test_ingest_newsletters_summary(caplog):
 
         caplog.set_level(logging.INFO)
 
-        ingest_newsletters(newer_than_days=1)
+        await ingest_newsletters(newer_than_days=1)
 
         # Check logs
         assert "Found 3 messages. Starting processing..." in caplog.text

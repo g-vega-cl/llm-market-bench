@@ -1,9 +1,17 @@
 """Tests for the decision attribution service."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
 from core.models import DecisionObject
 from attribution.service import save_decision
+
+
+@pytest.fixture(autouse=True)
+def mock_get_embedding():
+    """Mock get_embedding to avoid API calls."""
+    with patch("attribution.service.get_embedding") as mock:
+        mock.return_value = [0.1] * 768
+        yield mock
 
 
 @pytest.fixture

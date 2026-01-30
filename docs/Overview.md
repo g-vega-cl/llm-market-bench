@@ -95,7 +95,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 *   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
 *   **Validation:** **Python Pydantic + Instructor**
-*   **Active Tool Calling:** LLMs utilize multiple tools *during* analysis:
+*   **Active Tool Calling:** LLMs (**OpenAI, Anthropic, Gemini**) utilize multiple tools *during* analysis:
     *   `get_stock_quote`: Verifies ticker existence, real-time pricing, and liquidity.
     *   `get_price_history`: Fetches recent price history to determine if news is "priced in".
     *   `get_position_pnl`: Fetches current unrealized P&L and cost basis for existing positions.

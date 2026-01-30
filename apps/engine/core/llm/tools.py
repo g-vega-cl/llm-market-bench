@@ -116,6 +116,59 @@ POSITION_PNL_TOOL_DEFINITION_ANTHROPIC = {
     },
 }
 
+# --- Gemini Tool Definitions (Google GenAI SDK) ---
+STOCK_TOOL_DEFINITION_GEMINI = {
+    "name": "get_stock_quote",
+    "description": (
+        "Get real-time price and market cap for a stock ticker to verify "
+        "its existence and liquidity."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+PRICE_HISTORY_TOOL_DEFINITION_GEMINI = {
+    "name": "get_price_history",
+    "description": "Get historical price data for a stock ticker to see if news is priced in.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            },
+            "days": {
+                "type": "integer",
+                "description": "Number of days of history to retrieve (default 7).",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+POSITION_PNL_TOOL_DEFINITION_GEMINI = {
+    "name": "get_position_pnl",
+    "description": "Get current unrealized P&L and cost basis for a stock you already own.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
 
 async def execute_stock_tool(ticker: str) -> str:
     """Executes the stock tool and returns a stringified result for the LLM.

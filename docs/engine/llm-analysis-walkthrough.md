@@ -17,10 +17,10 @@ To ensure maximum feature coverage and performance, the system uses the official
 | **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
 
 ### **Active Tool Calling**
-Models now actively call multiple tools to verify market data and context *before* committing to a trade:
+Models (**OpenAI, Anthropic, Gemini**) now actively call multiple tools to verify market data and context *before* committing to a trade:
 - **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
-- **`get_price_history`**: (NEW) Fetches recent historical prices to determine if news is "priced in".
-- **`get_position_pnl`**: (NEW) Fetches current unrealized P&L and cost basis for existing positions to ensure trading winners and selling losers slowly.
+- **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
+- **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
 
 ## 2. Configuration & Model Selection
 
@@ -99,7 +99,7 @@ This logic ensures that trades are based on predicted future movements rather th
 
 The logic is verified using a comprehensive test suite:
 - **Core Logic**: `pytest apps/engine/tests/test_analysis_logic.py`
-- **Tool Calling**: `pytest apps/engine/tests/test_llm_tools.py`
+- **Tool Calling**: `pytest apps/engine/tests/test_llm_tools.py` and `pytest apps/engine/tests/test_gemini_tools.py`
 - **Scope**: Validates schema enforcement, parallel task orchestration, and tool-result handling.
 
 ## 6. How to Run

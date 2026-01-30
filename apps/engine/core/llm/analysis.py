@@ -90,8 +90,14 @@ async def analyze_with_provider(
                 if messages[0]["role"] == "system":
                     args["system"] = messages[0]["content"]
                     args["messages"] = messages[1:]
-            elif provider in ["gemini", "deepseek"]:
-                # Instructor's GenAI wrapper handles tools via response_model best.
+                args["messages"] = messages[1:]
+            elif provider == "gemini":
+                args["tools"] = [
+                    tools.STOCK_TOOL_DEFINITION_GEMINI,
+                    tools.PRICE_HISTORY_TOOL_DEFINITION_GEMINI,
+                    tools.POSITION_PNL_TOOL_DEFINITION_GEMINI,
+                ]
+            elif provider == "deepseek":
                 # DeepSeek-reasoner does not support manual tools well in this loop.
                 # Skip manual tool loop and proceed directly to final structured extraction.
                 break
@@ -185,6 +191,141 @@ async def analyze_with_provider(
                                 "content": result,
                             }
                         ],
+                    })
+
+            elif provider == "gemini":
+                try:
+                    # Using the google-genai SDK (raw_client is genai.Client)
+                    # We need to convert OpenAI-style messages to Gemini contents (user/model roles)
+                    contents = []
+                    system_instruction = None
+                    for m in messages:
+                        if m["role"] == "system":
+                            system_instruction = m["content"]
+                            continue
+                        
+                        # Map assistant -> model
+                        role = "model" if m["role"] == "assistant" else "user"
+                        
+                        parts = []
+                        if m.get("content"):
+                            if isinstance(m["content"], str):
+                                parts.append({"text": m["content"]})
+                            elif isinstance(m["content"], list):
+                                for part in m["content"]:
+                                    if part.get("type") == "text":
+                                        parts.append({"text": part["text"]})
+                                    elif part.get("type") == "tool_result":
+                                        # Gemini uses function_response
+                                        parts.append({
+                                            "function_response": {
+                                                "name": part["tool_use_id"].split("-")[0], # Fallback name
+                                                "response": {"result": part["content"]}
+                                            }
+                                        })
+                        
+                        # Handle tool calls/results in part of the message
+                        if m.get("tool_calls"):
+                            for tc in m["tool_calls"]:
+                                parts.append({
+                                    "function_call": {
+                                        "name": tc["function"]["name"],
+                                        "args": json.loads(tc["function"]["arguments"])
+                                    }
+                                })
+                        
+                        if m["role"] == "tool":
+                            # Map tool result back to user role with function_response
+                            # We might need the name, which OpenAI format stores inside tool_call_id or we have to track it
+                            # For simplicity, we'll try to find the matching name from our tool calls
+                            # This is a bit complex in a loop, so we'll look for the last function_call in previous messages
+                            tool_name = "unknown"
+                            for prev in reversed(messages):
+                                if prev.get("tool_calls"):
+                                    for ptc in prev["tool_calls"]:
+                                        if ptc["id"] == m["tool_call_id"]:
+                                            tool_name = ptc["function"]["name"]
+                                            break
+                            
+                            parts.append({
+                                "function_response": {
+                                    "name": tool_name,
+                                    "response": {"result": m["content"]}
+                                }
+                            })
+                            role = "user"
+
+                        if parts:
+                            contents.append({"role": role, "parts": parts})
+
+                    # Call Gemini
+                    resp = await raw_client.aio.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config={
+                            "system_instruction": system_instruction,
+                            "tools": [{"function_declarations": args["tools"]}]
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(f"Tool execution failed for {provider}/{model_name}, falling back to basic analysis: {e}")
+                    break
+                
+                # Process Gemini response
+                if not resp.candidates or not resp.candidates[0].content:
+                    break
+                
+                candidate = resp.candidates[0]
+                model_message = {"role": "assistant", "content": [], "tool_calls": []}
+                
+                has_tool_call = False
+                for part in candidate.content.parts:
+                    if part.text:
+                        model_message["content"] = part.text
+                    if part.function_call:
+                        has_tool_call = True
+                        call_id = f"gemini-{part.function_call.name}-{len(messages)}"
+                        model_message["tool_calls"].append({
+                            "id": call_id,
+                            "type": "function",
+                            "function": {
+                                "name": part.function_call.name,
+                                "arguments": json.dumps(part.function_call.args)
+                            }
+                        })
+                
+                if not model_message["tool_calls"]:
+                    del model_message["tool_calls"]
+                if not model_message["content"]:
+                    del model_message["content"]
+                
+                messages.append(model_message)
+                
+                if not has_tool_call:
+                    break
+                
+                # Execute Gemini tools
+                for tc in model_message.get("tool_calls", []):
+                    call_args = json.loads(tc["function"]["arguments"])
+                    if tc["function"]["name"] == "get_stock_quote":
+                        result = await tools.execute_stock_tool(call_args["ticker"])
+                    elif tc["function"]["name"] == "get_price_history":
+                        result = await tools.execute_price_history_tool(
+                            call_args["ticker"], 
+                            call_args.get("days", 7)
+                        )
+                    elif tc["function"]["name"] == "get_position_pnl":
+                        result = await tools.execute_position_pnl_tool(
+                            call_args["ticker"], 
+                            owner_id=model_name
+                        )
+                    else:
+                        continue
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": result,
                     })
 
         # Final structured extraction using Instructor

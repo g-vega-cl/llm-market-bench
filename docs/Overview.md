@@ -257,6 +257,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
     *   **Hybrid Visualization:** Nodes are colored by **Velocity** (Red=Trending, Blue=Stable) to show momentum at a glance.
     *   **Spatial Heatmap:** Background "islands" are colored by **Semantic Position** (Rainbow) to group related concepts.
     *   **Interactive Topography:** Hovering over a background region highlights the entire cluster and identifies the Region Name, creating an explorable "Terrain Map" of the market.
+    *   **Temporal Tracking:** Tooltips display both **"First seen"** and **"Last seen"** dates for each concept, allowing users to track the lifespan of market narratives.
 
 **17. Google Authentication** ✅
 *   **Tech:** **Supabase Auth (OAuth 2.0)**

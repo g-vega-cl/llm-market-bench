@@ -9,6 +9,7 @@ export type Concept = {
   mention_count: number
   velocity_score: number
   first_mention_at: string
+  last_mention_at: string
 }
 
 export function ConceptMap({ data }: { data: Concept[] }) {
@@ -237,7 +238,8 @@ export function ConceptMap({ data }: { data: Concept[] }) {
               </span>
             </div>
             <div className="text-xs text-gray-400 mt-2">
-              First seen: {new Date(hoveredNode.first_mention_at).toLocaleDateString()}
+              <div>First seen: {new Date(hoveredNode.first_mention_at).toLocaleDateString()}</div>
+              <div>Last seen: {new Date(hoveredNode.last_mention_at).toLocaleDateString()}</div>
             </div>
           </div>
         </div>

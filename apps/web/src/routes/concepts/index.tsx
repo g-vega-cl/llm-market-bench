@@ -12,7 +12,7 @@ const fetchConcepts = createServerFn({ method: 'GET' }).handler(
     const { data, error } = await supabase
       .from('concept_metrics')
       .select(
-        'id, concept_name, pca_x, pca_y, mention_count, velocity_score, first_mention_at',
+        'id, concept_name, pca_x, pca_y, mention_count, velocity_score, first_mention_at, last_mention_at',
       )
       .not('pca_x', 'is', null)
       .limit(1000)

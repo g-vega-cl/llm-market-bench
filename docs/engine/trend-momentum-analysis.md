@@ -52,6 +52,7 @@ Metrics are stored in the `concept_metrics` table:
 | `mention_count` | Total cumulative appearances |
 | `velocity_score` | Used to store the Hybrid Momentum Score |
 | `first_mention_at` | Discovery timestamp |
+| `last_mention_at` | Timestamp of most recent occurrence |
 | `pca_x`, `pca_y` | 2D coordinates for the Cluster Map (auto-calculated) |
 
 ## Visualization: PCA Coordinate Calculation

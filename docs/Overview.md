@@ -4,7 +4,7 @@
 
 ### What It Does
 
-An automated platform where four LLMs (**OpenAI, Claude, Gemini, DeepSeek**) compete in a virtual stock market. Every morning, they parse financial newsletters, debate major global events, and rebalance their portfolios.
+An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Every morning, they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
 
 ### Why It Matters
 
@@ -106,7 +106,9 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
     *   `get_price_history`: Fetches recent price history to determine if news is "priced in".
     *   `get_position_pnl`: Fetches current unrealized P&L and cost basis for existing positions.
 *   **Sophisticated Trading Logic Injection:** *LLMs are instructed to answer critical questions before trading:*
-    *   Is this news already priced in?
+    *   **Is it possible to make a profitable trade based on this?** (Profit potential justification).
+    *   **Is this news already priced in?** (Predicting next move, not chasing).
+    *   **What is being incentivized right now?** (Awareness of government budgets and objectives).
     *   If I already own this stock, has this trade been profitable?
     *   What is the expected timeline for this catalyst to materialize?
     *   What are the primary risks or counter-arguments to this trade?
@@ -280,12 +282,26 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 * **Tech:** PostHog
 * *Track which AI's reasoning page is most read.*
 
-**21. Regret-Driven Reinforcement (Post-Mortem)** ✅
+**21. Regret-Driven Reinforcement (Post-Mortem & Manager Agent)** ✅
 
-* **Tech:** Python / OpenAI / pgvector
-* **Logic:** *Exactly 5 days after a trade, the engine performs a "Post-Mortem." It compares the AI's reasoning to the actual 5-day price performance.*
-* **Outcome:** *Generates "Lessons Learned" and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or strategic errors in future RAG retrievals.*
+* **Tech:** Python / Gemini Flash 3 / pgvector
+* **Logic:** *Exactly 5 days after a trade, the **Manager Agent** performs a "Post-Mortem." It compares the AI's reasoning to the actual 5-day price performance.*
+* **Outcome:** *Generates "Lessons Learned" (stored as `LESSON_LEARNED` memories) and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or strategic errors in future RAG retrievals.*
 * File: `apps/engine/analysis/post_mortem.py`
+
+**22. Contrarian Agent Execution** ✅
+
+* **Tech:** Python / Gemini Flash 3
+* **Logic:** *Runs after the primary agents, analyzing their consensus to identify crowded trades or missed risks.*
+* **Outcome:** *Executes contrarian trades in a dedicated portfolio.*
+* File: `apps/engine/analysis/contrarian.py`
+
+**23. Government Budget & Policy Tracking** ✅
+
+* **Tech:** Python / Gemini Flash 3
+* **Logic:** *Monthly pipeline that identifies government incentives, budgets, and objectives.*
+* **Outcome:** *Stores findings as `GOVERNMENT_INCENTIVE` memories with expiry dates to inform future analysis.*
+* File: `apps/engine/ingest/government.py`
 
 ---
 

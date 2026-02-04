@@ -18,6 +18,9 @@ class TestDecisionObject:
             "reasoning": "Strong earnings report.",
             "ticker": "AAPL",
             "source_id": "news_123",
+            "is_priced_in": False,
+            "is_priced_in_reasoning": "News just broke",
+            "profit_potential_reasoning": "First mover advantage"
         }
         obj = DecisionObject(**data)
         assert obj.signal == "BUY"
@@ -32,6 +35,9 @@ class TestDecisionObject:
             "reasoning": "Something bad.",
             "ticker": "AAPL",
             "source_id": "news_123",
+            "is_priced_in": False,
+            "is_priced_in_reasoning": "Logic",
+            "profit_potential_reasoning": "Profit"
         }
         with pytest.raises(ValidationError):
             DecisionObject(**data)
@@ -44,6 +50,9 @@ class TestDecisionObject:
             "reasoning": "Too confident.",
             "ticker": "AAPL",
             "source_id": "news_123",
+            "is_priced_in": False,
+            "is_priced_in_reasoning": "Logic",
+            "profit_potential_reasoning": "Profit"
         }
         with pytest.raises(ValidationError):
             DecisionObject(**data)
@@ -56,6 +65,9 @@ class TestDecisionObject:
             "reasoning": "Test.",
             "ticker": "aapl",
             "source_id": "news_123",
+            "is_priced_in": False,
+            "is_priced_in_reasoning": "Logic",
+            "profit_potential_reasoning": "Profit"
         }
         obj = DecisionObject(**data)
         assert obj.ticker == "AAPL"
@@ -80,6 +92,9 @@ class TestAnalysisOrchestration:
                     reasoning=f"{provider} says buy",
                     ticker="AAPL",
                     source_id=chunk.get("source_id", "unknown"),
+                    is_priced_in=False,
+                    is_priced_in_reasoning="Logic",
+                    profit_potential_reasoning="Profit"
                 ) for chunk in chunks
             ]
             return DecisionsResponse(decisions=decisions, macro_events=[])
@@ -127,6 +142,9 @@ class TestAnalysisOrchestration:
                     reasoning="Test",
                     ticker="TEST",
                     source_id=chunk.get("source_id", "unknown"),
+                    is_priced_in=False,
+                    is_priced_in_reasoning="Logic",
+                    profit_potential_reasoning="Profit"
                 ) for chunk in chunks
             ]
             return DecisionsResponse(decisions=decisions, macro_events=[])

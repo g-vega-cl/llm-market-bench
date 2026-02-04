@@ -10,13 +10,14 @@ import asyncio
 from analyze import analyze_chunks
 from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
+from analysis.contrarian import run_contrarian_analysis
 from attribution.service import save_decision
-from core.config import COMMAND_INGEST, logger
-COMMAND_POST_MORTEM = "post-mortem"
+from core.config import COMMAND_INGEST, COMMAND_POST_MORTEM, COMMAND_GOVERNMENT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, ValidationStatus
 from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
+from ingest.government import run_government_pipeline
 from memory.store import add_memory
 from analysis.post_mortem import perform_post_mortems
 from analysis.pca_utils import update_pca_coordinates
@@ -56,6 +57,7 @@ async def run_ingest():
     logger.info("Starting Parallel LLM Analysis...")
 
     try:
+            # Note: analyze_chunks now handles fetching government and lesson context
         decisions, macro_events = await analyze_chunks(data)
         logger.info(
             f"Analysis complete. Generated {len(decisions)} decisions "
@@ -85,6 +87,16 @@ async def run_ingest():
         logger.info("Applying decay to stale memories...")
         from memory.store import decay_memories
         decay_memories(sb_client)
+
+        # --- Contrarian Analysis (Phase 2.5) ---
+        logger.info("Starting Contrarian Agent Analysis...")
+        # We'll re-fetch context or pass it if we had it.
+        # For now, contrarian agent handles its own context internally or we can pass it.
+        contrarian_decisions, contrarian_events = await run_contrarian_analysis(
+            data, decisions, context=""
+        )
+        decisions.extend(contrarian_decisions)
+        macro_events.extend(contrarian_events)
 
         # --- Decision Attribution & Validation ---
         saved_decisions = 0
@@ -304,7 +316,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST, COMMAND_POST_MORTEM],
+        choices=[COMMAND_INGEST, COMMAND_POST_MORTEM, COMMAND_GOVERNMENT],
         help="Action to perform"
     )
 
@@ -314,6 +326,8 @@ def main():
         asyncio.run(run_ingest())
     elif args.command == COMMAND_POST_MORTEM:
         asyncio.run(run_post_mortem())
+    elif args.command == COMMAND_GOVERNMENT:
+        asyncio.run(run_government_pipeline())
 
 
 if __name__ == "__main__":

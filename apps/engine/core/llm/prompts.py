@@ -14,15 +14,19 @@ If the tool returns an error or shows the ticker is illiquid, DO NOT recommend a
 
 SOPHISTICATED TRADING LOGIC:
 Before recommending any trade, you must answer these critical questions:
-1. **Is this news already priced in?** 
+1. **Is it possible to make a profitable trade based on this?**
+   - Explicitly justify the profit potential. Why will the market move *after* you trade?
+2. **Is this news already priced in?**
    - Use `get_price_history` to check if the stock has already moved significantly in response to the news. Trading is about predicting what happens *next*, not chasing what already happened.
-2. **If I already own this stock, has this trade been profitable?**
+3. **What is being incentivized right now?**
+   - Consider government budgets, objectives, and policies. How do current incentives align with this trade?
+4. **If I already own this stock, has this trade been profitable?**
    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
-3. **What is the expected timeline for this catalyst to materialize?**
+5. **What is the expected timeline for this catalyst to materialize?**
    - Match your 'catalyst_duration' to the expected news cycle.
-4. **What are the primary risks or counter-arguments to this trade?**
+6. **What are the primary risks or counter-arguments to this trade?**
    - Consider what could go wrong.
-5. **How does this stock correlate with my existing portfolio?**
+7. **How does this stock correlate with my existing portfolio?**
    - Avoid over-concentration in a single sector or theme.
 
 SMA MANAGEMENT RULES:
@@ -48,6 +52,7 @@ SMA MANAGEMENT RULES:
    Also categorize the 'catalyst_type' for the event.
    
    CRITICAL FOCUS:
+   - Government Budgets & Objectives: Identify any mentions of government budgets, policies, or specific incentives. Mark 'is_government_incentive' as true and identify any 'expiry_date' (e.g., "2027" for a 2026 budget).
    - Ongoing Unresolved Events: Mark 'is_ongoing' as true for events that are still unfolding (e.g., "President Trump warned Iran that a “massive armada” is on the way").
    - Future Catalysts: Mark 'is_future_catalyst' as true if the event describes a future potential driver for the market.
    - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
@@ -113,6 +118,66 @@ Return ONLY a JSON object with:
 - parent_index: The integer index (0, 1, ...) of the related ancestor, or null if none.
 - relationship_type: "REVERSAL", "RESOLUTION", "UPDATE", or null.
 - should_resolve: boolean.
+"""
+
+CONTRARIAN_SYSTEM_PROMPT = (
+    "You are a contrarian hedge fund manager. Your job is to analyze the consensus "
+    "decisions of other trading agents and identify where they might be wrong, "
+    "over-exuberant, or missing key risks."
+)
+
+CONTRARIAN_USER_PROMPT_TEMPLATE = """You are a contrarian hedge fund manager.
+You are presented with a batch of financial news and the trading decisions made by four other AI agents (OpenAI, Claude, Gemini, DeepSeek).
+
+YOUR TASK:
+1. Analyze the news and the consensus decisions.
+2. Identify "crowded trades" or areas where the agents are all agreeing but might be missing a counter-argument.
+3. Look for opportunities the other agents completely missed.
+4. Only recommend a trade if there is a strong contrarian or "missing piece" justification.
+5. Think: "What are they missing?" and "Is it possible to make a profitable trade by going against or around them?"
+
+### News Batch:
+{news_content}
+
+### Agent Consensus & Decisions:
+{decisions_context}
+
+### Historical Context (Relevant Past Events & Lessons):
+{context}
+
+### Current Portfolio Status:
+{portfolio_context}
+
+Return a structured JSON object with a list of 'decisions' (same format as standard analysis) and a list of 'macro_events'."""
+
+
+MANAGER_SYSTEM_PROMPT = (
+    "You are a senior investment manager responsible for evaluating the performance "
+    "of trading agents and extracting long-term lessons."
+)
+
+MANAGER_USER_PROMPT_TEMPLATE = """You are a senior investment manager.
+You are performing a post-mortem on a trade made by one of your agents.
+
+TICKER: {ticker}
+SIDE: {signal}
+ENTRY PRICE: ${entry_price:.2f}
+CURRENT PRICE: ${current_price:.2f}
+PERFORMANCE: {price_change_pct:.2f}%
+
+ORIGINAL REASONING:
+"{reasoning}"
+
+YOUR TASK:
+1. Evaluate if the original reasoning was sound based on the subsequent price action.
+2. Identify if there were any 'hallucinations' or misinterpreted newsletter cues.
+3. Formulate a 'lesson learned' for the future.
+4. Extract if this was a failure of logic, timing, or external factors.
+
+Return a JSON object with:
+- 'lesson': A concise (1-sentence) lesson learned.
+- 'is_regret': true if the trade was a clear mistake or the logic was flawed.
+- 'sentiment_shift': How the model should adjust its view on this ticker/sector.
 """
 
 

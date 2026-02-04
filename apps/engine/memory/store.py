@@ -14,12 +14,13 @@ def retrieve_context(query_text: str, limit: int = 3) -> str:
     results = retrieve_context_batch([query_text], limit=limit)
     return results[0] if results else ""
 
-def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
+def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: list[str] = None) -> list[str]:
     """Retrieves relevant past events/reasoning for multiple snippets in fewer calls.
 
     Args:
         queries: List of text snippets to search for.
         limit: Number of relevant snippets to return per query.
+        memory_types: Optional list of memory types to filter by.
 
     Returns:
         A list of formatted strings, one for each query.
@@ -47,8 +48,11 @@ def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
                     "query_embedding": embedding,
                     "match_threshold": 0.5,
                     "match_count": limit,
+                    "filter_memory_types": memory_types
                 }
             ).execute()
+
+            mem_data = mem_response.data or []
 
             # 2b. Query Decisions (Trade Reasoning)
             dec_response = client.rpc(
@@ -63,8 +67,8 @@ def retrieve_context_batch(queries: list[str], limit: int = 3) -> list[str]:
             context_parts = []
             
             # Process Memories
-            if mem_response.data:
-                for item in mem_response.data:
+            if mem_data:
+                for item in mem_data:
                     content = item.get("content", "")
                     if content:
                         context_parts.append(f"- [MARKET EVENT] {content}")
@@ -127,7 +131,8 @@ def add_memory(
     parent_id: Optional[str] = None,
     status: str = "ACTIVE",
     relationship_type: Optional[str] = None,
-    target_date: Optional[str] = None
+    target_date: Optional[str] = None,
+    memory_type: str = "MARKET_EVENT"
 ) -> str | None:
     """Adds a new text chunk to the memory store.
 
@@ -137,6 +142,7 @@ def add_memory(
         parent_id: Optional reference to a previous memory ID.
         status: The initial status of the memory (ACTIVE, RESOLVED, SUPERSEDED).
         relationship_type: Type of relationship to parent (REVERSAL, UPDATE, RESOLUTION, GENERAL).
+        memory_type: Categorization (MARKET_EVENT, GOVERNMENT_INCENTIVE, LESSON_LEARNED).
 
     Returns:
         The ID of the new memory if successful, None otherwise.
@@ -154,7 +160,8 @@ def add_memory(
             "status": status,
             "parent_id": parent_id,
             "relationship_type": relationship_type,
-            "target_date": target_date
+            "target_date": target_date,
+            "memory_type": memory_type
         }
         
         response = client.table("memories").insert(payload).execute()

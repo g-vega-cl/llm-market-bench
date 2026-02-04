@@ -68,6 +68,8 @@ MEMORIES_DECAY_THRESHOLD = 0.05  # Stop decaying if relevance drops below this
 
 # --- Commands ---
 COMMAND_INGEST = "ingest"
+COMMAND_POST_MORTEM = "post-mortem"
+COMMAND_GOVERNMENT = "government"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

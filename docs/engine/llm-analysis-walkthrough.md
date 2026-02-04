@@ -15,6 +15,8 @@ To ensure maximum feature coverage and performance, the system uses the official
 | **Anthropic** | `anthropic` | `claude-haiku-4-5` |
 | **Gemini** | `google-genai` | `gemini-3-flash-preview` |
 | **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
+| **Contrarian Agent** | `google-genai` | `gemini-3-flash-preview` |
+| **Manager Agent** | `google-genai` | `gemini-3-flash-preview` |
 
 ### **Active Tool Calling**
 Models (**OpenAI, Anthropic, Gemini**) now actively call multiple tools to verify market data and context *before* committing to a trade:
@@ -61,6 +63,9 @@ class DecisionObject(BaseModel):
     source_id: str   # Link to the raw news chunk
     price: float | None  # Stock price (optional, for validation)
     allocation_percentage: int | None  # % of buying power to allocate (0-100)
+    is_priced_in: bool   # Whether news is priced in
+    is_priced_in_reasoning: str # Reasoning for pricing
+    profit_potential_reasoning: str # Justification for profit potential
 ```
 
 ### **Macro Event Objects**
@@ -76,6 +81,8 @@ class MacroEvent(BaseModel):
     is_future_catalyst: bool # Whether this is a precursor for a future move
     historical_parallel: str | None # Comparison to past events (e.g. "1970s stagflation")
     future_date: str | None # Extracted future timeframe
+    is_government_incentive: bool # Related to government budgets/policy
+    expiry_date: str | None # Date when policy/incentive expires
 ```
 
 ## 4. Parallel Orchestration (Consolidated Mode)
@@ -97,11 +104,13 @@ To minimize latency and costs, the system uses a **Batch-Parallel** approach. In
 
 To move beyond simple "news-chasing," the system now enforces a multi-step qualitative verification process in the system prompt. Before recommending a trade, agents are instructed to leverage their tools to answer:
 
-1.  **Is this news already priced in?** (Using `get_price_history`)
-2.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
-3.  **What is the expected timeline for this catalyst to materialize?**
-4.  **What are the primary risks or counter-arguments to this trade?**
-5.  **How does this stock correlate with my existing portfolio?**
+1.  **Is it possible to make a profitable trade based on this?** (Profit potential justification)
+2.  **Is this news already priced in?** (Using `get_price_history`)
+3.  **What is being incentivized right now?** (Government budgets and objectives)
+4.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
+5.  **What is the expected timeline for this catalyst to materialize?**
+6.  **What are the primary risks or counter-arguments to this trade?**
+7.  **How does this stock correlate with my existing portfolio?**
 
 This logic ensures that trades are based on predicted future movements rather than reacting to yesterday's news.
 

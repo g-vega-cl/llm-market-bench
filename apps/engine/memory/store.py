@@ -14,23 +14,25 @@ def retrieve_context(query_text: str, limit: int = 3) -> str:
     results = retrieve_context_batch([query_text], limit=limit)
     return results[0] if results else ""
 
-def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: list[str] = None) -> list[str]:
+def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: list[str] = None, embeddings: list[list[float]] = None) -> list[str]:
     """Retrieves relevant past events/reasoning for multiple snippets in fewer calls.
 
     Args:
         queries: List of text snippets to search for.
         limit: Number of relevant snippets to return per query.
         memory_types: Optional list of memory types to filter by.
+        embeddings: Optional pre-calculated embeddings.
 
     Returns:
         A list of formatted strings, one for each query.
     """
-    if not queries:
+    if not queries and not embeddings:
         return []
 
     try:
-        # 1. Batch generate embeddings (1 API Call)
-        embeddings = get_embeddings_batch(queries)
+        # 1. Batch generate embeddings (1 API Call) if not provided
+        if embeddings is None:
+            embeddings = get_embeddings_batch(queries)
         if not embeddings:
             return ["" for _ in queries]
 

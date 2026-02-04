@@ -61,12 +61,17 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     queries = [chunk["content"] for chunk in valid_chunks]
     
     if queries:
-        # We retrieve standard context AND specifically look for government incentives & lessons
-        context_results = retrieve_context_batch(queries)
+        # 1. Generate embeddings once
+        from memory.embeddings import get_embeddings_batch
+        embeddings = get_embeddings_batch(queries)
+
+        # 2. We retrieve standard context AND specifically look for government incentives & lessons
+        # using the same embeddings to save API calls
+        context_results = retrieve_context_batch(queries, embeddings=embeddings)
 
         # Explicitly fetch recent government incentives to ensure they are present
-        gov_context = retrieve_context_batch(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"])
-        lesson_context = retrieve_context_batch(queries, limit=2, memory_types=["LESSON_LEARNED"])
+        gov_context = retrieve_context_batch(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"], embeddings=embeddings)
+        lesson_context = retrieve_context_batch(queries, limit=2, memory_types=["LESSON_LEARNED"], embeddings=embeddings)
 
         all_contexts = context_results + gov_context + lesson_context
         aggregated_context = "\n".join(list(set([c for c in all_contexts if c])))

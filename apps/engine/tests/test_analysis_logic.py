@@ -105,7 +105,10 @@ class TestAnalysisOrchestration:
 
         # Mock Portfolio and MarketDataManager to avoid Supabase dependency
         with patch("analyze.Portfolio") as mock_portfolio_class, \
-             patch("analyze.MarketDataManager") as mock_market_data_class:
+             patch("analyze.MarketDataManager") as mock_market_data_class, \
+             patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
+
+            mock_get_embeddings.return_value = [[0.1] * 768]
             
             # Mock portfolio instance
             from unittest.mock import AsyncMock
@@ -158,7 +161,10 @@ class TestAnalysisOrchestration:
 
         # Mock Portfolio and MarketDataManager to avoid Supabase dependency
         with patch("analyze.Portfolio") as mock_portfolio_class, \
-             patch("analyze.MarketDataManager") as mock_market_data_class:
+             patch("analyze.MarketDataManager") as mock_market_data_class, \
+             patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
+
+            mock_get_embeddings.return_value = [[0.1] * 768]
             
             from unittest.mock import AsyncMock
             mock_portfolio = MagicMock()

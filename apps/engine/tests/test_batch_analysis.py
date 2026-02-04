@@ -19,8 +19,15 @@ def mock_retrieve_context():
         m.return_value = ["Mocked Context"]
         yield m
 
+@pytest.fixture
+def mock_get_embeddings():
+    """Mock the get_embeddings_batch function."""
+    with patch("memory.embeddings.get_embeddings_batch") as m:
+        m.return_value = [[0.1] * 768]
+        yield m
+
 @pytest.mark.asyncio
-async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
+async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, mock_get_embeddings):
     """Test that analyze_chunks correctly batches decisions."""
     
     from unittest.mock import MagicMock, patch

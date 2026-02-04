@@ -16,6 +16,7 @@ def mock_dependencies():
          patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
          patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
          patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
+         patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
          patch("main.Portfolio") as MockPortfolio, \
          patch("main.save_decision") as mock_save:
@@ -23,6 +24,7 @@ def mock_dependencies():
         # Setup defaults
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_consensus.return_value = []
+        mock_contrarian.return_value = ([], [])
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()

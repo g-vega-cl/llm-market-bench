@@ -19,8 +19,15 @@ def mock_retrieve_context():
         m.return_value = ["Mocked Context"]
         yield m
 
+@pytest.fixture
+def mock_get_embeddings():
+    """Mock the get_embeddings_batch function."""
+    with patch("memory.embeddings.get_embeddings_batch") as m:
+        m.return_value = [[0.1] * 768]
+        yield m
+
 @pytest.mark.asyncio
-async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
+async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, mock_get_embeddings):
     """Test that analyze_chunks correctly batches decisions."""
     
     from unittest.mock import MagicMock, patch
@@ -29,11 +36,15 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context):
     mock_decisions = [
         DecisionObject(
             signal="BUY", confidence=80, reasoning="Bullish news 1", 
-            ticker="AAPL", source_id="src_1"
+                ticker="AAPL", source_id="src_1",
+                is_priced_in=False, is_priced_in_reasoning="News just broke",
+                profit_potential_reasoning="First mover advantage"
         ),
         DecisionObject(
             signal="SELL", confidence=70, reasoning="Bearish news 2", 
-            ticker="GOOGL", source_id="src_2"
+                ticker="GOOGL", source_id="src_2",
+                is_priced_in=True, is_priced_in_reasoning="Already spiked",
+                profit_potential_reasoning="Exit before further drop"
         )
     ]
     from core.models import DecisionsResponse

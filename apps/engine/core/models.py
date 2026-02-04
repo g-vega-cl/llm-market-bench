@@ -68,6 +68,18 @@ class DecisionObject(BaseModel):
         le=100,
         description="Percentage of portfolio buying power to allocate to this trade (0-100)"
     )
+    is_priced_in: bool = Field(
+        False,
+        description="Whether the news is already priced into the stock price"
+    )
+    is_priced_in_reasoning: str = Field(
+        "No explicit priced-in reasoning provided.",
+        description="Detailed reasoning for why this is or isn't priced in"
+    )
+    profit_potential_reasoning: str = Field(
+        "No explicit profit potential reasoning provided.",
+        description="Reasoning on why it's possible to make a profitable trade based on this"
+    )
 
     @field_validator("ticker")
     @classmethod
@@ -105,6 +117,14 @@ class MacroEvent(BaseModel):
     historical_parallel: str | None = Field(
         None,
         description="A historical comparison mentioned (e.g. 'Like the 1970s stagflation')"
+    )
+    is_government_incentive: bool = Field(
+        False,
+        description="Whether this event is related to government budgets, objectives, or incentives"
+    )
+    expiry_date: str | None = Field(
+        None,
+        description="The date or timeframe when this incentive or policy expires (e.g., '2027')"
     )
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")

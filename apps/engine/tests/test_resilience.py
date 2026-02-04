@@ -36,7 +36,10 @@ async def test_individual_task_failure_does_not_halt_pipeline():
     with patch("core.llm.analyze_with_provider", side_effect=mock_analyze), \
          patch("analyze.retrieve_context_batch", return_value=[""]), \
          patch("analyze.Portfolio") as mock_portfolio_class, \
-         patch("analyze.MarketDataManager") as mock_market_data_class:
+         patch("analyze.MarketDataManager") as mock_market_data_class, \
+         patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
+
+        mock_get_embeddings.return_value = [[0.1] * 768]
         
         from unittest.mock import AsyncMock
         mock_portfolio = MagicMock()

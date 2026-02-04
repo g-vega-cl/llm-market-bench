@@ -8,17 +8,17 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from core.config import logger, OPENAI_MODEL
+from core.config import logger, GEMINI_MODEL
 from core.db import get_supabase_client
-from core.llm import get_openai_client
+from core.llm import get_gemini_client, prompts
 from execution.market_data import MarketDataManager
 from memory.store import add_memory
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class PostMortemResult(BaseModel):
-    lesson: str
-    is_regret: bool
-    sentiment_shift: str
+    lesson: str = Field(..., description="A concise lesson learned")
+    is_regret: bool = Field(..., description="Whether the trade was a mistake")
+    sentiment_shift: str = Field(..., description="How to adjust view on this ticker/sector")
 
 async def perform_post_mortems(days_back: int = 5):
     """Analyzes trades from N days ago and generates self-corrective memories.
@@ -47,7 +47,8 @@ async def perform_post_mortems(days_back: int = 5):
 
     logger.info(f"Analyzing {len(trades)} trades for {target_date}...")
     
-    client = get_openai_client()
+    # Use Gemini Flash 3 as the Manager Agent
+    client = get_gemini_client()
 
     for trade in trades:
         ticker = trade["ticker"]
@@ -70,35 +71,23 @@ async def perform_post_mortems(days_back: int = 5):
             
         is_successful = price_change_pct > 0
         
-        # 3. Ask LLM to analyze the "Regret" or "Success"
-        prompt = f"""You are a senior trading auditor. Perform a post-mortem on the following trade:
-        
-        TICKER: {ticker}
-        SIDE: {signal}
-        ENTRY PRICE: ${entry_price:.2f}
-        CURRENT PRICE: ${current_price:.2f}
-        PERFORMANCE: {price_change_pct:.2f}%
-        
-        ORIGINAL REASONING:
-        "{reasoning}"
-        
-        Your task:
-        1. Evaluate if the original reasoning was sound based on the subsequent price action.
-        2. Identify if there were any 'hallucinations' or misinterpreted newsletter cues.
-        3. Formulate a 'lesson' for future trades. If it was a failure, specify what to avoid. If it was a success, specify what worked.
-        
-        Return a JSON object with:
-        - 'lesson': A concise (1-sentence) lesson learned.
-        - 'is_regret': true if the trade was a clear mistake or the logic was flawed.
-        - 'sentiment_shift': How the model should adjust its view on this ticker/sector.
-        """
+        # 3. Ask Manager Agent to analyze the "Regret" or "Success"
+        prompt = prompts.MANAGER_USER_PROMPT_TEMPLATE.format(
+            ticker=ticker,
+            signal=signal,
+            entry_price=entry_price,
+            current_price=current_price,
+            price_change_pct=price_change_pct,
+            reasoning=reasoning
+        )
         
         try:
+            # Note: instructor handles the structured output
             resp = await client.chat.completions.create(
-                model=OPENAI_MODEL,
+                model=GEMINI_MODEL,
                 response_model=PostMortemResult,
                 messages=[
-                    {"role": "system", "content": "You are a professional trading post-mortem analyst. Return structured JSON."},
+                    {"role": "system", "content": prompts.MANAGER_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
                 ]
             )
@@ -113,6 +102,7 @@ async def perform_post_mortems(days_back: int = 5):
             
             success = add_memory(
                 content=memory_content,
+                memory_type="LESSON_LEARNED",
                 metadata={
                     "type": "post_mortem",
                     "ticker": ticker,

@@ -14,8 +14,10 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
+import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
@@ -45,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
+  id: '/portfolios/',
+  path: '/portfolios/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
   id: '/memories/',
   path: '/memories/',
@@ -53,6 +60,11 @@ const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
 const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
   id: '/concepts/',
   path: '/concepts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
+  id: '/portfolios/$portfolioId',
+  path: '/portfolios/$portfolioId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -83,8 +95,10 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/concepts/': typeof ConceptsIndexRoute
   '/memories/': typeof MemoriesIndexRoute
+  '/portfolios/': typeof PortfoliosIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
@@ -94,8 +108,10 @@ export interface FileRoutesByTo {
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/concepts': typeof ConceptsIndexRoute
   '/memories': typeof MemoriesIndexRoute
+  '/portfolios': typeof PortfoliosIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts': typeof AuthedPostsIndexRoute
 }
@@ -108,8 +124,10 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/concepts/': typeof ConceptsIndexRoute
   '/memories/': typeof MemoriesIndexRoute
+  '/portfolios/': typeof PortfoliosIndexRoute
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
@@ -122,8 +140,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/posts'
     | '/auth/callback'
+    | '/portfolios/$portfolioId'
     | '/concepts/'
     | '/memories/'
+    | '/portfolios/'
     | '/posts/$postId'
     | '/posts/'
   fileRoutesByTo: FileRoutesByTo
@@ -133,8 +153,10 @@ export interface FileRouteTypes {
     | '/logout'
     | '/signup'
     | '/auth/callback'
+    | '/portfolios/$portfolioId'
     | '/concepts'
     | '/memories'
+    | '/portfolios'
     | '/posts/$postId'
     | '/posts'
   id:
@@ -146,8 +168,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authed/posts'
     | '/auth/callback'
+    | '/portfolios/$portfolioId'
     | '/concepts/'
     | '/memories/'
+    | '/portfolios/'
     | '/_authed/posts/$postId'
     | '/_authed/posts/'
   fileRoutesById: FileRoutesById
@@ -159,8 +183,10 @@ export interface RootRouteChildren {
   LogoutRoute: typeof LogoutRoute
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   ConceptsIndexRoute: typeof ConceptsIndexRoute
   MemoriesIndexRoute: typeof MemoriesIndexRoute
+  PortfoliosIndexRoute: typeof PortfoliosIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -200,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portfolios/': {
+      id: '/portfolios/'
+      path: '/portfolios'
+      fullPath: '/portfolios/'
+      preLoaderRoute: typeof PortfoliosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/memories/': {
       id: '/memories/'
       path: '/memories'
@@ -212,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/concepts'
       fullPath: '/concepts/'
       preLoaderRoute: typeof ConceptsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolios/$portfolioId': {
+      id: '/portfolios/$portfolioId'
+      path: '/portfolios/$portfolioId'
+      fullPath: '/portfolios/$portfolioId'
+      preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -277,8 +317,10 @@ const rootRouteChildren: RootRouteChildren = {
   LogoutRoute: LogoutRoute,
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   ConceptsIndexRoute: ConceptsIndexRoute,
   MemoriesIndexRoute: MemoriesIndexRoute,
+  PortfoliosIndexRoute: PortfoliosIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

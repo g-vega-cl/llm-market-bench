@@ -8,6 +8,7 @@ from core.models import DecisionsResponse
 from core.llm import clients
 from core.llm import prompts
 from core.llm import tools
+from core.config import MIN_TRADE_VALUE
 
 logger = logging.getLogger("engine")
 
@@ -52,6 +53,7 @@ async def analyze_with_provider(
             portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
             context=context if context else "No relevant historical context found.",
             news_content=news_content,
+            min_trade_value=MIN_TRADE_VALUE,
         )
 
         messages = [

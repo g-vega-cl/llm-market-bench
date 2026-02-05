@@ -182,8 +182,19 @@ async def run_ingest():
                             portfolio.calculate_reg_t_metrics(p_map)
                         
                         bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                        from core.config import MIN_TRADE_VALUE
                         usd_to_spend = (alloc_pct / 100.0) * bp
+                        
+                        # Bump to minimum if possible
+                        if usd_to_spend < MIN_TRADE_VALUE and bp >= MIN_TRADE_VALUE:
+                            logger.info(f"[{d.ticker}] Proposed spend ${usd_to_spend:.2f} is below minimum. Bumping to ${MIN_TRADE_VALUE}.")
+                            usd_to_spend = MIN_TRADE_VALUE
+                            
                         qty = int(usd_to_spend / exec_price)
+                        
+                        # If rounding down put us below minimum, add one share if affordable
+                        if qty * exec_price < MIN_TRADE_VALUE and (qty + 1) * exec_price <= bp:
+                            qty += 1
                     elif d.signal.upper() == "SELL":
                         pos = portfolio.positions.get(d.ticker)
                         if pos:

@@ -23,8 +23,9 @@ Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_vali
 1. **Trade Cost <= Buying Power** (For BUY signals)
 2. **Projected SMA >= SMA Floor (10% of Total Equity)**
 3. **Account not in Liquidation**
-4. **Market Data Robustness:** If `current_prices` fail (price = 0), the system values positions at `average_cost_basis`. This prevents "Negative Equity" hallucinations for margin accounts.
-5. **Ticker Normalization:** All tickers are normalized to **UPPERCASE** across all validation and storage layers.
+4. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000**.
+5. **Market Data Robustness:** If `current_prices` fail (price = 0), the system values positions at `average_cost_basis`. This prevents "Negative Equity" hallucinations for margin accounts.
+6. **Ticker Normalization:** All tickers are normalized to **UPPERCASE** across all validation and storage layers.
 
 *Implementation: `apps/engine/execution/reg_t_validation.py`*
 
@@ -36,6 +37,7 @@ The validation logic strictly enforces the Buying Power limit.
 | **Leveraged Buy** | Cost > Cash but < Buying Power | **PASS** | Valid use of Reg T leverage (2:1 to 4:1). |
 | **Excessive Buy** | Cost > Buying Power | **FAIL** | Trade exceeds legal margin limits. |
 | **SMA Floor Hit** | Projected SMA < 10% Equity | **FAIL** | Safety guardrail protecting Reg T compliance. |
+| **Below Minimum** | Trade Cost < $1,000 | **FAIL** | Prevents insignificant "pocket change" trades. |
 | **Liquidation** | Available Funds < 0 | **FAIL** | Account is in margin call/deficit state. |
 
 ## 3. Persistent State (Database)
@@ -63,7 +65,7 @@ A dynamic SQL view that calculates Profit/Loss without data duplication.
 - `current_price`: Latest price from the `market_data_cache`.
 
 ## 4. LLM Prompt Injection & Awareness
-Before the LLM analyzes news, we insert a snapshot of its financial health. The LLM is also given explicit instructions on **SMA Management Rules** and the **10% Safety Floor**.
+Before the LLM analyzes news, we insert a snapshot of its financial health. The LLM is also given explicit instructions on **SMA Management Rules**, the **10% Safety Floor**, and the **$1,000 Minimum Purchase Rule**.
 
 **System Prompt Addition:**
 ```text
@@ -81,11 +83,12 @@ Current Positions:
 
 ## 5. Decision Making (Allocation %)
 LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision. 
-- **BUY Logic:** The engine calculates `Allocation % * Buying Power` to determine the total USD to spend, then calculates the share quantity based on the current market price.
+- **BUY Logic:** The engine calculates `Allocation % * Buying Power` to determine the total USD to spend.
+    - **Smart Bump:** If the calculated spend is below **$1,000**, the engine automatically "bumps" the spend to $1,000 (if Buying Power allows).
+    - **Quantity:** The final share quantity is calculated based on the market price. If rounding down results in a value below $1,000, one share is added if affordable.
 - **SELL Logic:** The engine calculates `Allocation % * Current Position Quantity`. A 100% allocation results in a full exit of the position.
 - **Dynamic Fallbacks:** 
-    - If `allocation_percentage` is missing, the system defaults to **5%**.
-    - If a 5% allocation would result in 0 shares (due to high stock price vs. portolio size), the system defaults to **1 share**.
+    - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
 
 ## 5a. Portfolio Ownership Guardrails (SELL)
 To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks:

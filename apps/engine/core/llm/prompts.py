@@ -36,6 +36,9 @@ SMA MANAGEMENT RULES:
 4. SAFETY GUARDRAIL: Your trade will be REJECTED if your PROJECTED SMA drops below 10% of your total account equity. 
  Always calculate your projected SMA (Current SMA - [Trade Cost * 0.57]) before recommending a large BUY.
 
+5. MINIMUM PURCHASE RULE: To ensure meaningful positions, your trade will be REJECTED if the total cost (Price * Quantity) is less than ${min_trade_value:,.2f}. 
+ Always aim to allocate enough quantity to exceed this ${min_trade_value:,.2f} floor.
+
 1. Trading Signals: Look for relevant companies and tickers and determine a trading signal:
    * BUY: Always consider if we already have the stock in our portfolio. Modify the ALLOCATION accordingly.
    * SELL: Only sell if we have the stock in our portfolio.

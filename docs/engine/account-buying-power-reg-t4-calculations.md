@@ -13,7 +13,8 @@ This document serves as the comprehensive reference for **IBKR Reg T Margin Acco
 * **Available Funds:** `NLV - Initial Margin`
 * **Buying Power (Intraday):** `Available Funds × 4`
 * **SMA (Simplified for Examples):** `Max(Previous SMA, NLV - (MVS × 0.57))`
-* **SMA Floor (Guardrail):** `10% × Total Equity`. Trades pushing projected SMA below this floor are rejected..
+* **SMA Floor (Guardrail):** `10% × Total Equity`. Trades pushing projected SMA below this floor are rejected.
+* **Minimum Trade Value (Guardrail):** `$1,000`. Trades with a total cost below this threshold are rejected.
 * **Market Data Robustness:** If `current_prices` for a ticker are missing or fail (price = 0), the system falls back to the position's `average_cost_basis`. This prevents "Negative Total Equity" hallucinations on margin accounts where debts (negative cash) would otherwise exceed a $0 asset valuation.
 
 ---
@@ -283,6 +284,7 @@ IBKR calculates SMA as the **Greater** of the following two values:
 | **Available Funds** | `NLV - IM` | Capacity for new trades |
 | **Buying Power** | `Available Funds × 4` | Intraday purchase capacity |
 | **SMA** | `Max(Prior SMA + ∆Cash - IM_trades, NLV - (MVS × 0.57))` | Reg T credit line / Overnight compliance |
+| **Min Trade Value** | `MIN_TRADE_VALUE` (Default: 1000.0) | Minimum purchase/sell value for trade validation |
 
 ### Example Walkthrough (Scenario 3 Logic)
 

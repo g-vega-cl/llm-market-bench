@@ -520,6 +520,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 | **A: Existence** | `if not data or not data.exists` | Reject non-existent/delisted tickers. |
 | **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.15` | Reject hallucinated prices (>15% deviation). |
 | **C: Liquidity** | `if market_cap < 2_000_000_000` | Reject "Penny Stocks" (Market Cap < $2B). |
+| **D: Minimum Value** | `if trade_cost < 1000.0` | Reject trades below $1,000 threshold. |
 
 **Validation Result**:
 ```json
@@ -728,6 +729,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **A: Existence** | `market_data.exists` | Prevent hallucinated tickers (e.g., "ABCD"). |
 | **B: Price Banding** | `abs(ai_price - real_price) < 15%` | Prevent price hallucinations. |
 | **C: Liquidity** | `Market Cap > $2B` | Prevent trading penny stocks. |
+| **D: Minimum Value** | `Trade Cost > $1,000` | Prevent insignificant trades. |
 | **E: Robustness** | `Fallback to Cost Basis` | Use `average_cost_basis` if market data fails (price = 0) to prevent negative equity. |
 
 ```python
@@ -753,8 +755,9 @@ The system ensures the portfolio has sufficient **Buying Power** under Regulatio
 ### Step 8.2: Quantity Calculation & Settlement
 The engine converts the LLM's `allocation_percentage` into a share count:
 - **BUY:** Uses `Allocation % * Buying Power`.
+- **Smart Bump:** If the resulting spend is < $1,000, the engine attempts to bump it to $1,000 if sufficient Buying Power exists.
 - **SELL:** Uses `Allocation % * Position Quantity`.
-- **Fallback:** Defaults to 5% allocation. If still 0 shares, defaults to 1 share.
+- **Fallback:** Defaults to 5% allocation (then applies the $1,000 bump logic for buys).
 
 If validation passes, the trade is settled into the `portfolios` table.
 

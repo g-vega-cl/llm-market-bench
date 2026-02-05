@@ -30,6 +30,11 @@ LLMs, while powerful, can occasionally:
 - **Limit**: **Minimum 10% of Total Equity**.
 - **Action**: Reject trades that would push the account too close to a Reg T violation.
 
+### 5. Guardrail E: Minimum Trade Value
+- **Logic**: Verifies that the total value of the trade (Price * Quantity) meets a minimum threshold. This prevents small, insignificant trades that don't move the needle for the portfolio (e.g., buying 1 share for $100).
+- **Limit**: **$1,000 USD** (1/10th of the default starting balance).
+- **Action**: Reject trades below the threshold.
+
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
 
@@ -50,6 +55,7 @@ The following environment variables and constants control the validation behavio
 |----------|---------|-------------|
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
 | `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
+| `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value for LLM-driven trades. |
 | `FINANCIAL_PROVIDER` | `"yfinance"` | Which API implementation to use (`fmp` or `yfinance`). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 

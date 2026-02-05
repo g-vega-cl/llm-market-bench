@@ -29,7 +29,8 @@ llm-market-bench/
 │   │   │   ├── components/  # Design System: Pure UI primitives (ui/, layout/)
 │   │   │   ├── lib/         # Infrastructure: Supabase, SEO, Query Client
 │   │   │   └── hooks/       # Generic hooks
-│   │   └── package.json     # Web dependencies
+│   │   ├── package.json     # Web dependencies
+│   │   └── netlify.toml     # Netlify build configuration
 │   └── engine/              # Python (The Backend Pipeline)
 │       ├── core/
 │       │   └── llm/         # LLM clients and handlers
@@ -245,6 +246,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
+*   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)
+*   **Live Dashboard:** [benchify.netlify.app](https://benchify.netlify.app)
 *   **Public Insights:** A public [Memories Page](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective, including consensus events and trade reasoning.
 
 **16a. Testing Infrastructure** ✅
@@ -435,4 +438,20 @@ graph TD
         G --> J
         K[User Comments] -->|Supabase Auth| J
     end
+```
+
+## 7. Deployment & Hosting
+
+The application is deployed as a Serverless TanStack Start app on Netlify.
+
+*   **Project Name:** `benchify`
+*   **Live URL:** [https://benchify.netlify.app](https://benchify.netlify.app)
+*   **Site ID:** `5d3df086-5934-4ea4-9758-36fe189e9af3`
+*   **Deployment Docs:** [docs/web/tanstack-start-deploy-official.md](./web/tanstack-start-deploy-official.md)
+
+### Deployment Flow
+```bash
+cd apps/web
+pnpm run build
+npx netlify deploy --prod --site 5d3df086-5934-4ea4-9758-36fe189e9af3
 ```

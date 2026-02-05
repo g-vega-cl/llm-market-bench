@@ -10,3 +10,5 @@ venv/
 .venv/
 **/pyvenv.cfg
 **/bin/activate
+# Local Netlify folder
+.netlify

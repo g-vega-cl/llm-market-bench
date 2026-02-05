@@ -48,7 +48,7 @@ export const Route = createRootRoute({
       ...seo({
         title:
           'Benchify, LLM Market Benchmarking',
-        description: `Benchify is a LLM Market Benchmarking platform.`,
+        description: `Benchify is a LLM Market Benchmarking platform`,
       }),
     ],
     links: [

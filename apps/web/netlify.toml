@@ -1,0 +1,7 @@
+[build]
+  command = "pnpm build"
+  publish = "dist/client"
+
+[dev]
+  command = "pnpm dev"
+  port = 3000

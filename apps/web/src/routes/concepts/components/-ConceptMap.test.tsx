@@ -12,6 +12,7 @@ describe('ConceptMap', () => {
       mention_count: 50,
       velocity_score: 2.5,
       first_mention_at: '2024-01-01',
+      last_mention_at: '2024-01-02',
     },
     {
       id: '2',
@@ -21,6 +22,7 @@ describe('ConceptMap', () => {
       mention_count: 100,
       velocity_score: 5.0,
       first_mention_at: '2024-01-01',
+      last_mention_at: '2024-01-02',
     },
   ]
 

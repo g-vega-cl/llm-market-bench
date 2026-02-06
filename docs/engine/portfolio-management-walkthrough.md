@@ -21,9 +21,9 @@ We strictly follow **Reg T** calculations for margin accounts.
 ### 2a. Reg T Validation (Pre-Execution)
 Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_validation.py`) to ensure:
 1. **Trade Cost <= Buying Power** (For BUY signals)
-2. **Projected SMA >= SMA Floor (10% of Total Equity)**
-3. **Account not in Liquidation**
-4. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000**.
+2. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000**.
+3. **Projected SMA >= SMA Floor (10% of Total Equity)**
+4. **Account not in Liquidation**
 5. **Market Data Robustness:** If `current_prices` fail (price = 0), the system values positions at `average_cost_basis`. This prevents "Negative Equity" hallucinations for margin accounts.
 6. **Ticker Normalization:** All tickers are normalized to **UPPERCASE** across all validation and storage layers.
 

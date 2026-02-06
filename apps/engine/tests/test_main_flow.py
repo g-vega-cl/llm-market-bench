@@ -36,6 +36,10 @@ def mock_dependencies():
         mock_portfolio_instance.execute_trade.return_value = "trade-uuid-123"
         mock_portfolio_instance.save_metrics = AsyncMock()
         
+        # Setup metrics to avoid MagicMock comparison errors in main.py
+        mock_portfolio_instance.metrics = MagicMock()
+        mock_portfolio_instance.metrics.buying_power = 40000.0
+        
         # Sync methods
         mock_portfolio_instance.validate_trade.return_value = MagicMock(passed=True)
         # Also need get_portfolio_summary to be sync? No, used in analyze which is mocked globally.

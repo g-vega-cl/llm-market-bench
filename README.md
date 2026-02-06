@@ -48,8 +48,7 @@ pnpm --filter web dev
 
 We maintain a high stability gate for the core engine:
 ```bash
-cd apps/engine
-python3 -m pytest
+./apps/engine/market/bin/python3 -m pytest
 ```
 
 ## ⚙️ Automation
@@ -60,6 +59,6 @@ python3 -m pytest
 ## 📄 Documentation
 
 *   [System Overview](./docs/Overview.md)
-*   [Data Flow & Pipeline Walkthrough](./docs/data-flow.md)
-*   [Web Application Architecture](./docs/web/README.mdld)
+*   [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
+*   [Web Application Architecture](./docs/web/README.md)
 *   [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)

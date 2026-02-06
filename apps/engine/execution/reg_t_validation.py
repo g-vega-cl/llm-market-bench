@@ -187,17 +187,6 @@ def validate_trade_compliance(
     if estimated_trade_cost <= 0:
         return ValidationResult(passed=True)
 
-    # --- Minimum Trade Value Guardrail ---
-    if estimated_trade_cost < MIN_TRADE_VALUE:
-        return ValidationResult(
-            passed=False,
-            reason=(
-                f"Trade value below minimum threshold of ${MIN_TRADE_VALUE:,.2f}. "
-                f"Proposed cost: ${estimated_trade_cost:,.2f}. "
-                "Consider increasing quantity."
-            )
-        )
-
     if estimated_trade_cost > portfolio_metrics.buying_power:
         return ValidationResult(
             passed=False,
@@ -207,6 +196,17 @@ def validate_trade_compliance(
                 f"Available BP: ${portfolio_metrics.buying_power:,.2f}"
             ),
             max_affordable_shares=int(portfolio_metrics.buying_power // price) if price > 0 else 0
+        )
+
+    # --- Minimum Trade Value Guardrail ---
+    if estimated_trade_cost < MIN_TRADE_VALUE:
+        return ValidationResult(
+            passed=False,
+            reason=(
+                f"Trade value below minimum threshold of ${MIN_TRADE_VALUE:,.2f}. "
+                f"Proposed cost: ${estimated_trade_cost:,.2f}. "
+                "Consider increasing quantity."
+            )
         )
 
     # --- SMA Floor Guardrail ---

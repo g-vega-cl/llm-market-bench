@@ -5,16 +5,15 @@ This document outlines the testing infrastructure for the `llm-market-bench` eng
 ## Quick Start
 
 ### Global (Root)
-To run the full suite from the repository root:
+To run the full suite from the repository root using the project virtual environment:
 ```bash
-python3 -m pytest
+./apps/engine/market/bin/python3 -m pytest
 ```
 
 ### Engine (App)
 To run tests while working specifically in the engine directory:
 ```bash
-cd apps/engine
-venv/bin/python -m pytest
+./market/bin/python3 -m pytest
 ```
 
 To run with verbose output:

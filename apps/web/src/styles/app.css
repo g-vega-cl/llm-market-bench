@@ -1,4 +1,39 @@
-@import 'tailwindcss' source('../');
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #58cc02;
+  --color-brand-hover: #46a302;
+  --color-accent: #00d1ff;
+  --color-accent-hover: #00b8e6;
+  --color-happy-yellow: #fec700;
+  --color-happy-red: #ff4b4b;
+  --color-happy-purple: #ce82ff;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --shadow-vibrant: 0 4px 0 var(--color-zinc-200);
+  --shadow-vibrant-hover: 0 6px 0 var(--color-zinc-300);
+
+  /* Fluid Typography */
+  --text-fluid-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --text-fluid-lg: clamp(1.125rem, 1.05rem + 0.38vw, 1.3125rem);
+  --text-fluid-xl: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
+  --text-fluid-2xl: clamp(1.5rem, 1.35rem + 0.75vw, 1.875rem);
+  --text-fluid-3xl: clamp(1.875rem, 1.65rem + 1.13vw, 2.4375rem);
+  --text-fluid-4xl: clamp(2.25rem, 1.9rem + 1.75vw, 3.125rem);
+
+  /* Fluid Spacing */
+  --spacing-fluid-xs: clamp(0.5rem, 0.48rem + 0.1vw, 0.5625rem);
+  --spacing-fluid-s: clamp(0.75rem, 0.72rem + 0.15vw, 0.84375rem);
+  --spacing-fluid-m: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --spacing-fluid-l: clamp(1.5rem, 1.4rem + 0.5vw, 1.75rem);
+  --spacing-fluid-xl: clamp(2rem, 1.85rem + 0.75vw, 2.375rem);
+  --spacing-fluid-2xl: clamp(3rem, 2.75rem + 1.25vw, 3.625rem);
+}
 
 @layer base {
   *,
@@ -6,25 +41,72 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    border-color: var(--color-zinc-200, currentcolor);
+  }
+
+  html {
+    color-scheme: light dark;
+    font-size: 16px;
+  }
+
+  body {
+    @apply text-zinc-900 bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-200;
+    font-family: var(--font-sans);
+    line-height: 1.5;
   }
 }
 
-@layer base {
-  html {
-    color-scheme: light dark;
+@layer components {
+  .layout-container {
+    width: min(100% - 2rem, 80rem);
+    margin-inline: auto;
   }
 
-  * {
-    @apply border-gray-200 dark:border-gray-800;
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-fluid-m);
   }
 
-  html,
-  body {
-    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
+  .cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-fluid-s);
+    align-items: center;
   }
 
-  .using-mouse * {
-    outline: none !important;
+  .grid-auto-fit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: var(--spacing-fluid-l);
+  }
+
+  .card-vibrant {
+    @apply bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-2xl p-fluid-l transition-all duration-200;
+    box-shadow: var(--shadow-vibrant);
+  }
+
+  .card-vibrant:hover {
+    @apply border-zinc-300 dark:border-zinc-700;
+    box-shadow: var(--shadow-vibrant-hover);
+    transform: translateY(-2px);
+  }
+
+  .btn-vibrant {
+    @apply px-fluid-m py-fluid-s rounded-xl font-bold transition-all duration-200 cursor-pointer inline-flex items-center justify-center;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  .btn-vibrant:active {
+    box-shadow: 0 0 0 rgba(0,0,0,0.1);
+    transform: translateY(4px);
+  }
+
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-hover;
+  }
+
+  .btn-secondary {
+    @apply bg-zinc-100 text-zinc-700 hover:bg-zinc-200;
   }
 }

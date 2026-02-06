@@ -24,24 +24,24 @@ export function MemoriesList({ memories }: MemoriesListProps) {
   })
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2 mb-6">
+    <div className="stack gap-fluid-l">
+      <div className="cluster gap-fluid-s">
         {['all', 'consensus_event', 'decision_reasoning', 'post_mortem'].map((type) => (
           <button
             key={type}
             onClick={() => setFilter(type)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+            className={`btn-vibrant text-xs uppercase tracking-widest ${
               filter === type
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                ? 'bg-accent text-white'
+                : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400'
             }`}
           >
-            {type.replace('_', ' ').toUpperCase()}
+            {type.replace('_', ' ')}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-4">
+      <div className="stack gap-fluid-m">
         {filteredMemories.map((memory) => (
           <MemoryCard
             key={memory.id}
@@ -51,7 +51,7 @@ export function MemoriesList({ memories }: MemoriesListProps) {
         ))}
 
         {filteredMemories.length === 0 && (
-          <div className="text-center py-12 text-zinc-500">
+          <div className="text-center py-fluid-2xl text-zinc-400 font-bold uppercase tracking-widest bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
             No memories found for this category.
           </div>
         )}

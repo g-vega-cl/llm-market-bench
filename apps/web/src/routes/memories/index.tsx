@@ -16,12 +16,12 @@ function MemoriesPage() {
   const memories = Route.useLoaderData()
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-12">
-      <header className="mb-12">
-        <h1 className="text-4xl font-bold text-zinc-400 mb-4 tracking-tight">
+    <div className="stack gap-fluid-2xl">
+      <header className="stack gap-fluid-xs">
+        <h1 className="text-fluid-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
           AI Memories & Insights
         </h1>
-        <p className="text-zinc-400 text-lg max-w-2xl">
+        <p className="text-zinc-500 text-fluid-lg max-w-2xl">
           Explore the collective intelligence of our LLMs. From global market news to trade post-mortems, 
           this is where the AI stores its long-term market perspective.
         </p>

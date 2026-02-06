@@ -16,20 +16,15 @@ import { seo } from '~/lib/seo'
 import { getSupabaseServerClient } from '~/lib/supabase'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
-  try {
-    const supabase = getSupabaseServerClient()
-    const { data, error: _error } = await supabase.auth.getUser()
+  const supabase = getSupabaseServerClient()
+  const { data, error: _error } = await supabase.auth.getUser()
 
-    if (!data.user?.email) {
-      return null
-    }
-
-    return {
-      email: data.user.email,
-    }
-  } catch (err) {
-    console.warn('Supabase not configured, returning null user')
+  if (!data.user?.email) {
     return null
+  }
+
+  return {
+    email: data.user.email,
   }
 })
 

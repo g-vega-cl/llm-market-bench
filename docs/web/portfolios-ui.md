@@ -54,7 +54,7 @@ The positions table utilizes the `position_pnl` SQL view. This view dynamically 
 Data fetching is handled by TanStack Start server functions located in `apps/web/src/routes/portfolios/-queries.ts`. This ensures that sensitive database queries remain on the server and are delivered to the frontend in a type-safe manner.
 
 ### Styling
-All pages use **Tailwind CSS** and follow the project's **Zinc** color palette to maintain consistency with the rest of the application.
+All pages use **Tailwind CSS v4** and follow the project's **Vibrant & Fluid** design system. This includes fluid typography and layout primitives that ensure the dashboard is fully responsive across mobile and desktop devices without code duplication.
 
 ---
 [[back to Overview](../Overview.md)]

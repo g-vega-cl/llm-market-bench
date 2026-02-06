@@ -241,6 +241,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 **16. Interactive Dashboard** ✅
 
 *   **Tech:** **TanStack Start (Vite + React)**
+*   **Design System:** *Vibrant and happy* fluid design system built with **Tailwind CSS v4**, utilizing `clamp()` for typography/spacing and layout primitives (`stack`, `cluster`, `grid-auto-fit`) for seamless responsiveness.
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
 *   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
 *   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
@@ -257,7 +258,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **16b. Concept Cluster Map** ✅
 *   **Tech:** **D3.js + React**
-*   **Visualizing Trends:** A 2D scatter plot visualizing semantic relationships between market concepts.
+*   **Visualizing Trends:** A 2D scatter plot visualizing semantic relationships between market concepts, integrated into the fluid layout system.
 *   **Coordinates:** Calculated via PCA (Principal Component Analysis) on the python backend to reduce 768-dim embeddings to 2D.
 *   **Route:** `/concepts`
 *   **Features:** 

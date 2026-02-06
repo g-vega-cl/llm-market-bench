@@ -81,7 +81,7 @@ We use Vitest and React Testing Library. Tests are **colocated** next to the cod
 *   Full guide: [testing.md](./testing.md)
 
 ### Design Aesthetics
-We follow a "Rich Aesthetics" approach using Tailwind CSS 4:
-*   Vibrant HSL-tailored colors.
-*   Glassmorphism effects for dashboard cards.
-*   Subtle micro-animations for interactive elements.
+We follow a **"Vibrant & Fluid"** approach using Tailwind CSS 4:
+*   **Fluid Typography & Spacing**: Uses `clamp()` to scale UI elements seamlessly between mobile and desktop without excessive media query classes.
+*   **Layout Primitives**: Employs a "Composition-first" strategy using `.stack`, `.cluster`, and `.grid-auto-fit` to handle layouts intrinsically.
+*   **Vibrant Style**: Inspired by PostHog and Duolingo, featuring bold brand colors (`#58cc02`), rounded corners, and shadow-based depth.

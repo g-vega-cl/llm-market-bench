@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useMutation } from '~/hooks/useMutation'
-import { loginFn } from '~/routes/_authed'
+import { loginFn } from '../fns'
 import { signupFn } from '~/routes/signup'
 import { Auth } from './Auth'
 

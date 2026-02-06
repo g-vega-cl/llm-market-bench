@@ -34,14 +34,14 @@ describe('MemoriesList', () => {
   it('filters memories by type when button is clicked', () => {
     render(<MemoriesList memories={mockMemories} />)
     
-    const consensusButton = screen.getByText('CONSENSUS EVENT')
+    const consensusButton = screen.getByRole('button', { name: 'consensus event' })
     fireEvent.click(consensusButton)
     
     expect(screen.getByText('Consensus on rate hike')).toBeInTheDocument()
     expect(screen.queryByText('Decision to buy TSLA')).not.toBeInTheDocument()
     expect(screen.queryByText('Post-mortem on AAPL')).not.toBeInTheDocument()
     
-    const decisionButton = screen.getByText('DECISION REASONING')
+    const decisionButton = screen.getByRole('button', { name: 'decision reasoning' })
     fireEvent.click(decisionButton)
     
     expect(screen.queryByText('Consensus on rate hike')).not.toBeInTheDocument()
@@ -50,8 +50,8 @@ describe('MemoriesList', () => {
 
   it('displays metadata correctly', () => {
     render(<MemoriesList memories={mockMemories} />)
-    expect(screen.getByText('Impact: BEARISH')).toBeInTheDocument()
-    expect(screen.getByText('Ticker: TSLA')).toBeInTheDocument()
+    expect(screen.getByText('BEARISH')).toBeInTheDocument()
+    expect(screen.getByText('TSLA')).toBeInTheDocument()
     expect(screen.getByText('Regret')).toBeInTheDocument()
   })
 

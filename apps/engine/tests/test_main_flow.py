@@ -28,6 +28,11 @@ def mock_dependencies():
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()
+        # Set metrics to avoid triggering MarketDataManager in main.py
+        mock_metrics = MagicMock()
+        mock_metrics.buying_power = 40000.0
+        mock_portfolio_instance.metrics = mock_metrics
+
         MockPortfolio.return_value = mock_portfolio_instance
         
         # Async methods

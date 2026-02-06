@@ -180,8 +180,8 @@ def test_trade_validation_logic():
     # BP is 0.0 (See test_scenario_5_high_leverage)
     assert metrics_liquid.buying_power == 0.0
     
-    # Attempt even a small buy ($100)
-    res_liquid = validate_trade_compliance(metrics_liquid, 100.00, "QQQ", 38000.0)
+    # Attempt even a small buy ($2000) - must be > MIN_TRADE_VALUE (1000)
+    res_liquid = validate_trade_compliance(metrics_liquid, 2000.00, "QQQ", 38000.0)
     assert res_liquid.passed is False
     assert "Insufficient Buying Power" in res_liquid.reason
     assert "Available BP: $0.00" in res_liquid.reason

@@ -150,6 +150,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Contextual Focus:** The engine specifically prioritizes **Ongoing Unresolved Events** (e.g., "Armada is on the way") and **Historical Parallels** to provide agents with a deeper understanding of market regimes.
 *   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
 *   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
+*   **Future Tracking (Proactive Positioning):** If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
 *   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.
 *   documentation: ./engine/event-consensus-walkthrough.md
 
@@ -179,6 +180,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
 *   **Guardrail E (Minimum Trade Value):** *Reject trades with total value < $1,000 (1/10th starting balance) to ensure meaningful positions.*
 *   **Guardrail F (Robust Price Fallback):** *In `calculate_reg_t_metrics`, if market data fails (price = 0), positions are valued at their `average_cost_basis`. This prevents "Negative Total Equity" hallucinations for margin accounts.*
+*   **Guardrail G (Hallucination Filter):** *Immediately reject tickers with invalid characters or LLM placeholders (e.g., "N/A", "NONE") before external API calls to prevent provider errors.*
 *   **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution. **Ticker Casing** is normalized to uppercase across all layers for consistency.
 *   documentation: ./engine/pre-market-validation.md
 *   File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
@@ -233,7 +235,8 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 *   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
-*   **Retrieval:** *During analysis, the engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
+*   **Retrieval:** *The engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
+*   **Schema Robustness:** *Includes automated JSON string parsing and expanded `catalyst_type` literals to handle model "Semantic Fragility" during high-volume tool loops.*
 *   documentation: [step-15-long-term-memory-embedding.md](./engine/step-15-long-term-memory-embedding.md)
 
 ### Phase 4: Frontend & Feedback

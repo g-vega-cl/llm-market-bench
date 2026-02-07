@@ -58,7 +58,7 @@ class DecisionObject(BaseModel):
     confidence: int  # Range: 0-100
     reasoning: str   # Qualitative explanation
     ticker: str      # Stock Symbol
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"]
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "OTHER"]
     catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"]
     source_id: str   # Link to the raw news chunk
     price: float | None  # Stock price (optional, for validation)
@@ -137,5 +137,7 @@ The engine will log the generated decisions from each model as they complete.
 To ensure the pipeline continues even if individual models fail:
 
 - **Tool Execution Wrapping**: Tool calls (`get_stock_quote`, etc.) are wrapped in `try/except` blocks. If a model tries to call a tool with invalid arguments or the tool service fails, the engine logs a warning and proceeds with a "basic analysis" fallback rather than crashing the entire batch.
-- **Defensive Pydantic Validation**: The system uses default values for critical fields like `source_id` in macro events and supports common LLM hallucinations like `MEDIUM_TERM` duration. This ensures that a single malformed field doesn't crash the final extraction of a 50-chunk batch.
+- **Defensive Pydantic Validation**:
+  - The system uses default values for critical fields like `source_id` in macro events and supports common LLM hallucinations like `MEDIUM_TERM` duration.
+  - **JSON List Robustness**: A `field_validator` automatically detects if the LLM returned a JSON-encoded string for the `decisions` or `macro_events` fields (a common behavior in Claude 3.5/4.5 tool use) and parses it into a Python list before validation.
 - **Sync/Async Resilience**: The analysis loop is designed to handle both synchronous and asynchronous response objects from different provider SDKs (e.g., Gemini's native `Content` objects).

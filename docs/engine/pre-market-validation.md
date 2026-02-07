@@ -39,6 +39,10 @@ LLMs, while powerful, can occasionally:
 - **Limit**: **Minimum 10% of Total Equity**.
 - **Action**: Reject trades that would push the account too close to a Reg T violation.
 
+### 7. Guardrail G: Hallucination Filter (Early Rejection)
+- **Logic**: Inspects the ticker string for invalid characters (slashes, non-ASCII) or common LLM placeholders (e.g., "N/A", "NONE", "UNKNOWN").
+- **Action**: Immediately reject the trade before making any external API calls. This prevents 404/500 errors from market data providers.
+
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
 

@@ -66,9 +66,8 @@ After linking and resolution, the system applies two additional optimizations:
 - Decay stops when score drops below 0.05
 
 **C. Future Event Tracking:**
-- During synthesis, the LLM checks for explicitly mentioned future dates and catalysts.
-- **Proactive Positioning**: If an event is flagged as a `is_future_catalyst` or contains a `future_date` (e.g., "Q3 2026", "next summer"), it is recorded in the `future_events` table.
-- **Memory Linking**: These future catalysts are linked back to their source `memories` entry, allowing agents to track the "chain" from prediction to realization.
+- **Proactive Positioning**: If an event is flagged as a `is_future_catalyst` or contains a `future_date` (e.g., "Q3 2026", "next summer"), it is recorded in the `memories` table with a `target_date` field.
+- **Unified Storage**: These future catalysts are indexed by `target_date`, allowing agents to track the "chain" from prediction to realization without managing a secondary table.
 
 ### 7. LLM Synthesis
 A final "Analyst Pass" (via Google Gemini) is performed to:

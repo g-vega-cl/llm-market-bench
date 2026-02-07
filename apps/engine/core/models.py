@@ -42,7 +42,7 @@ class DecisionObject(BaseModel):
         "OTHER",
         description="The primary driver for this decision"
     )
-    catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "LONG_TERM"] = Field(
+    catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"] = Field(
         "SHORT_TERM",
         description="The expected market impact timeframe"
     )
@@ -128,7 +128,7 @@ class MacroEvent(BaseModel):
     )
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")
-    source_id: str = Field(..., description="ID of the source newsletter chunk")
+    source_id: str = Field("unknown", description="ID of the source newsletter chunk")
     model_provider: str | None = Field(None)
     model_name: str | None = Field(None)
 

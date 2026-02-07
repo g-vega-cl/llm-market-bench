@@ -55,11 +55,13 @@ Tracks exact holdings.
 - `ticker`: e.g., "NVDA"
 - `quantity`: Number of shares.
 - `average_cost_basis`: Weighted average price paid.
-3. **Immediate Metric Persistence:**
-    - Recalculates and persists complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table immediately after every trade for dashboard consistency.
+
+**Idempotent Tracking:**
+To prevent "duplicate key" errors during high-frequency updates, the system uses an **UPSERT with on_conflict** pattern on the `(portfolio_id, ticker)` composite key. This ensures that scaling into a position correctly updates the existing record rather than attempting a conflicting insert.
 
 ### `position_pnl` View (Real-time P&L)
-A dynamic SQL view that calculates Profit/Loss without data duplication.
+ Riverside, CA
+SQL view that calculates Profit/Loss without data duplication.
 - `unrealized_pnl_usd`: Current dollar profit or loss.
 - `unrealized_pnl_pct`: Percentage return based on cost basis.
 - `current_price`: Latest price from the `market_data_cache`.

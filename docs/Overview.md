@@ -119,7 +119,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 *   **Efficiency:** **Batch Processing** (Each LLM is called in a tool-calling loop with all daily news chunks to minimize latency and costs).
 *   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
 *   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
-*   **Fault Tolerance:** If individual LLM providers fail, the pipeline continues with successful results. CRITICAL alerts are logged if all 4 providers fail.
+*   **Fault Tolerance:** If individual LLM providers fail, the pipeline continues with successful results. The system is resilient to hallucinated metadata (e.g., `MEDIUM_TERM` duration) and missing attribution IDs (`source_id`) by using defensive Pydantic validation.
 *   documentation: ./engine/llm-analysis-walkthrough.md
 
 **6. RAG Context Retrieval** ✅
@@ -231,7 +231,7 @@ For a detailed step-by-step walkthrough with a concrete example of how data flow
 
 **15. Long-term Memory Embedding** ✅
 
-*   **Tech:** **Supabase pgvector (Google Gemini text-embedding-004)**
+*   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
 *   **Retrieval:** *During analysis, the engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
 *   documentation: [step-15-long-term-memory-embedding.md](./engine/step-15-long-term-memory-embedding.md)

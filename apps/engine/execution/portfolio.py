@@ -275,7 +275,7 @@ class Portfolio:
                     "ticker": ticker,
                     "quantity": current_pos.quantity,
                     "average_cost_basis": current_pos.average_cost_basis
-                }).execute()
+                }, on_conflict="portfolio_id,ticker").execute()
             else:
                  # It was deleted (position closed)
                  supabase.table("portfolio_positions").delete().match({

@@ -6,8 +6,8 @@ from core import config
 
 logger = logging.getLogger("engine")
 
-# Use text-embedding-004 which has 768 dimensions
-EMBEDDING_MODEL = "text-embedding-004"
+# Use gemini-embedding-001 and request 768 dimensions for compatibility
+EMBEDDING_MODEL = "gemini-embedding-001"
 
 def get_embedding(text: str) -> list[float]:
     """Generates a vector embedding for the given text using Gemini.
@@ -42,7 +42,8 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         print(f"Calling Gemini embeddings for {len(texts)} texts")
         response = client.models.embed_content(
             model=EMBEDDING_MODEL,
-            contents=texts
+            contents=texts,
+            config={'output_dimensionality': 768}
         )
         
         if not response.embeddings:

@@ -22,7 +22,7 @@ The engine now utilizes two distinct sources for institutional memory:
 
 #### A. Trade Reasoning Attribution (Step 7/15)
 When a model generates a trading decision (BUY/SELL), the `save_decision` service automatically generates an embedding for its `reasoning` text.
-- **Provider**: Google Gemini (`text-embedding-004`)
+- **Provider**: Google Gemini (`gemini-embedding-001`)
 - **Storage**: `decisions.embedding` (VECTOR 768)
 
 #### B. Macro Events (Step 8)

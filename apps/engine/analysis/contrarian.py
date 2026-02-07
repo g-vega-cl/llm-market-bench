@@ -82,7 +82,7 @@ async def run_contrarian_analysis(
     )
 
     try:
-        final_resp = await client.chat.completions.create(
+        resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
             response_model=DecisionsResponse,
             messages=[
@@ -91,6 +91,12 @@ async def run_contrarian_analysis(
             ],
             max_retries=2
         )
+
+        import asyncio
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            final_resp = await resp_awaitable
+        else:
+            final_resp = resp_awaitable
 
         # Inject model info
         for d in final_resp.decisions:

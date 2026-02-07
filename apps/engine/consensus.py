@@ -14,8 +14,7 @@ from memory.store import (
     add_memory, 
     check_recent_memories, 
     find_potential_ancestors, 
-    update_memory_status,
-    add_future_event
+    update_memory_status
 )
 from memory.embeddings import get_embeddings_batch
 from core.llm import synthesize_event, analyze_event_relationship
@@ -232,16 +231,6 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 consensus_reached.append(consensus_data)
                 logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']} (ID: {new_memory_id})")
                 
-                # 6. Populate Future Events table if it's a future catalyst
-                if is_future_catalyst or consensus_data.get("future_date"):
-                    future_id = add_future_event(
-                        event_name=consensus_data['event_name'],
-                        target_date=consensus_data.get("future_date"),
-                        description=consensus_data['reasoning'],
-                        source_memory_id=new_memory_id
-                    )
-                    if future_id:
-                        logger.info(f"Recorded future event catalyst: {consensus_data['event_name']} (ID: {future_id})")
 
                 # If we should resolve the parent, do it now
                 if should_resolve and parent_id:

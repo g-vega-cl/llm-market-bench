@@ -36,6 +36,23 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
     Guardrail B: Price Banding (Skipped if ai_price is None or 0)
     Guardrail C: Liquidity
     """
+    # Defensive check: Reject "N/A" or obviously invalid tickers early
+    if not ticker or ticker.upper() in ["N/A", "NONE", "NULL", "UNKNOWN"]:
+        return ValidationResult(
+            ticker=ticker,
+            status=ValidationStatus.REJECTED_HALLUCINATION,
+            reason=f"Invalid ticker symbol: '{ticker}'"
+        )
+    
+    # Check for invalid characters (tickers should usually be alphanumeric)
+    import re
+    if not re.match(r"^[A-Z0-9.\-]+$", ticker.upper()):
+        return ValidationResult(
+            ticker=ticker,
+            status=ValidationStatus.REJECTED_HALLUCINATION,
+            reason=f"Ticker '{ticker}' contains invalid characters."
+        )
+
     manager = MarketDataManager()
     
     try:

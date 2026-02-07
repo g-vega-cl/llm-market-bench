@@ -38,7 +38,7 @@ class DecisionObject(BaseModel):
         description="Explanation of the decision based on the text"
     )
     ticker: str = Field(..., description="Stock ticker symbol")
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"] = Field(
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "OTHER"] = Field(
         "OTHER",
         description="The primary driver for this decision"
     )
@@ -102,7 +102,7 @@ class MacroEvent(BaseModel):
 
     event_name: str = Field(..., description="Short name for the event")
     impact: Literal["BULLISH", "BEARISH", "NEUTRAL"]
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "OTHER"] = Field(
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "OTHER"] = Field(
         "MACRO",
         description="The category of market event"
     )
@@ -143,6 +143,18 @@ class DecisionsResponse(BaseModel):
         default_factory=list,
         description="List of broad market events or themes identified"
     )
+
+    @field_validator("decisions", "macro_events", mode="before")
+    @classmethod
+    def parse_json_string(cls, v):
+        """Handle cases where LLM returns a JSON string instead of a list."""
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v)
+            except Exception:
+                return v
+        return v
 
 
 class NewsletterCleaningResponse(BaseModel):

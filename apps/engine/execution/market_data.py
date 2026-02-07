@@ -29,6 +29,9 @@ class MarketDataManager:
         Returns:
             TickerData if found, None otherwise.
         """
+        if not ticker or not isinstance(ticker, str):
+            return None
+            
         ticker = ticker.upper()
         
         # 1. Check Cache

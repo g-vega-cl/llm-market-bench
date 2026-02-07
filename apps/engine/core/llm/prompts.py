@@ -44,7 +44,7 @@ SMA MANAGEMENT RULES:
    * SELL: Only sell if we have the stock in our portfolio.
    * HOLD: Do not buy or sell the stock.
    * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
-   * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, OTHER).
+   * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, TECHNICAL, OTHER).
    * DURATION: Estimate 'catalyst_duration' (SHORT_TERM, MEDIUM_TERM, LONG_TERM).
    
    Each decision MUST include the exact 'Source ID' of the snippet that triggered it.

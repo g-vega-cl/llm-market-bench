@@ -678,14 +678,7 @@ For events that reach consensus (2+ models), we perform a final synthesis pass t
 }
 ```
 
-**Future Event Tracking**: If an event is flagged as a `is_future_catalyst` or contains a `future_date`, it is automatically recorded in the `memories` table with a `target_date` field to enable proactive monitoring of upcoming market drivers.
-
-**Phase 5 Summary**:
-- **Semantic Grouping**: Via Gemini Embeddings (`text-embedding-004`)
-- **Weighted Voting**: Each model's "vote" (BULLISH/BEARISH) is multiplied by its `MODEL_WEIGHTS` (defined in `config.py`) to determine the group's consensus impact. 
-- **Attribute Synthesis**: Core attributes like `is_ongoing` and `historical_parallel` are extracted during the analyst pass.
-- **Future Tracking**: Consolidates catalysts into the `memories` table for long-term monitoring.
-- **Promotion**: Saved as an immutable market event for future RAG retrieval (requires cumulative weight $\ge 2.0$)
+**Future Tracking (Proactive Positioning)**: If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
 
 ---
 

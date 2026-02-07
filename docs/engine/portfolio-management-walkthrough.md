@@ -13,9 +13,8 @@ We strictly follow **Reg T** calculations for margin accounts.
 | :--- | :--- | :--- |
 | **Total Equity** | `Cash + Market Value of Positions` | The Net Liquidation Value (NLV). |
 | **Maintenance Margin** | `0.33 * Market Value of Longs` | The minimum equity required to hold positions (33%). |
-| **Excess Liquidity** | `Total Equity - Maintenance Margin` | How much "buffer" you have before a margin call. |
-| **Available Funds** | `Equity - (Initial Margin: 57%)` | Capital available to open new positions. |
-| **SMA** | `Max(Prior SMA, Available Funds)` | Special Memorandum Account. Ratchets up with gains, holds steady on losses. |
+| **Available Funds** | `Total Equity - (Initial Margin: 57%)` | Capital available to open new positions. |
+| **SMA** | `Max(Prior SMA, Available Funds)` | Special Memorandum Account. |
 | **Buying Power** | `4 * Available Funds` | The max amount of stock you can buy intraday (4:1 Leverage). |
 
 ### 2a. Reg T Validation (Pre-Execution)
@@ -49,6 +48,7 @@ One row per AI Model (e.g., `gpt-4o`).
 - `buying_power`: Updated after every trade and daily.
 - `total_equity`: Updated after every trade and daily.
 - `sma`: Stateful credit line updated after every trade and daily.
+- `realized`: Total realized profit/loss.
 
 ### `portfolio_positions` Table
 Tracks exact holdings.

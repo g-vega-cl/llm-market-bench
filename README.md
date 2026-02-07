@@ -6,7 +6,7 @@ An automated platform where four LLMs (**OpenAI, Claude, Gemini, DeepSeek**) com
 
 This project benchmarks the reasoning capabilities of leading LLMs against the real-world performance of the S&P 500. It features a robust Python-based data engine and a modern React-based frontend.
 
-For a deep dive into the system design, see the **[Project Overview](./docs/Overview.md)**.
+For a deep dive into the system design, see the **[Project Overview](./docs/Overview.md)** and the **[Database Schema](./docs/database-schema.md)**.
 
 ## 📂 Repository Structure
 
@@ -58,7 +58,8 @@ We maintain a high stability gate for the core engine:
 
 ## 📄 Documentation
 
-*   [System Overview](./docs/Overview.md)
-*   [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
+*   [System Overview](./Overview.md)
+*   [Database Schema](./database-schema.md)
+*   [Data Flow & Pipeline Walkthrough](./engine/data-flow.md)
 *   [Web Application Architecture](./docs/web/README.md)
 *   [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)

@@ -22,168 +22,49 @@ The project follows a **Monorepo** structure to keep the Python Data Engine and 
 ```text
 llm-market-bench/
 ├── apps/
-│   ├── web/                 # TanStack Start (Frontend - React + TS)
-│   │   ├── src/             # Application source
-│   │   │   ├── routes/      # Route Ownership: Colocated UI & Logic
-│   │   │   ├── shared/      # Shared Domain: Auth, Portfolios (cross-route business logic)
-│   │   │   ├── components/  # Design System: Pure UI primitives (ui/, layout/)
-│   │   │   ├── lib/         # Infrastructure: Supabase, SEO, Query Client
-│   │   │   └── hooks/       # Generic hooks
-│   │   ├── package.json     # Web dependencies
-│   │   └── netlify.toml     # Netlify build configuration
-│   └── engine/              # Python (The Backend Pipeline)
-│       ├── core/
-│       │   └── llm/         # LLM clients and handlers
-│       │       ├── handlers/  # Provider-specific tool execution (openai, anthropic, gemini)
-│       │       ├── analysis.py
-│       │       ├── clients.py
-│       │       ├── prompts.py
-│       │       └── tools.py
-│       ├── ingest/          # Newsletters & De-advertisement
-│       │   ├── newsletter.py
-│       │   └── cleaner.py
+│   ├── web/                 # TanStack Start (Dashboard)
+│   └── engine/              # Python Data Engine
+│       ├── core/            # LLM clients, tools, and config
+│       ├── ingest/          # Newsletter & Government data
+│       ├── analysis/        # Momentum, Post-Mortems, Contrarian
+│       ├── execution/       # Validation (Reg T) & Trade Settlement
 │       ├── attribution/     # Decision mapping
-│       ├── analysis/        # Trend & momentum
-│       ├── execution/       # Trade Settlement
-│       ├── main.py          # Entry point
+│       ├── memory/          # pgvector store & embeddings
+│       ├── main.py          # Pipeline entry point
 │       └── update_prices.py # Utility
-
-├── packages/
-│   └── database/            # Shared Supabase types/schemas (PENDING)
-├── supabase/                # SQL Migrations, RLS policies
-├── package.json             # Root monorepo config
-├── pnpm-workspace.yaml      # PNPM Workspaces config
-└── README.md                # Project entry point
+├── supabase/                # SQL Migrations & RLS
+├── docs/                    # Technical Walkthroughs
+└── tests/                   # Engine & Web tests
 ```
 
-## 3. The 20-Step Daily Pipeline
+## 3. The Daily Pipeline (Phase 1-22)
 
-For a detailed step-by-step walkthrough with a concrete example of how data flows through the entire pipeline (from Gmail newsletters to trading decisions), see **[data-flow.md](./data-flow.md)**. This document traces 4 sample newsletters through each phase with actual API calls and database operations documented.
+For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow.md)**.
 
 ### Phase 1: Ingestion & Normalization
+1. **Daily Trigger (09:35 ET):** GitHub Actions fires the pipeline.
+2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
+3. **Corporate Action Check:** (PENDING).
+4. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
-**1. Daily Trigger (09:35 ET)** ✅
+### Phase 2: Consensus & Attribution
+5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools (`get_stock_quote`, `get_price_history`).
+6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context.
+7. **Decision Attribution:** Map reasoning and metadata to the `decisions` table.
+8. **Event Consensus:** Synthesize global macro events; group semantically via pgvector.
+9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
 
-*   **Tech:** GitHub Actions (Cron)
-*   **Goal:** Fire the pipeline 5 minutes after market open to capture live prices.
-*   File: .github/workflows/ingest.yml
+### Phase 3: Execution & Guardrails
+10. **Pre-Market Validation:** Existence, price banding, and liquidity checks.
+11. **Reg T Margin Validation:** Ensure buying power and SMA safety floor.
+12. **Trade Settlement:** Atomic updates to cash, positions, and ledger.
+13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
+14. **Ledger Update:** Daily equity curve snapshot.
 
-**1a. Quality Assurance (CI/CD)** ✅
-
-*   **Tech:** GitHub Actions / Pytest
-*   **Logic:** *Automatically runs unit tests for core configuration and ingestion utilities on every pull request and push to the `main` branch. This serves as a security/stability gate for the engine.*
-*   File: .github/workflows/ci.yml
-*   documentation: ./engine/testing.md
-
-**2. Newsletter Ingestion** ✅
-
-*   **Tech:** Python / Gmail API / Gemini API
-*   *Scrape unread newsletters into raw text chunks. Each chunk is assigned a unique `SourceID` and `ChunkHash` for attribution.*
-*   **LLM De-advertisement:** *Uses Gemini Flash to identify and remove advertisements, referral links, and promotional fluff from newsletter subsections before analysis.*
-*   File: apps/engine/ingest/newsletter.py, apps/engine/ingest/cleaner.py
-*   **Semantic Monitoring:** *Structured logging alerts (Semantic Fragility Alert) if a previously active sender yields 0 valid content chunks, detecting parsing template changes.*
-*   documentation: ./engine/newsletter-ingestion-walkthrough.md
-
-**3. Corporate Action Check** - PENDING - ⏳
-
-*   **Tech:** Python / Market API
-*   *Check for stock splits/dividends. Adjust the "Virtual Portfolio" holdings before the LLM sees them to prevent fake price-drop panics.*
-
-**4. Data Snapshotting (Idempotency Layer)** ✅
-
-*   **Tech:** Supabase Postgres
-*   *Save the raw newsletter text and current prices.*
-*   **Constraint:** *Use a composite unique key (Date + SourceID) to prevent duplicate processing if the job restarts.*
-*   documentation: ./engine/data-snapshotting-walkthrough.md
-
-### Phase 2: The Consensus & Attribution Engine
-
-**5. Parallel LLM Analysis (Structured Output)** ✅
-
-*   **Tech:** OpenAI, Claude, Gemini, DeepSeek APIs
-*   **Validation:** **Python Pydantic + Instructor**
-*   **Active Tool Calling:** LLMs (**OpenAI, Anthropic, Gemini**) utilize multiple tools *during* analysis:
-    *   `get_stock_quote`: Verifies ticker existence, real-time pricing, and liquidity.
-    *   `get_price_history`: Fetches recent price history to determine if news is "priced in".
-    *   `get_position_pnl`: Fetches current unrealized P&L and cost basis for existing positions.
-*   **Sophisticated Trading Logic Injection:** *LLMs are instructed to answer critical questions before trading:*
-    *   **Is it possible to make a profitable trade based on this?** (Profit potential justification).
-    *   **Is this news already priced in?** (Predicting next move, not chasing).
-    *   **What is being incentivized right now?** (Awareness of government budgets and objectives).
-    *   If I already own this stock, has this trade been profitable?
-    *   What is the expected timeline for this catalyst to materialize?
-    *   What are the primary risks or counter-arguments to this trade?
-    *   How does this stock correlate with my existing portfolio?
-*   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make "Allocation %" decisions rather than just static share counts.*
-*   **Catalyst Scoring:** *LLMs categorize trades into types (**MACRO, EARNINGS, M&A, PRODUCT, REGULATORY**) and estimate target **Duration** (INTRADAY, SHORT_TERM, LONG_TERM) for enhanced strategy filtering.*
-*   **Efficiency:** **Batch Processing** (Each LLM is called in a tool-calling loop with all daily news chunks to minimize latency and costs).
-*   *Force LLMs to adhere to a strict JSON schema for trade signals. If an LLM outputs malformed JSON, `Instructor` automatically loops back the error to the LLM for correction.*
-*   *LLMs must return a `DecisionObject` containing the signal (Buy/Sell/Hold) AND the `SourceID` of the news chunk that triggered it.*
-*   **Fault Tolerance:** If individual LLM providers fail, the pipeline continues with successful results. The system is resilient to hallucinated metadata (e.g., `MEDIUM_TERM` duration) and missing attribution IDs (`source_id`) by using defensive Pydantic validation.
-*   documentation: ./engine/llm-analysis-walkthrough.md
-
-**6. RAG Context Retrieval** ✅
-
-*   **Tech:** **Supabase pgvector**
-*   *Before analyzing today's news, the engine queries the vector store for relevant PAST events/trades to ensure the AI's reasoning is consistent with its history.*
-*   documentation: ./engine/rag-context-retrieval.md
-
-**7. Decision Attribution Layer** ✅
-
-*   **Tech:** Python Logic / Supabase
-*   **Audit Trail:** *Map the `ModelID` + `NewsChunkID` + `LLMReasoningString` into a `decisions` table. This creates a foreign key link between a Trade and the specific sentence in a newsletter that caused it. This table preserves the **individual perspective** of each LLM.*
-*   **Vector Attribution:** Store a **Vector Embedding** of the reasoning directly in the `decisions` table. This allows the AI to retrieve its specific trade justifications during future RAG retrieval without cluttering the global macro timeline.
-*   **Idempotency:** *Uses UPSERT with unique constraint on `(source_id, ticker, signal, model_provider, model_name)` to prevent duplicate decisions if the pipeline reruns.*
-*   documentation: ./engine/decision-attribution-walkthrough.md
-
-**8. Event Consensus Protocol & Memory Chains** ✅
-*   **Tech:** Python / Gemini Embeddings / OpenAI Synthesis
-*   **Global Timeline:** Promotes synthesized, professional macro events to the `memories` table. These focus strictly on events (e.g., "Fed Rate Cut", "Geopolitical Tension") that affect the broader market.
-*   **Semantic Grouping:** Uses **Vector Embeddings** and **Cosine Similarity** to group events with different names but similar meanings (e.g., "Fed Hike" vs "Interest Rate Hike").
-*   **Temporal Deduplication:** Checks the `memories` table to skip events promoted in the last 48 hours, keeping the timeline clean.
-*   **Memory Chains:** For each new event, the engine performs a "Relationship Analysis" against recent memories.
-    *   **Linking:** Links new events to ancestors via `parent_id` (e.g., a "Retraction" linked to a "Threat").
-    *   **Auto-Resolution:** Automatically marks ancestors as `RESOLVED` if the new event reverses or completes them.
-*   **Memory Optimization:** Memories marked as `RESOLVED` are excluded from LLM context retrieval, keeping analysis focused on active events.
-*   **Relevance Decay:** Memories have a `relevance_score` that decays by 50% every 30 days, reducing the impact of old information over time.
-*   **Proactive Projections:** During synthesis, the LLM extracts explicitly mentioned future dates and catalysts. These are tracked in a dedicated `future_events` table for proactive positioning.
-*   **Contextual Focus:** The engine specifically prioritizes **Ongoing Unresolved Events** (e.g., "Armada is on the way") and **Historical Parallels** to provide agents with a deeper understanding of market regimes.
-*   **LLM Synthesis:** For each consensus cluster, a fast LLM pass synthesizes a professional, unified event name and a 1-sentence summary.
-*   **Consensus Rule:** An event group is promoted to the **Global Timeline** (memories) if its **Cumulative Model Weight** exceeds the threshold (Default: 2.0).
-*   **Future Tracking (Proactive Positioning):** If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
-*   **Weighted Tie-Breaker:** When models are split between BULLISH and BEARISH, the system uses model weights (configured in `config.py`) to determine the majority impact rather than a simple head-count.
-*   documentation: ./engine/event-consensus-walkthrough.md
-
-**9. Trend & Concept Momentum Analysis** ✅
-*   **Tech:** Supabase pgvector / Python
-*   **Vectorized Frequency:** Instead of just counting keywords, the engine embeds the "Concept" (e.g., "NVIDIA Blackwell Delay") and performs a similarity search against the memories table to find semantically related mentions over a rolling 90-day window.
-*   **Semantic Merging:** Prevents data fragmentation by automatically merging concepts with $> 0.75$ similarity into a single "Master Concept" record.
-*   **Trend Archeology:** Each mention is stored with a first_seen_at timestamp and a cumulative 90-day frequency count.
-*   **Momentum Scoring:** The engine calculates a "Momentum Score" based on a hybrid formula: `Intensity * Growth`. 
-    *   **Intensity:** Rewards sheer relevance/volume using a log scale: `log(recent_mentions + 1) + 1`.
-    *   **Growth:** Rewards acceleration by comparing the 7-day daily average against a 30-day daily average.
-*   **Decay:** Stale concepts have their momentum scores reduced by 50% after 28 days of inactivity (half-life decay model), preventing outdated trends from persisting.
-*   **Data Structure:** Updates a `concept_metrics` table tracking concept_vector, mention_count, first_mention_date, and velocity_score (used to store Momentum Score). This acts as an **Analytical Aggregation Layer** separate from the raw `memories`.
-*   **Visualization:** The daily pipeline automatically calculates 2D PCA coordinates (`pca_x`, `pca_y`) for all concepts, enabling real-time visualization on the [Concept Cluster Map](../../apps/web/src/routes/concepts/index.tsx).
-*   documentation: ./engine/trend-momentum-analysis.md
-
-**9.a. General Review**
-*   documentation: ./engine/claude-step-9-and-before-review.md
-
-**10. Pre-Market Validation (Hallucination Guardrails)** ✅
-
-*   **Tech:** Python / `MarketDataManager` / yfinance or FMP
-*   **Cache-First Architecture:** Uses a `market_data_cache` table in Supabase (4-hour TTL) to minimize external API dependencies and prevent rate limits. A permanent record of all fetched prices is stored in the `price_history` table for long-term analysis.
-*   **Guardrail A (Existence):** *Verify ticker exists and is not delisted.*
-*   **Guardrail B (Price Banding):** *If AI wants to "Buy AAPL at $50" but market price is $150, reject trade (Price Hallucination).*
-*   **Guardrail C (Liquidity):** *Reject tickers with Market Cap < $2B (Penny Stock protection).*
-*   **Guardrail D (SMA Floor):** *Reject trades that would push the projected SMA below 10% of total equity to ensure Reg T compliance.*
-*   **Guardrail E (Minimum Trade Value):** *Reject trades with total value < $1,000 (1/10th starting balance) to ensure meaningful positions.*
-*   **Guardrail F (Robust Price Fallback):** *In `calculate_reg_t_metrics`, if market data fails (price = 0), positions are valued at their `average_cost_basis`. This prevents "Negative Total Equity" hallucinations for margin accounts.*
-*   **Guardrail G (Hallucination Filter):** *Immediately reject tickers with invalid characters or LLM placeholders (e.g., "N/A", "NONE") before external API calls to prevent provider errors.*
-*   **Double-Layer Security:** These guardrails run both as an LLM Tool (Phase 2, Step 5) and as a final validation gauntlet before execution. **Ticker Casing** is normalized to uppercase across all layers for consistency.
-*   documentation: ./engine/pre-market-validation.md
-*   File: `apps/engine/execution/market_data.py`, `apps/engine/execution/validation.py`
+### Phase 4: Feedback & Specialized Agents
+21. **Post-Mortem (Manager Agent):** Compare reasoning to 5-day performance; generate lessons.
+22. **Contrarian Agent:** Identifies crowded trades or missed risks.
+23. **Government Tracking:** Monthly audit of incentives and policies.
 
 ### Phase 3: Market Execution (Sequential)
 
@@ -356,6 +237,8 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of price data source |
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
+| **Agents** | `MANAGER_AGENT_ENABLED` | Toggle for Post-Mortem analysis | Feedback Loop |
+|  | `CONTRARIAN_AGENT_ENABLED` | Toggle for Contrarian signals | Advanced Strategy |
 | **Web** | `VITE_SUPABASE_URL` | Supabase API URL (Exposed to Browser) | Frontend Auth & Data Fetching |
 |  | `VITE_SUPABASE_ANON_KEY` | Supabase Anon Key (Exposed to Browser) | Frontend Auth & Data Fetching |
 
@@ -440,6 +323,16 @@ graph TD
         
         G --> J
         K[User Comments] -->|Supabase Auth| J
+    end
+
+    subgraph "Analysis & Feedback (Phase 5)"
+        I --> PM[Manager Agent: Post-Mortem]
+        PM -->|Lessons Learned| V
+        
+        CP --> CA[Contrarian Agent]
+        CA -->|Counter-Signals| H
+        
+        GOV[Gov Tracking] -->|Incentives| V
     end
 ```
 

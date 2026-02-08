@@ -59,3 +59,38 @@ class YFinanceProvider(FinancialProvider):
         except Exception as e:
             logger.error(f"Unexpected error fetching data from yfinance for {ticker}: {e}")
             return None
+
+    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
+        """Fetch historical price data using yfinance."""
+        try:
+            loop = asyncio.get_event_loop()
+            t = await loop.run_in_executor(None, lambda: yf.Ticker(ticker))
+            # period parameter can be 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+            # For specific days, we can use period="1mo" or similar if days <= 30
+            # For exact days, period doesn't work well, but range does.
+            # Let's use a safe period like '1mo' for up to 30 days.
+            period = "1mo" if days <= 30 else "3mo"
+            hist = await loop.run_in_executor(None, lambda: t.history(period=period))
+
+            if hist.empty:
+                logger.warning(f"No history found for {ticker} on yfinance.")
+                return []
+
+            # Take the last N days
+            recent = hist.tail(days)
+            results = []
+            for timestamp, row in recent.iterrows():
+                results.append({
+                    "price": float(row["Close"]),
+                    "fetched_at": timestamp.isoformat()
+                })
+            
+            # YFinance returns in ascending order (oldest first). 
+            # Our engine usually expects descending (latest first) or we handle it in tools.
+            # Let's keep it latest first for consistency with Supabase queries.
+            results.reverse()
+            return results
+
+        except Exception as e:
+            logger.error(f"Error fetching history from yfinance for {ticker}: {e}")
+            return []

@@ -26,3 +26,12 @@ class FinancialProvider(ABC):
             TickerData if found, None if ticker does not exist or error occurs.
         """
         pass
+
+    @abstractmethod
+    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
+        """Fetch historical price data for a ticker.
+        
+        Returns:
+            List of dicts with 'price' and 'fetched_at' (ISO timestamp).
+        """
+        pass

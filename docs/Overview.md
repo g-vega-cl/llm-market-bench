@@ -55,18 +55,30 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
-10. **Pre-Market Validation:** Existence, price banding, and liquidity checks.
-11. **Reg T Margin Validation:** Ensure buying power and SMA safety floor.
+10. **Second-Step Verification**: A skeptical "Verifier" agent (using the original decision's provider) audits BUY/SELL signals using specialized tools (`get_volatility_metrics`, `get_sector_alternatives`).
+11. **Trade Abort/Adjustment**: Verification results can force a `REJECTED_VERIFICATION` or `ADJUSTED_ALLOCATION` before money moves.
+12. **Pre-Market Validation**: Existence, price banding, and liquidity checks.
+13. **Reg T Margin Validation**: Ensure buying power and SMA safety floor.
 12. **Trade Settlement:** Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
 14. **Ledger Update:** Daily equity curve snapshot.
 
-### Phase 4: Feedback & Specialized Agents
+### Phase 5: Feedback & Specialized Agents
 21. **Post-Mortem (Manager Agent):** Compare reasoning to 5-day performance; generate lessons.
 22. **Contrarian Agent:** Identifies crowded trades or missed risks.
-23. **Government Tracking:** Monthly audit of incentives and policies.
+23. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
+24. **Government Tracking:** Monthly audit of incentives and policies.
 
 ### Phase 3: Market Execution (Sequential)
+
+**10. Second-Step Verification** ✅
+
+*   **Tech:** Python / Multi-Provider Tool Loop
+*   **Logic:** *Every BUY/SELL signal is intercepted by a dedicated verifier.*
+*   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
+*   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays.*
+*   **Market Data Fallback**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker.*
+*   **Outcome**: *Approves, rejects, or shrinks the trade allocation.*
 
 **11. Pre-Execution Margin Validation** ✅
 
@@ -308,6 +320,11 @@ graph TD
         AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]
         
         AT --> CP{Event Consensus Protocol}
+        
+        CP --> VER[Skeptical Verifier Agent]
+        VER -->|Fallback to YFinance| YF[(YFinance History)]
+        VER -->|Abort/Adjust| E{Execution Guardrails}
+        
         CP -->|Semantic Grouping + Dedupe| SYN[LLM Synthesis]
         
         SYN --> TM[Trend & Momentum Analysis]

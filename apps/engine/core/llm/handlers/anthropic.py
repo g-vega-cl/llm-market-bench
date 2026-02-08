@@ -10,7 +10,8 @@ async def run_tool_loop(
     raw_client, 
     model_name: str, 
     messages: list, 
-    max_tool_steps: int = 5
+    max_tool_steps: int = 5,
+    override_tools: list | None = None
 ) -> None:
     """Runs the tool execution loop for Anthropic.
 
@@ -32,7 +33,7 @@ async def run_tool_loop(
             "model": model_name,
             "messages": current_messages,
             "max_tokens": 8000,
-            "tools": [
+            "tools": override_tools or [
                 tools.STOCK_TOOL_DEFINITION_ANTHROPIC,
                 tools.PRICE_HISTORY_TOOL_DEFINITION_ANTHROPIC,
                 tools.POSITION_PNL_TOOL_DEFINITION_ANTHROPIC,

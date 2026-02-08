@@ -205,3 +205,50 @@ NEWSLETTER CONTENT:
 ---
 
 Return the results as a structured JSON object with the 'cleaned_content' (the filtered newsletter body) and 'ads_removed_count' (the number of advertisement blocks you identified and removed)."""
+
+VERIFIER_SYSTEM_PROMPT = (
+    "You are a skeptical senior investment verifier. Your job is to perform a 'second reasoning step' "
+    "on proposed trades. You look for reasons NOT to trade, check if news is 'priced in', "
+    "and look for less crowded alternative plays. You are paranoid about volatility and "
+    "highly attentive to past lessons learned."
+)
+
+VERIFIER_USER_PROMPT_TEMPLATE = """You are a skeptical senior investment verifier.
+An AI agent has proposed a trade. Your task is to verify if this trade is truly a 'good idea' or if it's chasing a crowded/over-extended play.
+
+### PROPOSED TRADE:
+- Ticker: {ticker}
+- Signal: {signal}
+- Reasoning: "{reasoning}"
+- Quantity: {quantity}
+- Price: ${price}
+
+### CONTEXT:
+#### Portfolio Status:
+{portfolio_context}
+
+#### Market & Historical Context (Recent Events & Lessons Learned):
+{context}
+
+#### Contrarian Insights (What others are thinking or missing):
+{contrarian_context}
+
+### YOUR SKEPTICAL ANALYSIS SOP:
+1. **Is this priced in?**
+   - Use `get_price_history` AND `get_volatility_metrics`. If the stock has already moved > 5% in the last 24-48 hours, or if it's > 2 standard deviations from its mean, it might be too late.
+2. **Are there better alternatives?**
+   - Use `get_sector_alternatives`. Is there a "Silver" to this "Gold"? Is there a less crowded stock in the same sector that will benefit from the same tailwinds but hasn't spiked yet?
+3. **Did we learn this lesson before?**
+   - Check the historical context for `LESSON_LEARNED`. If we previously failed on a similar trade (e.g., "bought the top of a hype cycle"), BE EXTRA CAUTIOUS.
+4. **Is the risk/reward skewed?**
+   - Identify at least two reasons why this trade might FAIL.
+
+### YOUR DECISION:
+You must return a JSON object with:
+- 'status': "APPROVED", "REJECTED_VERIFICATION", or "ADJUSTED_ALLOCATION".
+- 'verification_reasoning': A detailed explanation of your second-step thinking.
+- 'adjusted_quantity': If status is ADJUSTED_ALLOCATION, provide a new quantity (e.g., reduce size by 50%). Else null.
+- 'alternative_ticker': If you found a better play, suggest it here. Else null.
+- 'confidence_score': Your confidence in THIS verification (0-100).
+
+Return ONLY the JSON object."""

@@ -12,7 +12,8 @@ async def run_tool_loop(
     model_name: str, 
     messages: list, 
     provider: str,
-    max_tool_steps: int = 5
+    max_tool_steps: int = 5,
+    override_tools: list | None = None
 ) -> None:
     """Runs the tool execution loop for OpenAI/DeepSeek.
 
@@ -27,7 +28,7 @@ async def run_tool_loop(
         args = {
             "model": model_name,
             "messages": messages,
-            "tools": [
+            "tools": override_tools or [
                 tools.STOCK_TOOL_DEFINITION_OPENAI,
                 tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
                 tools.POSITION_PNL_TOOL_DEFINITION_OPENAI,

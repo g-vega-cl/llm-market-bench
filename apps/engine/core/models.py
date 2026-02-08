@@ -167,3 +167,21 @@ class NewsletterCleaningResponse(BaseModel):
 
     cleaned_content: str = Field(..., description="The cleaned newsletter text")
     ads_removed_count: int = Field(0, description="Number of ad blocks removed")
+
+
+class VerificationResult(BaseModel):
+    """Represents the outcome of the 'second reasoning step' verification.
+
+    Attributes:
+        status: The verification result (APPROVED, REJECTED_VERIFICATION, or ADJUSTED_ALLOCATION).
+        verification_reasoning: Detailed explanation of the second-step thinking.
+        adjusted_quantity: If allocation is adjusted, the new share count.
+        alternative_ticker: If a better play was found, the suggested ticker.
+        confidence_score: Confidence in the verification (0-100).
+    """
+
+    status: Literal["APPROVED", "REJECTED_VERIFICATION", "ADJUSTED_ALLOCATION"]
+    verification_reasoning: str = Field(..., description="Detailed explanation of the second-step thinking")
+    adjusted_quantity: int | None = Field(None, description="New quantity if allocation is adjusted")
+    alternative_ticker: str | None = Field(None, description="Suggested alternative stock ticker")
+    confidence_score: int = Field(..., ge=0, le=100, description="Confidence score for this verification")

@@ -69,3 +69,36 @@ class FMPProvider(FinancialProvider):
         except Exception as e:
             logger.error(f"Unexpected error fetching data from FMP for {ticker}: {e}")
             return None
+
+    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
+        """Fetch historical price data using FMP."""
+        if not self.api_key:
+            return []
+
+        try:
+            async with httpx.AsyncClient() as client:
+                # FMP historical-price-full returns the most recent data
+                resp = await client.get(
+                    f"{self.BASE_URL}/historical-price-full/{ticker}",
+                    params={"timeseries": days, "apikey": self.api_key}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if not data or "historical" not in data:
+                    logger.warning(f"No history found for {ticker} on FMP.")
+                    return []
+
+                results = []
+                for entry in data["historical"]:
+                    results.append({
+                        "price": float(entry["close"]),
+                        "fetched_at": entry["date"] # FMP provides YYYY-MM-DD
+                    })
+                
+                # FMP usually returns descending (latest first)
+                return results
+
+        except Exception as e:
+            logger.error(f"Error fetching history from FMP for {ticker}: {e}")
+            return []

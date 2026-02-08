@@ -11,6 +11,7 @@ from analyze import analyze_chunks
 from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
+from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
 from core.config import COMMAND_INGEST, COMMAND_POST_MORTEM, COMMAND_GOVERNMENT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
@@ -58,7 +59,7 @@ async def run_ingest():
 
     try:
             # Note: analyze_chunks now handles fetching government and lesson context
-        decisions, macro_events = await analyze_chunks(data)
+        decisions, macro_events, aggregated_context = await analyze_chunks(data)
         logger.info(
             f"Analysis complete. Generated {len(decisions)} decisions "
             f"and {len(macro_events)} raw macro events."
@@ -90,10 +91,9 @@ async def run_ingest():
 
         # --- Contrarian Analysis (Phase 2.5) ---
         logger.info("Starting Contrarian Agent Analysis...")
-        # We'll re-fetch context or pass it if we had it.
-        # For now, contrarian agent handles its own context internally or we can pass it.
+        # We pass the aggregated context to the contrarian agent for deeper analysis
         contrarian_decisions, contrarian_events = await run_contrarian_analysis(
-            data, decisions, context=""
+            data, decisions, context=aggregated_context
         )
         decisions.extend(contrarian_decisions)
         macro_events.extend(contrarian_events)
@@ -165,22 +165,69 @@ async def run_ingest():
                     qty = 0
                     alloc_pct = d.allocation_percentage if d.allocation_percentage and d.allocation_percentage > 0 else 5 # Fallback to 5%
                     
+                    # --- Market Data for Verification & Metrics ---
+                    all_pos_tickers = list(portfolio.positions.keys())
+                    if d.ticker not in all_pos_tickers:
+                        all_pos_tickers.append(d.ticker)
+                    
+                    from execution.market_data import MarketDataManager
+                    mdm = MarketDataManager()
+                    p_map = {}
+                    for t in all_pos_tickers:
+                        q = await mdm.get_quote(t)
+                        if q:
+                            p_map[t] = q.price
+                    
                     if d.signal.upper() == "BUY":
-                        # Use current buying power if metrics are available, else initialize
+                        # Ensure metrics are calculated if not already
                         if not portfolio.metrics:
-                            all_pos_tickers = list(portfolio.positions.keys())
-                            if d.ticker not in all_pos_tickers:
-                                all_pos_tickers.append(d.ticker)
-                            
-                            from execution.market_data import MarketDataManager
-                            mdm = MarketDataManager()
-                            p_map = {}
-                            for t in all_pos_tickers:
-                                q = await mdm.get_quote(t)
-                                if q:
-                                    p_map[t] = q.price
                             portfolio.calculate_reg_t_metrics(p_map)
                         
+                        # --- Second Reasoning Step (Skeptical Verification) ---
+                        logger.info(f"[{d.ticker}] Starting Second-Step Verification...")
+                        
+                        # Prepare context
+                        # We use the existing aggregated_context (already handles lessons)
+                        # and we can pass any contrarian thoughts if available
+                        contrarian_text = ""
+                        if 'contrarian_decisions' in locals():
+                            # Find if contrarian agent has thoughts on this ticker
+                            relevant_c = [cd for cd in contrarian_decisions if cd.ticker == d.ticker]
+                            if relevant_c:
+                                contrarian_text = "\n".join([f"- {c.model_name}: {c.reasoning}" for c in relevant_c])
+
+                        verification = await verify_trading_decision(
+                            decision=d,
+                            portfolio_context=portfolio.get_portfolio_summary(p_map),
+                            aggregated_context=aggregated_context,
+                            contrarian_context=contrarian_text
+                        )
+                        
+                        logger.info(f"[{d.ticker}] Verification Result: {verification.status} (Conf: {verification.confidence_score}%)")
+                        
+                        if verification.status == "REJECTED_VERIFICATION":
+                            logger.warning(
+                                f"[{d.ticker}] REJECTED (Second-Step Verification): {verification.verification_reasoning} "
+                                f"({d.model_provider}/{d.model_name})"
+                            )
+                            save_decision(
+                                sb_client,
+                                d,
+                                status="REJECTED_VERIFICATION",
+                                metadata={
+                                    "reason": verification.verification_reasoning,
+                                    "confidence": verification.confidence_score
+                                }
+                            )
+                            rejected_decisions += 1
+                            continue
+                        
+                        # Add verification metadata for approved/adjusted trades
+                        meta["verification_reasoning"] = verification.verification_reasoning
+                        meta["verification_confidence"] = verification.confidence_score
+                        if verification.alternative_ticker:
+                            meta["suggested_alternative"] = verification.alternative_ticker
+
                         bp = portfolio.metrics.buying_power if portfolio.metrics else 0
                         from core.config import MIN_TRADE_VALUE
                         usd_to_spend = (alloc_pct / 100.0) * bp
@@ -209,6 +256,11 @@ async def run_ingest():
                          logger.warning(f"[{d.ticker}] Skipping {d.signal}: Calculated quantity is 0.")
                          rejected_decisions += 1
                          continue
+
+                    # --- Apply Verification Adjustment ---
+                    if verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
+                        logger.info(f"[{d.ticker}] Applying Verifier adjustment: {qty} -> {verification.adjusted_quantity}")
+                        qty = verification.adjusted_quantity
 
                     # --- Reg T Validation (BUY ONLY) ---
                     if d.signal.upper() == "BUY":

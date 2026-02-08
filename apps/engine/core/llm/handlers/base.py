@@ -25,4 +25,11 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             args["ticker"], 
             owner_id=model_name
         )
+    elif name == "get_volatility_metrics":
+        return await tools.execute_volatility_metrics_tool(
+            args["ticker"],
+            args.get("days", 14)
+        )
+    elif name == "get_sector_alternatives":
+        return await tools.execute_sector_alternatives_tool(args["ticker"])
     return "Unknown tool"

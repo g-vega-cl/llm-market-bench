@@ -163,4 +163,4 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         f"Completed analysis. Generated {len(valid_decisions)} decisions "
         f"and {len(valid_events)} macro events from batch processing."
     )
-    return valid_decisions, valid_events
+    return valid_decisions, valid_events, aggregated_context

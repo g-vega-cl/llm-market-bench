@@ -141,3 +141,43 @@ class MarketDataManager:
 
         except Exception as e:
             logger.error(f"Error saving market data for {data.ticker}: {e}")
+
+    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
+        """Fetch historical price data, checking local DB first.
+        
+        Args:
+            ticker: The stock ticker symbol.
+            days: Number of days of history to retrieve.
+            
+        Returns:
+            List of dicts with 'price' and 'fetched_at'.
+        """
+        ticker = ticker.upper()
+        
+        # 1. Check local DB
+        try:
+            res = self.client.table("price_history") \
+                .select("price, fetched_at") \
+                .eq("ticker", ticker) \
+                .order("fetched_at", desc=True) \
+                .limit(days) \
+                .execute()
+            
+            # If we have enough data (at least 70% of requested days)
+            if res.data and len(res.data) >= (days * 0.7):
+                logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples).")
+                return [{
+                    "price": float(row["price"]),
+                    "fetched_at": row["fetched_at"]
+                } for row in res.data]
+        except Exception as e:
+            logger.warning(f"Error checking local price history for {ticker}: {e}")
+
+        # 2. Fetch from Provider
+        logger.info(f"Local history insufficient for {ticker}. Fetching from provider...")
+        history = await self.provider.get_history(ticker, days)
+        
+        if history:
+            return history
+            
+        return []

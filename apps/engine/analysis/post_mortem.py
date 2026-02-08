@@ -104,13 +104,9 @@ async def perform_post_mortems(days_back: int = 5):
                 content=memory_content,
                 memory_type="LESSON_LEARNED",
                 metadata={
-                    "type": "post_mortem",
-                    "ticker": ticker,
-                    "trade_id": trade["id"],
-                    "model_name": model_name,
-                    "is_regret": resp.is_regret,
                     "price_change_pct": price_change_pct
-                }
+                },
+                check_similarity=True
             )
             
             if success:

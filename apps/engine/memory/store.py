@@ -128,6 +128,84 @@ def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float =
         logger.error(f"Error finding potential ancestors: {e}")
         return []
 
+def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, embedding: list[float] = None) -> Optional[str]:
+    """Checks if a semantically similar memory exists within the last N hours.
+
+    Args:
+        content: The text content to check.
+        threshold: Cosine similarity threshold.
+        hours: How far back to look.
+        embedding: Optional pre-calculated embedding.
+    
+    Returns:
+        The ID of the similar memory if found, None otherwise.
+    """
+    try:
+        if embedding is None:
+            embedding = get_embedding(content)
+        
+        if not embedding:
+            return None
+
+        client = get_supabase_client()
+        
+        # We query the table directly with pgvector operators and time filters
+        # for maximum precision.
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        
+        # Fetch recent embeddings to check similarity in Python
+        recent_embeddings_response = client.table("memories").select("id, embedding, content").filter(
+            "created_at", "gte", cutoff
+        ).filter(
+            "status", "eq", "ACTIVE"
+        ).execute()
+        
+        if not recent_embeddings_response.data:
+            return None
+            
+        from consensus import cosine_similarity
+        
+        for row in recent_embeddings_response.data:
+            recent_vector = row.get("embedding")
+            if recent_vector:
+                # Convert string representation to list if necessary
+                if isinstance(recent_vector, str):
+                    import json
+                    recent_vector = json.loads(recent_vector)
+                
+                sim = cosine_similarity(embedding, recent_vector)
+                
+                if sim >= threshold:
+                    logger.info(f"Duplicate event found (ID: {row['id']}, Sim: {sim:.2f}): {row['content'][:50]}...")
+                    return row["id"]
+
+        return None
+    except Exception as e:
+        logger.error(f"Error checking similar memories: {e}")
+        return None
+
+def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48) -> bool:
+    """Deprecated: Use find_similar_memory instead."""
+    return find_similar_memory(content, threshold, hours) is not None
+
+def update_memory_status(memory_id: str, status: str) -> bool:
+    """Updates the status of an existing memory.
+
+    Args:
+        memory_id: The UUID of the memory to update.
+        status: The new status (ACTIVE, RESOLVED, SUPERSEDED).
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        client = get_supabase_client()
+        client.table("memories").update({"status": status}).eq("id", memory_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating memory status: {e}")
+        return False
+
 def add_memory(
     content: str, 
     metadata: Optional[dict[str, Any]] = None,
@@ -135,7 +213,10 @@ def add_memory(
     status: str = "ACTIVE",
     relationship_type: Optional[str] = None,
     target_date: Optional[str] = None,
-    memory_type: str = "MARKET_EVENT"
+    memory_type: str = "MARKET_EVENT",
+    check_similarity: bool = False,
+    similarity_threshold: float = 0.90,
+    lookback_hours: int = 24
 ) -> str | None:
     """Adds a new text chunk to the memory store.
 
@@ -146,6 +227,9 @@ def add_memory(
         status: The initial status of the memory (ACTIVE, RESOLVED, SUPERSEDED).
         relationship_type: Type of relationship to parent (REVERSAL, UPDATE, RESOLUTION, GENERAL).
         memory_type: Categorization (MARKET_EVENT, GOVERNMENT_INCENTIVE, LESSON_LEARNED).
+        check_similarity: Whether to perform semantic deduplication before insertion.
+        similarity_threshold: Threshold for duplicate detection (0.0 to 1.0).
+        lookback_hours: How many hours to look back for duplicates.
 
     Returns:
         The ID of the new memory if successful, None otherwise.
@@ -154,6 +238,12 @@ def add_memory(
         embedding = get_embedding(content)
         if not embedding:
             return None
+
+        if check_similarity:
+            similar_id = find_similar_memory(content, similarity_threshold, lookback_hours, embedding=embedding)
+            if similar_id:
+                logger.warning(f"Skipping memory insertion: Semantic duplicate of {similar_id}")
+                return None
 
         client = get_supabase_client()
         payload = {
@@ -191,96 +281,6 @@ def add_memory(
 
         logger.error(f"Error adding memory: {e}")
         return None
-
-def update_memory_status(memory_id: str, status: str) -> bool:
-    """Updates the status of an existing memory.
-
-    Args:
-        memory_id: The UUID of the memory to update.
-        status: The new status (ACTIVE, RESOLVED, SUPERSEDED).
-
-    Returns:
-        True if successful, False otherwise.
-    """
-    try:
-        client = get_supabase_client()
-        client.table("memories").update({"status": status}).eq("id", memory_id).execute()
-        return True
-    except Exception as e:
-        logger.error(f"Error updating memory status: {e}")
-        return False
-
-
-def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48) -> bool:
-    """Checks if a semantically similar memory exists within the last N hours.
-
-    Args:
-        content: The text content to check.
-        threshold: Cosine similarity threshold.
-        hours: How far back to look.
-
-    Returns:
-        True if a similar memory exists, False otherwise.
-    """
-    try:
-        embedding = get_embedding(content)
-        if not embedding:
-            return False
-
-        client = get_supabase_client()
-        
-        # We query the table directly with pgvector operators and time filters
-        # for maximum precision.
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-        
-        # Using Supabase client to perform a vector similarity search with a filter
-        # Operator '<=>' is cosine distance (1 - similarity)
-        response = client.table("memories").select("id, created_at, content").filter(
-            "created_at", "gte", cutoff
-        ).filter(
-            "status", "eq", "ACTIVE"
-        ).order(
-            "embedding",  # Note: Sorting by vector in JS/Python client usually requires raw SQL
-                          # but we can filter by time first then check similarity in code
-                          # or just use the match_memories RPC if we modify it.
-                          # For now, let's fetch recent and check cosine similarity in Python 
-                          # to avoid needing a migration immediately.
-        ).execute()
-
-        if not response.data:
-            return False
-
-        # We'll calculate similarity for the recent items
-        # In production, this should be done with a modified RPC: 
-        # match_memories_with_time(query_embedding, match_threshold, match_count, min_time)
-        from consensus import cosine_similarity
-        
-        recent_embeddings_response = client.table("memories").select("embedding").filter(
-            "created_at", "gte", cutoff
-        ).filter(
-            "status", "eq", "ACTIVE"
-        ).execute()
-        
-        if not recent_embeddings_response.data:
-            return False
-            
-        for row in recent_embeddings_response.data:
-            recent_vector = row.get("embedding")
-            if recent_vector:
-                # Convert string representation to list if necessary
-                if isinstance(recent_vector, str):
-                    import json
-                    recent_vector = json.loads(recent_vector)
-                
-                sim = cosine_similarity(embedding, recent_vector)
-                if sim >= threshold:
-                    logger.info(f"Duplicate event found in recent history (Similarity: {sim:.2f})")
-                    return True
-
-        return False
-    except Exception as e:
-        logger.error(f"Error checking recent memories: {e}")
-        return False
 
 def decay_memories(sb_client: Client, decay_days: int = None):
     """Apply time-based decay to relevance scores of memories not updated recently.

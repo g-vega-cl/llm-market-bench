@@ -67,7 +67,8 @@ class GovernmentPipeline:
                         "is_government_incentive": True,
                         "expiry_date": event.expiry_date,
                         "impact": event.impact
-                    }
+                    },
+                    check_similarity=True
                 )
                 if success:
                     count += 1

@@ -12,7 +12,6 @@ import numpy as np
 from core.models import MacroEvent, DecisionObject
 from memory.store import (
     add_memory, 
-    check_recent_memories, 
     find_potential_ancestors, 
     update_memory_status
 )
@@ -162,10 +161,7 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
 
             majority_impact = _resolve_impact_tie(impact_weights)
             
-            # --- Temporal Deduplication ---
-            if check_recent_memories(representative_name, threshold=sim_threshold):
-                logger.info(f"Skipping promotion for '{representative_name}' - similar event found in recent history.")
-                continue
+
 
             # --- LLM Synthesis ---
             synthesis = await synthesize_event(
@@ -224,7 +220,10 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 },
                 parent_id=parent_id,
                 relationship_type=rel_type,
-                target_date=consensus_data.get("future_date")
+                target_date=consensus_data.get("future_date"),
+                check_similarity=True,
+                similarity_threshold=sim_threshold,
+                lookback_hours=24
             )
 
             if new_memory_id:

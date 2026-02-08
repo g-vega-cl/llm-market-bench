@@ -9,7 +9,8 @@ interface MemoryCardProps {
 export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
   return (
     <div
-      className="p-6 bg-white border border-zinc-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200"
+      id={memory.id}
+      className="p-6 bg-white border border-zinc-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 scroll-mt-24"
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-2 items-center">
@@ -17,9 +18,8 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
             {memory.metadata?.type?.replace('_', ' ') || 'General Memory'}
           </span>
           {memory.status && memory.status !== 'ACTIVE' && (
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-tight ${
-              memory.status === 'RESOLVED' ? 'bg-zinc-800 text-white' : 'bg-amber-100 text-amber-800'
-            }`}>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-tight ${memory.status === 'RESOLVED' ? 'bg-zinc-800 text-white' : 'bg-amber-100 text-amber-800'
+              }`}>
               {memory.status}
             </span>
           )}
@@ -33,40 +33,37 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
           {new Date(memory.created_at).toLocaleString()}
         </span>
       </div>
-      
-      <p className={`text-zinc-800 text-lg font-medium leading-relaxed mb-4 ${
-        memory.status === 'RESOLVED' ? 'opacity-50 line-through' : ''
-      }`}>
+
+      <p className={`text-zinc-800 text-lg font-medium leading-relaxed mb-4 ${memory.status === 'RESOLVED' ? 'opacity-50 line-through' : ''
+        }`}>
         {memory.content}
       </p>
 
       {memory.metadata && (
         <div className="flex flex-wrap gap-2 text-xs">
           {memory.metadata.ticker && (
-             <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
-               Ticker: {memory.metadata.ticker}
-             </span>
+            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
+              Ticker: {memory.metadata.ticker}
+            </span>
           )}
           {memory.metadata.impact && (
-             <span className={`px-2 py-1 rounded-md border ${
-               memory.metadata.impact === 'BULLISH' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-               memory.metadata.impact === 'BEARISH' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
-               'bg-zinc-50 text-zinc-700 border-zinc-100'
-             }`}>
-               Impact: {memory.metadata.impact}
-             </span>
+            <span className={`px-2 py-1 rounded-md border ${memory.metadata.impact === 'BULLISH' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                memory.metadata.impact === 'BEARISH' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                  'bg-zinc-50 text-zinc-700 border-zinc-100'
+              }`}>
+              Impact: {memory.metadata.impact}
+            </span>
           )}
           {memory.metadata.model_name && (
-             <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-100">
-               Model: {memory.metadata.model_name}
-             </span>
+            <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-100">
+              Model: {memory.metadata.model_name}
+            </span>
           )}
           {memory.metadata.is_regret !== undefined && (
-             <span className={`px-2 py-1 rounded-md border ${
-               memory.metadata.is_regret ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-             }`}>
-               {memory.metadata.is_regret ? 'Regret' : 'Success'}
-             </span>
+            <span className={`px-2 py-1 rounded-md border ${memory.metadata.is_regret ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+              }`}>
+              {memory.metadata.is_regret ? 'Regret' : 'Success'}
+            </span>
           )}
         </div>
       )}
@@ -80,9 +77,13 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
             <span className="text-xs font-bold uppercase tracking-tight">
               {memory.relationship_type || 'Related to'}:
             </span>
-            <p className="text-xs text-zinc-500 truncate max-w-md">
+            <a
+              href={`#${memory.parent_id}`}
+              className="text-xs text-zinc-500 truncate max-w-md hover:underline hover:text-blue-600 cursor-pointer block"
+              title="Click to view parent event"
+            >
               {parentMemory?.content || 'Previous Event'}
-            </p>
+            </a>
           </div>
         </div>
       )}

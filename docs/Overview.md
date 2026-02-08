@@ -132,7 +132,9 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)
 *   **Live Dashboard:** [benchify.netlify.app](https://benchify.netlify.app)
-*   **Public Insights:** A public [Memories Page](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective, including consensus events and trade reasoning.
+*   **Public Insights:** A public [Memories Page](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective.
+    *   **Event Linking:** Browse related "Update" events and trace their parent origins.
+    *   **Flow View:** An interactive, infinite-canvas visualization of narrative threads and event chains.
 
 **16a. Testing Infrastructure** ✅
 *   **Tech:** **Vitest + React Testing Library**

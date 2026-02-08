@@ -43,7 +43,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     """
     if not chunks:
         logger.warning("No chunks to analyze.")
-        return [], []
+        return [], [], ""
 
     # 1. Filter malformed chunks and aggregate historical context
     valid_chunks = [
@@ -56,7 +56,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
 
     if not valid_chunks:
         logger.warning("No valid chunks to analyze after filtering.")
-        return [], []
+        return [], [], ""
 
     queries = [chunk["content"] for chunk in valid_chunks]
     

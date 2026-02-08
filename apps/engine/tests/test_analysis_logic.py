@@ -125,7 +125,7 @@ class TestAnalysisOrchestration:
             mock_market_data.get_quote = AsyncMock(return_value=None)
             mock_market_data_class.return_value = mock_market_data
 
-            decisions, events = await analyze_chunks(chunks)
+            decisions, events, _ = await analyze_chunks(chunks)
 
         assert len(decisions) > 0
         assert isinstance(decisions[0], DecisionObject)
@@ -179,7 +179,7 @@ class TestAnalysisOrchestration:
             mock_market_data.get_quote = AsyncMock(return_value=None)
             mock_market_data_class.return_value = mock_market_data
 
-            decisions, events = await analyze_chunks(chunks)
+            decisions, events, _ = await analyze_chunks(chunks)
 
         assert len(decisions) == 0
         assert len(events) == 0

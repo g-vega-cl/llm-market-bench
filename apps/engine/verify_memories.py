@@ -28,7 +28,7 @@ async def verify():
     logger.info("Starting verification with user examples...")
     
     # 1. Analyze chunks
-    decisions, macro_events = await analyze_chunks(EXAMPLES)
+    decisions, macro_events, _ = await analyze_chunks(EXAMPLES)
     
     logger.info(f"Generated {len(macro_events)} macro events.")
     

@@ -76,7 +76,7 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
         mock_market_data_class.return_value = mock_market_data
         
         # Run analysis
-        decisions, events = await analyze_chunks(chunks)
+        decisions, events, _ = await analyze_chunks(chunks)
     
     # Verify we got all decisions
     assert len(decisions) >= 8  # 4 models * 2 decisions each = 8 total

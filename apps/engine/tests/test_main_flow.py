@@ -19,12 +19,14 @@ def mock_dependencies():
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
          patch("main.Portfolio") as MockPortfolio, \
+         patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
          patch("main.save_decision") as mock_save:
         
         # Setup defaults
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
+        mock_verify.return_value = MagicMock(status="APPROVED", verification_reasoning="Verified", confidence_score=100, alternative_ticker=None)
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()
@@ -51,7 +53,8 @@ def mock_dependencies():
             "validate": mock_validate,
             "portfolio_cls": MockPortfolio,
             "portfolio": mock_portfolio_instance,
-            "save": mock_save
+            "save": mock_save,
+            "verify": mock_verify
         }
 
 @pytest.mark.asyncio
@@ -69,7 +72,7 @@ async def test_run_ingest_hold_decision(mock_dependencies):
         model_provider="openai",
         model_name="gpt-4"
     )
-    md["analyze"].return_value = ([decision], [])
+    md["analyze"].return_value = ([decision], [], "Mocked context")
     
     # Setup validation to pass
     md["validate"].return_value = ValidationResult(
@@ -100,7 +103,7 @@ async def test_run_ingest_buy_decision(mock_dependencies):
         source_id="src1",
         price=150.0
     )
-    md["analyze"].return_value = ([decision], [])
+    md["analyze"].return_value = ([decision], [], "Mocked context")
     
     # Setup validation
     md["validate"].return_value = ValidationResult(
@@ -132,7 +135,7 @@ async def test_run_ingest_rejected_decision(mock_dependencies):
         ticker="PENNY",
         source_id="src1"
     )
-    md["analyze"].return_value = ([decision], [])
+    md["analyze"].return_value = ([decision], [], "Mocked context")
     
     # Fail validation
     md["validate"].return_value = ValidationResult(

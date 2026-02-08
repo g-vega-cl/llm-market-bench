@@ -221,7 +221,7 @@ newsletter_snapshots table after Phase 1:
 
 **File**: `apps/engine/analyze.py` → `analyze_chunks()`
 
-Before analysis, the engine validates all chunks to ensure they possess both a `source_id` and `content`. Any newsletter that failed to parse correctly during ingestion is skipped here to ensure the stability of the RAG and LLM stages.
+Before analysis, the engine validates all chunks to ensure they possess both a `source_id` and `content`. Any newsletter that failed to parse correctly during ingestion is skipped here to ensure the stability of the RAG and LLM stages. The engine also aggregates historical context (including government incentives and lessons learned) via parallel vector searches using a single set of embeddings.
 
 ```python
 valid_chunks = [
@@ -232,7 +232,7 @@ valid_chunks = [
 
 ### Step 2.2: Extract Query Texts
 
-**File**: `apps/engine/analyze.py` → `analyze_chunks()`
+**File**: `apps/engine/analyze.py` → `analyze_chunks()` (Returns `decisions, events, aggregated_context`)
 
 From the 4 stored newsletters, use the full content of each as queries for embedding:
 
@@ -383,7 +383,7 @@ response = client.rpc(...)
 
 ### Step 2.4: Aggregate Retrieved Context
 
-**File**: `apps/engine/analyze.py` → `analyze_chunks()`
+**File**: `apps/engine/analyze.py` → `analyze_chunks()` (Aggregates standard context + government incentives + lessons learned)
 
 Combine all retrieved context into a single string:
 
@@ -412,7 +412,7 @@ aggregated_context = """
 **Phase 2 Summary**:
 - 1 Gemini Embedding API call (batch for all 4 queries)
 - 4 Supabase RPC calls (vector similarity search)
-- Aggregated historical context ready for LLM analysis
+- Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis and returned for use by downstream agents (e.g., Contrarian Agent)
 
 ---
 

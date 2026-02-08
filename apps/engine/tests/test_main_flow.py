@@ -19,6 +19,7 @@ def mock_dependencies():
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
          patch("main.Portfolio") as MockPortfolio, \
+         patch("execution.market_data.MarketDataManager") as MockMDM, \
          patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
          patch("main.save_decision") as mock_save:
         
@@ -27,6 +28,11 @@ def mock_dependencies():
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
         mock_verify.return_value = MagicMock(status="APPROVED", verification_reasoning="Verified", confidence_score=100, alternative_ticker=None)
+        
+        # Mock MarketDataManager
+        mock_mdm_instance = MockMDM.return_value
+        mock_mdm_instance.get_quote = AsyncMock()
+        mock_mdm_instance.get_quote.side_effect = lambda t: MagicMock(price=150.0) if t == "GOOGL" else MagicMock(price=100.0)
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()

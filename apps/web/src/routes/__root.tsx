@@ -143,6 +143,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
           >
             Portfolios
+          </Link>{' '}
+          <Link
+            to="/how-it-works"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            How it Works
           </Link>
           <div className="ml-auto">
             {user ? (

@@ -76,7 +76,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Tech:** Python / Multi-Provider Tool Loop
 *   **Logic:** *Every BUY/SELL signal is intercepted by a dedicated verifier.*
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
-*   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays.*
+*   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis** (finding correlated stocks via embedding similarity).*
+*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers.*
 *   **Market Data Fallback**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation.*
 

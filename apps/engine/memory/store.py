@@ -184,10 +184,6 @@ def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, 
         logger.error(f"Error checking similar memories: {e}")
         return None
 
-def check_recent_memories(content: str, threshold: float = 0.85, hours: int = 48) -> bool:
-    """Deprecated: Use find_similar_memory instead."""
-    return find_similar_memory(content, threshold, hours) is not None
-
 def update_memory_status(memory_id: str, status: str) -> bool:
     """Updates the status of an existing memory.
 

@@ -18,7 +18,7 @@ An event group reaches "Consensus" based on the **Cumulative Model Weight** of t
 - **Attribute Voting**: Flags like `is_ongoing` and `is_future_catalyst` are also determined by weighted majority across models if the LLM synthesis does not explicitly state them.
 
 ### 3. Temporal Deduplication
-To prevent "RAG noise" and redundant signals, the engine queries the `memories` table to check if a semantically similar event was already promoted in the last **48 hours**. If a match is found, the new event is discarded.
+To prevent "RAG noise" and redundant signals, the engine queries the `memories` table to check if a semantically similar event was already promoted in the last **24 hours**. If a match is found, the new event is discarded.
 
 ### 4. Relationship Analysis & Memory Chains
 For events that reach consensus, the engine performs a "Relationship Analysis" before promotion:

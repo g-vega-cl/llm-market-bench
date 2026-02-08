@@ -47,15 +47,13 @@ def sample_events():
         )
     ]
 
-@patch("consensus.check_recent_memories")
 @patch("consensus.synthesize_event")
 @patch("consensus.get_embeddings_batch")
 @patch("consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_check_recent, sample_events):
+async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_embeddings, mock_synthesize, sample_events):
     # Mock return values
     mock_add_memory.return_value = "new-uuid"
-    mock_check_recent.return_value = False
     mock_synthesize.return_value = {
         "name": "Synthesized Event", 
         "summary": "Synthesized Summary",
@@ -83,14 +81,12 @@ async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_emb
     kwargs = mock_add_memory.call_args.kwargs
     assert kwargs["target_date"] == "June 2026"
 
-@patch("consensus.check_recent_memories")
 @patch("consensus.synthesize_event")
 @patch("consensus.get_embeddings_batch")
 @patch("consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_check_recent, sample_events):
-    mock_add_memory.return_value = True
-    mock_check_recent.return_value = True # Simulate recent similar event found
+async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddings, mock_synthesize, sample_events):
+    mock_add_memory.return_value = None # Simulate deduplication (returns None if skip)
     
     mock_get_embeddings.return_value = [
         [1.0, 0.0, 0.0],
@@ -103,16 +99,13 @@ async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddi
     
     # Threshold met but deduplicated
     assert len(consensus_events) == 0
-    assert not mock_add_memory.called
-    assert not mock_synthesize.called
+    assert mock_add_memory.called
 
-@patch("consensus.check_recent_memories")
 @patch("consensus.get_embeddings_batch")
 @patch("consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddings, mock_check_recent, sample_events):
-    mock_add_memory.return_value = True
-    mock_check_recent.return_value = False
+async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddings, sample_events):
+    mock_add_memory.return_value = "new-id"
     
     # All different
     mock_get_embeddings.return_value = [
@@ -129,14 +122,12 @@ async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddin
     assert len(consensus_events) == 0
     assert not mock_add_memory.called
 
-@patch("consensus.check_recent_memories")
 @patch("consensus.synthesize_event")
 @patch("consensus.get_embeddings_batch")
 @patch("consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_check_recent, sample_events):
-    mock_add_memory.return_value = True
-    mock_check_recent.return_value = False
+async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_embeddings, mock_synthesize, sample_events):
+    mock_add_memory.return_value = "new-id"
     mock_synthesize.return_value = {"name": "Semantic Synthesized", "summary": "Semantic Summary"}
     
     # Mock embeddings for semantic similarity

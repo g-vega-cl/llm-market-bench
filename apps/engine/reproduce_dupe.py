@@ -1,7 +1,7 @@
 
 import asyncio
 import logging
-from apps.engine.memory.store import add_memory, check_recent_memories
+from apps.engine.memory.store import add_memory
 from apps.engine.core.db import get_supabase_client
 
 # Configure logging
@@ -39,8 +39,8 @@ async def reproduce():
         logger.info("SUCCESS: Duplicate memory was blocked.")
 
     # 3. Validation manually (optional now)
-    # is_dupe = check_recent_memories(dupe_content, threshold=0.85, hours=1)
-    # logger.info(f"check_recent_memories detected dupe: {is_dupe}")
+    # is_dupe = add_memory(dupe_content, check_similarity=True, lookback_hours=1)
+    # logger.info(f"detected dupe: {is_dupe is None}")
 
     # Cleanup
     client = get_supabase_client()

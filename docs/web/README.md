@@ -41,6 +41,7 @@ apps/web/
 │   │   │   ├── route.tsx
 │   │   │   ├── -PortfolioTable.tsx
 │   │   │   └── -queries.ts # Route-local Supabase queries (prefixed with -)
+│   │   ├── how-it-works.tsx  # System process visualization page
 │   ├── shared/          # SHARED DOMAIN: Business concepts used across routes
 │   │   ├── auth/
 │   │   └── portfolios/

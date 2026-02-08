@@ -149,6 +149,9 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Public Insights:** A public [Memories Page](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective.
     *   **Event Linking:** Browse related "Update" events and trace their parent origins.
     *   **Flow View:** An interactive, infinite-canvas visualization of narrative threads and event chains.
+*   **How it Works:** A visual timeline at [/how-it-works](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/how-it-works.tsx) explains the 5-phase system process.
+    *   **Phase Breakdown:** Ingestion → Analysis → Verification → Execution → Feedback.
+    *   **User Education:** Helps users understand the data flow from newsletters to executed trades.
 
 **16a. Testing Infrastructure** ✅
 *   **Tech:** **Vitest + React Testing Library**

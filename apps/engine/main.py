@@ -13,14 +13,14 @@ from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
 from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
-from core.config import COMMAND_INGEST, COMMAND_POST_MORTEM, COMMAND_GOVERNMENT, logger
+from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, ValidationStatus
 from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
 from ingest.government import run_government_pipeline
 from memory.store import add_memory
-from analysis.post_mortem import perform_post_mortems
+from analysis.post_analysis import perform_post_analysis
 from analysis.pca_utils import update_pca_coordinates
 
 
@@ -369,9 +369,9 @@ async def run_ingest():
         logger.error(f"Analysis or Consensus failed: {e}")
 
 
-async def run_post_mortem():
-    """Runs the post-mortem analysis for historical trades."""
-    await perform_post_mortems(days_back=5)
+async def run_post_analysis():
+    """Runs the post-analysis for historical trades."""
+    await perform_post_analysis(windows=[5, 14, 30])
 
 
 def main():
@@ -379,7 +379,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST, COMMAND_POST_MORTEM, COMMAND_GOVERNMENT],
+        choices=[COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT],
         help="Action to perform"
     )
 
@@ -387,8 +387,8 @@ def main():
 
     if args.command == COMMAND_INGEST:
         asyncio.run(run_ingest())
-    elif args.command == COMMAND_POST_MORTEM:
-        asyncio.run(run_post_mortem())
+    elif args.command == COMMAND_POST_ANALYSIS:
+        asyncio.run(run_post_analysis())
     elif args.command == COMMAND_GOVERNMENT:
         asyncio.run(run_government_pipeline())
 

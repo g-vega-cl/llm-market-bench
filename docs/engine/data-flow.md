@@ -11,7 +11,7 @@ The pipeline has six main phases:
 3. **LLM Analysis**: Send enriched prompts to 4 LLM providers in parallel
 4. **Attribution & Consensus**: Save decisions with traceability and determine global market events
 5. **Validation & Execution**: Enforce guardrails and reconcile trades in the ledger
-6. **Reinforcement**: Perform post-mortem analysis on past trades to improve future reasoning
+6. **Reinforcement**: Perform post-analysis on past trades to improve future reasoning
 
 ---
 
@@ -847,23 +847,23 @@ await portfolio.record_performance_snapshot(price_map)
 
 ---
 
-## Phase 11: Regret-Driven Reinforcement (Post-Mortem)
+## Phase 11: Regret-Driven Reinforcement (Post-Analysis)
 
 ### Step 11.1: Historical Performance Audit
 
-**File**: `apps/engine/analysis/post_mortem.py`, `apps/engine/main.py:run_post_mortem`
+**File**: `apps/engine/analysis/post_analysis.py`, `apps/engine/main.py:run_post_analysis`
 
 To enable self-correction, the engine periodically audits its own performance. This closes the loop between "Theory" and "Profit".
 
 **Process**:
-1. **Query History**: Fetch all trades executed exactly 5 days ago.
+1. **Query History**: Fetch all trades executed at 5, 14, and 30 day intervals.
 2. **Fetch Returns**: Get the current market price (from cache)
-3. **Analyze Outcome**: Compare the entry price and reasoning to the actual 5-day price action.
+3. **Analyze Outcome**: Compare the entry price and reasoning to the actual price action.
 
-4. **LLM Reflection**: Call the OpenAI post-mortem model with:
+4. **LLM Reflection**: Call the Agent with:
    - "You bought X because of [Reasoning]. Current price is [Y]. Was this correct?"
-5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-mortem).
-6. **RAG Feed**: This lesson is embedded into the `memories` table (pgvector) with `type: "post_mortem"`.
+5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-analysis).
+6. **RAG Feed**: This lesson is embedded into the `memories` table (pgvector) with `type: "post_analysis"`.
 
 **Result**: Future LLM decisions on the same ticker/sector will retrieve this lesson as RAG context, preventing the "same mistake twice."
 

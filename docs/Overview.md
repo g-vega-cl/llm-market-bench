@@ -64,7 +64,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 14. **Ledger Update:** Daily equity curve snapshot.
 
 ### Phase 5: Feedback & Specialized Agents
-21. **Post-Mortem (Manager Agent):** Compare reasoning to 5-day performance; generate lessons.
+21. **Post-Analysis (Manager Agent):** Compare reasoning to multi-interval performance; generate lessons.
 22. **Contrarian Agent:** Identifies crowded trades or missed risks.
 23. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
 24. **Government Tracking:** Monthly audit of incentives and policies.
@@ -190,12 +190,12 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 * **Tech:** PostHog
 * *Track which AI's reasoning page is most read.*
 
-**21. Regret-Driven Reinforcement (Post-Mortem & Manager Agent)** ✅
+**21. Regret-Driven Reinforcement (Post-Analysis & Manager Agent)** ✅
 
 * **Tech:** Python / Gemini Flash 3 / pgvector
-* **Logic:** *Exactly 5 days after a trade, the **Manager Agent** performs a "Post-Mortem." It compares the AI's reasoning to the actual 5-day price performance.*
+* **Logic:** *At multiple intervals (5, 14, 30 days) after a trade, the **Manager Agent** performs a "Post-Analysis." It compares the AI's reasoning to the actual price performance.*
 * **Outcome:** *Generates "Lessons Learned" (stored as `LESSON_LEARNED` memories) and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or strategic errors in future RAG retrievals.*
-* File: `apps/engine/analysis/post_mortem.py`
+* File: `apps/engine/analysis/post_analysis.py`
 
 **22. Contrarian Agent Execution** ✅
 
@@ -356,7 +356,7 @@ graph TD
     end
 
     subgraph "Analysis & Feedback (Phase 5)"
-        I --> PM[Manager Agent: Post-Mortem]
+        I --> PM[Manager Agent: Post-Analysis]
         PM -->|Lessons Learned| V
         
         CP --> CA[Contrarian Agent]

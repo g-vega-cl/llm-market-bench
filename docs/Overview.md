@@ -263,8 +263,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of price data source |
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
-| **Agents** | `MANAGER_AGENT_ENABLED` | Toggle for Post-Mortem analysis | Feedback Loop |
-|  | `CONTRARIAN_AGENT_ENABLED` | Toggle for Contrarian signals | Advanced Strategy |
+| **Agents** | (Automatic) | The system automatically processes post-mortems and contrarian signals. | Feedback Loop |
 | **Web** | `VITE_SUPABASE_URL` | Supabase API URL (Exposed to Browser) | Frontend Auth & Data Fetching |
 |  | `VITE_SUPABASE_ANON_KEY` | Supabase Anon Key (Exposed to Browser) | Frontend Auth & Data Fetching |
 

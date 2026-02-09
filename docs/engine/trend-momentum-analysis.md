@@ -7,7 +7,7 @@ The **Trend & Concept Momentum Analysis** is the 9th step in the AI Wall Street 
 This stage analyzes every synthesized event promoted to the global timeline during the [Consensus Phase](./event-consensus-walkthrough.md):
 
 ### 1. Vectorized Frequency Tracking
-Instead of simple keyword matching, the engine uses **Gemini Embeddings (`text-embedding-004`)** to perform a semantic similarity search against the `memories` table. This allows it to count mentions of a concept even if they are worded differently across different days or newsletters.
+Instead of simple keyword matching, the engine uses **Gemini Embeddings (`gemini-embedding-001`)** to perform a semantic similarity search against the `memories` table. This allows it to count mentions of a concept even if they are worded differently across different days or newsletters.
 
 ### 2. Momentum Scoring (Hybrid)
 The engine calculates a **Momentum Score** for each concept using a hybrid formula that balances current relevance (volume) with trending growth (acceleration):

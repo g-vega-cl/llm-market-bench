@@ -7,7 +7,7 @@ The **Event Consensus Protocol** is the mechanism that allows the engine to iden
 The protocol runs in seven distinct stages after the parallel LLM analysis is complete:
 
 ### 1. Semantic Grouping
-Because different LLMs use different terminology (e.g., "Fed Hike" vs. "Interest Rate Increase"), the engine uses **Gemini Embeddings (`text-embedding-004`)** and **Cosine Similarity** (threshold > 0.85) to cluster events that signify the same real-world catalyst.
+Because different LLMs use different terminology (e.g., "Fed Hike" vs. "Interest Rate Increase"), the engine uses **Gemini Embeddings (`gemini-embedding-001`)** and **Cosine Similarity** (threshold > 0.85) to cluster events that signify the same real-world catalyst.
 
 ### 2. Weighted Consensus Determination
 An event group reaches "Consensus" based on the **Cumulative Model Weight** of the models that identified it. 

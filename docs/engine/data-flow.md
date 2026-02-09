@@ -267,7 +267,7 @@ This is the KEY OPTIMIZATION: all 4 queries embedded in ONE API call, not 4 sepa
 ```python
 # Gemini Embedding API Call #1 (SINGLE CALL for all 4 queries)
 response = client.models.embed_content(
-    model="text-embedding-004",  # 768-dimensional embeddings
+    model="gemini-embedding-001",  # 768-dimensional embeddings
     contents=[
         "Tesla stock expected to rally due to strong earnings...",      # Query 1
         "Fed rate hike may trigger market volatility...",              # Query 2
@@ -813,7 +813,7 @@ The system vectorizes the *reasoning* behind the trade to create "Institutional 
 
 **Process**:
 1. Format reasoning: `DECISION REASONING: TSLA BUY | REASONING: Strong earnings...`
-2. Call Gemini `text-embedding-004` to generate the vector.
+2. Call Gemini `gemini-embedding-001` to generate the vector.
 3. Save to `memories` table with metadata linking to the `source_id` and `trade_id`.
 
 **Why this matters**: In future runs, Step 2.3 (Context Retrieval) will pull this reasoning back as "Historical Context," helping the AI maintain a consistent world view.

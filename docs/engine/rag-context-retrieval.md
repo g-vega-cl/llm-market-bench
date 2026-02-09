@@ -17,7 +17,7 @@ We use Supabase's `pgvector` extension to store and search embeddings.
 - **Security (RLS)**: Row Level Security is enabled. Access is restricted to the `service_role` via a dedicated policy to ensure the public `anon` key cannot read embeddings.
 
 ### 2. Embedding Model (Google Gemini)
-We use Google's `text-embedding-004` model to generate 768-dimensional embeddings.
+We use Google's `gemini-embedding-001` model to generate 768-dimensional embeddings.
 - **Provider**: Google Gemini API.
 - **Module**: `apps/engine/memory/embeddings.py`.
 

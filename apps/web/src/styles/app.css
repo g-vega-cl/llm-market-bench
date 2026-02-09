@@ -1,4 +1,31 @@
-@import 'tailwindcss' source('../');
+@import 'tailwindcss';
+
+@layer utilities {
+  .animate-slow-fade {
+    animation: fade 1s ease-in-out;
+  }
+
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+.thought-step-glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.thought-step-glow:hover {
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
+}
+
+.thought-step-glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.thought-step-glow:hover {
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
+}
 
 @layer base {
   *,

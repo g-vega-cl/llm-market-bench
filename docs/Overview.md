@@ -122,7 +122,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** Python / `update_prices.py`
 *   **Goal:** Refresh market prices and recalculate portfolio metrics without invoking the expensive LLM analysis loop.
-*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions.
+*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions. Automatically triggered at 13:00 ET via GitHub Actions.
 *   File: `apps/engine/update_prices.py`
 
 **15. Long-term Memory Embedding** ✅

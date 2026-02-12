@@ -55,6 +55,7 @@ We maintain a high stability gate for the core engine:
 
 *   **CI Testing**: Automatically runs on every push to `main`.
 *   **Daily Pipeline**: Triggered via GitHub Actions at 09:35 ET (5 minutes after market open).
+*   **Midday Update**: Triggered at 13:00 ET to refresh market prices and recalculate portfolio metrics.
 
 ## 📄 Documentation
 

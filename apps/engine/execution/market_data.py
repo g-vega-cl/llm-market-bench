@@ -20,11 +20,12 @@ class MarketDataManager:
         self.provider: FinancialProvider = get_financial_provider()
         self.cache_ttl_hours = cache_ttl_hours
 
-    async def get_quote(self, ticker: str) -> Optional[TickerData]:
-        """Fetch stock quote, checking cache first.
+    async def get_quote(self, ticker: str, force_refresh: bool = False) -> Optional[TickerData]:
+        """Fetch stock quote, checking cache first unless force_refresh is True.
         
         Args:
             ticker: The stock ticker symbol.
+            force_refresh: Whether to bypass the cache and fetch fresh data.
             
         Returns:
             TickerData if found, None otherwise.
@@ -34,10 +35,11 @@ class MarketDataManager:
             
         ticker = ticker.upper()
         
-        # 1. Check Cache
-        cached_data = self._get_from_cache(ticker)
-        if cached_data:
-            return cached_data
+        # 1. Check Cache (unless force_refresh is True)
+        if not force_refresh:
+            cached_data = self._get_from_cache(ticker)
+            if cached_data:
+                return cached_data
 
         # 2. Fetch from Provider with Exponential Backoff
         logger.info(f"Cache miss for {ticker}. Fetching from provider...")

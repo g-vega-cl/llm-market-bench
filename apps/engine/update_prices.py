@@ -43,10 +43,8 @@ async def update_prices():
     price_map = {}
     for ticker in all_tickers:
         logger.info(f"Fetching fresh quote for {ticker}...")
-        # get_quote handles caching if TTL hasn't expired, but for 
-        # a dedicated 'update' script we might want to force refresh?
-        # For now, let's keep the standard get_quote behavior.
-        data = await mdm.get_quote(ticker)
+        # Force refresh to ensure we get the latest midday prices
+        data = await mdm.get_quote(ticker, force_refresh=True)
         if data:
             price_map[ticker] = data.price
             logger.info(f"Updated price for {ticker}: ${data.price:.2f}")

@@ -1,0 +1,39 @@
+name: Midday Price Update
+
+on:
+  schedule:
+    # 13:00 ET = 18:00 UTC (EST) / 17:00 UTC (EDT)
+    # We'll use 18:00 UTC to align with 13:00 EST
+    - cron: "0 18 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run price update script
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FINANCIAL_API_KEY: ${{ secrets.FINANCIAL_API_KEY }}
+          FINANCIAL_PROVIDER: ${{ secrets.FINANCIAL_PROVIDER }}
+        run: |
+          python update_prices.py

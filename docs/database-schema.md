@@ -104,6 +104,11 @@ Stores reasoning and attribution for every LLM signal.
 - `model_provider`, `model_name` (TEXT): LLM attribution.
 - `created_at` (TIMESTAMPTZ): Entry timestamp.
 
+#### Security (RLS)
+The `decisions` table has **Row Level Security** enabled.
+- **Service Role**: Full access for backend engines to save decisions.
+- **Anon/Authenticated**: Read access (`SELECT`) is allowed for all users to enable the frontend "Thinking Process" feature.
+
 ### `concept_metrics`
 Tracks momentum and frequency of semantic concepts.
 - `id` (UUID): Primary key.

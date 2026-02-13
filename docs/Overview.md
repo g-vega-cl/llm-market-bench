@@ -141,7 +141,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Tech:** **TanStack Start (Vite + React)**
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
 *   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
-*   *Displays the "Audit Trail" so users can click a trade and see the exact newsletter quote that triggered it.*
+*   **Audit Trail:** *Users can click a position in any portfolio to expand and see the exact LLM reasoning and thinking process that triggered the trade.*
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)

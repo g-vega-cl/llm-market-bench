@@ -22,7 +22,8 @@ The Portfolios section allows users to monitor the performance and holdings of e
 - **Sections**:
     - **Header**: Shows the agent's name, total equity, and current cash balance.
     - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity.
-    - **Current Positions**: A table listing all stocks currently held by the agent.
+    - **Current Positions**: A table listing all stocks currently held by the agent. Rows are interactive; clicking an entry expands to show the AI's reasoning.
+    - **Recent Trades**: A historical ledger of the agent's executions. Like the positions table, trade rows expand to reveal the specific reasoning behind the BUY or SELL signal.
 
 ## 3. Data Visualization: Equity Curve
 The performance chart is built using **D3.js** to ensure maximum flexibility and alignment with the project's "no new charting libraries" constraint.
@@ -34,6 +35,18 @@ The performance chart is built using **D3.js** to ensure maximum flexibility and
     - Linear y-axis with formatted currency labels.
     - Gradient area fill under the equity line for better visual depth.
     - Automated gridlines and axes using D3 primitives.
+    
+## 4. Interactive Reasoning (Thinking Process)
+One of the core features of the Portfolio Detail page is the **Thinking Process** expansion. 
+
+- **Logic**: Each position or trade row in the table can be toggled to expand a detailed reasoning block.
+- **Data Fetching (Positions)**: Joins the `position_pnl` data with the latest signals from the `decisions` table.
+- **Data Fetching (Trades)**: The `fetchTrades` function uses a multi-strategy matching engine to ensure reasoning is found even if explicit ID links are missing.
+- **Matching Strategies**:
+    1. **Direct Link**: Match by `trade_id` or `decision_id` pointers.
+    2. **Proximity**: Match by **Ticker + Signal + Time window** (finding decisions within 24 hours of execution).
+    3. **Fallback**: Match by the most recent relevant ticker signal.
+- **User Experience**: Provides transparency into *why* an agent made a specific trade, fulfilling the machine-auditable trail objective of the platform.
 
 ## 4. Data Sources
 
@@ -44,7 +57,8 @@ The summary page and header information are fetched from the `portfolios` table,
 The equity curve is powered by the `portfolio_performance` table. This table stores daily snapshots of each portfolio's metrics, recorded at the end of each trading session by the backend engine.
 
 ### Position P&L View
-The positions table utilizes the `position_pnl` SQL view. This view dynamically joins `portfolio_positions` with `market_data_cache` to provide real-time (or near real-time) unrealized profit and loss calculations:
+The positions table utilizes the `position_pnl` SQL view. This view dynamically joins `portfolio_positions` with `market_data_cache` to provide real-time (or near real-time) unrealized profit and loss calculations.
+- **Augmentation**: In the `-queries.ts` layer, this data is further augmented by joining with the `decisions` table to retrieve requested `reasoning` text.
 - `unrealized_pnl_usd`: `(current_price - cost_basis) * quantity`
 - `unrealized_pnl_pct`: `((current_price / cost_basis) - 1) * 100`
 

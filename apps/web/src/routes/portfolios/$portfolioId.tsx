@@ -1,18 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { fetchPortfolioById, fetchPositions, fetchPerformanceHistory } from './-queries'
+import { fetchPortfolioById, fetchPositions, fetchPerformanceHistory, fetchTrades } from './-queries'
 import { PerformanceChart } from './components/-PerformanceChart'
+import { PositionsTable } from './components/-PositionsTable'
+import { TradesTable } from './components/-TradesTable'
 
 const getPortfolioData = createServerFn({ method: 'GET' })
   .inputValidator((d: string) => d)
-  .handler(async ({ data: portfolioId }) => {
-    const [portfolio, positions, history] = await Promise.all([
+  .handler(async ({ data: portfolioId }: { data: string }) => {
+    const [portfolio, positions, history, trades] = await Promise.all([
       fetchPortfolioById(portfolioId),
       fetchPositions(portfolioId),
       fetchPerformanceHistory(portfolioId),
+      fetchTrades(portfolioId),
     ])
 
-    return { portfolio, positions, history }
+    return { portfolio, positions, history, trades }
   })
 
 export const Route = createFileRoute('/portfolios/$portfolioId')({
@@ -21,7 +24,7 @@ export const Route = createFileRoute('/portfolios/$portfolioId')({
 })
 
 function PortfolioDetailPage() {
-  const { portfolio, positions, history } = Route.useLoaderData()
+  const { portfolio, positions, history, trades } = Route.useLoaderData()
 
   if (!portfolio) {
     return <div>Portfolio not found</div>
@@ -68,49 +71,18 @@ function PortfolioDetailPage() {
         {/* Positions Table */}
         <section>
           <h3 className="text-xl font-bold text-zinc-900 mb-6">Current Positions</h3>
-          <div className="overflow-x-auto border border-zinc-200 rounded-xl bg-white shadow-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-zinc-50 border-bottom border-zinc-200">
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500">Ticker</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Quantity</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Avg Cost</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Price</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">P/L (USD)</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">P/L (%)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {positions?.map((pos) => (
-                  <tr key={pos.ticker} className="hover:bg-zinc-50/50 transition-colors">
-                    <td className="px-6 py-4 font-bold text-zinc-900">{pos.ticker}</td>
-                    <td className="px-6 py-4 text-right text-zinc-700">{pos.quantity}</td>
-                    <td className="px-6 py-4 text-right text-zinc-700">
-                      ${Number(pos.average_cost_basis).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 text-right text-zinc-700">
-                      ${Number(pos.current_price || pos.average_cost_basis).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className={`px-6 py-4 text-right font-medium ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}
-                      ${Number(pos.unrealized_pnl_usd).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className={`px-6 py-4 text-right font-medium ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {Number(pos.unrealized_pnl_pct) >= 0 ? '+' : ''}
-                      {Number(pos.unrealized_pnl_pct).toFixed(2)}%
-                    </td>
-                  </tr>
-                ))}
-                {(!positions || positions.length === 0) && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
-                      No active positions in this portfolio.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <PositionsTable positions={positions as any} />
+        </section>
+
+        {/* Recent Trades Table */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-zinc-900">Recent Trades</h3>
+            <span className="text-sm text-zinc-500 bg-zinc-100 px-3 py-1 rounded-full font-medium">
+              Audit Trail
+            </span>
           </div>
+          <TradesTable trades={trades as any} />
         </section>
       </div>
     </div>

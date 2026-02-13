@@ -260,7 +260,12 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
 |  | `FINANCIAL_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
-|  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of price data source |
+| **Engine** | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, or `ibkr` (Default: `yfinance`) | Selection of price data source |
+|  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | Local market data via IBKR |
+|  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | Local market data via IBKR |
+|  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | Local market data via IBKR |
+
+For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
 | **Agents** | (Automatic) | The system automatically processes post-mortems and contrarian signals. | Feedback Loop |

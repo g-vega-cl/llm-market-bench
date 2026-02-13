@@ -4,6 +4,7 @@ from core.config import FINANCIAL_PROVIDER, logger
 from .base import FinancialProvider
 from .fmp import FMPProvider
 from .yfinance import YFinanceProvider
+from .ibkr import IBKRProvider
 
 def get_financial_provider() -> FinancialProvider:
     """Factory to return the configured financial provider."""
@@ -11,6 +12,8 @@ def get_financial_provider() -> FinancialProvider:
         return FMPProvider()
     elif FINANCIAL_PROVIDER == "yfinance":
         return YFinanceProvider()
+    elif FINANCIAL_PROVIDER == "ibkr":
+        return IBKRProvider()
     
     # Default/Fallback
     logger.warning(f"Unknown financial provider '{FINANCIAL_PROVIDER}'. Defaulting to yfinance.")

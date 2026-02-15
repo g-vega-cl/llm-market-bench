@@ -49,6 +49,12 @@ class MarketDataManager:
                 data = await self.provider.get_ticker_data(ticker)
                 
                 if data and data.exists:
+                    # Key fix: if price is NaN, treat as missing and proceed to fallback/retry
+                    import math
+                    if math.isnan(data.price):
+                        logger.warning(f"Provider returned NaN price for {ticker}. Proceeding...")
+                        continue
+
                     # 3. Save to Cache and Return
                     self._save_to_cache(data)
                     return data
@@ -127,6 +133,12 @@ class MarketDataManager:
     def _save_to_cache(self, data: TickerData):
         """Internal helper to upsert data into the cache and record price history."""
         try:
+            import math
+            # Skip saving if data is NaN
+            if math.isnan(data.price) or math.isnan(data.market_cap):
+                logger.warning(f"Skipping cache save for {data.ticker} due to NaN values: price={data.price}, market_cap={data.market_cap}")
+                return
+
             now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
             payload = {
                 "ticker": data.ticker,

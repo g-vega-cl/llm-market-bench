@@ -77,8 +77,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Logic:** *Every BUY/SELL signal is intercepted by a dedicated verifier.*
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis** (finding correlated stocks via embedding similarity).*
-*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers.*
-*   **Market Data Fallback**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker.*
+*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. Assistant text responses are automatically stripped of trailing whitespace to ensure compliance with strict API validation rules.*
+*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker. The manager and individual providers (like IBKR) now robustly identify and reject `NaN` float values, ensuring JSON compliance and preventing pipeline crashes.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation.*
 
 **11. Pre-Execution Margin Validation** ✅
@@ -130,7 +130,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
 *   **Retrieval:** *The engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
-*   **Schema Robustness:** *Includes automated JSON string parsing and expanded `catalyst_type` literals to handle model "Semantic Fragility" during high-volume tool loops.*
+*   **Schema Robustness:** *Includes automated JSON string parsing, Pydantic field validation to convert `NaN` values to `None`, and expanded `catalyst_type` literals to handle model "Semantic Fragility" during high-volume tool loops.*
 *   **Deduplication:** *Enforces a 24-hour lookback window to prevent semantic duplicates of the same event from being stored (Similarity > 0.90).*
 *   documentation: [step-15-long-term-memory-embedding.md](./engine/step-15-long-term-memory-embedding.md)
 

@@ -87,6 +87,15 @@ class DecisionObject(BaseModel):
         """Normalize ticker symbols to uppercase."""
         return v.upper()
 
+    @field_validator("price")
+    @classmethod
+    def validate_price(cls, v: float | None) -> float | None:
+        """Handle NaN values in price."""
+        import math
+        if v is not None and (isinstance(v, float) and math.isnan(v)):
+            return None
+        return v
+
 
 class MacroEvent(BaseModel):
     """Represents a broad market theme or event identified by LLM analysis.

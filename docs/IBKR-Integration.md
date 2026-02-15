@@ -31,8 +31,11 @@ IBKR_CLIENT_ID=1
 
 ## How it Works
 
-### Real-time Quotes
-The provider uses the `ib-async` `reqTickersAsync` method to fetch current market prices. This is high-speed and efficient for local data.
+### Real-time & Delayed Quotes
+The provider uses the `ib-async` `reqTickersAsync` method to fetch current market prices. By default, it requests **Market Data Type 3 (Delayed)** and **Type 4 (Delayed Frozen)**. This ensures that the engine can still retrieve the last known price even if the market is closed or if the account does not have a real-time data subscription for a specific ticker.
+
+### Robustness & Fallbacks
+The provider includes a multi-step fallback logic for price extraction. If a preferred price field (like `marketPrice`) is `NaN` or missing, it automatically attempts to use `last`, `close`, `bid`, or `ask` in order of availability. Crucially, the logic performs explicit `math.isnan()` checks at each step to bypass Python's treatment of `NaN` as truthy, ensuring the first valid numerical price is used.
 
 ### Market Capitalization
 IBKR does not provide market cap via standard ticks. The engine fetches a `ReportSnapshot` from IBKR's fundamental data service, parses the XML, and extracts the `MKTCAP` ratio.
@@ -45,3 +48,4 @@ The connection is established with `readonly=True` to prevent accidental synchro
 - **Connection Refused**: Ensure the Gateway/TWS is open and the port matches your `.env`.
 - **Read-Only Warnings**: If you see `Warning 321`, it means your IBKR instance has "Read-Only API" checked in its global configuration. This is fine for data fetching.
 - **Missing Market Cap**: Fundamental data may not be available for all tickers (e.g., some international stocks or small caps).
+- **Price is NaN**: If IBKR returns `NaN` for all price fields, the engine will attempt to fallback to historical data via the `MarketDataManager`.

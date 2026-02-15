@@ -52,7 +52,9 @@ async def run_tool_loop(
         assistant_content = []
         for content_block in resp.content:
             if content_block.type == "text":
-                assistant_content.append({"type": "text", "text": content_block.text})
+                # Strip trailing whitespace to avoid "messages: final assistant content cannot end with trailing whitespace"
+                text = content_block.text.rstrip() if content_block.text else ""
+                assistant_content.append({"type": "text", "text": text})
             elif content_block.type == "tool_use":
                 assistant_content.append({
                     "type": "tool_use",

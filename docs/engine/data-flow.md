@@ -510,8 +510,9 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 #### Cache-First Logic:
 1. **Check Persistence**: Query `market_data_cache` in Supabase.
 2. **TTL Verification**: If `fetched_at` is older than 4 hours, proceed to fetch.
-3. **External Fetch**: Hit `yfinance` or `FMP` via `FinancialProvider` interface.
-4. **Update Cache**: Upsert the fresh data back to `market_data_cache` and insert into `price_history` for a permanent record.
+3. **External Fetch**: Hit `yfinance`, `FMP`, or `IBKR` via `FinancialProvider` interface.
+4. **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
+5. **Update Cache**: Upsert the fresh data back to `market_data_cache` and insert into `price_history` for a permanent record.
 
 #### The Three Guardrails:
 
@@ -727,7 +728,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **D: Buying Power** | `cost <= buying_power` | Ensure margin compliance. |
 | **E: Minimum Value** | `Trade Cost > $1,000` | Prevent insignificant trades. |
 | **F: SMA Floor** | `Projected SMA > 10% Eq` | Safety margin for Reg T. |
-| **G: Robustness** | `Fallback to Cost Basis` | Use `average_cost_basis` if market data fails (price = 0) to prevent negative equity. |
+| **G: Robustness** | `NaN & Fallback` | Reject `NaN` values from providers; use `average_cost_basis` if market data fails (price = 0 or missing) to prevent negative equity. |
 
 ```python
 # Validation Result

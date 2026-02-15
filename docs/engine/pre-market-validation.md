@@ -39,9 +39,9 @@ LLMs, while powerful, can occasionally:
 - **Limit**: **Minimum 10% of Total Equity**.
 - **Action**: Reject trades that would push the account too close to a Reg T violation.
 
-### 7. Guardrail G: Hallucination Filter (Early Rejection)
-- **Logic**: Inspects the ticker string for invalid characters (slashes, non-ASCII) or common LLM placeholders (e.g., "N/A", "NONE", "UNKNOWN").
-- **Action**: Immediately reject the trade before making any external API calls. This prevents 404/500 errors from market data providers.
+### 7. Guardrail G: Hallucination & NaN Filter
+- **Logic**: Inspects the ticker string for invalid characters, and verifies that the retrieved market price is not `NaN` or `None`.
+- **Action**: Immediately reject the trade if the ticker format is invalid or if the data provider returns non-compliant `NaN` values. This ensures JSON compliance when saving decisions to the database.
 
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
@@ -49,8 +49,9 @@ The engine now uses a centralized `MarketDataManager` that handles all ticker qu
 - **Persistence**:
   - **Cache**: The latest price results are stored in the `market_data_cache` table in Supabase.
   - **History**: A permanent record of every price fetch is stored in the `price_history` table for historical analysis.
+- **Robustness**: Automatically identifies and rejects `NaN` float values from providers, ensuring only valid numerical data is cached or used for validation.
 - **TTL**: Cached data in `market_data_cache` is considered fresh for **4 hours**.
-- **Efficiency**: Reduces external API (yfinance/FMP) calls by $>90%$ for common tickers.
+- **Efficiency**: Reduces external API (yfinance/FMP/IBKR) calls by $>90%$ for common tickers.
 - **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 
 ### Anti-Rate Limiting (Throttling)

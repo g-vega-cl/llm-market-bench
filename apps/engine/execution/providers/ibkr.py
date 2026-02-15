@@ -3,6 +3,7 @@
 import asyncio
 import xml.etree.ElementTree as ET
 import logging
+import math
 from typing import Optional, List, Dict
 
 from ib_async import IB, Stock, util
@@ -23,6 +24,13 @@ class IBKRProvider(FinancialProvider):
 
         ib = IB()
         await ib.connectAsync(IBKR_HOST, IBKR_PORT, clientId=IBKR_CLIENT_ID, readonly=True)
+
+        # Set market data type to 3 (Delayed) and 4 (Delayed Frozen)
+        # to ensure we get data even without real-time subscriptions.
+        # This is especially important for paper accounts or after-hours data.
+        ib.reqMarketDataType(3)
+        ib.reqMarketDataType(4)
+
         return ib
 
     async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
@@ -44,13 +52,24 @@ class IBKRProvider(FinancialProvider):
                 return None
             
             t = tickers[0]
-            price = t.marketPrice()
-            if price is None or price <= 0:
-                 # Fallback to last/close if retail price is missing
-                 price = t.last or t.close or t.bid or t.ask
             
-            if price is None or price <= 0:
-                logger.warning(f"Could not find a valid price for {ticker} on IBKR.")
+            # Key fix: math.isnan() check is crucial because NaN is truthy in Python.
+            # We explicitly check for None or NaN at each step.
+            price = t.marketPrice()
+            if price is None or math.isnan(price) or price <= 0:
+                price = t.last
+            
+            if price is None or math.isnan(price) or price <= 0:
+                price = t.close
+            
+            if price is None or math.isnan(price) or price <= 0:
+                price = t.bid
+                
+            if price is None or math.isnan(price) or price <= 0:
+                price = t.ask
+            
+            if price is None or math.isnan(price) or price <= 0:
+                logger.warning(f"Could not find a valid price for {ticker} on IBKR. marketPrice={t.marketPrice()}, last={t.last}, close={t.close}")
                 return None
 
             # 2. Fetch Market Cap (Fundamental Data)
@@ -75,6 +94,9 @@ class IBKRProvider(FinancialProvider):
                             market_cap = float(mkt_cap_node.text)
             except Exception as e:
                 logger.warning(f"Error fetching fundamental data for {ticker} from IBKR: {e}")
+
+            if market_cap is None or math.isnan(market_cap):
+                market_cap = 0.0
 
             return TickerData(
                 ticker=ticker,

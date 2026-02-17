@@ -9,6 +9,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from execution.providers.ibkr import IBKRProvider
 from core.config import logger
 
+import pytest
+
+@pytest.mark.asyncio
 async def test_concurrency():
     print("Starting IBKR Multi-Instance Concurrency Test...")
     

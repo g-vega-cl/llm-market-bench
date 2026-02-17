@@ -16,6 +16,9 @@ from ib_async import IB, Stock, util
 from execution.providers.ibkr import IBKRProvider
 from core.config import IBKR_HOST, IBKR_PORT, logger
 
+import pytest
+
+@pytest.mark.asyncio
 async def test_ibkr():
     """
     Robust IBKR connection test script.

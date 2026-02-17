@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from core import config
 from core.llm import clients
 from core.llm import prompts
+from core.llm.logger import log_reasoning_trace
 
 logger = logging.getLogger("engine")
 
@@ -62,6 +63,19 @@ async def synthesize_event(
             resp = await resp_awaitable
         else:
             resp = resp_awaitable
+
+        # Log completion
+        await log_reasoning_trace(
+            task_type="CONSENSUS",
+            model_provider="gemini", # Hardcoded since synthesize_event uses gemini client
+            model_name=config.GEMINI_MODEL,
+            prompt=[
+                {"role": "system", "content": prompts.SYNTHESIS_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            response=resp,
+            metadata={"event_name": event_name, "impact": impact}
+        )
 
         return {
             "name": resp.name, 
@@ -133,6 +147,19 @@ async def analyze_event_relationship(
                 {"role": "user", "content": prompt},
             ],
             max_retries=2,
+        )
+
+        # Log completion
+        await log_reasoning_trace(
+            task_type="CONSENSUS_RELATIONSHIP",
+            model_provider="openai", # Hardcoded since analyze_event_relationship uses openai client
+            model_name=config.OPENAI_MODEL,
+            prompt=[
+                {"role": "system", "content": prompts.RELATIONSHIP_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            response=resp,
+            metadata={"new_event_preview": new_event[:100]}
         )
 
         result = {

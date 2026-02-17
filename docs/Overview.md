@@ -10,6 +10,7 @@ An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contra
 
 * **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
 * **The "Consensus" Effect:** Identifies where AI models agree or diverge on global risks.
+* **Research Audit Trail:** Provides a full "Thinking Process" trace for every LLM call, including intermediate tool steps, for behavioral research.
 * **Decision Attribution:** Provides a machine-auditable trail from raw news chunk to final trade execution.
 * **Memory Integrity:** Tests if LLMs can maintain a consistent world view using Vector RAG (Retrieval-Augmented Generation).
 

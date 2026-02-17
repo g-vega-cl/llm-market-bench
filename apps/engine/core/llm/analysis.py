@@ -8,6 +8,7 @@ from core.models import DecisionsResponse
 from core.llm import clients
 from core.llm import prompts
 from core.llm import tools
+from core.llm.logger import log_reasoning_trace
 from core.config import MIN_TRADE_VALUE
 
 logger = logging.getLogger("engine")
@@ -94,6 +95,19 @@ async def analyze_with_provider(
             final_resp = await resp_awaitable
         else:
             final_resp = resp_awaitable
+
+        # Log completion
+        await log_reasoning_trace(
+            task_type="INGESTION",
+            model_provider=provider,
+            model_name=model_name,
+            prompt=messages,
+            response=final_resp,
+            metadata={
+                "chunk_ids": [c.get("source_id") for c in chunks],
+                "portfolio_status": "injected" if portfolio_context else "none"
+            }
+        )
 
         return final_resp
 

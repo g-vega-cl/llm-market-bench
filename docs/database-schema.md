@@ -104,8 +104,18 @@ Stores reasoning and attribution for every LLM signal.
 - `model_provider`, `model_name` (TEXT): LLM attribution.
 - `created_at` (TIMESTAMPTZ): Entry timestamp.
 
+### `llm_reasoning_logs`
+Stores the full conversation history and tool traces for research and auditing.
+- `id` (UUID): Primary key.
+- `task_type` (TEXT): The engine phase (`INGESTION`, `VERIFICATION`, `CONSENSUS`).
+- `model_provider`, `model_name` (TEXT): Attribution.
+- `prompt` (JSONB): The full message list (System, User, Assistant, Tool).
+- `response` (JSONB): The structured result or text output.
+- `metadata` (JSONB): Ticker, source_id, and other context.
+- `created_at` (TIMESTAMPTZ): Entry timestamp.
+
 #### Security (RLS)
-The `decisions` table has **Row Level Security** enabled.
+The `decisions` and `llm_reasoning_logs` tables have **Row Level Security** enabled.
 - **Service Role**: Full access for backend engines to save decisions.
 - **Anon/Authenticated**: Read access (`SELECT`) is allowed for all users to enable the frontend "Thinking Process" feature.
 

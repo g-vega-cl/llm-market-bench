@@ -7,6 +7,7 @@ import logging
 from core.models import DecisionObject, VerificationResult
 from core.llm import clients, prompts, tools
 from core.llm.handlers import base
+from core.llm.logger import log_reasoning_trace
 
 logger = logging.getLogger("engine")
 
@@ -158,6 +159,20 @@ async def verify_trading_decision(
 
         final_resp = await client.chat.completions.create(**create_args)
         
+        # Log completion
+        await log_reasoning_trace(
+            task_type="VERIFICATION",
+            model_provider=provider,
+            model_name=model_name,
+            prompt=instructor_messages,
+            response=final_resp,
+            metadata={
+                "ticker": decision.ticker,
+                "signal": decision.signal,
+                "source_id": decision.source_id
+            }
+        )
+
         return final_resp
 
     except Exception as e:

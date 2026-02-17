@@ -49,5 +49,14 @@ ORDER BY created_at ASC;
 ### 3. Trace Hallucinations
 If a model generates a hallucinated ticker, you can inspect the `prompt` to see if the newsletter content itself was ambiguous or if the model failed during retrieval.
 
+## Web UI: Research Dashboard
+A premium audit dashboard is available at `/reasoning` for visual exploration of these traces.
+
+### Features
+- **Categorization**: Filter traces by `INGESTION`, `VERIFICATION`, or `CONSENSUS`.
+- **Cognitive Flow**: A color-coded view of the conversation history, distinguishing between System, User, Assistant, and Tool messages.
+- **Trace Viewer**: Inspect raw JSON output schemas and internal model thoughts (Gemini/DeepSeek).
+- **Mobile Optimized**: Review agent reasoning on the go with a responsive, glassmorphism-based design.
+
 ## Implementation Details
 Traces are captured asynchronously using the `core.llm.logger.log_reasoning_trace` utility. This ensures that logging overhead never crashes the main trading pipeline.

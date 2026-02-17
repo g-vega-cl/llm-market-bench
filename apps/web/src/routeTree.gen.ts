@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
@@ -51,6 +52,11 @@ const AuthedRoute = AuthedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReasoningIndexRoute = ReasoningIndexRouteImport.update({
+  id: '/reasoning/',
+  path: '/reasoning/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/concepts/': typeof ConceptsIndexRoute
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
+  '/reasoning/': typeof ReasoningIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/concepts': typeof ConceptsIndexRoute
   '/memories': typeof MemoriesIndexRoute
   '/portfolios': typeof PortfoliosIndexRoute
+  '/reasoning': typeof ReasoningIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts': typeof AuthedPostsIndexRoute
 }
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/concepts/': typeof ConceptsIndexRoute
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
+  '/reasoning/': typeof ReasoningIndexRoute
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/concepts/'
     | '/memories/'
     | '/portfolios/'
+    | '/reasoning/'
     | '/posts/$postId'
     | '/posts/'
   fileRoutesByTo: FileRoutesByTo
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/concepts'
     | '/memories'
     | '/portfolios'
+    | '/reasoning'
     | '/posts/$postId'
     | '/posts'
   id:
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/concepts/'
     | '/memories/'
     | '/portfolios/'
+    | '/reasoning/'
     | '/_authed/posts/$postId'
     | '/_authed/posts/'
   fileRoutesById: FileRoutesById
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   ConceptsIndexRoute: typeof ConceptsIndexRoute
   MemoriesIndexRoute: typeof MemoriesIndexRoute
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
+  ReasoningIndexRoute: typeof ReasoningIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reasoning/': {
+      id: '/reasoning/'
+      path: '/reasoning'
+      fullPath: '/reasoning/'
+      preLoaderRoute: typeof ReasoningIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portfolios/': {
@@ -342,6 +362,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConceptsIndexRoute: ConceptsIndexRoute,
   MemoriesIndexRoute: MemoriesIndexRoute,
   PortfoliosIndexRoute: PortfoliosIndexRoute,
+  ReasoningIndexRoute: ReasoningIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

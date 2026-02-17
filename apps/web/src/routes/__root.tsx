@@ -151,6 +151,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
           >
             How it Works
+          </Link>{' '}
+          <Link
+            to="/reasoning"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Reasoning
           </Link>
           <div className="ml-auto">
             {user ? (

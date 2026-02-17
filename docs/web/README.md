@@ -41,6 +41,9 @@ apps/web/
 │   │   │   ├── route.tsx
 │   │   │   ├── -PortfolioTable.tsx
 │   │   │   └── -queries.ts # Route-local Supabase queries (prefixed with -)
+│   │   ├── reasoning/
+│   │   │   ├── index.tsx  # LLM research audit dashboard
+│   │   │   └── -queries.ts
 │   │   ├── how-it-works.tsx  # System process visualization page
 │   ├── shared/          # SHARED DOMAIN: Business concepts used across routes
 │   │   ├── auth/

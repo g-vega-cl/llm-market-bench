@@ -11,6 +11,7 @@ from core.config import logger
 
 import pytest
 
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Skipping live IBKR tests in CI")
 @pytest.mark.asyncio
 async def test_concurrency():
     print("Starting IBKR Multi-Instance Concurrency Test...")

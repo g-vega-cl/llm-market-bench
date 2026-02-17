@@ -18,6 +18,7 @@ from core.config import IBKR_HOST, IBKR_PORT, logger
 
 import pytest
 
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Skipping live IBKR tests in CI")
 @pytest.mark.asyncio
 async def test_ibkr():
     """
@@ -85,6 +86,7 @@ async def test_ibkr():
                 
     except Exception as e:
         print(f"Connection/Test failed: {e}")
+        raise e
     finally:
         if ib.isConnected():
             ib.disconnect()

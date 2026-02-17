@@ -65,7 +65,7 @@ The following environment variables and constants control the validation behavio
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
 | `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
 | `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value for LLM-driven trades. |
-| `FINANCIAL_PROVIDER` | `"yfinance"` | Which API implementation to use (`fmp` or `yfinance`). |
+| `FINANCIAL_PROVIDER` | `"yfinance"` | Primary provider implementation (`yfinance`, `fmp`, or `ibkr`). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration

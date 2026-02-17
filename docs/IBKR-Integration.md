@@ -1,6 +1,14 @@
-# Interactive Brokers (IBKR) Integration
+# [LEGACY] Interactive Brokers (IBKR) Integration
 
-The AI Wall Street Engine supports fetching real-time market data (price and market capitalization) and historical bars directly from Interactive Brokers via a local Gateway or TWS instance.
+> [!WARNING]
+> **This provider is now considered LEGACY.** The primary financial data provider is `yfinance`. Use IBKR only if you specifically require it and have a running TWS/Gateway instance.
+
+The AI Wall Street Engine supports fetching real-time market data (price and market capitalization) and historical bars via Interactive Brokers. 
+
+## Architectural Improvements (2026 Update)
+Recent updates have significantly improved the robustness of the IBKR integration:
+- **Singleton Connection Pattern**: The provider now uses a thread-safe singleton pattern (`@classmethod` based) to ensure that multiple concurrent tasks share a single, stable connection. This permanently resolves any "clientId already in use" errors.
+- **Robust Resource Cleanup**: main pipeline entry points now use `try...finally` blocks to guarantee that the IBKR client is properly disconnected, even if the pipeline fails midway.
 
 ## Prerequisites
 
@@ -8,12 +16,11 @@ The AI Wall Street Engine supports fetching real-time market data (price and mar
 2.  **API Settings**:
     *   Enable "ActiveX and Socket Clients".
     *   Set the "Socket Port" (Default: `7496` for TWS, `4002` for Gateway).
-    *   (Optional but recommended) Uncheck "Read-Only API" if you intend to perform trades later, though the current integration is read-only.
 3.  **Dependencies**: The engine requires the `ib-async` library.
 
 ## Configuration
 
-Set the following environment variables in your `.env` file:
+Set the following environment variables in your `.env` file to enable the legacy provider:
 
 ```bash
 FINANCIAL_PROVIDER=ibkr

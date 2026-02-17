@@ -367,11 +367,22 @@ async def run_ingest():
 
     except Exception as e:
         logger.error(f"Analysis or Consensus failed: {e}")
+    finally:
+        # --- Provider Cleanup ---
+        from execution.providers.factory import get_active_provider_class
+        provider_cls = get_active_provider_class()
+        await provider_cls.disconnect_all()
 
 
 async def run_post_analysis():
     """Runs the post-analysis for historical trades."""
-    await perform_post_analysis(windows=[5, 14, 30])
+    try:
+        await perform_post_analysis(windows=[5, 14, 30])
+    finally:
+        # --- Provider Cleanup ---
+        from execution.providers.factory import get_active_provider_class
+        provider_cls = get_active_provider_class()
+        await provider_cls.disconnect_all()
 
 
 def main():

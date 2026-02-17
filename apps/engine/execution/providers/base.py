@@ -35,3 +35,8 @@ class FinancialProvider(ABC):
             List of dicts with 'price' and 'fetched_at' (ISO timestamp).
         """
         pass
+
+    @classmethod
+    async def disconnect_all(cls):
+        """Optional hook to close persistent connections."""
+        pass

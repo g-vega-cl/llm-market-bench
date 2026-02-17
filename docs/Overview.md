@@ -78,7 +78,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis** (finding correlated stocks via embedding similarity).*
 *   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. Assistant text responses are automatically stripped of trailing whitespace to ensure compliance with strict API validation rules.*
-*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker. The manager and individual providers (like IBKR) now robustly identify and reject `NaN` float values, ensuring JSON compliance and preventing pipeline crashes.*
+*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections (like IBKR), ensuring high-concurrency tool loops never result in port conflicts.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation.*
 
 **11. Pre-Execution Margin Validation** ✅
@@ -261,9 +261,9 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
 |  | `FINANCIAL_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
 | **Engine** | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, or `ibkr` (Default: `yfinance`) | Selection of price data source |
-|  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | Local market data via IBKR |
-|  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | Local market data via IBKR |
-|  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | Local market data via IBKR |
+|  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY] Local market data via IBKR |
+|  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY] Local market data via IBKR |
+|  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY] Local market data via IBKR |
 
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
@@ -332,6 +332,8 @@ graph TD
         CP --> VER[Skeptical Verifier Agent]
         VER -->|Fallback to YFinance| YF[(YFinance History)]
         VER -->|Abort/Adjust| E{Execution Guardrails}
+        
+        E -->|Cleanup| CL[Provider disconnect_all]
         
         CP -->|Semantic Grouping + Dedupe| SYN[LLM Synthesis]
         

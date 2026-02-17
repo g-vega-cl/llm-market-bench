@@ -12,26 +12,39 @@ from core.config import logger, IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
 
 
 class IBKRProvider(FinancialProvider):
-    """Provider for Interactive Brokers API via ib-async."""
+    """[LEGACY] Provider for Interactive Brokers API via ib-async.
+    
+    This provider is kept for historical/alternative use but is no longer the primary.
+    Requires a running IBKR TWS or Gateway instance.
+    """
 
-    async def _get_ib_client(self) -> IB:
-        """Helper to create and connect an IB client."""
-        util.patchAsyncio()
-        
-        # Suppress verbose ib_async internal logs (positions, account info)
-        ib_logger = logging.getLogger('ib_async')
-        ib_logger.setLevel(logging.WARNING)
+    _ib: Optional[IB] = None
+    _lock = asyncio.Lock()
 
-        ib = IB()
-        await ib.connectAsync(IBKR_HOST, IBKR_PORT, clientId=IBKR_CLIENT_ID, readonly=True)
+    @classmethod
+    async def _get_ib_client(cls) -> IB:
+        """Helper to create and connect an IB client, sharing a single instance."""
+        async with cls._lock:
+            if cls._ib is not None and cls._ib.isConnected():
+                return cls._ib
 
-        # Set market data type to 3 (Delayed) and 4 (Delayed Frozen)
-        # to ensure we get data even without real-time subscriptions.
-        # This is especially important for paper accounts or after-hours data.
-        ib.reqMarketDataType(3)
-        ib.reqMarketDataType(4)
+            util.patchAsyncio()
+            
+            # Suppress verbose ib_async internal logs (positions, account info)
+            ib_logger = logging.getLogger('ib_async')
+            ib_logger.setLevel(logging.WARNING)
 
-        return ib
+            logger.info(f"Connecting to IBKR at {IBKR_HOST}:{IBKR_PORT} with clientId={IBKR_CLIENT_ID}...")
+            cls._ib = IB()
+            # We use readonly=True to avoid needing write access for market data
+            await cls._ib.connectAsync(IBKR_HOST, IBKR_PORT, clientId=IBKR_CLIENT_ID, readonly=True)
+
+            # Set market data type to 3 (Delayed) and 4 (Delayed Frozen)
+            # to ensure we get data even without real-time subscriptions.
+            cls._ib.reqMarketDataType(3)
+            cls._ib.reqMarketDataType(4)
+
+            return cls._ib
 
     async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
         """Fetch stock quote and market cap from IBKR."""
@@ -111,7 +124,8 @@ class IBKRProvider(FinancialProvider):
             logger.error(f"Unexpected error fetching data from IBKR for {ticker}: {e}")
             return None
         finally:
-            ib.disconnect()
+            # We no longer disconnect here to allow the shared client to be reused.
+            pass
 
     async def get_history(self, ticker: str, days: int = 14) -> List[Dict]:
         """Fetch historical price data from IBKR."""
@@ -152,4 +166,15 @@ class IBKRProvider(FinancialProvider):
             logger.error(f"Error fetching history from IBKR for {ticker}: {e}")
             return []
         finally:
-            ib.disconnect()
+            # We no longer disconnect here to allow the shared client to be reused.
+            pass
+
+    @classmethod
+    async def disconnect_all(cls):
+        """Close the shared IB client."""
+        async with cls._lock:
+            if cls._ib is not None:
+                if cls._ib.isConnected():
+                    logger.info("Disconnecting shared IBKR client...")
+                    cls._ib.disconnect()
+                cls._ib = None

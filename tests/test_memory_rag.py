@@ -48,9 +48,9 @@ class TestMemoryRAG(unittest.IsolatedAsyncioTestCase):
             context = results[0]
             
             # Check if both are present
-            self.assertIn("[MARKET EVENT]", context)
+            self.assertIn("[PAST REASONING (HISTORICAL)]", context)
             self.assertIn("Oil prices surged", context)
-            self.assertIn("[PAST DECISION]", context)
+            self.assertIn("[PAST REASONING (HISTORICAL)]", context)
             self.assertIn("XOM BUY", context)
             self.assertIn("High oil prices benefit energy sector", context)
             

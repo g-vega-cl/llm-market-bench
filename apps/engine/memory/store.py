@@ -82,7 +82,7 @@ def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: lis
                     signal = item.get("signal", "UNKNOWN")
                     reasoning = item.get("reasoning", "")
                     if reasoning:
-                        context_parts.append(f"- [PAST DECISION] {ticker} {signal}: {reasoning}")
+                        context_parts.append(f"- [PAST REASONING (HISTORICAL)] {ticker} {signal}: {reasoning}")
             
             if not context_parts:
                 results.append("")

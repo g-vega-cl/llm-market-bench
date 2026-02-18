@@ -138,6 +138,19 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                 for decision in res.decisions:
                     decision.model_provider = config["provider"]
                     decision.model_name = config["model"]
+                    
+                    # Backfill price if missing but ticker is present
+                    if decision.ticker and (decision.price is None or decision.price <= 0):
+                        try:
+                            logger.info(f"[{config['model']}] Price missing for {decision.ticker}. Backfilling from market data...")
+                            mdm = MarketDataManager()
+                            quote = await mdm.get_quote(decision.ticker)
+                            if quote and quote.exists:
+                                decision.price = quote.price
+                                logger.info(f"[{config['model']}] Backfilled {decision.ticker} price: ${decision.price:.2f}")
+                        except Exception as bp_err:
+                            logger.warning(f"Failed to backfill price for {decision.ticker}: {bp_err}")
+
                     valid_decisions.append(decision)
                 
                 # Process macro events

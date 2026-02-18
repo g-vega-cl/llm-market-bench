@@ -113,6 +113,9 @@ To move beyond simple "news-chasing," the system now enforces a multi-step quali
 6.  **What are the primary risks or counter-arguments to this trade?**
 7.  **How does this stock correlate with my existing portfolio?**
 
+### **The "Source of Truth" Rule**
+To prevent confusion between historical context and current holdings, the system prompt explicitly instructs models that the **`Current Portfolio Status`** section is the **ONLY** source of truth for assets they currently own. Any mention of trades in the `Historical Context` (retrieved via RAG) should be treated as past reasoning, not current state.
+
 This logic ensures that trades are based on predicted future movements rather than reacting to yesterday's news.
 
 ## 6. Verification
@@ -140,4 +143,5 @@ To ensure the pipeline continues even if individual models fail:
 - **Defensive Pydantic Validation**:
   - The system uses default values for critical fields like `source_id` in macro events and supports common LLM hallucinations like `MEDIUM_TERM` duration.
   - **JSON List Robustness**: A `field_validator` automatically detects if the LLM returned a JSON-encoded string for the `decisions` or `macro_events` fields (a common behavior in Claude 3.5/4.5 tool use) and parses it into a Python list before validation.
+- **Decision Backfill (Resilience)**: If an LLM recommends a trade and provides a valid ticker but fails to extract a price into the JSON schema, the engine automatically backfills the current market price using the `MarketDataManager` before validation.
 - **Sync/Async Resilience**: The analysis loop is designed to handle both synchronous and asynchronous response objects from different provider SDKs (e.g., Gemini's native `Content` objects).

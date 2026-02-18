@@ -50,7 +50,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 2: Consensus & Attribution
 5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools (`get_stock_quote`, `get_price_history`).
-6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context.
+6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7. **Decision Attribution:** Map reasoning and metadata to the `decisions` table.
 8. **Event Consensus:** Synthesize global macro events; group semantically via pgvector.
 9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
@@ -58,7 +58,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent (using the original decision's provider) audits BUY/SELL signals using specialized tools (`get_volatility_metrics`, `get_sector_alternatives`).
 11. **Trade Abort/Adjustment**: Verification results can force a `REJECTED_VERIFICATION` or `ADJUSTED_ALLOCATION` before money moves.
-12. **Pre-Market Validation**: Existence, price banding, and liquidity checks.
+12. **Pre-Market Validation**: Existence, price banding, and liquidity checks with automated engine-level backfill for missing LLM prices.
 13. **Reg T Margin Validation**: Ensure buying power and SMA safety floor.
 12. **Trade Settlement:** Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.

@@ -43,6 +43,10 @@ LLMs, while powerful, can occasionally:
 - **Logic**: Inspects the ticker string for invalid characters, and verifies that the retrieved market price is not `NaN` or `None`.
 - **Action**: Immediately reject the trade if the ticker format is invalid or if the data provider returns non-compliant `NaN` values. This ensures JSON compliance when saving decisions to the database.
 
+### 8. Guardrail H: Price Backfill (LLM Laziness Buffer)
+- **Logic**: If an LLM identifies a valid ticker but fails to provide a price in its JSON output (or returns 0), the engine automatically attempts to fetch the latest market price.
+- **Action**: Backfills the `price` field in the `DecisionObject` before it reaches the final validation phase. This prevents "lazy" models from being rejected for missing data if their ticker intent was clear.
+
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
 
@@ -69,8 +73,9 @@ The following environment variables and constants control the validation behavio
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration
-Validation is now a **Two-Layer Process**:
+Validation is now a **Three-Layer Process**:
 1. **Active Tool**: Models call `get_stock_quote` during analysis to verify their own reasoning.
-2. **Final Gauntlet**: The engine runs `validate_decision` in `main.py` before persistence to ensure no hallucinations slipped through.
+2. **Post-Analysis Backfill**: The engine (in `analyze.py`) backfills missing prices for valid tickers to handle LLM extraction failures.
+3. **Final Gauntlet**: The engine runs `validate_decision` in `main.py` before persistence to ensure no hallucinations slipped through.
 
 If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped.

@@ -412,7 +412,8 @@ aggregated_context = """
 **Phase 2 Summary**:
 - 1 Gemini Embedding API call (batch for all 4 queries)
 - 4 Supabase RPC calls (vector similarity search)
-- Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis and returned for use by downstream agents (e.g., Contrarian Agent)
+- Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis.
+- Context labeled with **`[PAST REASONING (HISTORICAL)]`** to distinguish from current holdings.
 
 ---
 
@@ -482,12 +483,15 @@ valid_decisions = [
         catalyst_type="EARNINGS",
         catalyst_duration="SHORT_TERM",
         source_id="news_newsletter1_a7f92c4e",
-        price=240.50, # Automatically filled from Tool Result
+        price=240.50, # Automatically filled from Tool Result OR Backfilled by Engine
         model_provider="openai",
         model_name="gpt-4o"
     ),
     ...
 ]
+
+# NEW: Price Backfill Logic (in analyze.py)
+# If decision.price is missing/null, engine queries MarketDataManager to backfill real-time price.
 ```
 
 **Phase 3 Summary**:

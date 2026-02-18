@@ -54,9 +54,14 @@ A premium audit dashboard is available at `/reasoning` for visual exploration of
 
 ### Features
 - **Categorization**: Filter traces by `INGESTION`, `VERIFICATION`, or `CONSENSUS`.
-- **Cognitive Flow**: A color-coded view of the conversation history, distinguishing between System, User, Assistant, and Tool messages.
-- **Trace Viewer**: Inspect raw JSON output schemas and internal model thoughts (Gemini/DeepSeek).
-- **Mobile Optimized**: Review agent reasoning on the go with a responsive, glassmorphism-based design.
+- **Human-Friendly Formatting**: Structured responses are automatically parsed into a tabbed interface, replacing large JSON blocks with readable cards and grids.
+- **Cognitive Flow**: A color-coded view of the conversation history. For long histories, roles are grouped into tabs (System, User, Assistant, Tool) for focused auditing.
+- **Deep Content Parsing**: Automatically extracts and pretty-prints JSON strings found within assistant messages.
+- **Rich Visualization**:
+  - **Tool Calls**: Clearly labeled blocks showing function names and arguments.
+  - **Internal Thoughts**: Highlights "hidden" model reasoning (e.g., Gemini's `thought` parts).
+  - **Decision Cards**: Trading signals and catalyst metadata displayed in high-contrast grids.
+- **Fallback & Export**: A "RAW" tab allows for instant JSON inspection and one-click clipboard copying.
 
 ## Implementation Details
 Traces are captured asynchronously using the `core.llm.logger.log_reasoning_trace` utility. This ensures that logging overhead never crashes the main trading pipeline.

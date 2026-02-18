@@ -150,7 +150,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Public Insights:** A public [Memories Page](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective.
     *   **Event Linking:** Browse related "Update" events and trace their parent origins.
     *   **Flow View:** An interactive, infinite-canvas visualization of narrative threads and event chains.
-*   **Reasoning**: A research-grade audit trail showing every LLM interaction, tool call, and internal "thought" trace Categorized by task type.
+*   **Reasoning**: A research-grade audit trail with a human-friendly tabbed UI, showing every LLM interaction, tool call, and internal "thought" trace categorized by task type.
 *   **How it Works**: A conceptual overview of the agentic pipeline.
     *   **Phase Breakdown:** Ingestion → Analysis → Verification → Execution → Feedback.
     *   **User Education:** Helps users understand the data flow from newsletters to executed trades.

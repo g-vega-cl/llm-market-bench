@@ -76,6 +76,8 @@ The following environment variables and constants control the validation behavio
 Validation is now a **Three-Layer Process**:
 1. **Active Tool**: Models call `get_stock_quote` during analysis to verify their own reasoning.
 2. **Post-Analysis Backfill**: The engine (in `analyze.py`) backfills missing prices for valid tickers to handle LLM extraction failures.
-3. **Final Gauntlet**: The engine runs `validate_decision` in `main.py` before persistence to ensure no hallucinations slipped through.
+3. **Market Guardrails**: The engine runs `validate_decision` in `main.py` to ensure ticker existence, liquidity, and price sanity.
+4. **Second-Step Verification**: A skeptical "Verifier" agent (using the original provider's intelligence) audits every BUY/SELL signal using specialized tools to identify "priced in" news and failure modes.
+5. **Reg T & Compliance**: Final margin and allocation checks before trade settlement.
 
 If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped.

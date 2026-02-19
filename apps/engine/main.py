@@ -107,6 +107,7 @@ async def run_ingest():
         
         for d in decisions:
             try:
+                verification = None
                 # --- Pre-Market Validation (Guardrails) ---
                 d.ticker = d.ticker.upper()
                 validation = await validate_decision(d.ticker, getattr(d, "price", None))
@@ -258,7 +259,7 @@ async def run_ingest():
                          continue
 
                     # --- Apply Verification Adjustment ---
-                    if verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
+                    if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
                         logger.info(f"[{d.ticker}] Applying Verifier adjustment: {qty} -> {verification.adjusted_quantity}")
                         qty = verification.adjusted_quantity
 

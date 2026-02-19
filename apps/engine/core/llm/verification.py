@@ -144,7 +144,7 @@ async def verify_trading_decision(
                     elif getattr(part, "function_response", None):
                          content_text += f"\n[Tool Result: {part.function_response.response}]"
                 
-                role = "assistant" if m.role == "model" else "user"
+                role = "model" if m.role == "model" else "user"
                 instructor_messages.append({"role": role, "content": content_text})
 
         # Anthropic calls via instructor require max_tokens

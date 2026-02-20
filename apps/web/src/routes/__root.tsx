@@ -102,76 +102,82 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div className="p-2 flex gap-4 text-sm font-bold uppercase tracking-widest px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80">
           <Link
             to="/"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
             activeOptions={{ exact: true }}
+            className="hover:text-blue-500 transition-colors"
           >
-            Home
+            Today
           </Link>{' '}
           <Link
             to="/memories"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
+            className="hover:text-blue-500 transition-colors"
           >
             Memories
           </Link>{' '}
           <Link
             to="/posts"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
+            className="hover:text-blue-500 transition-colors"
           >
             Posts
           </Link>{' '}
           <Link
             to="/concepts"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
+            className="hover:text-blue-500 transition-colors"
           >
             Concepts
           </Link>{' '}
           <Link
             to="/portfolios"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
+            className="hover:text-blue-500 transition-colors"
           >
             Portfolios
           </Link>{' '}
           <Link
             to="/how-it-works"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
+            className="hover:text-blue-500 transition-colors"
           >
             How it Works
           </Link>{' '}
           <Link
             to="/reasoning"
             activeProps={{
-              className: 'font-bold',
+              className: 'text-blue-600',
             }}
+            className="hover:text-blue-500 transition-colors"
           >
             Reasoning
           </Link>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-4">
             {user ? (
               <>
-                <span className="mr-2">{user.email}</span>
-                <Link to="/logout">Logout</Link>
+                <span className="text-[10px] text-zinc-400 normal-case font-medium">{user.email}</span>
+                <Link to="/logout" className="hover:text-rose-500 transition-colors">Logout</Link>
               </>
             ) : (
-              <Link to="/login">Login</Link>
+              <Link to="/login" className="hover:text-blue-500 transition-colors">Login</Link>
             )}
           </div>
         </div>
-        <hr />
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />

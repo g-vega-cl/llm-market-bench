@@ -852,7 +852,17 @@ await portfolio.record_performance_snapshot(price_map)
 
 ---
 
-## Phase 11: Regret-Driven Reinforcement (Post-Analysis)
+## Phase 11: Real-time Monitoring (TODAY Dashboard)
+
+The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). This view aggregates:
+1. **Intelligence Briefing**: Summaries of newsletters ingested today.
+2. **Execution & Guardrails**: Live feed of trades, rejections, and margin adjustments.
+3. **Cognitive Synthesis**: Global consensus, government incentives, and lessons learned.
+4. **Horizon Watch**: Pending future events (catalysts) identified by the agents.
+
+---
+
+## Phase 12: Regret-Driven Reinforcement (Post-Analysis)
 
 ### Step 11.1: Historical Performance Audit
 

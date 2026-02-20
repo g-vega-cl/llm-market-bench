@@ -37,6 +37,8 @@ We prioritize **colocation** (keeping things near their usage) to ensure the cod
 apps/web/
 ├── src/
 │   ├── routes/          # OWNERSHIP: Logic lives where it's used
+│   │   ├── index.tsx    # TODAY Dashboard (Root Entry Point)
+│   │   ├── -today-queries.ts # Queries for the daily snapshot
 │   │   ├── portfolios/
 │   │   │   ├── route.tsx
 │   │   │   ├── -PortfolioTable.tsx

@@ -85,6 +85,33 @@ async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_emb
 @patch("consensus.get_embeddings_batch")
 @patch("consensus.add_memory")
 @pytest.mark.asyncio
+async def test_process_consensus_with_date_note(mock_add_memory, mock_get_embeddings, mock_synthesize, sample_events):
+    mock_add_memory.return_value = "new-uuid"
+    mock_synthesize.return_value = {
+        "name": "Tentative Event", 
+        "summary": "Tentative Summary",
+        "future_date": "2026-02-21",
+        "future_date_note": "tentative"
+    }
+    
+    mock_get_embeddings.return_value = [
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ]
+    
+    await process_consensus(sample_events, threshold=2)
+    
+    mock_add_memory.assert_called_once()
+    kwargs = mock_add_memory.call_args.kwargs
+    assert kwargs["target_date"] == "2026-02-21"
+    assert kwargs["metadata"]["future_date_note"] == "tentative"
+
+@patch("consensus.synthesize_event")
+@patch("consensus.get_embeddings_batch")
+@patch("consensus.add_memory")
+@pytest.mark.asyncio
 async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddings, mock_synthesize, sample_events):
     mock_add_memory.return_value = None # Simulate deduplication (returns None if skip)
     

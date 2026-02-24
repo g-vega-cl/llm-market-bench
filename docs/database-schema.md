@@ -81,7 +81,7 @@ Stores global market events for RAG retrieval.
 - `id` (UUID): Primary key.
 - `content` (TEXT): Synthesized event description.
 - `embedding` (VECTOR(768)): Google Gemini embedding.
-- `metadata` (JSONB): Source and context metadata.
+- `metadata` (JSONB): Source and context metadata (includes `future_date_note` for catalysts).
 - `memory_type` (TEXT): `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`.
 - `status` (TEXT): `ACTIVE`, `RESOLVED`, `SUPERSEDED`.
 - `target_date` (TEXT): For proactive catalyst tracking.

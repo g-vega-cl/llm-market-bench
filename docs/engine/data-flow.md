@@ -680,11 +680,15 @@ For events that reach consensus (2+ models), we perform a final synthesis pass t
   "is_ongoing": true,
   "is_future_catalyst": true,
   "historical_parallel": "Like the 1970s stagflation regime",
-  "future_date": "Q3 2026"
+  "future_date": "2026-07-31",
+  "future_date_note": "estimated"
 }
 ```
 
 **Future Tracking (Proactive Positioning)**: If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
+- **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM.
+- **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.
+
 
 ---
 

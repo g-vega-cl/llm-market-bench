@@ -41,6 +41,7 @@ async def synthesize_event(
             name: str
             summary: str
             future_date: Optional[str] = None
+            future_date_note: Optional[str] = None
             is_ongoing: bool = False
             is_future_catalyst: bool = False
             historical_parallel: Optional[str] = None
@@ -81,6 +82,7 @@ async def synthesize_event(
             "name": resp.name, 
             "summary": resp.summary, 
             "future_date": resp.future_date,
+            "future_date_note": resp.future_date_note,
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
             "historical_parallel": resp.historical_parallel
@@ -95,6 +97,7 @@ async def synthesize_event(
                 "based on model observations."
             ),
             "future_date": None,
+            "future_date_note": None,
             "is_ongoing": False,
             "is_future_catalyst": False,
             "historical_parallel": None

@@ -185,7 +185,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 "is_ongoing": is_ongoing,
                 "is_future_catalyst": is_future_catalyst,
                 "historical_parallel": historical_parallel,
-                "future_date": synthesis.get("future_date")
+                "future_date": synthesis.get("future_date"),
+                "future_date_note": synthesis.get("future_date_note")
             }
 
             # 4. Analyze Relationship & Link Memory
@@ -216,7 +217,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "cumulative_weight": cumulative_weight,
                     "is_ongoing": is_ongoing,
                     "is_future_catalyst": is_future_catalyst,
-                    "historical_parallel": historical_parallel
+                    "historical_parallel": historical_parallel,
+                    "future_date_note": consensus_data.get("future_date_note")
                 },
                 parent_id=parent_id,
                 relationship_type=rel_type,

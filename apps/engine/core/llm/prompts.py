@@ -94,15 +94,16 @@ MODEL OBSERVATIONS:
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
-3. Extract any explicitly mentioned future date or timeframe (e.g., "next summer", "Q3 2026", "November 20th", "by June", "by the end of January").
-   - If a specific or approximate future date is mentioned (even in the current month), include it in 'future_date'.
-   - If no future timeframe is mentioned, set 'future_date' to null.
+3. Extract any explicitly mentioned future date or timeframe.
+   - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD). If only a month/year is given, use the last day of that period (e.g., "July 2026" -> "2026-07-31").
+   - 'future_date_note': A short label if the date is not exact (e.g., "estimated", "tentative", "around this time"). If the date is exact, set to null.
 4. Synthesize logical flags:
    - 'is_ongoing': true if the consensus is that the event is unfolding.
    - 'is_future_catalyst': true if this is a precursor for a future move.
    - 'historical_parallel': a short string describing the parallel if identified by models.
 
-Return ONLY a JSON object with 'name', 'summary', 'future_date', 'is_ongoing', 'is_future_catalyst', and 'historical_parallel' keys."""
+Return ONLY a JSON object with 'name', 'summary', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', and 'historical_parallel' keys.
+"""
 
 
 RELATIONSHIP_SYSTEM_PROMPT = "You are a senior market analyst. Return structured JSON."

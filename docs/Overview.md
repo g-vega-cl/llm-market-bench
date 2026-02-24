@@ -49,7 +49,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 4. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools (`get_stock_quote`, `get_price_history`).
+5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools (`get_stock_quote`, `get_price_history`, `sell_20_percent`, `sell_50_percent`, `sell_100_percent`).
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7. **Decision Attribution:** Map reasoning and metadata to the `decisions` table.
 8. **Event Consensus:** Synthesize global macro events; group semantically via pgvector.

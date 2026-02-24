@@ -427,6 +427,7 @@ aggregated_context = """
 prompt = f"""You are a hedge fund trading algorithm. 
 CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
+Use `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions.
 
 ### Historical Context:
 {aggregated_context}

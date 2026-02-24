@@ -41,4 +41,12 @@ jobs:
 
           FINANCIAL_API_KEY: ${{ secrets.FINANCIAL_API_KEY }}
         run: |
-          python main.py post-analysis
+          python main.py post-analysis 2>&1 | tee post-analysis.log
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-analysis-logs
+          path: apps/engine/post-analysis.log
+          retention-days: 7

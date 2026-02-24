@@ -45,4 +45,12 @@ jobs:
           GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python main.py ingest
+          python main.py ingest 2>&1 | tee ingestion.log
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-logs
+          path: apps/engine/ingestion.log
+          retention-days: 7

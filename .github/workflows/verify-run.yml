@@ -1,0 +1,62 @@
+name: Post-Run Verification
+
+on:
+  workflow_run:
+    workflows: ["Daily Ingestion & Consensus", "Daily Trade Post-Analysis"]
+    types:
+      - completed
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # Run even if the triggering workflow failed, so we can analyze the failure logs
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' }}
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download Ingestion Logs
+        if: ${{ github.event.workflow_run.name == 'Daily Ingestion & Consensus' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ingestion-logs
+          path: apps/engine/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download Post-Analysis Logs
+        if: ${{ github.event.workflow_run.name == 'Daily Trade Post-Analysis' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: post-analysis-logs
+          path: apps/engine/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify Ingestion Logs
+        if: ${{ github.event.workflow_run.name == 'Daily Ingestion & Consensus' }}
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          python verify_logs.py ingestion.log
+
+      - name: Verify Post-Analysis Logs
+        if: ${{ github.event.workflow_run.name == 'Daily Trade Post-Analysis' }}
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          python verify_logs.py post-analysis.log

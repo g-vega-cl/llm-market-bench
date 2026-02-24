@@ -194,3 +194,17 @@ class VerificationResult(BaseModel):
     adjusted_quantity: int | None = Field(None, description="New quantity if allocation is adjusted")
     alternative_ticker: str | None = Field(None, description="Suggested alternative stock ticker")
     confidence_score: int = Field(..., ge=0, le=100, description="Confidence score for this verification")
+
+
+class IngestionVerification(BaseModel):
+    """Outcome of the post-run log verification.
+
+    Attributes:
+        status: Whether the run was successful or failed.
+        problem: Detailed description of any identified errors or issues.
+        proposed_fix: Suggested resolution for the identified problem.
+    """
+
+    status: Literal["PASSED", "FAILED"]
+    problem: str | None = Field(None, description="Detailed description of the problem if status is FAILED")
+    proposed_fix: str | None = Field(None, description="Suggested fix for the identified problem")

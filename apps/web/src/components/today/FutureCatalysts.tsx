@@ -8,11 +8,11 @@ export function FutureCatalysts({ events }: { events: any[] }) {
                 <span className="w-2 h-8 bg-purple-500 rounded-full" />
                 Horizon Watch: Pending Events
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {events.map((event) => (
                     <div key={event.id} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm relative overflow-hidden group hover:border-purple-500 transition-colors">
                         <div className="absolute top-0 right-0 p-4">
-                             <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[9px] font-black uppercase tracking-widest rounded">
+                            <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[9px] font-black uppercase tracking-widest rounded">
                                 {event.target_date || 'Ongoing'}
                             </span>
                         </div>

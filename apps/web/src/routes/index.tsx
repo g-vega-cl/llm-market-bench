@@ -9,12 +9,12 @@ import { FutureCatalysts } from '~/components/today/FutureCatalysts'
 import * as React from 'react'
 
 const getTodayData = createServerFn({ method: 'GET' }).handler(async () => {
-  return fetchTodayData()
+    return fetchTodayData()
 })
 
 export const Route = createFileRoute('/')({
-  loader: async () => await getTodayData(),
-  component: TodayPage,
+    loader: async () => await getTodayData(),
+    component: TodayPage,
 })
 
 function TodayPage() {
@@ -22,10 +22,10 @@ function TodayPage() {
 
     // Check if everything is empty for today (excluding future events)
     const isEmpty = !data.newsletters?.length &&
-                    !data.trades?.length &&
-                    !data.decisions?.length &&
-                    !data.memories?.length &&
-                    !data.priceUpdates?.length;
+        !data.trades?.length &&
+        !data.decisions?.length &&
+        !data.memories?.length &&
+        !data.priceUpdates?.length;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6 md:p-12 animate-slow-fade">
@@ -43,13 +43,11 @@ function TodayPage() {
                 </p>
             </header>
 
-            <div className="max-w-7xl mx-auto space-y-16">
-                {!isEmpty && <MarketUpdates priceUpdates={data.priceUpdates} />}
-
+            <div className="max-w-7xl mx-auto space-y-24 pb-24">
                 {isEmpty ? (
                     <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[3rem]">
                         <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                             <span className="text-4xl animate-bounce">☕</span>
+                            <span className="text-4xl animate-bounce">☕</span>
                         </div>
                         <h2 className="text-2xl font-bold text-zinc-800 dark:text-zinc-200 mb-2">Quiet on the Western Front.</h2>
                         <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
@@ -58,25 +56,18 @@ function TodayPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                        {/* Main Narrative Column */}
-                        <div className="lg:col-span-8 space-y-16">
-                            <AgentInsights memories={data.memories} />
-                            <NewsletterFeed newsletters={data.newsletters} />
-                        </div>
-
-                        {/* Sidebar Dashboard Column */}
-                        <div className="lg:col-span-4 space-y-16">
-                            <TradeActivity trades={data.trades} decisions={data.decisions} />
-                            <FutureCatalysts events={data.futureEvents} />
-                        </div>
+                    <div className="space-y-24">
+                        <AgentInsights memories={data.memories} />
+                        <NewsletterFeed newsletters={data.newsletters} />
+                        <TradeActivity trades={data.trades} decisions={data.decisions} />
+                        <FutureCatalysts events={data.futureEvents} />
                     </div>
                 )}
 
                 {/* Always show future events if they exist and page is empty */}
                 {isEmpty && data.futureEvents?.length > 0 && (
                     <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800">
-                         <FutureCatalysts events={data.futureEvents} />
+                        <FutureCatalysts events={data.futureEvents} />
                     </div>
                 )}
             </div>

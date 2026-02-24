@@ -855,11 +855,11 @@ await portfolio.record_performance_snapshot(price_map)
 
 ## Phase 11: Real-time Monitoring (TODAY Dashboard)
 
-The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). This view aggregates:
+The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). This view provides a clean, linear narrative of the day's activity:
 1. **Intelligence Briefing**: Summaries of newsletters ingested today.
-2. **Execution & Guardrails**: Live feed of trades, rejections, and margin adjustments.
-3. **Cognitive Synthesis**: Global consensus, government incentives, and lessons learned.
-4. **Horizon Watch**: Pending future events (catalysts) identified by the agents.
+2. **AI Cognitive Synthesis**: A grouped view of global consensus, government incentives, and lessons learned, now including timestamps for each insight.
+3. **Execution & Guardrails**: A full-width feed of trades and rejections. Users can click any item to open a drawer and inspect the full LLM thought process and reasoning.
+4. **Horizon Watch**: A broad view of pending future events (catalysts) identified by the agents, displayed in an optimized multi-column grid.
 
 ---
 

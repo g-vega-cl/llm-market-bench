@@ -60,11 +60,16 @@ Tracks exact holdings.
 To prevent "duplicate key" errors during high-frequency updates, the system uses an **UPSERT with on_conflict** pattern on the `(portfolio_id, ticker)` composite key. This ensures that scaling into a position correctly updates the existing record rather than attempting a conflicting insert.
 
 ### `position_pnl` View (Real-time P&L)
- Riverside, CA
 SQL view that calculates Profit/Loss without data duplication.
 - `unrealized_pnl_usd`: Current dollar profit or loss.
 - `unrealized_pnl_pct`: Percentage return based on cost basis.
 - `current_price`: Latest price from the `market_data_cache`.
+
+### UI Augmented Metrics
+Calculated in the `PositionsTable` component:
+- **Invested (Cash)**: `quantity * average_cost_basis`.
+- **% of Portfolio**: `(Position Invested Cash / Total Portfolio Invested Cash) * 100`.
+
 
 ## 4. LLM Prompt Injection & Awareness
 Before the LLM analyzes news, we insert a snapshot of its financial health. The LLM is also given explicit instructions on **SMA Management Rules**, the **10% Safety Floor**, and the **$1,000 Minimum Purchase Rule**.

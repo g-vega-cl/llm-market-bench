@@ -22,7 +22,7 @@ The Portfolios section allows users to monitor the performance and holdings of e
 - **Sections**:
     - **Header**: Shows the agent's name, total equity, and current cash balance.
     - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity.
-    - **Current Positions**: A table listing all stocks currently held by the agent. Rows are interactive; clicking an entry expands to show the AI's reasoning.
+    - **Current Positions**: A table listing all stocks currently held by the agent. Displays quantity, average cost, current price, **Invested Amount**, **% of Portfolio**, and P&L. Rows are interactive; clicking an entry expands to show the AI's reasoning.
     - **Recent Trades**: A historical ledger of the agent's executions. Like the positions table, trade rows expand to reveal the specific reasoning behind the BUY or SELL signal.
 
 ## 3. Data Visualization: Equity Curve
@@ -61,6 +61,12 @@ The positions table utilizes the `position_pnl` SQL view. This view dynamically 
 - **Augmentation**: In the `-queries.ts` layer, this data is further augmented by joining with the `decisions` table to retrieve requested `reasoning` text.
 - `unrealized_pnl_usd`: `(current_price - cost_basis) * quantity`
 - `unrealized_pnl_pct`: `((current_price / cost_basis) - 1) * 100`
+
+### New Portfolio Metrics
+These metrics are calculated client-side in the `PositionsTable` component to provide immediate context on allocation and weight:
+- **Invested (Cash)**: `quantity * average_cost_basis` (Total capital deployed in the position).
+- **% of Portfolio**: `(Position Invested Cash / Total Portfolio Invested Cash) * 100` (The weight of the stock relative to the total cash invested across all active positions).
+
 
 ## 5. Implementation Details
 

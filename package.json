@@ -4,7 +4,8 @@
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "build:web": "pnpm --filter web build",
-    "install:all": "pnpm install"
+    "install:all": "pnpm install",
+    "test": "vitest"
   },
   "devDependencies": {
     "pnpm": "^9.0.0"

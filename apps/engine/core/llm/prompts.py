@@ -32,6 +32,8 @@ Before recommending any trade, you must answer these critical questions:
    - Consider what could go wrong.
 7. **How does this stock correlate with my existing portfolio?**
    - Avoid over-concentration in a single sector or theme.
+8. **Should I reduce exposure or take profits?**
+   - Use `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate the exact share quantity for selling a portion or all of an existing position. Do not guess the share count.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".

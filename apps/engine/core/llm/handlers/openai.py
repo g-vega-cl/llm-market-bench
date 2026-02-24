@@ -32,6 +32,9 @@ async def run_tool_loop(
                 tools.STOCK_TOOL_DEFINITION_OPENAI,
                 tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
                 tools.POSITION_PNL_TOOL_DEFINITION_OPENAI,
+                tools.SELL_20_PERCENT_TOOL_DEFINITION_OPENAI,
+                tools.SELL_50_PERCENT_TOOL_DEFINITION_OPENAI,
+                tools.SELL_100_PERCENT_TOOL_DEFINITION_OPENAI,
             ]
         }
         

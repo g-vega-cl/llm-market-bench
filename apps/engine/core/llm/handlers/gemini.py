@@ -20,6 +20,9 @@ async def run_tool_loop(
         tools.STOCK_TOOL_DEFINITION_GEMINI,
         tools.PRICE_HISTORY_TOOL_DEFINITION_GEMINI,
         tools.POSITION_PNL_TOOL_DEFINITION_GEMINI,
+        tools.SELL_20_PERCENT_TOOL_DEFINITION_GEMINI,
+        tools.SELL_50_PERCENT_TOOL_DEFINITION_GEMINI,
+        tools.SELL_100_PERCENT_TOOL_DEFINITION_GEMINI,
     ]
 
     for _ in range(max_tool_steps):

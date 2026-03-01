@@ -5,6 +5,7 @@ from .base import FinancialProvider
 from .fmp import FMPProvider
 from .yfinance import YFinanceProvider
 from .ibkr import IBKRProvider
+from .proxy_ibkr import ProxyIBKRProvider
 
 def get_financial_provider() -> FinancialProvider:
     """Factory to return the configured financial provider."""
@@ -17,6 +18,9 @@ def get_financial_provider() -> FinancialProvider:
         # It requires a running TWS/Gateway instance.
         logger.info("Using legacy IBKR provider.")
         return IBKRProvider()
+    elif FINANCIAL_PROVIDER == "ibkr_proxy":
+        logger.info("Using IBKR Proxy provider.")
+        return ProxyIBKRProvider()
     
     # Default/Fallback
     logger.warning(f"Unknown financial provider '{FINANCIAL_PROVIDER}'. Defaulting to yfinance.")
@@ -30,4 +34,6 @@ def get_active_provider_class():
         return YFinanceProvider
     elif FINANCIAL_PROVIDER == "ibkr":
         return IBKRProvider
+    elif FINANCIAL_PROVIDER == "ibkr_proxy":
+        return ProxyIBKRProvider
     return YFinanceProvider

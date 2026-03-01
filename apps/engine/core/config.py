@@ -97,3 +97,9 @@ FINANCIAL_API_THROTTLE_SECONDS = float(os.getenv("FINANCIAL_API_THROTTLE_SECONDS
 IBKR_HOST = os.getenv("IBKR_HOST", "127.0.0.1")
 IBKR_PORT = int(os.getenv("IBKR_PORT", "7496"))
 IBKR_CLIENT_ID = int(os.getenv("IBKR_CLIENT_ID", "1"))
+
+# --- IBKR Proxy Configuration ---
+IBKR_PROXY_URL = os.getenv("IBKR_PROXY_URL")
+# The engine will use this service role key to sign a JWT for the proxy
+# unless a specific IBKR_PROXY_TOKEN is provided.
+IBKR_PROXY_TOKEN = os.getenv("IBKR_PROXY_TOKEN")

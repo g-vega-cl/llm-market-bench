@@ -1,27 +1,36 @@
-# [LEGACY] Interactive Brokers (IBKR) Integration
+# Interactive Brokers (IBKR) Integration
+
+The AI Wall Street Engine supports fetching real-time market data (price and market capitalization) and historical bars via Interactive Brokers using two different providers:
+
+1.  **`ibkr_proxy` (Recommended)**: Connects to a remote or local IBKR Proxy server. This is the most secure and flexible method.
+2.  **`ibkr` (Legacy)**: Connects directly to a local TWS/Gateway instance.
+
+---
+
+## 1. IBKR Proxy Provider (Recommended)
+
+The IBKR Proxy allows you to securely access market data from a central location (e.g., a home computer running TWS) from any other environment (e.g., GitHub Actions or a cloud server).
+
+### Setup
+Ensure the [IBKR Proxy](../apps/ibkr-proxy/README.md) is running and accessible via a public URL (e.g., Cloudflare Tunnel).
+
+### Configuration
+Set these in your `apps/engine/.env`:
+```bash
+FINANCIAL_PROVIDER=ibkr_proxy
+IBKR_PROXY_URL=https://your-domain.com
+IBKR_PROXY_TOKEN=your-secret-key
+```
+
+---
+
+## 2. Direct IBKR Provider (Legacy)
 
 > [!WARNING]
-> **This provider is now considered LEGACY.** The primary financial data provider is `yfinance`. Use IBKR only if you specifically require it and have a running TWS/Gateway instance.
+> This method is for local use only and requires TWS/Gateway to be running on the same machine as the engine.
 
-The AI Wall Street Engine supports fetching real-time market data (price and market capitalization) and historical bars via Interactive Brokers. 
-
-## Architectural Improvements (2026 Update)
-Recent updates have significantly improved the robustness of the IBKR integration:
-- **Singleton Connection Pattern**: The provider now uses a thread-safe singleton pattern (`@classmethod` based) to ensure that multiple concurrent tasks share a single, stable connection. This permanently resolves any "clientId already in use" errors.
-- **Robust Resource Cleanup**: main pipeline entry points now use `try...finally` blocks to guarantee that the IBKR client is properly disconnected, even if the pipeline fails midway.
-
-## Prerequisites
-
-1.  **IBKR Gateway or TWS**: You must have the IBKR Gateway or Trader Workstation (TWS) running on your local machine or a reachable server.
-2.  **API Settings**:
-    *   Enable "ActiveX and Socket Clients".
-    *   Set the "Socket Port" (Default: `7496` for TWS, `4002` for Gateway).
-3.  **Dependencies**: The engine requires the `ib-async` library.
-
-## Configuration
-
-Set the following environment variables in your `.env` file to enable the legacy provider:
-
+### Configuration
+Set these in your `apps/engine/.env`:
 ```bash
 FINANCIAL_PROVIDER=ibkr
 IBKR_HOST=127.0.0.1
@@ -29,30 +38,19 @@ IBKR_PORT=7496
 IBKR_CLIENT_ID=1
 ```
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `FINANCIAL_PROVIDER` | Set to `ibkr` to use this provider. | `yfinance` |
-| `IBKR_HOST` | The IP address where IBKR is running. | `127.0.0.1` |
-| `IBKR_PORT` | The socket port configured in IBKR. | `7496` |
-| `IBKR_CLIENT_ID` | A unique ID for the connection. | `1` |
+---
 
-## How it Works
+## Common IBKR Settings (All Providers)
 
-### Real-time & Delayed Quotes
-The provider uses the `ib-async` `reqTickersAsync` method to fetch current market prices. By default, it requests **Market Data Type 3 (Delayed)** and **Type 4 (Delayed Frozen)**. This ensures that the engine can still retrieve the last known price even if the market is closed or if the account does not have a real-time data subscription for a specific ticker.
+Regardless of the provider, your Interactive Brokers TWS or Gateway must be configured correctly:
 
-### Robustness & Fallbacks
-The provider includes a multi-step fallback logic for price extraction. If a preferred price field (like `marketPrice`) is `NaN` or missing, it automatically attempts to use `last`, `close`, `bid`, or `ask` in order of availability. Crucially, the logic performs explicit `math.isnan()` checks at each step to bypass Python's treatment of `NaN` as truthy, ensuring the first valid numerical price is used.
-
-### Market Capitalization
-IBKR does not provide market cap via standard ticks. The engine fetches a `ReportSnapshot` from IBKR's fundamental data service, parses the XML, and extracts the `MKTCAP` ratio.
-
-### Connection Safety
-The connection is established with `readonly=True` to prevent accidental synchronization of orders or executions, ensuring the engine remains in a "read" state for market data fetching. Low-level `ib_async` internal logs are suppressed to keep the terminal output clean.
+1.  **Enable API**: In TWS/Gateway, go to **Global Configuration > API > Settings**.
+2.  **Socket Port**: Ensure it matches your `.env` (Default: `7496` for TWS, `4002` for Gateway).
+3.  **Read-Only API**: Should be **checked** if you only need market data.
+4.  **Allow connections from localhost only**: Usually **checked** for security (the Proxy handles the external routing).
 
 ## Troubleshooting
 
-- **Connection Refused**: Ensure the Gateway/TWS is open and the port matches your `.env`.
-- **Read-Only Warnings**: If you see `Warning 321`, it means your IBKR instance has "Read-Only API" checked in its global configuration. This is fine for data fetching.
-- **Missing Market Cap**: Fundamental data may not be available for all tickers (e.g., some international stocks or small caps).
-- **Price is NaN**: If IBKR returns `NaN` for all price fields, the engine will attempt to fallback to historical data via the `MarketDataManager`.
+- **503 Service Unavailable (Proxy)**: The Proxy cannot reach TWS. Ensure TWS is logged in and the API is enabled on the Proxy's host.
+- **Client ID already in use**: The Proxy automatically retries with random IDs. If using the legacy provider, ensure `IBKR_CLIENT_ID` is unique.
+- **Connection Refused**: Check if the port matches and if TWS is actually running.

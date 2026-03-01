@@ -13,6 +13,7 @@ For a deep dive into the system design, see the **[Project Overview](./docs/Over
 This is a monorepo managed with `pnpm`:
 
 *   **`apps/engine`**: The Python pipeline (Ingestion, Analysis, Execution).
+*   **`apps/ibkr-proxy`**: A secure FastAPI proxy for Interactive Brokers market data.
 *   **`apps/web`**: The TanStack Start dashboard (Frontend). [Read the Web Architecture Docs](./docs/web/README.md).
 *   **`supabase`**: SQL migrations and database configuration.
 *   **`docs`**: Technical documentation and walkthroughs.
@@ -33,6 +34,7 @@ pnpm install
 The engine handles the daily pipeline:
 ```bash
 cd apps/engine
+python -m venv market
 source market/bin/activate
 pip install -r requirements.txt
 python3 main.py ingest
@@ -59,8 +61,9 @@ We maintain a high stability gate for the core engine:
 
 ## 📄 Documentation
 
-*   [System Overview](./Overview.md)
-*   [Database Schema](./database-schema.md)
-*   [Data Flow & Pipeline Walkthrough](./engine/data-flow.md)
+*   [System Overview](./docs/Overview.md)
+*   [Database Schema](./docs/database-schema.md)
+*   [IBKR Proxy & Integration Guide](./docs/IBKR-Integration.md)
+*   [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
 *   [Web Application Architecture](./docs/web/README.md)
 *   [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)

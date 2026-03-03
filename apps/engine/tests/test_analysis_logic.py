@@ -20,7 +20,9 @@ class TestDecisionObject:
             "source_id": "news_123",
             "is_priced_in": False,
             "is_priced_in_reasoning": "News just broke",
-            "profit_potential_reasoning": "First mover advantage"
+            "profit_potential_reasoning": "First mover advantage",
+            "strategy_reasoning": "Bullish on Apple due to new AI chips.",
+            "advance_planning_notes": "None"
         }
         obj = DecisionObject(**data)
         assert obj.signal == "BUY"
@@ -94,7 +96,9 @@ class TestAnalysisOrchestration:
                     source_id=chunk.get("source_id", "unknown"),
                     is_priced_in=False,
                     is_priced_in_reasoning="Logic",
-                    profit_potential_reasoning="Profit"
+                    profit_potential_reasoning="Profit",
+                    strategy_reasoning="Mock strategy",
+                    advance_planning_notes="Mock notes"
                 ) for chunk in chunks
             ]
             return DecisionsResponse(decisions=decisions, macro_events=[])
@@ -147,7 +151,9 @@ class TestAnalysisOrchestration:
                     source_id=chunk.get("source_id", "unknown"),
                     is_priced_in=False,
                     is_priced_in_reasoning="Logic",
-                    profit_potential_reasoning="Profit"
+                    profit_potential_reasoning="Profit",
+                    strategy_reasoning="Mock strategy",
+                    advance_planning_notes="Mock notes"
                 ) for chunk in chunks
             ]
             return DecisionsResponse(decisions=decisions, macro_events=[])

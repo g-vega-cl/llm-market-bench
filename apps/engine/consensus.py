@@ -143,6 +143,7 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
             ongoing_votes = 0.0
             catalyst_votes = 0.0
             parallels = []
+            scenarios = []
             reasonings = []
             source_ids = set()
             
@@ -158,6 +159,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     catalyst_votes += weight
                 if occ.historical_parallel:
                     parallels.append(occ.historical_parallel)
+                if getattr(occ, "scenario_analysis", None):
+                    scenarios.append(occ.scenario_analysis)
 
             majority_impact = _resolve_impact_tie(impact_weights)
             
@@ -167,7 +170,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
             synthesis = await synthesize_event(
                 event_name=representative_name,
                 impact=majority_impact,
-                reasonings=reasonings
+                reasonings=reasonings,
+                scenarios=scenarios
             )
             
             # Use synthesized flags if available, otherwise majority vote
@@ -186,7 +190,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 "is_future_catalyst": is_future_catalyst,
                 "historical_parallel": historical_parallel,
                 "future_date": synthesis.get("future_date"),
-                "future_date_note": synthesis.get("future_date_note")
+                "future_date_note": synthesis.get("future_date_note"),
+                "scenario_analysis": synthesis.get("scenario_analysis")
             }
 
             # 4. Analyze Relationship & Link Memory
@@ -218,7 +223,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "is_ongoing": is_ongoing,
                     "is_future_catalyst": is_future_catalyst,
                     "historical_parallel": historical_parallel,
-                    "future_date_note": consensus_data.get("future_date_note")
+                    "future_date_note": consensus_data.get("future_date_note"),
+                    "scenario_analysis": consensus_data.get("scenario_analysis")
                 },
                 parent_id=parent_id,
                 relationship_type=rel_type,
@@ -270,20 +276,28 @@ async def process_decision_consensus(decisions: list[DecisionObject]) -> list[di
     for (ticker, signal), occurrences in groups.items():
         unique_models = set()
         reasonings = []
+        strategies = []
+        plannings = []
         source_ids = set()
         
         for occ in occurrences:
             model_key = f"{occ.model_provider}_{occ.model_name}"
             unique_models.add(model_key)
             reasonings.append(occ.reasoning)
+            if getattr(occ, "strategy_reasoning", None):
+                strategies.append(occ.strategy_reasoning)
+            if getattr(occ, "advance_planning_notes", None):
+                plannings.append(occ.advance_planning_notes)
             source_ids.add(occ.source_id)
 
         # Use the synthesis logic to create a unified reasoning for this decision
-        # We repurpose synthesize_event for this, as it handles combining model perspectives
+        # We include strategic intent and planning in the reasoning pool
+        combined_perspectives = reasonings + strategies + plannings
+        
         synthesis = await synthesize_event(
             event_name=f"{signal} signal for {ticker}",
             impact="BULLISH" if signal == "BUY" else "BEARISH",
-            reasonings=reasonings
+            reasonings=combined_perspectives
         )
 
         consolidated_results.append({

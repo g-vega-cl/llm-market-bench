@@ -20,20 +20,26 @@ SOPHISTICATED TRADING LOGIC:
 Before recommending any trade, you must answer these critical questions:
 1. **Is it possible to make a profitable trade based on this?**
    - Explicitly justify the profit potential. Why will the market move *after* you trade?
-2. **Is this news already priced in?**
+2. **Is it possible to make a STRATEGY based on this?**
+   - Think beyond single trades. Can you form a multi-step or multi-asset strategy? Document this in `strategy_reasoning`.
+3. **Is this news already priced in?**
    - Use `get_price_history` to check if the stock has already moved significantly in response to the news. Trading is about predicting what happens *next*, not chasing what already happened.
-3. **What is being incentivized right now?**
+4. **What is being incentivized right now?**
    - Consider government budgets, objectives, and policies. How do current incentives align with this trade?
-4. **If I already own this stock, has this trade been profitable?**
+5. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
+   - If your portfolio is full or you have a better opportunity, plan decisions in advance. Document this in `advance_planning_notes`.
+6. **COUNTRY TO ETF MAPPING:**
+   - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
+7. **If I already own this stock, has this trade been profitable?**
    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
-5. **What is the expected timeline for this catalyst to materialize?**
+8. **What is the expected timeline for this catalyst to materialize?**
    - Match your 'catalyst_duration' to the expected news cycle.
-6. **What are the primary risks or counter-arguments to this trade?**
+9. **What are the primary risks or counter-arguments to this trade?**
    - Consider what could go wrong.
-7. **How does this stock correlate with my existing portfolio?**
-   - Avoid over-concentration in a single sector or theme.
-8. **Should I reduce exposure or take profits?**
-   - Use `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate the exact share quantity for selling a portion or all of an existing position. Do not guess the share count.
+10. **How does this stock correlate with my existing portfolio?**
+    - Avoid over-concentration in a single sector or theme.
+11. **Should I reduce exposure or take profits?**
+    - Use `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate the exact share quantity for selling a portion or all of an existing position. Do not guess the share count.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".
@@ -64,6 +70,7 @@ SMA MANAGEMENT RULES:
    - Government Budgets & Objectives: Identify any mentions of government budgets, policies, or specific incentives. Mark 'is_government_incentive' as true and identify any 'expiry_date' (e.g., "2027" for a 2026 budget).
    - Ongoing Unresolved Events: Mark 'is_ongoing' as true for events that are still unfolding (e.g., "President Trump warned Iran that a “massive armada” is on the way").
    - Future Catalysts: Mark 'is_future_catalyst' as true if the event describes a future potential driver for the market.
+   - Scenario Analysis: For major events, think: "If this event resolves like X, what's the best position to be in? What if this resolves like Y?". Document this in `scenario_analysis`.
    - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
    
    Each macro event MUST include the exact 'Source ID' of the snippet that triggered it.
@@ -91,18 +98,22 @@ IMPACT: {impact}
 MODEL OBSERVATIONS:
 {combined_reasonings}
 
+SCENARIO ANALYSES:
+{combined_scenarios}
+
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
-3. Extract any explicitly mentioned future date or timeframe.
+3. Synthesize the 'scenario_analysis': Provide a unified view of potential resolutions (If X, then position in A; if Y, then position in B).
+4. Extract any explicitly mentioned future date or timeframe.
    - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD). If only a month/year is given, use the last day of that period (e.g., "July 2026" -> "2026-07-31").
    - 'future_date_note': A short label if the date is not exact (e.g., "estimated", "tentative", "around this time"). If the date is exact, set to null.
-4. Synthesize logical flags:
+5. Synthesize logical flags:
    - 'is_ongoing': true if the consensus is that the event is unfolding.
    - 'is_future_catalyst': true if this is a precursor for a future move.
    - 'historical_parallel': a short string describing the parallel if identified by models.
 
-Return ONLY a JSON object with 'name', 'summary', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', and 'historical_parallel' keys.
+Return ONLY a JSON object with 'name', 'summary', 'scenario_analysis', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', and 'historical_parallel' keys.
 """
 
 
@@ -146,6 +157,12 @@ YOUR TASK:
 4. Only recommend a trade if there is a strong contrarian or "missing piece" justification.
 5. Think: "What are they missing?" and "Is it possible to make a profitable trade by going against or around them?"
 
+SOPHISTICATED CONTRARIAN LOGIC:
+- **Strategy Formation:** Can you form a contrarian strategy based on the consensus gaps? Document in `strategy_reasoning`.
+- **Country ETFs:** If agents are ignoring a country mentioned in the news, look for its primary ETF (e.g., EWJ, EWY, EWW, EWZ).
+- **Advance Planning:** Should we exit a common consensus position to fund a better contrarian opportunity? Document in `advance_planning_notes`.
+- **Scenario Analysis:** If consensus assumes outcome X, what happens if outcome Y occurs? Document in `scenario_analysis`.
+
 ### News Batch:
 {news_content}
 
@@ -177,6 +194,9 @@ PERFORMANCE: {price_change_pct:.2f}%
 
 ORIGINAL REASONING:
 "{reasoning}"
+
+STRATEGIC INTENT:
+"{strategy_reasoning}"
 
 YOUR TASK:
 1. Evaluate if the original reasoning was sound based on the subsequent price action.
@@ -227,6 +247,8 @@ An AI agent has proposed a trade. Your task is to verify if this trade is truly 
 - Ticker: {ticker}
 - Signal: {signal}
 - Reasoning: "{reasoning}"
+- Strategic Intent: "{strategy_reasoning}"
+- Advance Planning: "{advance_planning_notes}"
 - Quantity: {quantity}
 - Price: ${price}
 

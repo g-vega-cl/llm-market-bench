@@ -67,6 +67,8 @@ async def verify_trading_decision(
             ticker=decision.ticker,
             signal=decision.signal,
             reasoning=decision.reasoning,
+            strategy_reasoning=getattr(decision, "strategy_reasoning", "None"),
+            advance_planning_notes=getattr(decision, "advance_planning_notes", "None"),
             quantity=getattr(decision, "quantity", 0) or 1,
             price=decision.price or "unknown",
             portfolio_context=portfolio_context,

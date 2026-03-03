@@ -81,7 +81,7 @@ Stores global market events for RAG retrieval.
 - `id` (UUID): Primary key.
 - `content` (TEXT): Synthesized event description.
 - `embedding` (VECTOR(768)): Google Gemini embedding.
-- `metadata` (JSONB): Source and context metadata (includes `future_date_note` for catalysts).
+- `metadata` (JSONB): Source and context metadata (includes `future_date_note`, `scenario_analysis` for catalysts).
 - `memory_type` (TEXT): `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`.
 - `status` (TEXT): `ACTIVE`, `RESOLVED`, `SUPERSEDED`.
 - `target_date` (TEXT): For proactive catalyst tracking.
@@ -97,7 +97,7 @@ Stores reasoning and attribution for every LLM signal.
 - `ticker`, `signal`, `confidence` (TEXT/INT): Trade intent.
 - `price` (NUMERIC): LLM predicted/observed price.
 - `reasoning` (TEXT): Full LLM justification.
-- `metadata` (JSONB): Detailed status and execution info.
+- `metadata` (JSONB): Detailed status and execution info (includes `strategy_reasoning`, `advance_planning_notes`).
 - `status` (TEXT): `CREATED`, `EXECUTED`, `REJECTED_MARGIN`, etc.
 - `trade_id` (UUID): Link to `trades` table.
 - `embedding` (VECTOR(768)): Embedding of reasoning.

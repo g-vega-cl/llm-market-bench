@@ -38,13 +38,17 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
             signal="BUY", confidence=80, reasoning="Bullish news 1", 
                 ticker="AAPL", source_id="src_1",
                 is_priced_in=False, is_priced_in_reasoning="News just broke",
-                profit_potential_reasoning="First mover advantage"
+                profit_potential_reasoning="First mover advantage",
+                strategy_reasoning="Buy AAPL for long term",
+                advance_planning_notes="Plan to hold"
         ),
         DecisionObject(
             signal="SELL", confidence=70, reasoning="Bearish news 2", 
                 ticker="GOOGL", source_id="src_2",
                 is_priced_in=True, is_priced_in_reasoning="Already spiked",
-                profit_potential_reasoning="Exit before further drop"
+                profit_potential_reasoning="Exit before further drop",
+                strategy_reasoning="Sell GOOGL now",
+                advance_planning_notes="Move to cash"
         )
     ]
     from core.models import DecisionsResponse

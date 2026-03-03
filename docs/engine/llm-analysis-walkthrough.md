@@ -67,6 +67,8 @@ class DecisionObject(BaseModel):
     is_priced_in: bool   # Whether news is priced in
     is_priced_in_reasoning: str # Reasoning for pricing
     profit_potential_reasoning: str # Justification for profit potential
+    strategy_reasoning: str | None # "Is it possible to make a strategy based on this?"
+    advance_planning_notes: str | None # "Should I sell X to buy Y?"
 ```
 
 ### **Macro Event Objects**
@@ -84,6 +86,7 @@ class MacroEvent(BaseModel):
     future_date: str | None # Extracted future timeframe
     is_government_incentive: bool # Related to government budgets/policy
     expiry_date: str | None # Date when policy/incentive expires
+    scenario_analysis: str | None # "If event resolves like X, then position in A"
     source_id: str | None # ID of the source chunk (Optional)
 ```
 

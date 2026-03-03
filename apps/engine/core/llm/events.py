@@ -14,7 +14,7 @@ logger = logging.getLogger("engine")
 
 
 async def synthesize_event(
-    event_name: str, impact: str, reasonings: list[str]
+    event_name: str, impact: str, reasonings: list[str], scenarios: list[str] = None
 ) -> dict[str, str]:
     """Synthesizes a unified event name and summary from model perspectives.
 
@@ -30,11 +30,13 @@ async def synthesize_event(
 
     try:
         combined_reasonings = "\n".join([f"- {r}" for r in reasonings])
+        combined_scenarios = "\n".join([f"- {s}" for s in scenarios]) if scenarios else "No explicit scenario analysis provided."
 
         prompt = prompts.SYNTHESIS_USER_PROMPT_TEMPLATE.format(
             event_name=event_name,
             impact=impact,
             combined_reasonings=combined_reasonings,
+            combined_scenarios=combined_scenarios,
         )
 
         class SynthesisResponse(BaseModel):
@@ -45,6 +47,7 @@ async def synthesize_event(
             is_ongoing: bool = False
             is_future_catalyst: bool = False
             historical_parallel: Optional[str] = None
+            scenario_analysis: Optional[str] = None
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
@@ -85,7 +88,8 @@ async def synthesize_event(
             "future_date_note": resp.future_date_note,
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
-            "historical_parallel": resp.historical_parallel
+            "historical_parallel": resp.historical_parallel,
+            "scenario_analysis": resp.scenario_analysis
         }
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)
@@ -100,7 +104,8 @@ async def synthesize_event(
             "future_date_note": None,
             "is_ongoing": False,
             "is_future_catalyst": False,
-            "historical_parallel": None
+            "historical_parallel": None,
+            "scenario_analysis": None
         }
     finally:
         # Ensure client is properly closed

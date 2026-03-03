@@ -48,7 +48,11 @@ def save_decision(
         "model_name": decision.model_name,
         "price": getattr(decision, "price", None),
         "status": status,
-        "metadata": metadata or {},
+        "metadata": {
+            **(metadata or {}),
+            "strategy_reasoning": getattr(decision, "strategy_reasoning", None),
+            "advance_planning_notes": getattr(decision, "advance_planning_notes", None)
+        },
         "trade_id": trade_id,
         "embedding": get_embedding(decision.reasoning) if decision.reasoning else None
     }

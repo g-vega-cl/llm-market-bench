@@ -43,7 +43,7 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
 
         # Join with decisions to get reasoning
         res = sb_client.table("trades").select(
-            "id, ticker, quantity, price, signal, executed_at, decisions(reasoning, model_name)"
+            "id, ticker, quantity, price, signal, executed_at, decisions(reasoning, model_name, metadata)"
         ).filter("executed_at", "gte", start_time).filter("executed_at", "lte", end_time).execute()
         
         trades = res.data if res.data else []
@@ -59,6 +59,8 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
             signal = trade["signal"]
             decision_data = trade.get("decisions", [{}])[0] if trade.get("decisions") else {}
             reasoning = decision_data.get("reasoning", "No reasoning found.")
+            meta = decision_data.get("metadata", {})
+            strategy_reasoning = meta.get("strategy_reasoning", "None")
             
             # 3. Check for existing post-analysis lesson FOR THIS SPECIFIC WINDOW
             existing_memory = sb_client.table("memories").select("id").filter(
@@ -88,7 +90,8 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
                 entry_price=entry_price,
                 current_price=current_price,
                 price_change_pct=price_change_pct,
-                reasoning=reasoning
+                reasoning=reasoning,
+                strategy_reasoning=strategy_reasoning
             )
             
             try:

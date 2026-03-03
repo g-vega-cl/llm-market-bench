@@ -49,14 +49,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 4. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools (`get_stock_quote`, `get_price_history`, `sell_20_percent`, `sell_50_percent`, `sell_100_percent`).
+5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
-7. **Decision Attribution:** Map reasoning and metadata to the `decisions` table.
-8. **Event Consensus:** Synthesize global macro events; group semantically via pgvector.
+7. **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
+8. **Event Consensus:** Synthesize global macro events with **Scenario Analysis** (evaluating "If X vs If Y" outcomes); group semantically via pgvector.
 9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
-10. **Second-Step Verification**: A skeptical "Verifier" agent (using the original decision's provider) audits BUY/SELL signals using specialized tools (`get_volatility_metrics`, `get_sector_alternatives`).
+10. **Second-Step Verification**: A skeptical "Verifier" agent (using the original decision's provider) audits BUY/SELL signals, evaluating not just price but also the **Strategic Intent** and **Advance Planning** of the trade.
 11. **Trade Abort/Adjustment**: Verification results can force a `REJECTED_VERIFICATION` or `ADJUSTED_ALLOCATION` before money moves.
 12. **Pre-Market Validation**: Existence, price banding, and liquidity checks with automated engine-level backfill for missing LLM prices.
 13. **Reg T Margin Validation**: Ensure buying power and SMA safety floor.
@@ -77,10 +77,10 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Tech:** Python / Multi-Provider Tool Loop
 *   **Logic:** *Every BUY/SELL signal is intercepted by a dedicated verifier.*
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
-*   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis** (finding correlated stocks via embedding similarity).*
+*   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis**. Crucially, it now **audits the agent's strategic reasoning** (e.g., "sell X to fund Y") for logical consistency.*
 *   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. Assistant text responses are automatically stripped of trailing whitespace to ensure compliance with strict API validation rules. The engine now correctly maps provider-specific roles (e.g., using 'model' for Gemini) to maintain session integrity during high-volume tool loops.*
 *   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections (like IBKR), ensuring high-concurrency tool loops never result in port conflicts.*
-*   **Outcome**: *Approves, rejects, or shrinks the trade allocation.*
+*   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
 **11. Pre-Execution Margin Validation** ✅
 
@@ -130,6 +130,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
+*   **Scenario Awareness:** *Memories now incorporate **Scenario Analysis**, allowing models to recall not just what happened, but different ways an event was expected to resolve.*
 *   **Retrieval:** *The engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
 *   **Schema Robustness:** *Includes automated JSON string parsing, Pydantic field validation to convert `NaN` values to `None`, and expanded `catalyst_type` literals to handle model "Semantic Fragility" during high-volume tool loops.*
 *   **Deduplication:** *Enforces a 24-hour lookback window to prevent semantic duplicates of the same event from being stored (Similarity > 0.90).*
@@ -198,7 +199,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 * **Tech:** Python / Gemini Flash 3 / pgvector
 * **Logic:** *At multiple intervals (5, 14, 30 days) after a trade, the **Manager Agent** performs a "Post-Analysis." It compares the AI's reasoning to the actual price performance.*
-* **Outcome:** *Generates "Lessons Learned" (stored as `LESSON_LEARNED` memories) and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or strategic errors in future RAG retrievals.*
+* **Outcome:** *Generates "Lessons Learned" (stored as `LESSON_LEARNED` memories) and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or **strategic planning errors** in future RAG retrievals.*
 * File: `apps/engine/analysis/post_analysis.py`
 
 **22. Contrarian Agent Execution** ✅

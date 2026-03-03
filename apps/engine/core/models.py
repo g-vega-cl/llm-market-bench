@@ -80,6 +80,14 @@ class DecisionObject(BaseModel):
         "No explicit profit potential reasoning provided.",
         description="Reasoning on why it's possible to make a profitable trade based on this"
     )
+    strategy_reasoning: str | None = Field(
+        None,
+        description="Detailed strategic reasoning for the trade"
+    )
+    advance_planning_notes: str | None = Field(
+        None,
+        description="Notes for planning decisions in advance (e.g., selling X for Y)"
+    )
 
     @field_validator("ticker")
     @classmethod
@@ -137,6 +145,10 @@ class MacroEvent(BaseModel):
     )
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")
+    scenario_analysis: str | None = Field(
+        None,
+        description="Analysis of potential resolutions and best positions for each (if X happens, then...; if Y happens, then...)"
+    )
     source_id: str = Field("unknown", description="ID of the source newsletter chunk")
     model_provider: str | None = Field(None)
     model_name: str | None = Field(None)

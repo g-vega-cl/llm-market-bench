@@ -41,7 +41,9 @@ class YFinanceProvider(FinancialProvider):
 
             # Different keys might contain price depending on market state
             price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
-            market_cap = info.get("marketCap", 0)
+            
+            # Market Cap fallback for ETFs: yfinance often puts ETF size in totalAssets or netAssets
+            market_cap = info.get("marketCap") or info.get("totalAssets") or info.get("netAssets") or 0
 
             if price is None:
                 logger.warning(f"Could not find price for {ticker} on yfinance.")

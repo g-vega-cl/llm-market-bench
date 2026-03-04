@@ -308,7 +308,10 @@ class Portfolio:
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
             
             # 4. Update and save metrics to ensure table consistency
-            current_prices = {ticker: price}
+            # Use current prices for all held positions to avoid fallbacks
+            current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
+            current_prices[ticker] = price  # Ensure the execution price is used for the current trade
+            
             self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 

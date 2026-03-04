@@ -82,15 +82,15 @@ async def test_ingest_newsletters_summary(caplog):
         from ingest.newsletter import NewsletterSnapshot
 
         mock_process.side_effect = [
-            NewsletterSnapshot(
+            (NewsletterSnapshot(
                 "id1", "hash1", "sender@a.com", "at", "sub", "content", "at"
-            ),
-            NewsletterSnapshot(
+            ), "sender@a.com"),
+            (NewsletterSnapshot(
                 "id2", "hash2", "sender@a.com", "at", "sub", "content", "at"
-            ),
-            NewsletterSnapshot(
+            ), "sender@a.com"),
+            (NewsletterSnapshot(
                 "id3", "hash3", "sender@b.com", "at", "sub", "content", "at"
-            ),
+            ), "sender@b.com"),
         ]
 
         from ingest.newsletter import ingest_newsletters
@@ -106,3 +106,59 @@ async def test_ingest_newsletters_summary(caplog):
             "Successfully ingested 3 newsletters: 2 from sender@a.com, 1 from sender@b.com"
             in caplog.text
         )
+
+@pytest.mark.asyncio
+async def test_ingest_newsletters_fragility_fix(caplog):
+    """Test the refined 'Semantic Fragility' logic doesn't warn about missing senders."""
+    with patch("ingest.newsletter.get_gmail_service") as mock_get_service, \
+         patch("ingest.newsletter._process_message") as mock_process:
+
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        # Scenario: Only 'sender@a.com' is found in Gmail (NOT 'sender@b.com')
+        # Even if 'sender@b.com' is in NEWSLETTER_SENDERS, we should NOT get a warning.
+        mock_service.users().messages().list().execute.return_value = {
+            "messages": [{"id": "1"}]
+        }
+        
+        from ingest.newsletter import NewsletterSnapshot
+        mock_process.return_value = (
+            NewsletterSnapshot("id1", "hash1", "sender@a.com", "at", "sub", "content", "at"),
+            "sender@a.com"
+        )
+
+        from ingest.newsletter import ingest_newsletters
+        import logging
+        caplog.set_level(logging.WARNING)
+
+        await ingest_newsletters(newer_than_days=1)
+
+        # There should be NO warning about sender@b.com
+        assert "SEMANTIC FRAGILITY ALERT" not in caplog.text
+
+@pytest.mark.asyncio
+async def test_ingest_newsletters_fragility_trigger(caplog):
+    """Test the refined 'Semantic Fragility' logic DOES warn when a found message fails to parse."""
+    with patch("ingest.newsletter.get_gmail_service") as mock_get_service, \
+         patch("ingest.newsletter._process_message") as mock_process:
+
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        # Scenario: 'sender@a.com' is found, but processing FAILS (snapshot is None)
+        mock_service.users().messages().list().execute.return_value = {
+            "messages": [{"id": "1"}]
+        }
+        
+        # Returns sender name but NO snapshot (e.g., parsing exception internally)
+        mock_process.return_value = (None, "sender@a.com")
+
+        from ingest.newsletter import ingest_newsletters
+        import logging
+        caplog.set_level(logging.WARNING)
+
+        await ingest_newsletters(newer_than_days=1)
+
+        # There SHOULD be a warning about sender@a.com
+        assert "SEMANTIC FRAGILITY ALERT: Found message(s) from 'sender@a.com'" in caplog.text

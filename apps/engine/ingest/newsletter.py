@@ -228,7 +228,7 @@ def generate_chunk_hash(content: str) -> str:
 async def _process_message(
     service: Any,
     msg_ref: dict[str, str]
-) -> NewsletterSnapshot | None:
+) -> tuple[NewsletterSnapshot | None, str | None]:
     """Fetch a single message and transform it into a NewsletterSnapshot.
 
     Args:
@@ -236,8 +236,9 @@ async def _process_message(
         msg_ref: Dictionary containing the message 'id'.
 
     Returns:
-        NewsletterSnapshot if successful, None otherwise.
+        A tuple of (NewsletterSnapshot or None, sender_string or None).
     """
+    sender = None
     try:
         msg = service.users().messages().get(
             userId="me",
@@ -269,10 +270,10 @@ async def _process_message(
             subject=subject,
             content=cleaned_body,
             ingested_at=datetime.now().isoformat(),
-        )
+        ), sender
     except Exception as e:
         logger.error(f"Error processing message {msg_ref.get('id')}: {e}")
-        return None
+        return None, sender
 
 
 async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
@@ -310,8 +311,11 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
         logger.info(f"Found {len(messages)} messages. Starting processing...")
 
         snapshots = []
+        attempted_senders = set()
         for msg_ref in messages:
-            snapshot = await _process_message(service, msg_ref)
+            snapshot, sender = await _process_message(service, msg_ref)
+            if sender:
+                attempted_senders.add(sender)
             if snapshot:
                 snapshots.append(asdict(snapshot))
 
@@ -319,16 +323,15 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
         sender_counts = Counter(s["sender"] for s in snapshots)
         
         # --- Semantic Fragility Monitoring ---
-        # Detect if any configured senders produced ZERO snapshots
-        # This could indicate a major template change that BROKE our parser
-        for sender in NEWSLETTER_SENDERS:
-            # Simple check: does any snapshot's sender string contain our configured sender substring?
-            found = any(sender.lower() in s["sender"].lower() for s in snapshots)
+        # Detect if any sender found in today's messages failed to produce a snapshot
+        # This indicates a template change or parsing error.
+        for attempted_sender in attempted_senders:
+            # Check if this attempted sender resulted in any snapshot
+            found = any(attempted_sender.lower() in s["sender"].lower() for s in snapshots)
             if not found:
                 logger.warning(
-                    f"SEMANTIC FRAGILITY ALERT: Configured sender '{sender}' yielded 0 valid snapshots "
-                    f"despite {len(messages)} total messages being found in this window. "
-                    f"Check if the newsletter template has changed!"
+                    f"SEMANTIC FRAGILITY ALERT: Found message(s) from '{attempted_sender}' "
+                    f"but yielded 0 valid snapshots. Check if the newsletter template has changed!"
                 )
 
         if snapshots:

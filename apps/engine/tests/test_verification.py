@@ -190,3 +190,49 @@ async def test_verify_trading_decision_gemini():
                 
     assert result.status == "APPROVED"
     assert mock_loop.called
+
+@pytest.mark.asyncio
+async def test_verify_trading_decision_sync_resilience():
+    """Test that verifier handles synchronous responses (e.g. from Gemini)."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=90,
+        reasoning="Technical breakout",
+        ticker="RESIL",
+        source_id="src_resil",
+        model_provider="gemini",
+        model_name="gemini-3-flash-preview"
+    )
+    
+    mock_result = VerificationResult(
+        status="APPROVED",
+        verification_reasoning="Handled sync response correctly.",
+        confidence_score=95
+    )
+    
+    with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
+        mock_factory = MagicMock()
+        mock_client = MagicMock()
+        
+        # Simulate a SYNCHRONOUS response (no await/asyncio.iscoroutine)
+        mock_instructor_client = MagicMock()
+        mock_completions = MagicMock()
+        mock_completions.create.return_value = mock_result # NOT an AsyncMock
+        mock_instructor_client.completions = mock_completions
+        mock_client.chat = mock_instructor_client
+        mock_client.client = MagicMock()
+        
+        with patch("core.llm.handlers.gemini.run_tool_loop", new_callable=AsyncMock):
+            mock_factory.return_value = mock_client
+            mock_factories.get.return_value = mock_factory
+            
+            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+                result = await verify_trading_decision(
+                    decision=decision,
+                    portfolio_context="Cash: $10,000",
+                    aggregated_context="Historical context"
+                )
+                
+    assert result.status == "APPROVED"
+    assert result.confidence_score == 95
+    assert result.verification_reasoning == "Handled sync response correctly."

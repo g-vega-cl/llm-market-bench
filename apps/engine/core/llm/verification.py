@@ -159,7 +159,12 @@ async def verify_trading_decision(
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
 
-        final_resp = await client.chat.completions.create(**create_args)
+        resp_awaitable = client.chat.completions.create(**create_args)
+        
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            final_resp = await resp_awaitable
+        else:
+            final_resp = resp_awaitable
         
         # Log completion
         await log_reasoning_trace(

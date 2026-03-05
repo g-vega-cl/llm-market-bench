@@ -3,18 +3,19 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from execution.market_data import MarketDataManager
 from execution.providers.proxy_ibkr import ProxyIBKRProvider
 from execution.providers.base import TickerData, FinancialProvider
+from core.config import FALLBACK_FINANCIAL_PROVIDER
 
-class FakeYFinanceProvider(FinancialProvider):
-    provider_name = "yfinance"
+class FakeFallbackProvider(FinancialProvider):
+    provider_name = FALLBACK_FINANCIAL_PROVIDER
     async def get_ticker_data(self, ticker: str):
         return TickerData(ticker=ticker, price=180.0, market_cap=3000000000000.0, exists=True)
     async def get_history(self, ticker: str, days: int):
         return [{"price": 100.0, "fetched_at": "now"}]
 
 @pytest.mark.asyncio
-async def test_manager_fallback_to_yfinance():
-    """Verify that MarketDataManager falls back to YFinance when primary provider returns None."""
-    with patch("execution.market_data.get_financial_provider", return_value=ProxyIBKRProvider()):
+async def test_manager_fallback_to_configured_provider():
+    """Verify that MarketDataManager falls back to the configured provider when primary fails."""
+    with patch("execution.market_data.get_financial_provider", side_effect=lambda name=None: ProxyIBKRProvider() if name is None or name == "ibkr_proxy" else FakeFallbackProvider()):
         with patch("execution.market_data.get_supabase_client"):
             manager = MarketDataManager()
             
@@ -23,8 +24,8 @@ async def test_manager_fallback_to_yfinance():
             mock_proxy.get_ticker_data.return_value = None
             manager.provider = mock_proxy
             
-            # Use FakeYFinanceProvider
-            with patch("execution.providers.yfinance.YFinanceProvider", new=FakeYFinanceProvider):
+            # Use FakeFallbackProvider
+            with patch("execution.providers.yfinance.YFinanceProvider", new=FakeFallbackProvider):
                 # Mock cache and history checks to speed up
                 manager._get_from_cache = MagicMock(return_value=None)
                 manager._save_to_cache = MagicMock()
@@ -36,9 +37,9 @@ async def test_manager_fallback_to_yfinance():
                 assert mock_proxy.get_ticker_data.called
 
 @pytest.mark.asyncio
-async def test_manager_history_fallback():
-    """Verify history fallback at manager level."""
-    with patch("execution.market_data.get_financial_provider", return_value=ProxyIBKRProvider()):
+async def test_manager_history_fallback_to_configured_provider():
+    """Verify history fallback at manager level to configured provider."""
+    with patch("execution.market_data.get_financial_provider", side_effect=lambda name=None: ProxyIBKRProvider() if name is None or name == "ibkr_proxy" else FakeFallbackProvider()):
         with patch("execution.market_data.get_supabase_client"):
             manager = MarketDataManager()
             
@@ -47,8 +48,7 @@ async def test_manager_history_fallback():
             mock_proxy.get_history.return_value = []
             manager.provider = mock_proxy
             
-            print("About to call get_history")
-            with patch("execution.providers.yfinance.YFinanceProvider", new=FakeYFinanceProvider):
+            with patch("execution.providers.yfinance.YFinanceProvider", new=FakeFallbackProvider):
                 # Mock DB check
                 manager.client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = []
                 

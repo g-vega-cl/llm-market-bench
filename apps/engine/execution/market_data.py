@@ -45,12 +45,12 @@ class MarketDataManager:
         logger.info(f"Cache miss for {ticker}. Fetching from primary provider ({self.provider.__class__.__name__})...")
         data = await self._fetch_with_backoff(self.provider, ticker)
         
-        # 3. Fallback to YFinance if primary fails (and primary isn't already yfinance)
-        from .providers.yfinance import YFinanceProvider
-        if not data and getattr(self.provider, 'provider_name', '') != 'yfinance':
-            logger.warning(f"Primary provider failed for {ticker}. Falling back to YFinanceProvider...")
-            yf_provider = YFinanceProvider()
-            data = await self._fetch_with_backoff(yf_provider, ticker)
+        # 3. Fallback to configured Fallback Provider if primary fails
+        from core.config import FALLBACK_FINANCIAL_PROVIDER
+        if not data and getattr(self.provider, 'provider_name', '') != FALLBACK_FINANCIAL_PROVIDER:
+            logger.warning(f"Primary provider failed for {ticker}. Falling back to {FALLBACK_FINANCIAL_PROVIDER}...")
+            fallback_provider = get_financial_provider(FALLBACK_FINANCIAL_PROVIDER)
+            data = await self._fetch_with_backoff(fallback_provider, ticker)
 
         if data:
             # 4. Save to Cache and Return
@@ -204,12 +204,12 @@ class MarketDataManager:
         logger.info(f"Local history insufficient for {ticker}. Fetching from primary provider...")
         history = await self.provider.get_history(ticker, days)
         
-        # 3. Fallback to YFinance Provider
-        from .providers.yfinance import YFinanceProvider
-        if not history and getattr(self.provider, 'provider_name', '') != 'yfinance':
-            logger.warning(f"Primary provider history failed for {ticker}. Falling back to YFinanceProvider...")
-            yf_provider = YFinanceProvider()
-            history = await yf_provider.get_history(ticker, days)
+        # 3. Fallback to configured Fallback Provider
+        from core.config import FALLBACK_FINANCIAL_PROVIDER
+        if not history and getattr(self.provider, 'provider_name', '') != FALLBACK_FINANCIAL_PROVIDER:
+            logger.warning(f"Primary provider history failed for {ticker}. Falling back to {FALLBACK_FINANCIAL_PROVIDER}...")
+            fallback_provider = get_financial_provider(FALLBACK_FINANCIAL_PROVIDER)
+            history = await fallback_provider.get_history(ticker, days)
             
         if history:
             return history

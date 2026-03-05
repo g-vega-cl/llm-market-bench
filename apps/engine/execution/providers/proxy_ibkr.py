@@ -6,6 +6,7 @@ from core.config import IBKR_PROXY_URL, IBKR_PROXY_TOKEN, logger
 
 class ProxyIBKRProvider(FinancialProvider):
     """Provider that fetches IBKR data via a secure Proxy API."""
+    provider_name = "ibkr_proxy"
 
     def __init__(self):
         if not IBKR_PROXY_URL:
@@ -31,7 +32,7 @@ class ProxyIBKRProvider(FinancialProvider):
                     data = response.json()
                     return TickerData(**data)
                 else:
-                    logger.warning(f"Proxy error for {ticker}: {response.status_code} - {response.text}")
+                    logger.warning(f"Proxy error for {ticker}: {response.status_code}")
                     return None
             except Exception as e:
                 logger.error(f"Failed to fetch {ticker} from proxy: {e}")

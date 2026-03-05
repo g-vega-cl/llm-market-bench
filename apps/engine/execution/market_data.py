@@ -41,33 +41,23 @@ class MarketDataManager:
             if cached_data:
                 return cached_data
 
-        # 2. Fetch from Provider with Exponential Backoff
-        logger.info(f"Cache miss for {ticker}. Fetching from provider...")
-        import asyncio
-        for attempt in range(1, 4):
-            try:
-                data = await self.provider.get_ticker_data(ticker)
-                
-                if data and data.exists:
-                    # Key fix: if price is NaN, treat as missing and proceed to fallback/retry
-                    import math
-                    if math.isnan(data.price):
-                        logger.warning(f"Provider returned NaN price for {ticker}. Proceeding...")
-                        continue
+        # 2. Fetch from Primary Provider with Exponential Backoff
+        logger.info(f"Cache miss for {ticker}. Fetching from primary provider ({self.provider.__class__.__name__})...")
+        data = await self._fetch_with_backoff(self.provider, ticker)
+        
+        # 3. Fallback to YFinance if primary fails (and primary isn't already yfinance)
+        from .providers.yfinance import YFinanceProvider
+        if not data and getattr(self.provider, 'provider_name', '') != 'yfinance':
+            logger.warning(f"Primary provider failed for {ticker}. Falling back to YFinanceProvider...")
+            yf_provider = YFinanceProvider()
+            data = await self._fetch_with_backoff(yf_provider, ticker)
 
-                    # 3. Save to Cache and Return
-                    self._save_to_cache(data)
-                    return data
-            except Exception as e:
-                logger.warning(f"Attempt {attempt}/3 failed for {ticker}: {e}")
-            
-            # If we failed or got no data, wait before retrying (unless it's the last attempt)
-            if attempt < 3:
-                wait_time = 2 ** (attempt - 1)  # 1s, 2s, 4s...
-                logger.info(f"Retrying {ticker} in {wait_time}s...")
-                await asyncio.sleep(wait_time)
+        if data:
+            # 4. Save to Cache and Return
+            self._save_to_cache(data)
+            return data
 
-        # 4. Fallback: Last Known Price from History
+        # 5. Last Resort: Last Known Price from History
         logger.warning(f"All retrieval attempts failed for {ticker}. Checking price history for fallback...")
         last_known = self._get_last_known_price(ticker)
         if last_known:
@@ -75,6 +65,29 @@ class MarketDataManager:
              return last_known
 
         return None
+
+    async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> Optional[TickerData]:
+        """Helper to fetch data from a provider with retries and validation."""
+        import asyncio
+        import math
+        for attempt in range(1, 4):
+            try:
+                data = await provider.get_ticker_data(ticker)
+                
+                if data and data.exists:
+                    if math.isnan(data.price):
+                        logger.warning(f"Provider returned NaN price for {ticker}. Proceeding...")
+                        continue
+                    return data
+            except Exception as e:
+                logger.warning(f"Attempt {attempt}/3 failed for {ticker} via {provider.__class__.__name__}: {e}")
+            
+            if attempt < 3:
+                wait_time = 2 ** (attempt - 1)
+                await asyncio.sleep(wait_time)
+        return None
+
+
 
     def _get_last_known_price(self, ticker: str) -> Optional[TickerData]:
         """Retrieves the most recent price from the history table."""
@@ -187,10 +200,17 @@ class MarketDataManager:
         except Exception as e:
             logger.warning(f"Error checking local price history for {ticker}: {e}")
 
-        # 2. Fetch from Provider
-        logger.info(f"Local history insufficient for {ticker}. Fetching from provider...")
+        # 2. Fetch from Primary Provider
+        logger.info(f"Local history insufficient for {ticker}. Fetching from primary provider...")
         history = await self.provider.get_history(ticker, days)
         
+        # 3. Fallback to YFinance Provider
+        from .providers.yfinance import YFinanceProvider
+        if not history and getattr(self.provider, 'provider_name', '') != 'yfinance':
+            logger.warning(f"Primary provider history failed for {ticker}. Falling back to YFinanceProvider...")
+            yf_provider = YFinanceProvider()
+            history = await yf_provider.get_history(ticker, days)
+            
         if history:
             return history
             

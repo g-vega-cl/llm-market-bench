@@ -85,7 +85,7 @@ MOMENTUM_DECAY_HALF_LIFE_DAYS = 28  # Velocity halves every 14 days of inactivit
 
 # --- Financial Data Configuration ---
 FINANCIAL_API_KEY = os.getenv("FINANCIAL_API_KEY")
-FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "yfinance")
+FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "ibkr_proxy")
 
 # --- Validation Guardrails ---
 MIN_MARKET_CAP_BILLIONS = 2.0

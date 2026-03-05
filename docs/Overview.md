@@ -79,7 +79,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis**. Crucially, it now **audits the agent's strategic reasoning** (e.g., "sell X to fund Y") for logical consistency.*
 *   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous OpenAI/Anthropic patterns. Assistant text responses are automatically stripped of trailing whitespace to ensure compliance with strict API validation rules. The engine now correctly maps provider-specific roles (e.g., using 'model' for Gemini) to maintain session integrity during high-volume tool loops.*
-*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **YFinance** if local data is missing for a new ticker. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections (like IBKR), ensuring high-concurrency tool loops never result in port conflicts.*
+*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **IBKR Proxy** (with YFinance fallback) if local data is missing for a new ticker. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
 **11. Pre-Execution Margin Validation** ✅
@@ -265,7 +265,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
 |  | `FINANCIAL_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
-| **Engine** | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, or `ibkr` (Default: `yfinance`) | Selection of price data source |
+| **Engine** | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of price data source |
 |  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY] Local market data via IBKR |
@@ -335,7 +335,9 @@ graph TD
         AT --> CP{Event Consensus Protocol}
         
         CP --> VER[Skeptical Verifier Agent]
-        VER -->|Fallback to YFinance| YF[(YFinance History)]
+        VER --> MDM[MarketDataManager]
+        MDM -->|Proxy| IBKR[IBKR Proxy]
+        MDM -->|Fallback| YF[YFinance]
         VER -->|Abort/Adjust| E{Execution Guardrails}
         
         E -->|Cleanup| CL[Provider disconnect_all]

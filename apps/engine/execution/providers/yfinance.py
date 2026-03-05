@@ -10,6 +10,7 @@ from core.config import logger
 
 class YFinanceProvider(FinancialProvider):
     """Provider for Yahoo Finance API via yfinance library."""
+    provider_name = "yfinance"
 
     _last_call_time = 0.0  # Shared across all instances to throttle globally
 

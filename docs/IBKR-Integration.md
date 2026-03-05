@@ -18,7 +18,7 @@ Ensure the [IBKR Proxy](../apps/ibkr-proxy/README.md) is running and accessible 
 Set these in your `apps/engine/.env`:
 ```bash
 FINANCIAL_PROVIDER=ibkr_proxy
-IBKR_PROXY_URL=https://your-domain.com
+IBKR_PROXY_URL=https://clvg.uk
 IBKR_PROXY_TOKEN=your-secret-key
 ```
 
@@ -54,3 +54,9 @@ Regardless of the provider, your Interactive Brokers TWS or Gateway must be conf
 - **503 Service Unavailable (Proxy)**: The Proxy cannot reach TWS. Ensure TWS is logged in and the API is enabled on the Proxy's host.
 - **Client ID already in use**: The Proxy automatically retries with random IDs. If using the legacy provider, ensure `IBKR_CLIENT_ID` is unique.
 - **Connection Refused**: Check if the port matches and if TWS is actually running.
+
+## High Availability & Fallback
+
+The engine is designed for reliability. If the `ibkr_proxy` (or any primary provider) fails to deliver data due to network issues or proxy downtime, the `MarketDataManager` automatically falls back to **Yahoo Finance** (`yfinance`).
+
+This ensures that the daily pipeline can always complete its valuation and execution steps even if the primary market data source is temporarily unavailable.

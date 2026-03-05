@@ -17,6 +17,7 @@ class TickerData(BaseModel):
 
 class FinancialProvider(ABC):
     """Abstract base class for financial API providers."""
+    provider_name: str = "base"
 
     @abstractmethod
     async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:

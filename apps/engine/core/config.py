@@ -85,7 +85,7 @@ MOMENTUM_CONCEPT_MERGE_THRESHOLD = 0.75
 MOMENTUM_DECAY_HALF_LIFE_DAYS = 28  # Velocity halves every 14 days of inactivity
 
 # --- Financial Data Configuration ---
-FINANCIAL_API_KEY = os.getenv("FINANCIAL_API_KEY")
+FMP_API_KEY = os.getenv("FMP_API_KEY")
 FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "ibkr_proxy")
 FALLBACK_FINANCIAL_PROVIDER = os.getenv("FALLBACK_FINANCIAL_PROVIDER", "yfinance")
 

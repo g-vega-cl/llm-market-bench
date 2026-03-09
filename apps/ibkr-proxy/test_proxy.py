@@ -4,7 +4,7 @@ import sys
 
 # --- Configuration ---
 # 1. Use the same key you put in apps/ibkr-proxy/.env
-API_KEY = "your-secret-key-123/--------------"
+API_KEY = "your-secret-key-123"
 
 # 2. Test both local and remote URLs
 URLS = [

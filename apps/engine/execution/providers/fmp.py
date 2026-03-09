@@ -5,7 +5,7 @@ import time
 import httpx
 from typing import Optional
 from .base import FinancialProvider, TickerData
-from core.config import FINANCIAL_API_KEY, logger
+from core.config import FMP_API_KEY, logger
 
 
 class FMPProvider(FinancialProvider):
@@ -15,9 +15,9 @@ class FMPProvider(FinancialProvider):
     _last_call_time = 0.0  # Shared across all instances to throttle globally
 
     def __init__(self):
-        if not FINANCIAL_API_KEY:
-            logger.warning("FINANCIAL_API_KEY not found in environment. FMP validation will be disabled.")
-        self.api_key = FINANCIAL_API_KEY
+        if not FMP_API_KEY:
+            logger.warning("FMP_API_KEY not found in environment. FMP validation will be disabled.")
+        self.api_key = FMP_API_KEY
 
     async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
         if not self.api_key:

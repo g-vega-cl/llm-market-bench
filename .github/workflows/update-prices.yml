@@ -33,7 +33,7 @@ jobs:
         env:
           SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          FINANCIAL_API_KEY: ${{ secrets.FINANCIAL_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           FINANCIAL_PROVIDER: ${{ secrets.FINANCIAL_PROVIDER }}
         run: |
           python update_prices.py

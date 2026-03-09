@@ -185,7 +185,7 @@
   ├────────────────────────────────┼────────────┼────────────────────────────┤
   │ Step 3: Corporate Action Check │ ⏳ PENDING │ No implementation          │
   ├────────────────────────────────┼────────────┼────────────────────────────┤
-  │ Step 10: Pre-Market Validation │ ⏳ PENDING │ No FINANCIAL_API_KEY usage │
+  │ Step 10: Pre-Market Validation │ ⏳ PENDING │ No FMP_API_KEY usage │
   ├────────────────────────────────┼────────────┼────────────────────────────┤
   │ Steps 11-14: Execution         │ ⏳ PENDING │ No trade settlement logic  │
   ├────────────────────────────────┼────────────┼────────────────────────────┤

@@ -889,6 +889,24 @@ To enable self-correction, the engine periodically audits its own performance. T
 
 ---
 
+## Phase 13: Cause & Effect Analysis
+
+### Step 13.1: Market Impact Attribution
+
+**File**: `apps/engine/analysis/cause_and_effect_analysis.py`, `apps/engine/main.py:run_cause_and_effect`
+
+This phase bridges the gap between AI predictions and real-world outcomes by auditing past market events.
+
+**Process**:
+1. **Fetch Mature Events**: Retrieve `MARKET_EVENT` memories that are >24h old.
+2. **Retrieve Sector Performance**: Fetch historical prices for the S&P 500 (`SPY`), Nasdaq (`QQQ`), and any tickers mentioned in the event content.
+3. **Causal Logic**: The LLM compares the original "Scenario Analysis" (the "If X vs If Y" reasoning) to the actual price action to determine the **Actual Market Outcome**.
+4. **Institutional Learning**: The result is stored in the `cause_and_effect` table, creating an auditable history of how specific news types (e.g., Fed cuts) actually moved the needle.
+
+**Schedule**: Bi-Weekly (Tuesdays & Fridays at 20:00 UTC).
+
+---
+
 ## Complete Pipeline Summary
 
 ### API Calls Summary
@@ -926,9 +944,9 @@ SUMMARY & MEMORY PHASE:
 ├─ Supabase DB: Record daily performance snapshots for Step 14
 └─ Total: 1 Embedding call + 4 Snapshot writes
 
-REINFORCEMENT PHASE (Weekly/Post-Run):
+REINFORCEMENT & IMPACT PHASE (Bi-Weekly/Post-Run):
 ├─ Gemini Embedding API: Vectorize post-mortem lessons
-├─ Supabase DB: Retrieve 5-day old trades
+├─ Supabase DB: Retrieve mature events & 5-day old trades
 └─ Total: 1 Embedding call + N Reflection calls
 
 GRAND TOTAL ESTIMATE:
@@ -985,4 +1003,5 @@ Total Pipeline Time: ~10-12 seconds
 | `apps/engine/execution/reg_t_validation.py` | Margin account buying power math |
 | `apps/engine/attribution/service.py` | Decision persistence + attribution |
 | `apps/engine/analysis/post_mortem.py` | Regret-driven reinforcement logic |
+| `apps/engine/analysis/cause_and_effect_analysis.py` | Market impact attribution logic |
 

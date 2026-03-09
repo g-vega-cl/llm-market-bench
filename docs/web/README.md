@@ -47,6 +47,9 @@ apps/web/
 │   │   │   ├── index.tsx  # LLM research audit dashboard
 │   │   │   └── -queries.ts
 │   │   ├── how-it-works.tsx  # System process visualization page
+│   │   ├── cause-and-effect/
+│   │   │   ├── index.tsx  # Market impact & attribution UI
+│   │   │   └── -queries.ts # Historical impact queries
 │   ├── shared/          # SHARED DOMAIN: Business concepts used across routes
 │   │   ├── auth/
 │   │   └── portfolios/

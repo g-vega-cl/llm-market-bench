@@ -69,6 +69,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 22. **Contrarian Agent:** Identifies crowded trades or missed risks.
 23. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
 24. **Government Tracking:** Monthly audit of incentives and policies.
+25. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays).
 
 ### Phase 3: Market Execution (Sequential)
 
@@ -397,6 +398,9 @@ graph TD
         CA -->|Counter-Signals| H
         
         GOV[Gov Tracking] -->|Incentives| V
+
+        V --> CE[Cause & Effect Analysis]
+        CE -->|Historical Impact| V
     end
 ```
 

@@ -145,7 +145,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
 *   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
 *   **TODAY Dashboard**: The primary entry point (`/`) providing a high-level narrative of the day's events, including AI consensus, news ingestion, and trade executions.
-    *   **Horizon Watch**: Tracks pending market catalysts with standardized ISO dates and "tentative" vs "exact" labels.
+    *   **Horizon Watch**: Tracks high-importance market catalysts (`importance_score >= 8`) with standardized ISO dates and "tentative" vs "exact" labels. Strictly filters out past events to focus on upcoming trade-leading triggers.
 *   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer.
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)

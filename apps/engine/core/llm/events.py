@@ -1,6 +1,8 @@
 """LLM logic for event synthesis and relationship analysis."""
 
 import logging
+import re
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -11,6 +13,35 @@ from core.llm import prompts
 from core.llm.logger import log_reasoning_trace
 
 logger = logging.getLogger("engine")
+
+
+def _normalize_future_date(date_str: Optional[str], note_str: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Validates and normalizes the future date string.
+
+    Returns:
+        A tuple of (normalized_date, normalized_note).
+    """
+    if not date_str:
+        return None, note_str
+
+    # Strict ISO 8601 (YYYY-MM-DD) check
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_str.strip()):
+        try:
+            # Validate actual date (e.g., no Feb 30)
+            datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            return date_str.strip(), note_str
+        except ValueError:
+            pass
+
+    # If it's not a valid ISO date, move it to the note if note is empty
+    # or append it if note exists.
+    if not note_str:
+        return None, date_str.strip()
+    
+    if date_str.strip() not in note_str:
+        return None, f"{note_str} ({date_str.strip()})"
+    
+    return None, note_str
 
 
 async def synthesize_event(
@@ -69,6 +100,9 @@ async def synthesize_event(
         else:
             resp = resp_awaitable
 
+        # Post-process for date validity
+        normalized_date, normalized_note = _normalize_future_date(resp.future_date, resp.future_date_note)
+
         # Log completion
         await log_reasoning_trace(
             task_type="CONSENSUS",
@@ -79,14 +113,19 @@ async def synthesize_event(
                 {"role": "user", "content": prompt}
             ],
             response=resp,
-            metadata={"event_name": event_name, "impact": impact}
+            metadata={
+                "event_name": event_name, 
+                "impact": impact,
+                "normalized_date": normalized_date,
+                "normalized_note": normalized_note
+            }
         )
 
         return {
             "name": resp.name, 
             "summary": resp.summary, 
-            "future_date": resp.future_date,
-            "future_date_note": resp.future_date_note,
+            "future_date": normalized_date,
+            "future_date_note": normalized_note,
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
             "historical_parallel": resp.historical_parallel,

@@ -84,7 +84,8 @@ Stores global market events for RAG retrieval.
 - `metadata` (JSONB): Source and context metadata (includes `future_date_note`, `scenario_analysis` for catalysts).
 - `memory_type` (TEXT): `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`.
 - `status` (TEXT): `ACTIVE`, `RESOLVED`, `SUPERSEDED`.
-- `target_date` (TEXT): For proactive catalyst tracking.
+- `target_date` (TEXT): For proactive catalyst tracking (ISO 8601).
+- `importance_score` (INT): Unified score (1-10); Horizon Watch visibility requires score >= 8.
 - `parent_id` (UUID): Link to ancestor event (Memory Chains).
 - `relationship_type` (TEXT): `REVERSAL`, `UPDATE`, `RESOLUTION`, `GENERAL`.
 - `relevance_score` (FLOAT): Decay-adjusted score.

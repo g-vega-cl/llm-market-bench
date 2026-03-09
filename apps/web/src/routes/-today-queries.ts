@@ -66,11 +66,15 @@ export async function fetchTodayData() {
     .order('fetched_at', { ascending: false })
 
   // 7. Future Events
-  // We look for target_date in the future or explicitly marked as future catalyst
+  // We look for high-importance catalysts and exclude past events.
+  // Importance threshold: >= 8
   const { data: futureEvents } = await supabase
     .from('memories')
     .select('*')
-    .or(`target_date.gt.${estDateStr},metadata->is_future_catalyst.eq.true`)
+    .eq('status', 'ACTIVE')
+    .gte('importance_score', 8)
+    .or(`target_date.is.null,target_date.gte.${estDateStr}`)
+    .or('metadata->is_future_catalyst.eq.true,target_date.not.is.null')
     .order('created_at', { ascending: false })
 
   return {

@@ -686,8 +686,9 @@ For events that reach consensus (2+ models), we perform a final synthesis pass t
 ```
 
 **Future Tracking (Proactive Positioning)**: If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
-- **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM.
+- **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
 - **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.
+- **Importance Threshold**: Horizon Watch strictly filters for events with `importance_score >= 8`, ensuring the focus remains on "trade-leading" catalysts like budgets, laws, and major macro pivots.
 
 
 ---
@@ -863,7 +864,9 @@ The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). T
 1. **Intelligence Briefing**: Summaries of newsletters ingested today.
 2. **AI Cognitive Synthesis**: A grouped view of global consensus, government incentives, and lessons learned, now including timestamps for each insight.
 3. **Execution & Guardrails**: A full-width feed of trades and rejections. Users can click any item to open a drawer and inspect the full LLM thought process and reasoning.
-4. **Horizon Watch**: A broad view of pending future events (catalysts) identified by the agents, displayed in an optimized multi-column grid.
+4. **Horizon Watch**: A focused view of high-importance future events (`importance_score >= 8`) identified by the agents.
+   - **Timezone-Safe**: Dates are parsed to local midnight to prevent the "December 30" (UTC shift) bug.
+   - **Forward-Looking**: Strictly filters out past events to keep the focus on upcoming catalysts.
 
 ---
 

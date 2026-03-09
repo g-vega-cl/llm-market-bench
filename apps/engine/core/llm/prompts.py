@@ -104,15 +104,18 @@ SCENARIO ANALYSES:
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
-3. Synthesize the 'scenario_analysis': Provide a unified view of potential resolutions (If X, then position in A; if Y, then position in B).
+3. Synthesize the 'scenario_analysis': Provide a unified view of potential resolutions (If X, then position in A; if Y, then position in B). Focus on material catalysts that justify strategic trade planning.
 4. Extract any explicitly mentioned future date or timeframe.
-   - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD). If only a month/year is given, use the last day of that period (e.g., "July 2026" -> "2026-07-31").
-   - 'future_date_note': A short label if the date is not exact (e.g., "estimated", "tentative", "around this time"). If the date is exact, set to null.
+   - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD) or null. 
+     - If only a month/year is given, use the last day of that period (e.g., "July 2026" -> "2026-07-31"). 
+     - If ONLY a year is given (e.g., "2026"), set 'future_date' to null and put "2026" in 'future_date_note'.
+     - Do NOT hallucinate dates; use null if no timeframe is mentioned.
+   - 'future_date_note': A short label if the date is not exact (e.g., "estimated", "tentative", "2026", "by year end"). If the date is exact, set to null.
 5. Synthesize logical flags:
    - 'is_ongoing': true if the consensus is that the event is unfolding.
-   - 'is_future_catalyst': true if this is a precursor for a future move.
+   - 'is_future_catalyst': true if this is a material precursor for a future market move.
    - 'historical_parallel': a short string describing the parallel if identified by models.
-   - 'importance_score': a unified score (1-10) based on the consensus of model observations.
+   - 'importance_score': a unified score (1-10) based on the consensus of model observations. Focus on trade-leading importance.
 
 Return ONLY a JSON object with 'name', 'summary', 'scenario_analysis', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', 'historical_parallel', and 'importance_score' keys.
 """

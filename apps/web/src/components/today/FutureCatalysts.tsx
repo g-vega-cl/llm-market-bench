@@ -11,8 +11,12 @@ export function FutureCatalysts({ events }: { events: any[] }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {events.map((event) => {
                     const dateNote = event.metadata?.future_date_note;
-                    const dateObj = event.target_date ? new Date(event.target_date) : null;
+                    // Fix timezone shift by forcing local time parsing
+                    const dateObj = event.target_date ? new Date(event.target_date + 'T00:00:00') : null;
                     const isPassed = dateObj ? dateObj < new Date(new Date().setHours(0, 0, 0, 0)) : false;
+
+                    // Double safety: don't render passed events in Horizon Watch
+                    if (isPassed) return null;
 
                     return (
                         <div key={event.id} className={`p-6 border ${isPassed ? 'border-zinc-100 dark:border-zinc-900 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} rounded-3xl bg-white dark:bg-zinc-900 shadow-sm relative overflow-hidden group hover:border-purple-500 transition-colors`}>
@@ -21,9 +25,9 @@ export function FutureCatalysts({ events }: { events: any[] }) {
                                     {event.target_date ? (
                                         <>
                                             {dateNote && <span className="mr-1 text-zinc-500 opacity-70">{dateNote}:</span>}
-                                            {new Date(event.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            {dateObj?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                         </>
-                                    ) : 'Ongoing'}
+                                    ) : (dateNote || 'Ongoing')}
                                 </span>
                             </div>
                             <p className="text-sm text-zinc-800 dark:text-zinc-200 font-bold leading-relaxed pr-16 text-pretty">

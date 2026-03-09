@@ -44,5 +44,18 @@ jobs:
           GMAIL_CREDENTIALS_JSON: ${{ secrets.GMAIL_CREDENTIALS_JSON }}
           GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          IBKR_PROXY_URL: ${{ secrets.IBKR_PROXY_URL }}
+          IBKR_PROXY_TOKEN: ${{ secrets.IBKR_PROXY_TOKEN }}
+
+          # Optional Configuration (Maps to GitHub Repository Variables)
+          FINANCIAL_PROVIDER: ${{ vars.FINANCIAL_PROVIDER }}
+          FALLBACK_FINANCIAL_PROVIDER: ${{ vars.FALLBACK_FINANCIAL_PROVIDER }}
+          FINANCIAL_API_THROTTLE_SECONDS: ${{ vars.FINANCIAL_API_THROTTLE_SECONDS }}
+
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
         run: |
           python main.py ingest

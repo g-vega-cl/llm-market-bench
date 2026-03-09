@@ -270,6 +270,8 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY] Local market data via IBKR |
+|  | `IBKR_PROXY_URL` | URL of the IBKR Proxy server | Market data via Proxy |
+|  | `IBKR_PROXY_TOKEN` | Auth token for the IBKR Proxy (Optional if using JWT) | Market data via Proxy |
 
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
@@ -303,7 +305,24 @@ DEEPSEEK_MODEL="deepseek-reasoner"
 1. **Root Directory:** No `.env` file (avoids confusion).
 2. **`apps/engine/.env`**: Contains all LLM and Broker keys.
 3. **`apps/web/.env`**: Contains only Supabase connection keys.
-4. **GitHub Secrets**: Add all the above to **Settings > Secrets and Variables > Actions** to enable the 09:35 ET automated pipeline.
+4. **GitHub Secrets**: Add all the above to **Settings > Secrets and Variables > Actions**.
+   - **Secrets**: Use for sensitive keys (API Keys, Tokens, URLs).
+   - **Variables**: Use for optional configuration overrides (e.g., `FINANCIAL_PROVIDER`, `OPENAI_MODEL`).
+
+### GitHub Actions Configuration
+
+The daily pipeline in `.github/workflows/ingest.yml` explicitly maps Secrets and Variables to the engine. Ensure the following are set in GitHub to avoid failures:
+
+#### Required Secrets
+- `IBKR_PROXY_URL`: The public URL of your proxy.
+- `IBKR_PROXY_TOKEN`: The secret key for your proxy.
+- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.
+- `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+#### Optional Variables
+You can override default models or providers without code changes by adding these as **Repository Variables**:
+- `FINANCIAL_PROVIDER`: Defaults to `ibkr_proxy`.
+- `OPENAI_MODEL`, `GEMINI_MODEL`, etc.
 
 
 ## Information Flow

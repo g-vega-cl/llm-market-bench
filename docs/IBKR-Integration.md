@@ -22,6 +22,16 @@ IBKR_PROXY_URL=https://clvg.uk
 IBKR_PROXY_TOKEN=your-secret-key
 ```
 
+### GitHub Actions Setup
+
+To use the Proxy in your automated pipeline:
+
+1.  **Add Secrets**: Go to **Settings > Secrets and Variables > Actions** in your GitHub repository.
+2.  **Add `IBKR_PROXY_URL`**: Set this to your proxy's public URL.
+3.  **Add `IBKR_PROXY_TOKEN`**: Set this to your proxy's auth token.
+
+The workflow at `.github/workflows/ingest.yml` is already configured to map these secrets to the environment.
+
 ---
 
 ## 2. Direct IBKR Provider (Legacy)

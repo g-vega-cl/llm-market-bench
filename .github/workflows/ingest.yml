@@ -48,10 +48,12 @@ jobs:
           IBKR_PROXY_URL: ${{ secrets.IBKR_PROXY_URL }}
           IBKR_PROXY_TOKEN: ${{ secrets.IBKR_PROXY_TOKEN }}
 
-          # Optional Configuration (Maps to GitHub Repository Variables)
-          FINANCIAL_PROVIDER: ${{ vars.FINANCIAL_PROVIDER }}
-          FALLBACK_FINANCIAL_PROVIDER: ${{ vars.FALLBACK_FINANCIAL_PROVIDER }}
-          FINANCIAL_API_THROTTLE_SECONDS: ${{ vars.FINANCIAL_API_THROTTLE_SECONDS }}
+          # Optional Configuration (Maps to GitHub Repository Variables or Secrets)
+          # Note: Ensure these are set as VARIABLES if using the 'vars' context below.
+          # If set as SECRETS, use '${{ secrets.NAME }}' instead.
+          FINANCIAL_PROVIDER: ${{ vars.FINANCIAL_PROVIDER || secrets.FINANCIAL_PROVIDER }}
+          FALLBACK_FINANCIAL_PROVIDER: ${{ vars.FALLBACK_FINANCIAL_PROVIDER || secrets.FALLBACK_FINANCIAL_PROVIDER }}
+          FINANCIAL_API_THROTTLE_SECONDS: ${{ vars.FINANCIAL_API_THROTTLE_SECONDS || secrets.FINANCIAL_API_THROTTLE_SECONDS }}
 
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}

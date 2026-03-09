@@ -282,3 +282,33 @@ You must return a JSON object with:
 - 'confidence_score': Your confidence in THIS verification (0-100).
 
 Return ONLY the JSON object."""
+
+CAUSE_AND_EFFECT_SYSTEM_PROMPT = (
+    "You are a market historian and causal analyst. Your job is to analyze why the market "
+    "moved in a certain way following a specific event and document the 'Cause and Effect' "
+    "to create a playbook for future similar events."
+)
+
+CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE = """You are a market historian.
+You are analyzing the impact of a past market event to understand its causal link to market movements.
+
+EVENT NAME: {event_name}
+EVENT SUMMARY: {event_summary}
+ORIGINAL SCENARIO ANALYSIS: {scenario_analysis}
+
+ACTUAL MARKET PERFORMANCE (Post-Event):
+{market_performance}
+
+YOUR TASK:
+1. Analyze how this event contributed to the observed market move. 
+2. Compare the outcome to the original scenario analysis. Was the prediction correct?
+3. Identify the "Causal Mechanism" - what specifically about this event drove the movement?
+4. Formulate a 'Cause and Effect' summary that can be used as a frame of reference in the future.
+5. Identify relevant 'tags' for this relationship (e.g., "monetary policy", "geopolitics", "tech earnings").
+
+Return a JSON object with:
+- 'analysis': A detailed breakdown of the cause and effect (2-3 paragraphs).
+- 'market_outcome': A concise summary of the actual market movement (e.g., "Tech stocks rallied 3% as rate fears subsided").
+- 'confidence': Your confidence in the causal link (0-100).
+- 'tags': A list of relevant strings.
+"""

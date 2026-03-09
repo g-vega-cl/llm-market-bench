@@ -13,7 +13,7 @@ from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
 from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
-from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, logger
+from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CAUSE_AND_EFFECT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, ValidationStatus
 from execution.portfolio import Portfolio
@@ -22,6 +22,7 @@ from ingest.government import run_government_pipeline
 from memory.store import add_memory
 from analysis.post_analysis import perform_post_analysis
 from analysis.pca_utils import update_pca_coordinates
+from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
 
 
 async def run_ingest():
@@ -386,12 +387,23 @@ async def run_post_analysis():
         await provider_cls.disconnect_all()
 
 
+async def run_cause_and_effect():
+    """Runs the cause-and-effect analysis for market events."""
+    try:
+        await perform_cause_and_effect_analysis()
+    finally:
+        # --- Provider Cleanup ---
+        from execution.providers.factory import get_active_provider_class
+        provider_cls = get_active_provider_class()
+        await provider_cls.disconnect_all()
+
+
 def main():
     """Main entry point for the AI Wall Street Engine CLI."""
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT],
+        choices=[COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CAUSE_AND_EFFECT],
         help="Action to perform"
     )
 
@@ -403,6 +415,8 @@ def main():
         asyncio.run(run_post_analysis())
     elif args.command == COMMAND_GOVERNMENT:
         asyncio.run(run_government_pipeline())
+    elif args.command == COMMAND_CAUSE_AND_EFFECT:
+        asyncio.run(run_cause_and_effect())
 
 
 if __name__ == "__main__":

@@ -166,6 +166,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Reasoning
+          </Link>{' '}
+          <Link
+            to="/cause-and-effect"
+            activeProps={{
+              className: 'text-blue-600',
+            }}
+            className="hover:text-blue-500 transition-colors"
+          >
+            Cause & Effect
           </Link>
           <div className="ml-auto flex items-center gap-4">
             {user ? (

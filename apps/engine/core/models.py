@@ -212,3 +212,19 @@ class VerificationResult(BaseModel):
     adjusted_quantity: int | None = Field(None, description="New quantity if allocation is adjusted")
     alternative_ticker: str | None = Field(None, description="Suggested alternative stock ticker")
     confidence_score: int = Field(..., ge=0, le=100, description="Confidence score for this verification")
+
+
+class CauseAndEffectResult(BaseModel):
+    """Represents the impact analysis of a market event.
+
+    Attributes:
+        analysis: Detailed breakdown of the cause and effect relationship.
+        market_outcome: Concise summary of what actually happened.
+        confidence: Confidence in the causal link (0-100).
+        tags: List of relevant tags for classification.
+    """
+
+    analysis: str = Field(..., description="Detailed breakdown of the cause and effect relationship")
+    market_outcome: str = Field(..., description="Concise summary of actual market movement")
+    confidence: int = Field(..., ge=0, le=100, description="Confidence in the causal link")
+    tags: list[str] = Field(default_factory=list, description="Relevant tags for classification")

@@ -212,6 +212,24 @@ class MarketDataManager:
             history = await fallback_provider.get_history(ticker, days)
             
         if history:
+            # 4. Save to history table so it's available next time
+            try:
+                for entry in history:
+                    # Note: We don't have market_cap in history responses usually
+                    # but we can insert what we have.
+                    payload = {
+                        "ticker": ticker,
+                        "price": float(entry["price"]),
+                        "fetched_at": entry["fetched_at"]
+                    }
+                    if "market_cap" in entry:
+                        payload["market_cap"] = entry["market_cap"]
+                    else:
+                        payload["market_cap"] = 0 # Fallback for non-null column if migration not applied
+                        
+                    self.client.table("price_history").upsert(payload, on_conflict="ticker, fetched_at").execute()
+            except Exception as e:
+                logger.warning(f"Error saving historical data for {ticker} to cache: {e}")
             return history
             
         return []

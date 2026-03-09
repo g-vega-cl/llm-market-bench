@@ -1,9 +1,9 @@
-name: Weekly Cause & Effect Analysis
+name: Bi-Weekly Cause & Effect Analysis
 
 on:
   schedule:
-    # Runs at 00:00 UTC every Sunday
-    - cron: "0 0 * * 0"
+    # Runs at 20:00 UTC (4:00 PM ET) every Tuesday and Friday
+    - cron: "0 20 * * 2,5"
   workflow_dispatch:
 
 jobs:

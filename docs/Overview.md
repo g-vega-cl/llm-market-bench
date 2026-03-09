@@ -240,13 +240,16 @@ To completely wipe the experimental data while preserving market price history a
 
 > The `clear_db.py` script is destructive and cannot be undone. Use it only when you want to restart all LLM experiments from zero.
 
-### Automating Documentation
+### Database Schema & Cleanup Utilities
 
-To insure the `docs/database-schema.md` is always up to date with the actual Postgres schema:
-
+To ensure the `docs/database-schema.md` is always up to date with the actual Postgres schema:
 *   **Script:** `apps/engine/generate_schema_docs.py`
 *   **Usage:** `python generate_schema_docs.py`
-*   **Requirement:** You must add `DATABASE_URL=postgresql://...` to your `apps/engine/.env` file for this script to work (it requires direct SQL access).
+
+To normalize legacy Horizon Watch catalysts (ISO dates, notes, and importance):
+*   **Script:** `apps/engine/cleanup_catalysts.py`
+*   **Usage:** `python cleanup_catalysts.py`
+*   **Goal:** Enforces data integrity for "Horizon Watch" entries by standardizing non-ISO dates and ensuring materiality.
 
 ## 6. Environment & Security
 ### Key Management Strategy

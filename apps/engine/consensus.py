@@ -146,12 +146,14 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
             scenarios = []
             reasonings = []
             source_ids = set()
+            importance_scores = []
             
             for occ in occurrences:
                 weight = MODEL_WEIGHTS.get(occ.model_name, 1.0)
                 impact_weights[occ.impact] += weight
                 reasonings.append(occ.reasoning)
                 source_ids.add(occ.source_id)
+                importance_scores.append(occ.importance_score)
                 
                 if occ.is_ongoing:
                     ongoing_votes += weight
@@ -191,7 +193,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 "historical_parallel": historical_parallel,
                 "future_date": synthesis.get("future_date"),
                 "future_date_note": synthesis.get("future_date_note"),
-                "scenario_analysis": synthesis.get("scenario_analysis")
+                "scenario_analysis": synthesis.get("scenario_analysis"),
+                "importance_score": synthesis.get("importance_score", int(sum(importance_scores)/len(importance_scores)) if importance_scores else 5)
             }
 
             # 4. Analyze Relationship & Link Memory
@@ -224,7 +227,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "is_future_catalyst": is_future_catalyst,
                     "historical_parallel": historical_parallel,
                     "future_date_note": consensus_data.get("future_date_note"),
-                    "scenario_analysis": consensus_data.get("scenario_analysis")
+                    "scenario_analysis": consensus_data.get("scenario_analysis"),
+                    "importance_score": consensus_data['importance_score']
                 },
                 parent_id=parent_id,
                 relationship_type=rel_type,

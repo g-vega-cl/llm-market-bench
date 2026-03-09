@@ -64,7 +64,7 @@ SMA MANAGEMENT RULES:
 
 2. Macro Events: Identify major global themes, macro-economic shifts, or significant events mentioned in the news (e.g., "Fed Rate Hike", "AI Demand Surge", "Geopolitical Tension").
    For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.
-   Also categorize the 'catalyst_type' for the event.
+   Also categorize the 'catalyst_type' for the event and assign an 'importance_score' (1-10) where 10 is a major global event (e.g., War, Pandemic) and 1 is a minor local update.
    
    CRITICAL FOCUS:
    - Government Budgets & Objectives: Identify any mentions of government budgets, policies, or specific incentives. Mark 'is_government_incentive' as true and identify any 'expiry_date' (e.g., "2027" for a 2026 budget).
@@ -112,8 +112,9 @@ Your task:
    - 'is_ongoing': true if the consensus is that the event is unfolding.
    - 'is_future_catalyst': true if this is a precursor for a future move.
    - 'historical_parallel': a short string describing the parallel if identified by models.
+   - 'importance_score': a unified score (1-10) based on the consensus of model observations.
 
-Return ONLY a JSON object with 'name', 'summary', 'scenario_analysis', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', and 'historical_parallel' keys.
+Return ONLY a JSON object with 'name', 'summary', 'scenario_analysis', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', 'historical_parallel', and 'importance_score' keys.
 """
 
 

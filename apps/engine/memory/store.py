@@ -72,8 +72,9 @@ def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: lis
             if mem_data:
                 for item in mem_data:
                     content = item.get("content", "")
+                    importance = item.get("importance_score", 5)
                     if content:
-                        context_parts.append(f"- [MARKET EVENT] {content}")
+                        context_parts.append(f"- [MARKET EVENT] (Importance: {importance}/10) {content}")
             
             # Process Decisions
             if dec_response.data:
@@ -212,7 +213,8 @@ def add_memory(
     memory_type: str = "MARKET_EVENT",
     check_similarity: bool = False,
     similarity_threshold: float = 0.90,
-    lookback_hours: int = 24
+    lookback_hours: int = 24,
+    importance_score: int = 5
 ) -> str | None:
     """Adds a new text chunk to the memory store.
 
@@ -250,7 +252,8 @@ def add_memory(
             "parent_id": parent_id,
             "relationship_type": relationship_type,
             "target_date": target_date,
-            "memory_type": memory_type
+            "memory_type": memory_type,
+            "importance_score": importance_score
         }
         
         response = client.table("memories").insert(payload).execute()

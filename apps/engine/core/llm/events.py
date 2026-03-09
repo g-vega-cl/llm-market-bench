@@ -48,6 +48,7 @@ async def synthesize_event(
             is_future_catalyst: bool = False
             historical_parallel: Optional[str] = None
             scenario_analysis: Optional[str] = None
+            importance_score: int = 5
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
@@ -89,7 +90,8 @@ async def synthesize_event(
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
             "historical_parallel": resp.historical_parallel,
-            "scenario_analysis": resp.scenario_analysis
+            "scenario_analysis": resp.scenario_analysis,
+            "importance_score": resp.importance_score
         }
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)

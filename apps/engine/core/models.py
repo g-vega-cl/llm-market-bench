@@ -143,6 +143,12 @@ class MacroEvent(BaseModel):
         None,
         description="The date or timeframe when this incentive or policy expires (e.g., '2027')"
     )
+    importance_score: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="Intrinsic importance of the event (1-10)"
+    )
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")
     scenario_analysis: str | None = Field(

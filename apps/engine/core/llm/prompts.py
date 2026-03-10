@@ -68,8 +68,8 @@ SMA MANAGEMENT RULES:
    
    CRITICAL FOCUS:
    - Government Budgets & Objectives: Identify any mentions of government budgets, policies, or specific incentives. Mark 'is_government_incentive' as true and identify any 'expiry_date' (e.g., "2027" for a 2026 budget).
-   - Ongoing Unresolved Events: Mark 'is_ongoing' as true for events that are still unfolding (e.g., "President Trump warned Iran that a “massive armada” is on the way").
-   - Future Catalysts: Mark 'is_future_catalyst' as true if the event describes a future potential driver for the market.
+   - Ongoing Unresolved Events: Mark 'is_ongoing' as true for trends happening *now* (e.g., a rotation into a sector, a past investment currently yielding results, or "Trade War Escalating"). This IS NOT a future catalyst.
+   - Future Catalysts: Mark 'is_future_catalyst' as true ONLY if the event is a strictly future, pending event with multiple possible alternative outcomes (e.g., 'OPEC meeting', 'Elections', 'Data release', 'US/Iran leaders meet'). Do NOT mark past investments, ongoing structural shifts, or completed events as future catalysts.
    - Scenario Analysis: For major events, think: "If this event resolves like X, what's the best position to be in? What if this resolves like Y?". Document this in `scenario_analysis`.
    - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
    
@@ -112,8 +112,8 @@ Your task:
      - Do NOT hallucinate dates; use null if no timeframe is mentioned.
    - 'future_date_note': A short label if the date is not exact (e.g., "estimated", "tentative", "2026", "by year end"). If the date is exact, set to null.
 5. Synthesize logical flags:
-   - 'is_ongoing': true if the consensus is that the event is unfolding.
-   - 'is_future_catalyst': true if this is a material precursor for a future market move.
+   - 'is_ongoing': true if the consensus is that the event is an unfolding trend or past action currently materializing.
+   - 'is_future_catalyst': true ONLY if the consensus is that this is a distinctly pending, upcoming event with undefined outcomes (like an upcoming meeting or data release). If it's an ongoing trend, structural rotation, or past investment, set to false.
    - 'historical_parallel': a short string describing the parallel if identified by models.
    - 'importance_score': a unified score (1-10) based on the consensus of model observations. Focus on trade-leading importance.
 

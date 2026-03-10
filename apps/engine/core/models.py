@@ -125,11 +125,11 @@ class MacroEvent(BaseModel):
     )
     is_ongoing: bool | None = Field(
         False, 
-        description="Whether the event is currently unfolding and unresolved (e.g. 'Trade War Escalating')"
+        description="Whether the event is a currently unfolding trend, rotation, or unresolved past action (e.g. 'Structural Rotation into HALO', 'Nvidia Photonics Investment')"
     )
     is_future_catalyst: bool | None = Field(
         False,
-        description="Whether this event is a precursor or 'armada' for a future market move"
+        description="Whether this is strictly a PENDING, UPCOMING event with multiple possible future outcomes (e.g. 'OPEC meeting', 'Elections', 'Data release'). Do NOT mark past investments or ongoing trends as future catalysts."
     )
     historical_parallel: str | None = Field(
         None,

@@ -688,7 +688,8 @@ For events that reach consensus (2+ models), we perform a final synthesis pass t
 **Future Tracking (Proactive Positioning)**: If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
 - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
 - **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.
-- **Importance Threshold**: Horizon Watch strictly filters for events with `importance_score >= 8`, ensuring the focus remains on "trade-leading" catalysts like budgets, laws, and major macro pivots.
+- **Strict Catalyst Definition**: Events are ONLY marked as `is_future_catalyst = true` if they represent strictly pending, upcoming events with multiple possible resolutions. Ongoing structural shifts, sector rotations, and past investments are marked as `is_ongoing` to distinguish them from trade-leading catalysts.
+- **Importance Threshold**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`, ensuring focus remains on high-leverage triggers.
 
 
 ---

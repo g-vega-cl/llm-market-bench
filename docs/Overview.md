@@ -145,7 +145,10 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
 *   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
 *   **TODAY Dashboard**: The primary entry point (`/`) providing a high-level narrative of the day's events, including AI consensus, news ingestion, and trade executions.
-    *   **Horizon Watch**: Tracks high-importance market catalysts (`importance_score >= 8`) with standardized ISO dates and "tentative" vs "exact" labels. Strictly filters out past events to focus on upcoming trade-leading triggers.
+    *   **Horizon Watch**:
+        - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
+        - **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.
+        - **Strict Separation**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. This prevents "Ongoing Memories" or past investments from cluttering the future timeline. Events that represent currently unfolding trends (e.g., "Structural Rotation") are marked as `is_ongoing` and excluded from this view.
 *   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer.
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
@@ -246,10 +249,10 @@ To ensure the `docs/database-schema.md` is always up to date with the actual Pos
 *   **Script:** `apps/engine/generate_schema_docs.py`
 *   **Usage:** `python generate_schema_docs.py`
 
-To normalize legacy Horizon Watch catalysts (ISO dates, notes, and importance):
+To normalize Horizon Watch catalysts (ISO dates, notes, and importance) and ensure strict separation from ongoing memories:
 *   **Script:** `apps/engine/cleanup_catalysts.py`
 *   **Usage:** `python cleanup_catalysts.py`
-*   **Goal:** Enforces data integrity for "Horizon Watch" entries by standardizing non-ISO dates and ensuring materiality.
+*   **Goal:** Enforces data integrity for "Horizon Watch" entries by standardizing non-ISO dates and ensuring materiality. It also recalibrates the `is_future_catalyst` flag to exclude ongoing trends and past investments.
 
 ## 6. Environment & Security
 ### Key Management Strategy

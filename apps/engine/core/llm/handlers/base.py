@@ -32,10 +32,16 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         )
     elif name == "get_sector_alternatives":
         return await tools.execute_sector_alternatives_tool(args["ticker"])
-    elif name == "sell_20_percent":
-        return await tools.execute_sell_20_percent_tool(args["ticker"], owner_id=model_name)
+    elif name == "sell_10_percent":
+        return await tools.execute_sell_10_percent_tool(args["ticker"], owner_id=model_name)
+    elif name == "sell_25_percent":
+        return await tools.execute_sell_25_percent_tool(args["ticker"], owner_id=model_name)
+    elif name == "sell_33_percent":
+        return await tools.execute_sell_33_percent_tool(args["ticker"], owner_id=model_name)
     elif name == "sell_50_percent":
         return await tools.execute_sell_50_percent_tool(args["ticker"], owner_id=model_name)
+    elif name == "sell_75_percent":
+        return await tools.execute_sell_75_percent_tool(args["ticker"], owner_id=model_name)
     elif name == "sell_100_percent":
         return await tools.execute_sell_100_percent_tool(args["ticker"], owner_id=model_name)
     return "Unknown tool"

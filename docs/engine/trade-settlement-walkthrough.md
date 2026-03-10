@@ -45,8 +45,8 @@ To prevent "Phantom Cash Losses" (where cash is deducted but no position is reco
 ## 4. Quantity Calculation (Allocation %)
 Before settlement, the engine converts the LLM's `allocation_percentage` into a share count:
 - **BUY:** `Qty = (Allocation % * Buying Power) / Market Price`.
-- **SELL:** `Qty = (Allocation % * Current Quantity)`.
-- **Fallback:** If `allocation_percentage` is missing, use **5%**. If resulting `Qty` is 0, default to **1 share**.
+- **SELL:** **Mandatory Tool Calculation.** LLMs must call a sell percentage tool to get the `quantity`.
+- **Fallback:** If `allocation_percentage` is missing for BUYS, use **5%**. For SELLS, the trade is REJECTED if no tool was called.
 
 ## 5. Example Flow
 **Scenario:** Agent buys 10 AAPL @ $150.

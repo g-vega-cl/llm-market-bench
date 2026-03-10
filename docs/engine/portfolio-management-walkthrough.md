@@ -93,7 +93,7 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
 - **BUY Logic:** The engine calculates `Allocation % * Buying Power` to determine the total USD to spend.
     - **Smart Bump:** If the calculated spend is below **$1,000**, the engine automatically "bumps" the spend to $1,000 (if Buying Power allows).
     - **Quantity:** The final share quantity is calculated based on the market price. If rounding down results in a value below $1,000, one share is added if affordable.
-- **SELL Logic:** The engine calculates `Allocation % * Current Position Quantity`. A 100% allocation results in a full exit of the position.
+- **SELL Logic:** **MANDATORY TOOL USAGE.** The engine now rejects any `SELL` decision that does not call a sell calculation tool. LLMs use tools like `sell_50_percent` to get the exact share count, which is then passed in the `quantity` field.
 - **Dynamic Fallbacks:** 
     - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
 
@@ -101,7 +101,7 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
 To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks:
 1. **Pipeline Check:** Before execution, the engine verifies the ticker is in the model's `portfolio_positions`.
 2. **Execution Check:** If a model attempts to sell more than it owns (e.g. "Sell 20 shares" while holding 10), the trade is capped at the owned quantity (10 shares), and the position is closed.
-3. **Audit Trail:** Unauthorized SELL attempts are logged in the `decisions` table with status `REJECTED_OWNERSHIP`.
+3. **Audit Trail:** Unauthorized SELL attempts or sells without tool usage are logged in the `decisions` table with status `REJECTED_OWNERSHIP` or `REJECTED_TOOL_USAGE`.
 
 ## 6. Verification
 We verify this logic with standard scenarios and dedicated guardrail tests (see `apps/engine/tests/test_sell_guardrails.py`), ensuring the system correctly handles:

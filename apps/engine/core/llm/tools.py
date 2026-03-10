@@ -190,11 +190,47 @@ SECTOR_ALTERNATIVES_TOOL_DEFINITION_ANTHROPIC = {
     },
 }
 
-SELL_20_PERCENT_TOOL_DEFINITION_OPENAI = {
+SELL_10_PERCENT_TOOL_DEFINITION_OPENAI = {
     "type": "function",
     "function": {
-        "name": "sell_20_percent",
-        "description": "Calculate how many shares equal 20% of your current position for a ticker. Use this when you want to take small profits or reduce exposure.",
+        "name": "sell_10_percent",
+        "description": "Calculate how many shares equal 10% of your current position for a ticker. Use this when you want to take small profits or reduce exposure.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                }
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+SELL_25_PERCENT_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "sell_25_percent",
+        "description": "Calculate how many shares equal 25% of your current position for a ticker. Use this when you want to take profits or reduce exposure.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                }
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+SELL_33_PERCENT_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "sell_33_percent",
+        "description": "Calculate how many shares equal 33% (one third) of your current position for a ticker.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -226,6 +262,24 @@ SELL_50_PERCENT_TOOL_DEFINITION_OPENAI = {
     },
 }
 
+SELL_75_PERCENT_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "sell_75_percent",
+        "description": "Calculate how many shares equal 75% of your current position for a ticker. Use this when you want to exit most of your position.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                }
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
 SELL_100_PERCENT_TOOL_DEFINITION_OPENAI = {
     "type": "function",
     "function": {
@@ -244,9 +298,57 @@ SELL_100_PERCENT_TOOL_DEFINITION_OPENAI = {
     },
 }
 
-SELL_20_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "sell_20_percent",
-    "description": "Calculate how many shares equal 20% of your current position for a ticker. Use this when you want to take small profits or reduce exposure.",
+SELL_100_PERCENT_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "sell_100_percent",
+        "description": "Calculate exactly how many shares you currently own for a ticker to exit the position completely.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                }
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+SELL_10_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "sell_10_percent",
+    "description": "Calculate how many shares equal 10% of your current position for a ticker. Use this when you want to take small profits or reduce exposure.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_25_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "sell_25_percent",
+    "description": "Calculate how many shares equal 25% of your current position for a ticker. Use this when you want to take profits or reduce exposure.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_33_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "sell_33_percent",
+    "description": "Calculate how many shares equal 33% (one third) of your current position for a ticker.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -262,6 +364,36 @@ SELL_20_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
 SELL_50_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
     "name": "sell_50_percent",
     "description": "Calculate how many shares equal 50% of your current position for a ticker. Use this when you want to rebalance or significantly reduce exposure.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_75_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "sell_75_percent",
+    "description": "Calculate how many shares equal 75% of your current position for a ticker. Use this when you want to exit most of your position.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_100_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "sell_100_percent",
+    "description": "Calculate exactly how many shares you currently own for a ticker to exit the position completely.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -376,9 +508,39 @@ SECTOR_ALTERNATIVES_TOOL_DEFINITION_GEMINI = {
     },
 }
 
-SELL_20_PERCENT_TOOL_DEFINITION_GEMINI = {
-    "name": "sell_20_percent",
-    "description": "Calculate how many shares equal 20% of your current position for a ticker. Use this when you want to take small profits or reduce exposure.",
+SELL_10_PERCENT_TOOL_DEFINITION_GEMINI = {
+    "name": "sell_10_percent",
+    "description": "Calculate how many shares equal 10% of your current position for a ticker. Use this when you want to take small profits or reduce exposure.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_25_PERCENT_TOOL_DEFINITION_GEMINI = {
+    "name": "sell_25_percent",
+    "description": "Calculate how many shares equal 25% of your current position for a ticker. Use this when you want to take profits or reduce exposure.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_33_PERCENT_TOOL_DEFINITION_GEMINI = {
+    "name": "sell_33_percent",
+    "description": "Calculate how many shares equal 33% (one third) of your current position for a ticker.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -394,6 +556,36 @@ SELL_20_PERCENT_TOOL_DEFINITION_GEMINI = {
 SELL_50_PERCENT_TOOL_DEFINITION_GEMINI = {
     "name": "sell_50_percent",
     "description": "Calculate how many shares equal 50% of your current position for a ticker. Use this when you want to rebalance or significantly reduce exposure.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_75_PERCENT_TOOL_DEFINITION_GEMINI = {
+    "name": "sell_75_percent",
+    "description": "Calculate how many shares equal 75% of your current position for a ticker. Use this when you want to exit most of your position.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SELL_100_PERCENT_TOOL_DEFINITION_GEMINI = {
+    "name": "sell_100_percent",
+    "description": "Calculate exactly how many shares you currently own for a ticker to exit the position completely.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -604,19 +796,29 @@ async def _execute_sell_percentage_tool(ticker: str, owner_id: str, percentage: 
         
         pct_label = f"{int(percentage * 100)}%"
         return (
-            f"Selling {pct_label} of your position in {ticker}.\n"
+            f"CALCULATION COMPLETE for {ticker}:\n"
             f"- Current Holdings: {total_quantity} shares\n"
-            f"- Recommended Sell Quantity: {sell_quantity} shares\n"
-            f"Action: Set your decision to 'SELL' for ticker '{ticker}' with this quantity."
+            f"- Recommended SELL Quantity ({pct_label}): {sell_quantity} shares\n"
+            f"MANDATORY ACTION: Set your decision to 'SELL' for ticker '{ticker}' with quantity: {sell_quantity}. "
+            f"You MUST include 'sell_tool_called': true in your final JSON decision."
         )
     except Exception as e:
         return f"Error calculating sell quantity for {ticker}: {str(e)}"
 
-async def execute_sell_20_percent_tool(ticker: str, owner_id: str) -> str:
-    return await _execute_sell_percentage_tool(ticker, owner_id, 0.20)
+async def execute_sell_10_percent_tool(ticker: str, owner_id: str) -> str:
+    return await _execute_sell_percentage_tool(ticker, owner_id, 0.10)
+
+async def execute_sell_25_percent_tool(ticker: str, owner_id: str) -> str:
+    return await _execute_sell_percentage_tool(ticker, owner_id, 0.25)
+
+async def execute_sell_33_percent_tool(ticker: str, owner_id: str) -> str:
+    return await _execute_sell_percentage_tool(ticker, owner_id, 0.33)
 
 async def execute_sell_50_percent_tool(ticker: str, owner_id: str) -> str:
     return await _execute_sell_percentage_tool(ticker, owner_id, 0.50)
+
+async def execute_sell_75_percent_tool(ticker: str, owner_id: str) -> str:
+    return await _execute_sell_percentage_tool(ticker, owner_id, 0.75)
 
 async def execute_sell_100_percent_tool(ticker: str, owner_id: str) -> str:
     return await _execute_sell_percentage_tool(ticker, owner_id, 1.0)

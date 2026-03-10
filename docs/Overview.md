@@ -89,7 +89,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
-*   **Portfolio Context Injection:** *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions (e.g., "Use 10% of BP for this trade") rather than just static share counts.*
+*   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10%, 25%, 33%, 50%, 75%, 100%) to determine the exact share quantity, preventing hallucinations.*
 *   documentation: ./engine/portfolio-management-walkthrough.md
 
 **12. Trade Settlement & Ledgering** ✅
@@ -100,7 +100,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
 *   **Atomic Settlement Pattern:** *Follows a **"Commit at the End"** logic where `cash_balance` and `sma` are only persisted to the `portfolios` table if both the `portfolio_positions` update and the `trades` ledger entry succeed. This prevents "Phantom Deductions" if the DB connection fails mid-operation.*
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
-*   **Rejection Logic:** *Decisions that fail Validation, Reg T, or **Ownership** checks are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`) to preserve the full "Audit Trail" of AI intent.*
+*   **Rejection Logic**: *Decisions that fail Validation, Reg T, **Ownership**, or **Tool Usage** (e.g., selling without calling a calculation tool) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_TOOL_USAGE`) to preserve the full "Audit Trail" of AI intent.*
 *   documentation: ./engine/trade-settlement-walkthrough.md
 
 **12a. Real-time P&L Tracking (SQL View)** ✅

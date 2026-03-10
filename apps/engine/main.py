@@ -156,6 +156,21 @@ async def run_ingest():
                         rejected_decisions += 1
                         continue
 
+                    # --- SELL Tool Usage Guardrail ---
+                    if d.signal.upper() == "SELL" and not getattr(d, "sell_tool_called", False):
+                        logger.warning(
+                            f"[{d.ticker}] REJECTED (Tool Usage): SELL signal without calling a sell percentage tool. "
+                            f"({d.model_provider}/{d.model_name})"
+                        )
+                        save_decision(
+                            sb_client,
+                            d,
+                            status="REJECTED_TOOL_USAGE",
+                            metadata={"reason": "A sell percentage tool must be called for all SELL signals to ensure quantity accuracy."}
+                        )
+                        rejected_decisions += 1
+                        continue
+
                     # --- Quantity Calculation (Allocation % or Default) ---
                     exec_price = validation.market_price if validation.market_price else d.price
                     
@@ -245,9 +260,14 @@ async def run_ingest():
                         if qty * exec_price < MIN_TRADE_VALUE and (qty + 1) * exec_price <= bp:
                             qty += 1
                     elif d.signal.upper() == "SELL":
-                        pos = portfolio.positions.get(d.ticker)
-                        if pos:
-                            qty = int((alloc_pct / 100.0) * pos.quantity)
+                        # Prioritize the quantity returned by the tool
+                        if getattr(d, "quantity", None) is not None:
+                            qty = d.quantity
+                        else:
+                            # Fallback to percentage if tool provided quantity is somehow missing
+                            pos = portfolio.positions.get(d.ticker)
+                            if pos:
+                                qty = int((alloc_pct / 100.0) * pos.quantity)
                     
                     # Last line of defense: if allocation (1st choice or 5% fallback) is 0, default to 1 share
                     if qty <= 0:

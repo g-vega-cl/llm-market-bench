@@ -88,6 +88,15 @@ class DecisionObject(BaseModel):
         None,
         description="Notes for planning decisions in advance (e.g., selling X for Y)"
     )
+    sell_tool_called: bool = Field(
+        False,
+        description="MANDATORY for SELL: Whether one of the sell percentage tools was called to calculate quantity"
+    )
+    quantity: int | None = Field(
+        None,
+        ge=0,
+        description="The exact quantity of shares to trade (mandatory if sell_tool_called is true)"
+    )
 
     @field_validator("ticker")
     @classmethod

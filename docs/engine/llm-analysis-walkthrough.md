@@ -23,7 +23,7 @@ Models (**OpenAI, Anthropic, Gemini**) now actively call multiple tools to verif
 - **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
-- **`sell_20_percent`, `sell_50_percent`, `sell_100_percent`**: Calculates exact share quantities for partial or full exits of existing positions.
+- **`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, `sell_100_percent`**: Calculates exact share quantities for partial or full exits of existing positions. **Using these tools is now MANDATORY for any SELL decision.**
 
 ### **Handler Architecture**
 To improve code maintainability and adhere to Google's Python Style Guide, the tool execution logic has been refactored into provider-specific handlers:
@@ -69,6 +69,8 @@ class DecisionObject(BaseModel):
     profit_potential_reasoning: str # Justification for profit potential
     strategy_reasoning: str | None # "Is it possible to make a strategy based on this?"
     advance_planning_notes: str | None # "Should I sell X to buy Y?"
+    sell_tool_called: bool # MANDATORY FOR SELL: Whether a tool was used to calculate quantity
+    quantity: int | None # The exact quantity of shares to trade
 ```
 
 ### **Macro Event Objects**
@@ -113,7 +115,7 @@ To move beyond simple "news-chasing," the system now enforces a multi-step quali
 2.  **Is this news already priced in?** (Using `get_price_history`)
 3.  **What is being incentivized right now?** (Government budgets and objectives)
 4.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
-5.  **Should I reduce exposure or take profits?** (Using `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate exact quantities)
+5.  **Should I reduce exposure or take profits?** (Using the granular sell tools like `sell_10_percent` through `sell_100_percent` to calculate exact quantities. **MANDATORY for all SELLs.**)
 6.  **What is the expected timeline for this catalyst to materialize?**
 6.  **What are the primary risks or counter-arguments to this trade?**
 7.  **How does this stock correlate with my existing portfolio?**

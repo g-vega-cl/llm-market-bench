@@ -427,7 +427,7 @@ aggregated_context = """
 prompt = f"""You are a hedge fund trading algorithm. 
 CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
-Use `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions.
+Use `sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs).
 
 ### Historical Context:
 {aggregated_context}
@@ -499,8 +499,6 @@ valid_decisions = [
 - **Active Reasoning**: Models verify data *before* committing to a decision.
 - **Unified Tool Interface**: Handle OpenAI, Anthropic, and Gemini tool schemas in one loop.
 - **Cache Integration**: Real-time tools hit the `market_data_cache` first to keep the UI fast.
-
----
 
 ---
 
@@ -759,14 +757,15 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules and enforces **Portfolio Ownership** for SELL signals.
 
 1. **Ownership Check:** If `Signal == SELL`, verify ticker is in `portfolio_positions`. Reject if not found (`REJECTED_OWNERSHIP`).
-2. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
+2. **Tool Usage Guardrail:** If `Signal == SELL` and no sell calculation tool was called, reject (`REJECTED_TOOL_USAGE`).
+3. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
 
 ### Step 8.2: Quantity Calculation & Settlement
 The engine converts the LLM's `allocation_percentage` into a share count:
 - **BUY:** Uses `Allocation % * Buying Power`.
 - **Smart Bump:** If the resulting spend is < $1,000, the engine attempts to bump it to $1,000 if sufficient Buying Power exists.
-- **SELL:** Uses `Allocation % * Position Quantity`.
-- **Fallback:** Defaults to 5% allocation (then applies the $1,000 bump logic for buys).
+- **SELL:** Uses the exact quantity calculated and returned by the sell percentage tools. (MANDATORY).
+- **Fallback:** Defaults to 5% allocation for BUYS (then applies the $1,000 bump logic). SELLs without tool calculation are REJECTED.
 
 If validation passes, the trade is settled into the `portfolios` table.
 

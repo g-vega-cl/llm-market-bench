@@ -37,8 +37,11 @@ async def run_tool_loop(
                 tools.STOCK_TOOL_DEFINITION_ANTHROPIC,
                 tools.PRICE_HISTORY_TOOL_DEFINITION_ANTHROPIC,
                 tools.POSITION_PNL_TOOL_DEFINITION_ANTHROPIC,
-                tools.SELL_20_PERCENT_TOOL_DEFINITION_ANTHROPIC,
+                tools.SELL_10_PERCENT_TOOL_DEFINITION_ANTHROPIC,
+                tools.SELL_25_PERCENT_TOOL_DEFINITION_ANTHROPIC,
+                tools.SELL_33_PERCENT_TOOL_DEFINITION_ANTHROPIC,
                 tools.SELL_50_PERCENT_TOOL_DEFINITION_ANTHROPIC,
+                tools.SELL_75_PERCENT_TOOL_DEFINITION_ANTHROPIC,
                 tools.SELL_100_PERCENT_TOOL_DEFINITION_ANTHROPIC,
             ]
         }

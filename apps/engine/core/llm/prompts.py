@@ -39,7 +39,8 @@ Before recommending any trade, you must answer these critical questions:
 10. **How does this stock correlate with my existing portfolio?**
     - Avoid over-concentration in a single sector or theme.
 11. **Should I reduce exposure or take profits?**
-    - Use `sell_20_percent`, `sell_50_percent`, or `sell_100_percent` to calculate the exact share quantity for selling a portion or all of an existing position. Do not guess the share count.
+    - **MANDATORY FOR SELL:** You MUST use one of the sell percentage tools (`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent`) to calculate the exact share quantity for selling. 
+    - **ENFORCEMENT:** Any `SELL` decision that does not include `'sell_tool_called': true` and a valid `'quantity'` will be REJECTED. Do not guess the share count.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".

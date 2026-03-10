@@ -160,3 +160,61 @@ async def test_run_ingest_rejected_decision(mock_dependencies):
     kwargs = md["save"].call_args[1]
     assert kwargs.get("trade_id") is None
     assert kwargs.get("status") == "REJECTED_LIQUIDITY"
+
+@pytest.mark.asyncio
+async def test_run_ingest_sell_tool_enforcement(mock_dependencies):
+    """Test that a SELL decision without tool usage is rejected with REJECTED_TOOL_USAGE."""
+    md = mock_dependencies
+    
+    # 1. Decision without tool call
+    decision = DecisionObject(
+        signal="SELL",
+        confidence=90,
+        reasoning="Selling because I want to",
+        ticker="AAPL",
+        source_id="src1",
+        sell_tool_called=False
+    )
+    md["analyze"].return_value = ([decision], [], "Mocked context")
+    
+    # Mock possession check
+    md["portfolio"].positions = {"AAPL": MagicMock()}
+    
+    await run_ingest()
+    
+    # Verify rejection
+    md["portfolio"].execute_trade.assert_not_called()
+    md["save"].assert_called_once()
+    kwargs = md["save"].call_args[1]
+    assert kwargs.get("status") == "REJECTED_TOOL_USAGE"
+
+@pytest.mark.asyncio
+async def test_run_ingest_sell_with_tool(mock_dependencies):
+    """Test that a SELL decision with tool usage passes the guardrail."""
+    md = mock_dependencies
+    
+    # 2. Decision with tool call
+    decision = DecisionObject(
+        signal="SELL",
+        confidence=90,
+        reasoning="Selling 50% as per tool calculation",
+        ticker="AAPL",
+        source_id="src1",
+        sell_tool_called=True,
+        quantity=5
+    )
+    md["analyze"].return_value = ([decision], [], "Mocked context")
+    
+    # Mock validation and possession
+    md["validate"].return_value = ValidationResult(status=ValidationStatus.PASSED, ticker="AAPL")
+    md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}
+    
+    await run_ingest()
+    
+    # Verify execution with correct quantity
+    md["portfolio"].execute_trade.assert_awaited_once()
+    args, kwargs = md["portfolio"].execute_trade.call_args
+    # AAPL, 5, price, SELL
+    assert args[0] == "AAPL"
+    assert args[1] == 5
+    assert args[3] == "SELL"

@@ -248,7 +248,7 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     update_memory_status(parent_id, "RESOLVED")
                     logger.info(f"Marked ancestor event {parent_id} as RESOLVED.")
             else:
-                logger.error(f"Failed to promote consensus event: {consensus_data['event_name']}")
+                logger.warning(f"Failed to promote consensus event: {consensus_data['event_name']}")
 
     return consensus_reached
 

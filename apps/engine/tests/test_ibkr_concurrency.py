@@ -23,7 +23,10 @@ async def test_concurrency():
     
     async def fetch(ticker):
         provider = IBKRProvider()
-        return await provider.get_ticker_data(ticker)
+        try:
+            return await provider.get_ticker_data(ticker)
+        except ConnectionRefusedError:
+            pytest.skip("IBKR Proxy not running")
 
     tasks = [fetch(ticker) for ticker in tickers]
     

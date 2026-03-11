@@ -26,7 +26,13 @@ def mock_dependencies():
         # Setup defaults
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_consensus.return_value = []
+        mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
+        mock_validate.return_value = ValidationResult(
+            status=ValidationStatus.PASSED,
+            market_price=150.0,
+            ticker="DEFAULT"
+        )
         mock_verify.return_value = MagicMock(status="APPROVED", verification_reasoning="Verified", confidence_score=100, alternative_ticker=None)
         
         # Mock MarketDataManager
@@ -206,7 +212,11 @@ async def test_run_ingest_sell_with_tool(mock_dependencies):
     md["analyze"].return_value = ([decision], [], "Mocked context")
     
     # Mock validation and possession
-    md["validate"].return_value = ValidationResult(status=ValidationStatus.PASSED, ticker="AAPL")
+    md["validate"].return_value = ValidationResult(
+        status=ValidationStatus.PASSED,
+        market_price=100.0,
+        ticker="AAPL"
+    )
     md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}
     
     await run_ingest()

@@ -84,6 +84,8 @@ async def test_ibkr():
             # Cancel subscription to be clean
             ib.cancelMktData(contract)
                 
+    except ConnectionRefusedError:
+        pytest.skip(f"IBKR Proxy not running at {IBKR_HOST}:{IBKR_PORT}")
     except Exception as e:
         print(f"Connection/Test failed: {e}")
         raise e

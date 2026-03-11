@@ -23,8 +23,10 @@ SAMPLE_HTML = """
 
 @pytest.fixture
 def pipeline():
-    with patch("ingest.calendar.get_deepseek_client") as mock_get_client:
+    with patch("ingest.calendar.get_deepseek_client") as mock_get_client, \
+         patch("ingest.calendar.get_supabase_client") as mock_get_sb:
         mock_get_client.return_value = MagicMock()
+        mock_get_sb.return_value = MagicMock()
         return CalendarPipeline()
 
 def test_parse_events(pipeline):

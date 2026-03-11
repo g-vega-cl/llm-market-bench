@@ -14,10 +14,12 @@ async def test_fallback_to_last_known():
     # 2. Mock _fetch_with_backoff to return None (primary and fallback fail)
     # 3. Mock _get_last_known_price to return a value
     
-    with patch.object(MarketDataManager, '_get_from_cache', return_value=None), \
+    with patch("execution.market_data.get_supabase_client") as mock_sb, \
+         patch.object(MarketDataManager, '_get_from_cache', return_value=None), \
          patch.object(MarketDataManager, '_fetch_with_backoff', return_value=None), \
          patch.object(MarketDataManager, '_get_last_known_price') as mock_history:
         
+        mock_sb.return_value = MagicMock()
         mock_history.return_value = TickerData(
             ticker=ticker,
             price=123.45,
@@ -39,10 +41,12 @@ async def test_fatal_failure_when_no_history():
     
     ticker = "TOTALLY_FAILED"
     
-    with patch.object(MarketDataManager, '_get_from_cache', return_value=None), \
+    with patch("execution.market_data.get_supabase_client") as mock_sb, \
+         patch.object(MarketDataManager, '_get_from_cache', return_value=None), \
          patch.object(MarketDataManager, '_fetch_with_backoff', return_value=None), \
          patch.object(MarketDataManager, '_get_last_known_price', return_value=None):
         
+        mock_sb.return_value = MagicMock()
         manager = MarketDataManager()
         result = await manager.get_quote(ticker)
         

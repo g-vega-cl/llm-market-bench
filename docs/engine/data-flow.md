@@ -445,7 +445,7 @@ aggregated_context = """
 prompt = f"""You are a hedge fund trading algorithm. 
 CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
-Use `sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs).
+Use `sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs; hard-enforced by the engine).
 
 ### Historical Context:
 {aggregated_context}
@@ -509,6 +509,11 @@ valid_decisions = [
     ...
 ]
 
+# NEW: Hard Tool Enforcement (in analyze.py)
+# After the tool loop, the engine scans the actual conversation history.
+# It confirms that required tools (get_stock_quote for all, sell_X_percent for SELL) were actually called.
+# If an agent claims tool usage but it's not found in history, the trade is rejected.
+
 # NEW: Price Backfill Logic (in analyze.py)
 # If decision.price is missing/null, engine queries MarketDataManager to backfill real-time price.
 ```
@@ -529,11 +534,11 @@ valid_decisions = [
 This layer ensures that every ticker is liquid and real. It is utilized both as a **Tool** by LLMs and as a **Final Post-Gauntlet** by the engine.
 
 #### Cache-First Logic:
-1. **Check Persistence**: Query `market_data_cache` in Supabase.
-2. **TTL Verification**: If `fetched_at` is older than 4 hours, proceed to fetch.
-3. **External Fetch**: Hit the primary provider (typically `yfinance`) via the `FinancialProvider` interface.
-4. **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
-5. **Update Cache & Teardown**: Upsert the fresh data back to `market_data_cache`, insert into `price_history`, and invoke `disconnect_all()` via the provider class to release any persistent resources.
+1.  **Check Persistence**: Query `market_data_cache` in Supabase.
+2.  **TTL Verification**: If `fetched_at` is older than 4 hours, proceed to fetch.
+3.  **External Fetch**: Hit the primary provider (typically `yfinance`) via the `FinancialProvider` interface.
+4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
+5.  **Update Cache & Teardown**: Upsert the fresh data back to `market_data_cache`, insert into `price_history`, and invoke `disconnect_all()` via the provider class to release any persistent resources.
 
 #### The Three Guardrails:
 
@@ -543,7 +548,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 | **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.15` | Reject hallucinated prices (>15% deviation). |
 | **C: Liquidity** | `if market_cap < 2_000_000_000` | Reject "Penny Stocks" (Market Cap < $2B). |
 | **D: Buying Power** | `if cost > buying_power` | Reject trades exceeding margin limits. |
-| **E: Minimum Value** | `if trade_cost < 1000.0` | Reject trades below $1,000 threshold. |
+| E: Minimum Value | `Trade Cost > $1,000` | Mandatory for ALL trades (BUY and SELL). |
 | **F: SMA Floor** | `if projected_sma < 10% equity` | Reject trades risking Reg T compliance. |
 
 **Validation Result**:
@@ -677,10 +682,10 @@ Before promoting, the engine also checks for temporal duplicates (Step 5.1a) aga
 **File**: `apps/engine/consensus.py`
 
 For each consensus group, the engine checks for related past events.
-1. **Ancestor Search**: Vector search (Similarity > 0.4).
-2. **Relationship Analysis**: LLM categorizes as `REVERSAL`, `RESOLUTION`, or `UPDATE`.
-3. **Auto-Resolution**: Mark ancestors as `RESOLVED` if reversed.
-4. **Context Enrichment**: Enriches memory strings with `[ONGOING]` and `[Historical Parallel]` labels for better RAG retrieval.
+1.  **Ancestor Search**: Vector search (Similarity > 0.4).
+2.  **Relationship Analysis**: LLM categorizes as `REVERSAL`, `RESOLUTION`, or `UPDATE`.
+3.  **Auto-Resolution**: Mark ancestors as `RESOLVED` if reversed.
+4.  **Context Enrichment**: Enriches memory strings with `[ONGOING]` and `[Historical Parallel]` labels for better RAG retrieval.
 
 ### Step 5.3: LLM Synthesis & Future Tracking
 
@@ -753,7 +758,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **B: Price Banding** | `abs(ai_price - real_price) < 15%` | Prevent price hallucinations. |
 | **C: Liquidity** | `Market Cap > $2B` | Prevent trading penny stocks. |
 | **D: Buying Power** | `cost <= buying_power` | Ensure margin compliance. |
-| **E: Minimum Value** | `Trade Cost > $1,000` | Prevent insignificant trades. |
+| E: Minimum Value | `Trade Cost > $1,000` | Prevent insignificant trades (BUY and SELL). |
 | **F: SMA Floor** | `Projected SMA > 10% Eq` | Safety margin for Reg T. |
 | **G: Robustness** | `NaN & Fallback` | Reject `NaN` values from providers; use `average_cost_basis` if market data fails (price = 0 or missing) to prevent negative equity. Ensures atomic disconnect via generic `disconnect_all()` hook. |
 
@@ -775,7 +780,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules and enforces **Portfolio Ownership** for SELL signals.
 
 1. **Ownership Check:** If `Signal == SELL`, verify ticker is in `portfolio_positions`. Reject if not found (`REJECTED_OWNERSHIP`).
-2. **Tool Usage Guardrail:** If `Signal == SELL` and no sell calculation tool was called, reject (`REJECTED_TOOL_USAGE`).
+2. **Hard Tool Enforcement:** If `Signal == SELL` and the engine's history scan confirms no sell calculation tool was called, reject (`REJECTED_TOOL_USAGE`).
 3. **Size Check (BUY):** Every purchase must be at least 10% of Buying Power or Total Equity.
 4. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
 

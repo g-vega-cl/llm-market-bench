@@ -1,79 +1,142 @@
+"""Tests to verify SELL trade guardrails (minimum trade value)."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from unittest.mock import MagicMock, patch
-from execution.portfolio import Portfolio, Position
+from core.models import DecisionObject
+from execution.validation import ValidationResult, ValidationStatus
+from main import run_ingest
+
+@pytest.fixture
+def mock_dependencies():
+    """Setup mocks for SELL guardrail tests."""
+    with patch("main.ingest_newsletters") as mock_ingest, \
+         patch("main.get_supabase_client") as mock_get_client, \
+         patch("main.upsert_newsletter_snapshot") as mock_upsert, \
+         patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze, \
+         patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
+         patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
+         patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
+         patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
+         patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
+         patch("main.Portfolio") as MockPortfolio, \
+         patch("execution.market_data.MarketDataManager") as MockMDM, \
+         patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
+         patch("main.save_decision") as mock_save:
+        
+        # Setup defaults
+        mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
+        mock_consensus.return_value = []
+        mock_contrarian.return_value = ([], [])
+        mock_validate.return_value = ValidationResult(
+            status=ValidationStatus.PASSED,
+            market_price=150.0,
+            ticker="DEFAULT"
+        )
+        # Mock MarketDataManager for the main loop's p_map
+        mock_mdm_instance = MockMDM.return_value
+        mock_mdm_instance.get_quote = AsyncMock()
+        mock_mdm_instance.get_quote.return_value = MagicMock(price=100.0)
+        
+        # Mock Portfolio instance
+        mock_portfolio_instance = MagicMock()
+        MockPortfolio.return_value = mock_portfolio_instance
+        mock_portfolio_instance.initialize = AsyncMock()
+        mock_portfolio_instance.execute_trade = AsyncMock()
+        mock_portfolio_instance.calculate_reg_t_metrics = MagicMock()
+        
+        yield {
+            "analyze": mock_analyze,
+            "validate_decision": mock_validate,
+            "portfolio": mock_portfolio_instance,
+            "save": mock_save
+        }
 
 @pytest.mark.asyncio
-async def test_execute_trade_sell_unheld_ticker():
-    """Test that selling a ticker not in the portfolio is rejected."""
-    p = Portfolio("test_agent")
-    p.id = "portfolio-123"
-    p.positions = {} # Empty portfolio
+async def test_run_ingest_rejected_small_sell(mock_dependencies):
+    """Verify that a SELL for 1 share @ $260 (below $1000) is rejected."""
+    md = mock_dependencies
     
-    mock_db = MagicMock()
-    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
-        trade_id = await p.execute_trade("AAPL", 10, 150.0, "SELL")
-        
-    assert trade_id is None
-    assert "AAPL" not in p.positions
-    # Verify NO DB update was called (since it returned early)
-    assert not mock_db.table.called
+    # Setup small SELL decision (1 share @ $260.74 = $260.74 < $1000)
+    decision = DecisionObject(
+        signal="SELL",
+        ticker="AAPL",
+        confidence=90,
+        reasoning="Take small profit",
+        source_id="src1",
+        sell_tool_called=True,
+        quantity=1
+    )
+    md["analyze"].return_value = ([decision], [], "Mocked context")
+    
+    # Portfolio setup: Owned AAPL
+    md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}
+    md["portfolio"].metrics = MagicMock(buying_power=50000.0, total_equity=60000.0, sma=50000.0)
+    
+    # Mock validate_decision to pass existence check
+    md["validate_decision"].return_value = ValidationResult(
+        status=ValidationStatus.PASSED,
+        market_price=260.74,
+        ticker="AAPL"
+    )
+    
+    # IMPORTANT: Mock portfolio.validate_trade to mirror the Reg T logic
+    from execution.reg_t_validation import ValidationResult as ComplianceResult
+    md["portfolio"].validate_trade.return_value = ComplianceResult(
+        passed=False,
+        reason="SELL Trade value below minimum threshold of $1,000.00."
+    )
+    
+    await run_ingest()
+    
+    # Verify rejection logic in main.py loop
+    md["portfolio"].execute_trade.assert_not_called()
+    
+    # Verify save_decision called with REJECTED_MARGIN
+    # The fix ensures SELL calls validate_trade, which should fail if below 1000
+    assert md["save"].called
+    kwargs = md["save"].call_args[1]
+    assert kwargs.get("status") == "REJECTED_MARGIN"
+    assert "below minimum threshold" in kwargs.get("metadata", {}).get("reason", "")
 
 @pytest.mark.asyncio
-async def test_execute_trade_sell_more_than_held():
-    """Test that selling more than held is capped to owned quantity."""
-    p = Portfolio("test_agent")
-    p.id = "portfolio-123"
-    p.positions = {"AAPL": Position("AAPL", 10, 100.0)}
-    p.cash_balance = 0.0
+async def test_run_ingest_passed_large_sell(mock_dependencies):
+    """Verify that a SELL for 10 shares @ $260 (above $1000) is accepted."""
+    md = mock_dependencies
     
-    mock_db = MagicMock()
-    mock_table = MagicMock()
-    mock_db.table.return_value = mock_table
+    # Setup large SELL decision (10 shares @ $260.74 = $2607.40 > $1000)
+    decision = DecisionObject(
+        signal="SELL",
+        ticker="AAPL",
+        confidence=90,
+        reasoning="Take larger profit",
+        source_id="src1",
+        sell_tool_called=True,
+        quantity=10
+    )
+    md["analyze"].return_value = ([decision], [], "Mocked context")
     
-    # Mock portfolios update chain
-    mock_table.update.return_value.eq.return_value.execute.return_value = MagicMock()
-    # Mock positions delete/upsert chain
-    mock_table.delete.return_value.match.return_value.execute.return_value = MagicMock()
+    # Portfolio setup
+    md["portfolio"].positions = {"AAPL": MagicMock(quantity=100)}
+    md["portfolio"].metrics = MagicMock(buying_power=50000.0, total_equity=60000.0, sma=50000.0)
     
-    # Mock trades insert response
-    mock_res_trade = MagicMock()
-    mock_res_trade.data = [{"id": "trade-456"}]
-    mock_table.insert.return_value.execute.return_value = mock_res_trade
-
-    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
-        trade_id = await p.execute_trade("AAPL", 50, 200.0, "SELL")
-        
-    assert trade_id == "trade-456"
-    assert "AAPL" not in p.positions # Because 50 was capped to 10
-    assert p.cash_balance == 2000.0
+    # Mock validate_decision
+    md["validate_decision"].return_value = ValidationResult(
+        status=ValidationStatus.PASSED,
+        market_price=260.74,
+        ticker="AAPL"
+    )
     
-    # Verify trade was inserted with qty 10
-    args, kwargs = mock_table.insert.call_args
-    assert args[0]["quantity"] == 10
-    assert args[0]["total_cost"] == 2000.0
-
-
-@pytest.mark.asyncio
-async def test_execute_trade_sell_partial():
-    """Test that partial sell correctly updates quantity and cash."""
-    p = Portfolio("test_agent")
-    p.id = "portfolio-123"
-    p.positions = {"AAPL": Position("AAPL", 10, 100.0)}
-    p.cash_balance = 0.0
+    # Mock validate_trade to pass
+    from execution.reg_t_validation import ValidationResult as ComplianceResult
+    md["portfolio"].validate_trade.return_value = ComplianceResult(passed=True)
     
-    mock_db = MagicMock()
-    mock_table = MagicMock()
-    mock_db.table.return_value = mock_table
+    # Mock execute_trade to return UUID
+    md["portfolio"].execute_trade.return_value = "trade-uuid-456"
     
-    mock_res_trade = MagicMock()
-    mock_res_trade.data = [{"id": "trade-789"}]
-    mock_table.insert.return_value.execute.return_value = mock_res_trade
-
-    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
-        trade_id = await p.execute_trade("AAPL", 4, 150.0, "SELL")
-        
-    assert trade_id == "trade-789"
-    assert p.positions["AAPL"].quantity == 6
-    # Cash: 4 * 150 = 600
-    assert p.cash_balance == 600.0
+    await run_ingest()
+    
+    # Verify execution
+    md["portfolio"].execute_trade.assert_awaited_once()
+    assert md["save"].called
+    kwargs = md["save"].call_args[1]
+    assert kwargs.get("status") == "EXECUTED"

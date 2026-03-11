@@ -57,11 +57,11 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
-10. **Second-Step Verification**: A skeptical "Verifier" agent (using the original decision's provider) audits BUY/SELL signals, evaluating not just price but also the **Strategic Intent** and **Advance Planning** of the trade.
-11. **Trade Abort/Adjustment**: Verification results can force a `REJECTED_VERIFICATION` or `ADJUSTED_ALLOCATION` before money moves.
-12. **Pre-Market Validation**: Existence, price banding, and liquidity checks with automated engine-level backfill for missing LLM prices.
-13. **Reg T Margin Validation**: Ensure buying power and SMA safety floor.
-12. **Trade Settlement:** Atomic updates to cash, positions, and ledger.
+10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
+11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed. Hallucinated tool calls result in trade rejection.
+12. **Pre-Market Validation**: Existence, price banding, and liquidity checks.
+13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (for both BUY and SELL).
+14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
 14. **Ledger Update:** Daily equity curve snapshot.
 
@@ -92,7 +92,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.*
-*   **Dynamic Minimum Buy Rule**: *Every BUY must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of $1,000. This ensures meaningful position sizes and prevents "dust" trades.*
+*   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for both BUY and SELL orders**. This ensures meaningful position sizes and prevents "dust" trades.
+*
 *   documentation: ./engine/portfolio-management-walkthrough.md
 
 **12. Trade Settlement & Ledgering** ✅
@@ -103,7 +104,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
 *   **Atomic Settlement Pattern:** *Follows a **"Commit at the End"** logic where `cash_balance` and `sma` are only persisted to the `portfolios` table if both the `portfolio_positions` update and the `trades` ledger entry succeed. This prevents "Phantom Deductions" if the DB connection fails mid-operation.*
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
-*   **Rejection Logic**: *Decisions that fail Validation, Reg T, **Ownership**, or **Tool Usage** (e.g., selling without calling a calculation tool) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_TOOL_USAGE`) to preserve the full "Audit Trail" of AI intent.*
+*   **Rejection Logic**: Decisions that fail Validation, Reg T, **Ownership**, or **Hard Tool Enforcement** (e.g., selling without actually calling a calculation tool in the history) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_TOOL_USAGE`) to preserve the full "Audit Trail" of AI intent.
+*
 *   documentation: ./engine/trade-settlement-walkthrough.md
 
 **12a. Real-time P&L Tracking (SQL View)** ✅

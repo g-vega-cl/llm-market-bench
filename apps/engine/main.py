@@ -266,8 +266,25 @@ async def run_ingest():
                         if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
                             qty += 1
 
-                        # Validate Trade
-                        validation = portfolio.validate_trade(ticker=d.ticker, quantity=qty, price=exec_price, signal=d.signal)
+                        # Validate Trade (Reg T & Floor)
+                        validation_res = portfolio.validate_trade(ticker=d.ticker, quantity=qty, price=exec_price, signal=d.signal)
+                        if not validation_res.passed:
+                            logger.warning(
+                                f"[{d.ticker}] REJECTED (Reg T/Guardrails): {validation_res.reason} "
+                                f"({d.model_provider}/{d.model_name})"
+                            )
+                            save_decision(
+                                sb_client,
+                                d,
+                                status="REJECTED_MARGIN",
+                                metadata={
+                                    "reason": validation_res.reason,
+                                    "max_shares": getattr(validation_res, "max_affordable_shares", 0)
+                                }
+                            )
+                            rejected_decisions += 1
+                            continue
+
                     elif d.signal.upper() == "SELL":
                         # Prioritize the quantity returned by the tool
                         if getattr(d, "quantity", None) is not None:
@@ -277,6 +294,26 @@ async def run_ingest():
                             pos = portfolio.positions.get(d.ticker)
                             if pos:
                                 qty = int((alloc_pct / 100.0) * pos.quantity)
+                        
+                        # Ensure metrics are calculated for validation
+                        if not portfolio.metrics:
+                            portfolio.calculate_reg_t_metrics(p_map)
+                            
+                        # Validate Trade (Minimum Trade Value)
+                        validation_res = portfolio.validate_trade(ticker=d.ticker, quantity=qty, price=exec_price, signal=d.signal)
+                        if not validation_res.passed:
+                            logger.warning(
+                                f"[{d.ticker}] REJECTED (Guardrails): {validation_res.reason} "
+                                f"({d.model_provider}/{d.model_name})"
+                            )
+                            save_decision(
+                                sb_client,
+                                d,
+                                status="REJECTED_MARGIN",
+                                metadata={"reason": validation_res.reason}
+                            )
+                            rejected_decisions += 1
+                            continue
                     
                     # Last line of defense: if allocation (1st choice or 5% fallback) is 0, default to 1 share
                     if qty <= 0:
@@ -292,26 +329,6 @@ async def run_ingest():
                     if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
                         logger.info(f"[{d.ticker}] Applying Verifier adjustment: {qty} -> {verification.adjusted_quantity}")
                         qty = verification.adjusted_quantity
-
-                    # --- Reg T Validation (BUY ONLY) ---
-                    if d.signal.upper() == "BUY":
-                        reg_t_check = portfolio.validate_trade(d.ticker, qty, exec_price)
-                        if not reg_t_check.passed:
-                            logger.warning(
-                                f"[{d.ticker}] REJECTED (Reg T): {reg_t_check.reason} "
-                                f"({d.model_provider}/{d.model_name})"
-                            )
-                            save_decision(
-                                sb_client,
-                                d,
-                                status="REJECTED_MARGIN",
-                                metadata={
-                                    "reason": reg_t_check.reason,
-                                    "max_shares": reg_t_check.max_affordable_shares
-                                }
-                            )
-                            rejected_decisions += 1
-                            continue
                             
                     # Execute
                     trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal)

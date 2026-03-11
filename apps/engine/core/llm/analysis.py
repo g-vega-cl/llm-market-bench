@@ -96,6 +96,29 @@ async def analyze_with_provider(
         else:
             final_resp = resp_awaitable
 
+        # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
+        for decision in final_resp.decisions:
+            if decision.signal in ["BUY", "SELL"]:
+                results = _scan_history_for_tools(messages, decision.ticker)
+                
+                # Update sell_tool_called based on ACTUAL history
+                if decision.signal == "SELL":
+                    was_self_reported = decision.sell_tool_called
+                    decision.sell_tool_called = results["sell_tool_found"]
+                    
+                    if was_self_reported and not results["sell_tool_found"]:
+                        logger.warning(
+                            "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. Rejecting trade.",
+                            provider, model_name, decision.ticker
+                        )
+                
+                # Check get_stock_quote enforcement
+                if not results["quote_found"]:
+                     logger.warning(
+                        "[%s/%s] HARD ENFORCEMENT: Agent recommended trade for %s without 'get_stock_quote' verification. Decison may be invalid.",
+                        provider, model_name, decision.ticker
+                    )
+
         # Log completion
         await log_reasoning_trace(
             task_type="INGESTION",
@@ -116,3 +139,55 @@ async def analyze_with_provider(
         raise
     finally:
         await clients.close_client(client, provider)
+
+
+def _scan_history_for_tools(messages: list, ticker: str) -> dict:
+    """Scans message history for tool calls related to a specific ticker.
+    
+    This provides a 'hard' check against self-reported tool usage by LLMs.
+    
+    Returns:
+        dict: {
+            "quote_found": bool,
+            "sell_tool_found": bool
+        }
+    """
+    ticker = ticker.upper()
+    quote_found = False
+    sell_tool_found = False
+    
+    for m in messages:
+        calls = []
+        # 1. Handle dictionaries (OpenAI, Anthropic, Instructor-formatted)
+        if isinstance(m, dict):
+            # OpenAI style tool calls
+            if m.get("tool_calls"):
+                for tc in m["tool_calls"]:
+                    calls.append((tc["function"]["name"], tc["function"].get("arguments", "{}")))
+            # Anthropic style tool calls (content list)
+            elif isinstance(m.get("content"), list):
+                for part in m["content"]:
+                    if isinstance(part, dict) and part.get("type") == "tool_use":
+                        calls.append((part["name"], part.get("input", {})))
+        # 2. Handle native Google types (Gemini)
+        elif hasattr(m, "parts"):
+            for part in m.parts:
+                if hasattr(part, "function_call") and part.function_call:
+                    calls.append((part.function_call.name, part.function_call.args))
+                    
+        for name, args in calls:
+            # args can be a string (JSON) or a dictionary
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except:
+                    continue
+            
+            call_ticker = str(args.get("ticker", "")).upper()
+            if call_ticker == ticker:
+                if name == "get_stock_quote":
+                    quote_found = True
+                elif name.startswith("sell_") and name.endswith("_percent"):
+                    sell_tool_found = True
+                    
+    return {"quote_found": quote_found, "sell_tool_found": sell_tool_found}

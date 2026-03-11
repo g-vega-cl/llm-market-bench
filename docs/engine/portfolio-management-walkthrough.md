@@ -20,7 +20,7 @@ We strictly follow **Reg T** calculations for margin accounts.
 ### 2a. Reg T Validation (Pre-Execution)
 Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_validation.py`) to ensure:
 1. **Trade Cost <= Buying Power** (For BUY signals)
-2. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000**.
+2. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000** for both **BUY and SELL** orders.
 3. **Projected SMA >= SMA Floor (10% of Total Equity)**
 4. **Account not in Liquidation**
 5. **Market Data Robustness:** If `current_prices` fail (price = 0), the system values positions at `average_cost_basis`. This prevents "Negative Equity" hallucinations for margin accounts.
@@ -33,7 +33,7 @@ The validation logic strictly enforces the Buying Power limit.
 
 1.  **Buying Power (BUY):** `estimated_cost <= buying_power`.
 2.  **Portfolio Ownership (SELL):** `ticker in positions`.
-3.  **Dynamic Minimum Size (BUY):** `estimated_cost >= max($1,000, 10% of BP or Equity)`.
+3.  **Dynamic Minimum Size:** `estimated_cost >= max($1,000, 10% of BP or Equity)` for both BUY and SELL.
 4.  **SMA Floor:** `projected_sma >= 10% * Total Equity`.
 5.  **Account Not in Liquidation:** `available_funds >= 0`.
 
@@ -91,7 +91,10 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
 - **BUY Logic:** The engine calculates `Allocation % * Buying Power` to determine the total USD to spend.
     - **Smart Bump:** If the calculated spend is below **$1,000**, the engine automatically "bumps" the spend to $1,000 (if Buying Power allows).
     - **Quantity:** The final share quantity is calculated based on the market price. If rounding down results in a value below $1,000, one share is added if affordable.
-- **SELL Logic:** **MANDATORY TOOL USAGE.** The engine now rejects any `SELL` decision that does not call a sell calculation tool. LLMs use tools like `sell_50_percent` to get the exact share count, which is then passed in the `quantity` field.
+- **SELL Logic:** **MANDATORY HARD TOOL ENFORCEMENT.** 
+    - **History Scan:** The engine performs a server-side scan of the conversation history to verify that a `sell_X_percent` tool was actually called for that ticker.
+    - **Hallucination Check:** If an agent claims `sell_tool_called: true` but the history scan fails to find the call, the trade is rejected.
+    - **Minimum Value:** Even if the tool is called, the total proceeds must be >= $1,000. Sells below this threshold (dust trades) are rejected as `REJECTED_MARGIN`.
 - **Dynamic Fallbacks:** 
     - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
 
@@ -99,7 +102,7 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
 To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks:
 1. **Pipeline Check:** Before execution, the engine verifies the ticker is in the model's `portfolio_positions`.
 2. **Execution Check:** If a model attempts to sell more than it owns (e.g. "Sell 20 shares" while holding 10), the trade is capped at the owned quantity (10 shares), and the position is closed.
-3. **Audit Trail:** Unauthorized SELL attempts or sells without tool usage are logged in the `decisions` table with status `REJECTED_OWNERSHIP` or `REJECTED_TOOL_USAGE`.
+3. **Hard Tool Enforcement:** Unauthorized SELL attempts or sells where tool usage was hallucinated (self-reported but not found in history) are logged in the `decisions` table with status `REJECTED_OWNERSHIP`, `REJECTED_TOOL_USAGE`, or `REJECTED_MARGIN`.
 
 ## 6. Verification
 We verify this logic with standard scenarios and dedicated guardrail tests (see `apps/engine/tests/test_sell_guardrails.py`), ensuring the system correctly handles:

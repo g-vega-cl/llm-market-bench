@@ -6,7 +6,7 @@ This document provides a detailed step-by-step walkthrough of the complete data 
 
 The pipeline has six main phases:
 
-1. **Ingestion**: Fetch newsletters from Gmail, clean them, generate unique identifiers
+1. **Ingestion**: Fetch newsletters from Gmail, identify macro catalysts from the Economic Calendar, clean them, and generate unique identifiers
 2. **Context Retrieval**: Embed queries and retrieve historical context from vector store
 3. **LLM Analysis**: Send enriched prompts to 4 LLM providers in parallel
 4. **Attribution & Consensus**: Save decisions with traceability and determine global market events
@@ -212,6 +212,23 @@ newsletter_snapshots table after Phase 1:
 - 4 database inserts
 - 4 unique source_ids generated
 - 4 unique chunk_hashes generated
+
+---
+
+## Phase 1.5: Economic Calendar Ingestion (Trading Economics → Supabase)
+
+**File**: `apps/engine/ingest/calendar.py` → `run_calendar_pipeline()`
+
+Twice a week (Sundays and Wednesdays), the engine fetches the global macro calendar to identify high-signal catalysts independently of news providers.
+
+### Step 1.5.1: Fetch and Parse Calendar
+1. **Fetch**: Uses `curl -L` to pull the latest calendar HTML from Trading Economics.
+2. **Parse**: `CalendarPipeline.parse_events()` uses BeautifulSoup to extract structured event data.
+3. **Analyze**: High-importance events (Importance >= 8) are identified by DeepSeek and formatted as `MacroEvent` objects.
+
+### Step 1.5.2: Store as Catalyst Memories
+1. **Deduplication**: Checks `memories` for existing events (Similarity > 0.90) to avoid duplicates.
+2. **Insertion**: Saves as `CALENDAR_EVENT` memories with `target_date` for Horizon Watch.
 
 ---
 

@@ -46,7 +46,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 1. **Daily Trigger (09:35 ET):** GitHub Actions fires the pipeline.
 2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
 3. **Corporate Action Check:** (PENDING).
-4. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
+4. **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
+5. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
 5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
@@ -70,6 +71,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 23. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
 24. **Government Tracking:** Monthly audit of incentives and policies.
 25. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays).
+26. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
 
 ### Phase 3: Market Execution (Sequential)
 
@@ -244,6 +246,12 @@ To completely wipe the experimental data while preserving market price history a
 
 > The `clear_db.py` script is destructive and cannot be undone. Use it only when you want to restart all LLM experiments from zero.
 
+### Economic Calendar Ingestion
+
+To manually trigger the fetching and analysis of global macro events:
+*   **Command:** `python main.py calendar`
+*   **Pipeline:** Fetches HTML -> BeautifulSoup Parsing -> DeepSeek Relevance Filtering -> Memory Insertion.
+
 ### Database Schema & Cleanup Utilities
 
 To ensure the `docs/database-schema.md` is always up to date with the actual Postgres schema:
@@ -345,7 +353,9 @@ graph TD
     subgraph "Daily Pipeline (Phase 1)"
         CRON[Cron Schedule 09:35 ET] --> INGEST[ingest.yml]
         INGEST --> A[Gmail Newsletters]
-        A --> B[Data Snapshot + Chunk IDs]
+        INGEST --> GOV_INGEST[Government Tracking]
+        INGEST --> CAL_INGEST[Economic Calendar]
+        A & GOV_INGEST & CAL_INGEST --> B[Data Snapshot + Chunk IDs]
     end
 
     subgraph "Reasoning & Consensus (Phase 2)"

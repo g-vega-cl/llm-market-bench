@@ -19,6 +19,7 @@ import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
+import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
@@ -74,6 +75,11 @@ const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
   path: '/concepts/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CauseAndEffectIndexRoute = CauseAndEffectIndexRouteImport.update({
+  id: '/cause-and-effect/',
+  path: '/cause-and-effect/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
   id: '/portfolios/$portfolioId',
   path: '/portfolios/$portfolioId',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/cause-and-effect': typeof CauseAndEffectIndexRoute
   '/concepts': typeof ConceptsIndexRoute
   '/memories': typeof MemoriesIndexRoute
   '/portfolios': typeof PortfoliosIndexRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/auth/callback'
     | '/portfolios/$portfolioId'
+    | '/cause-and-effect/'
     | '/concepts/'
     | '/memories/'
     | '/portfolios/'
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/auth/callback'
     | '/portfolios/$portfolioId'
+    | '/cause-and-effect'
     | '/concepts'
     | '/memories'
     | '/portfolios'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/_authed/posts'
     | '/auth/callback'
     | '/portfolios/$portfolioId'
+    | '/cause-and-effect/'
     | '/concepts/'
     | '/memories/'
     | '/portfolios/'
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
+  CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute
   ConceptsIndexRoute: typeof ConceptsIndexRoute
   MemoriesIndexRoute: typeof MemoriesIndexRoute
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConceptsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cause-and-effect/': {
+      id: '/cause-and-effect/'
+      path: '/cause-and-effect'
+      fullPath: '/cause-and-effect/'
+      preLoaderRoute: typeof CauseAndEffectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portfolios/$portfolioId': {
       id: '/portfolios/$portfolioId'
       path: '/portfolios/$portfolioId'
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
+  CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,
   ConceptsIndexRoute: ConceptsIndexRoute,
   MemoriesIndexRoute: MemoriesIndexRoute,
   PortfoliosIndexRoute: PortfoliosIndexRoute,

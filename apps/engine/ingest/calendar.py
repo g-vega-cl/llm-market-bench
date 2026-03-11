@@ -152,15 +152,32 @@ class CalendarPipeline:
                 if event.importance_score < 8:
                     continue
 
-                # Content for memory
-                memory_content = (
-                    f"[CALENDAR EVENT] {event.event_name}: {event.reasoning} | "
-                    f"Impact: {event.impact} | Date: {event.expiry_date or event.source_id}"
-                )
-
                 # Map relevant date back - DeepSeek should have put it in target_date or similar
                 # We'll use event.expiry_date as a proxy if it's set, or the date we parsed
                 target_date = event.expiry_date if event.expiry_date else None
+
+                # Content for memory
+                event_time = getattr(event, "time", "N/A") # DeepSeek might have it or we follow the text
+                
+                # Check if we can find the original time from our parsed events
+                # Matches by fuzzy event name and date
+                original_time = "N/A"
+                for e in events:
+                    if e["date"] == target_date:
+                        # Fuzzy match: one is contained in the other
+                        if (e["event"].lower() in event.event_name.lower() or 
+                            event.event_name.lower() in e["event"].lower()):
+                            original_time = e["time"]
+                            break
+                
+                if original_time == "N/A":
+                    # Fallback to source_id if it looks like a time or just use what we have
+                    original_time = event.source_id if ":" in event.source_id else "N/A"
+
+                memory_content = (
+                    f"[CALENDAR EVENT] ({original_time}) {event.event_name}: {event.reasoning} | "
+                    f"Impact: {event.impact} | Date: {event.expiry_date or event.source_id}"
+                )
 
                 success = add_memory(
                     content=memory_content,
@@ -169,6 +186,8 @@ class CalendarPipeline:
                     importance_score=event.importance_score,
                     metadata={
                         "is_calendar_event": True,
+                        "is_future_catalyst": True,
+                        "event_time": original_time,
                         "country": getattr(event, "country", "Global"),
                         "reach": "Global" if event.importance_score > 8 else "Regional",
                         "impact": event.impact

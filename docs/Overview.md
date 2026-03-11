@@ -150,7 +150,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **TODAY Dashboard**: The primary entry point (`/`) providing a high-level narrative of the day's events, including AI consensus, news ingestion, and trade executions.
     *   **Horizon Watch**:
         - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
-        - **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.
+        - **Tentative Notes & Time**: A `future_date_note` or `event_time` (e.g., "10:00 AM", "tentative") is extracted and stored, providing better context for Horizon Watch.
         - **Strict Separation**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. This prevents "Ongoing Memories" or past investments from cluttering the future timeline. Events that represent currently unfolding trends (e.g., "Structural Rotation") are marked as `is_ongoing` and excluded from this view.
 *   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer.
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.

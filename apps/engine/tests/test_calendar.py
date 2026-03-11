@@ -73,6 +73,11 @@ async def test_run_calendar_pipeline_success(pipeline):
         assert kwargs["importance_score"] == 9
         assert kwargs["target_date"] == "2026-03-11"
         assert kwargs["check_similarity"] is True
+        
+        # New assertions for time and future catalyst
+        assert "(10:00 AM)" in kwargs["content"]
+        assert kwargs["metadata"]["is_future_catalyst"] is True
+        assert kwargs["metadata"]["event_time"] == "10:00 AM"
 
 @pytest.mark.asyncio
 async def test_run_calendar_pipeline_low_importance(pipeline):

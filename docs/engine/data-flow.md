@@ -229,6 +229,7 @@ Twice a week (Sundays and Wednesdays), the engine fetches the global macro calen
 ### Step 1.5.2: Store as Catalyst Memories
 1. **Deduplication**: Checks `memories` for existing events (Similarity > 0.90) to avoid duplicates.
 2. **Insertion**: Saves as `CALENDAR_EVENT` memories with `target_date` for Horizon Watch.
+3. **Catalyst Marking**: Explicitly sets `is_future_catalyst = true` and `event_time` (e.g., "10:00 AM") in metadata to ensure promotion to the dashboard's Horizon Watch section.
 
 ---
 

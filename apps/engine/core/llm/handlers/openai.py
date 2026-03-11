@@ -41,9 +41,11 @@ async def run_tool_loop(
             ]
         }
         
-        if provider == "deepseek":
-            # DeepSeek-reasoner does not support manual tools well in this loop
-            break
+        if provider == "deepseek" and "reasoner" not in model_name:
+            # Only breakout for deepseek-chat if needed, but deepseek-reasoner 
+            # supports tools via the OpenAI SDK wrapper.
+            # We'll allow reasoner to try the loop.
+            pass
 
         try:
             resp = await raw_client.chat.completions.create(**args)

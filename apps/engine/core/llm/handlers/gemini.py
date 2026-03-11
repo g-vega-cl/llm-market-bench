@@ -94,13 +94,17 @@ async def run_tool_loop(
                 contents.append({"role": role, "parts": parts})
 
         try:
+            # Use strict types for tool configuration
+            gemini_tools = [types.Tool(function_declarations=tool_defs)]
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                tools=gemini_tools
+            )
+
             resp = await raw_client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,
-                config={
-                    "system_instruction": system_instruction,
-                    "tools": [{"function_declarations": tool_defs}]
-                }
+                config=config
             )
         except Exception as e:
             logger.warning(f"Tool execution failed for gemini/{model_name}, falling back to basic analysis: {e}")

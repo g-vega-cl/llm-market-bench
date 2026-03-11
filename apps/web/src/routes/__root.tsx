@@ -102,7 +102,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-4 text-sm font-bold uppercase tracking-widest px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
           <Link
             to="/"
             activeProps={{
@@ -112,7 +112,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Today
-          </Link>{' '}
+          </Link>
           <Link
             to="/memories"
             activeProps={{
@@ -121,7 +121,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Memories
-          </Link>{' '}
+          </Link>
           <Link
             to="/posts"
             activeProps={{
@@ -130,7 +130,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Posts
-          </Link>{' '}
+          </Link>
           <Link
             to="/concepts"
             activeProps={{
@@ -139,7 +139,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Concepts
-          </Link>{' '}
+          </Link>
           <Link
             to="/portfolios"
             activeProps={{
@@ -148,7 +148,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Portfolios
-          </Link>{' '}
+          </Link>
           <Link
             to="/how-it-works"
             activeProps={{
@@ -157,7 +157,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             How it Works
-          </Link>{' '}
+          </Link>
           <Link
             to="/reasoning"
             activeProps={{
@@ -166,7 +166,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             className="hover:text-blue-500 transition-colors"
           >
             Reasoning
-          </Link>{' '}
+          </Link>
           <Link
             to="/cause-and-effect"
             activeProps={{

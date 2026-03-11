@@ -298,23 +298,7 @@ SELL_100_PERCENT_TOOL_DEFINITION_OPENAI = {
     },
 }
 
-SELL_100_PERCENT_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "sell_100_percent",
-        "description": "Calculate exactly how many shares you currently own for a ticker to exit the position completely.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                }
-            },
-            "required": ["ticker"],
-        },
-    },
-}
+
 
 SELL_10_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
     "name": "sell_10_percent",
@@ -406,22 +390,7 @@ SELL_100_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
     },
 }
 
-SELL_100_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "sell_100_percent",
-    "description": "Calculate exactly how many shares you currently own for a ticker to exit the position completely.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
 
-# --- Gemini Tool Definitions (Google GenAI SDK) ---
 STOCK_TOOL_DEFINITION_GEMINI = {
     "name": "get_stock_quote",
     "description": (

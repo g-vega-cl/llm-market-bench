@@ -758,14 +758,15 @@ The system ensures the portfolio has sufficient **Buying Power** under Regulatio
 
 1. **Ownership Check:** If `Signal == SELL`, verify ticker is in `portfolio_positions`. Reject if not found (`REJECTED_OWNERSHIP`).
 2. **Tool Usage Guardrail:** If `Signal == SELL` and no sell calculation tool was called, reject (`REJECTED_TOOL_USAGE`).
-3. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
+3. **Size Check (BUY):** Every purchase must be at least 10% of Buying Power or Total Equity.
+4. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
 
 ### Step 8.2: Quantity Calculation & Settlement
 The engine converts the LLM's `allocation_percentage` into a share count:
-- **BUY:** Uses `Allocation % * Buying Power`.
+- **BUY:** Uses `Allocation % * Buying Power`. Smart Bump applies to meet the **10% Minimum** threshold if feasible.
 - **Smart Bump:** If the resulting spend is < $1,000, the engine attempts to bump it to $1,000 if sufficient Buying Power exists.
 - **SELL:** Uses the exact quantity calculated and returned by the sell percentage tools. (MANDATORY).
-- **Fallback:** Defaults to 5% allocation for BUYS (then applies the $1,000 bump logic). SELLs without tool calculation are REJECTED.
+- **Fallback:** Defaults to 5% allocation for BUYS (then bumped to 10% minimum). SELLs without tool calculation are REJECTED.
 
 If validation passes, the trade is settled into the `portfolios` table.
 

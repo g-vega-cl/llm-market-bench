@@ -250,3 +250,29 @@ def test_sma_floor_protection():
     # (10000 - 1000) / (150 * 0.57) = 9000 / 85.5 = 105.26
     # Should be 105 shares.
     assert res_violation.max_affordable_shares == 105
+
+def test_dynamic_buy_minimum_validation():
+    """Verify that BUY trades below 10% of max(BP, Equity) are rejected."""
+    # Setup: $10,000 Equity, $40,000 Buying Power
+    cash = 10000.00
+    metrics = calculate_reg_t_metrics(cash, {}, {})
+    
+    assert metrics.total_equity == 10000.00
+    assert metrics.buying_power == 40000.00
+    
+    # 10% of max(40000, 10000) is $4,000.
+    
+    # CASE 1: FAIL - Trade below $4,000
+    res_fail = validate_trade_compliance(metrics, 3500.00, "AAPL", 150.00)
+    assert res_fail.passed is False
+    assert "below dynamic minimum threshold" in res_fail.reason
+    assert "$4,000.00" in res_fail.reason
+    
+    # CASE 2: PASS - Trade at or above $4,000
+    res_pass = validate_trade_compliance(metrics, 4000.00, "AAPL", 150.00)
+    assert res_pass.passed is True
+    
+    # CASE 3: FAIL - Even if above $1,000 MIN_TRADE_VALUE, it must hit the 10% floor
+    res_fail_mid = validate_trade_compliance(metrics, 2500.00, "AAPL", 150.00)
+    assert res_fail_mid.passed is False
+    assert "$4,000.00" in res_fail_mid.reason

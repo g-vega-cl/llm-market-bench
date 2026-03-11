@@ -43,8 +43,8 @@ To prevent "Phantom Cash Losses" (where cash is deducted but no position is reco
 4.  **Final Persistence:**
     -   Recalculate and save updated metrics (Total Equity, Buying Power) to the `portfolios` table for dashboard consistency.
 ## 4. Quantity Calculation (Allocation %)
-Before settlement, the engine converts the LLM's `allocation_percentage` into a share count:
-- **BUY:** `Qty = (Allocation % * Buying Power) / Market Price`.
+- For **BUY** trades, the engine uses the `allocation_percentage` (1-100%) against available **Buying Power**.
+- **Dynamic Minimum:** If `Price * Qty < 10% of BP/Equity`, the engine attempts to "Bump" the allocation to meet the threshold if sufficient BP exists.
 - **SELL:** **Mandatory Tool Calculation.** LLMs must call a sell percentage tool to get the `quantity`.
 - **Fallback:** If `allocation_percentage` is missing for BUYS, use **5%**. For SELLS, the trade is REJECTED if no tool was called.
 

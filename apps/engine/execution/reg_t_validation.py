@@ -168,26 +168,32 @@ def validate_trade_compliance(
     portfolio_metrics: RegTMetrics,
     estimated_trade_cost: float,
     ticker: str,
-    price: float
+    price: float,
+    signal: str = "BUY"
 ) -> ValidationResult:
-    """Checks if a proposed BUY trade is compliant with margin limits.
+    """Checks if a proposed trade is compliant with margin limits and size requirements.
     
-    Rule:
-        Trade Cost (Price * Qty) must be <= Buying Power.
+    Rules:
+        1. Trade Cost must be <= Buying Power (for BUY).
+        2. Minimum Trade Value: max($1,000, 10% of Buying Power or Total Equity).
+        3. Projected SMA must be >= 10% of Total Equity.
         
     Args:
         portfolio_metrics: Current RegT metrics.
         estimated_trade_cost: Total cost of the trade (Price * Qty).
         ticker: Ticker symbol.
         price: Price per share.
+        signal: "BUY" or "SELL".
         
     Returns:
         ValidationResult with pass/fail status.
     """
+    signal = signal.upper()
     if estimated_trade_cost <= 0:
         return ValidationResult(passed=True)
 
-    if estimated_trade_cost > portfolio_metrics.buying_power:
+    # --- BUY Capacity Check ---
+    if signal == "BUY" and estimated_trade_cost > portfolio_metrics.buying_power:
         return ValidationResult(
             passed=False,
             reason=(
@@ -198,33 +204,50 @@ def validate_trade_compliance(
             max_affordable_shares=int(portfolio_metrics.buying_power // price) if price > 0 else 0
         )
 
-    # --- Minimum Trade Value Guardrail ---
-    if estimated_trade_cost < MIN_TRADE_VALUE:
-        return ValidationResult(
-            passed=False,
-            reason=(
-                f"Trade value below minimum threshold of ${MIN_TRADE_VALUE:,.2f}. "
-                f"Proposed cost: ${estimated_trade_cost:,.2f}. "
-                "Consider increasing quantity."
+    # --- Dynamic Minimum Trade Value Guardrail (BUY only) ---
+    if signal == "BUY":
+        # Rule: 10% of whichever is larger: Buying Power or Total Equity
+        dynamic_floor = 0.10 * max(portfolio_metrics.buying_power, portfolio_metrics.total_equity)
+        # Ensure it doesn't drop below the global constant MIN_TRADE_VALUE ($1,000)
+        final_floor = max(MIN_TRADE_VALUE, dynamic_floor)
+
+        if estimated_trade_cost < final_floor:
+            return ValidationResult(
+                passed=False,
+                reason=(
+                    f"Trade value below dynamic minimum threshold of ${final_floor:,.2f} "
+                    f"(10% of Buying Power/Equity). Proposed cost: ${estimated_trade_cost:,.2f}. "
+                    "Consider increasing quantity to meet the meaningful position size requirement."
+                )
             )
-        )
+    elif signal == "SELL":
+        # For SELL, we still enforce the absolute MIN_TRADE_VALUE ($1,000) to avoid dust trades
+        if estimated_trade_cost < MIN_TRADE_VALUE:
+            return ValidationResult(
+                passed=False,
+                reason=(
+                    f"SELL Trade value below minimum threshold of ${MIN_TRADE_VALUE:,.2f}. "
+                    f"Proposed proceeds: ${estimated_trade_cost:,.2f}."
+                )
+            )
 
-    # --- SMA Floor Guardrail ---
-    # Rule: Projected SMA after trade must be >= 10% of Total Equity.
-    # Buying stock reduces SMA by 57% of the cost.
-    projected_sma = portfolio_metrics.sma - (estimated_trade_cost * 0.57)
-    sma_floor = portfolio_metrics.total_equity * 0.10
+    # --- SMA Floor Guardrail (BUY only) ---
+    if signal == "BUY":
+        # Rule: Projected SMA after trade must be >= 10% of Total Equity.
+        # Buying stock reduces SMA by 57% of the cost.
+        projected_sma = portfolio_metrics.sma - (estimated_trade_cost * 0.57)
+        sma_floor = portfolio_metrics.total_equity * 0.10
 
-    if projected_sma < sma_floor:
-        return ValidationResult(
-            passed=False,
-            reason=(
-                f"SMA Floor Violation for {ticker}. "
-                f"Projected SMA: ${projected_sma:,.2f}, "
-                f"Required Floor (10% Equity): ${sma_floor:,.2f}. "
-                "This trade would risk Reg T compliance."
-            ),
-            max_affordable_shares=int(max(0, (portfolio_metrics.sma - sma_floor) // (price * 0.57))) if price > 0 else 0
-        )
+        if projected_sma < sma_floor:
+            return ValidationResult(
+                passed=False,
+                reason=(
+                    f"SMA Floor Violation for {ticker}. "
+                    f"Projected SMA: ${projected_sma:,.2f}, "
+                    f"Required Floor (10% Equity): ${sma_floor:,.2f}. "
+                    "This trade would risk Reg T compliance."
+                ),
+                max_affordable_shares=int(max(0, (portfolio_metrics.sma - sma_floor) // (price * 0.57))) if price > 0 else 0
+            )
         
     return ValidationResult(passed=True)

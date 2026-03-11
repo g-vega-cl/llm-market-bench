@@ -246,19 +246,27 @@ async def run_ingest():
                             meta["suggested_alternative"] = verification.alternative_ticker
 
                         bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                        total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
                         from core.config import MIN_TRADE_VALUE
+                        
+                        # Rule: Minimum Buy is 10% of BP or Equity (whichever is larger), but at least MIN_TRADE_VALUE
+                        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * max(bp, total_equity))
+                        
                         usd_to_spend = (alloc_pct / 100.0) * bp
                         
                         # Bump to minimum if possible
-                        if usd_to_spend < MIN_TRADE_VALUE and bp >= MIN_TRADE_VALUE:
-                            logger.info(f"[{d.ticker}] Proposed spend ${usd_to_spend:.2f} is below minimum. Bumping to ${MIN_TRADE_VALUE}.")
-                            usd_to_spend = MIN_TRADE_VALUE
+                        if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
+                            logger.info(f"[{d.ticker}] Proposed spend ${usd_to_spend:.2f} is below dynamic minimum. Bumping to ${min_buy_threshold:.2f}.")
+                            usd_to_spend = min_buy_threshold
                             
                         qty = int(usd_to_spend / exec_price)
                         
                         # If rounding down put us below minimum, add one share if affordable
-                        if qty * exec_price < MIN_TRADE_VALUE and (qty + 1) * exec_price <= bp:
+                        if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
                             qty += 1
+
+                        # Validate Trade
+                        validation = portfolio.validate_trade(ticker=d.ticker, quantity=qty, price=exec_price, signal=d.signal)
                     elif d.signal.upper() == "SELL":
                         # Prioritize the quantity returned by the tool
                         if getattr(d, "quantity", None) is not None:

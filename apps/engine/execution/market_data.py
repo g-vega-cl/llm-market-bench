@@ -5,6 +5,7 @@ external financial APIs and a local database cache to optimize data retrieval.
 """
 
 import datetime
+import math
 from typing import Optional
 
 from core.config import logger
@@ -58,29 +59,29 @@ class MarketDataManager:
             return data
 
         # 5. Last Resort: Last Known Price from History
-        logger.warning(f"All retrieval attempts failed for {ticker}. Checking price history for fallback...")
         last_known = self._get_last_known_price(ticker)
         if last_known:
-             logger.info(f"Using last known price for {ticker}: ${last_known.price}")
+             logger.info(f"All online retrieval failed for {ticker}. Using last known price: ${last_known.price}")
              return last_known
 
+        logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
 
     async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> Optional[TickerData]:
         """Helper to fetch data from a provider with retries and validation."""
         import asyncio
-        import math
         for attempt in range(1, 4):
             try:
                 data = await provider.get_ticker_data(ticker)
                 
                 if data and data.exists:
                     if math.isnan(data.price):
-                        logger.warning(f"Provider returned NaN price for {ticker}. Proceeding...")
+                        logger.warning(f"Provider {provider.provider_name} returned NaN price for {ticker}. Proceeding...")
                         continue
                     return data
             except Exception as e:
-                logger.warning(f"Attempt {attempt}/3 failed for {ticker} via {provider.__class__.__name__}: {e}")
+                # Reduce noise: don't log full stack trace for common timeouts/connection errors
+                logger.debug(f"Attempt {attempt}/3 failed for {ticker} via {provider.provider_name}: {e}")
             
             if attempt < 3:
                 wait_time = 2 ** (attempt - 1)

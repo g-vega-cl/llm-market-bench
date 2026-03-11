@@ -90,8 +90,11 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
             )
 
     # Guardrail C: Liquidity (Market Cap)
+    # Special Case: Some providers (like IBKR Proxy) don't return market cap for ETFs, 
+    # resulting in 0. We allow 0 to pass to avoid blocking liquid ETFs,
+    # but still enforce the minimum for stocks where a positive market cap is reported.
     market_cap_billions = data.market_cap / 1_000_000_000
-    if market_cap_billions < MIN_MARKET_CAP_BILLIONS:
+    if 0 < market_cap_billions < MIN_MARKET_CAP_BILLIONS:
         return ValidationResult(
             ticker=ticker,
             status=ValidationStatus.REJECTED_LIQUIDITY,

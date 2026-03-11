@@ -89,7 +89,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
-*   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10%, 25%, 33%, 50%, 75%, 100%) to determine the exact share quantity, preventing hallucinations.*
+*   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.*
+*   **Dynamic Minimum Buy Rule**: *Every BUY must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of $1,000. This ensures meaningful position sizes and prevents "dust" trades.*
 *   documentation: ./engine/portfolio-management-walkthrough.md
 
 **12. Trade Settlement & Ledgering** ✅

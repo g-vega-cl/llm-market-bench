@@ -31,13 +31,11 @@ Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_vali
 ### 2b. Validation Logic (Pass/Fail Scenarios)
 The validation logic strictly enforces the Buying Power limit.
 
-| Scenario | Condition | Result | Reason |
-| :--- | :--- | :--- | :--- |
-| **Leveraged Buy** | Cost > Cash but < Buying Power | **PASS** | Valid use of Reg T leverage (2:1 to 4:1). |
-| **Excessive Buy** | Cost > Buying Power | **FAIL** | Trade exceeds legal margin limits. |
-| **SMA Floor Hit** | Projected SMA < 10% Equity | **FAIL** | Safety guardrail protecting Reg T compliance. |
-| **Below Minimum** | Trade Cost < $1,000 | **FAIL** | Prevents insignificant "pocket change" trades. |
-| **Liquidation** | Available Funds < 0 | **FAIL** | Account is in margin call/deficit state. |
+1.  **Buying Power (BUY):** `estimated_cost <= buying_power`.
+2.  **Portfolio Ownership (SELL):** `ticker in positions`.
+3.  **Dynamic Minimum Size (BUY):** `estimated_cost >= max($1,000, 10% of BP or Equity)`.
+4.  **SMA Floor:** `projected_sma >= 10% * Total Equity`.
+5.  **Account Not in Liquidation:** `available_funds >= 0`.
 
 ## 3. Persistent State (Database)
 State is preserved in Supabase so agents "carry over" their positions to the next day.

@@ -216,7 +216,7 @@ async def run_ingest():
 
                         verification = await verify_trading_decision(
                             decision=d,
-                            portfolio_context=portfolio.get_portfolio_summary(p_map),
+                            portfolio_context=await portfolio.get_portfolio_summary(p_map),
                             aggregated_context=aggregated_context,
                             contrarian_context=contrarian_text
                         )

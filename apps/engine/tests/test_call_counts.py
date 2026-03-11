@@ -79,7 +79,7 @@ async def test_consolidated_call_counts():
         mock_portfolio.initialize = AsyncMock(return_value=None)
         mock_portfolio.calculate_reg_t_metrics = MagicMock()
         mock_portfolio.save_metrics = AsyncMock(return_value=None)
-        mock_portfolio.get_portfolio_summary = MagicMock(return_value="Portfolio: $10,000 cash")
+        mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000 cash")
         mock_portfolio_class.return_value = mock_portfolio
         
         mock_market_data = MagicMock()

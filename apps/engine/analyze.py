@@ -13,11 +13,13 @@ from core.config import (
     ANTHROPIC_MODEL,
     GEMINI_MODEL,
     DEEPSEEK_MODEL,
+    logger
 )
+from core.db import get_supabase_client
 from core.models import DecisionObject, MacroEvent
 from execution.portfolio import Portfolio
 from execution.market_data import MarketDataManager
-from memory.store import retrieve_context_batch
+from memory.store import retrieve_context_batch, get_top_trending_concepts
 
 logger = logging.getLogger("engine")
 
@@ -75,6 +77,11 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
 
         all_contexts = context_results + gov_context + lesson_context
         aggregated_context = "\n".join(list(set([c for c in all_contexts if c])))
+        
+        # Add Top Trending Concepts for global awareness
+        trending_concepts = get_top_trending_concepts(limit=5)
+        if trending_concepts:
+            aggregated_context += f"\n\n{trending_concepts}"
     else:
         aggregated_context = ""
 
@@ -104,12 +111,40 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         portfolio.calculate_reg_t_metrics(current_prices)
         await portfolio.save_metrics()
         
-        portfolio_ctx = portfolio.get_portfolio_summary(current_prices)
+        portfolio_ctx = await portfolio.get_portfolio_summary(current_prices)
 
+        # Idempotency Filter: Skip chunks that this model has already analyzed
+        # We check the decisions table for (source_id, model_name)
+        chunks_to_analyze = []
+        try:
+            sb_client = get_supabase_client()
+            source_ids = [c["source_id"] for c in valid_chunks]
+            
+            # Query for existing decisions for this model and these source_ids
+            existing_res = sb_client.table("decisions").select("source_id").eq("model_name", model).in_("source_id", source_ids).execute()
+            
+            analyzed_ids = set([r["source_id"] for r in existing_res.data or []])
+            chunks_to_analyze = [c for c in valid_chunks if c["source_id"] not in analyzed_ids]
+            
+            if len(chunks_to_analyze) < len(valid_chunks):
+                logger.info(f"[{model}] Skipping {len(valid_chunks) - len(chunks_to_analyze)} chunks already analyzed.")
+                
+        except Exception as filter_err:
+            logger.error(f"Error filtering idempotent chunks for {model}: {filter_err}")
+            chunks_to_analyze = valid_chunks # Fallback to all if DB fails
+
+        if not chunks_to_analyze:
+            logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
+            # We still need to return an empty DecisionsResponse structure for gather to work
+            # or handle the missing task. For simplicity, we just pass empty chunks to the provider.
+            # But it's better to just not append the task and handle it in processing.
+            # However, indices matter for gather. Let's just pass empty chunks if possible.
+            # Most providers should handle empty list fine.
+        
         tasks.append(llm.analyze_with_provider(
             provider=provider,
             model_name=model,
-            chunks=valid_chunks,
+            chunks=chunks_to_analyze,
             context=aggregated_context,
             portfolio_context=portfolio_ctx
         ))

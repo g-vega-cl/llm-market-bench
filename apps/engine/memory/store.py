@@ -317,3 +317,34 @@ def decay_memories(sb_client: Client, decay_days: int = None):
         logger.info(f"Decayed relevance for {decay_count} stale memories.")
     except Exception as e:
         logger.error(f"Error decaying stale memories: {e}")
+
+def get_top_trending_concepts(limit: int = 5) -> str:
+    """Fetches the highest velocity concepts from the concept map.
+
+    Args:
+        limit: Number of concepts to return.
+
+    Returns:
+        A formatted string of trending concepts for LLM context.
+    """
+    try:
+        client = get_supabase_client()
+        # Fetch concepts ordered by velocity_score descending
+        response = client.table("concept_metrics").select(
+            "concept_name, velocity_score, mention_count"
+        ).order("velocity_score", desc=True).limit(limit).execute()
+
+        if not response.data:
+            return ""
+
+        lines = ["### Top Trending Market Concepts (from Concept Map):"]
+        for row in response.data:
+            name = row.get("concept_name", "Unknown")
+            vel = row.get("velocity_score", 0.0)
+            count = row.get("mention_count", 0)
+            lines.append(f"- {name} (Velocity: {vel:.2f}, Mentions: {count})")
+        
+        return "\n".join(lines)
+    except Exception as e:
+        logger.error(f"Error fetching trending concepts: {e}")
+        return ""

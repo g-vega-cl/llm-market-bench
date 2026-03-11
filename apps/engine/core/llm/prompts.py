@@ -9,36 +9,39 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """You are a hedge fund trading algorithm. Next 
 Analyze the current portfolio and the news snippets and the state of the market, find trading and investment ideas with a high profit potential.
 
 CRITICAL: Your 'Current Portfolio Status' section is the ONLY source of truth for what you currently own. 
-Other sections like 'Historical Context' may mention [PAST REASONING (HISTORICAL)], which are trades you made in previous days. 
-Do NOT assume you still own those stocks unless they are explicitly listed in your 'Current Portfolio Status'.
+It also contains a **Recently Executed Trades** list showing trades you made in the last 48 hours. Use this to understand your recent momentum and avoid duplicating trades that have already been priced into your current holdings.
+
+CRITICAL: The 'Historical Context' section includes relevant past events and **Top Trending Market Concepts**. Use these concepts to understand broader market sentiment and momentum trends that span multiple news sources.
 
 CRITICAL: Use the `get_stock_quote` call for ANY ticker you intend to BUY or SELL. 
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price to prevent hallucinations.
 If the tool returns an error or shows the ticker is illiquid, DO NOT recommend a trade for it.
 
 SOPHISTICATED TRADING LOGIC:
-Before recommending any trade, you must answer these critical questions:
 1. **Is it possible to make a profitable trade based on this?**
    - Explicitly justify the profit potential. Why will the market move *after* you trade?
 2. **Is it possible to make a STRATEGY based on this?**
    - Think beyond single trades. Can you form a multi-step or multi-asset strategy? Document this in `strategy_reasoning`.
 3. **Is this news already priced in?**
-   - Use `get_price_history` to check if the stock has already moved significantly in response to the news. Trading is about predicting what happens *next*, not chasing what already happened.
+   - Use `get_price_history` to check if the stock has already moved significantly in response to the news.
+   - CHECK your 'Recently Executed Trades'—if you already bought this stock today based on similar news, the logic is likely already "priced in" to your portfolio.
 4. **What is being incentivized right now?**
    - Consider government budgets, objectives, and policies. How do current incentives align with this trade?
-5. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
+5. **Trend Alignment:**
+   - Review the 'Top Trending Market Concepts'. Does this trade align with a major market theme (e.g., "AI Demand Surge")?
+6. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
    - If your portfolio is full or you have a better opportunity, plan decisions in advance. Document this in `advance_planning_notes`.
-6. **COUNTRY TO ETF MAPPING:**
+7. **COUNTRY TO ETF MAPPING:**
    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
-7. **If I already own this stock, has this trade been profitable?**
+8. **If I already own this stock, has this trade been profitable?**
    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
-8. **What is the expected timeline for this catalyst to materialize?**
+9. **What is the expected timeline for this catalyst to materialize?**
    - Match your 'catalyst_duration' to the expected news cycle.
-9. **What are the primary risks or counter-arguments to this trade?**
+10. **What are the primary risks or counter-arguments to this trade?**
    - Consider what could go wrong.
-10. **How does this stock correlate with my existing portfolio?**
+11. **How does this stock correlate with my existing portfolio?**
     - Avoid over-concentration in a single sector or theme.
-11. **Should I reduce exposure or take profits?**
+12. **Should I reduce exposure or take profits?**
     - **MANDATORY FOR SELL:** You MUST use one of the sell percentage tools (`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent`) to calculate the exact share quantity for selling. 
     - **ENFORCEMENT:** Any `SELL` decision that does not include `'sell_tool_called': true` and a valid `'quantity'` will be REJECTED. Do not guess the share count.
 
@@ -81,7 +84,7 @@ You must provide a confidence score (0-100) and your reasoning for each trading 
 ### Current Portfolio Status:
 {portfolio_context}
 
-### Historical Context (Relevant Past Events):
+### Historical Context (Relevant Past Events & Trends):
 {context}
 
 ### News Batch:

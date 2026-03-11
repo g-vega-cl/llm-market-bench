@@ -6,7 +6,8 @@ for each LLM agent, utilizing the database for persistence.
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Optional, Any, List
 from uuid import UUID
 
 from core.db import get_supabase_client
@@ -127,7 +128,7 @@ class Portfolio:
         
         return self.metrics
 
-    def get_portfolio_summary(self, current_prices: Dict[str, float]) -> str:
+    async def get_portfolio_summary(self, current_prices: Dict[str, float]) -> str:
         """Generates a text summary for the LLM prompt."""
         metrics = self.calculate_reg_t_metrics(current_prices)
         
@@ -152,8 +153,59 @@ class Portfolio:
                     f"- {ticker}: {pos.quantity} shares @ ${pos.average_cost_basis:.2f} "
                     f"(Curr: ${curr_price:.2f}, P/L: ${pl:.2f} / {pl_pct:.1f}%)"
                 )
+        
+        # Add Recent Trades Section
+        recent_trades = await self.get_recent_trades(hours=48)
+        if recent_trades:
+            summary.append("\nRecently Executed Trades (Last 48h):")
+            for t in recent_trades:
+                # Format: [Date] SIGNAL ticker: qty @ price (Reason: ...)
+                date_str = t.get("executed_at", "").split("T")[0]
+                reason = t.get("reasoning", "No reasoning stored.")
+                if len(reason) > 100:
+                    reason = reason[:97] + "..."
+                summary.append(
+                    f"- [{date_str}] {t['signal']} {t['ticker']}: {t['quantity']} @ ${float(t['price']):.2f} "
+                    f"(Reason: {reason})"
+                )
                 
         return "\n".join(summary)
+
+    async def get_recent_trades(self, hours: int = 48) -> list[dict[str, Any]]:
+        """Fetches the actual trade ledger for the portfolio from the DB.
+        
+        Args:
+            hours: How far back to look.
+            
+        Returns:
+            List of trade records with associated reasoning.
+        """
+        if not self.id:
+            return []
+            
+        try:
+            client = get_supabase_client()
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+            
+            # Fetch trades for this portfolio
+            response = client.table("trades").select(
+                "ticker", "signal", "quantity", "price", "executed_at", "decision_id"
+            ).eq("portfolio_id", self.id).gte("executed_at", cutoff).order("executed_at", desc=True).execute()
+            
+            trades = response.data or []
+            
+            # Enrich with reasoning from decisions table
+            for trade in trades:
+                d_id = trade.get("decision_id")
+                if d_id:
+                    d_res = client.table("decisions").select("reasoning").eq("id", d_id).execute()
+                    if d_res.data:
+                        trade["reasoning"] = d_res.data[0].get("reasoning")
+            
+            return trades
+        except Exception as e:
+            logger.error(f"Error fetching recent trades for {self.owner_id}: {e}")
+            return []
 
     async def save_metrics(self):
         """Persists the latest calculated metrics to the DB."""

@@ -1,8 +1,10 @@
 import asyncio
-from unittest.mock import MagicMock, patch
+import pytest
+from unittest.mock import MagicMock, patch, AsyncMock
 from execution.validation import validate_decision, ValidationStatus
 from execution.providers.base import TickerData
 
+@pytest.mark.asyncio
 async def test_etf_liquidity_fix():
     """Verify that ETFs with 0 market cap (like from IBKR Proxy) are PASSED."""
     
@@ -16,13 +18,14 @@ async def test_etf_liquidity_fix():
     
     with patch("execution.validation.MarketDataManager") as MockManager:
         instance = MockManager.return_value
-        instance.get_quote = asyncio.CoroutineMock(return_value=mock_data)
+        instance.get_quote = AsyncMock(return_value=mock_data)
         
         # Test ETF with 0 market cap (should PASS now)
         result = await validate_decision("XLE", 55.0)
         assert result.status == ValidationStatus.PASSED
         assert result.ticker == "XLE"
 
+@pytest.mark.asyncio
 async def test_small_cap_rejection_still_works():
     """Verify that actual small-cap stocks are still REJECTED if they have a positive market cap below threshold."""
     
@@ -36,7 +39,7 @@ async def test_small_cap_rejection_still_works():
     
     with patch("execution.validation.MarketDataManager") as MockManager:
         instance = MockManager.return_value
-        instance.get_quote = asyncio.CoroutineMock(return_value=mock_data)
+        instance.get_quote = AsyncMock(return_value=mock_data)
         
         # Test small cap with $0.1B (should be REJECTED, threshold is $2B)
         result = await validate_decision("SMALL", 10.0)
@@ -60,11 +63,6 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"❌ test_small_cap_rejection_still_works FAILED: {e}")
 
-    # Add CoroutineMock if not available in unittest.mock (older python)
-    if not hasattr(patch, "CoroutineMock"):
-        class CoroutineMock(MagicMock):
-            async def __call__(self, *args, **kwargs):
-                return super(CoroutineMock, self).__call__(*args, **kwargs)
-        asyncio.CoroutineMock = CoroutineMock
+    # CoroutineMock polyfill removed
 
     asyncio.run(run_tests())

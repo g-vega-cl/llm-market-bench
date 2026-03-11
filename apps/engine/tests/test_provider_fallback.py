@@ -1,8 +1,10 @@
 import asyncio
+import pytest
 from unittest.mock import MagicMock, patch
 from execution.market_data import MarketDataManager
 from execution.providers.base import TickerData
 
+@pytest.mark.asyncio
 async def test_fallback_to_last_known():
     """Verify that MarketDataManager falls back to last known price when providers fail."""
     
@@ -31,6 +33,7 @@ async def test_fallback_to_last_known():
         assert result.ticker == ticker
         print(f"✅ Fallback to last known price works for {ticker}")
 
+@pytest.mark.asyncio
 async def test_fatal_failure_when_no_history():
     """Verify that MarketDataManager returns None and logs error when everything fails."""
     

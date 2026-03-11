@@ -6,7 +6,7 @@ from ingest.calendar import CalendarPipeline
 from core.models import DecisionsResponse, MacroEvent
 
 SAMPLE_HTML = """
-<table class="calendar-table">
+<table id="calendar">
     <tr>
         <th colspan="6">Wednesday March 11 2026</th>
     </tr>
@@ -23,7 +23,9 @@ SAMPLE_HTML = """
 
 @pytest.fixture
 def pipeline():
-    return CalendarPipeline()
+    with patch("ingest.calendar.get_deepseek_client") as mock_get_client:
+        mock_get_client.return_value = MagicMock()
+        return CalendarPipeline()
 
 def test_parse_events(pipeline):
     """Test parsing of Trading Economics HTML."""
@@ -38,8 +40,9 @@ def test_parse_events(pipeline):
 @pytest.mark.asyncio
 async def test_run_calendar_pipeline_success(pipeline):
     """Test the full pipeline run with mocked fetch and DeepSeek."""
+    from unittest.mock import AsyncMock
     with patch.object(pipeline, "fetch_html", return_value=SAMPLE_HTML), \
-         patch.object(pipeline.client.chat.completions, "create") as mock_deepseek, \
+         patch.object(pipeline.client.chat.completions, "create", new_callable=AsyncMock) as mock_deepseek, \
          patch("ingest.calendar.add_memory") as mock_add_memory:
 
         # Mock DeepSeek response
@@ -72,8 +75,9 @@ async def test_run_calendar_pipeline_success(pipeline):
 @pytest.mark.asyncio
 async def test_run_calendar_pipeline_low_importance(pipeline):
     """Test that low importance events are not added to memories."""
+    from unittest.mock import AsyncMock
     with patch.object(pipeline, "fetch_html", return_value=SAMPLE_HTML), \
-         patch.object(pipeline.client.chat.completions, "create") as mock_deepseek, \
+         patch.object(pipeline.client.chat.completions, "create", new_callable=AsyncMock) as mock_deepseek, \
          patch("ingest.calendar.add_memory") as mock_add_memory:
 
         # Mock DeepSeek response with low importance

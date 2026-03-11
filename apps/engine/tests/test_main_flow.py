@@ -51,8 +51,17 @@ def mock_dependencies():
         mock_portfolio_instance.save_metrics = AsyncMock()
         
         # Setup metrics to avoid MagicMock comparison errors in main.py
-        mock_portfolio_instance.metrics = MagicMock()
-        mock_portfolio_instance.metrics.buying_power = 40000.0
+        from execution.reg_t_validation import RegTMetrics
+        mock_portfolio_instance.metrics = RegTMetrics(
+            total_equity=50000.0,
+            initial_margin_req=0.0,
+            maintenance_margin_req=0.0,
+            available_funds=0.0,
+            excess_liquidity=0.0,
+            sma=50000.0,
+            realized=50000.0,
+            buying_power=40000.0
+        )
         
         # Sync methods
         mock_portfolio_instance.validate_trade.return_value = MagicMock(passed=True)

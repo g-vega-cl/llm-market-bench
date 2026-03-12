@@ -430,6 +430,7 @@ aggregated_context = """
 **Phase 2 Summary**:
 - 1 Gemini Embedding API call (batch for all 4 queries)
 - 4 Supabase RPC calls (vector similarity search)
+- **Step 5.4: Calendar Context Injection**: For each model task, the engine calculates the **`current_day_info`** (Today's date, Day of Week, and proximity to month boundaries or holidays). This is injected into the prompt along with the **`CALENDAR_STRATEGY_KNOWLEDGE`** (Turn of the Month, Payday Anomaly, etc.) to enable seasonal anomaly reasoning.
 - Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis.
 - Context labeled with **`[PAST REASONING (HISTORICAL)]`** to distinguish from current holdings.
 

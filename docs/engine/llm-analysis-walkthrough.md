@@ -112,13 +112,22 @@ To minimize latency and costs, the system uses a **Batch-Parallel** approach. In
 To move beyond simple "news-chasing," the system now enforces a multi-step qualitative verification process in the system prompt. Before recommending a trade, agents are instructed to leverage their tools to answer:
 
 1.  **Is it possible to make a profitable trade based on this?** (Profit potential justification)
-2.  **Is this news already priced in?** (Using `get_price_history`)
-3.  **What is being incentivized right now?** (Government budgets and objectives)
-4.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
-5.  **Should I reduce exposure or take profits?** (Using the granular sell tools like `sell_10_percent` through `sell_100_percent` to calculate exact quantities. **MANDATORY for all SELLs.**)
-6.  **What is the expected timeline for this catalyst to materialize?**
-6.  **What are the primary risks or counter-arguments to this trade?**
-7.  **How does this stock correlate with my existing portfolio?**
+4.  **Calendar Alignment**: (Using the injected `CALENDAR_STRATEGY_KNOWLEDGE`) Does this trade align with any of the 7 key seasonal strategies?
+    - **Turn of the Month (ToM)**: Rally in last trading day + first 3 days of next month.
+    - **Payday Anomaly**: Momentum around the 15th and end of the month.
+    - **Pre-ECB/Fed Drift**: Positive drift 24-48h before central bank meetings.
+    - **Tax Day Trade**: Pressure before April 15th, followed by a relief rally.
+    - **Pre-Election Drift**: Election cycle momentum.
+    - **Pre-Holiday Effect**: Positive drift 1-2 days before market holidays.
+    - **Cultural Calendars (Gold)**: Demand spikes for GLD during festivals (Diwali, etc.).
+5.  **Is this news already priced in?** (Using `get_price_history`)
+6.  **What is being incentivized right now?** (Government budgets and objectives)
+7.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
+8.  **Should I reduce exposure or take profits?** (Using the granular sell tools like `sell_10_percent` through `sell_100_percent` to calculate exact quantities. **MANDATORY for all SELLs.**)
+9.  **What is the expected timeline for this catalyst to materialize?**
+10. **What are the primary risks or counter-arguments to this trade?**
+11. **How does this stock correlate with my existing portfolio?**
+
 
 ### **The "Source of Truth" Rule**
 To prevent confusion between historical context and current holdings, the system prompt explicitly instructs models that the **`Current Portfolio Status`** section is the **ONLY** source of truth for assets they currently own. Any mention of trades in the `Historical Context` (retrieved via RAG) should be treated as past reasoning, not current state.

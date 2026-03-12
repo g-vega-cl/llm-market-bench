@@ -1,5 +1,16 @@
 """Prompt templates for LLM analysis and processing."""
 
+CALENDAR_STRATEGY_KNOWLEDGE = """
+CALENDAR & SEASONAL STRATEGIES:
+1. **Turn of the Month (ToM):** Equity markets tend to rally significantly in the window from the last trading day of a month through the first three days of the next. Focus on large-cap ETFs (SPY, QQQ).
+2. **Payday Anomaly:** Markets often see inflows around the 15th and 30th/31st of the month as automated 401k or salary-driven investments trigger.
+3. **Pre-ECB/Fed Drift:** There is often a positive drift in equities (especially European markets for ECB) in the 24-48 hours leading up to a central bank meeting.
+4. **Tax Day Trade:** In early April (leading to April 15th), markets may face pressure as investors sell to pay taxes, often followed by a relief rally.
+5. **Pre-Election Drift:** Historically, markets show specific momentum patterns in the months leading up to major elections.
+6. **Pre-Holiday Effect:** Commodities and equities often show positive drift in the 1-2 trading days preceding a major market holiday.
+7. **Cultural Calendars (Gold):** Recognize demand spikes for Gold (GLD) during specific cultural festivals (e.g., Diwali, Lunar New Year).
+"""
+
 ANALYSIS_SYSTEM_PROMPT = (
     "You are a hedge fund trading algorithm. Use tools to verify market data "
     "and return structured decisions."
@@ -7,6 +18,11 @@ ANALYSIS_SYSTEM_PROMPT = (
 
 ANALYSIS_USER_PROMPT_TEMPLATE = """You are a hedge fund trading algorithm. Next you will see a batch of financial news snippets and your current portfolio (if any).
 Analyze the current portfolio and the news snippets and the state of the market, find trading and investment ideas with a high profit potential.
+
+{calendar_knowledge}
+
+### CURRENT DATE CONTEXT:
+{current_day_info}
 
 CRITICAL: Your 'Current Portfolio Status' section is the ONLY source of truth for what you currently own. 
 It also contains a **Recently Executed Trades** list showing trades you made in the last 48 hours. Use this to understand your recent momentum and avoid duplicating trades that have already been priced into your current holdings.
@@ -22,28 +38,32 @@ SOPHISTICATED TRADING LOGIC:
    - Explicitly justify the profit potential. Why will the market move *after* you trade?
 2. **Is it possible to make a STRATEGY based on this?**
    - Think beyond single trades. Can you form a multi-step or multi-asset strategy? Document this in `strategy_reasoning`.
-3. **Is this news already priced in?**
+3. **Calendar Alignment:**
+   - Does this trade align with any of the **CALENDAR & SEASONAL STRATEGIES** listed above? 
+   - Check the **CURRENT DATE CONTEXT**. Are we in a ToM window? Close to a central bank meeting? 
+   - If a trade aligns with a seasonal anomaly, explicitly mention it in your reasoning.
+4. **Is this news already priced in?**
    - Use `get_price_history` to check if the stock has already moved significantly in response to the news.
    - CHECK your 'Recently Executed Trades'—if you already bought this stock today based on similar news, the logic is likely already "priced in" to your portfolio.
-4. **What is being incentivized right now?**
+5. **What is being incentivized right now?**
    - Consider government budgets, objectives, and policies. How do current incentives align with this trade?
-5. **Trend Alignment:**
+6. **Trend Alignment:**
    - Review the 'Top Trending Market Concepts'. Does this trade align with a major market theme (e.g., "AI Demand Surge")?
-6. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
+7. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
    - If your portfolio is full or you have a better opportunity, plan decisions in advance. Document this in `advance_planning_notes`.
-7. **COUNTRY TO ETF MAPPING:**
+8. **COUNTRY TO ETF MAPPING:**
    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
-8. **If I already own this stock, has this trade been profitable?**
+9. **If I already own this stock, has this trade been profitable?**
    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
-9. **What is the expected timeline for this catalyst to materialize?**
-   - Match your 'catalyst_duration' to the expected news cycle.
-10. **What are the primary risks or counter-arguments to this trade?**
-   - Consider what could go wrong.
-11. **How does this stock correlate with my existing portfolio?**
-    - Avoid over-concentration in a single sector or theme.
-12. **Should I reduce exposure or take profits?**
-    - **MANDATORY FOR SELL:** You MUST use one of the sell percentage tools (`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent`) to calculate the exact share quantity for selling. 
-    - **ENFORCEMENT:** Any `SELL` decision that does not include `'sell_tool_called': true` and a valid `'quantity'` will be REJECTED. Do not guess the share count.
+10. **What is the expected timeline for this catalyst to materialize?**
+    - Match your 'catalyst_duration' to the expected news cycle.
+11. **What are the primary risks or counter-arguments to this trade?**
+    - Consider what could go wrong.
+12. **How does this stock correlate with my existing portfolio?**
+     - Avoid over-concentration in a single sector or theme.
+13. **Should I reduce exposure or take profits?**
+     - **MANDATORY FOR SELL:** You MUST use one of the sell percentage tools (`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent`) to calculate the exact share quantity for selling. 
+     - **ENFORCEMENT:** Any `SELL` decision that does not include `'sell_tool_called': true` and a valid `'quantity'` will be REJECTED. Do not guess the share count.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".
@@ -97,6 +117,7 @@ You must provide a confidence score (0-100) and your reasoning for each trading 
 {news_content}
 
 Return the result as a structured JSON object containing a list of 'decisions' and a list of 'macro_events'."""
+""
 
 
 SYNTHESIS_SYSTEM_PROMPT = "You are a senior financial analyst. Return structured JSON with name, summary, and any future date."

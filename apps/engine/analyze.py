@@ -141,12 +141,39 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             # However, indices matter for gather. Let's just pass empty chunks if possible.
             # Most providers should handle empty list fine.
         
+        # Calculate Current Day Info for Calendar Strategies
+        from datetime import datetime, timedelta
+        import calendar
+        
+        now = datetime.now()
+        day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
+        
+        # Check Month Boundaries (ToM)
+        last_day = calendar.monthrange(now.year, now.month)[1]
+        days_to_end = last_day - now.day
+        if now.day == 1 or now.day == 2 or now.day == 3:
+            day_info += f" We are in the Turn of the Month (ToM) window (Day {now.day})."
+        elif days_to_end == 0:
+            day_info += " Today is the LAST trading day of the month (ToM Start)."
+        else:
+            day_info += f" {days_to_end} days until month-end."
+            
+        # Check Payday Anomaly
+        if now.day == 15:
+            day_info += " Today is mid-month (Payday Anomaly)."
+        elif now.day == 14:
+            day_info += " Tomorrow is mid-month payday."
+            
+        from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
+        
         tasks.append(llm.analyze_with_provider(
             provider=provider,
             model_name=model,
             chunks=chunks_to_analyze,
             context=aggregated_context,
-            portfolio_context=portfolio_ctx
+            portfolio_context=portfolio_ctx,
+            current_day_info=day_info,
+            calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE
         ))
 
     logger.info(

@@ -121,21 +121,29 @@ class CalendarPipeline:
         ])
 
         prompt = f"""Analyze the following economic calendar events and identify the most RELEVANT ones 
-        (Importance Score >= 8) that could significantly impact global financial markets.
+        (Importance Score >= 8) or those that match specific CALENDAR STRATEGIES.
         
         Focus on:
-        1. Central Bank decisions (Fed, ECB, BoJ, etc.)
-        2. Key inflation data (CPI, PCE)
+        1. Central Bank decisions (Fed, ECB, BoJ, etc.) - LABEL THESE AS "CENTRAL_BANK"
+        2. Key inflation data (CPI, PCE) - LABEL THESE AS "INFLATION"
         3. Employment reports (NFP)
         4. GDP releases
         5. Geopolitical summits or major policy shifts.
+        6. Major Market Holidays - LABEL THESE AS "HOLIDAY"
+
+        STRATEGY MATCHING:
+        - If an event is a Central Bank meeting, it aligns with 'Pre-ECB/Fed Drift'.
+        - If an event is a major market holiday, it aligns with 'Pre-Holiday Effect'.
+        - If an event occurs on the 1st, 15th, or last day of the month, highlight its 'Payday' or 'ToM' relevance.
 
         For each relevant event, provide a structured MacroEvent entry.
         IMPORTANT: Set 'is_future_catalyst' to true and 'target_date' to the event's date (YYYY-MM-DD).
+        In the reasoning, explicitly mention if it aligns with a known calendar strategy.
 
         EVENTS:
         {events_text}
         """
+
 
         try:
             res = await self.client.chat.completions.create(

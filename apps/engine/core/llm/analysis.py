@@ -20,6 +20,8 @@ async def analyze_with_provider(
     chunks: list[dict],
     context: str = "",
     portfolio_context: str = "",
+    current_day_info: str = "No date context available.",
+    calendar_knowledge: str = ""
 ) -> DecisionsResponse:
     """Analyzes a batch of newsletter chunks using the specified provider.
 
@@ -29,6 +31,8 @@ async def analyze_with_provider(
         chunks: List of dictionaries containing 'source_id' and 'content'.
         context: Aggregated historical context.
         portfolio_context: Current portfolio status context.
+        current_day_info: Current date and week context.
+        calendar_knowledge: Knowledge of calendar strategies.
 
     Returns:
         A DecisionsResponse instance containing trading signals and macro events.
@@ -55,7 +59,10 @@ async def analyze_with_provider(
             context=context if context else "No relevant historical context found.",
             news_content=news_content,
             min_trade_value=MIN_TRADE_VALUE,
+            current_day_info=current_day_info,
+            calendar_knowledge=calendar_knowledge
         )
+
 
         messages = [
             {"role": "system", "content": prompts.ANALYSIS_SYSTEM_PROMPT},

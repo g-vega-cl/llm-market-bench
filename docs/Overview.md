@@ -60,7 +60,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
 11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed. Hallucinated tool calls result in trade rejection.
 12. **Pre-Market Validation**: Existence, price banding, and liquidity checks.
-13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (for both BUY and SELL).
+13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
 14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
 14. **Ledger Update:** Daily equity curve snapshot.
@@ -92,7 +92,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.*
-*   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for both BUY and SELL orders**. This ensures meaningful position sizes and prevents "dust" trades.
+*   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS a specific sell percentage tool (e.g., "sell 50%") is used, which allows for precision rebalancing and clearing "dust" positions.
 *
 *   documentation: ./engine/portfolio-management-walkthrough.md
 

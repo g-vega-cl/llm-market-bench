@@ -20,7 +20,7 @@ We strictly follow **Reg T** calculations for margin accounts.
 ### 2a. Reg T Validation (Pre-Execution)
 Before any trade is executed, we run `validate_trade_compliance` (in `reg_t_validation.py`) to ensure:
 1. **Trade Cost <= Buying Power** (For BUY signals)
-2. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000** for both **BUY and SELL** orders.
+2. **Minimum Trade Value:** Total cost (Price * Quantity) must be at least **$1,000** for BUY orders. For SELL orders, this floor is waived if a specific sell tool is used.
 3. **Projected SMA >= SMA Floor (10% of Total Equity)**
 4. **Account not in Liquidation**
 5. **Market Data Robustness:** If `current_prices` fail (price = 0), the system values positions at `average_cost_basis`. This prevents "Negative Equity" hallucinations for margin accounts.
@@ -33,7 +33,7 @@ The validation logic strictly enforces the Buying Power limit.
 
 1.  **Buying Power (BUY):** `estimated_cost <= buying_power`.
 2.  **Portfolio Ownership (SELL):** `ticker in positions`.
-3.  **Dynamic Minimum Size:** `estimated_cost >= max($1,000, 10% of BP or Equity)` for both BUY and SELL.
+3.  **Dynamic Minimum Size:** `estimated_cost >= max($1,000, 10% of BP or Equity)` for BUYS. For SELLS, the $1,000 floor applies unless bypassed via a sell tool.
 4.  **SMA Floor:** `projected_sma >= 10% * Total Equity`.
 5.  **Account Not in Liquidation:** `available_funds >= 0`.
 
@@ -94,7 +94,7 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
 - **SELL Logic:** **MANDATORY HARD TOOL ENFORCEMENT.** 
     - **History Scan:** The engine performs a server-side scan of the conversation history to verify that a `sell_X_percent` tool was actually called for that ticker.
     - **Hallucination Check:** If an agent claims `sell_tool_called: true` but the history scan fails to find the call, the trade is rejected.
-    - **Minimum Value:** Even if the tool is called, the total proceeds must be >= $1,000. Sells below this threshold (dust trades) are rejected as `REJECTED_MARGIN`.
+    - **Minimum Value:** By default, total proceeds must be >= $1,000. However, if a specific sell percentage tool is called, this threshold is waived to allow for precision exits and clearing "dust" trades.
 - **Dynamic Fallbacks:** 
     - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
 

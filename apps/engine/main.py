@@ -300,7 +300,14 @@ async def run_ingest():
                             portfolio.calculate_reg_t_metrics(p_map)
                             
                         # Validate Trade (Minimum Trade Value)
-                        validation_res = portfolio.validate_trade(ticker=d.ticker, quantity=qty, price=exec_price, signal=d.signal)
+                        is_sell_tool_used = getattr(d, "sell_tool_called", False)
+                        validation_res = portfolio.validate_trade(
+                            ticker=d.ticker, 
+                            quantity=qty, 
+                            price=exec_price, 
+                            signal=d.signal,
+                            is_sell_tool_used=is_sell_tool_used
+                        )
                         if not validation_res.passed:
                             logger.warning(
                                 f"[{d.ticker}] REJECTED (Guardrails): {validation_res.reason} "

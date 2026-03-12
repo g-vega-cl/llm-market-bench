@@ -32,7 +32,7 @@ LLMs, while powerful, can occasionally:
 ### 5. Guardrail E: Minimum Trade Value
 - **Logic**: Verifies that the total value of the trade (Price * Quantity) meets a minimum threshold. This prevents small, insignificant trades that don't move the needle for the portfolio (e.g., buying 1 share for $100).
 - **Limit**: **$1,000 USD** (1/10th of the default starting balance).
-- **Action**: Reject trades below the threshold.
+- **Action**: Reject trades below the threshold (waived for SELL orders if a sell tool is used).
 
 ### 6. Guardrail F: SMA Floor (Margin Compliance)
 - **Logic**: Calculates the projected SMA after the trade (Current SMA - 57% of Cost).
@@ -68,7 +68,7 @@ The following environment variables and constants control the validation behavio
 |----------|---------|-------------|
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
 | `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
-| `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value for LLM-driven trades. |
+| `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value (waived for SELL via tools). |
 | `FINANCIAL_PROVIDER` | `"yfinance"` | Primary provider implementation (`yfinance`, `fmp`, or `ibkr`). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 

@@ -548,7 +548,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 | **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.15` | Reject hallucinated prices (>15% deviation). |
 | **C: Liquidity** | `if market_cap < 2_000_000_000` | Reject "Penny Stocks" (Market Cap < $2B). |
 | **D: Buying Power** | `if cost > buying_power` | Reject trades exceeding margin limits. |
-| E: Minimum Value | `Trade Cost > $1,000` | Mandatory for ALL trades (BUY and SELL). |
+| E: Minimum Value | `Trade Cost > $1,000` | Mandatory for BUYS; waived for SELLS if a sell tool is used. |
 | **F: SMA Floor** | `if projected_sma < 10% equity` | Reject trades risking Reg T compliance. |
 
 **Validation Result**:
@@ -758,7 +758,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **B: Price Banding** | `abs(ai_price - real_price) < 15%` | Prevent price hallucinations. |
 | **C: Liquidity** | `Market Cap > $2B` | Prevent trading penny stocks. |
 | **D: Buying Power** | `cost <= buying_power` | Ensure margin compliance. |
-| E: Minimum Value | `Trade Cost > $1,000` | Prevent insignificant trades (BUY and SELL). |
+| E: Minimum Value | `Trade Cost > $1,000` | Prevent insignificant BUYS; waived for SELLS via tools. |
 | **F: SMA Floor** | `Projected SMA > 10% Eq` | Safety margin for Reg T. |
 | **G: Robustness** | `NaN & Fallback` | Reject `NaN` values from providers; use `average_cost_basis` if market data fails (price = 0 or missing) to prevent negative equity. Ensures atomic disconnect via generic `disconnect_all()` hook. |
 

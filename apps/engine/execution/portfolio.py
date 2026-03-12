@@ -225,7 +225,7 @@ class Portfolio:
         
         logger.info(f"Updated portfolios summary table for {self.owner_id}.")
 
-    def validate_trade(self, ticker: str, quantity: int, price: float, signal: str = "BUY") -> ValidationResult:
+    def validate_trade(self, ticker: str, quantity: int, price: float, signal: str = "BUY", is_sell_tool_used: bool = False) -> ValidationResult:
         """Validates a potential trade against current Reg T buying power."""
         if not self.metrics:
             # Should imply we need to calculate
@@ -240,7 +240,8 @@ class Portfolio:
             estimated_trade_cost=cost,
             ticker=ticker,
             price=price,
-            signal=signal
+            signal=signal,
+            is_sell_tool_used=is_sell_tool_used
         )
 
     async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str) -> Optional[UUID]:

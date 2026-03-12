@@ -169,7 +169,8 @@ def validate_trade_compliance(
     estimated_trade_cost: float,
     ticker: str,
     price: float,
-    signal: str = "BUY"
+    signal: str = "BUY",
+    is_sell_tool_used: bool = False
 ) -> ValidationResult:
     """Checks if a proposed trade is compliant with margin limits and size requirements.
     
@@ -177,6 +178,7 @@ def validate_trade_compliance(
         1. Trade Cost must be <= Buying Power (for BUY).
         2. Minimum Trade Value: max($1,000, 10% of Buying Power or Total Equity).
         3. Projected SMA must be >= 10% of Total Equity.
+        4. Sell Tool Bypass: If is_sell_tool_used is True, the $1,000 floor is waived for SELL orders.
         
     Args:
         portfolio_metrics: Current RegT metrics.
@@ -184,6 +186,7 @@ def validate_trade_compliance(
         ticker: Ticker symbol.
         price: Price per share.
         signal: "BUY" or "SELL".
+        is_sell_tool_used: Whether a specific sell percentage tool was called.
         
     Returns:
         ValidationResult with pass/fail status.
@@ -222,12 +225,14 @@ def validate_trade_compliance(
             )
     elif signal == "SELL":
         # For SELL, we still enforce the absolute MIN_TRADE_VALUE ($1,000) to avoid dust trades
-        if estimated_trade_cost < MIN_TRADE_VALUE:
+        # UNLESS a specific sell tool (10%, 25%, etc.) was used, in which case we allow any amount.
+        if not is_sell_tool_used and estimated_trade_cost < MIN_TRADE_VALUE:
             return ValidationResult(
                 passed=False,
                 reason=(
                     f"SELL Trade value below minimum threshold of ${MIN_TRADE_VALUE:,.2f}. "
-                    f"Proposed proceeds: ${estimated_trade_cost:,.2f}."
+                    f"Proposed proceeds: ${estimated_trade_cost:,.2f}. "
+                    "Bypass this guardrail by using a specific sell percentage tool (e.g., sell 25%)."
                 )
             )
 

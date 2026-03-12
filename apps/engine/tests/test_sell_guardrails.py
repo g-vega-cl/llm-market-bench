@@ -140,3 +140,46 @@ async def test_run_ingest_passed_large_sell(mock_dependencies):
     assert md["save"].called
     kwargs = md["save"].call_args[1]
     assert kwargs.get("status") == "EXECUTED"
+@pytest.mark.asyncio
+async def test_run_ingest_bypassed_small_sell_with_tool(mock_dependencies):
+    """Verify that a small SELL is accepted if sell_tool_called is True."""
+    md = mock_dependencies
+    
+    # Setup small SELL decision (1 share @ $260.74 = $260.74 < $1000)
+    # BUT sell_tool_called is True
+    decision = DecisionObject(
+        signal="SELL",
+        ticker="AAPL",
+        confidence=90,
+        reasoning="Take small profit with tool",
+        source_id="src1",
+        sell_tool_called=True,
+        quantity=1
+    )
+    md["analyze"].return_value = ([decision], [], "Mocked context")
+    
+    # Portfolio setup
+    md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}
+    md["portfolio"].metrics = MagicMock(buying_power=50000.0, total_equity=60000.0, sma=50000.0)
+    
+    # Mock validate_decision
+    md["validate_decision"].return_value = ValidationResult(
+        status=ValidationStatus.PASSED,
+        market_price=260.74,
+        ticker="AAPL"
+    )
+    
+    # Mock validate_trade to PASS because we bypass the $1000 check
+    from execution.reg_t_validation import ValidationResult as ComplianceResult
+    md["portfolio"].validate_trade.return_value = ComplianceResult(passed=True)
+    
+    # Mock execute_trade
+    md["portfolio"].execute_trade.return_value = "trade-uuid-789"
+    
+    await run_ingest()
+    
+    # Verify execution
+    md["portfolio"].execute_trade.assert_awaited_once()
+    assert md["save"].called
+    kwargs = md["save"].call_args[1]
+    assert kwargs.get("status") == "EXECUTED"

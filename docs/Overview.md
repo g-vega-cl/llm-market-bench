@@ -53,7 +53,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7. **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
-8. **Event Consensus:** Synthesize global macro events with **Scenario Analysis** (evaluating "If X vs If Y" outcomes); group semantically via pgvector.
+8. **Event Consensus:** Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
 9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
@@ -136,7 +136,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
-*   **Scenario Awareness:** *Memories now incorporate **Scenario Analysis**, allowing models to recall not just what happened, but different ways an event was expected to resolve.*
+*   **Scenario Awareness:** Memories now incorporate structured **Scenario Analysis**, requiring models to recall not just what happened, but different well-defined ways an event was expected to resolve and the associated **Trading Plans**.
+*
 *   **Retrieval:** *The engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
 *   **Schema Robustness:** *Includes automated JSON string parsing, Pydantic field validation to convert `NaN` values to `None`, and expanded `catalyst_type` literals to handle model "Semantic Fragility" during high-volume tool loops.*
 *   **Deduplication:** *Enforces a 24-hour lookback window to prevent semantic duplicates of the same event from being stored (Similarity > 0.90).*
@@ -153,7 +154,9 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     *   **Horizon Watch**:
         - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
         - **Tentative Notes & Time**: A `future_date_note` or `event_time` (e.g., "10:00 AM", "tentative") is extracted and stored, providing better context for Horizon Watch.
-        - **Strict Separation**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. This prevents "Ongoing Memories" or past investments from cluttering the future timeline. Events that represent currently unfolding trends (e.g., "Structural Rotation") are marked as `is_ongoing` and excluded from this view.
+        - **Strict Separation**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. This prevents "Ongoing Memories" or past investments from cluttering the future timeline. 
+        - **Strict Catalyst Filter**: To qualify as a **Future Catalyst**, an event must be strictly PENDING and SCHEDULED. Vague timeframes like "later in 2026" or broad thematic shifts are excluded from this view.
+        - **Multi-Outcome Scenarios**: Every Horizon Watch event is required to have a structured **Scenario Analysis** containing at least two possible outcomes and a dedicated **Trading Plan** for each.
 *   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer.
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)

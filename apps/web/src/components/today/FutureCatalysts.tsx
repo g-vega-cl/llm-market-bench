@@ -35,9 +35,19 @@ export function FutureCatalysts({ events }: { events: any[] }) {
                                     ) : (dateNote || 'Ongoing')}
                                 </span>
                             </div>
-                            <p className="text-sm text-zinc-800 dark:text-zinc-200 font-bold leading-relaxed pr-16 text-pretty">
+                            <p className="text-sm text-zinc-800 dark:text-zinc-200 font-bold leading-relaxed pr-16 text-pretty mb-4">
                                 {event.content}
                             </p>
+                            {event.metadata?.scenario_analysis && (
+                                <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">
+                                        Scenarios & Trading Plans
+                                    </h4>
+                                    <div className="text-[11px] text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed whitespace-pre-wrap">
+                                        {event.metadata.scenario_analysis}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     );
                 })}

@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core import config
 from core.llm import clients
@@ -78,7 +78,7 @@ async def synthesize_event(
             is_ongoing: bool = False
             is_future_catalyst: bool = False
             historical_parallel: Optional[str] = None
-            scenario_analysis: Optional[str] = None
+            scenario_analysis: Optional[str] = Field(None, description="Unified view of material resolutions. REQUIRED: At least two outcomes AND a 'Trading Plan' for each.")
             importance_score: int = 5
 
         resp_awaitable = client.chat.completions.create(

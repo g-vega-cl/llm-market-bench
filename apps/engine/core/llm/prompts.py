@@ -73,8 +73,14 @@ SMA MANAGEMENT RULES:
    CRITICAL FOCUS:
    - Government Budgets & Objectives: Identify any mentions of government budgets, policies, or specific incentives. Mark 'is_government_incentive' as true and identify any 'expiry_date' (e.g., "2027" for a 2026 budget).
    - Ongoing Unresolved Events: Mark 'is_ongoing' as true for trends happening *now* (e.g., a rotation into a sector, a past investment currently yielding results, or "Trade War Escalating"). This IS NOT a future catalyst.
-   - Future Catalysts: Mark 'is_future_catalyst' as true ONLY if the event is a strictly future, pending event with multiple possible alternative outcomes (e.g., 'OPEC meeting', 'Elections', 'Data release', 'US/Iran leaders meet'). Do NOT mark past investments, ongoing structural shifts, or completed events as future catalysts.
-   - Scenario Analysis: For major events, think: "If this event resolves like X, what's the best position to be in? What if this resolves like Y?". Document this in `scenario_analysis`.
+   - Future Catalysts: Mark 'is_future_catalyst' as true ONLY if the event is a strictly PENDING, SCHEDULED upcoming event with multiple distinct, well-defined outcomes (e.g., 'OPEC meeting on April 10', 'Earnings call today', 'US Elections'). 
+     - CRITICAL: Do NOT mark broad themes, ongoing structural shifts, or VAGUE timeframes (e.g., 'later this year', 'in 2026', 'by Q3') as future catalysts. These are Memories or Trends.
+     - CRITICAL: If you cannot name the specific day or a very tight window (e.g., 'this week'), it is NOT a future catalyst for Horizon Watch.
+   - Scenario Analysis: MANDATORY for Future Catalysts. You must provide at least TWO distinct potential outcomes and a specific 'Trading Plan' for each. 
+     Format: 
+     Scenario A: [Outcome Description] -> Trading Plan: [Specific assets to buy/sell/protect]
+     Scenario B: [Outcome Description] -> Trading Plan: [Specific assets to buy/sell/protect]
+     Document this in `scenario_analysis`.
    - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
    
    Each macro event MUST include the exact 'Source ID' of the snippet that triggered it.
@@ -108,7 +114,12 @@ SCENARIO ANALYSES:
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
-3. Synthesize the 'scenario_analysis': Provide a unified view of potential resolutions (If X, then position in A; if Y, then position in B). Focus on material catalysts that justify strategic trade planning.
+3. Synthesize the 'scenario_analysis': Provide a unified, structured view of potential resolutions. 
+   REQUIRED: Include at least TWO distinct outcomes and a 'Trading Plan' for each. 
+   Format:
+   Scenario A: [Outcome] -> Trading Plan: [Action]
+   Scenario B: [Outcome] -> Trading Plan: [Action]
+   Focus on material catalysts that justify strategic trade planning.
 4. Extract any explicitly mentioned future date or timeframe.
    - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD) or null. 
      - If only a month/year is given, use the last day of that period (e.g., "July 2026" -> "2026-07-31"). 

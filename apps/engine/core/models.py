@@ -162,7 +162,7 @@ class MacroEvent(BaseModel):
     reasoning: str = Field(..., description="Explanation of the event's significance")
     scenario_analysis: str | None = Field(
         None,
-        description="Analysis of potential resolutions and best positions for each (if X happens, then...; if Y happens, then...)"
+        description="Analysis of potential resolutions. REQUIRED for Future Catalysts: Include at least two distinct outcomes (scenarios) AND a specific 'Trading Plan' for each (e.g., 'Scenario A: [Outcome] -> Trading Plan: [Action]')."
     )
     source_id: str = Field("unknown", description="ID of the source newsletter chunk")
     model_provider: str | None = Field(None)

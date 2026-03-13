@@ -29,8 +29,19 @@ class MarketDataManager:
         unique_provider_names = [x for x in provider_names if not (x in seen or seen.add(x))]
         
         self.providers = [get_financial_provider(name) for name in unique_provider_names]
-        # For backward compatibility with any code still expecting self.provider
-        self.provider = self.providers[0]
+
+    @property
+    def provider(self):
+        """Getter for the primary provider (first in the chain)."""
+        return self.providers[0] if self.providers else None
+
+    @provider.setter
+    def provider(self, value):
+        """Setter to allow manual override of the primary provider (for legacy tests)."""
+        if self.providers:
+            self.providers[0] = value
+        else:
+            self.providers = [value]
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> Optional[TickerData]:
         """Fetch stock quote, checking cache first unless force_refresh is True.

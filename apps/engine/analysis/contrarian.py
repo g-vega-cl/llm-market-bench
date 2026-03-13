@@ -44,7 +44,7 @@ async def run_contrarian_analysis(
 
     portfolio.calculate_reg_t_metrics(current_prices)
     await portfolio.save_metrics()
-    portfolio_ctx = portfolio.get_portfolio_summary(current_prices)
+    portfolio_ctx = await portfolio.get_portfolio_summary(current_prices)
 
     # 2. Prepare Context
     if not context:

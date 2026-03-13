@@ -512,8 +512,8 @@ valid_decisions = [
 
 # NEW: Hard Tool Enforcement (in analyze.py)
 # After the tool loop, the engine scans the actual conversation history.
-# It confirms that required tools (get_stock_quote for all, sell_X_percent for SELL) were actually called.
-# If an agent claims tool usage but it's not found in history, the trade is rejected.
+# It confirms that required tools (get_stock_quote for all, sell_X_percent for SELL) were actually executed via native function calling.
+# If an agent claims tool usage in text but it's not a formal tool call in history, the trade is rejected.
 
 # NEW: Price Backfill Logic (in analyze.py)
 # If decision.price is missing/null, engine queries MarketDataManager to backfill real-time price.
@@ -781,7 +781,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules and enforces **Portfolio Ownership** for SELL signals.
 
 1. **Ownership Check:** If `Signal == SELL`, verify ticker is in `portfolio_positions`. Reject if not found (`REJECTED_OWNERSHIP`).
-2. **Hard Tool Enforcement:** If `Signal == SELL` and the engine's history scan confirms no sell calculation tool was called, reject (`REJECTED_TOOL_USAGE`).
+2. **Hard Tool Enforcement:** If `Signal == SELL` and the engine's history scan confirms no sell calculation tool was executed via native function calling, reject (`REJECTED_TOOL_USAGE`).
 3. **Size Check (BUY):** Every purchase must be at least 10% of Buying Power or Total Equity.
 4. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
 

@@ -18,12 +18,13 @@ To ensure maximum feature coverage and performance, the system uses the official
 | **Contrarian Agent** | `google-genai` | `gemini-3-flash-preview` |
 | **Manager Agent** | `google-genai` | `gemini-3-flash-preview` |
 
-### **Active Tool Calling**
-Models (**OpenAI, Anthropic, Gemini**) now actively call multiple tools to verify market data and context *before* committing to a trade:
+### **Active Tool Calling & Reasoning**
+Models (**OpenAI, Anthropic, Gemini, DeepSeek**) now actively call multiple tools to verify market data and context *before* committing to a trade:
+- **`deepseek-reasoner`** specifically utilizes **Thinking Mode**, embedding true Chain-of-Thought (CoT) into its multi-turn tool calling loop for complex strategy formulation.
 - **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
-- **`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, `sell_100_percent`**: Calculates exact share quantities for partial or full exits of existing positions. **Using these tools is now MANDATORY for any SELL decision.**
+- **`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, `sell_100_percent`**: Calculates exact share quantities for partial or full exits of existing positions. **Using these tools natively via function calling is now MANDATORY for any SELL decision.**
 
 ### **Handler Architecture**
 To improve code maintainability and adhere to Google's Python Style Guide, the tool execution logic has been refactored into provider-specific handlers:

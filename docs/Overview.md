@@ -50,7 +50,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 5. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
+5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. DeepSeek runs in **Thinking Mode** (CoT reasoning natively integrated into the tool loop). Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7. **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
 8. **Event Consensus:** Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
@@ -58,7 +58,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
-11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed. Hallucinated tool calls result in trade rejection.
+11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed via native function calling. Hallucinated or text-only tool usage results in trade rejection.
 12. **Pre-Market Validation**: Existence, price banding, and liquidity checks.
 13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
 14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.

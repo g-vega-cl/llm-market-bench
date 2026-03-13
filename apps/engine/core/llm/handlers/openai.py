@@ -24,8 +24,9 @@ async def run_tool_loop(
         provider: The provider name.
         max_tool_steps: Maximum iterations.
     """
+    import typing
     for _ in range(max_tool_steps):
-        args = {
+        args: typing.Dict[str, typing.Any] = {
             "model": model_name,
             "messages": messages,
             "tools": override_tools or [
@@ -41,11 +42,15 @@ async def run_tool_loop(
             ]
         }
         
-        if provider == "deepseek" and "reasoner" not in model_name:
-            # Only breakout for deepseek-chat if needed, but deepseek-reasoner 
-            # supports tools via the OpenAI SDK wrapper.
-            # We'll allow reasoner to try the loop.
-            pass
+        if provider == "deepseek" and "reasoner" in model_name:
+            args["extra_body"] = {"thinking": {"type": "enabled"}}
+            
+            # DeepSeek recommends clearing reasoning_content from previous turns
+            for msg in messages:
+                if isinstance(msg, dict) and "reasoning_content" in msg:
+                    msg["reasoning_content"] = None
+                elif hasattr(msg, "reasoning_content"):
+                    msg.reasoning_content = None
 
         try:
             resp = await raw_client.chat.completions.create(**args)
@@ -54,7 +59,17 @@ async def run_tool_loop(
             break
 
         msg = resp.choices[0].message
-        messages.append(msg.model_dump())
+        
+        # Append the raw response object or dict correctly preserving reasoning_content
+        if hasattr(msg, "reasoning_content"):
+            messages.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "reasoning_content": msg.reasoning_content,
+                "tool_calls": getattr(msg, "tool_calls", None)
+            })
+        else:
+            messages.append(msg.model_dump())
 
         if not msg.tool_calls:
             break

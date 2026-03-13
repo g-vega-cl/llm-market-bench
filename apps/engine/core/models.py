@@ -38,7 +38,7 @@ class DecisionObject(BaseModel):
         description="Explanation of the decision based on the text"
     )
     ticker: str = Field(..., description="Stock ticker symbol")
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "OTHER"] = Field(
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "UNCROWDED_TRADE", "OTHER"] = Field(
         "OTHER",
         description="The primary driver for this decision"
     )
@@ -128,7 +128,7 @@ class MacroEvent(BaseModel):
 
     event_name: str = Field(..., description="Short name for the event")
     impact: Literal["BULLISH", "BEARISH", "NEUTRAL"]
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "OTHER"] = Field(
+    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "UNCROWDED_TRADE", "OTHER"] = Field(
         "MACRO",
         description="The category of market event"
     )

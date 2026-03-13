@@ -229,6 +229,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 * **Outcome:** *Stores findings as `GOVERNMENT_INCENTIVE` memories with expiry dates to inform future analysis.*
 * File: `apps/engine/ingest/government.py`
 
+**24. Uncrowded Trades Identification** ✅
+
+* **Tech:** Python / Multi-LLM
+* **Logic:** *Agents are instructed to actively look for secondary / derivative effects of news (e.g., fertilizer supply shocks from an oil conflict) that the broader market hasn't priced in. These opportunities are flagged as `UNCROWDED_TRADE`.*
+* **Outcome:** *The Verification step uses a specialized rule set for `UNCROWDED_TRADE`s, bypassing strict volatility/momentum guardrails to prioritize the fundamental entry thesis.*
+* File: `apps/engine/core/models.py`, `apps/engine/core/llm/prompts.py`, `apps/engine/core/llm/verification.py`
+
+
 ---
 
 ## 5. Maintenance & Utilities

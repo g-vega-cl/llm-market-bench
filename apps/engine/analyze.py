@@ -32,7 +32,7 @@ MODELS = [
 ]
 
 
-async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list[MacroEvent]]:
+async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list[MacroEvent], str, str]:
     """Orchestrate the parallel analysis of newsletter chunks using multiple LLMs.
 
     Args:
@@ -40,12 +40,12 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             'source_id' and 'content' keys.
 
     Returns:
-        Tuple of (list of DecisionObject, list of MacroEvent).
+        Tuple of (list of DecisionObject, list of MacroEvent, str (aggregated_context), str (uncrowded_context)).
         Failed analyses are logged but do not halt the pipeline.
     """
     if not chunks:
         logger.warning("No chunks to analyze.")
-        return [], [], ""
+        return [], [], "", ""
 
     # 1. Filter malformed chunks and aggregate historical context
     valid_chunks = [
@@ -58,7 +58,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
 
     if not valid_chunks:
         logger.warning("No valid chunks to analyze after filtering.")
-        return [], [], ""
+        return [], [], "", ""
 
     queries = [chunk["content"] for chunk in valid_chunks]
     
@@ -74,9 +74,11 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         # Explicitly fetch recent government incentives to ensure they are present
         gov_context = retrieve_context_batch(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"], embeddings=embeddings)
         lesson_context = retrieve_context_batch(queries, limit=2, memory_types=["LESSON_LEARNED"], embeddings=embeddings)
+        uncrowded_context_list = retrieve_context_batch(queries, limit=2, memory_types=["UNCROWDED_TRADE"], embeddings=embeddings)
 
-        all_contexts = context_results + gov_context + lesson_context
+        all_contexts = context_results + gov_context + lesson_context + uncrowded_context_list
         aggregated_context = "\n".join(list(set([c for c in all_contexts if c])))
+        uncrowded_context = "\n".join(list(set([c for c in uncrowded_context_list if c]))) or ""
         
         # Add Top Trending Concepts for global awareness
         trending_concepts = get_top_trending_concepts(limit=5)
@@ -84,6 +86,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             aggregated_context += f"\n\n{trending_concepts}"
     else:
         aggregated_context = ""
+        uncrowded_context = ""
 
     tasks = []
 
@@ -239,7 +242,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             f"Completed analysis. Generated {len(valid_decisions)} decisions "
             f"and {len(valid_events)} macro events from batch processing."
         )
-        return valid_decisions, valid_events, aggregated_context
+        return valid_decisions, valid_events, aggregated_context, uncrowded_context
     finally:
         from execution.providers.factory import get_active_provider_class
         provider_cls = get_active_provider_class()

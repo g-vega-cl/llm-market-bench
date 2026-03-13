@@ -51,9 +51,11 @@ SOPHISTICATED TRADING LOGIC:
    - Review the 'Top Trending Market Concepts'. Does this trade align with a major market theme (e.g., "AI Demand Surge")?
 7. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
    - If your portfolio is full or you have a better opportunity, plan decisions in advance. Document this in `advance_planning_notes`.
-8. **COUNTRY TO ETF MAPPING:**
+8. **UNCROWDED TRADES / UNDER-THE-RADAR:**
+   - Actively search for secondary effects (e.g. supply chain shocks) or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.
+9. **COUNTRY TO ETF MAPPING:**
    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
-9. **If I already own this stock, has this trade been profitable?**
+10. **If I already own this stock, has this trade been profitable?**
    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
 10. **What is the expected timeline for this catalyst to materialize?**
     - Match your 'catalyst_duration' to the expected news cycle.
@@ -80,7 +82,7 @@ SMA MANAGEMENT RULES:
    * SELL: Only sell if we have the stock in our portfolio.
    * HOLD: Do not buy or sell the stock.
    * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
-   * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, TECHNICAL, OTHER).
+   * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, TECHNICAL, UNCROWDED_TRADE, OTHER).
    * DURATION: Estimate 'catalyst_duration' (SHORT_TERM, MEDIUM_TERM, LONG_TERM).
    
    Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
@@ -299,12 +301,16 @@ An AI agent has proposed a trade. Your task is to verify if this trade is truly 
 #### Market & Historical Context (Recent Events & Lessons Learned):
 {context}
 
+#### Uncrowded Context (Secondary Effects & Bottlenecks):
+{uncrowded_context}
+
 #### Contrarian Insights (What others are thinking or missing):
 {contrarian_context}
 
 ### YOUR SKEPTICAL ANALYSIS SOP:
 1. **Is this priced in?**
    - Use `get_price_history` AND `get_volatility_metrics`. If the stock has already moved > 5% in the last 24-48 hours, or if it's > 2 standard deviations from its mean, it might be too late.
+   - **EXCEPTION:** If the trade directly addresses a theme from the **Uncrowded Context** (e.g. a foundational bottleneck) or is labeled as an `UNCROWDED_TRADE`, prioritize the fundamental thesis and overlook normal 'crowdedness' volatility warnings. Allow the trade.
 2. **Are there better alternatives?**
    - Use `get_sector_alternatives`. Is there a "Silver" to this "Gold"? Is there a less crowded stock in the same sector that will benefit from the same tailwinds but hasn't spiked yet?
 3. **Did we learn this lesson before?**

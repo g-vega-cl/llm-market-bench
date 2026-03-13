@@ -16,6 +16,7 @@ async def verify_trading_decision(
     portfolio_context: str,
     aggregated_context: str,
     contrarian_context: str = "",
+    uncrowded_context: str = "",
     max_tool_steps: int = 5
 ) -> VerificationResult:
     """Performs a skeptical second reasoning step on a proposed trade.
@@ -25,6 +26,7 @@ async def verify_trading_decision(
         portfolio_context: Current portfolio summary.
         aggregated_context: Historical context and lessons.
         contrarian_context: Contrarian agent insights.
+        uncrowded_context: Isolated secondary effect / uncrowded trade notes.
         max_tool_steps: Maximum iterations for the verifier's tool loop.
 
     Returns:
@@ -73,7 +75,8 @@ async def verify_trading_decision(
             price=decision.price or "unknown",
             portfolio_context=portfolio_context,
             context=aggregated_context,
-            contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available."
+            contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available.",
+            uncrowded_context=uncrowded_context if uncrowded_context else "No specific secondary effects noted."
         )
 
         messages = [

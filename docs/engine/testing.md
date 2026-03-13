@@ -89,6 +89,7 @@ These are manual verification scripts for specific features:
 |--------|---------|
 | `verify_step_15.py` | Verifies reasoning is correctly embedded into long-term memory |
 | `verify_portfolio_upsert.py` | Verifies portfolio position upsert logic |
+| `simulate_uncrowded_trade.py` | Simulates an "uncrowded trade" scenario to evaluate the pipeline and verification logic |
 
 ## Warning-Free Policy
 

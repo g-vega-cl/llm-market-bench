@@ -61,7 +61,7 @@ async def run_ingest():
 
     try:
             # Note: analyze_chunks now handles fetching government and lesson context
-        decisions, macro_events, aggregated_context = await analyze_chunks(data)
+        decisions, macro_events, aggregated_context, uncrowded_context = await analyze_chunks(data)
         logger.info(
             f"Analysis complete. Generated {len(decisions)} decisions "
             f"and {len(macro_events)} raw macro events."
@@ -218,7 +218,8 @@ async def run_ingest():
                             decision=d,
                             portfolio_context=await portfolio.get_portfolio_summary(p_map),
                             aggregated_context=aggregated_context,
-                            contrarian_context=contrarian_text
+                            contrarian_context=contrarian_text,
+                            uncrowded_context=uncrowded_context
                         )
                         
                         logger.info(f"[{d.ticker}] Verification Result: {verification.status} (Conf: {verification.confidence_score}%)")

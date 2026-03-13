@@ -66,7 +66,7 @@ async def test_run_ingest_rejected_small_sell(mock_dependencies):
         sell_tool_called=True,
         quantity=1
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Portfolio setup: Owned AAPL
     md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}
@@ -113,7 +113,7 @@ async def test_run_ingest_passed_large_sell(mock_dependencies):
         sell_tool_called=True,
         quantity=10
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Portfolio setup
     md["portfolio"].positions = {"AAPL": MagicMock(quantity=100)}
@@ -156,7 +156,7 @@ async def test_run_ingest_bypassed_small_sell_with_tool(mock_dependencies):
         sell_tool_called=True,
         quantity=1
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Portfolio setup
     md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}

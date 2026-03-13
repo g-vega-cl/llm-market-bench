@@ -94,7 +94,7 @@ async def test_run_ingest_hold_decision(mock_dependencies):
         model_provider="openai",
         model_name="gpt-4"
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Setup validation to pass
     md["validate"].return_value = ValidationResult(
@@ -125,7 +125,7 @@ async def test_run_ingest_buy_decision(mock_dependencies):
         source_id="src1",
         price=150.0
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Setup validation
     md["validate"].return_value = ValidationResult(
@@ -157,7 +157,7 @@ async def test_run_ingest_rejected_decision(mock_dependencies):
         ticker="PENNY",
         source_id="src1"
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Fail validation
     md["validate"].return_value = ValidationResult(
@@ -191,7 +191,7 @@ async def test_run_ingest_sell_tool_enforcement(mock_dependencies):
         source_id="src1",
         sell_tool_called=False
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Mock possession check
     md["portfolio"].positions = {"AAPL": MagicMock()}
@@ -219,7 +219,7 @@ async def test_run_ingest_sell_with_tool(mock_dependencies):
         sell_tool_called=True,
         quantity=5
     )
-    md["analyze"].return_value = ([decision], [], "Mocked context")
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
     
     # Mock validation and possession
     md["validate"].return_value = ValidationResult(

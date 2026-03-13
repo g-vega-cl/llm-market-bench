@@ -287,8 +287,10 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
 |  | `FMP_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
-| **Engine**|  | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of price data source |
-|  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `yfinance`) | Selection of fallback data source |
+|  | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of primary price data source |
+|  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `fmp`) | Selection of first fallback source |
+|  | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `yfinance`) | Selection of second fallback source |
+|  | `MARKET_DATA_RETRIES` | Number of attempts per provider (Default: 2) | Configurable retry logic |
 |  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY] Local market data via IBKR |
@@ -379,9 +381,10 @@ graph TD
         AT --> CP{Event Consensus Protocol}
         
         CP --> VER[Skeptical Verifier Agent]
-        VER --> MDM[MarketDataManager]
-        MDM -->|Proxy| IBKR[IBKR Proxy]
-        MDM -->|Fallback| YF[YFinance]
+          MDM[MarketDataManager]
+        MDM -->|Primary| IBKR[IBKR Proxy]
+        MDM -->|Fallback 1| FMP[Financial Modeling Prep]
+        MDM -->|Fallback 2| YF[YFinance]
         VER -->|Abort/Adjust| E{Execution Guardrails}
         
         E -->|Cleanup| CL[Provider disconnect_all]

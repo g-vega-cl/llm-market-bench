@@ -48,14 +48,17 @@ LLMs, while powerful, can occasionally:
 - **Action**: Backfills the `price` field in the `DecisionObject` before it reaches the final validation phase. This prevents "lazy" models from being rejected for missing data if their ticker intent was clear.
 
 ### Market Data Manager & Caching
-The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy.
+The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy and a **multi-provider fallback chain**.
 
 - **Persistence**:
   - **Cache**: The latest price results are stored in the `market_data_cache` table in Supabase.
   - **History**: A permanent record of every price fetch is stored in the `price_history` table for historical analysis.
-- **Robustness**: Automatically identifies and rejects `NaN` float values from providers, ensuring only valid numerical data is cached or used for validation.
+- **Robustness**: 
+  - **Triple Fallback**: If the primary provider fails, the system automatically tries a first and then a second fallback provider (e.g., `ibkr_proxy` -> `fmp` -> `yfinance`).
+  - **Retries**: Each provider in the chain is attempted a configurable number of times (Default: 2) with backoff before falling back.
+  - **NaN Filter**: Automatically identifies and rejects `NaN` float values from providers, ensuring only valid numerical data is cached or used for validation.
 - **TTL**: Cached data in `market_data_cache` is considered fresh for **4 hours**.
-- **Efficiency**: Reduces external API (yfinance/FMP/IBKR) calls by $>90%$ for common tickers.
+- **Efficiency**: Reduces external API calls by $>90%$ for common tickers.
 - **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 
 ### Anti-Rate Limiting (Throttling)
@@ -69,7 +72,10 @@ The following environment variables and constants control the validation behavio
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
 | `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
 | `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value (waived for SELL via tools). |
-| `FINANCIAL_PROVIDER` | `"yfinance"` | Primary provider implementation (`yfinance`, `fmp`, or `ibkr`). |
+| `FINANCIAL_PROVIDER` | `"ibkr_proxy"` | Primary data provider. |
+| `FALLBACK_FINANCIAL_PROVIDER` | `"fmp"` | First fallback data provider. |
+| `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `"yfinance"` | Second fallback data provider. |
+| `MARKET_DATA_RETRIES` | `2` | Number of attempts per provider in the chain. |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration

@@ -65,8 +65,13 @@ Regardless of the provider, your Interactive Brokers TWS or Gateway must be conf
 - **Client ID already in use**: The Proxy automatically retries with random IDs. If using the legacy provider, ensure `IBKR_CLIENT_ID` is unique.
 - **Connection Refused**: Check if the port matches and if TWS is actually running.
 
-## High Availability & Fallback
+## High Availability & Multi-Provider Fallback
 
-The engine is designed for reliability. If the `ibkr_proxy` (or any primary provider) fails to deliver data due to network issues or proxy downtime, the `MarketDataManager` automatically falls back to **Yahoo Finance** (`yfinance`).
+The engine is designed for maximum reliability. If the `ibkr_proxy` (or any primary provider) fails to deliver data due to network issues, rate limits, or proxy downtime, the `MarketDataManager` automatically falls back through a configured chain of providers.
 
-This ensures that the daily pipeline can always complete its valuation and execution steps even if the primary market data source is temporarily unavailable.
+By default, the system follows this hierarchy:
+1.  **IBKR Proxy** (`ibkr_proxy`)
+2.  **Financial Modeling Prep** (`fmp`)
+3.  **Yahoo Finance** (`yfinance`)
+
+Each provider is attempted **2 times** (configurable via `MARKET_DATA_RETRIES`) before moving to the next one in the chain. This multi-layered approach ensures that the daily pipeline can always complete its valuation and execution steps even if several market data sources are temporarily unavailable.

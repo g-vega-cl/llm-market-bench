@@ -18,8 +18,19 @@ class MarketDataManager:
 
     def __init__(self, cache_ttl_hours: int = 4):
         self.client = get_supabase_client()
-        self.provider: FinancialProvider = get_financial_provider()
         self.cache_ttl_hours = cache_ttl_hours
+        
+        # Initialize providers in priority order
+        from core.config import FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER
+        
+        provider_names = [FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER]
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_provider_names = [x for x in provider_names if not (x in seen or seen.add(x))]
+        
+        self.providers = [get_financial_provider(name) for name in unique_provider_names]
+        # For backward compatibility with any code still expecting self.provider
+        self.provider = self.providers[0]
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> Optional[TickerData]:
         """Fetch stock quote, checking cache first unless force_refresh is True.
@@ -42,23 +53,25 @@ class MarketDataManager:
             if cached_data:
                 return cached_data
 
-        # 2. Fetch from Primary Provider with Exponential Backoff
-        logger.info(f"Cache miss for {ticker}. Fetching from primary provider ({self.provider.__class__.__name__})...")
-        data = await self._fetch_with_backoff(self.provider, ticker)
-        
-        # 3. Fallback to configured Fallback Provider if primary fails
-        from core.config import FALLBACK_FINANCIAL_PROVIDER
-        if not data and getattr(self.provider, 'provider_name', '') != FALLBACK_FINANCIAL_PROVIDER:
-            logger.warning(f"Primary provider failed for {ticker}. Falling back to {FALLBACK_FINANCIAL_PROVIDER}...")
-            fallback_provider = get_financial_provider(FALLBACK_FINANCIAL_PROVIDER)
-            data = await self._fetch_with_backoff(fallback_provider, ticker)
+        # 2. Fetch from Providers in sequence
+        data = None
+        for i, provider in enumerate(self.providers):
+            priority = "primary" if i == 0 else f"fallback {i}"
+            logger.info(f"Fetching {ticker} from {priority} provider ({provider.provider_name})...")
+            
+            data = await self._fetch_with_backoff(provider, ticker)
+            if data:
+                break
+            
+            if i < len(self.providers) - 1:
+                logger.warning(f"{priority.capitalize()} provider failed for {ticker}. Trying next fallback...")
 
         if data:
-            # 4. Save to Cache and Return
+            # 3. Save to Cache and Return
             self._save_to_cache(data)
             return data
 
-        # 5. Last Resort: Last Known Price from History
+        # 4. Last Resort: Last Known Price from History
         last_known = self._get_last_known_price(ticker)
         if last_known:
              logger.info(f"All online retrieval failed for {ticker}. Using last known price: ${last_known.price}")
@@ -70,7 +83,9 @@ class MarketDataManager:
     async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> Optional[TickerData]:
         """Helper to fetch data from a provider with retries and validation."""
         import asyncio
-        for attempt in range(1, 4):
+        from core.config import MARKET_DATA_RETRIES
+        
+        for attempt in range(1, MARKET_DATA_RETRIES + 1):
             try:
                 data = await provider.get_ticker_data(ticker)
                 
@@ -81,14 +96,12 @@ class MarketDataManager:
                     return data
             except Exception as e:
                 # Reduce noise: don't log full stack trace for common timeouts/connection errors
-                logger.debug(f"Attempt {attempt}/3 failed for {ticker} via {provider.provider_name}: {e}")
+                logger.debug(f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed for {ticker} via {provider.provider_name}: {e}")
             
-            if attempt < 3:
+            if attempt < MARKET_DATA_RETRIES:
                 wait_time = 2 ** (attempt - 1)
                 await asyncio.sleep(wait_time)
         return None
-
-
 
     def _get_last_known_price(self, ticker: str) -> Optional[TickerData]:
         """Retrieves the most recent price from the history table."""
@@ -102,13 +115,13 @@ class MarketDataManager:
                 .execute()
              
              if response.data:
-                 record = response.data[0]
-                 return TickerData(
-                     ticker=record["ticker"],
-                     price=float(record["price"]),
-                     market_cap=float(record["market_cap"]),
-                     exists=True
-                 )
+                  record = response.data[0]
+                  return TickerData(
+                      ticker=record["ticker"],
+                      price=float(record["price"]),
+                      market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
+                      exists=True
+                  )
         except Exception as e:
              logger.error(f"Error fetching last known price for {ticker}: {e}")
         
@@ -137,7 +150,7 @@ class MarketDataManager:
             return TickerData(
                 ticker=record["ticker"],
                 price=float(record["price"]),
-                market_cap=float(record["market_cap"]),
+                market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
                 exists=True
             )
         except Exception as e:
@@ -201,19 +214,21 @@ class MarketDataManager:
         except Exception as e:
             logger.warning(f"Error checking local price history for {ticker}: {e}")
 
-        # 2. Fetch from Primary Provider
-        logger.info(f"Local history insufficient for {ticker}. Fetching from primary provider...")
-        history = await self.provider.get_history(ticker, days)
-        
-        # 3. Fallback to configured Fallback Provider
-        from core.config import FALLBACK_FINANCIAL_PROVIDER
-        if not history and getattr(self.provider, 'provider_name', '') != FALLBACK_FINANCIAL_PROVIDER:
-            logger.warning(f"Primary provider history failed for {ticker}. Falling back to {FALLBACK_FINANCIAL_PROVIDER}...")
-            fallback_provider = get_financial_provider(FALLBACK_FINANCIAL_PROVIDER)
-            history = await fallback_provider.get_history(ticker, days)
+        # 2. Fetch from Providers in sequence
+        history = None
+        for i, provider in enumerate(self.providers):
+            priority = "primary" if i == 0 else f"fallback {i}"
+            logger.info(f"Fetching history for {ticker} from {priority} provider ({provider.provider_name})...")
+            
+            history = await provider.get_history(ticker, days)
+            if history:
+                break
+            
+            if i < len(self.providers) - 1:
+                logger.warning(f"{priority.capitalize()} provider history failed for {ticker}. Trying next fallback...")
             
         if history:
-            # 4. Save to history table so it's available next time
+            # 3. Save to history table so it's available next time
             try:
                 for entry in history:
                     # Note: We don't have market_cap in history responses usually
@@ -234,3 +249,4 @@ class MarketDataManager:
             return history
             
         return []
+

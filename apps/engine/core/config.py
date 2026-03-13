@@ -88,13 +88,15 @@ MOMENTUM_DECAY_HALF_LIFE_DAYS = 28  # Velocity halves every 14 days of inactivit
 # --- Financial Data Configuration ---
 FMP_API_KEY = os.getenv("FMP_API_KEY")
 FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "ibkr_proxy")
-FALLBACK_FINANCIAL_PROVIDER = os.getenv("FALLBACK_FINANCIAL_PROVIDER", "yfinance")
+FALLBACK_FINANCIAL_PROVIDER = os.getenv("FALLBACK_FINANCIAL_PROVIDER", "fmp")
+SECOND_FALLBACK_FINANCIAL_PROVIDER = os.getenv("SECOND_FALLBACK_FINANCIAL_PROVIDER", "yfinance")
 
 # --- Validation Guardrails ---
 MIN_MARKET_CAP_BILLIONS = 2.0
 MAX_PRICE_DEVIATION_PCT = 10.0
 MIN_TRADE_VALUE = 1000.0  # Minimum purchase/sell value for LLM-driven trades
 FINANCIAL_API_THROTTLE_SECONDS = float(os.getenv("FINANCIAL_API_THROTTLE_SECONDS", "2.0"))
+MARKET_DATA_RETRIES = int(os.getenv("MARKET_DATA_RETRIES", "2"))
 
 # --- IBKR Configuration ---
 IBKR_HOST = os.getenv("IBKR_HOST", "127.0.0.1")

@@ -68,9 +68,14 @@ export function TradeActivity({ trades, decisions }: { trades: any[], decisions:
                                                 </span>
                                             )}
                                             {isRejection && (
-                                                <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/30 text-rose-500 text-[10px] font-bold rounded-lg uppercase">
-                                                    Rejected
-                                                </span>
+                                                <>
+                                                    <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/30 text-rose-500 text-[10px] font-bold rounded-lg uppercase">
+                                                        Rejected
+                                                    </span>
+                                                    <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] font-bold rounded-lg uppercase">
+                                                        {item.model_name || 'Unknown model'}
+                                                    </span>
+                                                </>
                                             )}
                                         </div>
                                         <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">

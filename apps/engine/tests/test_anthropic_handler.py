@@ -19,7 +19,7 @@ async def test_run_tool_loop_strips_whitespace():
     # Run loop (should break after one iteration as no tool uses are present)
     await anthropic.run_tool_loop(
         raw_client=mock_client,
-        model_name="claude-3-haiku",
+        model_name="claude-haiku-4-5",
         messages=messages,
         max_tool_steps=1
     )

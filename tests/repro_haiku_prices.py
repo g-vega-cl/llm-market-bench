@@ -67,7 +67,7 @@ async def test_haiku_price_backfill():
                 mock_port.save_metrics = AsyncMock()
                 
                 # We need to mock MODELS to only include anthropic for this test
-                with patch('analyze.MODELS', [{"provider": "anthropic", "model": "claude-3-haiku-20240307"}]):
+                with patch('analyze.MODELS', [{"provider": "anthropic", "model": "claude-haiku-4-5"}]):
                     decisions, events, context = await analyze_chunks(chunks)
                     
                     print(f"Decisions: {decisions}")

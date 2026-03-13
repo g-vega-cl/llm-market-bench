@@ -36,8 +36,8 @@ async def test_market_data_manager_cache_hit():
 @pytest.mark.asyncio
 async def test_market_data_manager_cache_stale():
     """Test that manager fetches from provider if cache is stale."""
-    # 5 hours ago (default TTL is 4)
-    stale_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)).isoformat()
+    # 310 seconds ago (default TTL is 300)
+    stale_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=310)).isoformat()
     mock_cached_data = {
         "ticker": "TSLA",
         "price": 100.0,

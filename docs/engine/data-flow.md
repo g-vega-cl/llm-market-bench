@@ -477,7 +477,7 @@ sequenceDiagram
     Core->>LLM: 1. Send News Batch + Tools Definition
     LLM-->>Core: 2. Tool Call: get_stock_quote(ticker='TSLA')
     Core->>MDM: 3. Execute get_quote('TSLA')
-    MDM->>DB: 4. Check Cache (fresh within 4h?)
+    MDM->>DB: 4. Check Cache (fresh within 5m?)
     DB-->>MDM: 5. Cache Miss / Stale
     MDM->>API: 6. Fetch from Provider
     API-->>MDM: 7. Return Price/Market Cap
@@ -536,7 +536,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 
 #### Cache-First Logic:
 1.  **Check Persistence**: Query `market_data_cache` in Supabase.
-2.  **TTL Verification**: If `fetched_at` is older than 4 hours, proceed to fetch.
+2.  **TTL Verification**: If `fetched_at` is older than 5 minutes (configurable), proceed to fetch.
 3.  **External Fetch**: Hit the primary provider (typically `yfinance`) via the `FinancialProvider` interface.
 4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
 5.  **Update Cache & Teardown**: Upsert the fresh data back to `market_data_cache`, insert into `price_history`, and invoke `disconnect_all()` via the provider class to release any persistent resources.

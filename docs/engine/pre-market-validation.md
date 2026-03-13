@@ -57,7 +57,7 @@ The engine now uses a centralized `MarketDataManager` that handles all ticker qu
   - **Triple Fallback**: If the primary provider fails, the system automatically tries a first and then a second fallback provider (e.g., `ibkr_proxy` -> `fmp` -> `yfinance`).
   - **Retries**: Each provider in the chain is attempted a configurable number of times (Default: 2) with backoff before falling back.
   - **NaN Filter**: Automatically identifies and rejects `NaN` float values from providers, ensuring only valid numerical data is cached or used for validation.
-- **TTL**: Cached data in `market_data_cache` is considered fresh for **4 hours**.
+- **TTL**: Cached data in `market_data_cache` is considered fresh for **5 minutes** (configurable).
 - **Efficiency**: Reduces external API calls by $>90%$ for common tickers.
 - **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 
@@ -76,6 +76,7 @@ The following environment variables and constants control the validation behavio
 | `FALLBACK_FINANCIAL_PROVIDER` | `"fmp"` | First fallback data provider. |
 | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `"yfinance"` | Second fallback data provider. |
 | `MARKET_DATA_RETRIES` | `2` | Number of attempts per provider in the chain. |
+| `MARKET_DATA_CACHE_TTL_SECONDS` | `300` | Price cache duration (5 minutes). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration

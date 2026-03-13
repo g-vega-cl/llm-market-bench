@@ -16,9 +16,10 @@ from .providers.factory import get_financial_provider
 class MarketDataManager:
     """Manages market data retrieval with a database-backed cache."""
 
-    def __init__(self, cache_ttl_hours: int = 4):
+    def __init__(self, cache_ttl_seconds: Optional[int] = None):
+        from core.config import MARKET_DATA_CACHE_TTL_SECONDS
         self.client = get_supabase_client()
-        self.cache_ttl_hours = cache_ttl_hours
+        self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else MARKET_DATA_CACHE_TTL_SECONDS
         
         # Initialize providers in priority order
         from core.config import FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER
@@ -154,7 +155,7 @@ class MarketDataManager:
             now = datetime.datetime.now(datetime.timezone.utc)
             
             # Check if cache is stale
-            if (now - fetched_at).total_seconds() > (self.cache_ttl_hours * 3600):
+            if (now - fetched_at).total_seconds() > self.cache_ttl_seconds:
                 logger.debug(f"Cache entry for {ticker} is stale.")
                 return None
             

@@ -85,7 +85,7 @@ class TestAnalysisOrchestration:
         from core.models import DecisionsResponse
         from unittest.mock import MagicMock, patch
         
-        async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None):
+        async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
             # Return a DecisionsResponse object
             decisions = [
                 DecisionObject(
@@ -141,7 +141,7 @@ class TestAnalysisOrchestration:
         from core.models import DecisionsResponse
         from unittest.mock import MagicMock, patch
         
-        async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None):
+        async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
             decisions = [
                 DecisionObject(
                     signal="HOLD",

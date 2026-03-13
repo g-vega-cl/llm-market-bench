@@ -49,6 +49,7 @@ def mock_dependencies():
         mock_portfolio_instance.execute_trade = AsyncMock()
         mock_portfolio_instance.execute_trade.return_value = "trade-uuid-123"
         mock_portfolio_instance.save_metrics = AsyncMock()
+        mock_portfolio_instance.get_portfolio_summary = AsyncMock(return_value="Mocked Port Summary")
         
         # Setup metrics to avoid MagicMock comparison errors in main.py
         from execution.reg_t_validation import RegTMetrics

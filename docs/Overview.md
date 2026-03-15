@@ -52,7 +52,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 5. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. DeepSeek runs in **Thinking Mode** (CoT reasoning natively integrated into the tool loop). Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
+5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors.
+   - **DeepSeek Reasoning**: Runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context across tool iterations.
    - **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7. **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
@@ -85,7 +86,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis**. Crucially, it now **audits the agent's strategic reasoning** (e.g., "sell X to fund Y") for logical consistency. It also validates adherence to **Calendar & Seasonal Strategies** (Turn of the Month, Payday Anomaly, etc.) by analyzing the injected current date context.*
 
-*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous OpenAI/Anthropic patterns. Assistant text responses are automatically stripped of trailing whitespace to ensure compliance with strict API validation rules. The engine now correctly maps provider-specific roles (e.g., using 'model' for Gemini) to maintain session integrity during high-volume tool loops.*
+*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer uses **Modular Provider Handlers** (e.g., `openai.py`, `deepseek.py`, `anthropic.py`) to handle idiosyncratic behaviors like DeepSeek's reasoning preservation. It is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous patterns.*
 *   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **IBKR Proxy** (with YFinance fallback) if local data is missing for a new ticker. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
@@ -296,7 +297,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 | **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: `gpt-5-mini`) | Trading Analysis, Embeddings |
 |  | `ANTHROPIC_API_KEY` | Claude API Key (Model: `claude-haiku-4-5`) | Trading Analysis |
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
-|  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
+|  | `DEEPSEEK_API_KEY` | Dedicated handler for thinking mode & reasoning preservation | Trading Analysis |
 |  | `FMP_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
 |  | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of primary price data source |
 |  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `fmp`) | Selection of first fallback source |

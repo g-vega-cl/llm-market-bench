@@ -466,9 +466,13 @@ Content: Tesla stock expected to rally due to...
 
 ### Step 3.2: Parallel Multi-Step Tool Execution
 
-**File**: `apps/engine/core/llm/`
+**File**: `apps/engine/core/llm/handlers/`
 
-Each LLM provider is called in a loop. If a model wants to trade, it pauses to call the **Stock Tool**.
+Each LLM provider is processed via a **dedicated handler** to manage provider-specific quirks:
+- **`openai.py`**: Standard tool loop for GPT-4o, GPT-5-mini.
+- **`deepseek.py`**: Preserves `reasoning_content` in assistants' messages when tool calls are present (required by DeepSeek) and enables thinking mode.
+- **`anthropic.py`**: Handles XML-like tool blocks and web search.
+- **`gemini.py`**: Manages native Google Search grounding.
 
 ```mermaid
 sequenceDiagram
@@ -815,7 +819,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **D: Buying Power** | `cost <= buying_power` | Ensure margin compliance. |
 | E: Minimum Value | `Trade Cost > $1,000` | Prevent insignificant BUYS; waived for SELLS via tools. |
 | **F: SMA Floor** | `Projected SMA > 10% Eq` | Safety margin for Reg T. |
-| **G: Robustness** | `NaN & Fallback` | Reject `NaN` values from providers; use `average_cost_basis` if market data fails (price = 0 or missing) to prevent negative equity. Ensures atomic disconnect via generic `disconnect_all()` hook. |
+| **G: Fallback Path** | `Proxy -> FMP -> YF` | Corrected `FMP_API_KEY` ensures robust fallback when proxy is 503. |
 
 ```python
 # Validation Result

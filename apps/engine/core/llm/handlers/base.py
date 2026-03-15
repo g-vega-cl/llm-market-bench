@@ -44,4 +44,6 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_sell_75_percent_tool(args["ticker"], owner_id=model_name)
     elif name == "sell_100_percent":
         return await tools.execute_sell_100_percent_tool(args["ticker"], owner_id=model_name)
+    elif name == "search_related_tickers":
+        return await tools.execute_search_related_tickers_tool(args["theme"])
     return "Unknown tool"

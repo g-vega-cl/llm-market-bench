@@ -71,14 +71,17 @@ async def analyze_with_provider(
 
         # Tool execution loop (delegated to provider-specific handlers)
         raw_client = client.client
-        if provider in ["openai", "deepseek"]:
-            from core.llm.handlers import openai
-            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=True)  # Web search not fully supported in Chat API
+        if provider == "openai":
+            from .handlers import openai
+            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=False)
+        elif provider == "deepseek":
+            from .handlers import deepseek
+            await deepseek.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=False)
         elif provider == "anthropic":
-            from core.llm.handlers import anthropic
+            from .handlers import anthropic
             await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=True)  # Enable by default
         elif provider == "gemini":
-            from core.llm.handlers import gemini
+            from .handlers import gemini
             await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=True)  # Enable by default
 
         # Final structured extraction using Instructor

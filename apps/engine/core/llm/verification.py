@@ -85,15 +85,24 @@ async def verify_trading_decision(
         ]
 
         # 2. Select Verifier Tools based on Provider
-        if provider == "openai" or provider == "deepseek":
+        if provider == "openai":
             verifier_tools = [
                 tools.STOCK_TOOL_DEFINITION_OPENAI,
                 tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
                 tools.VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI,
                 tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI,
             ]
-            from core.llm.handlers.openai import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools)
+            from .handlers.openai import run_tool_loop
+            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
+        elif provider == "deepseek":
+            verifier_tools = [
+                tools.STOCK_TOOL_DEFINITION_OPENAI,
+                tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
+                tools.VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI,
+                tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI,
+            ]
+            from .handlers.deepseek import run_tool_loop
+            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
             
         elif provider == "anthropic":
             verifier_tools = [

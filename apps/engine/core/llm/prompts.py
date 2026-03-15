@@ -352,11 +352,26 @@ YOUR TASK:
 2. Compare the outcome to the original scenario analysis. Was the prediction correct?
 3. Identify the "Causal Mechanism" - what specifically about this event drove the movement?
 4. Formulate a 'Cause and Effect' summary that can be used as a frame of reference in the future.
-5. Identify relevant 'tags' for this relationship (e.g., "monetary policy", "geopolitics", "tech earnings").
+5. EXPANDED RESEARCH: Look beyond the S&P 500. Identify if this event had specific impacts on particular sectors (e.g., Private Credit, Mega-cap Tech, Energy) or specific companies (e.g., Blue Owl, JPMorgan, Nvidia). 
+   - If the event relates to liquidity, credit, or broad macro shifts, explicitly search for and document the ripple effects on related financial entities or supply chain bottle-necks.
+6. Identify relevant 'tags' for this relationship (e.g., "monetary policy", "geopolitics", "tech earnings", "private credit").
 
 Return a JSON object with:
-- 'analysis': A detailed breakdown of the cause and effect (2-3 paragraphs).
-- 'market_outcome': A concise summary of the actual market movement (e.g., "Tech stocks rallied 3% as rate fears subsided").
+- 'analysis': A detailed breakdown of the cause and effect (2-3 paragraphs), including sector-specific and company-specific details if applicable.
+- 'market_outcome': A concise summary of the actual market movement (e.g., "Private credit firms like Blue Owl saw increased volatility as liquidity tightens").
 - 'confidence': Your confidence in the causal link (0-100).
 - 'tags': A list of relevant strings.
 """
+
+TICKER_SUGGESTION_PROMPT = """You are a financial data researcher. 
+Given a market event, identify 3-5 relevant stock tickers or ETFs that would be most impacted (either directly or as a major sector proxy).
+
+EVENT SUMMARY: {event_summary}
+
+Think about:
+- Direct impact (e.g., if a company is mentioned).
+- Sector proxies (e.g., XLF for banks, XLK for tech).
+- Derivative plays (e.g., if a supply chain bottleneck is mentioned).
+- Competitors or peers.
+
+Return a JSON object with 'tickers' (a list of uppercase symbols) and 'reasoning' (a 1-sentence explanation)."""

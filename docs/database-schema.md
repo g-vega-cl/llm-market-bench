@@ -106,6 +106,16 @@ Stores reasoning and attribution for every LLM signal.
 - `model_provider`, `model_name` (TEXT): LLM attribution.
 - `created_at` (TIMESTAMPTZ): Entry timestamp.
 
+### `cause_and_effect`
+Stores bi-weekly retrospective audits of market events.
+- `id` (UUID): Primary key.
+- `event_id` (UUID): FK to `memories`.
+- `analysis` (TEXT): Detailed causal breakdown and ripple effects.
+- `market_outcome` (TEXT): Concise summary of actual market movement.
+- `confidence` (INT): Causal link confidence (0-100).
+- `tags` (TEXT[]): Classification labels.
+- `created_at` (TIMESTAMPTZ): Audit timestamp.
+
 ### `llm_reasoning_logs`
 Stores the full conversation history and tool traces for research and auditing.
 - `id` (UUID): Primary key.

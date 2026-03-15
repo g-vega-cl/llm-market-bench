@@ -70,7 +70,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 22. **Contrarian Agent:** Identifies crowded trades or missed risks.
 23. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
 24. **Government Tracking:** Monthly audit of incentives and policies.
-25. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays).
+25. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (LLM-based) to identify sector proxies and derivative play tickers for any market theme.
 26. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
 
 ### Phase 3: Market Execution (Sequential)

@@ -237,3 +237,18 @@ class CauseAndEffectResult(BaseModel):
     market_outcome: str = Field(..., description="Concise summary of actual market movement")
     confidence: int = Field(..., ge=0, le=100, description="Confidence in the causal link")
     tags: list[str] = Field(default_factory=list, description="Relevant tags for classification")
+class TickerSuggestion(BaseModel):
+    """Represents a list of suggested tickers for a market event.
+
+    Attributes:
+        tickers: List of stock/ETF ticker symbols.
+        reasoning: Brief explanation of why these tickers are relevant.
+    """
+    tickers: list[str] = Field(..., description="List of stock or ETF ticker symbols")
+    reasoning: str = Field(..., description="Brief explanation of relevance")
+
+    @field_validator("tickers")
+    @classmethod
+    def upper_case_tickers(cls, v: list[str]) -> list[str]:
+        """Normalize all tickers to uppercase."""
+        return [t.upper() for t in v]

@@ -3,6 +3,27 @@
 from execution.market_data import MarketDataManager
 from core.db import get_supabase_client
 
+SEARCH_RELATED_TICKERS_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "search_related_tickers",
+        "description": (
+            "Given a market theme or event, identify relevant stock tickers or ETFs "
+            "that would be most impacted."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "theme": {
+                    "type": "string",
+                    "description": "The market theme, concept, or event (e.g., 'Private Credit', 'AI demand surge').",
+                }
+            },
+            "required": ["theme"],
+        },
+    },
+}
+
 STOCK_TOOL_DEFINITION_OPENAI = {
     "type": "function",
     "function": {
@@ -21,6 +42,24 @@ STOCK_TOOL_DEFINITION_OPENAI = {
             },
             "required": ["ticker"],
         },
+    },
+}
+
+SEARCH_RELATED_TICKERS_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "search_related_tickers",
+    "description": (
+        "Given a market theme or event, identify relevant stock tickers or ETFs "
+        "that would be most impacted."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "theme": {
+                "type": "string",
+                "description": "The market theme, concept, or event (e.g., 'Private Credit', 'AI demand surge').",
+            }
+        },
+        "required": ["theme"],
     },
 }
 
@@ -390,6 +429,24 @@ SELL_100_PERCENT_TOOL_DEFINITION_ANTHROPIC = {
     },
 }
 
+
+SEARCH_RELATED_TICKERS_TOOL_DEFINITION_GEMINI = {
+    "name": "search_related_tickers",
+    "description": (
+        "Given a market theme or event, identify relevant stock tickers or ETFs "
+        "that would be most impacted."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "theme": {
+                "type": "string",
+                "description": "The market theme, concept, or event (e.g., 'Private Credit', 'AI demand surge').",
+            }
+        },
+        "required": ["theme"],
+    },
+}
 
 STOCK_TOOL_DEFINITION_GEMINI = {
     "name": "get_stock_quote",
@@ -791,3 +848,27 @@ async def execute_sell_75_percent_tool(ticker: str, owner_id: str) -> str:
 
 async def execute_sell_100_percent_tool(ticker: str, owner_id: str) -> str:
     return await _execute_sell_percentage_tool(ticker, owner_id, 1.0)
+async def execute_search_related_tickers_tool(theme: str) -> str:
+    """Uses LLM to search for tickers related to a theme."""
+    from core.llm import get_gemini_client, prompts
+    from core.config import GEMINI_MODEL
+    from core.models import TickerSuggestion
+    
+    client = get_gemini_client()
+    try:
+        prompt = prompts.TICKER_SUGGESTION_PROMPT.format(event_summary=theme)
+        resp = client.chat.completions.create(
+            model=GEMINI_MODEL,
+            response_model=TickerSuggestion,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        import asyncio
+        if asyncio.iscoroutine(resp):
+            resp = await resp
+            
+        return (
+            f"Suggested Tickers for '{theme}': {', '.join(resp.tickers)}\n"
+            f"Reasoning: {resp.reasoning}"
+        )
+    except Exception as e:
+        return f"Error suggesting tickers for '{theme}': {str(e)}"

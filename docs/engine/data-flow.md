@@ -1011,6 +1011,18 @@ Total Pipeline Time: ~10-12 seconds
 4. **Vector Indexing**: HNSW index on pgvector for millisecond retrieval
 5. **Attribution Traceability**: `source_id` links every dollar traded back to a specific sentence in a newsletter
 
+## Phase 9: Cause & Effect Analysis (Historical Audit)
+
+**File**: `apps/engine/analysis/cause_and_effect_analysis.py`
+
+Bi-weekly (Tuesdays & Fridays), the engine performs a retrospective audit of market events to track predicted vs actual impact.
+
+1.  **Semantic Deduplication**: Before analysis, the engine checks the `cause_and_effect` table and `memories` table (via `find_similar_memory`) to ensure that identical narratives aren't being re-analyzed within a 7-day window.
+2.  **Dynamic Ticker Discovery**: The engine uses a lightweight LLM (Gemini Flash) to identify which stock tickers and sector ETFs would have been most impacted by the event (e.g., "Private Credit" -> JPM, OWL).
+3.  **Historical Comparison**: The LLM compares the original scenario analysis (how we thought the event would resolve) with actual market data provided by the `MarketDataManager` to formulate an audit record.
+
+**Documentation**: [cause-and-effect-analysis.md](./cause-and-effect-analysis.md)
+
 ---
 
 ## Files Referenced

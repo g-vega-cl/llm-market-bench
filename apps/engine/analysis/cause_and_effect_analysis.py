@@ -11,8 +11,30 @@ from typing import List, Any
 from core.config import logger, GEMINI_MODEL
 from core.db import get_supabase_client
 from core.llm import get_gemini_client, prompts
-from core.models import CauseAndEffectResult
+from core.models import CauseAndEffectResult, TickerSuggestion
 from execution.market_data import MarketDataManager
+from memory.store import find_similar_memory
+
+async def extract_related_tickers(event_summary: str) -> list[str]:
+    """Uses LLM to suggest relevant tickers for an event."""
+    client = get_gemini_client()
+    try:
+        prompt = prompts.TICKER_SUGGESTION_PROMPT.format(event_summary=event_summary)
+        resp = client.chat.completions.create(
+            model=GEMINI_MODEL,
+            response_model=TickerSuggestion,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        # Handle instructor's potential sync/async return
+        import asyncio
+        if asyncio.iscoroutine(resp):
+            resp = await resp
+            
+        logger.info(f"LLM suggested tickers for event: {resp.tickers} ({resp.reasoning})")
+        return resp.tickers
+    except Exception as e:
+        logger.error(f"Failed to suggest tickers: {e}")
+        return []
 
 async def perform_cause_and_effect_analysis():
     """Analyzes recent market events and their impact."""
@@ -44,17 +66,31 @@ async def perform_cause_and_effect_analysis():
         scenario_analysis = meta.get("scenario_analysis", "None provided.")
         created_at = datetime.fromisoformat(event["created_at"])
         
-        # 2. Check if analysis already exists
+        # 2. Check if analysis already exists (exact ID or semantic similarity)
         existing = sb_client.table("cause_and_effect").select("id").filter("event_id", "eq", event_id).execute()
         if existing.data:
-            logger.debug(f"Skipping event {event_id}: Analysis already exists.")
+            logger.debug(f"Skipping event {event_id}: Analysis already exists (exact).")
             continue
+        
+        # Semantic deduplication: check if a very similar event was already analyzed
+        # We look back 7 days to avoid repeating the same market narrative analysis
+        similar_event_id = find_similar_memory(content, threshold=0.90, hours=168)
+        if similar_event_id:
+            # Check if THIS similar event already has a cause_and_effect entry
+            existing_similar = sb_client.table("cause_and_effect").select("id").filter("event_id", "eq", similar_event_id).execute()
+            if existing_similar.data:
+                logger.info(f"Skipping event {event_id}: Semantic duplicate of {similar_event_id} already analyzed.")
+                continue
 
         # 3. Fetch market performance data since event creation
         # We'll check S&P 500 (SPY) and maybe some sectors if mentioned
         # For now, let's keep it simple with SPY and any ticker mentioned in the content/metadata
         tickers_to_check = ["SPY", "QQQ"]
         
+        # dynamic ticker extraction via LLM
+        suggested_tickers = await extract_related_tickers(content)
+        tickers_to_check.extend(suggested_tickers)
+
         # Blacklist of common words that look like tickers but aren't
         TICKER_BLACKLIST = {"EVENT", "AI", "US", "A", "THE", "AND", "MARKET", "GDP", "CPI", "FDA", "SEC", "FED"}
         

@@ -7,13 +7,54 @@ from core.llm.handlers import base
 
 logger = logging.getLogger("engine")
 
+# Default function tools for OpenAI
+DEFAULT_OPENAI_TOOLS = [
+    tools.STOCK_TOOL_DEFINITION_OPENAI,
+    tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
+    tools.POSITION_PNL_TOOL_DEFINITION_OPENAI,
+    tools.SELL_10_PERCENT_TOOL_DEFINITION_OPENAI,
+    tools.SELL_25_PERCENT_TOOL_DEFINITION_OPENAI,
+    tools.SELL_33_PERCENT_TOOL_DEFINITION_OPENAI,
+    tools.SELL_50_PERCENT_TOOL_DEFINITION_OPENAI,
+    tools.SELL_75_PERCENT_TOOL_DEFINITION_OPENAI,
+    tools.SELL_100_PERCENT_TOOL_DEFINITION_OPENAI,
+]
+
+# OpenAI web search tool (native tool, not a function)
+# Note: OpenAI web search requires search-enabled models in Chat Completions API:
+# - gpt-5-search-api
+# - gpt-4o-search-preview  
+# - gpt-4o-mini-search-preview
+# Or use the Responses API with any supported model.
+# See: https://developers.openai.com/api/docs/models/gpt-5
+WEB_SEARCH_TOOL_OPENAI = {
+    "type": "web_search",
+    "name": "web_search",
+}
+
+
+def _build_tool_list(enable_web_search: bool = False) -> list:
+    """Builds the tool list for OpenAI API.
+    
+    Args:
+        enable_web_search: Whether to include web search tool.
+        
+    Returns:
+        List of tool definitions.
+    """
+    if enable_web_search:
+        return DEFAULT_OPENAI_TOOLS + [WEB_SEARCH_TOOL_OPENAI]
+    return DEFAULT_OPENAI_TOOLS
+
+
 async def run_tool_loop(
-    raw_client, 
-    model_name: str, 
-    messages: list, 
+    raw_client,
+    model_name: str,
+    messages: list,
     provider: str,
     max_tool_steps: int = 5,
-    override_tools: list | None = None
+    override_tools: list | None = None,
+    enable_web_search: bool = False
 ) -> None:
     """Runs the tool execution loop for OpenAI/DeepSeek.
 
@@ -23,28 +64,20 @@ async def run_tool_loop(
         messages: The message history (modified in-place).
         provider: The provider name.
         max_tool_steps: Maximum iterations.
+        override_tools: Optional list of tools to override defaults.
+        enable_web_search: Whether to enable native web search tool.
     """
     import typing
     for _ in range(max_tool_steps):
         args: typing.Dict[str, typing.Any] = {
             "model": model_name,
             "messages": messages,
-            "tools": override_tools or [
-                tools.STOCK_TOOL_DEFINITION_OPENAI,
-                tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
-                tools.POSITION_PNL_TOOL_DEFINITION_OPENAI,
-                tools.SELL_10_PERCENT_TOOL_DEFINITION_OPENAI,
-                tools.SELL_25_PERCENT_TOOL_DEFINITION_OPENAI,
-                tools.SELL_33_PERCENT_TOOL_DEFINITION_OPENAI,
-                tools.SELL_50_PERCENT_TOOL_DEFINITION_OPENAI,
-                tools.SELL_75_PERCENT_TOOL_DEFINITION_OPENAI,
-                tools.SELL_100_PERCENT_TOOL_DEFINITION_OPENAI,
-            ]
+            "tools": override_tools or _build_tool_list(enable_web_search),
         }
-        
+
         if provider == "deepseek" and "reasoner" in model_name:
             args["extra_body"] = {"thinking": {"type": "enabled"}}
-            
+
             # DeepSeek recommends clearing reasoning_content from previous turns
             for msg in messages:
                 if isinstance(msg, dict) and "reasoning_content" in msg:
@@ -59,7 +92,7 @@ async def run_tool_loop(
             break
 
         msg = resp.choices[0].message
-        
+
         # Append the raw response object or dict correctly preserving reasoning_content
         if hasattr(msg, "reasoning_content"):
             messages.append({
@@ -77,7 +110,7 @@ async def run_tool_loop(
         for tool_call in msg.tool_calls:
             call_args = json.loads(tool_call.function.arguments)
             result = await base.execute_tool(tool_call.function.name, call_args, model_name)
-            
+
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,

@@ -12,8 +12,10 @@ CALENDAR & SEASONAL STRATEGIES:
 """
 
 ANALYSIS_SYSTEM_PROMPT = (
-    "You are a hedge fund trading algorithm. Use tools to verify market data "
-    "and return structured decisions."
+    "You are a hedge fund trading algorithm with access to real-time web search. "
+    "Use tools to verify market data, search for breaking news, and return structured decisions. "
+    "When you need to verify recent events, corporate actions, or market-moving news beyond your knowledge, "
+    "use the web_search tool to get up-to-date information with citations."
 )
 
 ANALYSIS_USER_PROMPT_TEMPLATE = """You are a hedge fund trading algorithm. Next you will see a batch of financial news snippets and your current portfolio (if any).
@@ -32,6 +34,12 @@ CRITICAL: The 'Historical Context' section includes relevant past events and **T
 CRITICAL (HARD ENFORCEMENT): You MUST actively execute the `get_stock_quote` tool via function calling for ANY ticker you intend to BUY or SELL. Do NOT just output text saying you called it!
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price to prevent hallucinations. If you do not formally accomplish this tool call, your trade will be REJECTED.
 If the tool returns an error or shows the ticker is illiquid, DO NOT recommend a trade for it.
+
+WEB SEARCH CAPABILITY:
+- You have access to **real-time web search** via the `web_search` tool.
+- Use web search to: (1) verify breaking news mentioned in snippets, (2) check for corporate actions (earnings, splits, M&A), (3) confirm government policy announcements, (4) fact-check claims before trading.
+- When you use web search, cite the sources in your reasoning. The search results will include URLs and cited text.
+- Do NOT overuse web search - use it strategically when you need to verify time-sensitive information.
 
 SOPHISTICATED TRADING LOGIC:
 1. **Is it possible to make a profitable trade based on this?**

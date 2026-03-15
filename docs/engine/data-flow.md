@@ -443,10 +443,14 @@ aggregated_context = """
 **File**: `apps/engine/core/llm/`
 
 ```python
-prompt = f"""You are a hedge fund trading algorithm. 
-CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL. 
+prompt = f"""You are a hedge fund trading algorithm.
+CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL.
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
 Use `sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs; hard-enforced by the engine).
+
+WEB SEARCH CAPABILITY: You have access to real-time web search via the `web_search` tool.
+Use it to verify breaking news, check corporate actions (earnings, splits, M&A), confirm government policy announcements, and fact-check claims before trading.
+When you use web search, cite the sources in your reasoning.
 
 ### Historical Context:
 {aggregated_context}
@@ -486,6 +490,56 @@ sequenceDiagram
     Core->>LLM: 10. Send Tool Result back to History
     LLM-->>Core: 11. Final Decision (Verified & Structured)
 ```
+
+### Step 3.2a: Web Search Tool Execution (Optional)
+
+**File**: `apps/engine/core/llm/handlers/anthropic.py`, `gemini.py`
+
+For **Anthropic Claude** and **Google Gemini**, agents can invoke native web search tools during the tool loop:
+
+```mermaid
+sequenceDiagram
+    participant LLM as LLM (Claude/Gemini)
+    participant Core as Engine Core
+    participant API as Provider API (Anthropic/Google)
+    participant Web as Real-Time Web
+
+    Core->>LLM: 1. Send Prompt + Web Search Tool Enabled
+    LLM-->>Core: 2. Decision: Search Needed
+    Core->>API: 3. Invoke web_search/google_search
+    API->>Web: 4. Execute Search Query
+    Web-->>API: 5. Return Search Results
+    API-->>Core: 6. Results with Citations (URL, Title, Snippet)
+    Core->>LLM: 7. Append Results to Context
+    LLM-->>Core: 8. Final Decision with Citations
+```
+
+**Provider-Specific Implementation:**
+
+| Provider | Tool Name | Response Format | Citations | Requirements |
+|----------|-----------|-----------------|-----------|--------------|
+| **Anthropic** | `web_search_20250305` | `web_search_tool_result` blocks | ✅ `cited_text`, `url`, `title` | Any Claude model (Haiku 4.5+) |
+| **Gemini** | `google_search` | `groundingMetadata` | ✅ `groundingChunks`, `groundingSupports` | Any Gemini 2.5+/3.x model |
+| **OpenAI** | `web_search` | `web_search_call` + annotations | ✅ `url_citation` | **Search-enabled model** (`gpt-5-search-api`, `gpt-4o-search-preview`) or Responses API |
+
+**Configuration:**
+```bash
+ENABLE_ANTHROPIC_WEB_SEARCH=true      # Enable for Claude
+ENABLE_GEMINI_WEB_SEARCH=true         # Enable for Gemini
+ANTHROPIC_WEB_SEARCH_VERSION="web_search_20250305"  # ZDR-compliant version
+ANTHROPIC_MAX_WEB_SEARCHES=3          # Limit searches per request
+```
+
+**Use Cases:**
+- Verifying breaking news mentioned in newsletters
+- Checking corporate actions (earnings dates, M&A announcements, stock splits)
+- Confirming government policy announcements (budget allocations, regulatory changes)
+- Fact-checking claims before executing trades
+
+**Cost Control:**
+- Web searches are **disabled by default** in the verification pipeline (focused validation)
+- `ANTHROPIC_MAX_WEB_SEARCHES` limits searches per request
+- Agents are prompted to use search strategically, not for every query
 
 ### Step 3.3: Structured Extraction (Instructor)
 

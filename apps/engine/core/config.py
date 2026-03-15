@@ -109,3 +109,16 @@ IBKR_PROXY_URL = os.getenv("IBKR_PROXY_URL")
 # The engine will use this service role key to sign a JWT for the proxy
 # unless a specific IBKR_PROXY_TOKEN is provided.
 IBKR_PROXY_TOKEN = os.getenv("IBKR_PROXY_TOKEN")
+
+# --- Web Search Configuration ---
+# Enable web search grounding for LLM agents
+ENABLE_ANTHROPIC_WEB_SEARCH = os.getenv("ENABLE_ANTHROPIC_WEB_SEARCH", "true").lower() == "true"
+ENABLE_GEMINI_WEB_SEARCH = os.getenv("ENABLE_GEMINI_WEB_SEARCH", "true").lower() == "true"
+ENABLE_OPENAI_WEB_SEARCH = os.getenv("ENABLE_OPENAI_WEB_SEARCH", "false").lower() == "true"  # Limited support in Chat API
+
+# Anthropic web search tool version
+# Use 'web_search_20250305' for ZDR compliance, 'web_search_20260209' for dynamic filtering
+ANTHROPIC_WEB_SEARCH_VERSION = os.getenv("ANTHROPIC_WEB_SEARCH_VERSION", "web_search_20250305")
+
+# Maximum web searches per request
+ANTHROPIC_MAX_WEB_SEARCHES = int(os.getenv("ANTHROPIC_MAX_WEB_SEARCHES", "3"))

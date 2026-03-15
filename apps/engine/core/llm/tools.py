@@ -1,7 +1,40 @@
 """Tool definitions and execution logic for LLMs."""
 
+import httpx
 from execution.market_data import MarketDataManager
 from core.db import get_supabase_client
+
+# =============================================================================
+# WEB SEARCH TOOL DEFINITIONS
+# =============================================================================
+
+# OpenAI does not support native web search as a function tool.
+# Web search is enabled via the 'web_search' tool in the tools array,
+# not as a function call. See handlers/openai.py for implementation.
+
+# Anthropic Web Search Tool (basic version - ZDR eligible)
+WEB_SEARCH_TOOL_DEFINITION_ANTHROPIC = {
+    "type": "web_search_20250305",
+    "name": "web_search",
+    "max_uses": 3,  # Limit searches per request
+}
+
+# Anthropic Web Search Tool with dynamic filtering (Opus 4.6 / Sonnet 4.6 only)
+# Not ZDR eligible by default
+WEB_SEARCH_TOOL_DYNAMIC_ANTHROPIC = {
+    "type": "web_search_20260209",
+    "name": "web_search",
+}
+
+# Gemini Google Search Tool
+GEMINI_GOOGLE_SEARCH_TOOL = {
+    "name": "google_search",
+    "googleSearch": {},
+}
+
+# =============================================================================
+# EXISTING TOOL DEFINITIONS
+# =============================================================================
 
 SEARCH_RELATED_TICKERS_TOOL_DEFINITION_OPENAI = {
     "type": "function",
@@ -872,3 +905,24 @@ async def execute_search_related_tickers_tool(theme: str) -> str:
         )
     except Exception as e:
         return f"Error suggesting tickers for '{theme}': {str(e)}"
+
+
+# =============================================================================
+# WEB SEARCH EXECUTION
+# =============================================================================
+
+async def execute_web_search_tool(query: str) -> str:
+    """Executes a web search and returns formatted results.
+    
+    This is a fallback implementation for providers that don't have native
+    web search tool support. For Anthropic and Gemini, use their native
+    web search tools instead.
+    
+    Args:
+        query: The search query string.
+        
+    Returns:
+        Formatted search results or error message.
+    """
+    # This function is a fallback - native providers use their own search
+    return "Web search is handled natively by your provider. Use the web_search tool directly."

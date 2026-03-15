@@ -6,6 +6,8 @@
 
 An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Every morning, they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
 
+**New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
+
 ### Why It Matters
 
 * **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
@@ -51,6 +53,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 2: Consensus & Attribution
 5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. DeepSeek runs in **Thinking Mode** (CoT reasoning natively integrated into the tool loop). Agents now identify countries and map them to liquid ETFs (e.g., Japan -> EWJ, Brazil -> EWZ) and formulate long-term strategy reasoning.
+   - **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7. **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
 8. **Event Consensus:** Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
@@ -309,6 +312,10 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
+|  | `ENABLE_ANTHROPIC_WEB_SEARCH` | Enable Anthropic web search (Default: true) | Real-time news verification |
+|  | `ENABLE_GEMINI_WEB_SEARCH` | Enable Gemini Google Search (Default: true) | Real-time news verification |
+|  | `ANTHROPIC_WEB_SEARCH_VERSION` | Tool version: `web_search_20250305` or `web_search_20260209` | ZDR compliance vs dynamic filtering |
+|  | `ANTHROPIC_MAX_WEB_SEARCHES` | Max searches per request (Default: 3) | Cost control |
 | **Agents** | (Automatic) | The system automatically processes post-mortems and contrarian signals. | Feedback Loop |
 | **Web** | `VITE_SUPABASE_URL` | Supabase API URL (Exposed to Browser) | Frontend Auth & Data Fetching |
 |  | `VITE_SUPABASE_ANON_KEY` | Supabase Anon Key (Exposed to Browser) | Frontend Auth & Data Fetching |

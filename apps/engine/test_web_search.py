@@ -8,12 +8,15 @@ This script tests web search functionality across all supported providers:
 
 Usage:
     python test_web_search.py
+    pytest test_web_search.py
 """
 
 import asyncio
 import logging
 import os
 import sys
+
+import pytest
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -33,6 +36,7 @@ logging.basicConfig(
 logger = logging.getLogger("web_search_test")
 
 
+@pytest.mark.asyncio
 async def test_anthropic_web_search():
     """Test Anthropic web search tool."""
     logger.info("=" * 60)
@@ -83,6 +87,7 @@ async def test_anthropic_web_search():
         await clients.close_client(client, "anthropic")
 
 
+@pytest.mark.asyncio
 async def test_gemini_web_search():
     """Test Gemini Google Search grounding."""
     logger.info("=" * 60)
@@ -136,6 +141,7 @@ async def test_gemini_web_search():
         await clients.close_client(client, "gemini")
 
 
+@pytest.mark.asyncio
 async def test_anthropic_web_search_with_citations():
     """Test Anthropic web search and verify citation handling."""
     logger.info("=" * 60)

@@ -92,7 +92,20 @@ async def run_tool_loop(
             logger.warning(f"Tool execution failed for anthropic/{model_name}, falling back to basic analysis: {e}")
             break
 
-        # Append assistant response as a structured dict
+        # Check for function tool calls (client-side tools that we need to execute)
+        tool_uses = [c for c in resp.content if c.type == "tool_use"]
+
+        # Check for server tool calls (web_search - executed server-side by Anthropic)
+        server_tool_uses = [c for c in resp.content if c.type == "server_tool_use"]
+
+        # Log server tool usage for visibility (web searches performed)
+        for server_tool in server_tool_uses:
+            logger.info(f"Server tool executed by Anthropic: {server_tool.name}")
+
+        # Build assistant message content
+        # IMPORTANT: Do NOT include server_tool_use blocks in message history
+        # Anthropic executes these server-side and they don't need tool_result blocks
+        # Including them in history causes "tool_use without tool_result" errors
         assistant_content = []
         for content_block in resp.content:
             if content_block.type == "text":
@@ -100,50 +113,35 @@ async def run_tool_loop(
                 text = content_block.text.rstrip() if content_block.text else ""
                 assistant_content.append({"type": "text", "text": text})
             elif content_block.type == "tool_use":
+                # Only include function tool calls (client-side tools)
                 assistant_content.append({
                     "type": "tool_use",
                     "id": content_block.id,
                     "name": content_block.name,
                     "input": content_block.input,
                 })
-            elif content_block.type == "server_tool_use":
-                # Native server tool (e.g., web_search)
-                assistant_content.append({
-                    "type": "server_tool_use",
-                    "id": content_block.id,
-                    "name": content_block.name,
-                    "input": content_block.input,
-                })
+            # Skip server_tool_use blocks - they are internal to Anthropic's server
 
         messages.append({"role": "assistant", "content": assistant_content})
 
-        # Check for function tool calls
-        tool_uses = [c for c in resp.content if c.type == "tool_use"]
-        
-        # Check for server tool calls (web_search)
-        server_tool_uses = [c for c in resp.content if c.type == "server_tool_use"]
-
-        if not tool_uses and not server_tool_uses:
+        # Only break if no function tool calls (server tools don't require our action)
+        if not tool_uses:
             break
 
-        # Handle server tool results (web_search returns results directly in response)
-        for server_tool in server_tool_uses:
-            logger.info(f"Server tool invoked: {server_tool.name}")
-            # Web search results are embedded in the response content blocks
-            # We don't need to execute anything - Claude handles it natively
-            # Just log for attribution
+        # Collect tool results for function calls only
+        tool_results_content = []
 
         # Handle function tool calls
         for tool_use in tool_uses:
             result = await base.execute_tool(tool_use.name, tool_use.input, model_name)
+            tool_results_content.append({
+                "type": "tool_result",
+                "tool_use_id": tool_use.id,
+                "content": result,
+            })
 
+        if tool_results_content:
             messages.append({
                 "role": "user",
-                "content": [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": tool_use.id,
-                        "content": result,
-                    }
-                ],
+                "content": tool_results_content,
             })

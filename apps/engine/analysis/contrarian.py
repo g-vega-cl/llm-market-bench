@@ -82,9 +82,11 @@ async def run_contrarian_analysis(
     )
 
     try:
+        from core.models import ContrarianAgentResponse
+        # Use ContrarianAgentResponse to handle Gemini's tendency to emit multiple tool call blocks
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
-            response_model=DecisionsResponse,
+            response_model=ContrarianAgentResponse,
             messages=[
                 {"role": "system", "content": prompts.CONTRARIAN_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
@@ -94,9 +96,22 @@ async def run_contrarian_analysis(
 
         import asyncio
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            final_resp = await resp_awaitable
+            wrapper = await resp_awaitable
         else:
-            final_resp = resp_awaitable
+            wrapper = resp_awaitable
+
+        if not wrapper or not wrapper.responses:
+             return [], []
+             
+        # Take the first non-empty response block
+        final_resp = None
+        for r in wrapper.responses:
+            if r.decisions or r.macro_events:
+                final_resp = r
+                break
+        
+        if not final_resp:
+            final_resp = wrapper.responses[0]
 
         # Inject model info
         for d in final_resp.decisions:

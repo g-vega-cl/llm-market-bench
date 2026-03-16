@@ -37,36 +37,27 @@ async def log_reasoning_trace(
             processed_response = response.dict()
 
         # Ensure prompt is serializable
-        serializable_prompt = []
-        for m in prompt:
-            if isinstance(m, dict):
-                serializable_prompt.append(m)
-            elif hasattr(m, "role") and hasattr(m, "parts"):
-                # Handle Google GenAI Content objects
-                parts = []
-                for part in m.parts:
-                    if hasattr(part, "text") and part.text:
-                        parts.append({"text": part.text})
-                    elif hasattr(part, "function_call") and part.function_call:
-                        parts.append({
-                            "function_call": {
-                                "name": part.function_call.name,
-                                "args": part.function_call.args
-                            }
-                        })
-                    elif hasattr(part, "function_response") and part.function_response:
-                        parts.append({
-                            "function_response": {
-                                "name": part.function_response.name,
-                                "response": part.function_response.response
-                            }
-                        })
-                    elif hasattr(part, "thought") and part.thought:
-                        parts.append({"thought": part.thought})
-                serializable_prompt.append({"role": m.role, "parts": parts})
+        def sterilize_data(obj):
+            if isinstance(obj, dict):
+                return {k: sterilize_data(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [sterilize_data(i) for i in obj]
+            elif hasattr(obj, "model_dump"):
+                return sterilize_data(obj.model_dump())
+            elif hasattr(obj, "dict"):
+                return sterilize_data(obj.dict())
+            elif hasattr(obj, "__dict__"):
+                # Handle generic objects by taking their dict representation
+                return {k: sterilize_data(v) for k, v in obj.__dict__.items() if not k.startswith('_')}
+            elif hasattr(obj, "role") and hasattr(obj, "parts"):
+                # Handle Google GenAI Content objects explicitly if needed, but the logic above should cover most
+                return str(obj)
+            elif isinstance(obj, (str, int, float, bool, type(None))):
+                return obj
             else:
-                # Fallback for other complex objects
-                serializable_prompt.append({"role": getattr(m, "role", "unknown"), "content": str(m)})
+                return str(obj)
+
+        serializable_prompt = sterilize_data(prompt)
 
         payload = {
             "task_type": task_type,

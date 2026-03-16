@@ -522,9 +522,19 @@ sequenceDiagram
 
 | Provider | Tool Name | Response Format | Citations | Requirements |
 |----------|-----------|-----------------|-----------|--------------|
-| **Anthropic** | `web_search_20250305` | `web_search_tool_result` blocks | ✅ `cited_text`, `url`, `title` | Any Claude model (Haiku 4.5+) |
+| **Anthropic** | `web_search_20250305` | Server-side execution, results in response text | ✅ `cited_text`, `url`, `title` | Any Claude model (Haiku 4.5+) |
 | **Gemini** | `google_search` | `groundingMetadata` | ✅ `groundingChunks`, `groundingSupports` | Any Gemini 2.5+/3.x model |
 | **OpenAI** | `web_search` | `web_search_call` + annotations | ✅ `url_citation` | **Search-enabled model** (`gpt-5-search-api`, `gpt-4o-search-preview`) or Responses API |
+
+**Server Tool Behavior (Anthropic):**
+
+Anthropic's web search is a **server tool** - it executes entirely on Anthropic's servers. The handler:
+- Does **NOT** execute anything client-side
+- Does **NOT** send `tool_result` blocks back
+- Does **NOT** record `server_tool_use` in message history (internal to Anthropic)
+- Receives search results automatically incorporated into response text with citations
+
+See [WEB_SEARCH.md](./WEB_SEARCH.md) for detailed implementation.
 
 **Configuration:**
 ```bash

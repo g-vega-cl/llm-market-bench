@@ -171,19 +171,34 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
         # 1. Handle dictionaries (OpenAI, Anthropic, Instructor-formatted)
         if isinstance(m, dict):
             # OpenAI style tool calls
-            if m.get("tool_calls"):
-                for tc in m["tool_calls"]:
-                    calls.append((tc["function"]["name"], tc["function"].get("arguments", "{}")))
+            tool_calls = m.get("tool_calls")
+            if tool_calls:
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        func = tc.get("function", {})
+                        calls.append((func.get("name"), func.get("arguments", "{}")))
+                    else:
+                        calls.append((getattr(tc.function, "name", None), getattr(tc.function, "arguments", "{}")))
             # Anthropic style tool calls (content list)
             elif isinstance(m.get("content"), list):
                 for part in m["content"]:
                     if isinstance(part, dict) and part.get("type") == "tool_use":
-                        calls.append((part["name"], part.get("input", {})))
-        # 2. Handle native Google types (Gemini)
-        elif hasattr(m, "parts"):
+                        calls.append((part.get("name"), part.get("input", {})))
+        
+        # Use getattr to be safe with different object types
+        elif getattr(m, "parts", None):
+            # Gemini native type
             for part in m.parts:
-                if hasattr(part, "function_call") and part.function_call:
-                    calls.append((part.function_call.name, part.function_call.args))
+                f_call = getattr(part, "function_call", None)
+                if f_call:
+                    calls.append((f_call.name, f_call.args))
+        
+        elif getattr(m, "tool_calls", None):
+            # OpenAI/DeepSeek native type
+            for tc in m.tool_calls:
+                func = getattr(tc, "function", None)
+                if func:
+                    calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
                     
         for name, args in calls:
             # args can be a string (JSON) or a dictionary

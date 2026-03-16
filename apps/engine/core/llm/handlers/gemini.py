@@ -43,9 +43,12 @@ def _build_gemini_tools(enable_google_search: bool = False) -> list:
     if function_tools:
         gemini_tools.append(types.Tool(function_declarations=function_tools))
     
-    # Add Google Search grounding
-    if enable_google_search:
+    # Add Google Search grounding ONLY if NO function tools are present
+    # Combining them is restricted in the GenAI API
+    if enable_google_search and not function_tools:
         gemini_tools.append(types.Tool(google_search={}))
+    elif enable_google_search and function_tools:
+        logger.debug("Skipping Gemini Google Search because function tools are present (API Restriction)")
     
     return gemini_tools
 

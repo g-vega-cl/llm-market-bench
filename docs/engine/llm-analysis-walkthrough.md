@@ -31,7 +31,7 @@ Claude and Gemini agents can invoke native web search tools to access real-time 
 
 | Provider | Tool | Description | Requirements |
 |----------|------|-------------|--------------|
-| **Anthropic** | `web_search_20250305` | Basic web search (ZDR-compliant). Returns `web_search_tool_result` with citations. | Any Claude model (Haiku 4.5+) |
+| **Anthropic** | `web_search_20250305` | Basic web search (ZDR-compliant). Results incorporated into response with citations. | Any Claude model (Haiku 4.5+) |
 | **Anthropic** | `web_search_20260209` | Dynamic filtering (Opus 4.6/Sonnet 4.6). Claude filters results before loading into context. | Opus 4.6 or Sonnet 4.6 |
 | **Gemini** | `google_search` | Grounding with Google Search. Returns `groundingMetadata` with source URLs and text segments. | Gemini 2.5+/3.x |
 | **OpenAI** | `web_search` | Native web search with citations. | **Search-enabled model** (`gpt-5-search-api`, `gpt-4o-search-preview`) or Responses API |

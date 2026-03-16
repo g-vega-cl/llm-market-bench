@@ -101,9 +101,44 @@ await anthropic.run_tool_loop(
 Anthropic's web search is a **native server tool** (not a function tool). When enabled:
 
 1. The model decides when to search based on the prompt
-2. The API executes searches and returns results
+2. The API executes searches **server-side** and automatically incorporates results
 3. Results include `url`, `title`, `page_age`, and `encrypted_content`
-4. Citations are automatically added to the response
+4. Citations are automatically added to the response text
+
+**How Server Tools Work:**
+
+Unlike function tools (e.g., `get_stock_quote`), server tools are executed entirely on Anthropic's servers. The handler:
+- **Does NOT** need to execute anything client-side
+- **Does NOT** need to send `tool_result` blocks back
+- **Does NOT** record `server_tool_use` blocks in message history (they're internal to Anthropic)
+
+This is handled automatically in `apps/engine/core/llm/handlers/anthropic.py`:
+
+```python
+# Check for server tool calls (web_search - executed server-side by Anthropic)
+server_tool_uses = [c for c in resp.content if c.type == "server_tool_use"]
+
+# Log server tool usage for visibility
+for server_tool in server_tool_uses:
+    logger.info(f"Server tool executed by Anthropic: {server_tool.name}")
+
+# Build assistant message content
+# IMPORTANT: Do NOT include server_tool_use blocks in message history
+# Anthropic executes these server-side and they don't need tool_result blocks
+assistant_content = []
+for content_block in resp.content:
+    if content_block.type == "text":
+        assistant_content.append({"type": "text", "text": content_block.text})
+    elif content_block.type == "tool_use":
+        # Only include function tool calls (client-side tools)
+        assistant_content.append({
+            "type": "tool_use",
+            "id": content_block.id,
+            "name": content_block.name,
+            "input": content_block.input,
+        })
+    # Skip server_tool_use blocks - they are internal to Anthropic's server
+```
 
 **Response Structure:**
 ```json
@@ -114,6 +149,8 @@ Anthropic's web search is a **native server tool** (not a function tool). When e
   "input": {"query": "AAPL stock price today"}
 }
 ```
+
+The search results appear as text content with citations in the same response.
 
 ### Gemini
 
@@ -214,6 +251,22 @@ Check:
 1. API key has web search permissions enabled
 2. Organization admin has enabled web search (Anthropic Console)
 3. Model supports web search (see compatibility table)
+
+### "tool_use without tool_result" Error (Anthropic)
+
+**Error Message:**
+```
+Error code: 400 - {'type': 'invalid_request_error', 'message': 'messages.3: `tool_use` ids were found without `tool_result` blocks immediately after: srvtoolu_...'}
+```
+
+**Cause:** The handler was incorrectly recording `server_tool_use` blocks in message history. Since server tools are executed server-side by Anthropic, they don't require (or expect) `tool_result` blocks from the client.
+
+**Solution:** The handler now:
+- Excludes `server_tool_use` blocks from message history entirely
+- Only tracks client-side function tool calls (`tool_use`)
+- Only sends `tool_result` blocks for function tools that require client execution
+
+If you see this error, ensure you're using the updated `apps/engine/core/llm/handlers/anthropic.py` that properly handles server tools.
 
 ### No search results in response
 

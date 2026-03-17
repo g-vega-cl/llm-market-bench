@@ -79,7 +79,7 @@ class FMPProvider(FinancialProvider):
             async with httpx.AsyncClient() as client:
                 # FMP historical-price-full returns the most recent data
                 resp = await client.get(
-                    f"{self.BASE_URL}/historical-price-full/{ticker}",
+                    f"{self.BASE_URL}/historical-price-eod/full/{ticker}",
                     params={"timeseries": days, "apikey": self.api_key}
                 )
                 resp.raise_for_status()
@@ -101,4 +101,47 @@ class FMPProvider(FinancialProvider):
 
         except Exception as e:
             logger.error(f"Error fetching history from FMP for {ticker}: {e}")
+            return []
+
+    async def search_tickers(self, query: str, limit: int = 5) -> list[dict]:
+        """Search for tickers by name or symbol using FMP."""
+        if not self.api_key:
+            return []
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/search-symbol",
+                    params={"query": query, "limit": limit, "apikey": self.api_key}
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Error searching tickers on FMP for '{query}': {e}")
+            return []
+
+    async def screen_stocks(self, sector: Optional[str] = None, industry: Optional[str] = None, limit: int = 10) -> list[dict]:
+        """Screen stocks by sector and industry using FMP."""
+        if not self.api_key:
+            return []
+
+        params = {"limit": limit, "apikey": self.api_key}
+        if sector:
+            params["sector"] = sector
+        if industry:
+            params["industry"] = industry
+        
+        # Ensure we get reasonably liquid/large companies by default
+        params["marketCapMoreThan"] = 1000000000 # 1B+
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/company-screener",
+                    params=params
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Error screening stocks on FMP: {e}")
             return []

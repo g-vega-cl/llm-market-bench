@@ -245,6 +245,8 @@ class CauseAndEffectResult(BaseModel):
     market_outcome: str = Field(..., description="Concise summary of actual market movement")
     confidence: int = Field(..., ge=0, le=100, description="Confidence in the causal link")
     tags: list[str] = Field(default_factory=list, description="Relevant tags for classification")
+
+
 class TickerSuggestion(BaseModel):
     """Represents a list of suggested tickers for a market event.
 
@@ -260,3 +262,11 @@ class TickerSuggestion(BaseModel):
     def upper_case_tickers(cls, v: list[str]) -> list[str]:
         """Normalize all tickers to uppercase."""
         return [t.upper() for t in v]
+
+
+class DiscoveryThemes(BaseModel):
+    """Sectors, industries, and keywords for asset discovery."""
+    sectors: list[str] = Field(default_factory=list, description="List of FMP-compatible sectors")
+    industries: list[str] = Field(default_factory=list, description="List of FMP-compatible industries")
+    keywords: list[str] = Field(default_factory=list, description="Keywords for ticker search")
+    reasoning: str = Field(..., description="Strategic reasoning for these discovery targets")

@@ -70,12 +70,12 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 14. **Ledger Update:** Daily equity curve snapshot.
 
 ### Phase 5: Feedback & Specialized Agents
-21. **Post-Analysis (Manager Agent):** Compare reasoning to multi-interval performance; generate lessons.
-22. **Contrarian Agent:** Identifies crowded trades or missed risks.
-23. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
-24. **Government Tracking:** Monthly audit of incentives and policies.
-25. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (LLM-based) to identify sector proxies and derivative play tickers for any market theme.
-26. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
+73. **Post-Analysis (Manager Agent):** Compare reasoning to multi-interval performance; generate lessons.
+74. **Contrarian Agent:** Identifies crowded trades or missed risks.
+75. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
+76. **Government Tracking:** Monthly audit of incentives and policies.
+77. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (via FMP API) to identify sector proxies, ETFs, and derivative play tickers for any market theme, powering the 'How to Profit' feature.
+78. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
 
 ### Phase 3: Market Execution (Sequential)
 
@@ -168,6 +168,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)
 *   **Live Dashboard:** [benchify.netlify.app](https://benchify.netlify.app)
 *   **Public Insights:** A public [Memories Page](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective.
+    *   **How to Profit:** Each memory card features an interactive "How to Profit" section that displays actionable investment ideas and specific FMP-verified assets based on the AI's scenario analysis.
     *   **Event Linking:** Browse related "Update" events and trace their parent origins.
     *   **Flow View:** An interactive, infinite-canvas visualization of narrative threads and event chains.
 *   **Reasoning**: A research-grade audit trail with a human-friendly tabbed UI, showing every LLM interaction, tool call, and internal "thought" trace categorized by task type.

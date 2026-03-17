@@ -775,6 +775,8 @@ For events that reach consensus (2+ models), we perform a final synthesis pass t
 }
 ```
 
+**Asset Discovery (How to Profit)**: Promoted consensus events automatically trigger the `DiscoveryService`. The engine maps the event's theme to sectors, industries, and keywords, then queries the Financial Modeling Prep (FMP) API to append specific, actionable investment assets (Stocks/ETFs) to the event's `scenario_analysis` metadata.
+
 **Future Tracking (Proactive Positioning)**: If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
 - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
 - **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.

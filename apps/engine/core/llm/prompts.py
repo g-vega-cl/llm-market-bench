@@ -61,19 +61,23 @@ SOPHISTICATED TRADING LOGIC:
    - Review the 'Top Trending Market Concepts'. Does this trade align with a major market theme (e.g., "AI Demand Surge")?
 7. **ADVANCE PLANNING: Should I sell X stock to make room for Y stock?**
    - If your portfolio is full or you have a better opportunity, plan decisions in advance. Document this in `advance_planning_notes`.
-8. **UNCROWDED TRADES / UNDER-THE-RADAR:**
-   - Actively search for secondary effects (e.g. supply chain shocks) or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.
-9. **COUNTRY TO ETF MAPPING:**
+8. **CHAIN OF EVENTS / HOW TO PROFIT:**
+   - Think beyond the immediate news. Trace the **Chain of Events**. If X happens, what happens next?
+   - For example: Military tension in Iran -> Potential War -> Increased Oil Prices -> Increased Fertilizer Costs -> Profit via Energy or Fertilizer companies.
+   - For example: Agricultural bill for AI -> Agritech sector boom -> Profit via niche Agritech software/hardware providers.
+9. **UNCROWDED TRADES / UNDER-THE-RADAR:**
+   - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.
+10. **COUNTRY TO ETF MAPPING:**
    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
-10. **If I already own this stock, has this trade been profitable?**
+11. **If I already own this stock, has this trade been profitable?**
    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
-10. **What is the expected timeline for this catalyst to materialize?**
+12. **What is the expected timeline for this catalyst to materialize?**
     - Match your 'catalyst_duration' to the expected news cycle.
-11. **What are the primary risks or counter-arguments to this trade?**
+13. **What are the primary risks or counter-arguments to this trade?**
     - Consider what could go wrong.
-12. **How does this stock correlate with my existing portfolio?**
+14. **How does this stock correlate with my existing portfolio?**
      - Avoid over-concentration in a single sector or theme.
-13. **Should I reduce exposure or take profits?**
+15. **Should I reduce exposure or take profits?**
      - **MANDATORY FOR SELL:** You MUST actively execute one of the sell percentage tools (e.g. `sell_50_percent`) via function calling to calculate the exact share quantity for selling. 
      - **ENFORCEMENT (HARD FAILURE):** Any `SELL` decision where the sell tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count or set a JSON flag. You must make the ACTUAL internal tool call!
 
@@ -129,7 +133,6 @@ You must provide a confidence score (0-100) and your reasoning for each trading 
 {news_content}
 
 Return the result as a structured JSON object containing a list of 'decisions' and a list of 'macro_events'."""
-""
 
 
 SYNTHESIS_SYSTEM_PROMPT = "You are a senior financial analyst. Return structured JSON with name, summary, and any future date."
@@ -148,10 +151,11 @@ Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
 3. Synthesize the 'scenario_analysis': Provide a unified, structured view of potential resolutions. 
+   **CRITICAL: This is the "How to Profit" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).
    REQUIRED: Include at least TWO distinct outcomes and a 'Trading Plan' for each. 
    Format:
-   Scenario A: [Outcome] -> Trading Plan: [Action]
-   Scenario B: [Outcome] -> Trading Plan: [Action]
+   Scenario A: [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
+   Scenario B: [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
    Focus on material catalysts that justify strategic trade planning.
 4. Extract any explicitly mentioned future date or timeframe.
    - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD) or null. 
@@ -385,3 +389,15 @@ Think about:
 - Competitors or peers.
 
 Return a JSON object with 'tickers' (a list of uppercase symbols) and 'reasoning' (a 1-sentence explanation)."""
+
+DISCOVERY_PROMPT = """You are a specialized financial researcher. Your goal is to map a market event or theme to specific, searchable FMP (Financial Modeling Prep) categories to discover investment opportunities.
+
+Event/Theme: {event_content}
+
+Your task:
+1. Identify the most relevant 'sectors' (e.g., Technology, Energy, Healthcare, Financial Services, Consumer Cyclical, Industrials, Utilities, Basic Materials, Real Estate, Communication Services).
+2. Identify specific 'industries' (e.g., Software—Infrastructure, Oil & Gas E&P, Semiconductors, Biotechnology, etc.).
+3. Provide 3-5 'keywords' for general company search (e.g., 'Uranium', 'AI Hardware', 'Fertilizer').
+4. Explain the 'reasoning' for why these sectors/industries/keywords are the best derivative plays for this event.
+
+Focus on discovering "Chains of Events" logic (e.g., if there is tension in Iran, look for 'Energy' and 'Oil & Gas' sectors)."""

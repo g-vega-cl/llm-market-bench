@@ -18,6 +18,7 @@ from memory.store import (
 from memory.embeddings import get_embeddings_batch
 from core.llm import synthesize_event, analyze_event_relationship
 from core.config import MODEL_WEIGHTS
+from analysis.discovery_service import DiscoveryService
 
 logger = logging.getLogger("engine")
 
@@ -67,6 +68,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
     """
     if not events:
         return []
+
+    discovery_service = DiscoveryService()
 
     # 1. Batch generate embeddings for all event names
     event_names = [e.event_name for e in events]
@@ -181,6 +184,16 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
             is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
             historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
 
+            # Discover real assets via FMP
+            discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
+            scenario_analysis = synthesis.get("scenario_analysis") or ""
+            
+            if discovered_assets:
+                asset_links = "\n\n**Investable Assets (via FMP):**\n"
+                for asset in discovered_assets[:5]: # Top 5
+                    asset_links += f"- ${asset['ticker']} ({asset['name']}): {asset['reason']}\n"
+                scenario_analysis += asset_links
+
             consensus_data = {
                 "event_name": synthesis["name"],
                 "impact": majority_impact,
@@ -193,7 +206,8 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                 "historical_parallel": historical_parallel,
                 "future_date": synthesis.get("future_date"),
                 "future_date_note": synthesis.get("future_date_note"),
-                "scenario_analysis": synthesis.get("scenario_analysis"),
+                "scenario_analysis": scenario_analysis.strip() if scenario_analysis else None,
+                "discovered_assets": discovered_assets,
                 "importance_score": synthesis.get("importance_score", int(sum(importance_scores)/len(importance_scores)) if importance_scores else 5)
             }
 
@@ -228,6 +242,7 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
                     "historical_parallel": historical_parallel,
                     "future_date_note": consensus_data.get("future_date_note"),
                     "scenario_analysis": consensus_data.get("scenario_analysis"),
+                    "discovered_assets": consensus_data.get("discovered_assets"),
                     "importance_score": consensus_data['importance_score']
                 },
                 parent_id=parent_id,

@@ -7,7 +7,11 @@ const mockMemories: Memory[] = [
     id: '1',
     content: 'Consensus on rate hike',
     created_at: new Date().toISOString(),
-    metadata: { type: 'consensus_event', impact: 'BEARISH' }
+    metadata: { 
+      type: 'consensus_event', 
+      impact: 'BEARISH',
+      scenario_analysis: 'Scenario A: Rates go up -> Trading Plan (How to Profit): Buy bank stocks. Scenario B: Rates go down -> Trading Plan (How to Profit): Buy tech stocks.'
+    }
   },
   {
     id: '2',
@@ -58,5 +62,17 @@ describe('MemoriesList', () => {
   it('shows empty state when no memories match filter', () => {
     render(<MemoriesList memories={[]} />)
     expect(screen.getByText('No memories found for this category.')).toBeInTheDocument()
+  })
+
+  it('expands how to profit section when button is clicked', () => {
+    render(<MemoriesList memories={mockMemories} />)
+    
+    const profitButton = screen.getByText('How to Profit from this')
+    expect(screen.queryByText('Profit Analysis & Chains of Events')).not.toBeInTheDocument()
+    
+    fireEvent.click(profitButton)
+    
+    expect(screen.getByText('Profit Analysis & Chains of Events')).toBeInTheDocument()
+    expect(screen.getByText('Buy bank stocks.')).toBeInTheDocument()
   })
 })

@@ -158,15 +158,43 @@ class Portfolio:
         recent_trades = await self.get_recent_trades(hours=48)
         if recent_trades:
             summary.append("\nRecently Executed Trades (Last 48h):")
+            now = datetime.now(timezone.utc)
             for t in recent_trades:
-                # Format: [Date] SIGNAL ticker: qty @ price (Reason: ...)
-                date_str = t.get("executed_at", "").split("T")[0]
+                # Format: SIGNAL ticker: qty @ price (Time Ago) - Reason: ...
+                executed_at_str = t.get("executed_at", "")
                 reason = t.get("reasoning", "No reasoning stored.")
+                
+                # Calculate Time Ago
+                time_ago = "recently"
+                if executed_at_str:
+                    try:
+                        # executed_at is usually ISO format with TZ
+                        # 2024-03-24T12:00:00+00:00
+                        from dateutil import parser
+                        exec_time = parser.isoparse(executed_at_str)
+                        if exec_time.tzinfo is None:
+                            exec_time = exec_time.replace(tzinfo=timezone.utc)
+                            
+                        diff = now - exec_time
+                        
+                        if diff.total_seconds() < 3600:
+                            mins = int(diff.total_seconds() / 60)
+                            time_ago = f"{mins}m ago"
+                        elif diff.total_seconds() < 86400:
+                            hrs = int(diff.total_seconds() / 3600)
+                            time_ago = f"{hrs}h ago"
+                        else:
+                            days = int(diff.total_seconds() / 86400)
+                            time_ago = f"{days}d ago"
+                    except Exception as e:
+                        logger.warning(f"Error parsing executed_at '{executed_at_str}': {e}")
+                
                 if len(reason) > 100:
                     reason = reason[:97] + "..."
+                
                 summary.append(
-                    f"- [{date_str}] {t['signal']} {t['ticker']}: {t['quantity']} @ ${float(t['price']):.2f} "
-                    f"(Reason: {reason})"
+                    f"- {t['signal']} {t['ticker']}: {t['quantity']} @ ${float(t['price']):.2f} "
+                    f"({time_ago}) - Reason: {reason}"
                 )
                 
         return "\n".join(summary)

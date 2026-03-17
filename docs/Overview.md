@@ -109,7 +109,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Action:** *Updates `cash_balance`, `sma`, and `portfolio_positions`. **Crucially, inserts a record into the `trades` table to generate a unique `TradeID` for the execution.***
 *   **Atomic Settlement Pattern:** *Follows a **"Commit at the End"** logic where `cash_balance` and `sma` are only persisted to the `portfolios` table if both the `portfolio_positions` update and the `trades` ledger entry succeed. This prevents "Phantom Deductions" if the DB connection fails mid-operation.*
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
-*   **Rejection Logic**: Decisions that fail Validation, Reg T, **Ownership**, or **Hard Tool Enforcement** (e.g., selling without actually calling a calculation tool in the history) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_TOOL_USAGE`) to preserve the full "Audit Trail" of AI intent.
+*   **Rejection Logic**: Decisions that fail Validation, Reg T, **Ownership**, **Semantic Redundancy** (overtrading prevention), or **Hard Tool Enforcement** (e.g., selling without actually calling a calculation tool in the history) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`) to preserve the full "Audit Trail" of AI intent.
 *
 *   documentation: ./engine/trade-settlement-walkthrough.md
 

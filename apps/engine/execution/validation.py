@@ -17,6 +17,7 @@ class ValidationStatus(Enum):
     REJECTED_HALLUCINATION = "REJECTED_HALLUCINATION"
     REJECTED_PRICE_DEVIATION = "REJECTED_PRICE_DEVIATION"
     REJECTED_LIQUIDITY = "REJECTED_LIQUIDITY"
+    REJECTED_REDUNDANCY = "REJECTED_REDUNDANCY"
     ERROR_PROVIDER = "ERROR_PROVIDER"
 
 
@@ -109,3 +110,27 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
         market_price=data.price,
         market_cap=data.market_cap
     )
+
+
+async def validate_semantic_overlap(ticker: str, reasoning: str, threshold: float = 0.90) -> Optional[str]:
+    """Checks if this trade is redundant based on recent similar reasoning.
+    
+    Returns:
+        The reason/ID of the overlapping trade if found, else None.
+    """
+    if not reasoning:
+        return None
+        
+    from memory.store import find_similar_decision
+    
+    similar = find_similar_decision(
+        ticker=ticker,
+        content=reasoning,
+        threshold=threshold,
+        hours=24 # Look back 24 hours
+    )
+    
+    if similar:
+        return f"Semantic overlap with recent trade (ID: {similar['id']}). Reason: {similar['reasoning'][:100]}..."
+        
+    return None

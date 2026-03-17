@@ -15,7 +15,7 @@ from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
 from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
-from execution.validation import validate_decision, ValidationStatus
+from execution.validation import validate_decision, validate_semantic_overlap, ValidationStatus
 from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
 from ingest.government import run_government_pipeline
@@ -125,6 +125,22 @@ async def run_ingest():
                         d, 
                         status=validation.status.value,  # e.g. REJECTED_LIQUIDITY
                         metadata={"reason": validation.reason}
+                    )
+                    rejected_decisions += 1
+                    continue
+
+                # --- Semantic Overlap Guardrail ---
+                overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning)
+                if overlap_reason:
+                    logger.warning(
+                        f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason} "
+                        f"({d.model_provider}/{d.model_name})"
+                    )
+                    save_decision(
+                        sb_client,
+                        d,
+                        status=ValidationStatus.REJECTED_REDUNDANCY.value,
+                        metadata={"reason": overlap_reason}
                     )
                     rejected_decisions += 1
                     continue

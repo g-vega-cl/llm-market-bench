@@ -130,17 +130,47 @@ def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float =
         return []
 
 def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, embedding: list[float] = None) -> Optional[str]:
-    """Checks if a semantically similar memory exists within the last N hours.
+    """Checks if a semantically similar memory exists within the last N hours."""
+    return find_similar_vector(
+        table_name="memories",
+        content=content,
+        threshold=threshold,
+        hours=hours,
+        embedding=embedding,
+        status_filter="ACTIVE"
+    )
 
-    Args:
-        content: The text content to check.
-        threshold: Cosine similarity threshold.
-        hours: How far back to look.
-        embedding: Optional pre-calculated embedding.
-    
+def find_similar_decision(
+    ticker: str,
+    content: str,
+    threshold: float = 0.90,
+    hours: int = 24,
+    embedding: list[float] = None
+) -> Optional[dict]:
+    """Checks if a semantically similar trade decision exists for this ticker within the last N hours.
+
     Returns:
-        The ID of the similar memory if found, None otherwise.
+        The similar decision record if found, None otherwise.
     """
+    return find_similar_vector(
+        table_name="decisions",
+        content=content,
+        threshold=threshold,
+        hours=hours,
+        embedding=embedding,
+        ticker_filter=ticker
+    )
+
+def find_similar_vector(
+    table_name: str,
+    content: str,
+    threshold: float = 0.90,
+    hours: int = 24,
+    embedding: list[float] = None,
+    status_filter: Optional[str] = None,
+    ticker_filter: Optional[str] = None
+) -> Optional[Any]:
+    """Generic semantic similarity check across tables with embeddings."""
     try:
         if embedding is None:
             embedding = get_embedding(content)
@@ -149,27 +179,27 @@ def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, 
             return None
 
         client = get_supabase_client()
-        
-        # We query the table directly with pgvector operators and time filters
-        # for maximum precision.
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
         
-        # Fetch recent embeddings to check similarity in Python
-        recent_embeddings_response = client.table("memories").select("id, embedding, content").filter(
+        query = client.table(table_name).select("*").filter(
             "created_at", "gte", cutoff
-        ).filter(
-            "status", "eq", "ACTIVE"
-        ).execute()
+        )
         
-        if not recent_embeddings_response.data:
+        if status_filter:
+            query = query.filter("status", "eq", status_filter)
+        if ticker_filter:
+            query = query.filter("ticker", "eq", ticker_filter)
+            
+        recent_res = query.execute()
+        
+        if not recent_res.data:
             return None
             
         from consensus import cosine_similarity
         
-        for row in recent_embeddings_response.data:
+        for row in recent_res.data:
             recent_vector = row.get("embedding")
             if recent_vector:
-                # Convert string representation to list if necessary
                 if isinstance(recent_vector, str):
                     import json
                     recent_vector = json.loads(recent_vector)
@@ -177,12 +207,12 @@ def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, 
                 sim = cosine_similarity(embedding, recent_vector)
                 
                 if sim >= threshold:
-                    logger.info(f"Duplicate event found (ID: {row['id']}, Sim: {sim:.2f}): {row['content'][:50]}...")
-                    return row["id"]
+                    logger.info(f"Similar {table_name} found (ID: {row['id']}, Sim: {sim:.2f})")
+                    return row
 
         return None
     except Exception as e:
-        logger.error(f"Error checking similar memories: {e}")
+        logger.error(f"Error checking similar vectors in {table_name}: {e}")
         return None
 
 def update_memory_status(memory_id: str, status: str) -> bool:

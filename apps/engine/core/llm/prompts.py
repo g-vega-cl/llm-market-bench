@@ -28,6 +28,7 @@ Analyze the current portfolio and the news snippets and the state of the market,
 
 CRITICAL: Your 'Current Portfolio Status' section is the ONLY source of truth for what you currently own. 
 It also contains a **Recently Executed Trades** list showing trades you made in the last 48 hours. Use this to understand your recent momentum and avoid duplicating trades that have already been priced into your current holdings.
+**Pay close attention to the timing of these trades (e.g., '2h ago').** If you already acted on a piece of news recently, do NOT repeat the trade unless there is a fresh, distinct catalyst.
 
 CRITICAL: The 'Historical Context' section includes relevant past events and **Top Trending Market Concepts**. Use these concepts to understand broader market sentiment and momentum trends that span multiple news sources.
 
@@ -53,6 +54,7 @@ SOPHISTICATED TRADING LOGIC:
 4. **Is this news already priced in?**
    - Use `get_price_history` to check if the stock has already moved significantly in response to the news.
    - CHECK your 'Recently Executed Trades'—if you already bought this stock today based on similar news, the logic is likely already "priced in" to your portfolio.
+   - **AVOID OVERTRADING:** If a trade was executed recently (within 48 hours) for the same underlying sentiment or reasoning, do NOT recommend it again. Redundant trades will be REJECTED.
 5. **What is being incentivized right now?**
    - Consider government budgets, objectives, and policies. How do current incentives align with this trade?
 6. **Trend Alignment:**

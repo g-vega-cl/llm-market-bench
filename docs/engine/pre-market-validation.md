@@ -47,6 +47,11 @@ LLMs, while powerful, can occasionally:
 - **Logic**: If an LLM identifies a valid ticker but fails to provide a price in its JSON output (or returns 0), the engine automatically attempts to fetch the latest market price.
 - **Action**: Backfills the `price` field in the `DecisionObject` before it reaches the final validation phase. This prevents "lazy" models from being rejected for missing data if their ticker intent was clear.
 
+### 9. Guardrail I: Semantic Redundancy (Overtrading Prevention)
+- **Logic**: Uses vector embeddings to compare the reasoning of a new trade signal against the reasonings of recently executed trades (last 24 hours) for the same ticker.
+- **Limit**: **Cosine Similarity > 0.90**.
+- **Action**: Reject the trade if it is based on the same sentiment or catalyst that the agent has already acted upon. This prevents overtrading when the ingestion loop runs frequently.
+
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy and a **multi-provider fallback chain**.
 

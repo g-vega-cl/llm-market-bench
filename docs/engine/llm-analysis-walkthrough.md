@@ -151,18 +151,24 @@ To move beyond simple "news-chasing," the system now enforces a multi-step quali
     - **Pre-Holiday Effect**: Positive drift 1-2 days before market holidays.
     - **Cultural Calendars (Gold)**: Demand spikes for GLD during festivals (Diwali, etc.).
 5.  **Is this news already priced in?** (Using `get_price_history`)
-6.  **What is being incentivized right now?** (Government budgets and objectives)
-7.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
-8.  **Should I reduce exposure or take profits?** (Using the granular sell tools like `sell_10_percent` through `sell_100_percent` to calculate exact quantities. **MANDATORY for all SELLs.**)
-9.  **What is the expected timeline for this catalyst to materialize?**
-10. **What are the primary risks or counter-arguments to this trade?**
-11. **How does this stock correlate with my existing portfolio?**
+6.  **Avoid Overtrading**: If a trade was executed recently (last 48h) for the same reasoning, the model is instructed to avoid repeating it.
+7.  **What is being incentivized right now?** (Government budgets and objectives)
+8.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
+9.  **Should I reduce exposure or take profits?** (Using the granular sell tools like `sell_10_percent` through `sell_100_percent` to calculate exact quantities. **MANDATORY for all SELLs.**)
+10. **What is the expected timeline for this catalyst to materialize?**
+11. **What are the primary risks or counter-arguments to this trade?**
+12. **How does this stock correlate with my existing portfolio?**
 
 
 ### **The "Source of Truth" Rule**
-To prevent confusion between historical context and current holdings, the system prompt explicitly instructs models that the **`Current Portfolio Status`** section is the **ONLY** source of truth for assets they currently own. Any mention of trades in the `Historical Context` (retrieved via RAG) should be treated as past reasoning, not current state.
+To prevent confusion between historical context and current holdings, the system prompt explicitly instructs models that the **`Current Portfolio Status`** section is the **ONLY** source of truth for assets they currently own. 
 
-This logic ensures that trades are based on predicted future movements rather than reacting to yesterday's news.
+This section also includes **Recently Executed Trades** (last 48h) with **granular "time ago" metadata** (e.g., "45m ago"). Agents are explicitly instructed to pay close attention to this timing to avoid duplicating trades on news that is already "priced in" to the current holdings. 
+
+**Avoid Overtrading Rule:**
+The prompt strictly forbids repeating a trade for the same underlying sentiment or catalyst within 48 hours. Redundant recommendations are filtered out by a semantic similarity guardrail ($>0.90$ similarity threshold) in the validation layer.
+
+Any mention of trades in the `Historical Context` (retrieved via RAG) should be treated as past reasoning, not current state.
 
 ## 6. Verification
 

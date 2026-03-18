@@ -162,7 +162,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
         - **Strict Separation**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. This prevents "Ongoing Memories" or past investments from cluttering the future timeline. 
         - **Strict Catalyst Filter**: To qualify as a **Future Catalyst**, an event must be strictly PENDING and SCHEDULED. Vague timeframes like "later in 2026" or broad thematic shifts are excluded from this view.
         - **Multi-Outcome Scenarios**: Every Horizon Watch event is required to have a structured **Scenario Analysis** containing at least two possible outcomes and a dedicated **Trading Plan** for each.
-*   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer.
+*   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer. For closed positions, the audit trail now displays the **Realized P&L** (USD and %) directly in the trades table.
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)

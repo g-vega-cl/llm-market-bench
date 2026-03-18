@@ -10,6 +10,8 @@ export type Trade = {
     total_cost: number
     executed_at: string
     reasoning: string
+    realized_pnl?: number
+    realized_pnl_pct?: number
 }
 
 interface TradesTableProps {
@@ -30,6 +32,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Quantity</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Price</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Total</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">PnL</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -67,10 +70,26 @@ export function TradesTable({ trades }: TradesTableProps) {
                                 <td className="px-6 py-4 text-right text-zinc-900 font-medium cursor-pointer">
                                     ${Number(trade.total_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
+                                <td className="px-6 py-4 text-right cursor-pointer">
+                                    {trade.realized_pnl !== null && trade.realized_pnl !== undefined ? (
+                                        <div className="flex flex-col items-end">
+                                            <span className={`font-bold ${trade.realized_pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                {trade.realized_pnl >= 0 ? '+' : ''}
+                                                ${Math.abs(trade.realized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${trade.realized_pnl >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                                                {trade.realized_pnl >= 0 ? '+' : ''}
+                                                {trade.realized_pnl_pct?.toFixed(2)}%
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-zinc-300">—</span>
+                                    )}
+                                </td>
                             </tr>
                             {expandedId === trade.id && (
                                 <tr className="bg-zinc-50/30">
-                                    <td colSpan={6} className="px-12 py-6">
+                                    <td colSpan={7} className="px-12 py-6">
                                         <div className="flex flex-col gap-4 max-w-4xl">
                                             <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 uppercase tracking-tight">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -89,7 +108,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                     ))}
                     {(!trades || trades.length === 0) && (
                         <tr>
-                            <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                            <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                                 No recent trades found for this agent.
                             </td>
                         </tr>

@@ -217,7 +217,7 @@ class Portfolio:
             
             # Fetch trades for this portfolio
             response = client.table("trades").select(
-                "ticker", "signal", "quantity", "price", "executed_at", "decision_id"
+                "ticker", "signal", "quantity", "price", "executed_at", "decision_id", "realized_pnl", "realized_pnl_pct"
             ).eq("portfolio_id", self.id).gte("executed_at", cutoff).order("executed_at", desc=True).execute()
             
             trades = response.data or []
@@ -292,6 +292,12 @@ class Portfolio:
         total_cost = price * quantity
         supabase = get_supabase_client()
         
+        # Capture current average cost context for PnL calculation (for SELL signals)
+        # We need the cost basis BEFORE it might be updated/deleted by the sell
+        old_avg_cost = None
+        if signal.upper() == "SELL" and ticker in self.positions:
+            old_avg_cost = self.positions[ticker].average_cost_basis
+
         # Update local state first
         if signal.upper() == "BUY":
             self.cash_balance -= total_cost
@@ -366,7 +372,7 @@ class Portfolio:
                  }).execute()
             
             # 2. Insert into Trades Ledger
-            trade_res = supabase.table("trades").insert({
+            trade_data = {
                 "portfolio_id": str(self.id),
                 "ticker": ticker,
                 "signal": signal,
@@ -374,7 +380,16 @@ class Portfolio:
                 "price": price,
                 "total_cost": total_cost,
                 "executed_at": "now()"
-            }).execute()
+            }
+            
+            # Enrich with PnL for SELL trades
+            if signal.upper() == "SELL" and old_avg_cost is not None:
+                realized_pnl = (price - old_avg_cost) * quantity
+                realized_pnl_pct = ((price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
+                trade_data["realized_pnl"] = realized_pnl
+                trade_data["realized_pnl_pct"] = realized_pnl_pct
+
+            trade_res = supabase.table("trades").insert(trade_data).execute()
             
             trade_id = trade_res.data[0]["id"] if trade_res.data else None
             

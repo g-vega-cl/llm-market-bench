@@ -47,6 +47,8 @@ An immutable ledger of all executed trades.
 - `total_cost` (NUMERIC): Total transaction value.
 - `executed_at` (TIMESTAMPTZ): Timestamp of execution.
 - `decision_id` (UUID): Link to the triggering decision.
+- `realized_pnl` (NUMERIC): The profit or loss realized by this trade (for SELL signals).
+- `realized_pnl_pct` (NUMERIC): The profit or loss percentage realized by this trade.
 
 ### `portfolio_performance`
 Daily snapshots of portfolio metrics for equity curve visualization.

@@ -121,11 +121,19 @@ from unittest.mock import AsyncMock
 monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
 ```
 
-**Async Tests**: Mark tests that call async functions with `@pytest.mark.asyncio` and use `await`:
+### Async Tests: Mark tests that call async functions with `@pytest.mark.asyncio` and use `await`:
 ```python
 @pytest.mark.asyncio
 async def test_ingest_newsletters_summary(caplog):
     await ingest_newsletters(newer_than_days=1)
+```
+
+### Market Hours & Determinism
+The `run_ingest` function in `main.py` contains a mandatory check for US Market Hours (09:30–16:00 ET). To ensure tests are deterministic and can run at any time (e.g., during overnight CI/CD runs), always pass `force=True` when calling `run_ingest` in test cases:
+
+```python
+# Correct pattern for pipeline tests
+await run_ingest(force=True)
 ```
 
 ## CI/CD Integration
@@ -133,4 +141,5 @@ async def test_ingest_newsletters_summary(caplog):
 Tests are automatically executed on every Push and Pull Request via GitHub Actions. A failure in any test prevents merging to the main branch.
 
 ---
-*Last Updated: January 2026*
+*Last Updated: March 2026*
+

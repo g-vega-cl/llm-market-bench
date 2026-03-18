@@ -130,7 +130,11 @@ def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float =
         return []
 
 def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, embedding: list[float] = None) -> Optional[str]:
-    """Checks if a semantically similar memory exists within the last N hours."""
+    """Checks if a semantically similar memory exists within the last N hours.
+
+    Returns:
+        The ID of the similar memory if found, None otherwise.
+    """
     row = find_similar_vector(
         table_name="memories",
         content=content,

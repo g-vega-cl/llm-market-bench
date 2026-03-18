@@ -69,11 +69,17 @@ After linking and resolution, the system applies two additional optimizations:
 - **Proactive Positioning**: If an event is flagged as a `is_future_catalyst` or contains a `future_date` (e.g., "Q3 2026", "next summer"), it is recorded in the `memories` table with a `target_date` field.
 - **Unified Storage**: These future catalysts are indexed by `target_date`, allowing agents to track the "chain" from prediction to realization without managing a secondary table.
 
-### 7. LLM Synthesis
+### 7. LLM Synthesis & Asset Discovery
 A final "Analyst Pass" (via Google Gemini) is performed to:
 - Create a professional, unified **Event Name** (max 5 words).
 - Write a 1-sentence **Summary** capturing the catalyst and market implication.
 - Consolidate reasoning from all contributing models.
+
+**Asset Discovery Integration**:
+For every synthesized consensus event, the system invokes the **`DiscoveryService`**. This service uses the synthesized summary to:
+- **Map Themes to Categories**: Identify relevant sectors, industries, and keywords via LLM.
+- **Search FMP**: Query the Financial Modeling Prep (FMP) API to find top liquid stocks and ETFs that match the identified themes.
+- **Append Investable Assets**: Automatically append a list of "Investable Assets" (Ticker, Name, and Reason for inclusion) to the final `scenario_analysis` metadata. This provides immediate, actionable ideas linked to every macro memory.
 
 ## Data Schema & Storage
 

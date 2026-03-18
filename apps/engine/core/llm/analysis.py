@@ -110,23 +110,57 @@ async def analyze_with_provider(
         for decision in final_resp.decisions:
             if decision.signal in ["BUY", "SELL"]:
                 results = _scan_history_for_tools(messages, decision.ticker)
-                
+
                 # Update sell_tool_called based on ACTUAL history
                 if decision.signal == "SELL":
                     was_self_reported = decision.sell_tool_called
                     decision.sell_tool_called = results["sell_tool_found"]
-                    
+
                     if was_self_reported and not results["sell_tool_found"]:
                         logger.warning(
                             "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. Rejecting trade.",
                             provider, model_name, decision.ticker
                         )
-                
+
                 # Check get_stock_quote enforcement
                 if not results["quote_found"]:
                      logger.warning(
                         "[%s/%s] HARD ENFORCEMENT: Agent recommended trade for %s without 'get_stock_quote' verification. Decison may be invalid.",
                         provider, model_name, decision.ticker
+                    )
+
+        # GOVERNMENT INCENTIVE ENFORCEMENT: Check if news contains government policy content
+        # but no macro_events were generated
+        gov_keywords = [
+            "bill", "act", "congress", "parliament", "legislation", "subsidy", "grant",
+            "incentive", "budget", "funding", "appropriation", "tax credit", "policy",
+            "regulation", "directive", "executive order", "defense production act",
+            "government program", "federal", "treasury", "usda", "dod", "doe", "sec"
+        ]
+        
+        for chunk in chunks:
+            content_lower = chunk.get("content", "").lower()
+            has_gov_content = any(kw in content_lower for kw in gov_keywords)
+            
+            if has_gov_content and not final_resp.macro_events:
+                logger.warning(
+                    "[%s/%s] GOVERNMENT INCENTIVE ENFORCEMENT: News chunk '%s' contains "
+                    "government policy content but NO macro_events were generated. "
+                    "This may indicate a prompt compliance issue.",
+                    provider, model_name, chunk.get("source_id", "unknown")
+                )
+            elif has_gov_content:
+                # Check if any macro_event has is_government_incentive=true
+                has_gov_incentive_event = any(
+                    getattr(event, "is_government_incentive", False)
+                    for event in final_resp.macro_events
+                )
+                if not has_gov_incentive_event:
+                    logger.warning(
+                        "[%s/%s] GOVERNMENT INCENTIVE ENFORCEMENT: News chunk '%s' contains "
+                        "government policy content but no macro_event marked with "
+                        "is_government_incentive=true.",
+                        provider, model_name, chunk.get("source_id", "unknown")
                     )
 
         # Log completion

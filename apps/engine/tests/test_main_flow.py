@@ -102,8 +102,7 @@ async def test_run_ingest_hold_decision(mock_dependencies):
         ticker="AAPL"
     )
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify save_decision called with trade_id=None
     md["save"].assert_called_once()
     call_args = md["save"].call_args
@@ -134,8 +133,7 @@ async def test_run_ingest_buy_decision(mock_dependencies):
         ticker="GOOGL"
     )
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify portfolio execution
     md["portfolio"].execute_trade.assert_awaited_once()
     
@@ -166,8 +164,7 @@ async def test_run_ingest_rejected_decision(mock_dependencies):
         ticker="PENNY"
     )
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify no execution
     md["portfolio"].execute_trade.assert_not_called()
     
@@ -196,8 +193,7 @@ async def test_run_ingest_sell_tool_enforcement(mock_dependencies):
     # Mock possession check
     md["portfolio"].positions = {"AAPL": MagicMock()}
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify rejection
     md["portfolio"].execute_trade.assert_not_called()
     md["save"].assert_called_once()
@@ -229,8 +225,7 @@ async def test_run_ingest_sell_with_tool(mock_dependencies):
     )
     md["portfolio"].positions = {"AAPL": MagicMock(quantity=10)}
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify execution with correct quantity
     md["portfolio"].execute_trade.assert_awaited_once()
     args, kwargs = md["portfolio"].execute_trade.call_args

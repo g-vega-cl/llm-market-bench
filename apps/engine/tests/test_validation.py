@@ -20,8 +20,8 @@ async def test_validate_decision_pass():
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
         
-        # AI suggests $155 (within 15% of $150)
-        result = await validate_decision("AAPL", 155.0)
+        # AI suggests $150.5 (within 1% of $150.0)
+        result = await validate_decision("AAPL", 150.5)
         
         assert result.status == ValidationStatus.PASSED
         assert result.ticker == "AAPL"

@@ -86,8 +86,7 @@ async def test_run_ingest_rejected_small_sell(mock_dependencies):
         reason="SELL Trade value below minimum threshold of $1,000.00."
     )
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify rejection logic in main.py loop
     md["portfolio"].execute_trade.assert_not_called()
     
@@ -133,8 +132,7 @@ async def test_run_ingest_passed_large_sell(mock_dependencies):
     # Mock execute_trade to return UUID
     md["portfolio"].execute_trade.return_value = "trade-uuid-456"
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify execution
     md["portfolio"].execute_trade.assert_awaited_once()
     assert md["save"].called
@@ -176,8 +174,7 @@ async def test_run_ingest_bypassed_small_sell_with_tool(mock_dependencies):
     # Mock execute_trade
     md["portfolio"].execute_trade.return_value = "trade-uuid-789"
     
-    await run_ingest()
-    
+    await run_ingest(force=True)
     # Verify execution
     md["portfolio"].execute_trade.assert_awaited_once()
     assert md["save"].called

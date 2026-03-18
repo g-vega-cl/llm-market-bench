@@ -17,7 +17,7 @@ LLMs, while powerful, can occasionally:
 
 ### 2. Guardrail B: Price Banding
 - **Logic**: Compares the AI's suggested price with the current live/delayed market price.
-- **Limit**: **Max 10% deviation**.
+- **Limit**: **Max 1.0% deviation**.
 - **Action**: Reject trade if the price difference is too large.
 
 ### 3. Guardrail C: Liquidity Check
@@ -62,7 +62,7 @@ The engine now uses a centralized `MarketDataManager` that handles all ticker qu
   - **Triple Fallback**: If the primary provider fails, the system automatically tries a first and then a second fallback provider (e.g., `ibkr_proxy` -> `fmp` -> `yfinance`).
   - **Retries**: Each provider in the chain is attempted a configurable number of times (Default: 2) with backoff before falling back.
   - **NaN Filter**: Automatically identifies and rejects `NaN` float values from providers, ensuring only valid numerical data is cached or used for validation.
-- **TTL**: Cached data in `market_data_cache` is considered fresh for **5 minutes** (configurable).
+- **TTL**: Cached data in `market_data_cache` is considered fresh for **2 seconds** (configurable).
 - **Efficiency**: Reduces external API calls by $>90%$ for common tickers.
 - **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 
@@ -75,13 +75,13 @@ The following environment variables and constants control the validation behavio
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MIN_MARKET_CAP_BILLIONS` | `2.0` | Minimum company value to allow a trade. |
-| `MAX_PRICE_DEVIATION_PCT` | `10.0` | Maximum % difference between AI and market price. |
+| `MAX_PRICE_DEVIATION_PCT` | `1.0` | Maximum % difference between AI and market price. |
 | `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value (waived for SELL via tools). |
 | `FINANCIAL_PROVIDER` | `"ibkr_proxy"` | Primary data provider. |
 | `FALLBACK_FINANCIAL_PROVIDER` | `"fmp"` | First fallback data provider. |
 | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `"yfinance"` | Second fallback data provider. |
 | `MARKET_DATA_RETRIES` | `2` | Number of attempts per provider in the chain. |
-| `MARKET_DATA_CACHE_TTL_SECONDS` | `300` | Price cache duration (5 minutes). |
+| `MARKET_DATA_CACHE_TTL_SECONDS` | `2` | Price cache duration (2 seconds). |
 | `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration

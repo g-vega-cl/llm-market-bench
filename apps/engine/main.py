@@ -26,8 +26,30 @@ from analysis.pca_utils import update_pca_coordinates
 from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
 
 
-async def run_ingest():
+async def run_ingest(force: bool = False):
     """Runs the full ingestion and analysis pipeline."""
+    # --- Market Hours Check ---
+    import datetime
+    try:
+        from zoneinfo import ZoneInfo
+        now = datetime.datetime.now(ZoneInfo("America/New_York"))
+    except ImportError:
+        # Fallback if zoneinfo is not available (standard in Python 3.9+)
+        now = datetime.datetime.now()
+        logger.warning("zoneinfo not found, using local time for market hours check.")
+
+    if not force:
+        if now.weekday() >= 5:  # 5=Saturday, 6=Sunday
+            logger.warning(f"Skipping ingest: It is {now.strftime('%A')}, which is outside market days (Mon-Fri). Use --force to override.")
+            return
+
+        market_start = now.replace(hour=9, minute=30, second=0, microsecond=0)
+        market_end = now.replace(hour=16, minute=0, second=0, microsecond=0)
+
+        if not (market_start <= now <= market_end):
+            logger.warning(f"Skipping ingest: Current time {now.strftime('%H:%M')} is outside market hours (09:30-16:00 ET). Use --force to override.")
+            return
+
     logger.info("Starting Newsletter Ingestion...")
     data = await ingest_newsletters()
 
@@ -477,10 +499,16 @@ def main():
         help="Action to perform"
     )
 
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force ingestion even outside market hours"
+    )
+
     args = parser.parse_args()
 
     if args.command == COMMAND_INGEST:
-        asyncio.run(run_ingest())
+        asyncio.run(run_ingest(force=args.force))
     elif args.command == COMMAND_POST_ANALYSIS:
         asyncio.run(run_post_analysis())
     elif args.command == COMMAND_GOVERNMENT:

@@ -430,7 +430,7 @@ aggregated_context = """
 **Phase 2 Summary**:
 - 1 Gemini Embedding API call (batch for all 4 queries)
 - 4 Supabase RPC calls (vector similarity search)
-- **Step 5.4: Calendar Context Injection**: For each model task, the engine calculates the **`current_day_info`** (Today's date, Day of Week, and proximity to month boundaries or holidays). This is injected into the prompt along with the **`CALENDAR_STRATEGY_KNOWLEDGE`** (Turn of the Month, Payday Anomaly, etc.) to enable seasonal anomaly reasoning.
+- **Step 5.4: Calendar Context Injection**: For each model task, the engine calculates the **`current_day_info`** (Today's date, Day of Week, and proximity to month boundaries or holidays). This is injected into the prompt along with the **`CALENDAR_STRATEGY_KNOWLEDGE`** (Turn of the Month, Payday Anomaly, etc.) to enable seasonal anomaly reasoning. The engine also enforces a **Market Hours Guardrail** (09:30-16:00 ET, Mon-Fri) for all ingestion runs.
 - Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis.
 - Context labeled with **`[PAST REASONING (HISTORICAL)]`** to distinguish from current holdings.
 
@@ -485,7 +485,7 @@ sequenceDiagram
     Core->>LLM: 1. Send News Batch + Tools Definition
     LLM-->>Core: 2. Tool Call: get_stock_quote(ticker='TSLA')
     Core->>MDM: 3. Execute get_quote('TSLA')
-    MDM->>DB: 4. Check Cache (fresh within 5m?)
+    MDM->>DB: 4. Check Cache (fresh within 2s?)
     DB-->>MDM: 5. Cache Miss / Stale
     MDM->>API: 6. Fetch from Provider
     API-->>MDM: 7. Return Price/Market Cap
@@ -604,7 +604,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 
 #### Cache-First Logic:
 1.  **Check Persistence**: Query `market_data_cache` in Supabase.
-2.  **TTL Verification**: If `fetched_at` is older than 5 minutes (configurable), proceed to fetch.
+2.  **TTL Verification**: If `fetched_at` is older than 2 seconds (configurable), proceed to fetch.
 3.  **External Fetch**: Hit the primary provider (typically `yfinance`) via the `FinancialProvider` interface.
 4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
 5.  **Update Cache & Teardown**: Upsert the fresh data back to `market_data_cache`, insert into `price_history`, and invoke `disconnect_all()` via the provider class to release any persistent resources.
@@ -614,7 +614,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 | Guardrail | Logic | Goal |
 | --- | --- | --- |
 | **A: Existence** | `if not data or not data.exists` | Reject non-existent/delisted tickers. |
-| **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.15` | Reject hallucinated prices (>15% deviation). |
+| **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.01` | Reject hallucinated prices (>1% deviation). |
 | **C: Liquidity** | `if market_cap < 2_000_000_000` | Reject "Penny Stocks" (Market Cap < $2B). |
 | **D: Buying Power** | `if cost > buying_power` | Reject trades exceeding margin limits. |
 | E: Minimum Value | `Trade Cost > $1,000` | Mandatory for BUYS; waived for SELLS if a sell tool is used. |

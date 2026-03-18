@@ -4,7 +4,7 @@
 
 ### What It Does
 
-An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Every morning, they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
+An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Three times a day during market hours (09:30, 12:30, 15:30 ET), they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
 
 **New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
 
@@ -45,7 +45,7 @@ llm-market-bench/
 For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow.md)**.
 
 ### Phase 1: Ingestion & Normalization
-1. **Daily Trigger (09:35 ET):** GitHub Actions fires the pipeline.
+1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Market Hours Check** and skips execution if triggered outside 09:30-16:00 ET or on weekends.
 2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
 3. **Corporate Action Check:** (PENDING).
 4. **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
@@ -63,7 +63,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
 11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed via native function calling. Hallucinated or text-only tool usage results in trade rejection.
-12. **Pre-Market Validation**: Existence, price banding, and liquidity checks.
+12. **Pre-Market Validation**: Existence, **1.0% price banding**, and liquidity checks.
 13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
 14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
@@ -94,7 +94,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** Python / Supabase / Reg T Logic
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
-*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, reject the trade to prevent negative balances. Allows valid leveraged trades.*
+*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the suggested price deviates by more than **1.0%** from market data, reject the trade to prevent negative balances or execution based on stale/hallucinated data.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.*
 *   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS a specific sell percentage tool (e.g., "sell 50%") is used, which allows for precision rebalancing and clearing "dust" positions.
@@ -303,7 +303,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of primary price data source |
 |  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `fmp`) | Selection of first fallback source |
 |  | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `yfinance`) | Selection of second fallback source |
-|  | `MARKET_DATA_CACHE_TTL_SECONDS` | Cache duration in seconds (Default: 300 / 5 minutes) | Price Fetching Optimization |
+|  | `MARKET_DATA_CACHE_TTL_SECONDS` | Cache duration in seconds (Default: 2) | Price Fetching Optimization |
 |  | `MARKET_DATA_RETRIES` | Number of attempts per provider (Default: 2) | Configurable retry logic |
 |  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY] Local market data via IBKR |
 |  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY] Local market data via IBKR |
@@ -314,6 +314,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
+|  | `MAX_PRICE_DEVIATION_PCT` | Maximum % difference between AI and market price (Default: 1.0) | Trade Validation |
 |  | `ENABLE_ANTHROPIC_WEB_SEARCH` | Enable Anthropic web search (Default: true) | Real-time news verification |
 |  | `ENABLE_GEMINI_WEB_SEARCH` | Enable Gemini Google Search (Default: true) | Real-time news verification |
 |  | `ANTHROPIC_WEB_SEARCH_VERSION` | Tool version: `web_search_20250305` or `web_search_20260209` | ZDR compliance vs dynamic filtering |
@@ -377,7 +378,7 @@ graph TD
     end
 
     subgraph "Daily Pipeline (Phase 1)"
-        CRON[Cron Schedule 09:35 ET] --> INGEST[ingest.yml]
+        CRON[Cron Schedule 09:30, 12:30, 15:30 ET] --> INGEST[ingest.yml]
         INGEST --> A[Gmail Newsletters]
         INGEST --> GOV_INGEST[Government Tracking]
         INGEST --> CAL_INGEST[Economic Calendar]

@@ -449,6 +449,20 @@ graph TD
     end
 ```
 
+## 6a. FMP API Documentation
+
+For detailed Financial Modeling Prep (FMP) API reference, see:
+
+*   **Documentation:** [docs/library-docs/FMP/FMP-API-Documentation.md](./library-docs/FMP/FMP-API-Documentation.md)
+*   **Coverage:** Complete reference for all 28 API categories including:
+    *   Stock Prices & Market Data
+    *   Financial Statements (Income, Balance, Cash Flow)
+    *   Company Profiles & Insider Trading
+    *   Economic Data & Calendars
+    *   Technical Indicators & Screener
+    *   ETFs, Mutual Funds, and Crypto APIs
+*   **Usage:** All endpoints use base URL `https://financialmodelingprep.com/stable/` with API key authentication via header or query parameter.
+
 ## 7. Deployment & Hosting
 
 The application is deployed as a Serverless TanStack Start app on Netlify.

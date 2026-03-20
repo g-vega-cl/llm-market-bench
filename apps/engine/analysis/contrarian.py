@@ -82,11 +82,12 @@ async def run_contrarian_analysis(
     )
 
     try:
-        from core.models import ContrarianAgentResponse
-        # Use ContrarianAgentResponse to handle Gemini's tendency to emit multiple tool call blocks
+        from core.models import DecisionsResponse
+        # Use List[DecisionsResponse] to handle Gemini's tendency to emit multiple tool call blocks
+        # Instructor will aggregate these into a list for us.
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
-            response_model=ContrarianAgentResponse,
+            response_model=List[DecisionsResponse],
             messages=[
                 {"role": "system", "content": prompts.CONTRARIAN_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
@@ -100,30 +101,27 @@ async def run_contrarian_analysis(
         else:
             wrapper = resp_awaitable
 
-        if not wrapper or not wrapper.responses:
+        if not wrapper:
              return [], []
              
-        # Take the first non-empty response block
-        final_resp = None
-        for r in wrapper.responses:
-            if r.decisions or r.macro_events:
-                final_resp = r
-                break
-        
-        if not final_resp:
-            final_resp = wrapper.responses[0]
+        # Aggregate all decisions and macro events from all tool call blocks
+        all_decisions = []
+        all_events = []
+        for r in wrapper:
+            all_decisions.extend(r.decisions)
+            all_events.extend(r.macro_events)
 
         # Inject model info
-        for d in final_resp.decisions:
+        for d in all_decisions:
             d.model_provider = "gemini"
             d.model_name = "contrarian_agent"
 
-        for e in final_resp.macro_events:
+        for e in all_events:
             e.model_provider = "gemini"
             e.model_name = "contrarian_agent"
 
-        logger.info(f"Contrarian analysis complete. Generated {len(final_resp.decisions)} decisions.")
-        return final_resp.decisions, final_resp.macro_events
+        logger.info(f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper)} response blocks.")
+        return all_decisions, all_events
 
     except Exception as e:
         logger.error(f"Contrarian analysis failed: {e}")

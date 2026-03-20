@@ -89,8 +89,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         uncrowded_context = ""
 
     tasks = []
-
-    # 2. Create one analysis task per model (Batch Mode)
+    task_configs = [] # NEW: Keep track of which model is associated with each task
     for config in MODELS:
         provider = config["provider"]
         model = config["model"]
@@ -142,10 +141,16 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             # or handle the missing task. For simplicity, we just pass empty chunks to the provider.
             # But it's better to just not append the task and handle it in processing.
             # However, indices matter for gather. Let's just pass empty chunks if possible.
-            # Most providers should handle empty list fine.
-        
-        # Calculate Current Day Info for Calendar Strategies
-        from datetime import datetime, timedelta
+        # 2. Create parallel analysis tasks (Batch Mode)
+    analysis_tasks_info = [] # List of (config, task)
+    for config in MODELS:
+        provider = config["provider"]
+        model = config["model"]
+
+        # ... [omitting unchanged portfolio initialization for brevity, will use multi-replacement if needed]
+        # Actually I need the whole block to be safe with replace_file_content.
+        # I'll use view_file to get the current state after my last edit.
+        from datetime import datetime
         import calendar
         
         now = datetime.now()
@@ -154,7 +159,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         # Check Month Boundaries (ToM)
         last_day = calendar.monthrange(now.year, now.month)[1]
         days_to_end = last_day - now.day
-        if now.day == 1 or now.day == 2 or now.day == 3:
+        if now.day in [1, 2, 3]:
             day_info += f" We are in the Turn of the Month (ToM) window (Day {now.day})."
         elif days_to_end == 0:
             day_info += " Today is the LAST trading day of the month (ToM Start)."
@@ -169,19 +174,30 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             
         from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
         
-        tasks.append(llm.analyze_with_provider(
-            provider=provider,
-            model_name=model,
-            chunks=chunks_to_analyze,
-            context=aggregated_context,
-            portfolio_context=portfolio_ctx,
-            current_day_info=day_info,
-            calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE
-        ))
+        # --- Chunk Batching (Best Practice) ---
+        # We split news chunks into batches of 20 to ensure:
+        # 1. Output Token Safety: Prevents exceeding the 16k output limit (esp. Claude-Haiku 4.5).
+        # 2. Reasoning Quality: Models perform better when focused on 10 stories vs 50+.
+        # 3. Parallelism: Multiple smaller calls finish faster than one giant call.
+        BATCH_SIZE = 20
+        for i in range(0, len(chunks_to_analyze), BATCH_SIZE):
+            batch = chunks_to_analyze[i:i + BATCH_SIZE]
+            
+            # Store metadata about the chunk list to reconstruct results later
+            tasks.append(llm.analyze_with_provider(
+                provider=provider,
+                model_name=model,
+                chunks=batch,
+                context=aggregated_context,
+                portfolio_context=portfolio_ctx,
+                current_day_info=day_info,
+                calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE
+            ))
+            task_configs.append(config) # Track this task's model info
 
     logger.info(
-        f"Starting {len(tasks)} batch analysis tasks across "
-        f"{len(chunks)} chunks and {len(MODELS)} models."
+        f"Starting {len(tasks)} parallel model calls (batched) across "
+        f"{len(chunks)} original chunks and {len(MODELS)} models."
     )
 
     try:
@@ -193,17 +209,17 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         
         # 4. Process results
         for i, res in enumerate(results):
-            config = MODELS[i]
-            
+            config = task_configs[i] # Use the tracked config for this specific task
+
             if isinstance(res, Exception):
-                logger.error(f"Batch analysis task failed for {config['provider']}: {res}")
+                logger.error(f"Batch analysis task failed for {config['provider']} ({config['model']}): {res}")
             else:
                 # res is a DecisionsResponse object
                 # Process decisions
                 for decision in res.decisions:
                     decision.model_provider = config["provider"]
                     decision.model_name = config["model"]
-                    
+
                     # Backfill price if missing but ticker is present
                     if decision.ticker and (decision.price is None or decision.price <= 0):
                         try:
@@ -240,7 +256,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
 
         logger.info(
             f"Completed analysis. Generated {len(valid_decisions)} decisions "
-            f"and {len(valid_events)} macro events from batch processing."
+            f"and {len(valid_events)} macro events from {len(results)} batched calls."
         )
         return valid_decisions, valid_events, aggregated_context, uncrowded_context
     finally:

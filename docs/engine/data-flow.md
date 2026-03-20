@@ -438,6 +438,14 @@ aggregated_context = """
 
 ## Phase 3: LLM Analysis (Active Tool Loop)
 
+### Step 3.0: Asynchronous Chunk Batching
+**File**: `apps/engine/analyze.py` → `analyze_chunks()`
+
+To ensure high reasoning quality and avoid output token limits (16k), the engine splits the `valid_chunks` into smaller batches:
+1.  **Batch Size**: 20 chunks per LLM call.
+2.  **Async Parallelism**: Each batch is dispatched as a separate `asyncio` task per provider.
+3.  **Result Aggregation**: The engine tracks `task_configs` to map the results of these parallel batches back to the correct model attribution.
+
 ### Step 3.1: Build Enriched Prompt
 
 **File**: `apps/engine/core/llm/`

@@ -52,7 +52,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 5. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors.
+5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
    - **DeepSeek Reasoning**: Runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context across tool iterations.
    - **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
 6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
@@ -448,6 +448,21 @@ graph TD
         CE -->|Historical Impact| V
     end
 ```
+
+## 6. Cause & Effect Analysis (Historical Audit)
+
+The system performs a bi-weekly retrospective audit of market events to track predicted vs actual impact. This is the "Institutional Memory" loop that turns news into a searchable playbook.
+
+### Key Logic:
+- **Dynamic Ticker Discovery:** Instead of just checking broad indices, the engine uses Gemini to identify the specific 3-5 companies, suppliers, or competitors most affected by a theme (e.g., "Private Credit" -> JPM, OWL).
+- **Semantic Deduplication:** Enforces a 7-day lookback window with a ~0.85 similarity threshold to ensure identical narratives aren't analyzed twice.
+- **Causal Attribution:** The LLM compares the original "Scenario Analysis" against actual historical price data (fetched via `MarketDataManager`) to quantify the outcome.
+
+### Example Entry:
+| Event | Tickers Checked | Actual Market Outcome | Causal Analysis |
+|-------|-----------------|-----------------------|-----------------|
+| **Fed Rate Hike Pause** | SPY, QQQ, JPM, GS | Financials outpaced tech as yield uncertainty stabilized. | The pause provided relief to regional banks, while mega-cap tech remained flat due to high valuations. |
+| **Iran-Israel Tension** | USO, XOM, LMT, RTX | Energy and Defense sectors spiked 3-5% intraday. | Geopolitical risk premium was immediately priced into Brent crude futures and defense contractors. |
 
 ## 6a. FMP API Documentation
 

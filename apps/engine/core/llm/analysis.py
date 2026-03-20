@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from typing import List
 
 from core.models import DecisionsResponse
 from core.llm import clients
@@ -89,7 +90,7 @@ async def analyze_with_provider(
 
         final_args = {
             "model": model_name,
-            "response_model": DecisionsResponse,
+            "response_model": List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
             "messages": messages,
             "max_retries": 2,
         }
@@ -99,12 +100,18 @@ async def analyze_with_provider(
             if messages[0]["role"] == "system":
                 final_args["system"] = messages[0]["content"]
                 final_args["messages"] = messages[1:]
-
         resp_awaitable = client.chat.completions.create(**final_args)
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            final_resp = await resp_awaitable
+            wrapper = await resp_awaitable
         else:
-            final_resp = resp_awaitable
+            wrapper = resp_awaitable
+
+        # Aggregate all results from the list of response blocks
+        final_resp = DecisionsResponse(decisions=[], macro_events=[])
+        if wrapper:
+            for r in wrapper:
+                final_resp.decisions.extend(r.decisions)
+                final_resp.macro_events.extend(r.macro_events)
 
         # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
         for decision in final_resp.decisions:

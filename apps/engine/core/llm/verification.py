@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from typing import Any, List, Optional
 
 from core.models import DecisionObject, VerificationResult
 from core.llm import clients, prompts, tools
@@ -164,7 +165,7 @@ async def verify_trading_decision(
         # Anthropic calls via instructor require max_tokens
         create_args = {
             "model": model_name,
-            "response_model": VerificationResult,
+            "response_model": List[VerificationResult], # Use List to handle Gemini multi-block tool calls
             "messages": instructor_messages,
             "max_retries": 2
         }
@@ -174,9 +175,12 @@ async def verify_trading_decision(
         resp_awaitable = client.chat.completions.create(**create_args)
         
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            final_resp = await resp_awaitable
+            wrapper = await resp_awaitable
         else:
-            final_resp = resp_awaitable
+            wrapper = resp_awaitable
+
+        # Select the last verification result if multiple were returned
+        final_resp = wrapper[-1] if wrapper else VerificationResult(status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0)
         
         # Log completion
         await log_reasoning_trace(

@@ -67,7 +67,7 @@ async def test_cause_and_effect_semantic_dedupe():
         # Scenario: Event B is semantically similar to Event A
         # When processing Event B, find_similar_memory returns uuid-a
         def mock_find_sim(content, threshold, hours):
-            if "Private credit liquidity" in content:
+            if threshold == 0.85 and "Private credit liquidity" in content:
                 return "uuid-a"
             return None
         

@@ -73,25 +73,36 @@ async def perform_cause_and_effect_analysis():
             continue
         
         # Semantic deduplication: check if a very similar event was already analyzed
-        # We look back 7 days to avoid repeating the same market narrative analysis
-        similar_event_id = find_similar_memory(content, threshold=0.90, hours=168)
+        # We look back 7 days to avoid repeating the same market narrative analysis.
+        # Use a slightly lower threshold (0.85) to catch 'really similar' events as requested.
+        similar_event_id = find_similar_memory(content, threshold=0.85, hours=168)
         if similar_event_id:
             # Check if THIS similar event already has a cause_and_effect entry
             existing_similar = sb_client.table("cause_and_effect").select("id").filter("event_id", "eq", similar_event_id).execute()
             if existing_similar.data:
                 logger.info(f"Skipping event {event_id}: Semantic duplicate of {similar_event_id} already analyzed.")
                 continue
+            else:
+                # Even if no analysis exists, we might want to skip if it's a near-duplicate 
+                # but for Cause & Effect we need at least ONE analysis per narrative.
+                # So we only skip if the existing one HAS analysis.
+                pass
 
-        # 3. Fetch market performance data since event creation
-        # We'll check S&P 500 (SPY) and maybe some sectors if mentioned
-        # For now, let's keep it simple with SPY and any ticker mentioned in the content/metadata
-        tickers_to_check = ["SPY", "QQQ"]
-        
-        # dynamic ticker extraction via LLM
+        # Dynamic Ticker Discovery: Find which stocks moved because of this
         suggested_tickers = await extract_related_tickers(content)
-        tickers_to_check.extend(suggested_tickers)
-
-        # Blacklist of common words that look like tickers but aren't
+        
+        # Priority: Suggested Tickers > Benchmarks
+        # We include benchmarks as a secondary comparison point
+        tickers_to_check = list(set(suggested_tickers)) if suggested_tickers else []
+        
+        # Only add benchmarks if we have room or if no specific tickers found
+        benchmarks = ["SPY", "QQQ"]
+        for b in benchmarks:
+            if b not in tickers_to_check:
+                tickers_to_check.append(b)
+                
+        # Limit to top 5 tickers to keep context manageable but granular
+        tickers_to_check = tickers_to_check[:5]
         TICKER_BLACKLIST = {"EVENT", "AI", "US", "A", "THE", "AND", "MARKET", "GDP", "CPI", "FDA", "SEC", "FED"}
         
         # Extract tickers from content if possible (regex for 1-5 uppercase letters)

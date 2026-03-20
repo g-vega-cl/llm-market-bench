@@ -122,20 +122,20 @@ class MacroEvent(BaseModel):
     source_id: str | None # ID of the source chunk (Optional)
 ```
 
-## 4. Parallel Orchestration (Consolidated Mode)
+## 4. Parallel Orchestration (Batch-Parallel Mode)
 
-To minimize latency and costs, the system uses a **Batch-Parallel** approach. Instead of querying models for every individual news snippet, all chunks are bundled into a single batch per provider.
+To manage output token limits (especially for Claude-Haiku 4.5) and improve reasoning quality, the system uses an **Asynchronous Chunk Batching** approach.
 
 1.  **Ingestion**: News chunks are fetched from Gmail and cleaned via the LLM De-advertisement pass (Gemini Flash).
-2.  **Filtering**: Chunks are validated to ensure they contain both `source_id` and `content`. Malformed chunks are skipped to prevent pipeline errors.
+2.  **Filtering**: Chunks are validated to ensure they contain both `source_id` and `content`.
 3.  **RAG Batching**: Gemini embeddings are generated for ALL valid chunks in a single batch call.
-4.  **Dispatch & Tool Loop**: Each LLM is called in a sequence designed to allow multiple "reasoning and verification" steps.
-    *   **Phase A**: Model reasoning on news chunks.
-    *   **Phase B**: Tool call triggered for ticker verification.
-    *   **Phase C**: Tool result returned (via `MarketDataManager`).
-    *   **Phase D**: Final structured decision generated.
-5.  **Validation**: `Instructor` extracts and validates the model's list of decisions against the Pydantic schema.
-6.  **Aggregation**: Validated `DecisionObject` outputs are saved for the Consensus phase.
+4.  **Chunk Batching (Internal Loop)**: The engine splits individual news chunks into batches of **20** stories each.
+    - **Parallelism**: Each batch is sent to the LLMs as an independent asynchronous task.
+    - **Attribution**: The engine tracks which model/config is associated with each batch task to ensure correct result mapping.
+5.  **Multi-Block Tool Loop**: LLMs (especially Gemini) may emit multiple tool call blocks within a single turn.
+    - **Instructor Extraction**: The `response_model` is configured as a `List[Model]` (e.g., `List[DecisionsResponse]`).
+    - **Aggregation**: The engine automatically aggregates all tool results and final decisions from these multiple blocks into a single consolidated response.
+6.  **Validation & Backfill**: `Instructor` validates the aggregated results. If a ticker is found but a price is missing, the engine automatically backfills the current market price using the `MarketDataManager`.
 
 ## 5. Sophisticated Trading Logic
 

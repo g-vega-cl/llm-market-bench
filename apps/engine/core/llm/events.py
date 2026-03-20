@@ -3,7 +3,7 @@
 import logging
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -83,7 +83,8 @@ async def synthesize_event(
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
-            response_model=SynthesisResponse,
+            # Use List to handle Gemini's tendency to emit multiple tool calls for the schema
+            response_model=List[SynthesisResponse], 
             messages=[
                 {
                     "role": "system",
@@ -96,9 +97,12 @@ async def synthesize_event(
 
         import asyncio
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            resp = await resp_awaitable
+            wrapper = await resp_awaitable
         else:
-            resp = resp_awaitable
+            wrapper = resp_awaitable
+        
+        # Take the last synthesis result if multiple were returned
+        resp = wrapper[-1] if wrapper else SynthesisResponse(name=event_name, summary="Synthesis failed")
 
         # Post-process for date validity
         normalized_date, normalized_note = _normalize_future_date(resp.future_date, resp.future_date_note)

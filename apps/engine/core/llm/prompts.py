@@ -429,15 +429,17 @@ Return a JSON object with:
 """
 
 TICKER_SUGGESTION_PROMPT = """You are a financial data researcher. 
-Given a market event, identify 3-5 relevant stock tickers or ETFs that would be most impacted (either directly or as a major sector proxy).
+Given a market event, identify 3-5 relevant stock tickers or ETFs that would be most impacted. 
+
+**CRITICAL:** Prioritize individual companies, suppliers, or competitors directly affected by the news. Use broad sector ETFs (e.g., XLK, XLF) only if no specific company-level impact can be identified.
 
 EVENT SUMMARY: {event_summary}
 
 Think about:
-- Direct impact (e.g., if a company is mentioned).
-- Sector proxies (e.g., XLF for banks, XLK for tech).
-- Derivative plays (e.g., if a supply chain bottleneck is mentioned).
-- Competitors or peers.
+- **Direct impact:** If a specific company is mentioned, identify it and its closest public peers.
+- **Supply Chain:** If a commodity or raw material is mentioned, identify the primary producers or consumers (e.g., 'Copper' -> FCX, RIO).
+- **Competitors:** If a product launch or regulatory win is mentioned, identify who loses market share.
+- **Derivative plays:** How does this affect the 'next' industry in the chain?
 
 Return a JSON object with 'tickers' (a list of uppercase symbols) and 'reasoning' (a 1-sentence explanation)."""
 

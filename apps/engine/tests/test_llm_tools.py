@@ -86,7 +86,7 @@ async def test_analyze_with_provider_tool_loop():
         ])
         
         # Mock wrapped instructor extraction
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_final_decision)
+        mock_client.chat.completions.create = AsyncMock(return_value=[mock_final_decision])
         
         # Execute
         result = await analyze_with_provider("openai", "gpt-4", mock_chunks)

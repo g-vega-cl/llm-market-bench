@@ -31,7 +31,7 @@ async def test_verify_trading_decision_approved():
         # Instructor client mock
         mock_instructor_client = MagicMock()
         mock_completions = MagicMock()
-        mock_completions.create = AsyncMock(return_value=mock_result)
+        mock_completions.create = AsyncMock(return_value=[mock_result])
         mock_instructor_client.completions = mock_completions
         mock_client.chat = mock_instructor_client
         
@@ -79,7 +79,7 @@ async def test_verify_trading_decision_rejected():
         
         mock_instructor_client = MagicMock()
         mock_completions = MagicMock()
-        mock_completions.create = AsyncMock(return_value=mock_result)
+        mock_completions.create = AsyncMock(return_value=[mock_result])
         mock_instructor_client.completions = mock_completions
         mock_client.chat = mock_instructor_client
         
@@ -126,7 +126,7 @@ async def test_verify_trading_decision_anthropic():
         
         mock_instructor_client = MagicMock()
         mock_completions = MagicMock()
-        mock_completions.create = AsyncMock(return_value=mock_result)
+        mock_completions.create = AsyncMock(return_value=[mock_result])
         mock_instructor_client.completions = mock_completions
         mock_client.chat = mock_instructor_client
         mock_client.client = MagicMock() # Mock raw Anthropic client
@@ -171,7 +171,7 @@ async def test_verify_trading_decision_gemini():
         
         mock_instructor_client = MagicMock()
         mock_completions = MagicMock()
-        mock_completions.create = AsyncMock(return_value=mock_result)
+        mock_completions.create = AsyncMock(return_value=[mock_result])
         mock_instructor_client.completions = mock_completions
         mock_client.chat = mock_instructor_client
         mock_client.client = MagicMock() # Mock raw Gemini client (using genai SDK)
@@ -217,7 +217,7 @@ async def test_verify_trading_decision_sync_resilience():
         # Simulate a SYNCHRONOUS response (no await/asyncio.iscoroutine)
         mock_instructor_client = MagicMock()
         mock_completions = MagicMock()
-        mock_completions.create.return_value = mock_result # NOT an AsyncMock
+        mock_completions.create.return_value = [mock_result] # NOT an AsyncMock
         mock_instructor_client.completions = mock_completions
         mock_client.chat = mock_instructor_client
         mock_client.client = MagicMock()

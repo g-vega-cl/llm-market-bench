@@ -100,7 +100,7 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
     mock_instructor = mock_clients["instructor"]
     
     # DecisionsResponse returned by Instructor
-    mock_instructor.create.return_value = DecisionsResponse(
+    mock_instructor.create.return_value = [DecisionsResponse(
         decisions=[
             DecisionObject(
                 signal="SELL",
@@ -113,7 +113,7 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
             )
         ],
         macro_events=[]
-    )
+    )]
     
     # Mock handlers to not add any tools to messages
     with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock):

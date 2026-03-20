@@ -9,6 +9,7 @@ from core.models import DecisionsResponse
 from core.llm import clients
 from core.llm import prompts
 from core.llm import tools
+from .utils import ensure_list
 from core.llm.logger import log_reasoning_trace
 from core.config import MIN_TRADE_VALUE
 
@@ -109,7 +110,7 @@ async def analyze_with_provider(
         # Aggregate all results from the list of response blocks
         final_resp = DecisionsResponse(decisions=[], macro_events=[])
         if wrapper:
-            for r in wrapper:
+            for r in ensure_list(wrapper):
                 final_resp.decisions.extend(r.decisions)
                 final_resp.macro_events.extend(r.macro_events)
 

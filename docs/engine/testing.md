@@ -121,6 +121,8 @@ from unittest.mock import AsyncMock
 monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
 ```
 
+**Multi-Block LLM Responses**: When testing analysis or verification loops that use `response_model=List[Model]` (to handle multiple tool call blocks), mocks should return a list of objects (e.g., `[mock_result]`). However, the production logic is resilient to single object returns via the `ensure_list` utility.
+
 ### Async Tests: Mark tests that call async functions with `@pytest.mark.asyncio` and use `await`:
 ```python
 @pytest.mark.asyncio

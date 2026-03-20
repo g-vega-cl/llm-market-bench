@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 
 from core.models import DecisionObject, VerificationResult
 from core.llm import clients, prompts, tools
+from .utils import ensure_list
 from core.llm.handlers import base
 from core.llm.logger import log_reasoning_trace
 
@@ -180,7 +181,8 @@ async def verify_trading_decision(
             wrapper = resp_awaitable
 
         # Select the last verification result if multiple were returned
-        final_resp = wrapper[-1] if wrapper else VerificationResult(status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0)
+        wrapped_results = ensure_list(wrapper)
+        final_resp = wrapped_results[-1] if wrapped_results else VerificationResult(status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0)
         
         # Log completion
         await log_reasoning_trace(

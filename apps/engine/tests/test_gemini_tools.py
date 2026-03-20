@@ -73,7 +73,7 @@ async def test_analyze_with_provider_gemini_tool_loop():
         mock_aio.models.generate_content = AsyncMock(side_effect=[mock_resp_1, mock_resp_2])
         
         # Mock final instructor extraction
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_final_decision)
+        mock_client.chat.completions.create = AsyncMock(return_value=[mock_final_decision])
         
         # Execute
         result = await analyze_with_provider("gemini", "gemini-3-flash-preview", mock_chunks)

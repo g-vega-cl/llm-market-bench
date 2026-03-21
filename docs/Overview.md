@@ -157,9 +157,10 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
 *   **TODAY Dashboard**: The primary entry point (`/`) providing a high-level narrative of the day's events, including AI consensus, news ingestion, and trade executions.
     *   **Horizon Watch**:
-        - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
+        - **Multi-Source Date Extraction**: The engine uses a multi-layered approach for date integrity. It first attempts to use LLM-extracted dates. If missing, the **`cleanup_catalysts.py`** script and the **frontend display layer** both use robust regex extraction to pull `YYYY-MM-DD` dates directly from the event title or content.
+        - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
         - **Tentative Notes & Time**: A `future_date_note` or `event_time` (e.g., "10:00 AM", "tentative") is extracted and stored, providing better context for Horizon Watch.
-        - **Strict Separation**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. This prevents "Ongoing Memories" or past investments from cluttering the future timeline. 
+        - **Strict Separation & Calibration**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. The cleanup script and ingestion pipeline automatically recalibrate these flags, ensuring that past events (Date < Today) or "Ongoing Trends" (e.g., Rotations, Investments) are moved to the general memory timeline and hidden from the future watcher. 
         - **Strict Catalyst Filter**: To qualify as a **Future Catalyst**, an event must be strictly PENDING and SCHEDULED. Vague timeframes like "later in 2026" or broad thematic shifts are excluded from this view.
         - **Multi-Outcome Scenarios**: Every Horizon Watch event is required to have a structured **Scenario Analysis** containing at least two possible outcomes and a dedicated **Trading Plan** for each.
 *   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer. For closed positions, the audit trail now displays the **Realized P&L** (USD and %) directly in the trades table.
@@ -281,7 +282,7 @@ To ensure the `docs/database-schema.md` is always up to date with the actual Pos
 To normalize Horizon Watch catalysts (ISO dates, notes, and importance) and ensure strict separation from ongoing memories:
 *   **Script:** `apps/engine/cleanup_catalysts.py`
 *   **Usage:** `python cleanup_catalysts.py`
-*   **Goal:** Enforces data integrity for "Horizon Watch" entries by standardizing non-ISO dates and ensuring materiality. It also recalibrates the `is_future_catalyst` flag to exclude ongoing trends and past investments.
+*   **Goal:** Enforces data integrity for "Horizon Watch" entries by standardizing non-ISO dates and ensuring materiality. It uses **Regex-based Date Extraction** to recover missing dates from event text and recalibrates the `is_future_catalyst` flag to strictly filter for upcoming events (Date >= Today), moving past events and ongoing thematic rotations to general memory.
 
 ## 6. Environment & Security
 ### Key Management Strategy

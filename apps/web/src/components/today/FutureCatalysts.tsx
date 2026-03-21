@@ -1,5 +1,10 @@
 import * as React from 'react'
 
+function extractDate(content: string): string | null {
+    const match = content.match(/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
+}
+
 export function FutureCatalysts({ events }: { events: any[] }) {
     if (!events.length) return null;
     return (
@@ -11,18 +16,20 @@ export function FutureCatalysts({ events }: { events: any[] }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {events.map((event) => {
                     const dateNote = event.metadata?.future_date_note;
+                    const eventDate = event.target_date || extractDate(event.content);
+                    
                     // Fix timezone shift by forcing local time parsing
-                    const dateObj = event.target_date ? new Date(event.target_date + 'T00:00:00') : null;
+                    const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null;
                     const isPassed = dateObj ? dateObj < new Date(new Date().setHours(0, 0, 0, 0)) : false;
 
                     // Double safety: don't render passed events in Horizon Watch
                     if (isPassed) return null;
 
                     return (
-                        <div key={event.id} className={`p-6 border ${isPassed ? 'border-zinc-100 dark:border-zinc-900 opacity-60' : 'border-zinc-200 dark:border-zinc-800'} rounded-3xl bg-white dark:bg-zinc-900 shadow-sm relative overflow-hidden group hover:border-purple-500 transition-colors`}>
+                        <div key={event.id} className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm relative overflow-hidden group hover:border-purple-500 transition-colors">
                             <div className="absolute top-0 right-0 p-4">
-                <span className={`px-2 py-1 ${isPassed ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'} text-[9px] font-black uppercase tracking-widest rounded flex items-center gap-1.5`}>
-                                    {event.target_date ? (
+                                <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[9px] font-black uppercase tracking-widest rounded flex items-center gap-1.5 px-2 py-1">
+                                    {eventDate ? (
                                         <>
                                             {dateNote && <span className="text-zinc-500 opacity-70">{dateNote}:</span>}
                                             {dateObj?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

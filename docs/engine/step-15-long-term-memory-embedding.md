@@ -27,8 +27,8 @@ When a model generates a trading decision (BUY/SELL), the `save_decision` servic
 
 #### B. Macro Events (Step 8)
 Synthesized professional market events are still promoted to the `memories` table after consensus.
-- **Content Format**: `[CALENDAR EVENT] (Time) [Event Name]: [Reasoning] | IMPACT: [Impact] | Date: [Date]`
-- **Catalyst Logic**: High-importance events with a `target_date` are marked with `is_future_catalyst: true` and `event_time` in metadata to populate the **Horizon Watch** UI.
+- **Content Format**: `[CALENDAR EVENT] (Time) [YYYY-MM-DD]: [Event Name]: [Reasoning] | IMPACT: [Impact] | Date: [Date]`
+- **Catalyst Logic**: High-importance events (`score >= 8`) with a validated future `target_date` are marked with `is_future_catalyst: true`. The system uses **Multi-Source Extraction** (LLM + Regex) to ensure dates are preserved even if the model fails to return them in a structured field.
 
 ### 3. Retrieval Optimization (Dual-Search)
 

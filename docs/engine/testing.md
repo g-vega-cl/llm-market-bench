@@ -121,6 +121,16 @@ from unittest.mock import AsyncMock
 monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
 ```
 
+**MarketDataManager & is_market_open**: When mocking `MarketDataManager`, you MUST provide an `AsyncMock` for `is_market_open`. Failure to do so will result in `TypeError: object MagicMock can't be used in 'await' expression`.
+```python
+with patch("execution.validation.MarketDataManager") as mock_manager_cls:
+    mock_manager = mock_manager_cls.return_value
+    mock_manager.is_market_open = AsyncMock(return_value=True)
+    mock_manager.get_quote = AsyncMock(return_value=mock_data)
+```
+
+**Supabase Initialization in Tests**: `MarketDataManager.__init__` calls `get_supabase_client()`, which requires environment variables. To avoid `ValueError` in CI environments, always mock `MarketDataManager` at the class level or mock `core.db.get_supabase_client`. Note that if a module uses a local import (e.g., `from execution.market_data import MarketDataManager` inside a function), you must patch the source: `patch("execution.market_data.MarketDataManager")`.
+
 **Multi-Block LLM Responses**: When testing analysis or verification loops that use `response_model=List[Model]` (to handle multiple tool call blocks), mocks should return a list of objects (e.g., `[mock_result]`). However, the production logic is resilient to single object returns via the `ensure_list` utility.
 
 ### Async Tests: Mark tests that call async functions with `@pytest.mark.asyncio` and use `await`:

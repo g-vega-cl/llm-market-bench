@@ -52,6 +52,7 @@ async def test_individual_task_failure_does_not_halt_pipeline():
         
         mock_market_data = MagicMock()
         mock_market_data.get_quote = AsyncMock(return_value=None)
+        mock_market_data.is_market_open = AsyncMock(return_value=True)
         mock_market_data_class.return_value = mock_market_data
         
         decisions, events, _, _ = await analyze_chunks(chunks)
@@ -76,7 +77,11 @@ def test_main_ingestion_guardrail(monkeypatch):
     # Simulate 'python main.py ingest'
     monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
 
-    main()
+    # Mock MarketDataManager to avoid DB initialization in __init__
+    with patch("execution.market_data.MarketDataManager") as mock_mdm_cls:
+        mock_mdm = mock_mdm_cls.return_value
+        mock_mdm.is_market_open = AsyncMock(return_value=True)
+        main()
 
     # Verify warning was logged
     mock_logger.warning.assert_called()
@@ -96,6 +101,10 @@ def test_main_does_not_call_db_when_no_newsletters(monkeypatch):
     # Simulate 'python main.py ingest'
     monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
 
-    with patch("main.get_supabase_client") as mock_db:
-        main()
+    # Mock MarketDataManager to avoid DB initialization in __init__
+    with patch("execution.market_data.MarketDataManager") as mock_mdm_cls:
+        mock_mdm = mock_mdm_cls.return_value
+        mock_mdm.is_market_open = AsyncMock(return_value=True)
+        with patch("main.get_supabase_client") as mock_db:
+            main()
         mock_db.assert_not_called()

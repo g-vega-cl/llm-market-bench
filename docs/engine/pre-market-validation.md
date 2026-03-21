@@ -11,6 +11,12 @@ LLMs, while powerful, can occasionally:
 
 ## Guardrails Implementation
 
+### 0. Guardrail 0: Market Hours
+- **Logic**: Checks if the US stock market is currently open and not on a holiday.
+- **Provider**: Uses Financial Modeling Prep (FMP) API with a time-based fallback (09:30-16:00 ET, Mon-Fri).
+- **Action**: Reject trade if the market is closed.
+- **File**: `MarketDataManager.is_market_open()` in `execution/market_data.py`.
+
 ### 1. Guardrail A: Ticker Existence
 - **Logic**: Queries the Financial Provider (e.g., Financial Modeling Prep) to see if the ticker is active and tradable.
 - **Action**: Reject trade if the ticker is not found.

@@ -19,6 +19,7 @@ async def test_validate_decision_pass():
     with patch("execution.validation.MarketDataManager") as mock_manager_cls:
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
+        mock_manager.is_market_open = AsyncMock(return_value=True)
         
         # AI suggests $150.5 (within 1% of $150.0)
         result = await validate_decision("AAPL", 150.5)
@@ -33,6 +34,7 @@ async def test_validate_decision_hallucination():
     with patch("execution.validation.MarketDataManager") as mock_manager_cls:
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=None)
+        mock_manager.is_market_open = AsyncMock(return_value=True)
         
         result = await validate_decision("FAKE", 100.0)
         
@@ -53,6 +55,7 @@ async def test_validate_decision_price_deviation():
     with patch("execution.validation.MarketDataManager") as mock_manager_cls:
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
+        mock_manager.is_market_open = AsyncMock(return_value=True)
         
         # AI suggests $50 (deviation > 15%)
         result = await validate_decision("TSLA", 50.0)
@@ -74,6 +77,7 @@ async def test_validate_decision_liquidity():
     with patch("execution.validation.MarketDataManager") as mock_manager_cls:
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
+        mock_manager.is_market_open = AsyncMock(return_value=True)
         
         result = await validate_decision("PENY", 1.0)
         
@@ -94,6 +98,7 @@ async def test_validate_decision_no_ai_price():
     with patch("execution.validation.MarketDataManager") as mock_manager_cls:
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
+        mock_manager.is_market_open = AsyncMock(return_value=True)
         
         # ai_price is None
         result = await validate_decision("MSFT", None)

@@ -63,7 +63,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
 11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed via native function calling. Hallucinated or text-only tool usage results in trade rejection.
-12. **Pre-Market Validation**: **FMP-Verified Market Hours**, symbol existence, **1.0% price banding**, and liquidity checks.
+12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware), symbol existence, **1.0% price banding**, and liquidity checks.
 13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
 14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.

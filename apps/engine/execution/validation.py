@@ -18,6 +18,7 @@ class ValidationStatus(Enum):
     REJECTED_PRICE_DEVIATION = "REJECTED_PRICE_DEVIATION"
     REJECTED_LIQUIDITY = "REJECTED_LIQUIDITY"
     REJECTED_REDUNDANCY = "REJECTED_REDUNDANCY"
+    REJECTED_MARKET_CLOSED = "REJECTED_MARKET_CLOSED"
     ERROR_PROVIDER = "ERROR_PROVIDER"
 
 
@@ -56,6 +57,14 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
 
     manager = MarketDataManager()
     
+    # Guardrail 0: Market Hours
+    if not await manager.is_market_open():
+        return ValidationResult(
+            ticker=ticker,
+            status=ValidationStatus.REJECTED_MARKET_CLOSED,
+            reason="Market is currently closed. Trading is only allowed during US market hours (09:30-16:00 ET, Mon-Fri, non-holidays)."
+        )
+
     try:
         data = await manager.get_quote(ticker)
     except Exception as e:

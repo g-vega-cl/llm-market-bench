@@ -101,7 +101,7 @@ def get_gmail_service():
             return None
 
     try:
-        service = build("gmail", "v1", credentials=creds)
+        service = build("gmail", "v1", credentials=creds, cache_discovery=False)
         return service
     except HttpError as error:
         logger.error(f"GMAIL SERVICE BUILD ERROR: {error}")

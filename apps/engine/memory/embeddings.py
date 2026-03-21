@@ -39,7 +39,7 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
     try:
         client = genai.Client(api_key=config.GEMINI_API_KEY)
         # Gemini's embed_content naturally supports lists of strings
-        print(f"Calling Gemini embeddings for {len(texts)} texts")
+        logger.info(f"Calling Gemini embeddings for {len(texts)} texts")
         response = client.models.embed_content(
             model=EMBEDDING_MODEL,
             contents=texts,

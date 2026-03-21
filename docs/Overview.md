@@ -94,7 +94,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** Python / Supabase / Reg T Logic
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
-*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the suggested price deviates by more than **1.0%** from market data, reject the trade to prevent negative balances or execution based on stale/hallucinated data.*
+*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the suggested price deviates by more than **5.0%** from market data, reject the trade to prevent negative balances or execution based on stale/hallucinated data.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.*
 *   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS a specific sell percentage tool (e.g., "sell 50%") is used, which allows for precision rebalancing and clearing "dust" positions.
@@ -315,7 +315,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
-|  | `MAX_PRICE_DEVIATION_PCT` | Maximum % difference between AI and market price (Default: 1.0) | Trade Validation |
+|  | `MAX_PRICE_DEVIATION_PCT` | Maximum % difference between AI and market price (Default: 5.0) | Trade Validation |
 |  | `ENABLE_ANTHROPIC_WEB_SEARCH` | Enable Anthropic web search (Default: true) | Real-time news verification |
 |  | `ENABLE_GEMINI_WEB_SEARCH` | Enable Gemini Google Search (Default: true) | Real-time news verification |
 |  | `ANTHROPIC_WEB_SEARCH_VERSION` | Tool version: `web_search_20250305` or `web_search_20260209` | ZDR compliance vs dynamic filtering |

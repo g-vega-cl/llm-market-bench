@@ -77,20 +77,23 @@ class FMPProvider(FinancialProvider):
 
         try:
             async with httpx.AsyncClient() as client:
-                # FMP historical-price-full returns the most recent data
+                # FMP historical-price-eod/full requires symbol as query parameter
                 resp = await client.get(
-                    f"{self.BASE_URL}/historical-price-eod/full/{ticker}",
-                    params={"timeseries": days, "apikey": self.api_key}
+                    f"{self.BASE_URL}/historical-price-eod/full",
+                    params={"symbol": ticker, "timeseries": days, "apikey": self.api_key}
                 )
                 resp.raise_for_status()
                 data = resp.json()
 
-                if not data or "historical" not in data:
+                # Handle both list (stable/v4) and dict with 'historical' key (v3)
+                historical_data = data if isinstance(data, list) else data.get("historical", [])
+
+                if not historical_data:
                     logger.warning(f"No history found for {ticker} on FMP.")
                     return []
 
                 results = []
-                for entry in data["historical"]:
+                for entry in historical_data:
                     results.append({
                         "price": float(entry["close"]),
                         "fetched_at": entry["date"] # FMP provides YYYY-MM-DD

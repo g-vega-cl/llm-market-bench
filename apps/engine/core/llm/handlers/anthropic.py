@@ -111,7 +111,8 @@ async def run_tool_loop(
             if content_block.type == "text":
                 # Strip trailing whitespace to avoid "messages: final assistant content cannot end with trailing whitespace"
                 text = content_block.text.rstrip() if content_block.text else ""
-                assistant_content.append({"type": "text", "text": text})
+                if text:
+                    assistant_content.append({"type": "text", "text": text})
             elif content_block.type == "tool_use":
                 # Only include function tool calls (client-side tools)
                 assistant_content.append({
@@ -121,6 +122,10 @@ async def run_tool_loop(
                     "input": content_block.input,
                 })
             # Skip server_tool_use blocks - they are internal to Anthropic's server
+
+        # Ensure assistant content is never empty to avoid 400 errors from API
+        if not assistant_content:
+            assistant_content.append({"type": "text", "text": "Processing..."})
 
         messages.append({"role": "assistant", "content": assistant_content})
 

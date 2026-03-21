@@ -7,7 +7,7 @@ contrarian opportunities or missed risks.
 import logging
 from typing import List, Tuple
 
-from core.models import DecisionObject, MacroEvent, DecisionsResponse
+from core.models import DecisionObject, MacroEvent, DecisionsResponse, ContrarianAgentResponse
 from core.llm import get_gemini_client, prompts
 from core.config import GEMINI_MODEL, logger
 from execution.portfolio import Portfolio
@@ -87,7 +87,7 @@ async def run_contrarian_analysis(
         # Instructor will aggregate these into a list for us.
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
-            response_model=List[DecisionsResponse],
+            response_model=ContrarianAgentResponse,
             messages=[
                 {"role": "system", "content": prompts.CONTRARIAN_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
@@ -107,7 +107,7 @@ async def run_contrarian_analysis(
         # Aggregate all decisions and macro events from all tool call blocks
         all_decisions = []
         all_events = []
-        for r in wrapper:
+        for r in wrapper.responses:
             all_decisions.extend(r.decisions)
             all_events.extend(r.macro_events)
 
@@ -120,7 +120,7 @@ async def run_contrarian_analysis(
             e.model_provider = "gemini"
             e.model_name = "contrarian_agent"
 
-        logger.info(f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper)} response blocks.")
+        logger.info(f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper.responses)} response blocks.")
         return all_decisions, all_events
 
     except Exception as e:

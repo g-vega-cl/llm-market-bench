@@ -88,32 +88,39 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         aggregated_context = ""
         uncrowded_context = ""
 
+    # 1. Initialize all portfolios and fetch prices in parallel for all models
+    portfolios = {}
+    all_tickers = set()
+    for config in MODELS:
+        model = config["model"]
+        portfolio = Portfolio(owner_id=model)
+        await portfolio.initialize()
+        portfolios[model] = portfolio
+        all_tickers.update(portfolio.positions.keys())
+    
+    # 2. Batch fetch prices for all unique holdings
+    market_data = MarketDataManager()
+    price_map = {}
+    if all_tickers:
+        logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
+        price_tasks = [market_data.get_quote(ticker) for ticker in all_tickers]
+        quotes = await asyncio.gather(*price_tasks)
+        for quote in quotes:
+            if quote:
+                price_map[quote.ticker] = quote.price
+    
     tasks = []
     task_configs = [] # NEW: Keep track of which model is associated with each task
     for config in MODELS:
         provider = config["provider"]
         model = config["model"]
 
-        # Initialize Portfolio & Context
-        portfolio = Portfolio(owner_id=model)  # Using model name as owner_id
-        await portfolio.initialize()
-        
-        # Get current prices for portfolio holdings
-        # Note: In a real scenario, we'd batch fetch these. 
-        # For now, we can rely on MarketDataManager's caching if we had a list of tickers.
-        # But we need specific current prices to calculate equity.
-        market_data = MarketDataManager()
-        current_prices = {}
-        for ticker in portfolio.positions.keys():
-            quote = await market_data.get_quote(ticker)
-            if quote:
-                current_prices[ticker] = quote.price
-
-        # Update metrics and save
-        portfolio.calculate_reg_t_metrics(current_prices)
+        # Use pre-initialized portfolio and pre-fetched prices
+        portfolio = portfolios[model]
+        portfolio.calculate_reg_t_metrics(price_map)
         await portfolio.save_metrics()
         
-        portfolio_ctx = await portfolio.get_portfolio_summary(current_prices)
+        portfolio_ctx = await portfolio.get_portfolio_summary(price_map)
 
         # Idempotency Filter: Skip chunks that this model has already analyzed
         # We check the decisions table for (source_id, model_name)

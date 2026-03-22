@@ -235,11 +235,15 @@ Twice a week (Sundays and Wednesdays), the engine fetches the global macro calen
 
 ## Phase 2: Filtering & Context Retrieval
 
-### Step 2.1: Filter Malformed Chunks
+### Step 2.1: Filter Malformed Chunks & Initialize Portfolios
 
 **File**: `apps/engine/analyze.py` → `analyze_chunks()`
 
-Before analysis, the engine validates all chunks to ensure they possess both a `source_id` and `content`. Any newsletter that failed to parse correctly during ingestion is skipped here to ensure the stability of the RAG and LLM stages. The engine also aggregates historical context (including government incentives and lessons learned) via parallel vector searches using a single set of embeddings.
+Before analysis, the engine performs the following setup:
+1. **Filtering**: Validates all chunks to ensure they possess both a `source_id` and `content`.
+2. **Portfolio Initialization**: Initializes the `Portfolio` for every model in the pipeline.
+3. **Parallel Price Fetching**: Collects all unique tickers held across these portfolios and fetches their current market prices in parallel via `MarketDataManager`.
+4. **Context Aggregation**: Aggregates historical context (including government incentives and lessons learned) via parallel vector searches using a single set of embeddings.
 
 ```python
 valid_chunks = [

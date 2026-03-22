@@ -70,7 +70,7 @@ Calculated in the `PositionsTable` component:
 
 
 ### 4. LLM Prompt Injection & Awareness
-Before the LLM analyzes news, we insert a snapshot of its financial health. This includes a **Recently Executed Trades** list with ** granular "time ago" formatting** (e.g., "5m ago", "12h ago"). This ensures models are aware of their recent momentum and don't repeat trades on the same catalysts.
+Before the LLM analyzes news, we insert a snapshot of its financial health. This includes the current market price for every holding (fetched in parallel across all portfolios to ensure consistency and efficiency) and a **Recently Executed Trades** list with **granular "time ago" formatting** (e.g., "5m ago", "12h ago"). This ensures models are aware of their recent momentum and don't repeat trades on the same catalysts.
 
 The LLM is also given explicit instructions on **SMA Management Rules**, the **10% Safety Floor**, and the **$1,000 Minimum Purchase Rule**.
 

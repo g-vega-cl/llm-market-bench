@@ -37,10 +37,14 @@ async def run_contrarian_analysis(
 
     market_data = MarketDataManager()
     current_prices = {}
-    for ticker in portfolio.positions.keys():
-        quote = await market_data.get_quote(ticker)
-        if quote:
-            current_prices[ticker] = quote.price
+    if portfolio.positions:
+        logger.info(f"Fetching current prices for {len(portfolio.positions)} contrarian portfolio tickers in parallel...")
+        tickers = list(portfolio.positions.keys())
+        price_tasks = [market_data.get_quote(ticker) for ticker in tickers]
+        quotes = await asyncio.gather(*price_tasks)
+        for quote in quotes:
+            if quote:
+                current_prices[quote.ticker] = quote.price
 
     portfolio.calculate_reg_t_metrics(current_prices)
     await portfolio.save_metrics()

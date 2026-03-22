@@ -46,19 +46,20 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 1: Ingestion & Normalization
 1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays.
-2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
-3. **Corporate Action Check:** (PENDING).
-4. **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
-5. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
+1.  **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays.
+2.  **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
+3.  **Corporate Action Check:** (PENDING).
+4.  **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
+5.  **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5. **Parallel LLM Analysis:** OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
-   - **DeepSeek Reasoning**: Runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context across tool iterations.
-   - **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
-6. **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
-7. **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
-8. **Event Consensus:** Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
-9. **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
+5.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
+    -   **DeepSeek Reasoning**: Runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context across tool iterations.
+    -   **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
+6.  **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
+7.  **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
+8.  **Event Consensus:** Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
+9.  **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
@@ -96,7 +97,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the suggested price deviates by more than **5.0%** from market data, reject the trade to prevent negative balances or execution based on stale/hallucinated data.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
-*   **Portfolio Context Injection**: *LLMs receive their current Cash, Equity, and Buying Power in the prompt, allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.*
+*   **Portfolio Context Injection**: LLMs receive their current Cash, Equity, and Buying Power in the prompt, along with real-time market prices for all holdings (fetched in parallel before analysis), allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.
+*
 *   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS a specific sell percentage tool (e.g., "sell 50%") is used, which allows for precision rebalancing and clearing "dust" positions.
 *
 *   documentation: ./engine/portfolio-management-walkthrough.md

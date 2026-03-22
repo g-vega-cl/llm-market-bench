@@ -164,7 +164,11 @@ To move beyond simple "news-chasing," the system now enforces a multi-step quali
 ### **The "Source of Truth" Rule**
 To prevent confusion between historical context and current holdings, the system prompt explicitly instructs models that the **`Current Portfolio Status`** section is the **ONLY** source of truth for assets they currently own. 
 
-This section also includes **Recently Executed Trades** (last 48h) with **granular "time ago" metadata** (e.g., "45m ago"). Agents are explicitly instructed to pay close attention to this timing to avoid duplicating trades on news that is already "priced in" to the current holdings. 
+This section also includes:
+- **Real-Time Prices**: Fetched in parallel for all unique portfolio tickers immediately before analysis, ensuring the agent has fresh data for all its holdings.
+- **Recently Executed Trades**: Last 48h with **granular "time ago" metadata** (e.g., "45m ago"). 
+
+Agents are explicitly instructed to pay close attention to this timing and current pricing to avoid duplicating trades on news that is already "priced in" to the current holdings. 
 
 **Avoid Overtrading Rule:**
 The prompt strictly forbids repeating a trade for the same underlying sentiment or catalyst within 48 hours. Redundant recommendations are filtered out by a semantic similarity guardrail ($>0.90$ similarity threshold) in the validation layer.

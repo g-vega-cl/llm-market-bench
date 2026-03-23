@@ -287,6 +287,7 @@ class MarketDataManager:
         if history:
             # 3. Save to history table so it's available next time
             try:
+                payloads = []
                 for entry in history:
                     # Note: We don't have market_cap in history responses usually
                     # but we can insert what we have.
@@ -299,8 +300,11 @@ class MarketDataManager:
                         payload["market_cap"] = entry["market_cap"]
                     else:
                         payload["market_cap"] = 0 # Fallback for non-null column if migration not applied
-                        
-                    self.client.table("price_history").upsert(payload, on_conflict="ticker, fetched_at").execute()
+                    payloads.append(payload)
+                
+                if payloads:
+                    # Batch upsert into price_history
+                    self.client.table("price_history").upsert(payloads, on_conflict="ticker, fetched_at").execute()
             except Exception as e:
                 logger.warning(f"Error saving historical data for {ticker} to cache: {e}")
             return history

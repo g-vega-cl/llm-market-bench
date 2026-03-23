@@ -169,8 +169,10 @@ SMA MANAGEMENT RULES:
 
    **MANDATORY ENFORCEMENT:**
    - If ANY news snippet mentions government legislation, budgets, subsidies, or policy changes from the approved countries above, you MUST generate at least ONE macro event with 'is_government_incentive' = true.
+   - Set 'is_government_incentive': true specifically for these events in your JSON output.
    - This is a HARD REQUIREMENT. Do not skip this even if you're focused on trading decisions.
    - Government policy changes are PRIMARY market drivers, not secondary considerations.
+   - CRITICAL: Even if you don't identify a trade, you MUST identify the government incentive if it exists in the news.
 
 You must provide a confidence score (0-100) and your reasoning for each trading signal and macro event.
 

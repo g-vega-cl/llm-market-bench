@@ -204,7 +204,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
             "sell_tool_found": bool
         }
     """
-    ticker = ticker.upper()
+    ticker = ticker.strip().upper()
     quote_found = False
     sell_tool_found = False
     
@@ -250,11 +250,13 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
                 except:
                     continue
             
-            call_ticker = str(args.get("ticker", "")).upper()
+            call_ticker = str(args.get("ticker", "")).strip().upper()
             if call_ticker == ticker:
                 if name == "get_stock_quote":
                     quote_found = True
+                    logger.debug(f"Confirmed 'get_stock_quote' call for {ticker} in history.")
                 elif name.startswith("sell_") and name.endswith("_percent"):
                     sell_tool_found = True
+                    logger.debug(f"Confirmed '{name}' call for {ticker} in history.")
                     
     return {"quote_found": quote_found, "sell_tool_found": sell_tool_found}

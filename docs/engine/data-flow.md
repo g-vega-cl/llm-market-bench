@@ -505,6 +505,8 @@ sequenceDiagram
     MDM-->>Core: 9. Return Data
     Core->>LLM: 10. Send Tool Result back to History
     LLM-->>Core: 11. Final Decision (Verified & Structured)
+
+    Note over Core,MDM: Ticker Normalization: The engine automatically strips spaces and normalizes casing for tickers in tool calls to ensure robust matching.
 ```
 
 ### Step 3.2a: Web Search Tool Execution (Optional)
@@ -619,7 +621,7 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 2.  **TTL Verification**: If `fetched_at` is older than 2 seconds (configurable), proceed to fetch.
 3.  **External Fetch**: Hit the primary provider (typically `yfinance`) via the `FinancialProvider` interface.
 4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
-5.  **Update Cache & Teardown**: Upsert the fresh data back to `market_data_cache`, insert into `price_history`, and invoke `disconnect_all()` via the provider class to release any persistent resources.
+5.  **Batch Upsert & Teardown**: The engine uses **Batch Upserts** to save historical price data to Supabase in a single call. Then, it invokes `disconnect_all()` via the provider class to release any persistent resources.
 
 #### The Three Guardrails:
 

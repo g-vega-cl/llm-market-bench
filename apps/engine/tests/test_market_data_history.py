@@ -36,17 +36,19 @@ async def test_market_data_manager_get_history_cache_hit():
     mock_provider.get_history.assert_not_called()
 
 @pytest.mark.asyncio
-async def test_market_data_manager_get_history_fallback():
-    """Test that MarketDataManager falls back to provider if local data is insufficient."""
+async def test_market_data_manager_get_history_fallback_batch_upsert():
+    """Test that MarketDataManager falls back to provider and performs batch upsert."""
     mock_supabase = MagicMock()
     mock_res = MagicMock()
     mock_res.data = [] # No data locally
     
-    mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = mock_res
+    mock_query = mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit
+    mock_query.return_value.execute.return_value = mock_res
     
     mock_provider = AsyncMock()
     mock_provider.get_history.return_value = [
-        {"price": 150.0, "fetched_at": "2026-02-01T10:00:00"}
+        {"price": 150.0, "fetched_at": "2026-02-01T10:00:00"},
+        {"price": 151.0, "fetched_at": "2026-02-02T10:00:00"}
     ]
     
     with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
@@ -54,9 +56,17 @@ async def test_market_data_manager_get_history_fallback():
             manager = MarketDataManager()
             history = await manager.get_history("NEW_STOCK", days=14)
         
-    assert len(history) == 1
-    assert history[0]["price"] == 150.0
+    assert len(history) == 2
     mock_provider.get_history.assert_called_once_with("NEW_STOCK", 14)
+    
+    # Verify batch upsert was called
+    mock_upsert = mock_supabase.table.return_value.upsert
+    mock_upsert.assert_called_once()
+    args, kwargs = mock_upsert.call_args
+    assert isinstance(args[0], list)
+    assert len(args[0]) == 2
+    assert args[0][0]["ticker"] == "NEW_STOCK"
+    assert args[0][0]["price"] == 150.0
 
 @pytest.mark.asyncio
 async def test_yfinance_provider_get_history():

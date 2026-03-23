@@ -93,6 +93,52 @@ def test_scan_history_gemini_format():
     assert res["quote_found"] is True
     assert res["sell_tool_found"] is True
 
+def test_scan_history_robust_matching():
+    """Verify that ticker matching is robust to spaces and casing."""
+    messages = [
+        {
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "function": {"name": "get_stock_quote", "arguments": '{"ticker": "  aapl  "}'},
+                    "id": "c1"
+                }
+            ]
+        }
+    ]
+    
+    # Matching with clean ticker
+    res = _scan_history_for_tools(messages, "AAPL")
+    assert res["quote_found"] is True
+    
+    # Matching with messy ticker
+    res_messy = _scan_history_for_tools(messages, " aapl ")
+    assert res_messy["quote_found"] is True
+
+@pytest.mark.asyncio
+async def test_analyze_with_provider_government_enforcement(mock_clients, caplog):
+    """Verify that government incentive enforcement triggers warnings."""
+    mock_instructor = mock_clients["instructor"]
+    
+    # Return a response with gov content but NO macro events
+    mock_instructor.create.return_value = [DecisionsResponse(
+        decisions=[],
+        macro_events=[]
+    )]
+    
+    chunks = [{"source_id": "gov_1", "content": "The US Congress passed a new subsidy bill for AI."}]
+    
+    with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock), \
+         patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock):
+        await analyze_with_provider(
+            provider="openai",
+            model_name="gpt-4",
+            chunks=chunks
+        )
+    
+    assert "GOVERNMENT INCENTIVE ENFORCEMENT" in caplog.text
+    assert "contains government policy content but NO macro_events were generated" in caplog.text
+
 @pytest.mark.asyncio
 async def test_analyze_with_provider_hard_enforcement(mock_clients):
     """Verify that analyze_with_provider correctly updates sell_tool_called."""
@@ -116,7 +162,8 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
     )]
     
     # Mock handlers to not add any tools to messages
-    with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock):
+    with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock), \
+         patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock):
         resp = await analyze_with_provider(
             provider="openai",
             model_name="gpt-4",
@@ -126,3 +173,4 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
     # Verify that the final decision has sell_tool_called=False because history was empty
     assert resp.decisions[0].ticker == "AAPL"
     assert resp.decisions[0].sell_tool_called is False # UPDATED BY HARD ENFORCEMENT
+

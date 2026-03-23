@@ -63,7 +63,7 @@ The engine now uses a centralized `MarketDataManager` that handles all ticker qu
 
 - **Persistence**:
   - **Cache**: The latest price results are stored in the `market_data_cache` table in Supabase.
-  - **History**: A permanent record of every price fetch is stored in the `price_history` table for historical analysis.
+  - **History**: A permanent record of every price fetch is stored in the `price_history` table for historical analysis. The engine uses **Batch Upserts** to minimize database roundtrips when saving historical data.
 - **Robustness**: 
   - **Triple Fallback**: If the primary provider fails, the system automatically tries a first and then a second fallback provider (e.g., `ibkr_proxy` -> `fmp` -> `yfinance`).
   - **Retries**: Each provider in the chain is attempted a configurable number of times (Default: 2) with backoff before falling back.
@@ -96,6 +96,7 @@ Validation is now a **Three-Layer Process**:
 2. **Post-Analysis Backfill**: The engine (in `analyze.py`) backfills missing prices for valid tickers to handle LLM extraction failures.
 3. **Market Guardrails**: The engine runs `validate_decision` in `main.py` to ensure ticker existence, liquidity, and price sanity.
 4. **Second-Step Verification**: A skeptical "Verifier" agent (using the original provider's intelligence) audits every BUY/SELL signal using specialized tools to identify "priced in" news and failure modes.
-5. **Reg T & Compliance**: Final margin and allocation checks before trade settlement.
+5. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools were actually executed. This scan is **robust to formatting variances**, normalizing tickers (stripping spaces, upper-casing) to ensure compliance.
+6. **Reg T & Compliance**: Final margin and allocation checks before trade settlement.
 
 If a trade is rejected, a `logger.warning` is triggered, and the trade is skipped.

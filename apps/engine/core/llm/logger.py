@@ -2,7 +2,7 @@
 
 import logging
 from typing import Any, List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 from core.db import get_supabase_client
 from core.config import logger as pipeline_logger
@@ -66,7 +66,7 @@ async def log_reasoning_trace(
             "prompt": serializable_prompt,
             "response": processed_response,
             "metadata": metadata or {},
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(UTC).isoformat()
         }
 
         # Initialize Supabase inside the call to avoid stale connections 

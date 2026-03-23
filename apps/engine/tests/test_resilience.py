@@ -78,7 +78,7 @@ def test_main_ingestion_guardrail(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
 
     # Mock MarketDataManager to avoid DB initialization in __init__
-    with patch("execution.market_data.MarketDataManager") as mock_mdm_cls:
+    with patch("core.utils.MarketDataManager") as mock_mdm_cls:
         mock_mdm = mock_mdm_cls.return_value
         mock_mdm.is_market_open = AsyncMock(return_value=True)
         main()
@@ -102,7 +102,7 @@ def test_main_does_not_call_db_when_no_newsletters(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
 
     # Mock MarketDataManager to avoid DB initialization in __init__
-    with patch("execution.market_data.MarketDataManager") as mock_mdm_cls:
+    with patch("core.utils.MarketDataManager") as mock_mdm_cls:
         mock_mdm = mock_mdm_cls.return_value
         mock_mdm.is_market_open = AsyncMock(return_value=True)
         with patch("main.get_supabase_client") as mock_db:

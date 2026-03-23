@@ -1,12 +1,7 @@
-"""Supabase database client and operations.
-
-This module provides functions for interacting with the Supabase database,
-including client initialization and data operations.
-"""
-
+import httpx
 from typing import Any
 
-from supabase import Client, create_client
+from supabase import Client, create_client, ClientOptions
 
 from .config import SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL, logger
 
@@ -27,7 +22,21 @@ def get_supabase_client() -> Client:
         )
         logger.error(error_msg)
         raise ValueError(error_msg)
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    
+    # Configure httpx client to avoid deprecation warnings in supabase-py
+    # by moving timeout and verify settings into the http_client itself.
+    http_client = httpx.Client(
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        verify=True
+    )
+    
+    options = ClientOptions(
+        httpx_client=http_client,
+        postgrest_client_timeout=10.0,
+        storage_client_timeout=10
+    )
+    
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
 
 
 def upsert_newsletter_snapshot(

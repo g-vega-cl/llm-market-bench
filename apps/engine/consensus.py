@@ -53,6 +53,166 @@ def _resolve_impact_tie(impact_weights: dict[str, float]) -> str:
     # Weighted Tie: if NEUTRAL is one of the top, prefer it; otherwise default to NEUTRAL
     return "NEUTRAL"
 
+async def _get_event_embeddings(event_names: list[str]) -> list[Any]:
+    """Fetch embeddings for a list of event names."""
+    try:
+        return get_embeddings_batch(event_names)
+    except Exception as e:
+        logger.error(f"Failed to get embeddings for semantic grouping: {e}")
+        return [None] * len(event_names)
+
+
+def _group_events_semantically(events: list[MacroEvent], embeddings: list[Any], sim_threshold: float) -> list[list[MacroEvent]]:
+    """Group events based on semantic similarity of their names."""
+    visited = [False] * len(events)
+    groups = []
+
+    for i in range(len(events)):
+        if visited[i]:
+            continue
+        
+        current_group = [events[i]]
+        visited[i] = True
+        
+        for j in range(i + 1, len(events)):
+            if visited[j]:
+                continue
+            
+            is_similar = False
+            if embeddings[i] and embeddings[j]:
+                if cosine_similarity(embeddings[i], embeddings[j]) >= sim_threshold:
+                    is_similar = True
+            elif events[i].event_name.lower().strip() == events[j].event_name.lower().strip():
+                is_similar = True
+            
+            if is_similar:
+                current_group.append(events[j])
+                visited[j] = True
+        groups.append(current_group)
+    return groups
+
+
+async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery_service: DiscoveryService, sim_threshold: float):
+    """Synthesize a group of events and promote to memory if consensus is reached."""
+    unique_models = set()
+    cumulative_weight = 0.0
+    models_seen_for_weight = set()
+
+    for occ in occurrences:
+        model_key = f"{occ.model_provider}_{occ.model_name}"
+        unique_models.add(model_key)
+        if occ.model_name not in models_seen_for_weight:
+            cumulative_weight += MODEL_WEIGHTS.get(occ.model_name, 1.0)
+            models_seen_for_weight.add(occ.model_name)
+
+    representative_name = occurrences[0].event_name
+    
+    # Combine reasoning and votes
+    impact_weights = defaultdict(float)
+    ongoing_votes, catalyst_votes = 0.0, 0.0
+    parallels, scenarios, reasonings, source_ids, importance_scores = [], [], [], set(), []
+    
+    for occ in occurrences:
+        weight = MODEL_WEIGHTS.get(occ.model_name, 1.0)
+        impact_weights[occ.impact] += weight
+        reasonings.append(occ.reasoning)
+        source_ids.add(occ.source_id)
+        importance_scores.append(occ.importance_score)
+        
+        if occ.is_ongoing: ongoing_votes += weight
+        if occ.is_future_catalyst: catalyst_votes += weight
+        if occ.historical_parallel: parallels.append(occ.historical_parallel)
+        if getattr(occ, "scenario_analysis", None): scenarios.append(occ.scenario_analysis)
+
+    majority_impact = _resolve_impact_tie(impact_weights)
+    
+    # --- LLM Synthesis ---
+    synthesis = await synthesize_event(
+        event_name=representative_name,
+        impact=majority_impact,
+        reasonings=reasonings,
+        scenarios=scenarios
+    )
+    
+    is_ongoing = synthesis.get("is_ongoing", ongoing_votes > (cumulative_weight / 2))
+    is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
+    historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
+
+    # Discover real assets
+    discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
+    scenario_analysis = synthesis.get("scenario_analysis") or ""
+    if discovered_assets:
+        asset_links = "\n\n**Investable Assets (via FMP):**\n"
+        for asset in discovered_assets[:5]:
+            asset_links += f"- ${asset['ticker']} ({asset['name']}): {asset['reason']}\n"
+        scenario_analysis += asset_links
+
+    consensus_data = {
+        "event_name": synthesis["name"],
+        "impact": majority_impact,
+        "reasoning": synthesis["summary"],
+        "models_involved": list(unique_models),
+        "cumulative_weight": cumulative_weight,
+        "source_ids": list(source_ids),
+        "is_ongoing": is_ongoing,
+        "is_future_catalyst": is_future_catalyst,
+        "historical_parallel": historical_parallel,
+        "future_date": synthesis.get("future_date"),
+        "future_date_note": synthesis.get("future_date_note"),
+        "scenario_analysis": scenario_analysis.strip() if scenario_analysis else None,
+        "discovered_assets": discovered_assets,
+        "importance_score": synthesis.get("importance_score", int(sum(importance_scores)/len(importance_scores)) if importance_scores else 5)
+    }
+
+    # Analyze Relationship & Link Memory
+    potential_parents = find_potential_ancestors(synthesis["summary"], threshold=0.4)
+    relationship = await analyze_event_relationship(synthesis["summary"], potential_parents)
+    
+    parent_id = relationship.get("parent_id")
+    rel_type = relationship.get("relationship_type")
+    should_resolve = relationship.get("should_resolve", False)
+
+    # Promote to long-term memory
+    parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
+    ongoing_str = " [ONGOING]" if is_ongoing else ""
+    memory_content = f"MARKET EVENT: {consensus_data['event_name']}{ongoing_str} | IMPACT: {consensus_data['impact']} | SUMMARY: {consensus_data['reasoning']}{parallel_str}"
+    
+    new_memory_id = add_memory(
+        content=memory_content,
+        metadata={
+            "type": "consensus_event",
+            "event_name": consensus_data['event_name'],
+            "impact": consensus_data['impact'],
+            "source_ids": consensus_data['source_ids'],
+            "raw_name": representative_name,
+            "cumulative_weight": cumulative_weight,
+            "is_ongoing": is_ongoing,
+            "is_future_catalyst": is_future_catalyst,
+            "historical_parallel": historical_parallel,
+            "future_date_note": consensus_data.get("future_date_note"),
+            "scenario_analysis": consensus_data.get("scenario_analysis"),
+            "discovered_assets": consensus_data.get("discovered_assets"),
+            "importance_score": consensus_data['importance_score']
+        },
+        parent_id=parent_id,
+        relationship_type=rel_type,
+        target_date=consensus_data.get("future_date"),
+        check_similarity=True,
+        similarity_threshold=sim_threshold,
+        lookback_hours=24
+    )
+
+    if new_memory_id:
+        logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']} (ID: {new_memory_id})")
+        if should_resolve and parent_id:
+            update_memory_status(parent_id, "RESOLVED")
+            logger.info(f"Marked ancestor event {parent_id} as RESOLVED.")
+        return consensus_data
+    else:
+        logger.warning(f"Failed to promote consensus event: {consensus_data['event_name']}")
+    return None
+
+
 async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, sim_threshold: float = 0.85) -> list[dict]:
     """Process a list of macro events and identify consensus using semantic grouping,
     deduplication, weighted voting, and LLM synthesis.
@@ -70,65 +230,22 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
         return []
 
     discovery_service = DiscoveryService()
-
+    
     # 1. Batch generate embeddings for all event names
-    event_names = [e.event_name for e in events]
-    try:
-        embeddings = get_embeddings_batch(event_names)
-    except Exception as e:
-        logger.error(f"Failed to get embeddings for semantic grouping: {e}")
-        # Fallback to simple normalization if embeddings fail
-        embeddings = [None] * len(events)
+    embeddings = await _get_event_embeddings([e.event_name for e in events])
 
     # 2. Group events semantically
-    # Each group is indexed by the representative event's index
-    visited = [False] * len(events)
-    groups = []
-
-    for i in range(len(events)):
-        if visited[i]:
-            continue
-        
-        current_group = [events[i]]
-        visited[i] = True
-        
-        # Compare with all subsequent events
-        for j in range(i + 1, len(events)):
-            if visited[j]:
-                continue
-            
-            is_similar = False
-            # If we have embeddings, use cosine similarity
-            if embeddings[i] and embeddings[j]:
-                similarity = cosine_similarity(embeddings[i], embeddings[j])
-                if similarity >= sim_threshold:
-                    is_similar = True
-            # Fallback to string matching
-            elif events[i].event_name.lower().strip() == events[j].event_name.lower().strip():
-                is_similar = True
-            
-            if is_similar:
-                current_group.append(events[j])
-                visited[j] = True
-        
-        groups.append(current_group)
+    groups = _group_events_semantically(events, embeddings, sim_threshold)
 
     consensus_reached = []
 
     # 3. Check each group for consensus
     for occurrences in groups:
-        # Count unique models (providers + model names) that reported this event
-        # and calculate cumulative weight
-        unique_models = set()
-        cumulative_weight = 0.0
-        
+        # Calculate cumulative weight for the group to check against threshold
         # We need to track which specific model (owner_id) we've already counted for weight
         models_seen_for_weight = set()
-
+        cumulative_weight = 0.0
         for occ in occurrences:
-            model_key = f"{occ.model_provider}_{occ.model_name}"
-            unique_models.add(model_key)
-            
             if occ.model_name not in models_seen_for_weight:
                 weight = MODEL_WEIGHTS.get(occ.model_name, 1.0)
                 cumulative_weight += weight
@@ -136,134 +253,14 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
 
         if cumulative_weight >= threshold:
             representative_name = occurrences[0].event_name
+            unique_models = set(f"{occ.model_provider}_{occ.model_name}" for occ in occurrences)
             logger.info(
                 f"Consensus reached on semantic event group: '{representative_name}' "
                 f"(Models: {len(unique_models)}, Weight: {cumulative_weight:.2f})"
             )
-            
-            # Combine reasoning and determine majority flags (weighted)
-            impact_weights = defaultdict(float)
-            ongoing_votes = 0.0
-            catalyst_votes = 0.0
-            parallels = []
-            scenarios = []
-            reasonings = []
-            source_ids = set()
-            importance_scores = []
-            
-            for occ in occurrences:
-                weight = MODEL_WEIGHTS.get(occ.model_name, 1.0)
-                impact_weights[occ.impact] += weight
-                reasonings.append(occ.reasoning)
-                source_ids.add(occ.source_id)
-                importance_scores.append(occ.importance_score)
-                
-                if occ.is_ongoing:
-                    ongoing_votes += weight
-                if occ.is_future_catalyst:
-                    catalyst_votes += weight
-                if occ.historical_parallel:
-                    parallels.append(occ.historical_parallel)
-                if getattr(occ, "scenario_analysis", None):
-                    scenarios.append(occ.scenario_analysis)
-
-            majority_impact = _resolve_impact_tie(impact_weights)
-            
-
-
-            # --- LLM Synthesis ---
-            synthesis = await synthesize_event(
-                event_name=representative_name,
-                impact=majority_impact,
-                reasonings=reasonings,
-                scenarios=scenarios
-            )
-            
-            # Use synthesized flags if available, otherwise majority vote
-            is_ongoing = synthesis.get("is_ongoing", ongoing_votes > (cumulative_weight / 2))
-            is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
-            historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
-
-            # Discover real assets via FMP
-            discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
-            scenario_analysis = synthesis.get("scenario_analysis") or ""
-            
-            if discovered_assets:
-                asset_links = "\n\n**Investable Assets (via FMP):**\n"
-                for asset in discovered_assets[:5]: # Top 5
-                    asset_links += f"- ${asset['ticker']} ({asset['name']}): {asset['reason']}\n"
-                scenario_analysis += asset_links
-
-            consensus_data = {
-                "event_name": synthesis["name"],
-                "impact": majority_impact,
-                "reasoning": synthesis["summary"],
-                "models_involved": list(unique_models),
-                "cumulative_weight": cumulative_weight,
-                "source_ids": list(source_ids),
-                "is_ongoing": is_ongoing,
-                "is_future_catalyst": is_future_catalyst,
-                "historical_parallel": historical_parallel,
-                "future_date": synthesis.get("future_date"),
-                "future_date_note": synthesis.get("future_date_note"),
-                "scenario_analysis": scenario_analysis.strip() if scenario_analysis else None,
-                "discovered_assets": discovered_assets,
-                "importance_score": synthesis.get("importance_score", int(sum(importance_scores)/len(importance_scores)) if importance_scores else 5)
-            }
-
-            # 4. Analyze Relationship & Link Memory
-            potential_parents = find_potential_ancestors(synthesis["summary"], threshold=0.4)
-            relationship = await analyze_event_relationship(synthesis["summary"], potential_parents)
-            
-            parent_id = relationship.get("parent_id")
-            rel_type = relationship.get("relationship_type")
-            should_resolve = relationship.get("should_resolve", False)
-
-            # 5. Promote to long-term memory
-            parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
-            ongoing_str = " [ONGOING]" if is_ongoing else ""
-            memory_content = (
-                f"MARKET EVENT: {consensus_data['event_name']}{ongoing_str} | "
-                f"IMPACT: {consensus_data['impact']} | "
-                f"SUMMARY: {consensus_data['reasoning']}{parallel_str}"
-            )
-            
-            new_memory_id = add_memory(
-                content=memory_content,
-                metadata={
-                    "type": "consensus_event",
-                    "event_name": consensus_data['event_name'],
-                    "impact": consensus_data['impact'],
-                    "source_ids": consensus_data['source_ids'],
-                    "raw_name": representative_name,
-                    "cumulative_weight": cumulative_weight,
-                    "is_ongoing": is_ongoing,
-                    "is_future_catalyst": is_future_catalyst,
-                    "historical_parallel": historical_parallel,
-                    "future_date_note": consensus_data.get("future_date_note"),
-                    "scenario_analysis": consensus_data.get("scenario_analysis"),
-                    "discovered_assets": consensus_data.get("discovered_assets"),
-                    "importance_score": consensus_data['importance_score']
-                },
-                parent_id=parent_id,
-                relationship_type=rel_type,
-                target_date=consensus_data.get("future_date"),
-                check_similarity=True,
-                similarity_threshold=sim_threshold,
-                lookback_hours=24
-            )
-
-            if new_memory_id:
-                consensus_reached.append(consensus_data)
-                logger.info(f"Promoted synthesized consensus event: {consensus_data['event_name']} (ID: {new_memory_id})")
-                
-
-                # If we should resolve the parent, do it now
-                if should_resolve and parent_id:
-                    update_memory_status(parent_id, "RESOLVED")
-                    logger.info(f"Marked ancestor event {parent_id} as RESOLVED.")
-            else:
-                logger.warning(f"Failed to promote consensus event: {consensus_data['event_name']}")
+            res = await _synthesize_and_promote_group(occurrences, discovery_service, sim_threshold)
+            if res:
+                consensus_reached.append(res)
 
     return consensus_reached
 

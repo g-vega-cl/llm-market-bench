@@ -183,7 +183,7 @@ OpenAI web search is available in the **Responses API** as a native tool. In the
 - `gpt-4o-search-preview`
 - `gpt-4o-mini-search-preview`
 
-Standard models like `gpt-5-mini` do **not** support web search in the Chat Completions API.
+Standard models like `gpt-5.4-nano` do **not** support web search in the Chat Completions API.
 
 **To enable OpenAI web search:**
 

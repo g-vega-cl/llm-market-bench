@@ -11,7 +11,7 @@ To ensure maximum feature coverage and performance, the system uses the official
 
 | Provider | SDK / Client | Model Default |
 | --- | --- | --- |
-| **OpenAI** | `openai` | `gpt-5-mini` |
+| **OpenAI** | `openai` | `gpt-5.4-nano` |
 | **Anthropic** | `anthropic` | `claude-haiku-4-5` |
 | **Gemini** | `google-genai` | `gemini-3-flash-preview` |
 | **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
@@ -51,7 +51,7 @@ ANTHROPIC_WEB_SEARCH_VERSION="web_search_20250305"  # or "web_search_20260209"
 ANTHROPIC_MAX_WEB_SEARCHES=3
 ```
 
-**Note on OpenAI:** Our current model `gpt-5-mini` does not support web search in the Chat Completions API. To enable OpenAI web search, switch to `gpt-5-search-api` or migrate to the Responses API.
+**Note on OpenAI:** Our current model `gpt-5.4-nano` does not support web search in the Chat Completions API. To enable OpenAI web search, switch to `gpt-5-search-api` or migrate to the Responses API.
 
 See [WEB_SEARCH.md](./WEB_SEARCH.md) for detailed documentation.
 
@@ -67,11 +67,11 @@ This separation ensures that each provider's unique API requirements are isolate
 
 ## 2. Configuration & Model Selection
 
-Model versions can be configured via environment variables in `apps/engine/.env`. This allows for easy testing of newer models (e.g., `gemini-2.5-flash` or `gpt-5-mini`) without code changes.
+Model versions can be configured via environment variables in `apps/engine/.env`. This allows for easy testing of newer models (e.g., `gemini-2.5-flash` or `gpt-5.4-nano`) without code changes.
 
 ```bash
 # Configuration Example
-OPENAI_MODEL="gpt-5-mini"
+OPENAI_MODEL="gpt-5.4-nano"
 ANTHROPIC_MODEL="claude-haiku-4-5"
 GEMINI_MODEL="gemini-3-flash-preview"
 DEEPSEEK_MODEL="deepseek-reasoner"

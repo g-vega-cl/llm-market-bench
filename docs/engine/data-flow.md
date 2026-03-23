@@ -481,7 +481,7 @@ Content: Tesla stock expected to rally due to...
 **File**: `apps/engine/core/llm/handlers/`
 
 Each LLM provider is processed via a **dedicated handler** to manage provider-specific quirks:
-- **`openai.py`**: Standard tool loop for GPT-4o, GPT-5-mini.
+- **`openai.py`**: Standard tool loop for GPT-4o, gpt-5.4-nano.
 - **`deepseek.py`**: Preserves `reasoning_content` in assistants' messages when tool calls are present (required by DeepSeek) and enables thinking mode.
 - **`anthropic.py`**: Handles XML-like tool blocks and web search.
 - **`gemini.py`**: Manages native Google Search grounding.
@@ -706,7 +706,7 @@ CREATE TABLE decisions (
     confidence INTEGER,                -- 0-100
     reasoning TEXT,                    -- Full LLM explanation
     model_provider TEXT,               -- "openai", "anthropic", "gemini", "deepseek"
-    model_name TEXT,                   -- "gpt-5-mini", "claude-haiku-4-5", etc.
+    model_name TEXT,                   -- "gpt-5.4-nano", "claude-haiku-4-5", etc.
     created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -717,10 +717,10 @@ CREATE TABLE decisions (
 ┌─────────────────────────┬────────┬────────┬─────┬────────────┬──────────┬──────────────────┐
 │ source_id               │ ticker │ signal │ conf│ reasoning  │ provider │ model_name       │
 ├─────────────────────────┼────────┼────────┼─────┼────────────┼──────────┼──────────────────┤
-│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 85  │ Tesla...   │ openai   │ gpt-5-mini      │
+│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 85  │ Tesla...   │ openai   │ gpt-5.4-nano      │
 │ news_newsletter1_a7f... │ TSLA   │ BUY    │ 92  │ Tesla...   │ anthropic│ claude-haiku-4-5│
-│ news_newsletter2_b1d... │ SPY    │ HOLD   │ 60  │ Fed...     │ openai   │ gpt-5-mini      │
-│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 78  │ AI...      │ openai   │ gpt-5-mini      │
+│ news_newsletter2_b1d... │ SPY    │ HOLD   │ 60  │ Fed...     │ openai   │ gpt-5.4-nano      │
+│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 78  │ AI...      │ openai   │ gpt-5.4-nano      │
 │ news_newsletter3_c9e... │ NVDA   │ BUY    │ 92  │ AI trans..│ anthropic│ claude-haiku-4-5│
 │ news_newsletter4_d4a... │ BTC    │ SELL   │ 78  │ Crypto...  │ anthropic│ claude-haiku-4-5│
 │ news_newsletter4_d4a... │ BTC    │ SELL   │ 82  │ Crypto...  │ gemini   │ gemini-3-flash-preview       │

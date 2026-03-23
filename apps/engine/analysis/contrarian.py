@@ -4,6 +4,7 @@ This agent analyzes the consensus of other agents and identifies
 contrarian opportunities or missed risks.
 """
 
+import asyncio
 import logging
 from typing import List, Tuple
 
@@ -99,7 +100,6 @@ async def run_contrarian_analysis(
             max_retries=2
         )
 
-        import asyncio
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
             wrapper = await resp_awaitable
         else:

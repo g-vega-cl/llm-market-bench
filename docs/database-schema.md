@@ -17,7 +17,7 @@ The database manages four primary domains:
 ### `portfolios`
 Stores the current financial state for each AI model.
 - `id` (UUID): Primary key.
-- `owner_id` (TEXT): Unique model identifier (e.g., `gpt-5-mini`, `claude-haiku-4-5`).
+- `owner_id` (TEXT): Unique model identifier (e.g., `gpt-5.4-nano`, `claude-haiku-4-5`).
 - `cash_balance` (NUMERIC): Available cash for trading.
 - `total_equity` (NUMERIC): Net Liquidation Value (Cash + Market Value).
 - `buying_power` (NUMERIC): Intraday leverage limit (Reg T).

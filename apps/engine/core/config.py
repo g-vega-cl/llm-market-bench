@@ -33,7 +33,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 # --- Model Selection ---
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-nano")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")

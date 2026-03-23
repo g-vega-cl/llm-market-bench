@@ -46,8 +46,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 1: Ingestion & Normalization
 1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays.
-1.  **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays.
-2.  **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
+2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
 3.  **Corporate Action Check:** (PENDING).
 4.  **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
 5.  **Data Snapshotting:** Save raw text and current prices with idempotency keys.
@@ -299,7 +298,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 | --- | --- | --- | --- |
 | **Global** | `DATABASE_URL` | Supabase Postgres Connection String | Engine, Database Migrations |
 |  | `SUPABASE_URL` | Supabase API URL | Web (Frontend), Engine |
-| **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: `gpt-5-mini`) | Trading Analysis, Embeddings |
+| **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: `gpt-5.4-nano`) | Trading Analysis, Embeddings |
 |  | `ANTHROPIC_API_KEY` | Claude API Key (Model: `claude-haiku-4-5`) | Trading Analysis |
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | Dedicated handler for thinking mode & reasoning preservation | Trading Analysis |
@@ -341,7 +340,7 @@ For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.m
 The engine is currently optimized for these specific versions:
 
 ```bash
-OPENAI_MODEL="gpt-5-mini"
+OPENAI_MODEL="gpt-5.4-nano"
 ANTHROPIC_MODEL="claude-haiku-4-5"
 GEMINI_MODEL="gemini-3-flash-preview"
 DEEPSEEK_MODEL="deepseek-reasoner"

@@ -2,15 +2,76 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { fetchReasoningLogs } from './-queries'
 import * as React from 'react'
+import { z } from 'zod'
+import {
+    useInfiniteQuery,
+    QueryClient,
+    QueryClientProvider,
+    useQuery
+} from '@tanstack/react-query'
+import { useInView } from 'react-intersection-observer'
 
-const getReasoningLogs = createServerFn({ method: 'GET' }).handler(async () => {
-    return fetchReasoningLogs()
+const reasoningSearchSchema = z.object({
+    task_type: z.string().optional().catch('ALL'),
+    startDate: z.string().optional(),
+    isAllTime: z.boolean().optional().catch(false),
+})
+
+const getReasoningLogs = createServerFn({ method: 'GET' })
+    .inputValidator((data: {
+        limit?: number;
+        offset?: number;
+        taskType?: string;
+        startDate?: string;
+        isAllTime?: boolean;
+    }) => {
+        return z.object({
+            limit: z.number().optional().default(20),
+            offset: z.number().optional().default(0),
+            taskType: z.string().optional().default('ALL'),
+            startDate: z.string().optional(),
+            isAllTime: z.boolean().optional().default(false),
+        }).parse(data)
+    })
+    .handler(async ({ data }) => {
+        return fetchReasoningLogs(data)
+    })
+
+const getCategories = createServerFn({ method: 'GET' }).handler(async () => {
+    // Attempting to fetch up to 1000 logs just to determine unique task types.
+    // While still a bit heavy, it's better than fetching all logs and only done once.
+    const { data: allLogs } = await fetchReasoningLogs({ limit: 1000, isAllTime: true })
+    return ['ALL', ...new Set(allLogs.map((l: any) => l.task_type))]
 })
 
 export const Route = createFileRoute('/reasoning/')({
-    loader: async () => await getReasoningLogs(),
-    component: ReasoningPage,
+    validateSearch: reasoningSearchSchema,
+    loaderDeps: ({ search: { task_type, startDate, isAllTime } }) => ({ task_type, startDate, isAllTime }),
+    loader: async ({ deps: { task_type, startDate, isAllTime } }) => {
+        return {
+            initialLogs: await getReasoningLogs({ data: { taskType: task_type, startDate, isAllTime, limit: 20, offset: 0 } }),
+            categories: await getCategories()
+        }
+    },
+    component: ReasoningPageWrapper,
 })
+
+function ReasoningPageWrapper() {
+    // Create a new QueryClient for each user session to prevent data leakage during SSR.
+    const [queryClient] = React.useState(() => new QueryClient({
+        defaultOptions: {
+            queries: {
+                staleTime: 60 * 1000,
+            },
+        },
+    }))
+
+    return (
+        <QueryClientProvider client={queryClient}>
+            <ReasoningPage />
+        </QueryClientProvider>
+    )
+}
 
 interface ReasoningTrace {
     id: string
@@ -24,17 +85,77 @@ interface ReasoningTrace {
 }
 
 function ReasoningPage() {
-    const logs = Route.useLoaderData() as ReasoningTrace[]
-    const [activeTab, setActiveTab] = React.useState<string>('ALL')
+    const { initialLogs, categories: initialCategories } = Route.useLoaderData()
+    const { task_type = 'ALL', startDate, isAllTime = false } = Route.useSearch()
+    const navigate = Route.useNavigate()
+
     const [selectedLogId, setSelectedLogId] = React.useState<string | null>(null)
+    const { ref, inView } = useInView()
 
-    const categories = ['ALL', ...new Set(logs?.map((l) => l.task_type) || [])]
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        status,
+    } = useInfiniteQuery({
+        queryKey: ['reasoningLogs', task_type, startDate, isAllTime],
+        queryFn: async ({ pageParam = 0 }) => {
+            return getReasoningLogs({
+                data: {
+                    taskType: task_type,
+                    startDate,
+                    isAllTime,
+                    limit: 20,
+                    offset: pageParam
+                }
+            })
+        },
+        initialPageParam: 0,
+        getNextPageParam: (lastPage, allPages) => {
+            if (!lastPage.hasMore) return undefined
+            return allPages.length * 20
+        },
+        initialData: {
+            pages: [initialLogs],
+            pageParams: [0],
+        },
+    })
 
-    const filteredLogs = activeTab === 'ALL'
-        ? logs
-        : logs?.filter((l) => l.task_type === activeTab)
+    const { data: categories = initialCategories } = useQuery({
+        queryKey: ['categories'],
+        queryFn: () => getCategories(),
+        initialData: initialCategories,
+    })
 
-    const selectedLog = logs?.find((l) => l.id === selectedLogId)
+    React.useEffect(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage()
+        }
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+    const allLogs = (data?.pages.flatMap((page) => page.data) || []) as ReasoningTrace[]
+    const selectedLog = allLogs.find((l) => l.id === selectedLogId)
+
+    const handleTabChange = (cat: string) => {
+        navigate({
+            search: (old: any) => ({ ...old, task_type: cat }),
+        })
+    }
+
+    const handleDateFilter = (days: number | null) => {
+        if (days === null) {
+            navigate({
+                search: (old: any) => ({ ...old, startDate: undefined, isAllTime: true }),
+            })
+        } else {
+            const date = new Date()
+            date.setDate(date.getDate() - days)
+            navigate({
+                search: (old: any) => ({ ...old, startDate: date.toISOString(), isAllTime: false }),
+            })
+        }
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 p-6 md:p-12 animate-slow-fade">
@@ -47,26 +168,56 @@ function ReasoningPage() {
                 </p>
             </header>
 
-            {/* Tabs */}
-            <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-gray-100 dark:bg-gray-900/50 rounded-2xl w-fit border border-gray-200 dark:border-gray-800 backdrop-blur-xl">
-                {categories.map((cat) => (
+            <div className="flex flex-col md:flex-row gap-4 mb-8 items-start md:items-center">
+                {/* Tabs */}
+                <div className="flex flex-wrap gap-2 p-1.5 bg-gray-100 dark:bg-gray-900/50 rounded-2xl w-fit border border-gray-200 dark:border-gray-800 backdrop-blur-xl">
+                    {categories.map((cat: string) => (
+                        <button
+                            key={cat}
+                            onClick={() => handleTabChange(cat)}
+                            className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 ${task_type === cat
+                                ? 'bg-white dark:bg-blue-600 shadow-xl text-blue-600 dark:text-white border-b-2 border-blue-500 dark:border-blue-400'
+                                : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Date Filters */}
+                <div className="flex gap-2 p-1.5 bg-gray-100 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800">
                     <button
-                        key={cat}
-                        onClick={() => setActiveTab(cat)}
-                        className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === cat
-                            ? 'bg-white dark:bg-blue-600 shadow-xl text-blue-600 dark:text-white border-b-2 border-blue-500 dark:border-blue-400'
-                            : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'
-                            }`}
+                        onClick={() => handleDateFilter(7)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all ${(!startDate && !isAllTime) || (startDate && new Date(startDate) > new Date(Date.now() - 8 * 24 * 60 * 60 * 1000))
+                            ? 'bg-white dark:bg-gray-800 shadow-sm'
+                            : 'text-gray-500'}`}
                     >
-                        {cat}
+                        7 Days
                     </button>
-                ))}
+                    <button
+                        onClick={() => handleDateFilter(30)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all ${startDate && new Date(startDate) < new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) && !isAllTime
+                            ? 'bg-white dark:bg-gray-800 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}
+                    >
+                        30 Days
+                    </button>
+                    <button
+                        onClick={() => handleDateFilter(null)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all ${isAllTime
+                            ? 'bg-white dark:bg-gray-800 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}
+                    >
+                        All Time
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Logs List */}
                 <div className="lg:col-span-4 space-y-4 max-h-[75vh] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent">
-                    {filteredLogs?.map((log) => (
+                    {allLogs.map((log) => (
                         <div
                             key={log.id}
                             onClick={() => setSelectedLogId(log.id)}
@@ -94,7 +245,26 @@ function ReasoningPage() {
                             </div>
                         </div>
                     ))}
-                    {(!filteredLogs || filteredLogs.length === 0) && (
+
+                    <div ref={ref} className="py-4 text-center">
+                        {isFetchingNextPage ? (
+                            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                Loading more traces...
+                            </div>
+                        ) : hasNextPage ? (
+                            <button
+                                onClick={() => fetchNextPage()}
+                                className="text-blue-500 font-bold text-sm uppercase tracking-widest hover:underline"
+                            >
+                                Load More
+                            </button>
+                        ) : allLogs.length > 0 ? (
+                            <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">End of Audit Trail</p>
+                        ) : null}
+                    </div>
+
+                    {status === 'success' && allLogs.length === 0 && (
                         <div className="text-center py-12 p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl text-gray-400 italic">
                             No logs found for this category.
                         </div>

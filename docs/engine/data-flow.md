@@ -464,6 +464,12 @@ WEB SEARCH CAPABILITY: You have access to real-time web search via the `web_sear
 Use it to verify breaking news, check corporate actions (earnings, splits, M&A), confirm government policy announcements, and fact-check claims before trading.
 When you use web search, cite the sources in your reasoning.
 
+=== ENHANCED PORTFOLIO CONTEXT (2026-03-24) ===
+The prompt now includes:
+1. **Source of Truth Portfolio Section**: Clearly marked as the ONLY authoritative list of holdings
+2. **Held Tickers Quick Reference**: Explicit list of tickers available for SELL (e.g., "You currently hold: NVDA, TSLA, AAPL")
+3. **Ownership Warnings**: Bold warnings that SELL signals for unheld tickers will be REJECTED
+
 ### Historical Context:
 {aggregated_context}
 
@@ -475,6 +481,24 @@ Content: Tesla stock expected to rally due to...
 ...
 """
 ```
+
+### **Pre-Analysis Portfolio Validation**
+
+After LLM analysis completes but before decisions are returned, the engine performs ownership validation:
+
+```python
+# Extract held tickers from portfolio context
+held_tickers = _extract_held_tickers(portfolio_context)
+
+# Filter SELL decisions for unheld tickers
+for decision in decisions:
+    if decision.signal == "SELL" and decision.ticker not in held_tickers:
+        # Convert to HOLD with rejection reasoning (preserves audit trail)
+        decision.signal = "HOLD"
+        decision.reasoning = f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held"
+```
+
+**Impact**: Catches ownership hallucinations before they reach the verification layer, reducing rejected trades and preserving clean audit trails.
 
 ### Step 3.2: Parallel Multi-Step Tool Execution
 

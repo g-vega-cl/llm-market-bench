@@ -97,6 +97,10 @@ class DecisionObject(BaseModel):
         ge=0,
         description="The exact quantity of shares to trade (mandatory if sell_tool_called is true)"
     )
+    price_source: str = Field(
+        None,
+        description="REQUIRED: Must state 'get_stock_quote tool call' if price was verified via tool, or 'hallucinated' if not. Trades without tool verification will be rejected."
+    )
 
     @field_validator("ticker")
     @classmethod

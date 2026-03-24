@@ -85,3 +85,49 @@ async def run_tool_loop(
                 "tool_call_id": tool_call.id,
                 "content": result,
             })
+
+
+def prepare_messages_for_instructor(messages: list) -> list:
+    """Prepares DeepSeek messages for final Instructor extraction.
+    
+    DeepSeek with thinking mode returns reasoning_content but may leave content empty.
+    This function ensures all messages are properly formatted for Instructor.
+    
+    Args:
+        messages: The message history from the tool loop.
+        
+    Returns:
+        Cleaned message list with reasoning_content cleared for non-tool-call messages.
+    """
+    cleaned = []
+    for msg in messages:
+        if isinstance(msg, dict):
+            # Create a copy to avoid mutating original
+            cleaned_msg = msg.copy()
+            # Clear reasoning_content for messages without tool_calls
+            if not cleaned_msg.get("tool_calls"):
+                cleaned_msg["reasoning_content"] = None
+            # Ensure content is not just whitespace
+            if cleaned_msg.get("content") and cleaned_msg["content"].strip() == "":
+                cleaned_msg["content"] = ""
+            cleaned.append(cleaned_msg)
+        else:
+            # For non-dict messages, pass through
+            cleaned.append(msg)
+    return cleaned
+
+
+def has_valid_content(messages: list) -> bool:
+    """Checks if the last assistant message has valid (non-empty) content.
+    
+    Args:
+        messages: The message history.
+        
+    Returns:
+        True if the last assistant message has non-empty content.
+    """
+    for msg in reversed(messages):
+        if isinstance(msg, dict) and msg.get("role") == "assistant":
+            content = msg.get("content", "")
+            return bool(content and content.strip())
+    return False

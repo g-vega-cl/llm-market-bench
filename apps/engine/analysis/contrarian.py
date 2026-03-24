@@ -88,11 +88,12 @@ async def run_contrarian_analysis(
 
     try:
         from core.models import DecisionsResponse
-        # Use List[DecisionsResponse] to handle Gemini's tendency to emit multiple tool call blocks
-        # Instructor will aggregate these into a list for us.
+        from typing import List
+        # Use List[ContrarianAgentResponse] to handle Gemini emitting multiple tool call blocks
+        # This is required because Instructor does not support multiple function calls with a single model
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
-            response_model=ContrarianAgentResponse,
+            response_model=List[ContrarianAgentResponse],
             messages=[
                 {"role": "system", "content": prompts.CONTRARIAN_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
@@ -107,13 +108,14 @@ async def run_contrarian_analysis(
 
         if not wrapper:
              return [], []
-             
-        # Aggregate all decisions and macro events from all tool call blocks
+
+        # Aggregate all decisions and macro events from all response blocks
         all_decisions = []
         all_events = []
-        for r in wrapper.responses:
-            all_decisions.extend(r.decisions)
-            all_events.extend(r.macro_events)
+        for contrarian_resp in wrapper:
+            for r in contrarian_resp.responses:
+                all_decisions.extend(r.decisions)
+                all_events.extend(r.macro_events)
 
         # Inject model info
         for d in all_decisions:
@@ -124,7 +126,7 @@ async def run_contrarian_analysis(
             e.model_provider = "gemini"
             e.model_name = "contrarian_agent"
 
-        logger.info(f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper.responses)} response blocks.")
+        logger.info(f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper)} response blocks.")
         return all_decisions, all_events
 
     except Exception as e:

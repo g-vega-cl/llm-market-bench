@@ -159,6 +159,11 @@ async def run_tool_loop(
             break
 
         candidate = resp.candidates[0]
+        
+        # Check if this is a multi-function-call response (Gemini sometimes splits responses)
+        # Count function calls in this response
+        function_call_count = sum(1 for part in candidate.content.parts if part.function_call)
+        
         # Append native Content object to history to preserve thought_signature
         messages.append(candidate.content)
 
@@ -172,6 +177,8 @@ async def run_tool_loop(
                     "args": part.function_call.args
                 })
 
+        # If Gemini returned multiple function calls in one response, 
+        # we need to execute all of them before breaking
         if not has_tool_call:
             break
 

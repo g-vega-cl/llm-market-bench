@@ -63,6 +63,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
 11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed via native function calling. The scan is **robust to formatting variances**, automatically stripping whitespace and normalizing casing for tickers to prevent false rejections. Hallucinated or text-only tool usage results in trade rejection.
+    - **Multi-Layer Verification**: See [TOOL_ENFORCEMENT.md](./engine/TOOL_ENFORCEMENT.md) for detailed documentation on the 4-layer enforcement system.
+    - **Pre-Prompt Strengthening**: Claude models receive enhanced system prompts with few-shot examples.
+    - **Confidence Penalties**: Decisions without verified tool calls receive 50% confidence reduction.
+    - **Ownership Pre-Validation**: SELL signals for unheld tickers are caught before verification layer.
+    - **Provider-Specific Fixes (2026-03-24 PM)**:
+      - **DeepSeek**: Thinking mode support with auto-retry for empty content
+      - **Claude**: Max tokens increased from 8K → 32K
+      - **Gemini**: `List[Model]` handling for multiple function calls
 12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware), symbol existence, **1.0% price banding**, and liquidity checks.
 13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
 14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.

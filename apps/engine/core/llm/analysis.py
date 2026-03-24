@@ -56,18 +56,28 @@ async def analyze_with_provider(
             for chunk in chunks
         ])
 
+        # Extract held tickers from portfolio context for quick reference
+        held_tickers = _extract_held_tickers(portfolio_context)
+        held_tickers_list = ", ".join(held_tickers) if held_tickers else "None (you have no positions)"
+
         prompt = prompts.ANALYSIS_USER_PROMPT_TEMPLATE.format(
             portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
             context=context if context else "No relevant historical context found.",
             news_content=news_content,
             min_trade_value=MIN_TRADE_VALUE,
             current_day_info=current_day_info,
-            calendar_knowledge=calendar_knowledge
+            calendar_knowledge=calendar_knowledge,
+            held_tickers_list=held_tickers_list
         )
 
+        # Use enhanced Claude-specific system prompt for Claude models
+        if provider == "anthropic":
+            system_prompt = prompts.CLAUDE_ANALYSIS_SYSTEM_PROMPT
+        else:
+            system_prompt = prompts.ANALYSIS_SYSTEM_PROMPT
 
         messages = [
-            {"role": "system", "content": prompts.ANALYSIS_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
 
@@ -89,6 +99,20 @@ async def analyze_with_provider(
         # Final structured extraction using Instructor
         logger.debug("Executing final extraction for %s/%s", provider, model_name)
 
+        # DeepSeek-specific: Prepare messages for Instructor extraction
+        # DeepSeek with thinking mode may return empty content with reasoning_content
+        if provider == "deepseek":
+            from .handlers import deepseek
+            messages = deepseek.prepare_messages_for_instructor(messages)
+            
+            # If content is empty/whitespace, add a user prompt requesting JSON output
+            if not deepseek.has_valid_content(messages):
+                logger.info("[%s/%s] DeepSeek returned empty content. Requesting JSON output.", provider, model_name)
+                messages.append({
+                    "role": "user",
+                    "content": "Output ONLY a valid JSON object with 'decisions' and 'macro_events' arrays. No reasoning, no explanations. Example: {\"decisions\": [], \"macro_events\": []}"
+                })
+
         final_args = {
             "model": model_name,
             "response_model": List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
@@ -97,7 +121,7 @@ async def analyze_with_provider(
         }
 
         if provider == "anthropic":
-            final_args["max_tokens"] = 8000
+            final_args["max_tokens"] = 32000  # Increased from 8000 to handle long outputs
             if messages[0]["role"] == "system":
                 final_args["system"] = messages[0]["content"]
                 final_args["messages"] = messages[1:]
@@ -129,13 +153,40 @@ async def analyze_with_provider(
                             "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. Rejecting trade.",
                             provider, model_name, decision.ticker
                         )
+                    elif not results["sell_tool_found"]:
+                        logger.warning(
+                            "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing a sell percentage tool. Rejecting trade.",
+                            provider, model_name, decision.ticker
+                        )
 
-                # Check get_stock_quote enforcement
+                # Check get_stock_quote enforcement with confidence scoring
                 if not results["quote_found"]:
                      logger.warning(
-                        "[%s/%s] HARD ENFORCEMENT: Agent recommended trade for %s without 'get_stock_quote' verification. Decison may be invalid.",
+                        "[%s/%s] HARD ENFORCEMENT: Agent recommended trade for %s without 'get_stock_quote' verification. Decision may be invalid.",
                         provider, model_name, decision.ticker
                     )
+                     # Add confidence penalty - flag as low confidence
+                     decision.confidence = int(getattr(decision, 'confidence', 50) * 0.5)  # Reduce by 50%
+                     logger.info(
+                        "[%s/%s] CONFIDENCE PENALTY: Reduced confidence score for %s due to missing tool call.",
+                        provider, model_name, decision.ticker
+                    )
+
+        # PRE-ANALYSIS PORTFOLIO VALIDATION: Filter out SELL decisions for tickers not held
+        # This catches hallucinations before they reach the verification layer
+        held_tickers = _extract_held_tickers(portfolio_context)
+        validated_decisions = []
+        for decision in final_resp.decisions:
+            if decision.signal == "SELL" and decision.ticker.upper() not in [t.upper() for t in held_tickers]:
+                logger.warning(
+                    "[%s/%s] PRE-ANALYSIS VALIDATION: SELL signal for %s rejected - ticker not in portfolio. Held: %s",
+                    provider, model_name, decision.ticker, held_tickers
+                )
+                # Mark as rejected but keep for audit trail
+                decision.signal = "HOLD"  # Convert to HOLD to preserve audit trail
+                decision.reasoning = f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held. Original reasoning: {decision.reasoning[:200]}"
+            validated_decisions.append(decision)
+        final_resp.decisions = validated_decisions
 
         # GOVERNMENT INCENTIVE ENFORCEMENT: Check if news contains government policy content
         # but no macro_events were generated
@@ -195,9 +246,9 @@ async def analyze_with_provider(
 
 def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     """Scans message history for tool calls related to a specific ticker.
-    
+
     This provides a 'hard' check against self-reported tool usage by LLMs.
-    
+
     Returns:
         dict: {
             "quote_found": bool,
@@ -207,7 +258,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     ticker = ticker.strip().upper()
     quote_found = False
     sell_tool_found = False
-    
+
     for m in messages:
         calls = []
         # 1. Handle dictionaries (OpenAI, Anthropic, Instructor-formatted)
@@ -226,7 +277,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
                 for part in m["content"]:
                     if isinstance(part, dict) and part.get("type") == "tool_use":
                         calls.append((part.get("name"), part.get("input", {})))
-        
+
         # Use getattr to be safe with different object types
         elif getattr(m, "parts", None):
             # Gemini native type
@@ -234,14 +285,14 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
                 f_call = getattr(part, "function_call", None)
                 if f_call:
                     calls.append((f_call.name, f_call.args))
-        
+
         elif getattr(m, "tool_calls", None):
             # OpenAI/DeepSeek native type
             for tc in m.tool_calls:
                 func = getattr(tc, "function", None)
                 if func:
                     calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
-                    
+
         for name, args in calls:
             # args can be a string (JSON) or a dictionary
             if isinstance(args, str):
@@ -249,7 +300,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
                     args = json.loads(args)
                 except:
                     continue
-            
+
             call_ticker = str(args.get("ticker", "")).strip().upper()
             if call_ticker == ticker:
                 if name == "get_stock_quote":
@@ -258,5 +309,35 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
                 elif name.startswith("sell_") and name.endswith("_percent"):
                     sell_tool_found = True
                     logger.debug(f"Confirmed '{name}' call for {ticker} in history.")
-                    
+
     return {"quote_found": quote_found, "sell_tool_found": sell_tool_found}
+
+
+def _extract_held_tickers(portfolio_context: str) -> List[str]:
+    """Extracts held ticker symbols from portfolio context string.
+    
+    Parses the portfolio context to find all tickers the agent currently owns.
+    
+    Args:
+        portfolio_context: The portfolio summary text.
+        
+    Returns:
+        List of ticker symbols held in the portfolio.
+    """
+    held_tickers = []
+    if not portfolio_context:
+        return held_tickers
+    
+    # Look for pattern like "- NVDA: 100 shares" or "- {TICKER}:"
+    import re
+    # Match lines like "- NVDA: 100 shares @ $500.00"
+    pattern = r'^-\s+([A-Z]{1,5}):'
+    for line in portfolio_context.split('\n'):
+        match = re.match(pattern, line.strip())
+        if match:
+            ticker = match.group(1)
+            # Skip common non-ticker matches
+            if ticker not in ['None', 'Cash', 'Total', 'Buying', 'SMA', 'Realized', 'Maintenance']:
+                held_tickers.append(ticker)
+    
+    return held_tickers

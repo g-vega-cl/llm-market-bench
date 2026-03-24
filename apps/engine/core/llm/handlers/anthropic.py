@@ -80,7 +80,7 @@ async def run_tool_loop(
         args = {
             "model": model_name,
             "messages": current_messages,
-            "max_tokens": 8000,
+            "max_tokens": 32000,  # Increased from 8000 to handle long tool execution loops
             "tools": override_tools or _build_tool_list(enable_web_search),
         }
         if system_prompt:

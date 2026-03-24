@@ -93,6 +93,7 @@ class DecisionObject(BaseModel):
     catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"]
     source_id: str   # Link to the raw news chunk
     price: float | None  # Stock price (optional, for validation)
+    price_source: str | None  # REQUIRED: Must state "get_stock_quote tool call" or "hallucinated"
     allocation_percentage: int | None  # % of buying power to allocate (0-100)
     is_priced_in: bool   # Whether news is priced in
     is_priced_in_reasoning: str # Reasoning for pricing
@@ -102,6 +103,69 @@ class DecisionObject(BaseModel):
     sell_tool_called: bool # MANDATORY FOR SELL: Whether a tool was used to calculate quantity
     quantity: int | None # The exact quantity of shares to trade
 ```
+
+### **Enhanced Tool Enforcement (2026-03-24)**
+
+The engine now implements **multi-layer verification** to prevent hallucinated tool usage:
+
+1. **Pre-Prompt Strengthening**: Claude models receive enhanced system prompts with explicit tool usage requirements and few-shot examples showing correct vs incorrect tool invocation patterns.
+
+2. **Real-Time Tool Interception**: After LLM analysis completes, the engine scans the actual conversation history to verify that required tools were executed via native function calling:
+   - `get_stock_quote` for ALL BUY/SELL decisions
+   - `sell_X_percent` tools for ALL SELL decisions
+   
+3. **Confidence Scoring**: Decisions without verified tool calls receive a 50% confidence penalty.
+
+4. **Price Source Declaration**: LLMs must explicitly declare `price_source` as either:
+   - `"get_stock_quote tool call"` - if tool was called
+   - `"hallucinated"` - if price was not verified (trade will be rejected)
+
+5. **Ownership Pre-Validation**: Before analysis completes, the engine filters out SELL signals for tickers not in the portfolio, converting them to HOLD with rejection reasoning (preserves audit trail).
+
+**Example Tool Call Verification:**
+```python
+# Engine scans message history for actual tool calls
+def _scan_history_for_tools(messages: list, ticker: str) -> dict:
+    # Returns: {"quote_found": True, "sell_tool_found": True}
+    # Only counts ACTUAL function calls, not text claims
+```
+
+**Impact**: Eliminates hallucinated tool usage where LLMs claim in text to have called tools without actual function calling.
+
+---
+
+### **Provider-Specific Enhancements (2026-03-24 PM)**
+
+#### DeepSeek: Thinking Mode Support
+
+**Problem**: DeepSeek with thinking mode returns `reasoning_content` but leaves `content` empty.
+
+**Solution**:
+- Added `prepare_messages_for_instructor()` to clean messages before extraction
+- Added `has_valid_content()` to detect empty responses
+- Auto-appends JSON request prompt if content is empty:
+  ```
+  "Output ONLY a valid JSON object with 'decisions' and 'macro_events' arrays..."
+  ```
+
+#### Claude: Max Tokens Increase
+
+**Problem**: Claude Haiku 4.5 hitting 8000 token output limit.
+
+**Solution**:
+- Increased `max_tokens` from 8000 → 32000 in tool loop and final extraction
+- Provides headroom while staying under Claude's 64K limit
+
+#### Gemini: Multiple Function Calls
+
+**Problem**: Gemini returns multiple function calls in separate parts within single response.
+
+**Solution**:
+- Changed Contrarian Analysis to `List[ContrarianAgentResponse]`
+- Added `mode=instructor.Mode.GENAI_TOOLS` for proper function calling
+- Enhanced handler to execute all function calls in a response
+
+**Impact**: These fixes ensure reliable operation across all four LLM providers (OpenAI, Claude, Gemini, DeepSeek).
 
 ### **Macro Event Objects**
 

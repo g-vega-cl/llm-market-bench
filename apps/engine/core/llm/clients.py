@@ -45,9 +45,12 @@ def get_deepseek_client():
 
 
 def get_gemini_client():
-    """Creates a Google Gemini client wrapped with Instructor."""
+    """Creates a Google Gemini client wrapped with Instructor.
+    
+    Uses mode=GENAI_TOOLS to properly handle Gemini's function calling.
+    """
     client = genai.Client(api_key=config.GEMINI_API_KEY)
-    return instructor.from_genai(client)
+    return instructor.from_genai(client, mode=instructor.Mode.GENAI_TOOLS)
 
 
 # Provider Registry

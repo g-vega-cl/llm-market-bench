@@ -187,13 +187,17 @@ Standard models like `gpt-5.4-nano` do **not** support web search in the Chat Co
 
 **To enable OpenAI web search:**
 
-1. Update your `.env`:
+1. Update `apps/engine/core/config.py` (model names are hardcoded, not env vars):
+```python
+OPENAI_MODEL = "gpt-5-search-api"  # or gpt-4o-search-preview
+```
+
+2. Set the env var to enable the feature:
 ```bash
-OPENAI_MODEL="gpt-5-search-api"  # or gpt-4o-search-preview
 ENABLE_OPENAI_WEB_SEARCH=true
 ```
 
-2. The handler will automatically include the `web_search` tool when enabled.
+3. The handler will automatically include the `web_search` tool when enabled.
 
 ## Prompt Engineering
 

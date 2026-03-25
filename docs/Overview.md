@@ -346,14 +346,15 @@ For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.m
 
 ### Latest Model Configuration
 
-The engine is currently optimized for these specific versions:
+Model names are **hardcoded as constants** in [`apps/engine/core/config.py`](../apps/engine/core/config.py) — **not** set via environment variables. To change a model, edit `config.py` directly. This eliminates `.env` drift and ensures a single source of truth.
 
-```bash
-OPENAI_MODEL="gpt-5.4-nano"
-ANTHROPIC_MODEL="claude-haiku-4-5"
-GEMINI_MODEL="gemini-3-flash-preview"
-DEEPSEEK_MODEL="deepseek-reasoner"
-XIAOMI_MODEL="mimo-v2-pro"
+```python
+# apps/engine/core/config.py
+OPENAI_MODEL = "gpt-5.4-nano"
+ANTHROPIC_MODEL = "claude-haiku-4-5"
+GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+DEEPSEEK_MODEL = "deepseek-reasoner"
+XIAOMI_MODEL = "mimo-v2-pro"
 ```
 
 ### Local Setup Flow
@@ -363,7 +364,8 @@ XIAOMI_MODEL="mimo-v2-pro"
 3. **`apps/web/.env`**: Contains only Supabase connection keys.
 4. **GitHub Secrets**: Add all the above to **Settings > Secrets and Variables > Actions**.
    - **Secrets**: Use for sensitive keys (API Keys, Tokens, URLs).
-   - **Variables**: Use for optional configuration overrides (e.g., `FINANCIAL_PROVIDER`, `OPENAI_MODEL`).
+   - **Variables**: Use for optional configuration overrides (e.g., `FINANCIAL_PROVIDER`).
+   - **Note**: Model names are **not** GitHub Variables — they're hardcoded in `apps/engine/core/config.py`.
 
 ### GitHub Actions Configuration
 
@@ -376,9 +378,11 @@ The daily pipeline in `.github/workflows/ingest.yml` explicitly maps Secrets and
 - `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 #### Optional Variables
-You can override default models or providers without code changes by adding these as **Repository Variables**:
+You can override default providers without code changes by adding these as **Repository Variables**:
 - `FINANCIAL_PROVIDER`: Defaults to `ibkr_proxy`.
-- `OPENAI_MODEL`, `GEMINI_MODEL`, etc.
+
+> [!NOTE]
+> Model names (`OPENAI_MODEL`, `GEMINI_MODEL`, etc.) are **no longer environment variables**. They are hardcoded constants in `apps/engine/core/config.py`. Update that file directly when switching models.
 
 
 ## Information Flow

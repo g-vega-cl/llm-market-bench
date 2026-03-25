@@ -34,11 +34,13 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 MIMO_API_KEY = os.getenv("MIMO_API_KEY")
 
 # --- Model Selection ---
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-nano")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")
-XIAOMI_MODEL = os.getenv("XIAOMI_MODEL", "mimo-v2-pro")
+# Hardcoded as code-level constants. To change a model, edit this file.
+# Do NOT set these via environment variables — use config.py as the single source of truth.
+OPENAI_MODEL = "gpt-5.4-nano"
+ANTHROPIC_MODEL = "claude-haiku-4-5"
+GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+DEEPSEEK_MODEL = "deepseek-reasoner"
+XIAOMI_MODEL = "mimo-v2-pro"
 
 # Weights for consensus protocol (higher = more influence)
 MODEL_WEIGHTS = {

@@ -9,15 +9,15 @@ The engine uses **Instructor** in combination with **Pydantic** to enforce a str
 ### **Provider SDKs**
 To ensure maximum feature coverage and performance, the system uses the official native SDKs for each provider:
 
-| Provider | SDK / Client | Model Default |
+| Provider | SDK / Client | Model |
 | --- | --- | --- |
 | **OpenAI** | `openai` | `gpt-5.4-nano` |
 | **Anthropic** | `anthropic` | `claude-haiku-4-5` |
-| **Gemini** | `google-genai` | `gemini-3-flash-preview` |
+| **Gemini** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 | **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
 | **Xiaomi MiMo** | `openai` (official) | `mimo-v2-pro` |
-| **Contrarian Agent** | `google-genai` | `gemini-3-flash-preview` |
-| **Manager Agent** | `google-genai` | `gemini-3-flash-preview` |
+| **Contrarian Agent** | `google-genai` | `gemini-3.1-flash-lite-preview` |
+| **Manager Agent** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 
 ### **Active Tool Calling & Reasoning**
 - **`deepseek-reasoner` & `mimo-v2-pro`** specifically utilize **Thinking Mode**, embedding true Chain-of-Thought (CoT) into their multi-turn tool calling loops for complex strategy formulation.
@@ -68,15 +68,15 @@ This separation ensures that each provider's unique API requirements are isolate
 
 ## 2. Configuration & Model Selection
 
-Model versions can be configured via environment variables in `apps/engine/.env`. This allows for easy testing of newer models (e.g., `gemini-2.5-flash` or `gpt-5.4-nano`) without code changes.
+Model names are **hardcoded constants** in [`apps/engine/core/config.py`](../../apps/engine/core/config.py). To switch a model, edit that file directly — there is no environment variable to set.
 
-```bash
-# Configuration Example
-OPENAI_MODEL="gpt-5.4-nano"
-ANTHROPIC_MODEL="claude-haiku-4-5"
-GEMINI_MODEL="gemini-3-flash-preview"
-DEEPSEEK_MODEL="deepseek-reasoner"
-XIAOMI_MODEL="mimo-v2-pro"
+```python
+# apps/engine/core/config.py — single source of truth
+OPENAI_MODEL = "gpt-5.4-nano"
+ANTHROPIC_MODEL = "claude-haiku-4-5"
+GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+DEEPSEEK_MODEL = "deepseek-reasoner"
+XIAOMI_MODEL = "mimo-v2-pro"
 ```
 
 ## 3. The Decision Data Model

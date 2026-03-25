@@ -58,10 +58,6 @@ jobs:
           MARKET_DATA_RETRIES: ${{ vars.MARKET_DATA_RETRIES || secrets.MARKET_DATA_RETRIES || 2}}
           FINANCIAL_API_THROTTLE_SECONDS: ${{ vars.FINANCIAL_API_THROTTLE_SECONDS || secrets.FINANCIAL_API_THROTTLE_SECONDS || 2 }}
 
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
-          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
-          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
-          XIAOMI_MODEL: ${{ vars.XIAOMI_MODEL }}
+          # Note: LLM model names are hardcoded in apps/engine/core/config.py
         run: |
           python main.py ingest

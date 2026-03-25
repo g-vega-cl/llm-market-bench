@@ -13,6 +13,7 @@ from core.config import (
     ANTHROPIC_MODEL,
     GEMINI_MODEL,
     DEEPSEEK_MODEL,
+    XIAOMI_MODEL,
     logger
 )
 from core.db import get_supabase_client
@@ -29,6 +30,7 @@ MODELS = [
     {"provider": "anthropic", "model": ANTHROPIC_MODEL},
     {"provider": "gemini", "model": GEMINI_MODEL},
     {"provider": "deepseek", "model": DEEPSEEK_MODEL},
+    {"provider": "xiaomi", "model": XIAOMI_MODEL},
 ]
 
 

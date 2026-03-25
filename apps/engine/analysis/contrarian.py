@@ -89,11 +89,11 @@ async def run_contrarian_analysis(
     try:
         from core.models import DecisionsResponse
         from typing import List
-        # Use List[ContrarianAgentResponse] to handle Gemini emitting multiple tool call blocks
-        # This is required because Instructor does not support multiple function calls with a single model
+        # Use List[DecisionsResponse] to handle Gemini emitting multiple tool call blocks
+        # This is expected behavior with instructor.Mode.GENAI_TOOLS and multiple news chunks
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
-            response_model=List[ContrarianAgentResponse],
+            response_model=List[DecisionsResponse],
             messages=[
                 {"role": "system", "content": prompts.CONTRARIAN_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
@@ -112,10 +112,9 @@ async def run_contrarian_analysis(
         # Aggregate all decisions and macro events from all response blocks
         all_decisions = []
         all_events = []
-        for contrarian_resp in wrapper:
-            for r in contrarian_resp.responses:
-                all_decisions.extend(r.decisions)
-                all_events.extend(r.macro_events)
+        for decisions_resp in wrapper:
+            all_decisions.extend(decisions_resp.decisions)
+            all_events.extend(decisions_resp.macro_events)
 
         # Inject model info
         for d in all_decisions:

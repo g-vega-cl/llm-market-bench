@@ -83,10 +83,10 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
         decisions, events, _, _ = await analyze_chunks(chunks)
     
     # Verify we got all decisions
-    assert len(decisions) >= 8  # 4 models * 2 decisions each = 8 total
-    
-    # Verify analyze_with_provider was called 4 times (once per model)
-    assert mock_llm_analyze.call_count == 4
+    assert len(decisions) >= 10  # 5 models * 2 decisions each = 10 total
+
+    # Verify analyze_with_provider was called 5 times (once per model)
+    assert mock_llm_analyze.call_count == 5
     
     # Verify the call arguments (it should receive the full list of chunks)
     call_args = mock_llm_analyze.call_args[1]

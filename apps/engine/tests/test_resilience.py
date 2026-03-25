@@ -57,8 +57,8 @@ async def test_individual_task_failure_does_not_halt_pipeline():
         
         decisions, events, _, _ = await analyze_chunks(chunks)
 
-    # 4 models total. OpenAI failed, so we should have 3 results.
-    assert len(decisions) == 3
+    # 5 models total. OpenAI failed, so we should have 4 results.
+    assert len(decisions) == 4
     for r in decisions:
         assert r.ticker == "AAPL"
 

@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from '~/lib/supabase'
+import { getActiveOwnerIds } from './-config'
 
 export async function fetchPortfolios() {
   const supabase = getSupabaseServerClient()
@@ -8,7 +9,12 @@ export async function fetchPortfolios() {
     .order('total_equity', { ascending: false })
 
   if (error) throw error
-  return data
+
+  const activeIds = new Set(getActiveOwnerIds())
+  return data.map((p) => ({
+    ...p,
+    is_active: activeIds.has(normalizeOwnerId(p.owner_id)),
+  }))
 }
 
 /**

@@ -1,9 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { fetchPortfolios, normalizeOwnerId } from './-queries'
-import { getActiveOwnerIds } from './-config'
-
-const ACTIVE_OWNER_IDS = new Set<string>(getActiveOwnerIds())
+import { fetchPortfolios } from './-queries'
 
 const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchPortfolios()
@@ -20,6 +17,7 @@ type Portfolio = {
   total_equity: number | null
   cash_balance: number
   buying_power: number | null
+  is_active: boolean
 }
 
 function PortfolioCard({ portfolio, deprecated = false }: { portfolio: Portfolio; deprecated?: boolean }) {
@@ -96,9 +94,8 @@ function PortfolioCard({ portfolio, deprecated = false }: { portfolio: Portfolio
 function PortfoliosPage() {
   const portfolios = Route.useLoaderData() as Portfolio[]
 
-  // Normalize owner_ids before filtering to handle formatting variations
-  const active = portfolios?.filter((p) => ACTIVE_OWNER_IDS.has(normalizeOwnerId(p.owner_id))) ?? []
-  const deprecated = portfolios?.filter((p) => !ACTIVE_OWNER_IDS.has(normalizeOwnerId(p.owner_id))) ?? []
+  const active = portfolios?.filter((p) => p.is_active !== false) ?? []
+  const deprecated = portfolios?.filter((p) => p.is_active === false) ?? []
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-12">

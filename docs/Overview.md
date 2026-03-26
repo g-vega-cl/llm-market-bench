@@ -350,6 +350,9 @@ For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.m
 
 Model names are defined in the shared JSON configuration file at [`packages/config/models.json`](../packages/config/models.json) — **not** set via environment variables. To change a model, edit this JSON file directly. Both the Python engine and the TypeScript frontend read from it, ensuring a single source of truth.
 
+> [!TIP]
+> **Monorepo Workspace Integration:** The `packages/config` directory is officially configured as a `pnpm` workspace package named `@repo/config`. This allows the Web Frontend to seamlessly import the shared JSON structure during the Vite build process (`import modelsConfig from '@repo/config/models.json'`) without causing bundler resolution errors or relying on brittle relative paths.
+
 ```json
 {
   "OPENAI_MODEL": "gpt-5.4-nano",

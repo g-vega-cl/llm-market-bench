@@ -66,7 +66,10 @@ This separation ensures that each provider's unique API requirements are isolate
 
 ## 2. Configuration & Model Selection
 
-Model names are defined in the shared JSON configuration file at [`packages/config/models.json`](../../packages/config/models.json) — **not** set via environment variables. To change a model, edit this JSON file directly. Both the Python engine and the TypeScript frontend read from it.
+Model names are defined in the shared JSON configuration file at [`packages/config/models.json`](../../packages/config/models.json) — **not** set via environment variables. To change a model, edit this JSON file directly. Both the Python engine and the TypeScript frontend read from it. 
+
+> [!TIP]
+> **Monorepo Workspace Integration:** The Configuration folder is registered as `@repo/config` inside `apps/web/package.json`. This allows the Web Frontend to seamlessly import the shared JSON structure during the Vite build process.
 
 ```json
 {

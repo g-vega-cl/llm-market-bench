@@ -83,9 +83,9 @@ Data fetching is handled by TanStack Start server functions located in `apps/web
 
 ### Portfolio Configuration
 - **File**: `apps/web/src/routes/portfolios/-config.ts`
-- **Purpose**: Loads and caches the list of active owner IDs from `packages/config/models.json`
+- **Purpose**: Loads and caches the list of active owner IDs via the `@repo/config/models.json` monorepo workspace package. By importing it natively as a package, it avoids bundler resolution errors.
 - **Function**: `getActiveOwnerIds()` returns normalized model names for portfolio classification
-- **Error Handling**: Falls back to empty array if models.json fails to load (marks all portfolios as retired)
+- **Error Handling**: Falls back to an empty array if the JSON fails to load (marks all portfolios as retired)
 
 ### Owner ID Normalization
 - **File**: `apps/web/src/routes/portfolios/-queries.ts`

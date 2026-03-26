@@ -346,16 +346,35 @@ For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.m
 
 ### Latest Model Configuration
 
-Model names are **hardcoded as constants** in [`apps/engine/core/config.py`](../apps/engine/core/config.py) — **not** set via environment variables. To change a model, edit `config.py` directly. This eliminates `.env` drift and ensures a single source of truth.
+Model names are defined in the shared JSON configuration file at [`packages/config/models.json`](../packages/config/models.json) — **not** set via environment variables. To change a model, edit this JSON file directly. Both the Python engine and the TypeScript frontend read from it, ensuring a single source of truth.
 
-```python
-# apps/engine/core/config.py
-OPENAI_MODEL = "gpt-5.4-nano"
-ANTHROPIC_MODEL = "claude-haiku-4-5"
-GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
-DEEPSEEK_MODEL = "deepseek-reasoner"
-XIAOMI_MODEL = "mimo-v2-pro"
+```json
+{
+  "OPENAI_MODEL": "gpt-5.4-nano",
+  "ANTHROPIC_MODEL": "claude-haiku-4-5",
+  "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
+  "DEEPSEEK_MODEL": "deepseek-reasoner",
+  "XIAOMI_MODEL": "mimo-v2-pro",
+  "CONTRARIAN_AGENT_ID": "contrarian_agent"
+}
 ```
+
+### Deprecated Portfolios
+
+When a provider's model is upgraded (e.g., `gpt-4o-mini` → `gpt-5.4-nano`), the old portfolio row in the `portfolios` table is **not automatically removed**. It becomes an inactive historical record. The portfolios below are **no longer traded** and will not receive new decisions, but their historical performance data (trades, ledger snapshots) is preserved for auditability.
+
+| `owner_id` (DB key) | Provider | Replaced By | Reason Deprecated |
+|---|---|---|---|
+| `gpt-4o-mini` | OpenAI | `gpt-5.4-nano` | Upgraded to GPT-5 generation model |
+| `gpt-4o` | OpenAI | `gpt-5.4-nano` | Upgraded to GPT-5 generation model |
+| `gpt-5-mini` | OpenAI | `gpt-5.4-nano` | Model renamed/versioned to `gpt-5.4-nano` |
+| `claude-3-5-haiku-20241022` | Anthropic | `claude-haiku-4-5` | Upgraded to Claude 4 generation |
+| `gemini-2.0-flash` | Google | `gemini-3.1-flash-lite-preview` | Upgraded to Gemini 3 generation |
+| `gemini-2.5-flash-preview-04-17` | Google | `gemini-3.1-flash-lite-preview` | Upgraded to Gemini 3 generation |
+| `mimo-vl-6b-rl` | Xiaomi | `mimo-v2-pro` | Upgraded to MiMo v2 Pro |
+
+> [!NOTE]
+> To hide deprecated portfolios from the dashboard, you can soft-delete them by adding an `is_active = false` flag to the `portfolios` table via a Supabase migration, or simply filter them out in the frontend query by checking if the `owner_id` matches one of the current active models in `packages/config/models.json`.
 
 ### Local Setup Flow
 
@@ -365,7 +384,7 @@ XIAOMI_MODEL = "mimo-v2-pro"
 4. **GitHub Secrets**: Add all the above to **Settings > Secrets and Variables > Actions**.
    - **Secrets**: Use for sensitive keys (API Keys, Tokens, URLs).
    - **Variables**: Use for optional configuration overrides (e.g., `FINANCIAL_PROVIDER`).
-   - **Note**: Model names are **not** GitHub Variables — they're hardcoded in `apps/engine/core/config.py`.
+   - **Note**: Model names are **not** GitHub Variables — they're defined in `packages/config/models.json`.
 
 ### GitHub Actions Configuration
 
@@ -382,7 +401,7 @@ You can override default providers without code changes by adding these as **Rep
 - `FINANCIAL_PROVIDER`: Defaults to `ibkr_proxy`.
 
 > [!NOTE]
-> Model names (`OPENAI_MODEL`, `GEMINI_MODEL`, etc.) are **no longer environment variables**. They are hardcoded constants in `apps/engine/core/config.py`. Update that file directly when switching models.
+> Model names (`OPENAI_MODEL`, `GEMINI_MODEL`, etc.) are **no longer environment variables**. They are defined in the shared JSON file at `packages/config/models.json`. Update that file directly when switching models.
 
 
 ## Information Flow

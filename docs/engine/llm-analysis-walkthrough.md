@@ -68,15 +68,17 @@ This separation ensures that each provider's unique API requirements are isolate
 
 ## 2. Configuration & Model Selection
 
-Model names are **hardcoded constants** in [`apps/engine/core/config.py`](../../apps/engine/core/config.py). To switch a model, edit that file directly — there is no environment variable to set.
+Model names are defined in the shared JSON configuration file at [`packages/config/models.json`](../../packages/config/models.json) — **not** set via environment variables. To change a model, edit this JSON file directly. Both the Python engine and the TypeScript frontend read from it.
 
-```python
-# apps/engine/core/config.py — single source of truth
-OPENAI_MODEL = "gpt-5.4-nano"
-ANTHROPIC_MODEL = "claude-haiku-4-5"
-GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
-DEEPSEEK_MODEL = "deepseek-reasoner"
-XIAOMI_MODEL = "mimo-v2-pro"
+```json
+{
+  "OPENAI_MODEL": "gpt-5.4-nano",
+  "ANTHROPIC_MODEL": "claude-haiku-4-5",
+  "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
+  "DEEPSEEK_MODEL": "deepseek-reasoner",
+  "XIAOMI_MODEL": "mimo-v2-pro",
+  "CONTRARIAN_AGENT_ID": "contrarian_agent"
+}
 ```
 
 ## 3. The Decision Data Model

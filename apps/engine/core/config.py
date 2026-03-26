@@ -4,6 +4,7 @@ This module loads environment variables, configures logging, and defines
 constants used throughout the application.
 """
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -34,13 +35,19 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 MIMO_API_KEY = os.getenv("MIMO_API_KEY")
 
 # --- Model Selection ---
-# Hardcoded as code-level constants. To change a model, edit this file.
-# Do NOT set these via environment variables — use config.py as the single source of truth.
-OPENAI_MODEL = "gpt-5.4-nano"
-ANTHROPIC_MODEL = "claude-haiku-4-5"
-GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
-DEEPSEEK_MODEL = "deepseek-reasoner"
-XIAOMI_MODEL = "mimo-v2-pro"
+# Loaded from the shared packages/config/models.json — the single source of truth.
+# To change a model, edit that JSON file. Both Python and TypeScript read from it.
+_MODELS_JSON = Path(__file__).resolve().parent.parent.parent.parent / "packages" / "config" / "models.json"
+with open(_MODELS_JSON) as _f:
+    _models = json.load(_f)
+
+OPENAI_MODEL: str = _models["OPENAI_MODEL"]
+ANTHROPIC_MODEL: str = _models["ANTHROPIC_MODEL"]
+GEMINI_MODEL: str = _models["GEMINI_MODEL"]
+DEEPSEEK_MODEL: str = _models["DEEPSEEK_MODEL"]
+XIAOMI_MODEL: str = _models["XIAOMI_MODEL"]
+CONTRARIAN_AGENT_ID: str = _models["CONTRARIAN_AGENT_ID"]
+ACTIVE_OWNER_IDS: list[str] = list(_models.values())
 
 # Weights for consensus protocol (higher = more influence)
 MODEL_WEIGHTS = {

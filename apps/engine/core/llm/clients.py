@@ -44,24 +44,9 @@ def get_deepseek_client():
     )
 
 
-def get_xiaomi_client():
-    """Creates an async Xiaomi MiMo client wrapped with Instructor.
-
-    Uses the OpenAI SDK with a custom base URL.
-    """
-    return instructor.from_openai(
-        AsyncOpenAI(
-            api_key=config.MIMO_API_KEY,
-            base_url="https://api.xiaomimimo.com/v1",
-            timeout=TIMEOUT
-        ),
-        mode=instructor.Mode.JSON
-    )
-
-
 def get_gemini_client():
     """Creates a Google Gemini client wrapped with Instructor.
-    
+
     Uses mode=GENAI_TOOLS to properly handle Gemini's function calling.
     """
     client = genai.Client(api_key=config.GEMINI_API_KEY)
@@ -74,7 +59,6 @@ CLIENT_FACTORIES = {
     "anthropic": get_anthropic_client,
     "deepseek": get_deepseek_client,
     "gemini": get_gemini_client,
-    "xiaomi": get_xiaomi_client,
 }
 
 

@@ -1,6 +1,6 @@
 # Walkthrough: Step 5 - Parallel LLM Analysis
 
-The Parallel LLM Analysis engine orchestrates the evaluation of financial news using five independent LLMs (OpenAI, Claude, Gemini, DeepSeek, and Xiaomi MiMo) to generate structured trading signals.
+The Parallel LLM Analysis engine orchestrates the evaluation of financial news using four independent LLMs (OpenAI, Claude, Gemini, and DeepSeek) to generate structured trading signals.
 
 ## 1. Technical Architecture
 
@@ -15,12 +15,11 @@ To ensure maximum feature coverage and performance, the system uses the official
 | **Anthropic** | `anthropic` | `claude-haiku-4-5` |
 | **Gemini** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 | **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
-| **Xiaomi MiMo** | `openai` (official) | `mimo-v2-pro` |
 | **Contrarian Agent** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 | **Manager Agent** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 
 ### **Active Tool Calling & Reasoning**
-- **`deepseek-reasoner` & `mimo-v2-pro`** specifically utilize **Thinking Mode**, embedding true Chain-of-Thought (CoT) into their multi-turn tool calling loops for complex strategy formulation.
+- **`deepseek-reasoner`** specifically utilizes **Thinking Mode**, embedding true Chain-of-Thought (CoT) into their multi-turn tool calling loops for complex strategy formulation.
 - **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
@@ -62,7 +61,6 @@ To improve code maintainability and adhere to Google's Python Style Guide, the t
 - **`apps/engine/core/llm/handlers/openai.py`**: Handles OpenAI and DeepSeek tool loops.
 - **`apps/engine/core/llm/handlers/anthropic.py`**: Handles Anthropic's specific message formats.
 - **`apps/engine/core/llm/handlers/gemini.py`**: Handles Gemini's complex content mapping and tool execution.
-- **`apps/engine/core/llm/handlers/xiaomi.py`**: Handles Xiaomi's reasoning preservation and tool loops.
 
 This separation ensures that each provider's unique API requirements are isolated, making the codebase easier to test and extend.
 
@@ -76,7 +74,6 @@ Model names are defined in the shared JSON configuration file at [`packages/conf
   "ANTHROPIC_MODEL": "claude-haiku-4-5",
   "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
   "DEEPSEEK_MODEL": "deepseek-reasoner",
-  "XIAOMI_MODEL": "mimo-v2-pro",
   "CONTRARIAN_AGENT_ID": "contrarian_agent"
 }
 ```
@@ -143,16 +140,11 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
 - **Cause**: Gemini returns multiple `Response` tool calls when analyzing multiple chunks; the response model was double-wrapped in `ContrarianAgentResponse`.
 - **Fix**: Simplified `response_model` to `List[DecisionsResponse]` in `analysis/contrarian.py` to allow Instructor to aggregate multiple tool calls directly.
 
-#### 2. Xiaomi (MiMo): 400 Param Incorrect Error
-- **Symptom**: `assistant content must contain at least one part`.
-- **Cause**: MiMo API rejects assistant messages with empty string OR null `content` during tool loops (Thinking Mode).
-- **Fix**: Updated `core/llm/handlers/xiaomi.py` to ensure `content` is a single space `" "` (placeholder) instead of `""` or `None` when no text is present. This satisfies the strict validation while preserving the message in the history.
-
 ---
 
 ### **Provider-Specific Enhancements (2026-03-24 PM)**
 
-#### DeepSeek & Xiaomi: Thinking Mode Support
+#### DeepSeek: Thinking Mode Support
 
 **Problem**: DeepSeek with thinking mode returns `reasoning_content` but leaves `content` empty.
 
@@ -181,7 +173,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
 - Added `mode=instructor.Mode.GENAI_TOOLS` for proper function calling
 - Enhanced handler to execute all function calls in a response
 
-**Impact**: These fixes ensure reliable operation across all five LLM providers (OpenAI, Claude, Gemini, DeepSeek, Xiaomi).
+**Impact**: These fixes ensure reliable operation across all four LLM providers (OpenAI, Claude, Gemini, DeepSeek).
 
 ### **Macro Event Objects**
 

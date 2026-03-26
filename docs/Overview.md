@@ -4,7 +4,7 @@
 
 ### What It Does
 
-An automated platform where seven LLMs (**OpenAI, Claude, Gemini, DeepSeek, Xiaomi MiMo, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Three times a day during market hours (09:30, 12:30, 15:30 ET), they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
+An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Three times a day during market hours (09:30, 12:30, 15:30 ET), they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
 
 **New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
 
@@ -52,8 +52,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 5.  **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, DeepSeek, and Xiaomi MiMo generate trade signals using active tools. The engine initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
-    -   **Reasoning Models (DeepSeek & Xiaomi)**: Both models run in **Thinking Mode** (CoT reasoning) with dedicated handlers that preserve reasoning context (`reasoning_content`) across tool iterations and handle empty content fallbacks for final structured extraction.
+5.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
+    -   **Reasoning Models (DeepSeek)**: DeepSeek runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context (`reasoning_content`) across tool iterations and handles empty content fallbacks for final structured extraction.
     -   **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
 6.  **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 7.  **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
@@ -68,7 +68,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     - **Confidence Penalties**: Decisions without verified tool calls receive 50% confidence reduction.
     - **Ownership Pre-Validation**: SELL signals for unheld tickers are caught before verification layer.
     - **Provider-Specific Fixes (2026-03-24 PM)**:
-      - **DeepSeek & Xiaomi**: Thinking mode support with auto-retry for empty content
+      - **DeepSeek**: Thinking mode support with auto-retry for empty content
       - **Claude**: Max tokens increased from 8K → 32K
       - **Gemini**: `List[Model]` handling for multiple function calls
 12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware), symbol existence, **1.0% price banding**, and liquidity checks.
@@ -94,7 +94,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Dynamic Provider**: *The verifier uses the **same intelligence profile** (e.g., Anthropic, Gemini) as the original generator.*
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis**. Crucially, it now **audits the agent's strategic reasoning** (e.g., "sell X to fund Y") for logical consistency. It also validates adherence to **Calendar & Seasonal Strategies** (Turn of the Month, Payday Anomaly, etc.) by analyzing the injected current date context.*
 
-*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer uses **Modular Provider Handlers** (e.g., `openai.py`, `deepseek.py`, `anthropic.py`, `xiaomi.py`) to handle idiosyncratic behaviors like DeepSeek and Xiaomi's reasoning preservation. It is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous patterns.*
+*   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer uses **Modular Provider Handlers** (e.g., `openai.py`, `deepseek.py`, `anthropic.py`) to handle idiosyncratic behaviors like DeepSeek's reasoning preservation. It is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous patterns.*
 *   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **IBKR Proxy** (with YFinance fallback) if local data is missing for a new ticker. To optimize performance, the engine uses **Batch Upserts** when saving historical prices to Supabase, reducing network overhead significantly. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts. It also implements a unified **`ensure_list`** wrapper to resiliently handle both single and multi-block LLM responses. The **Anthropic handler** (`handlers/anthropic.py`) filters whitespace-only text blocks before building the message history, preventing `400 Bad Request: text content blocks must be non-empty` errors. The **FMP provider** (`execution/providers/fmp.py`) correctly passes the ticker as a query parameter to the `historical-price-eod/full` endpoint and handles both flat-list and nested `"historical"` response shapes, resolving prior `404` errors for tickers like `SMCI` and `OIH`. Crucially, it now integrates a **FMP-driven Market Status check** to enforce trading only during active US market hours, including automatic holiday detection.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
@@ -310,7 +310,6 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `ANTHROPIC_API_KEY` | Claude API Key (Model: `claude-haiku-4-5`) | Trading Analysis |
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
-|  | `MIMO_API_KEY` | Xiaomi MiMo API Key (Model: `mimo-v2-pro`) | Trading Analysis |
 |  | `FMP_API_KEY` | e.g., Financial Modeling Prep (Optional for yfinance) | Price Data & Validation |
 |  | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of primary price data source |
 |  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `fmp`) | Selection of first fallback source |
@@ -354,7 +353,6 @@ Model names are defined in the shared JSON configuration file at [`packages/conf
   "ANTHROPIC_MODEL": "claude-haiku-4-5",
   "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
   "DEEPSEEK_MODEL": "deepseek-reasoner",
-  "XIAOMI_MODEL": "mimo-v2-pro",
   "CONTRARIAN_AGENT_ID": "contrarian_agent"
 }
 ```
@@ -371,7 +369,6 @@ When a provider's model is upgraded (e.g., `gpt-4o-mini` → `gpt-5.4-nano`), th
 | `claude-3-5-haiku-20241022` | Anthropic | `claude-haiku-4-5` | Upgraded to Claude 4 generation |
 | `gemini-2.0-flash` | Google | `gemini-3.1-flash-lite-preview` | Upgraded to Gemini 3 generation |
 | `gemini-2.5-flash-preview-04-17` | Google | `gemini-3.1-flash-lite-preview` | Upgraded to Gemini 3 generation |
-| `mimo-vl-6b-rl` | Xiaomi | `mimo-v2-pro` | Upgraded to MiMo v2 Pro |
 
 > [!NOTE]
 > To hide deprecated portfolios from the dashboard, you can soft-delete them by adding an `is_active = false` flag to the `portfolios` table via a Supabase migration, or simply filter them out in the frontend query by checking if the `owner_id` matches one of the current active models in `packages/config/models.json`.
@@ -429,9 +426,8 @@ graph TD
         C --> D2[Claude Batch Analysis]
         C --> D3[Gemini Batch Analysis]
         C --> D4[DeepSeek Batch Analysis]
-        C --> D5[Xiaomi Batch Analysis]
         
-        D1 & D2 & D3 & D4 & D5 --> AT[Decision Attribution Layer]
+        D1 & D2 & D3 & D4 --> AT[Decision Attribution Layer]
         AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]
         
         AT --> CP{Event Consensus Protocol}

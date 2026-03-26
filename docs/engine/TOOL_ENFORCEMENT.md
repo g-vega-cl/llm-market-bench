@@ -1,6 +1,6 @@
 # Tool Enforcement & Hallucination Prevention
 
-**Last Updated**: 2026-03-24 (Updated 2026-03-24 PM: DeepSeek, Xiaomi, Claude, Gemini fixes)
+**Last Updated**: 2026-03-24 (Updated 2026-03-24 PM: DeepSeek, Claude, Gemini fixes)
 
 ## Overview
 
@@ -23,7 +23,7 @@ Analysis of pipeline logs revealed critical categories of hallucinations and err
    - Impact: 3+ rejected trades per run
 
 4. **Provider-Specific Errors** (2026-03-24 PM):
-   - **DeepSeek & Xiaomi**: Empty content with thinking mode enabled
+   - **DeepSeek**: Empty content with thinking mode enabled
    - **Claude**: Max tokens limit (16K output cutoff)
    - **Gemini**: Multiple function calls in single response
 
@@ -162,7 +162,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
         }
     """
     # Handles multiple provider formats:
-    # - OpenAI/DeepSeek/Xiaomi: tool_calls array
+    # - OpenAI/DeepSeek: tool_calls array
     # - Anthropic: content list with tool_use blocks
     # - Gemini: parts array with function_call
 ```
@@ -242,7 +242,6 @@ PRICE SOURCE REQUIREMENT:
 | `core/llm/analysis.py` | Added `_extract_held_tickers()`, history scanning, confidence penalties, ownership validation, DeepSeek message preparation |
 | `core/models.py` | Added `price_source` field to `DecisionObject` |
 | `core/llm/handlers/deepseek.py` | Added `prepare_messages_for_instructor()`, `has_valid_content()` for thinking mode support |
-| `core/llm/handlers/xiaomi.py` [NEW] | Added `prepare_messages_for_instructor()`, `has_valid_content()` for thinking mode support |
 | `core/llm/handlers/anthropic.py` | Increased max_tokens from 8000 to 32000 |
 | `core/llm/handlers/gemini.py` | Enhanced multi-function-call handling |
 | `core/llm/clients.py` | Added `mode=instructor.Mode.GENAI_TOOLS` for Gemini |
@@ -250,7 +249,7 @@ PRICE SOURCE REQUIREMENT:
 
 ## Provider-Specific Fixes (2026-03-24 PM)
 
-### DeepSeek & Xiaomi: Empty Content with Thinking Mode
+### DeepSeek: Empty Content with Thinking Mode
 
 **Problem**: DeepSeek with thinking mode enabled returns `reasoning_content` but leaves `content` empty or whitespace-only, causing Instructor JSON extraction to fail.
 
@@ -259,7 +258,7 @@ PRICE SOURCE REQUIREMENT:
 Invalid JSON: EOF while parsing a value at line 1 column 47
 ```
 
-**Solution** (`core/llm/handlers/deepseek.py` & `core/llm/handlers/xiaomi.py`):
+**Solution** (`core/llm/handlers/deepseek.py`):
 1. Added `prepare_messages_for_instructor()` function:
    - Clears `reasoning_content` from messages without tool calls
    - Ensures content is not just whitespace
@@ -328,7 +327,7 @@ Based on log analysis from 2026-03-24 runs:
 | Price hallucinations (86% deviation) | 4+ rejected trades/run | Reduced via confidence penalties |
 | DeepSeek empty content errors | Pipeline failures | Auto-retry with JSON prompt |
 | Claude max_tokens truncation | 16K output cutoff | 32K headroom |
-| Gemini / Xiaomi multi-call errors | Pipeline failures | List[Model] handling |
+| Gemini multi-call errors | Pipeline failures | List[Model] handling |
 | Audit trail completeness | Partial | All rejections preserved |
 
 ## Testing

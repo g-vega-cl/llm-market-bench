@@ -73,8 +73,6 @@ async def analyze_with_provider(
         # Use enhanced Claude-specific system prompt for Claude models
         if provider == "anthropic":
             system_prompt = prompts.CLAUDE_ANALYSIS_SYSTEM_PROMPT
-        elif provider == "xiaomi":
-            system_prompt = prompts.XIAOMI_ANALYSIS_SYSTEM_PROMPT
         else:
             system_prompt = prompts.ANALYSIS_SYSTEM_PROMPT
 
@@ -97,9 +95,6 @@ async def analyze_with_provider(
         elif provider == "gemini":
             from .handlers import gemini
             await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=True)  # Enable by default
-        elif provider == "xiaomi":
-            from .handlers import xiaomi
-            await xiaomi.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=False)
 
         # Final structured extraction using Instructor
         logger.debug("Executing final extraction for %s/%s", provider, model_name)
@@ -109,21 +104,10 @@ async def analyze_with_provider(
         if provider == "deepseek":
             from .handlers import deepseek
             messages = deepseek.prepare_messages_for_instructor(messages)
-            
+
             # If content is empty/whitespace, add a user prompt requesting JSON output
             if not deepseek.has_valid_content(messages):
                 logger.info("[%s/%s] DeepSeek returned empty content. Requesting JSON output.", provider, model_name)
-                messages.append({
-                    "role": "user",
-                    "content": "Output ONLY a valid JSON object with 'decisions' and 'macro_events' arrays. No reasoning, no explanations. Example: {\"decisions\": [], \"macro_events\": []}"
-                })
-        elif provider == "xiaomi":
-            from .handlers import xiaomi
-            messages = xiaomi.prepare_messages_for_instructor(messages)
-            
-            # If content is empty/whitespace, add a user prompt requesting JSON output
-            if not xiaomi.has_valid_content(messages):
-                logger.info("[%s/%s] Xiaomi returned empty content. Requesting JSON output.", provider, model_name)
                 messages.append({
                     "role": "user",
                     "content": "Output ONLY a valid JSON object with 'decisions' and 'macro_events' arrays. No reasoning, no explanations. Example: {\"decisions\": [], \"macro_events\": []}"

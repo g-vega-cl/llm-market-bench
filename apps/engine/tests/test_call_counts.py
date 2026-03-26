@@ -90,22 +90,22 @@ async def test_consolidated_call_counts():
         await analyze_chunks(chunks)
 
         # ASSERTIONS
-        
+
         # 1. Gemini Embedding Call: Should be called exactly ONCE for all 3 chunks
         assert mock_gemini_client.models.embed_content.call_count == 1
         call_args = mock_gemini_client.models.embed_content.call_args
         assert len(call_args.kwargs['contents']) == 3
-        
-        # 2. LLM Analysis Calls: Should be called exactly ONCE per provider (5 in total)
-        # OpenAI provider (OpenAI, DeepSeek, and Xiaomi use the same SDK factory here)
-        assert mock_wrapped_openai.chat.completions.create.call_count == 3 # 1 for OpenAI, 1 for DeepSeek, 1 for Xiaomi
-        
+
+        # 2. LLM Analysis Calls: Should be called exactly ONCE per provider (4 in total)
+        # OpenAI provider (OpenAI and DeepSeek use the same SDK factory here)
+        assert mock_wrapped_openai.chat.completions.create.call_count == 2 # 1 for OpenAI, 1 for DeepSeek
+
         # Anthropic provider
         assert mock_wrapped_anthropic.chat.completions.create.call_count == 1
-        
+
         # Gemini provider
         assert mock_wrapped_gemini.chat.completions.create.call_count == 1
-        
+
         print("\nVerification Passed: 1 embedding call and 4 analysis calls made.")
 
 if __name__ == "__main__":

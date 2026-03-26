@@ -3,6 +3,5 @@
   "ANTHROPIC_MODEL": "claude-haiku-4-5",
   "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
   "DEEPSEEK_MODEL": "deepseek-reasoner",
-  "XIAOMI_MODEL": "mimo-v2-pro",
   "CONTRARIAN_AGENT_ID": "contrarian_agent"
 }

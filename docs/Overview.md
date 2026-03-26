@@ -174,6 +174,9 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
         - **Multi-Outcome Scenarios**: Every Horizon Watch event is required to have a structured **Scenario Analysis** containing at least two possible outcomes and a dedicated **Trading Plan** for each.
 *   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer. For closed positions, the audit trail now displays the **Realized P&L** (USD and %) directly in the trades table.
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
+    *   **Active vs Retired Classification:** Portfolios are automatically classified based on their `owner_id` matching current models in `packages/config/models.json`.
+    *   **Retired Portfolios:** Outdated model portfolios (e.g., `gemini-3-flash-preview`, `mimo-v2-pro`) are moved to a "Retired Agents" section with visual distinction (grayed styling, reduced opacity).
+    *   **Owner ID Normalization:** Handles formatting variations (spaces, dashes, underscores, case) for robust matching across different model name formats.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)
 *   **Live Dashboard:** [benchify.netlify.app](https://benchify.netlify.app)

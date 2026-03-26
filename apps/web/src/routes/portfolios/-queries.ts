@@ -11,6 +11,18 @@ export async function fetchPortfolios() {
   return data
 }
 
+/**
+ * Normalizes owner_id strings for consistent comparison.
+ * Handles common formatting variations (spaces, dashes, underscores, case).
+ */
+export function normalizeOwnerId(ownerId: string | null): string {
+  if (!ownerId) return ''
+  return ownerId
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '-') // Normalize spaces, underscores, dashes to single dash
+    .replace(/^-+|-+$/g, '') // Trim leading/trailing dashes
+}
+
 export async function fetchPortfolioById(id: string) {
   const supabase = getSupabaseServerClient()
   const { data, error } = await supabase

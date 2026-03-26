@@ -9,12 +9,20 @@ The Portfolios section allows users to monitor the performance and holdings of e
 
 ### Portfolios Summary (`/portfolios`)
 - **Route**: `apps/web/src/routes/portfolios/index.tsx`
-- **Description**: Displays a list of all active AI agents as cards.
-- **Key Metrics**:
+- **Description**: Displays a list of all AI agent portfolios, separated into **Active** and **Retired** sections.
+- **Active vs Retired Classification**:
+  - Portfolios are classified based on their `owner_id` field
+  - **Active**: `owner_id` matches a model name in the current `packages/config/models.json` configuration
+  - **Retired**: `owner_id` does not match any current model (e.g., outdated models like `gemini-3-flash-preview`, `mimo-v2-pro`)
+  - Owner ID normalization handles formatting variations (spaces, dashes, underscores, case) for robust matching
+- **Key Metrics** (for each portfolio card):
     - Total Equity (Net Liquidation Value)
     - Cash Balance
     - Buying Power
 - **Interaction**: Clicking an agent card navigates to their specific portfolio detail page.
+- **Visual Distinction**:
+  - Active portfolios: White background, green "Active" badge, full opacity
+  - Retired portfolios: Gray background, gray "Retired" badge, reduced opacity (60%)
 
 ### Portfolio Detail (`/portfolios/$portfolioId`)
 - **Route**: `apps/web/src/routes/portfolios/$portfolioId.tsx`
@@ -72,6 +80,22 @@ These metrics are calculated client-side in the `PositionsTable` component to pr
 
 ### Server Functions
 Data fetching is handled by TanStack Start server functions located in `apps/web/src/routes/portfolios/-queries.ts`. This ensures that sensitive database queries remain on the server and are delivered to the frontend in a type-safe manner.
+
+### Portfolio Configuration
+- **File**: `apps/web/src/routes/portfolios/-config.ts`
+- **Purpose**: Loads and caches the list of active owner IDs from `packages/config/models.json`
+- **Function**: `getActiveOwnerIds()` returns normalized model names for portfolio classification
+- **Error Handling**: Falls back to empty array if models.json fails to load (marks all portfolios as retired)
+
+### Owner ID Normalization
+- **File**: `apps/web/src/routes/portfolios/-queries.ts`
+- **Function**: `normalizeOwnerId(ownerId: string | null): string`
+- **Purpose**: Ensures consistent comparison of owner IDs regardless of formatting
+- **Normalization Rules**:
+  - Converts to lowercase
+  - Replaces spaces, underscores, and multiple dashes with single dashes
+  - Trims leading/trailing dashes
+- **Example**: `"Gemini_3_Flash_Preview"` → `"gemini-3-flash-preview"`
 
 ### Styling
 All pages use **Tailwind CSS** and follow the project's **Zinc** color palette to maintain consistency with the rest of the application.

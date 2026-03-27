@@ -1,4 +1,4 @@
-name: Midday Price Update
+name: Price Update
 
 on:
   schedule:

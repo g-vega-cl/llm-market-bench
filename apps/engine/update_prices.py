@@ -46,7 +46,7 @@ async def update_prices():
 
     # 3. Fetch fresh prices for all tickers in batch
     logger.info(f"Fetching fresh quotes for {len(all_tickers)} tickers in batch...")
-    # Force refresh to ensure we get the latest midday prices
+    # Force refresh to ensure we get the latest prices
     prices = await mdm.get_quotes(list(all_tickers), force_refresh=True)
     
     price_map = {t: data.price for t, data in prices.items()}

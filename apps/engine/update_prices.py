@@ -13,6 +13,11 @@ async def update_prices():
     sb_client = get_supabase_client()
     mdm = MarketDataManager()
     
+    # 0. Check if market is open
+    if not await mdm.is_market_open():
+        logger.info("Market is currently CLOSED. Skipping price update to save resources.")
+        return
+
     # 1. Get all active portfolios
     try:
         port_res = sb_client.table("portfolios").select("owner_id").execute()
@@ -39,15 +44,16 @@ async def update_prices():
     
     logger.info(f"Identified {len(all_tickers)} unique tickers: {all_tickers}")
 
-    # 3. Fetch fresh prices for all tickers
-    price_map = {}
+    # 3. Fetch fresh prices for all tickers in batch
+    logger.info(f"Fetching fresh quotes for {len(all_tickers)} tickers in batch...")
+    # Force refresh to ensure we get the latest midday prices
+    prices = await mdm.get_quotes(list(all_tickers), force_refresh=True)
+    
+    price_map = {t: data.price for t, data in prices.items()}
+    
     for ticker in all_tickers:
-        logger.info(f"Fetching fresh quote for {ticker}...")
-        # Force refresh to ensure we get the latest midday prices
-        data = await mdm.get_quote(ticker, force_refresh=True)
-        if data:
-            price_map[ticker] = data.price
-            logger.info(f"Updated price for {ticker}: ${data.price:.2f}")
+        if ticker in price_map:
+            logger.info(f"Updated price for {ticker}: ${price_map[ticker]:.2f}")
         else:
             logger.warning(f"Could not fetch price for {ticker}. Using fallback if available.")
 

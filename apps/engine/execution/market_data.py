@@ -137,6 +137,74 @@ class MarketDataManager:
         logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
 
+    async def get_quotes(self, tickers: list[str], force_refresh: bool = False) -> dict[str, TickerData]:
+        """Fetch multiple stock quotes, checking cache first where possible.
+        
+        Args:
+            tickers: List of stock ticker symbols.
+            force_refresh: Whether to bypass the cache and fetch fresh data for all.
+            
+        Returns:
+            Dict mapping ticker symbol to TickerData for all successfully retrieved stocks.
+        """
+        if not tickers:
+            return {}
+
+        tickers = [t.upper() for t in tickers]
+        results = {}
+        missing_tickers = list(tickers)
+
+        # 1. Check Cache
+        if not force_refresh:
+            for ticker in tickers:
+                cached = self._get_from_cache(ticker)
+                if cached:
+                    results[ticker] = cached
+                    missing_tickers.remove(ticker)
+
+        if not missing_tickers:
+            return results
+
+        # 2. Fetch missing from Providers in sequence
+        for i, provider in enumerate(self.providers):
+            priority = "primary" if i == 0 else f"fallback {i}"
+            logger.info(f"Batch fetching {len(missing_tickers)} tickers from {priority} provider ({provider.provider_name})...")
+            
+            try:
+                batch_results = await provider.get_ticker_data_batch(missing_tickers)
+                if batch_results:
+                    # Save successes to cache and results
+                    valid_batch_results = []
+                    for t, data in batch_results.items():
+                        if data and data.exists and not math.isnan(data.price):
+                            results[t] = data
+                            valid_batch_results.append(data)
+                            if t in missing_tickers:
+                                missing_tickers.remove(t)
+                    
+                    if valid_batch_results:
+                        self._save_batch_to_cache(valid_batch_results)
+            except Exception as e:
+                logger.error(f"Batch fetch failed for {provider.provider_name}: {e}")
+
+            if not missing_tickers:
+                break
+            
+            if i < len(self.providers) - 1:
+                logger.warning(f"{priority.capitalize()} provider batch failed for {len(missing_tickers)} tickers. Trying next fallback...")
+
+        # 3. Final Fallback: Individual get_quote for anything still missing
+        # This handles providers that don't support batching or intermittent failures
+        if missing_tickers:
+            logger.info(f"Still missing {len(missing_tickers)} tickers after batch fetch. Trying individual retrieval...")
+            for ticker in list(missing_tickers):
+                data = await self.get_quote(ticker, force_refresh=force_refresh)
+                if data:
+                    results[ticker] = data
+                    missing_tickers.remove(ticker)
+
+        return results
+
     async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> Optional[TickerData]:
         """Helper to fetch data from a provider with retries and validation."""
         import asyncio
@@ -216,29 +284,40 @@ class MarketDataManager:
 
     def _save_to_cache(self, data: TickerData):
         """Internal helper to upsert data into the cache and record price history."""
+        self._save_batch_to_cache([data])
+
+    def _save_batch_to_cache(self, data_list: list[TickerData]):
+        """Internal helper to upsert multiple data points into the cache and record price history."""
         try:
-            import math
-            # Skip saving if data is NaN
-            if math.isnan(data.price) or math.isnan(data.market_cap):
-                logger.warning(f"Skipping cache save for {data.ticker} due to NaN values: price={data.price}, market_cap={data.market_cap}")
-                return
-
             now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            payload = {
-                "ticker": data.ticker,
-                "price": data.price,
-                "market_cap": data.market_cap,
-                "fetched_at": now_iso
-            }
+            cache_payloads = []
+            history_payloads = []
 
-            # Upsert into the cache for fast lookups of the latest price
-            self.client.table("market_data_cache").upsert(payload).execute()
+            for data in data_list:
+                if math.isnan(data.price) or math.isnan(data.market_cap):
+                    logger.warning(f"Skipping cache save for {data.ticker} due to NaN values.")
+                    continue
 
-            # Insert into history table for a permanent record
-            self.client.table("price_history").insert(payload).execute()
+                payload = {
+                    "ticker": data.ticker,
+                    "price": data.price,
+                    "market_cap": data.market_cap,
+                    "fetched_at": now_iso
+                }
+                cache_payloads.append(payload)
+                history_payloads.append(payload)
+
+            if cache_payloads:
+                # Upsert into the cache
+                self.client.table("market_data_cache").upsert(cache_payloads).execute()
+
+            if history_payloads:
+                # Insert into history table
+                self.client.table("price_history").insert(history_payloads).execute()
 
         except Exception as e:
-            logger.error(f"Error saving market data for {data.ticker}: {e}")
+            tickers = [d.ticker for d in data_list]
+            logger.error(f"Error saving market data batch for {tickers}: {e}")
 
     async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
         """Fetch historical price data, checking local DB first.

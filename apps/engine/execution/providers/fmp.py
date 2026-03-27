@@ -70,6 +70,35 @@ class FMPProvider(FinancialProvider):
             logger.error(f"Unexpected error fetching data from FMP for {ticker}: {e}")
             return None
 
+    async def get_ticker_data_batch(self, tickers: list[str]) -> dict[str, TickerData]:
+        """Fetch real-time/delayed ticker data for multiple symbols.
+        
+        Since stable/batch-quote is restricted on some plans (402), 
+        we use parallel individual calls for guaranteed compatibility 
+        while maintaining high performance.
+        """
+        if not self.api_key or not tickers:
+            return {}
+
+        results = {}
+        # Concurrency limit to avoid being flagged for burst/DOS
+        semaphore = asyncio.Semaphore(10)
+
+        async def fetch_one(ticker):
+            async with semaphore:
+                # We reuse the existing get_ticker_data which already has throttling
+                return ticker, await self.get_ticker_data(ticker)
+
+        # Gather all tasks
+        tasks = [fetch_one(t) for t in tickers]
+        batch_results = await asyncio.gather(*tasks)
+
+        for ticker, data in batch_results:
+            if data:
+                results[ticker] = data
+        
+        return results
+
     async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
         """Fetch historical price data using FMP."""
         if not self.api_key:

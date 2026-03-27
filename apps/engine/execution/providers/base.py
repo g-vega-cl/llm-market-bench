@@ -28,6 +28,22 @@ class FinancialProvider(ABC):
         """
         pass
 
+    async def get_ticker_data_batch(self, tickers: list[str]) -> dict[str, TickerData]:
+        """Fetch real-time/delayed ticker data for multiple symbols.
+        
+        Default implementation just loops through individual calls.
+        Override in subclasses to use provider-specific batch endpoints.
+        
+        Returns:
+            Dict mapping ticker symbol to TickerData.
+        """
+        results = {}
+        for ticker in tickers:
+            data = await self.get_ticker_data(ticker)
+            if data:
+                results[ticker] = data
+        return results
+
     @abstractmethod
     async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
         """Fetch historical price data for a ticker.

@@ -2,9 +2,8 @@ name: Midday Price Update
 
 on:
   schedule:
-    # 13:00 ET = 18:00 UTC (EST) / 17:00 UTC (EDT)
-    # We'll use 18:00 UTC to align with 13:00 EST
-    - cron: "0 18 * * 1-5"
+    # Every 30 minutes during market hours (approx 14:00 - 21:00 UTC)
+    - cron: "0,30 14-21 * * 1-5"
   workflow_dispatch:
 
 jobs:

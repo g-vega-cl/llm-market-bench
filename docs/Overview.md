@@ -143,7 +143,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** Python / `update_prices.py`
 *   **Goal:** Refresh market prices and recalculate portfolio metrics without invoking the expensive LLM analysis loop.
-*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions. Automatically triggered at 13:00 ET via GitHub Actions.
+*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions. Automatically triggered every 30 minutes during market hours (approx. 14:00 - 21:00 UTC) via GitHub Actions.
 *   File: `apps/engine/update_prices.py`
 
 **15. Long-term Memory Embedding** ✅
@@ -352,7 +352,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `IBKR_PROXY_TOKEN` | Auth token for the IBKR Proxy (Optional if using JWT) | Market data via Proxy |
 
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
-|  | `FINANCIAL_API_THROTTLE_SECONDS` | Delay between consecutive API calls (Recommended: 2.0) | Rate Limit Prevention |
+|  | `FINANCIAL_API_THROTTLE_SECONDS` | **INTERNAL CONSTANT** (0.2s). Formerly an environment variable, now hardcoded for high-performance parallel fetching. | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
 |  | `MAX_PRICE_DEVIATION_PCT` | Maximum % difference between AI and market price (Default: 5.0) | Trade Validation |
 |  | `ENABLE_ANTHROPIC_WEB_SEARCH` | Enable Anthropic web search (Default: true) | Real-time news verification |

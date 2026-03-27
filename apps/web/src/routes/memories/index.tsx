@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchMemories } from './-queries'
 import { MemoriesList } from './components/-MemoriesList'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { queryKeys } from '~/lib/query-keys'
+import { queries } from '~/lib/queries'
 import * as React from 'react'
 
 const getMemories = createServerFn({ method: 'GET' })
@@ -27,11 +27,7 @@ function MemoriesPage() {
     status,
     error
   } = useInfiniteQuery({
-    queryKey: queryKeys.memories.list(),
-    queryFn: ({ pageParam }) => getMemoriesFn({ data: pageParam } as any),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    ...queries.memories.list(undefined, (pageParam) => getMemoriesFn({ data: pageParam } as any)),
   })
 
   // Flatten all pages into a single array

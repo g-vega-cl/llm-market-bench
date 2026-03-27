@@ -67,41 +67,56 @@ function getQueryClient() {
 
 ---
 
-### 2. Query Key Factories
+### 2. Query Options Factory (Centralized)
 
-**File:** [`src/lib/query-keys.ts`](../src/lib/query-keys.ts)
+**File:** [`src/lib/queries.ts`](../src/lib/queries.ts)
 
 ```typescript
-export const queryKeys = {
-  all: ['benchify'] as const,
-  
-  memories: {
-    all: ['benchify', 'memories'] as const,
-    list: (filters?: { status?: string }) =>
-      ['benchify', 'memories', 'list', filters] as const,
-    detail: (id: string) => ['benchify', 'memories', 'detail', id] as const,
-  },
-  
-  reasoning: {
-    all: ['benchify', 'reasoning'] as const,
-    list: (cursor?: string) => ['benchify', 'reasoning', 'list', cursor] as const,
-  },
-  
-  portfolios: {
-    all: ['benchify', 'portfolios'] as const,
-    list: () => ['benchify', 'portfolios', 'list'] as const,
-    detail: (id: string) => ['benchify', 'portfolios', 'detail', id] as const,
-    positions: (portfolioId: string) =>
-      ['benchify', 'portfolios', 'detail', portfolioId, 'positions'] as const,
-  },
-} as const
+import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query'
+import { queryKeys } from './query-keys'
+
+export const queries = {
+  today: (fetchFn?: () => Promise<any>) =>
+    queryOptions({
+      queryKey: queryKeys.today.data(),
+      queryFn: fetchFn,
+      staleTime: 1000 * 60 * 2,
+    }),
+  // ... other queries
+}
 ```
 
 **Why:**
-- ✅ Type-safe query keys
-- ✅ Prevents typos
-- ✅ Easy to invalidate by prefix
-- ✅ Consistent naming convention
+- ✅ Single source of truth for query configuration
+- ✅ Type-safe query options
+- ✅ Consistent stale times and keys across SSR and CSR
+- ✅ Built-in support for TanStack Start server functions
+
+---
+
+### 3. Infinite Query Pattern (Centralized)
+
+**File:** [`src/lib/queries.ts`](../src/lib/queries.ts)
+
+```typescript
+export const queries = {
+  memories: {
+    list: (filters?: any, fetchFn?: (cursor: string | undefined) => Promise<any>) =>
+      infiniteQueryOptions({
+        queryKey: queryKeys.memories.list(filters),
+        queryFn: ({ pageParam }) => fetchFn ? fetchFn(pageParam) : Promise.reject('fetchFn required'),
+        initialPageParam: undefined,
+        getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
+        staleTime: 1000 * 60 * 5,
+      }),
+  },
+}
+```
+
+**Why:**
+- ✅ Simplifies component code
+- ✅ Centralizes pagination logic
+- ✅ Consistent behavior for all infinite lists
 
 ---
 
@@ -179,6 +194,36 @@ const allLogs = React.useMemo(
 - ✅ Progressive loading
 - ✅ Automatic caching
 - ✅ Built-in loading states
+- ✅ **Simplified implementation using `infiniteQueryOptions`**
+
+---
+
+### 5. Suspense Query Pattern
+
+**File:** [`src/routes/index.tsx`](../src/routes/index.tsx)
+
+```typescript
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { queries } from '~/lib/queries'
+
+function TodayPage() {
+  const initialData = Route.useLoaderData()
+  const getTodayDataFn = useServerFn(getTodayData)
+
+  const { data } = useSuspenseQuery({
+    ...queries.today(() => getTodayDataFn()),
+    initialData,
+  })
+  
+  // ...
+}
+```
+
+**Why:**
+- ✅ Simplifies component logic (no more `isLoading` checks)
+- ✅ Better integration with TanStack Start SSR
+- ✅ Declarative data fetching
+- ✅ Automatic loading states via Suspense boundaries
 
 ---
 
@@ -409,13 +454,13 @@ await queryClient.prefetchQuery({
 
 ## 🎯 Next Steps (Future Improvements)
 
-### Phase 2 (Medium Priority)
-- [ ] Add `useSuspenseQuery` for simpler loading states
-- [ ] Implement query prefetching for related routes
-- [ ] Add `queryOptions` for type-safe query configuration
-- [ ] Add retry with exponential backoff
+### Phase 2 (Completed)
+- [x] Add `useSuspenseQuery` for simpler loading states
+- [x] Implement query prefetching for related routes
+- [x] Add `queryOptions` for type-safe query configuration
 
-### Phase 3 (Low Priority)
+### Phase 3 (Medium Priority)
+- [ ] Add retry with exponential backoff
 - [ ] Add optimistic updates for all mutations
 - [ ] Implement query invalidation strategies
 - [ ] Add performance monitoring

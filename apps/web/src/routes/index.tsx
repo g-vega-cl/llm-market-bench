@@ -7,8 +7,8 @@ import { MarketUpdates } from '~/components/today/MarketUpdates'
 import { AgentInsights } from '~/components/today/AgentInsights'
 import { FutureCatalysts } from '~/components/today/FutureCatalysts'
 import * as React from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { queryKeys } from '~/lib/query-keys'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { queries } from '~/lib/queries'
 
 const getTodayData = createServerFn({ method: 'GET' }).handler(async () => {
     return fetchTodayData()
@@ -23,11 +23,9 @@ function TodayPage() {
     const initialData = Route.useLoaderData()
     const getTodayDataFn = useServerFn(getTodayData)
 
-    const { data } = useQuery({
-        queryKey: queryKeys.today.data(),
-        queryFn: () => getTodayDataFn(),
+    const { data } = useSuspenseQuery({
+        ...queries.today(() => getTodayDataFn()),
         initialData,
-        staleTime: 1000 * 60 * 2, // 2 minutes - today's data changes frequently
         refetchInterval: 1000 * 60 * 5, // Auto-refetch every 5 minutes
     })
 

@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchReasoningLogs } from './-queries'
 import * as React from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { queryKeys } from '~/lib/query-keys'
+import { queries } from '~/lib/queries'
 
 const getReasoningLogs = createServerFn({ method: 'GET' })
     .handler(async ({ data }: { data?: string }) => {
@@ -40,11 +40,7 @@ function ReasoningPage() {
         status,
         error
     } = useInfiniteQuery({
-        queryKey: queryKeys.reasoning.list(),
-        queryFn: ({ pageParam }) => getReasoningLogsFn({ data: pageParam } as any), // eslint-disable-line @typescript-eslint/no-explicit-any
-        initialPageParam: undefined as string | undefined,
-        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        ...queries.reasoning.list(undefined, (pageParam) => getReasoningLogsFn({ data: pageParam } as any)),
     })
 
     // Flatten all pages into a single array

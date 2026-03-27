@@ -167,7 +167,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Architecture:** Hybrid pattern combining server loaders (fast initial load) with client-side `useQuery` (caching & real-time updates).
 *   **Data Fetching Strategy:** All backend/database calls flow through TanStack Query for a single source of truth. See **[TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md)** for complete documentation.
 *   **Key Features:**
-    - **Query Key Factories:** Type-safe, centralized query key management
+    - **Query Options Factories:** Centralized, type-safe query & infinite query management via `src/lib/queries.ts`
     - **Cursor-Based Pagination:** Efficient pagination for large datasets (reasoning logs, memories)
     - **Infinite Queries:** "Load More" pattern with automatic caching
     - **Smart Caching:** Configurable stale times per route (2-10 minutes based on data volatility)
@@ -210,7 +210,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     - `/cause-and-effect` - Historical data, stale time 5 minutes
     - `/portfolios` - Performance data, stale time 5 minutes
     - `/portfolios/$id` - Detail view with positions, trades, history
-*   **Query Key Structure:** `['benchify', 'domain', 'type', ...params]` for type-safe cache management.
+*   **Query Key Structure:** Type-safe cache management using centralized `queryOptions` via the `queries` factory.
+
 *   **Documentation:** [TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md), [Reasoning Page Optimization](./web/reasoning-page-optimization.md)
 
 **16b. Testing Infrastructure** ✅

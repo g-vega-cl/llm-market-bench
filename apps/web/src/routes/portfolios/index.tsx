@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchPortfolios } from './-queries'
-import { useQuery } from '@tanstack/react-query'
-import { queryKeys } from '~/lib/query-keys'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { queries } from '~/lib/queries'
 
 const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchPortfolios()
@@ -97,11 +97,9 @@ function PortfoliosPage() {
   const initialData = Route.useLoaderData()
   const getPortfoliosFn = useServerFn(getPortfolios)
 
-  const { data } = useQuery({
-    queryKey: queryKeys.portfolios.list(),
-    queryFn: () => getPortfoliosFn(),
+  const { data } = useSuspenseQuery({
+    ...queries.portfolios.list(() => getPortfoliosFn()),
     initialData,
-    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   const active = data?.filter((p) => p.is_active !== false) ?? []

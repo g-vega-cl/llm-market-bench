@@ -3,8 +3,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { getSupabaseServerClient } from '~/lib/supabase'
 import { ConceptMap, type Concept } from '~/routes/concepts/components/-ConceptMap'
-import { useQuery } from '@tanstack/react-query'
-import { queryKeys } from '~/lib/query-keys'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { queries } from '~/lib/queries'
 
 // --- Data Loading ---
 
@@ -36,11 +36,9 @@ function ConceptsRoute() {
   const initialData = Route.useLoaderData()
   const fetchConceptsFn = useServerFn(fetchConcepts)
 
-  const { data } = useQuery({
-    queryKey: queryKeys.concepts.list(),
-    queryFn: () => fetchConceptsFn(),
+  const { data } = useSuspenseQuery({
+    ...queries.concepts.list(() => fetchConceptsFn()),
     initialData,
-    staleTime: 1000 * 60 * 10, // 10 minutes - concepts don't change often
   })
 
   return (

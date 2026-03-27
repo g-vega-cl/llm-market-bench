@@ -56,7 +56,9 @@ apps/web/
 │   ├── components/      # DESIGN SYSTEM: Pure UI primitives
 │   │   ├── ui/          # Button, Card, Badge
 │   │   └── layout/      # Sidebar, Header
-│   ├── lib/             # INFRASTRUCTURE: Supabase clients, SEO, Utils
+│   ├── lib/             # INFRASTRUCTURE: Supabase, SEO, Utils
+│   │   ├── queries.ts   # NEW: Centralized Query Options Factory
+│   │   └── query-keys.ts # Type-safe Query Key Factories
 │   ├── hooks/           # GENERIC HOOKS: useMutation, useDebounce
 │   ├── styles/          # Global CSS and Tailwind configuration
 │   └── router.tsx       # Router configuration

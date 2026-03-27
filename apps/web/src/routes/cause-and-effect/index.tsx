@@ -2,8 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchCauseAndEffect } from './-queries'
 import { CauseAndEffectList } from './components/-CauseAndEffectList'
-import { useQuery } from '@tanstack/react-query'
-import { queryKeys } from '~/lib/query-keys'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { queries } from '~/lib/queries'
 
 const getCauseAndEffect = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchCauseAndEffect()
@@ -18,11 +18,9 @@ function CauseAndEffectPage() {
   const initialData = Route.useLoaderData()
   const getCauseAndEffectFn = useServerFn(getCauseAndEffect)
 
-  const { data } = useQuery({
-    queryKey: queryKeys.causeAndEffect.list(),
-    queryFn: () => getCauseAndEffectFn(),
+  const { data } = useSuspenseQuery({
+    ...queries.causeAndEffect.list(() => getCauseAndEffectFn()),
     initialData,
-    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   return (

@@ -11,6 +11,7 @@ import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary'
 import { NotFound } from '~/components/ui/NotFound'
+import { QueryClientProviderWrapper } from '~/lib/query-client'
 import appCss from '../styles/app.css?url'
 import { seo } from '~/lib/seo'
 import { getSupabaseServerClient } from '~/lib/supabase'
@@ -88,7 +89,9 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <QueryClientProviderWrapper>
+        <Outlet />
+      </QueryClientProviderWrapper>
     </RootDocument>
   )
 }

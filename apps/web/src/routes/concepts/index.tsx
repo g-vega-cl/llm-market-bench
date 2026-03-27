@@ -1,8 +1,10 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { getSupabaseServerClient } from '~/lib/supabase'
 import { ConceptMap, type Concept } from '~/routes/concepts/components/-ConceptMap'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '~/lib/query-keys'
 
 // --- Data Loading ---
 
@@ -31,7 +33,15 @@ export const Route = createFileRoute('/concepts/')({
 })
 
 function ConceptsRoute() {
-  const data = Route.useLoaderData()
+  const initialData = Route.useLoaderData()
+  const fetchConceptsFn = useServerFn(fetchConcepts)
+
+  const { data } = useQuery({
+    queryKey: queryKeys.concepts.list(),
+    queryFn: () => fetchConceptsFn(),
+    initialData,
+    staleTime: 1000 * 60 * 10, // 10 minutes - concepts don't change often
+  })
 
   return (
     <div className="p-8 max-w-7xl mx-auto">

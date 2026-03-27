@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchCauseAndEffect } from './-queries'
 import { CauseAndEffectList } from './components/-CauseAndEffectList'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '~/lib/query-keys'
 
 const getCauseAndEffect = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchCauseAndEffect()
@@ -13,7 +15,15 @@ export const Route = createFileRoute('/cause-and-effect/')({
 })
 
 function CauseAndEffectPage() {
-  const data = Route.useLoaderData()
+  const initialData = Route.useLoaderData()
+  const getCauseAndEffectFn = useServerFn(getCauseAndEffect)
+
+  const { data } = useQuery({
+    queryKey: queryKeys.causeAndEffect.list(),
+    queryFn: () => getCauseAndEffectFn(),
+    initialData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-12">
@@ -22,11 +32,11 @@ function CauseAndEffectPage() {
           Cause & Effect Library
         </h1>
         <p className="text-zinc-400 text-lg max-w-2xl">
-          A historical playbook of market reactions. Explore why the market moved 
+          A historical playbook of market reactions. Explore why the market moved
           following specific global events and use it as a frame for the future.
         </p>
       </header>
-      
+
       <CauseAndEffectList entries={(data as any[]) || []} />
     </div>
   )

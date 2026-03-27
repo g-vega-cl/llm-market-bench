@@ -1,0 +1,422 @@
+# TanStack Query & Start Best Practices Guide
+
+## Overview
+
+This guide documents the TanStack Query and TanStack Start best practices implemented in the Benchify project.
+
+## ✅ Implemented Best Practices
+
+### 1. QueryClient Setup (SSR-Safe)
+
+**File:** [`src/lib/query-client.tsx`](../src/lib/query-client.tsx)
+
+```typescript
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60, // 1 minute
+        retry: (failureCount, error) => {
+          if (error instanceof Error && error.message.includes('404')) {
+            return false
+          }
+          return failureCount < 3
+        },
+        throwOnError: false,
+        gcTime: 1000 * 60 * 5, // 5 minutes
+      },
+      mutations: {
+        retry: 1,
+        throwOnError: false,
+      },
+    },
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        console.error('[QueryCache] Error:', error, 'Query:', query.queryKey)
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, variables, context, mutation) => {
+        console.error('[MutationCache] Error:', error)
+      },
+    }),
+  })
+}
+
+// Singleton pattern for browser
+let browserQueryClient: QueryClient | undefined = undefined
+
+function getQueryClient() {
+  if (typeof window === 'undefined') {
+    return makeQueryClient() // Server: new client each time
+  }
+  if (!browserQueryClient) browserQueryClient = makeQueryClient()
+  return browserQueryClient // Browser: singleton
+}
+```
+
+**Why:**
+- ✅ Prevents state leakage between SSR requests
+- ✅ Singleton pattern in browser for cache consistency
+- ✅ Smart retry logic (no retry on 404s)
+- ✅ Global error logging
+- ✅ DevTools guarded in production
+
+---
+
+### 2. Query Key Factories
+
+**File:** [`src/lib/query-keys.ts`](../src/lib/query-keys.ts)
+
+```typescript
+export const queryKeys = {
+  all: ['benchify'] as const,
+  
+  memories: {
+    all: ['benchify', 'memories'] as const,
+    list: (filters?: { status?: string }) =>
+      ['benchify', 'memories', 'list', filters] as const,
+    detail: (id: string) => ['benchify', 'memories', 'detail', id] as const,
+  },
+  
+  reasoning: {
+    all: ['benchify', 'reasoning'] as const,
+    list: (cursor?: string) => ['benchify', 'reasoning', 'list', cursor] as const,
+  },
+  
+  portfolios: {
+    all: ['benchify', 'portfolios'] as const,
+    list: () => ['benchify', 'portfolios', 'list'] as const,
+    detail: (id: string) => ['benchify', 'portfolios', 'detail', id] as const,
+    positions: (portfolioId: string) =>
+      ['benchify', 'portfolios', 'detail', portfolioId, 'positions'] as const,
+  },
+} as const
+```
+
+**Why:**
+- ✅ Type-safe query keys
+- ✅ Prevents typos
+- ✅ Easy to invalidate by prefix
+- ✅ Consistent naming convention
+
+---
+
+### 3. Cursor-Based Pagination
+
+**File:** [`src/routes/reasoning/-queries.ts`](../src/routes/reasoning/-queries.ts)
+
+```typescript
+const PAGE_SIZE = 50
+
+export async function fetchReasoningLogs(
+  cursor?: string, 
+  pageSize: number = PAGE_SIZE
+): Promise<PaginatedReasoningLogs> {
+  let query = supabase
+    .from('llm_reasoning_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(pageSize + 1) // Fetch one extra to check if there's more
+
+  if (cursor) {
+    query = query.lt('created_at', cursor)
+  }
+
+  const { data, error } = await query
+  
+  const hasMore = data.length > pageSize
+  const paginatedData = hasMore ? data.slice(0, pageSize) : data
+  const nextCursor = hasMore && paginatedData.length > 0
+    ? paginatedData[paginatedData.length - 1].created_at
+    : null
+
+  return { data: paginatedData, hasMore, nextCursor }
+}
+```
+
+**Why:**
+- ✅ Better than offset pagination for real-time data
+- ✅ Prevents duplicate/missing items
+- ✅ More efficient database queries
+- ✅ Consistent performance at any depth
+
+---
+
+### 4. Infinite Query Pattern
+
+**File:** [`src/routes/reasoning/index.tsx`](../src/routes/reasoning/index.tsx)
+
+```typescript
+const {
+  data,
+  fetchNextPage,
+  hasNextPage,
+  isFetching,
+  isFetchingNextPage,
+  status,
+  error
+} = useInfiniteQuery({
+  queryKey: ['/api/reasoning'],
+  queryFn: ({ pageParam }) => getReasoningLogsFn({ data: pageParam } as any),
+  initialPageParam: undefined as string | undefined,
+  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  staleTime: 1000 * 60 * 5, // 5 minutes
+})
+
+// Flatten all pages
+const allLogs = React.useMemo(
+  () => data?.pages.flatMap(page => page.data) || [],
+  [data]
+)
+```
+
+**Why:**
+- ✅ Fast initial load
+- ✅ Progressive loading
+- ✅ Automatic caching
+- ✅ Built-in loading states
+
+---
+
+### 5. Load More UI Pattern
+
+```tsx
+{hasNextPage && (
+  <button
+    onClick={() => fetchNextPage()}
+    disabled={isFetchingNextPage}
+  >
+    {isFetchingNextPage ? 'Loading...' : 'Load More'}
+  </button>
+)}
+
+{!hasNextPage && allLogs?.length > 0 && (
+  <div>• End of reasoning traces •</div>
+)}
+```
+
+**Why:**
+- ✅ User-controlled loading
+- ✅ Prevents accidental data loading
+- ✅ Clear visual feedback
+- ✅ Better accessibility
+
+---
+
+### 6. Error Boundaries (No External Dependencies)
+
+**File:** [`src/components/ui/QueryErrorBoundary.tsx`](../src/components/ui/QueryErrorBoundary.tsx)
+
+```typescript
+import * as React from 'react'
+
+class ErrorBoundaryClass extends React.Component {
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback error={this.state.error} resetErrorBoundary={this.reset} />
+    }
+    return this.props.children
+  }
+}
+
+export function QueryErrorBoundary({ children }) {
+  return <ErrorBoundaryClass>{children}</ErrorBoundaryClass>
+}
+```
+
+**Usage:**
+```tsx
+<QueryErrorBoundary>
+  <YourComponent />
+</QueryErrorBoundary>
+```
+
+**Why:**
+- ✅ Graceful error handling
+- ✅ Prevents app crashes
+- ✅ User-friendly error messages
+- ✅ Auto-retry capability
+- ✅ **Zero dependencies** - Uses React's built-in APIs
+
+---
+
+### 7. Proper Mutation Pattern
+
+**Direct import from TanStack Query:**
+
+```typescript
+import { useMutation } from '@tanstack/react-query'
+
+const loginMutation = useMutation({
+  mutationFn: loginFn,
+  onSuccess: async (data) => {
+    if (!data?.error) {
+      await router.invalidate()
+      router.navigate({ to: '/' })
+    }
+  },
+})
+```
+
+**Why:**
+- ✅ Automatic loading/error states
+- ✅ Cache invalidation support
+- ✅ Optimistic updates support
+- ✅ Proper TypeScript types
+- ✅ **No unnecessary wrappers** - Use TanStack's hook directly
+
+---
+
+### 8. DevTools in Development Only
+
+```typescript
+{process.env.NODE_ENV === 'development' && (
+  <ReactQueryDevtools initialIsOpen={false} />
+)}
+```
+
+**Why:**
+- ✅ Smaller production bundle
+- ✅ No dev UI in production
+- ✅ Better security
+
+---
+
+## 📋 Checklist for New Features
+
+When adding new data fetching to your components:
+
+### For List Pages
+- [ ] Use cursor-based pagination if list can grow
+- [ ] Set PAGE_SIZE = 50 (or appropriate size)
+- [ ] Return `{ data, hasMore, nextCursor }`
+- [ ] Use `useInfiniteQuery` hook
+- [ ] Add "Load More" button
+- [ ] Handle loading and error states
+
+### For Detail Pages
+- [ ] Use server-side loader if data is small
+- [ ] Use `useQuery` if client-side fetching needed
+- [ ] Add proper query keys using `queryKeys` factory
+- [ ] Set appropriate `staleTime`
+
+### For Mutations
+- [ ] Use `useMutation` hook
+- [ ] Add `onSuccess` for cache invalidation
+- [ ] Add `onError` for user notifications
+- [ ] Consider optimistic updates for better UX
+
+### Error Handling
+- [ ] Wrap components in `QueryErrorBoundary`
+- [ ] Show user-friendly error messages
+- [ ] Log errors for debugging
+- [ ] Provide retry mechanism
+
+---
+
+## 📊 Performance Guidelines
+
+### Query Configuration
+
+| Scenario | staleTime | gcTime | retry |
+|----------|-----------|--------|-------|
+| Real-time data | 0 | 1 min | 3 |
+| Dashboard data | 1 min | 5 min | 3 |
+| Static config | 10 min | 30 min | 1 |
+| User preferences | Infinity | Infinity | 1 |
+
+### Pagination
+
+| Data Size | Pattern | Page Size |
+|-----------|---------|-----------|
+| < 100 items | Fetch all | N/A |
+| 100-1000 items | Cursor pagination | 50 |
+| > 1000 items | Cursor pagination | 100 |
+| Infinite scroll | Virtual scroll | 20 |
+
+---
+
+## 🔧 Common Patterns
+
+### Invalidate and Refetch
+
+```typescript
+const queryClient = useQueryClient()
+
+const deleteMutation = useMutation({
+  mutationFn: deleteItem,
+  onSuccess: () => {
+    // Invalidate and refetch
+    queryClient.invalidateQueries({ queryKey: queryKeys.items.all })
+  },
+})
+```
+
+### Optimistic Update
+
+```typescript
+const updateMutation = useMutation({
+  mutationFn: updateItem,
+  onMutate: async (newData) => {
+    await queryClient.cancelQueries({ queryKey: queryKeys.items.list() })
+    
+    const previous = queryClient.getQueryData(queryKeys.items.list())
+    
+    queryClient.setQueryData(queryKeys.items.list(), (old) => [...old, newData])
+    
+    return { previous }
+  },
+  onError: (err, variables, context) => {
+    queryClient.setQueryData(queryKeys.items.list(), context.previous)
+  },
+})
+```
+
+### Prefetching
+
+```typescript
+// In loader
+await queryClient.prefetchQuery({
+  queryKey: queryKeys.items.detail(id),
+  queryFn: () => fetchItem(id),
+  staleTime: 1000 * 60,
+})
+```
+
+---
+
+## 📚 Additional Resources
+
+- [TanStack Query Documentation](https://tanstack.com/query/latest/docs/framework/react/overview)
+- [TanStack Start Documentation](https://tanstack.com/start/latest/docs/framework/react/overview)
+- [Query Key Factories Guide](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
+- [Infinite Queries Guide](https://tanstack.com/query/latest/docs/framework/react/guides/infinite-query)
+- [Reasoning Page Optimization](./reasoning-page-optimization.md)
+
+---
+
+## 🎯 Next Steps (Future Improvements)
+
+### Phase 2 (Medium Priority)
+- [ ] Add `useSuspenseQuery` for simpler loading states
+- [ ] Implement query prefetching for related routes
+- [ ] Add `queryOptions` for type-safe query configuration
+- [ ] Add retry with exponential backoff
+
+### Phase 3 (Low Priority)
+- [ ] Add optimistic updates for all mutations
+- [ ] Implement query invalidation strategies
+- [ ] Add performance monitoring
+- [ ] Consider virtual scrolling for very large lists

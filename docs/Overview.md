@@ -163,7 +163,16 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Tech:** **TanStack Start (Vite + React)**
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
-*   **State:** *TanStack Query handles real-time data fetching and caching of stock charts.*
+*   **State:** **TanStack Query** handles all data fetching with caching, deduplication, and background refetching.
+*   **Architecture:** Hybrid pattern combining server loaders (fast initial load) with client-side `useQuery` (caching & real-time updates).
+*   **Data Fetching Strategy:** All backend/database calls flow through TanStack Query for a single source of truth. See **[TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md)** for complete documentation.
+*   **Key Features:**
+    - **Query Key Factories:** Type-safe, centralized query key management
+    - **Cursor-Based Pagination:** Efficient pagination for large datasets (reasoning logs, memories)
+    - **Infinite Queries:** "Load More" pattern with automatic caching
+    - **Smart Caching:** Configurable stale times per route (2-10 minutes based on data volatility)
+    - **Auto-Refresh:** Today page auto-refreshes every 5 minutes
+    - **Zero Dependencies:** Custom error boundary using React's built-in APIs
 *   **TODAY Dashboard**: The primary entry point (`/`) providing a high-level narrative of the day's events, including AI consensus, news ingestion, and trade executions.
     *   **Horizon Watch**:
         - **Multi-Source Date Extraction**: The engine uses a multi-layered approach for date integrity. It first attempts to use LLM-extracted dates. If missing, the **`cleanup_catalysts.py`** script and the **frontend display layer** both use robust regex extraction to pull `YYYY-MM-DD` dates directly from the event title or content.
@@ -189,12 +198,27 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     *   **Phase Breakdown:** Ingestion → Analysis → Verification → Execution → Feedback.
     *   **User Education:** Helps users understand the data flow from newsletters to executed trades.
 
-**16a. Testing Infrastructure** ✅
+**16a. TanStack Query Architecture** ✅
+*   **Tech:** **TanStack Query v5 + TanStack Start**
+*   **Goal:** Single source of truth for all data fetching with automatic caching, deduplication, and background refetching.
+*   **Implementation:** Hybrid pattern - server loaders for fast initial page load (SEO, FCP) + `useQuery` for client-side caching and real-time updates.
+*   **Routes Using Hybrid Pattern:**
+    - `/` (Today) - Auto-refresh every 5 minutes, stale time 2 minutes
+    - `/memories` - Infinite scroll with cursor pagination, stale time 5 minutes
+    - `/reasoning` - Infinite scroll with cursor pagination, stale time 5 minutes
+    - `/concepts` - Static data, stale time 10 minutes
+    - `/cause-and-effect` - Historical data, stale time 5 minutes
+    - `/portfolios` - Performance data, stale time 5 minutes
+    - `/portfolios/$id` - Detail view with positions, trades, history
+*   **Query Key Structure:** `['benchify', 'domain', 'type', ...params]` for type-safe cache management.
+*   **Documentation:** [TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md), [Reasoning Page Optimization](./web/reasoning-page-optimization.md)
+
+**16b. Testing Infrastructure** ✅
 *   **Tech:** **Vitest + React Testing Library**
 *   **Goal:** Ensure UI reliability and logic correctness for complex frontend components.
 *   **Documentation:** [Frontend Testing](./web/testing.md)
 
-**16b. Concept Cluster Map** ✅
+**16c. Concept Cluster Map** ✅
 *   **Tech:** **D3.js + React**
 *   **Visualizing Trends:** A 2D scatter plot visualizing semantic relationships between market concepts.
 *   **Coordinates:** Calculated via PCA (Principal Component Analysis) on the python backend to reduce 768-dim embeddings to 2D.

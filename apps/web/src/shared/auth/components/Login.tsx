@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useMutation } from '~/hooks/useMutation'
+import { useMutation } from '@tanstack/react-query'
 import { loginFn } from '~/routes/_authed'
 import { signupFn } from '~/routes/signup'
 import { Auth } from './Auth'
@@ -9,9 +9,9 @@ export function Login() {
   const router = useRouter()
 
   const loginMutation = useMutation({
-    fn: loginFn,
-    onSuccess: async (ctx) => {
-      if (!ctx.data?.error) {
+    mutationFn: loginFn,
+    onSuccess: async (data) => {
+      if (!data?.error) {
         await router.invalidate()
         router.navigate({ to: '/' })
         return
@@ -20,7 +20,7 @@ export function Login() {
   })
 
   const signupMutation = useMutation({
-    fn: useServerFn(signupFn),
+    mutationFn: useServerFn(signupFn),
   })
 
   return (
@@ -31,18 +31,16 @@ export function Login() {
         const formData = new FormData(e.target as HTMLFormElement)
 
         loginMutation.mutate({
-          data: {
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
-          },
-        })
+          email: formData.get('email') as string,
+          password: formData.get('password') as string,
+        } as any)
       }}
       afterSubmit={
         loginMutation.data ? (
           <>
-            <div className="text-red-400">{loginMutation.data.message}</div>
+            <div className="text-red-400">{(loginMutation.data as any).message}</div>
             {loginMutation.data.error &&
-            loginMutation.data.message === 'Invalid login credentials' ? (
+            (loginMutation.data as any).message === 'Invalid login credentials' ? (
               <div>
                 <button
                   className="text-blue-500"
@@ -52,11 +50,9 @@ export function Login() {
                     )
 
                     signupMutation.mutate({
-                      data: {
-                        email: formData.get('email') as string,
-                        password: formData.get('password') as string,
-                      },
-                    })
+                      email: formData.get('email') as string,
+                      password: formData.get('password') as string,
+                    } as any)
                   }}
                   type="button"
                 >

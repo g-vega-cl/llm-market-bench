@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchPortfolioById, fetchPositions, fetchPerformanceHistory, fetchTrades } from './-queries'
 import { PerformanceChart } from './components/-PerformanceChart'
 import { PositionsTable } from './components/-PositionsTable'
 import { TradesTable } from './components/-TradesTable'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '~/lib/query-keys'
 
 const getPortfolioData = createServerFn({ method: 'GET' })
   .inputValidator((d: string) => d)
@@ -24,7 +26,17 @@ export const Route = createFileRoute('/portfolios/$portfolioId')({
 })
 
 function PortfolioDetailPage() {
-  const { portfolio, positions, history, trades } = Route.useLoaderData()
+  const initialData = Route.useLoaderData()
+  const getPortfolioDataFn = useServerFn(getPortfolioData)
+
+  const { data } = useQuery({
+    queryKey: queryKeys.portfolios.detail(initialData.portfolio.id),
+    queryFn: () => getPortfolioDataFn(initialData.portfolio.id),
+    initialData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const { portfolio, positions, history, trades } = data
 
   if (!portfolio) {
     return <div>Portfolio not found</div>

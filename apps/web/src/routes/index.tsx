@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchTodayData } from './-today-queries'
 import { NewsletterFeed } from '~/components/today/NewsletterFeed'
 import { TradeActivity } from '~/components/today/TradeActivity'
@@ -7,6 +7,8 @@ import { MarketUpdates } from '~/components/today/MarketUpdates'
 import { AgentInsights } from '~/components/today/AgentInsights'
 import { FutureCatalysts } from '~/components/today/FutureCatalysts'
 import * as React from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '~/lib/query-keys'
 
 const getTodayData = createServerFn({ method: 'GET' }).handler(async () => {
     return fetchTodayData()
@@ -18,7 +20,16 @@ export const Route = createFileRoute('/')({
 })
 
 function TodayPage() {
-    const data = Route.useLoaderData()
+    const initialData = Route.useLoaderData()
+    const getTodayDataFn = useServerFn(getTodayData)
+
+    const { data } = useQuery({
+        queryKey: queryKeys.today.data(),
+        queryFn: () => getTodayDataFn(),
+        initialData,
+        staleTime: 1000 * 60 * 2, // 2 minutes - today's data changes frequently
+        refetchInterval: 1000 * 60 * 5, // Auto-refetch every 5 minutes
+    })
 
     // Check if everything is empty for today (excluding future events)
     const isEmpty = !data.newsletters?.length &&

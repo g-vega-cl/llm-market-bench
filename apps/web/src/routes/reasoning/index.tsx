@@ -1,14 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchReasoningLogs } from './-queries'
 import * as React from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { queryKeys } from '~/lib/query-keys'
 
-const getReasoningLogs = createServerFn({ method: 'GET' }).handler(async () => {
-    return fetchReasoningLogs()
-})
+const getReasoningLogs = createServerFn({ method: 'GET' })
+    .handler(async ({ data }: { data?: string }) => {
+        return fetchReasoningLogs(data)
+    })
 
 export const Route = createFileRoute('/reasoning/')({
-    loader: async () => await getReasoningLogs(),
     component: ReasoningPage,
 })
 
@@ -24,17 +26,63 @@ interface ReasoningTrace {
 }
 
 function ReasoningPage() {
-    const logs = Route.useLoaderData() as ReasoningTrace[]
     const [activeTab, setActiveTab] = React.useState<string>('ALL')
     const [selectedLogId, setSelectedLogId] = React.useState<string | null>(null)
 
-    const categories = ['ALL', ...new Set(logs?.map((l) => l.task_type) || [])]
+    const getReasoningLogsFn = useServerFn(getReasoningLogs)
+    
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetching,
+        isFetchingNextPage,
+        status,
+        error
+    } = useInfiniteQuery({
+        queryKey: queryKeys.reasoning.list(),
+        queryFn: ({ pageParam }) => getReasoningLogsFn({ data: pageParam } as any), // eslint-disable-line @typescript-eslint/no-explicit-any
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    })
 
+    // Flatten all pages into a single array
+    const allLogs = React.useMemo(
+        () => data?.pages.flatMap(page => page.data) || [],
+        [data]
+    )
+
+    // Filter by category client-side (could also be done server-side)
+    const categories = ['ALL', ...new Set(allLogs?.map((l) => l.task_type) || [])]
     const filteredLogs = activeTab === 'ALL'
-        ? logs
-        : logs?.filter((l) => l.task_type === activeTab)
+        ? allLogs
+        : allLogs?.filter((l) => l.task_type === activeTab)
 
-    const selectedLog = logs?.find((l) => l.id === selectedLogId)
+    const selectedLog = allLogs?.find((l) => l.id === selectedLogId)
+
+    // Handle loading and error states
+    if (status === 'pending') {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400 text-lg">Loading reasoning traces...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (status === 'error') {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+                <div className="text-center p-8">
+                    <p className="text-red-500 text-lg mb-4">Failed to load reasoning logs</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{(error as Error).message}</p>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 p-6 md:p-12 animate-slow-fade">
@@ -97,6 +145,40 @@ function ReasoningPage() {
                     {(!filteredLogs || filteredLogs.length === 0) && (
                         <div className="text-center py-12 p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl text-gray-400 italic">
                             No logs found for this category.
+                        </div>
+                    )}
+                    
+                    {/* Load More Button */}
+                    {hasNextPage && (
+                        <div className="pt-4 pb-2">
+                            <button
+                                onClick={() => fetchNextPage()}
+                                disabled={isFetchingNextPage}
+                                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-500 to-teal-400 text-white font-bold text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+                            >
+                                {isFetchingNextPage ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Loading...
+                                    </span>
+                                ) : (
+                                    'Load More'
+                                )}
+                            </button>
+                        </div>
+                    )}
+                    
+                    {/* No More Data Indicator */}
+                    {!hasNextPage && filteredLogs && filteredLogs.length > 0 && (
+                        <div className="text-center py-4 text-gray-400 dark:text-gray-500 text-xs uppercase tracking-widest">
+                            • End of reasoning traces •
+                        </div>
+                    )}
+                    
+                    {/* Global Loading Indicator */}
+                    {isFetching && !isFetchingNextPage && (
+                        <div className="text-center py-2">
+                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
                         </div>
                     )}
                 </div>

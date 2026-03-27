@@ -1,6 +1,6 @@
 import { redirect, createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
-import { useMutation } from '../hooks/useMutation'
+import { useMutation } from '@tanstack/react-query'
 import { Auth } from '~/shared/auth'
 import { getSupabaseServerClient } from '~/lib/supabase'
 
@@ -33,7 +33,12 @@ export const Route = createFileRoute('/signup')({
 
 function SignupComp() {
   const signupMutation = useMutation({
-    fn: useServerFn(signupFn),
+    mutationFn: useServerFn(signupFn),
+    onSuccess: (data) => {
+      if ((data as any)?.error) {
+        // Error handled in UI
+      }
+    },
   })
 
   return (
@@ -44,16 +49,14 @@ function SignupComp() {
         const formData = new FormData(e.target as HTMLFormElement)
 
         signupMutation.mutate({
-          data: {
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
-          },
-        })
+          email: formData.get('email') as string,
+          password: formData.get('password') as string,
+        } as any)
       }}
       afterSubmit={
-        signupMutation.data?.error ? (
+        signupMutation.data ? (
           <>
-            <div className="text-red-400">{signupMutation.data.message}</div>
+            <div className="text-red-400">{(signupMutation.data as any).message}</div>
           </>
         ) : null
       }

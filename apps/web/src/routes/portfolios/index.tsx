@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchPortfolios } from './-queries'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '~/lib/query-keys'
 
 const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchPortfolios()
@@ -92,10 +94,18 @@ function PortfolioCard({ portfolio, deprecated = false }: { portfolio: Portfolio
 }
 
 function PortfoliosPage() {
-  const portfolios = Route.useLoaderData() as Portfolio[]
+  const initialData = Route.useLoaderData()
+  const getPortfoliosFn = useServerFn(getPortfolios)
 
-  const active = portfolios?.filter((p) => p.is_active !== false) ?? []
-  const deprecated = portfolios?.filter((p) => p.is_active === false) ?? []
+  const { data } = useQuery({
+    queryKey: queryKeys.portfolios.list(),
+    queryFn: () => getPortfoliosFn(),
+    initialData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const active = data?.filter((p) => p.is_active !== false) ?? []
+  const deprecated = data?.filter((p) => p.is_active === false) ?? []
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-12">

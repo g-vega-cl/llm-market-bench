@@ -37,7 +37,7 @@ function ConceptsRoute() {
   const fetchConceptsFn = useServerFn(fetchConcepts)
 
   const { data } = useSuspenseQuery({
-    ...queries.concepts.list(() => fetchConceptsFn()),
+    ...queries.concepts.list({ fetchFn: () => fetchConceptsFn() }),
     initialData,
   })
 

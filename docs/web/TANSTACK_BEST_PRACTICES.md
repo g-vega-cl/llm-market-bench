@@ -76,21 +76,45 @@ import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query'
 import { queryKeys } from './query-keys'
 
 export const queries = {
-  today: (fetchFn?: () => Promise<any>) =>
+  // Simple query with named parameters
+  today: (opts?: { fetchFn?: () => Promise<any> }) =>
     queryOptions({
       queryKey: queryKeys.today.data(),
-      queryFn: fetchFn,
+      queryFn: opts?.fetchFn,
       staleTime: 1000 * 60 * 2,
     }),
-  // ... other queries
+  
+  // Detail query with required id
+  portfolios: {
+    detail: (opts: { id: string; fetchFn?: () => Promise<any> }) =>
+      queryOptions({
+        queryKey: queryKeys.portfolios.detail(opts.id),
+        queryFn: opts.fetchFn,
+        staleTime: 1000 * 60 * 5,
+      }),
+  },
+  
+  // Infinite query with cursor pagination
+  reasoning: {
+    list: (opts?: { cursor?: string; fetchFn?: (cursor: string | undefined) => Promise<any> }) =>
+      infiniteQueryOptions({
+        queryKey: queryKeys.reasoning.list(opts?.cursor),
+        queryFn: ({ pageParam }) => opts?.fetchFn ? opts.fetchFn(pageParam) : Promise.reject('fetchFn required'),
+        initialPageParam: undefined,
+        getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
+        staleTime: 1000 * 60 * 5,
+      }),
+  },
 }
 ```
 
 **Why:**
 - ✅ Single source of truth for query configuration
-- ✅ Type-safe query options
+- ✅ Type-safe query options with named parameters
 - ✅ Consistent stale times and keys across SSR and CSR
 - ✅ Built-in support for TanStack Start server functions
+- ✅ Clear, explicit API at call sites
+- ✅ Easy to extend with optional parameters
 
 ---
 
@@ -101,10 +125,14 @@ export const queries = {
 ```typescript
 export const queries = {
   memories: {
-    list: (filters?: any, fetchFn?: (cursor: string | undefined) => Promise<any>) =>
+    list: (opts?: { 
+      filters?: { status?: string; memoryType?: string }; 
+      cursor?: string; 
+      fetchFn?: (cursor: string | undefined) => Promise<any> 
+    }) =>
       infiniteQueryOptions({
-        queryKey: queryKeys.memories.list(filters),
-        queryFn: ({ pageParam }) => fetchFn ? fetchFn(pageParam) : Promise.reject('fetchFn required'),
+        queryKey: queryKeys.memories.list(opts?.filters),
+        queryFn: ({ pageParam }) => opts?.fetchFn ? opts.fetchFn(pageParam) : Promise.reject('fetchFn required'),
         initialPageParam: undefined,
         getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
         staleTime: 1000 * 60 * 5,
@@ -117,6 +145,7 @@ export const queries = {
 - ✅ Simplifies component code
 - ✅ Centralizes pagination logic
 - ✅ Consistent behavior for all infinite lists
+- ✅ Named parameters make usage explicit and type-safe
 
 ---
 
@@ -175,8 +204,10 @@ const {
   status,
   error
 } = useInfiniteQuery({
-  queryKey: ['/api/reasoning'],
-  queryFn: ({ pageParam }) => getReasoningLogsFn({ data: pageParam } as any),
+  ...queries.reasoning.list({ 
+    cursor: undefined, 
+    fetchFn: (pageParam) => getReasoningLogsFn({ data: pageParam }) 
+  }),
   initialPageParam: undefined as string | undefined,
   getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   staleTime: 1000 * 60 * 5, // 5 minutes
@@ -195,6 +226,7 @@ const allLogs = React.useMemo(
 - ✅ Automatic caching
 - ✅ Built-in loading states
 - ✅ **Simplified implementation using `infiniteQueryOptions`**
+- ✅ **Named parameters for explicit, type-safe API usage**
 
 ---
 
@@ -211,10 +243,10 @@ function TodayPage() {
   const getTodayDataFn = useServerFn(getTodayData)
 
   const { data } = useSuspenseQuery({
-    ...queries.today(() => getTodayDataFn()),
+    ...queries.today({ fetchFn: () => getTodayDataFn() }),
     initialData,
   })
-  
+
   // ...
 }
 ```
@@ -224,6 +256,7 @@ function TodayPage() {
 - ✅ Better integration with TanStack Start SSR
 - ✅ Declarative data fetching
 - ✅ Automatic loading states via Suspense boundaries
+- ✅ Named parameters make API usage explicit
 
 ---
 
@@ -339,6 +372,74 @@ const loginMutation = useMutation({
 
 ---
 
+### 9. Query API Reference (Named Parameters)
+
+**All queries now use named parameters for clarity and type safety:**
+
+```typescript
+// Simple queries (optional fetchFn)
+queries.today({ fetchFn })
+queries.concepts.list({ fetchFn })
+queries.causeAndEffect.list({ fetchFn })
+queries.portfolios.list({ fetchFn })
+
+// Detail queries (required id + optional fetchFn)
+queries.portfolios.detail({ id, fetchFn })
+queries.portfolios.positions({ id, fetchFn })
+queries.portfolios.trades({ id, fetchFn })
+queries.portfolios.performance({ id, fetchFn })
+queries.memories.detail({ id, fetchFn })
+queries.reasoning.detail({ id, fetchFn })
+
+// Infinite queries (optional cursor, filters, fetchFn)
+queries.memories.list({ filters, cursor, fetchFn })
+queries.reasoning.list({ cursor, fetchFn })
+```
+
+**Example Usage:**
+
+```typescript
+// Today page
+const { data } = useSuspenseQuery({
+  ...queries.today({ fetchFn: () => getTodayDataFn() }),
+  initialData,
+})
+
+// Portfolio detail
+const { data } = useSuspenseQuery({
+  ...queries.portfolios.detail({ 
+    id: portfolioId, 
+    fetchFn: () => getPortfolioDataFn(portfolioId) 
+  }),
+  initialData,
+})
+
+// Infinite list (memories)
+const { data, fetchNextPage } = useInfiniteQuery({
+  ...queries.memories.list({ 
+    filters: { status: 'active' }, 
+    fetchFn: (pageParam) => getMemoriesFn({ data: pageParam }) 
+  }),
+})
+
+// Infinite list (reasoning)
+const { data, fetchNextPage } = useInfiniteQuery({
+  ...queries.reasoning.list({ 
+    cursor: undefined, 
+    fetchFn: (pageParam) => getReasoningLogsFn({ data: pageParam }) 
+  }),
+})
+```
+
+**Benefits:**
+- ✅ **Explicit API** - Each parameter is clearly labeled at call sites
+- ✅ **Type Safety** - TypeScript enforces required params and types
+- ✅ **Extensibility** - Easy to add optional params without breaking changes
+- ✅ **Consistency** - All queries follow the same pattern
+- ✅ **Better DX** - IDE autocomplete works perfectly with named params
+
+---
+
 ## 📋 Checklist for New Features
 
 When adding new data fetching to your components:
@@ -350,12 +451,18 @@ When adding new data fetching to your components:
 - [ ] Use `useInfiniteQuery` hook
 - [ ] Add "Load More" button
 - [ ] Handle loading and error states
+- [ ] Use `queries.<resource>.list({ filters, cursor, fetchFn })` pattern
 
 ### For Detail Pages
 - [ ] Use server-side loader if data is small
 - [ ] Use `useQuery` if client-side fetching needed
-- [ ] Add proper query keys using `queryKeys` factory
+- [ ] Add proper query keys using `queries` factory with named parameters
+- [ ] Use `queries.<resource>.detail({ id, fetchFn })` pattern
 - [ ] Set appropriate `staleTime`
+
+### For Simple Queries
+- [ ] Use `queries.<resource>({ fetchFn })` pattern
+- [ ] Set appropriate `staleTime` based on data volatility
 
 ### For Mutations
 - [ ] Use `useMutation` hook

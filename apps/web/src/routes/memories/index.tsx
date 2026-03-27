@@ -27,7 +27,7 @@ function MemoriesPage() {
     status,
     error
   } = useInfiniteQuery({
-    ...queries.memories.list(undefined, (pageParam) => getMemoriesFn({ data: pageParam } as any)),
+    ...queries.memories.list({ cursor: undefined, fetchFn: (pageParam) => getMemoriesFn({ data: pageParam } as any) }),
   })
 
   // Flatten all pages into a single array

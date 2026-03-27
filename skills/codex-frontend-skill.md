@@ -182,3 +182,6 @@ Motion rules:
 - Are cards actually necessary?
 - Does motion improve hierarchy or atmosphere?
 - Would the design still feel premium if all decorative shadows were removed?
+
+## Source:
+https://developers.openai.com/blog/designing-delightful-frontends-with-gpt-5-4

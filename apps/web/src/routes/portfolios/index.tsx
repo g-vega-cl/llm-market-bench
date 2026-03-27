@@ -98,7 +98,7 @@ function PortfoliosPage() {
   const getPortfoliosFn = useServerFn(getPortfolios)
 
   const { data } = useSuspenseQuery({
-    ...queries.portfolios.list(() => getPortfoliosFn()),
+    ...queries.portfolios.list({ fetchFn: () => getPortfoliosFn() }),
     initialData,
   })
 

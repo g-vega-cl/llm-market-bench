@@ -211,6 +211,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     - `/portfolios` - Performance data, stale time 5 minutes
     - `/portfolios/$id` - Detail view with positions, trades, history
 *   **Query Key Structure:** Type-safe cache management using centralized `queryOptions` via the `queries` factory.
+*   **Named Parameters Pattern:** All query methods use named parameters for explicit, type-safe API usage (e.g., `queries.reasoning.list({ cursor, fetchFn })`).
 
 *   **Documentation:** [TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md), [Reasoning Page Optimization](./web/reasoning-page-optimization.md)
 

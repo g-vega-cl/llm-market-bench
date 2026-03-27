@@ -40,7 +40,7 @@ function ReasoningPage() {
         status,
         error
     } = useInfiniteQuery({
-        ...queries.reasoning.list(undefined, (pageParam) => getReasoningLogsFn({ data: pageParam } as any)),
+        ...queries.reasoning.list({ cursor: undefined, fetchFn: (pageParam) => getReasoningLogsFn({ data: pageParam } as any) }),
     })
 
     // Flatten all pages into a single array

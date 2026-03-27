@@ -19,7 +19,7 @@ function CauseAndEffectPage() {
   const getCauseAndEffectFn = useServerFn(getCauseAndEffect)
 
   const { data } = useSuspenseQuery({
-    ...queries.causeAndEffect.list(() => getCauseAndEffectFn()),
+    ...queries.causeAndEffect.list({ fetchFn: () => getCauseAndEffectFn() }),
     initialData,
   })
 

@@ -10,10 +10,10 @@ export const queries = {
   // --------------------------------------------------------------------------
   // Today Page
   // --------------------------------------------------------------------------
-  today: <T,>(fetchFn?: () => Promise<T>) =>
+  today: <T,>(opts?: { fetchFn?: () => Promise<T> }) =>
     queryOptions({
       queryKey: queryKeys.today.data(),
-      queryFn: fetchFn,
+      queryFn: opts?.fetchFn,
       staleTime: 1000 * 60 * 2, // 2 minutes - today's data changes frequently
     }),
 
@@ -21,34 +21,34 @@ export const queries = {
   // Portfolios
   // --------------------------------------------------------------------------
   portfolios: {
-    list: <T,>(fetchFn?: () => Promise<T>) =>
+    list: <T,>(opts?: { fetchFn?: () => Promise<T> }) =>
       queryOptions({
         queryKey: queryKeys.portfolios.list(),
-        queryFn: fetchFn,
+        queryFn: opts?.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
-    detail: <T,>(id: string, fetchFn?: () => Promise<T>) =>
+    detail: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
       queryOptions({
-        queryKey: queryKeys.portfolios.detail(id),
-        queryFn: fetchFn,
+        queryKey: queryKeys.portfolios.detail(opts.id),
+        queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
-    positions: <T,>(id: string, fetchFn?: () => Promise<T>) =>
+    positions: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
       queryOptions({
-        queryKey: queryKeys.portfolios.positions(id),
-        queryFn: fetchFn,
+        queryKey: queryKeys.portfolios.positions(opts.id),
+        queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
-    trades: <T,>(id: string, fetchFn?: () => Promise<T>) =>
+    trades: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
       queryOptions({
-        queryKey: queryKeys.portfolios.trades(id),
-        queryFn: fetchFn,
+        queryKey: queryKeys.portfolios.trades(opts.id),
+        queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
-    performance: <T,>(id: string, fetchFn?: () => Promise<T>) =>
+    performance: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
       queryOptions({
-        queryKey: queryKeys.portfolios.performance(id),
-        queryFn: fetchFn,
+        queryKey: queryKeys.portfolios.performance(opts.id),
+        queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
   },
@@ -57,10 +57,10 @@ export const queries = {
   // Concepts
   // --------------------------------------------------------------------------
   concepts: {
-    list: <T,>(fetchFn?: () => Promise<T>) =>
+    list: <T,>(opts?: { fetchFn?: () => Promise<T> }) =>
       queryOptions({
         queryKey: queryKeys.concepts.list(),
-        queryFn: fetchFn,
+        queryFn: opts?.fetchFn,
         staleTime: 1000 * 60 * 10, // 10 minutes - concepts don't change often
       }),
   },
@@ -69,10 +69,10 @@ export const queries = {
   // Cause & Effect
   // --------------------------------------------------------------------------
   causeAndEffect: {
-    list: <T,>(fetchFn?: () => Promise<T>) =>
+    list: <T,>(opts?: { fetchFn?: () => Promise<T> }) =>
       queryOptions({
         queryKey: queryKeys.causeAndEffect.list(),
-        queryFn: fetchFn,
+        queryFn: opts?.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
   },
@@ -81,18 +81,18 @@ export const queries = {
   // Memories
   // --------------------------------------------------------------------------
   memories: {
-    list: <T,>(filters?: { status?: string; memoryType?: string }, fetchFn?: (cursor: string | undefined) => Promise<T>) =>
+    list: <T,>(opts?: { filters?: { status?: string; memoryType?: string }; cursor?: string; fetchFn?: (cursor: string | undefined) => Promise<T> }) =>
       infiniteQueryOptions({
-        queryKey: queryKeys.memories.list(filters),
-        queryFn: ({ pageParam }) => fetchFn ? fetchFn(pageParam) : Promise.reject(new Error('fetchFn required')),
+        queryKey: queryKeys.memories.list(opts?.filters),
+        queryFn: ({ pageParam }) => opts?.fetchFn ? opts.fetchFn(pageParam) : Promise.reject(new Error('fetchFn required')),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
-    detail: <T,>(id: string, fetchFn?: () => Promise<T>) =>
+    detail: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
       queryOptions({
-        queryKey: queryKeys.memories.detail(id),
-        queryFn: fetchFn,
+        queryKey: queryKeys.memories.detail(opts.id),
+        queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5,
       }),
   },
@@ -101,18 +101,18 @@ export const queries = {
   // Reasoning
   // --------------------------------------------------------------------------
   reasoning: {
-    list: <T,>(cursor?: string, fetchFn?: (cursor: string | undefined) => Promise<T>) =>
+    list: <T,>(opts?: { cursor?: string; fetchFn?: (cursor: string | undefined) => Promise<T> }) =>
       infiniteQueryOptions({
-        queryKey: queryKeys.reasoning.list(cursor),
-        queryFn: ({ pageParam }) => fetchFn ? fetchFn(pageParam) : Promise.reject(new Error('fetchFn required')),
+        queryKey: queryKeys.reasoning.list(opts?.cursor),
+        queryFn: ({ pageParam }) => opts?.fetchFn ? opts.fetchFn(pageParam) : Promise.reject(new Error('fetchFn required')),
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
-    detail: <T,>(id: string, fetchFn?: () => Promise<T>) =>
+    detail: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
       queryOptions({
-        queryKey: queryKeys.reasoning.detail(id),
-        queryFn: fetchFn,
+        queryKey: queryKeys.reasoning.detail(opts.id),
+        queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
   },

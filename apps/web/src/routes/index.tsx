@@ -24,7 +24,7 @@ function TodayPage() {
     const getTodayDataFn = useServerFn(getTodayData)
 
     const { data } = useSuspenseQuery({
-        ...queries.today(() => getTodayDataFn()),
+        ...queries.today({ fetchFn: () => getTodayDataFn() }),
         initialData,
         refetchInterval: 1000 * 60 * 5, // Auto-refetch every 5 minutes
     })

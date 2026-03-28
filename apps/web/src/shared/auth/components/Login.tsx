@@ -4,14 +4,18 @@ import { useMutation } from '@tanstack/react-query'
 import { loginFn } from '~/routes/_authed'
 import { signupFn } from '~/routes/signup'
 import { Auth } from './Auth'
+import { usePostHog } from '@posthog/react'
 
 export function Login() {
   const router = useRouter()
+  const posthog = usePostHog()
 
   const loginMutation = useMutation({
     mutationFn: loginFn,
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       if (!data?.error) {
+        posthog.identify((variables as any).email)
+        posthog.capture('user_logged_in', { email: (variables as any).email })
         await router.invalidate()
         router.navigate({ to: '/' })
         return

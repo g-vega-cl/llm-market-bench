@@ -3,6 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { useMutation } from '@tanstack/react-query'
 import { Auth } from '~/shared/auth'
 import { getSupabaseServerClient } from '~/lib/supabase'
+import { usePostHog } from '@posthog/react'
 
 export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(
@@ -32,11 +33,13 @@ export const Route = createFileRoute('/signup')({
 })
 
 function SignupComp() {
+  const posthog = usePostHog()
   const signupMutation = useMutation({
-    mutationFn: useServerFn(signupFn),
-    onSuccess: (data) => {
-      if ((data as any)?.error) {
-        // Error handled in UI
+    mutationFn: useServerFn(signupFn) as any,
+    onSuccess: (data, variables) => {
+      if (!(data as any)?.error) {
+        posthog.identify((variables as any).email)
+        posthog.capture('user_signed_up', { email: (variables as any).email })
       }
     },
   })

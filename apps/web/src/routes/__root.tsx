@@ -15,6 +15,7 @@ import { QueryClientProviderWrapper } from '~/lib/query-client'
 import appCss from '../styles/app.css?url'
 import { seo } from '~/lib/seo'
 import { getSupabaseServerClient } from '~/lib/supabase'
+import { PostHogProvider } from '@posthog/react'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -105,6 +106,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <PostHogProvider
+          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
+          options={{
+            api_host: '/ingest',
+            ui_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
+            defaults: '2025-05-24',
+            capture_exceptions: true,
+            debug: import.meta.env.DEV,
+          }}
+        >
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
           <Link
             to="/"
@@ -193,6 +204,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
+        </PostHogProvider>
       </body>
     </html>
   )

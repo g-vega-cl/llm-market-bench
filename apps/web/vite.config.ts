@@ -8,6 +8,14 @@ import netlify from '@netlify/vite-plugin-tanstack-start'
 export default defineConfig({
   server: {
     port: 3000,
+    proxy: {
+      '/ingest': {
+        target: 'https://us.i.posthog.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ingest/, ''),
+        secure: false,
+      },
+    },
   },
   plugins: [
     tailwindcss(),

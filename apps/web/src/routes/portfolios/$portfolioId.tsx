@@ -6,6 +6,8 @@ import { PositionsTable } from './components/-PositionsTable'
 import { TradesTable } from './components/-TradesTable'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { queries } from '~/lib/queries'
+import * as React from 'react'
+import { usePostHog } from '@posthog/react'
 
 const getPortfolioData = createServerFn({ method: 'GET' })
   .inputValidator((d: string) => d)
@@ -26,6 +28,7 @@ export const Route = createFileRoute('/portfolios/$portfolioId')({
 })
 
 function PortfolioDetailPage() {
+  const posthog = usePostHog()
   const initialData = Route.useLoaderData()
   const getPortfolioDataFn = useServerFn(getPortfolioData)
 
@@ -35,6 +38,10 @@ function PortfolioDetailPage() {
   })
 
   const { portfolio, positions, history, trades } = data
+
+  React.useEffect(() => {
+    posthog.capture('portfolio_viewed', { portfolio_id: portfolio.id, owner_id: portfolio.owner_id })
+  }, [portfolio.id])
 
   if (!portfolio) {
     return <div>Portfolio not found</div>

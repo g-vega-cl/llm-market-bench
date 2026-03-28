@@ -5,6 +5,7 @@ import { MemoriesList } from './components/-MemoriesList'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { queries } from '~/lib/queries'
 import * as React from 'react'
+import { usePostHog } from '@posthog/react'
 
 const getMemories = createServerFn({ method: 'GET' })
   .handler(async (opts) => {
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/memories/')({
 })
 
 function MemoriesPage() {
+  const posthog = usePostHog()
   const getMemoriesFn = useServerFn(getMemories)
   
   const {
@@ -74,7 +76,7 @@ function MemoriesPage() {
       {hasNextPage && (
         <div className="mt-8 flex justify-center">
           <button
-            onClick={() => fetchNextPage()}
+            onClick={() => { fetchNextPage(); posthog.capture('memories_load_more_clicked') }}
             disabled={isFetchingNextPage}
             className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-lg transition-colors"
           >

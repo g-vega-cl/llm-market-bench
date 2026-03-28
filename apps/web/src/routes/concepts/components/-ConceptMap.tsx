@@ -1,5 +1,6 @@
 import * as React from 'react'
 import * as d3 from 'd3'
+import { usePostHog } from '@posthog/react'
 
 export type Concept = {
   id: string
@@ -13,6 +14,9 @@ export type Concept = {
 }
 
 export function ConceptMap({ data }: { data: Concept[] }) {
+  const posthog = usePostHog()
+  const posthogRef = React.useRef(posthog)
+  posthogRef.current = posthog
   const svgRef = React.useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = React.useState<Concept | null>(null)
   const [hoveredCluster, setHoveredCluster] = React.useState<{ text: string, x: number, y: number, color: string } | null>(null)
@@ -189,6 +193,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
           .attr('stroke-width', 2)
           .attr('stroke', '#000')
         setHoveredNode(d)
+        posthogRef.current?.capture('concept_node_hovered', { concept_name: d.concept_name, mention_count: d.mention_count, velocity_score: d.velocity_score })
       })
       .on('mouseleave', (event, d) => {
         d3.select(event.currentTarget)

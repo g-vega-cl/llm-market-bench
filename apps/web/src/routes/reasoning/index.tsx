@@ -4,6 +4,7 @@ import { fetchReasoningLogs } from './-queries'
 import * as React from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { queries } from '~/lib/queries'
+import { usePostHog } from '@posthog/react'
 
 const getReasoningLogs = createServerFn({ method: 'GET' })
     .handler(async ({ data }: { data?: string }) => {
@@ -26,6 +27,7 @@ interface ReasoningTrace {
 }
 
 function ReasoningPage() {
+    const posthog = usePostHog()
     const [activeTab, setActiveTab] = React.useState<string>('ALL')
     const [selectedLogId, setSelectedLogId] = React.useState<string | null>(null)
 
@@ -96,7 +98,7 @@ function ReasoningPage() {
                 {categories.map((cat) => (
                     <button
                         key={cat}
-                        onClick={() => setActiveTab(cat)}
+                        onClick={() => { setActiveTab(cat); posthog.capture('reasoning_category_filtered', { category: cat }) }}
                         className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === cat
                             ? 'bg-white dark:bg-blue-600 shadow-xl text-blue-600 dark:text-white border-b-2 border-blue-500 dark:border-blue-400'
                             : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'
@@ -113,7 +115,7 @@ function ReasoningPage() {
                     {filteredLogs?.map((log) => (
                         <div
                             key={log.id}
-                            onClick={() => setSelectedLogId(log.id)}
+                            onClick={() => { setSelectedLogId(log.id); posthog.capture('reasoning_trace_selected', { trace_id: log.id, task_type: log.task_type, model_provider: log.model_provider, model_name: log.model_name }) }}
                             className={`p-5 rounded-3xl border transition-all cursor-pointer group hover:shadow-2xl hover:-translate-y-1 ${selectedLogId === log.id
                                 ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-2xl ring-1 ring-blue-500/50'
                                 : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm'
@@ -148,7 +150,7 @@ function ReasoningPage() {
                     {hasNextPage && (
                         <div className="pt-4 pb-2">
                             <button
-                                onClick={() => fetchNextPage()}
+                                onClick={() => { fetchNextPage(); posthog.capture('reasoning_load_more_clicked') }}
                                 disabled={isFetchingNextPage}
                                 className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-500 to-teal-400 text-white font-bold text-sm uppercase tracking-widest shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
                             >

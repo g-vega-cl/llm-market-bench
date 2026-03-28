@@ -4,6 +4,8 @@ import { fetchCauseAndEffect } from './-queries'
 import { CauseAndEffectList } from './components/-CauseAndEffectList'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { queries } from '~/lib/queries'
+import * as React from 'react'
+import { usePostHog } from '@posthog/react'
 
 const getCauseAndEffect = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchCauseAndEffect()
@@ -15,6 +17,7 @@ export const Route = createFileRoute('/cause-and-effect/')({
 })
 
 function CauseAndEffectPage() {
+  const posthog = usePostHog()
   const initialData = Route.useLoaderData()
   const getCauseAndEffectFn = useServerFn(getCauseAndEffect)
 
@@ -22,6 +25,10 @@ function CauseAndEffectPage() {
     ...queries.causeAndEffect.list({ fetchFn: () => getCauseAndEffectFn() }),
     initialData,
   })
+
+  React.useEffect(() => {
+    posthog.capture('cause_and_effect_viewed')
+  }, [])
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-12">

@@ -26,7 +26,8 @@ CLAUDE_ANALYSIS_SYSTEM_PROMPT = (
     "use the web_search tool to get up-to-date information with citations.\n\n"
     "=== CRITICAL TOOL USAGE REQUIREMENTS ===\n"
     "1. BEFORE recommending ANY trade (BUY or SELL), you MUST call get_stock_quote(ticker) via function calling.\n"
-    "2. For SELL decisions, you MUST call a sell percentage tool (e.g., sell_50_percent) to calculate the exact share quantity.\n"
+    "2. You MUST set a 'limit_price' for every trade based on the price returned by the tool (e.g., set limit slightly above current for BUY, slightly below for SELL to ensure execution).\n"
+    "3. For SELL decisions, you MUST call a sell percentage tool (e.g., sell_50_percent) to calculate the exact share quantity.\n"
     "3. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.\n"
     "4. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.\n"
     "5. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n\n"
@@ -56,7 +57,8 @@ Analyze the current portfolio and the news snippets and the state of the market,
     "ticker": "NVDA",
     "signal": "BUY",
     "price": 120.50,
-    "reasoning": "After verifying the current price of $120.50 via get_stock_quote..."
+    "limit_price": 121.00,
+    "reasoning": "After verifying the current price of $120.50 via get_stock_quote, I am setting a limit price of $121.00 to ensure we execute at or near this level..."
   }}]
 }}
 ```
@@ -159,6 +161,9 @@ SMA MANAGEMENT RULES:
    * SELL: Only sell if we have the stock in our portfolio.
    * HOLD: Do not buy or sell the stock.
    * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
+   * LIMIT PRICE: You MUST specify a 'limit_price' for all BUY and SELL signals based on the current market price returned by the tool.
+     - For BUY: The limit price should be at or slightly above (within 1%) the current price to ensure execution.
+     - For SELL: The limit price should be at or slightly below (within 1%) the current price to ensure execution.
    * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, TECHNICAL, UNCROWDED_TRADE, OTHER).
    * DURATION: Estimate 'catalyst_duration' (SHORT_TERM, MEDIUM_TERM, LONG_TERM).
    
@@ -341,6 +346,7 @@ SOPHISTICATED CONTRARIAN LOGIC:
 - **Scenario Analysis:** If consensus assumes outcome X, what happens if outcome Y occurs? Document in `scenario_analysis`.
 
 CRITICAL (HARD ENFORCEMENT): You MUST actively execute the `get_stock_quote` tool via function calling for ANY ticker you intend to BUY or SELL. 
+You MUST also set a 'limit_price' for every trade based on the price returned by the tool (e.g., set limit slightly above current for BUY, slightly below for SELL to ensure execution).
 For SELL decisions, you MUST actively execute a sell percentage tool (e.g. `sell_50_percent`) via function calling to determine the exact share quantity. Do not just guess the quantity or output text. If you do not formally accomplish these tool calls, your trade will be REJECTED.
 
 ### News Batch:
@@ -431,6 +437,7 @@ An AI agent has proposed a trade. Your task is to verify if this trade is truly 
 - Advance Planning: "{advance_planning_notes}"
 - Quantity: {quantity}
 - Price: ${price}
+- Limit Price: ${limit_price}
 
 ### CONTEXT:
 #### Portfolio Status:

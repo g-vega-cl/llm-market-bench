@@ -272,7 +272,7 @@ class Portfolio:
             is_sell_tool_used=is_sell_tool_used
         )
 
-    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str) -> Optional[UUID]:
+    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str, decision_id: str | None = None) -> Optional[UUID]:
         """Executes the trade by updating cash, positions, and ledger.
         
         Args:
@@ -280,6 +280,7 @@ class Portfolio:
             quantity: Number of shares (always positive).
             price: Execution price.
             signal: "BUY" or "SELL".
+            decision_id: Optional ID of the decision that triggered this trade.
             
         Returns:
             The UUID of the generated trade record, or None if failed.
@@ -379,7 +380,8 @@ class Portfolio:
                 "quantity": quantity,
                 "price": price,
                 "total_cost": total_cost,
-                "executed_at": "now()"
+                "executed_at": "now()",
+                "decision_id": decision_id
             }
             
             # Enrich with PnL for SELL trades

@@ -47,6 +47,7 @@ def save_decision(
         "model_provider": decision.model_provider,
         "model_name": decision.model_name,
         "price": getattr(decision, "price", None),
+        "limit_price": getattr(decision, "limit_price", None),
         "status": status,
         "metadata": {
             **(metadata or {}),

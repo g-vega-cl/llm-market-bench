@@ -101,6 +101,10 @@ class DecisionObject(BaseModel):
         None,
         description="REQUIRED: Must state 'get_stock_quote tool call' if price was verified via tool, or 'hallucinated' if not. Trades without tool verification will be rejected."
     )
+    limit_price: float | None = Field(
+        None,
+        description="The limit price for the order. If set, the trade will only execute at this price or better."
+    )
 
     @field_validator("ticker")
     @classmethod

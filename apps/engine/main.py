@@ -146,6 +146,22 @@ async def _stage_decision_processing(
                     rejected_decisions += 1
                     continue
 
+                # --- Limit Price Check ---
+                limit_price = getattr(d, "limit_price", None)
+                if limit_price:
+                    if d.signal.upper() == "BUY" and exec_price > limit_price:
+                        reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
+                        logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
+                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                        rejected_decisions += 1
+                        continue
+                    elif d.signal.upper() == "SELL" and exec_price < limit_price:
+                        reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
+                        logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
+                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                        rejected_decisions += 1
+                        continue
+                
                 # Fetch market data for verification
                 all_pos_tickers = list(portfolio.positions.keys())
                 if d.ticker not in all_pos_tickers:
@@ -187,6 +203,23 @@ async def _stage_decision_processing(
                         "suggested_alternative": verification.alternative_ticker
                     })
 
+                    # --- Final Price Refresh (BUY) ---
+                    # Check the price again just before execution to ensure we have the most up-to-date data,
+                    # especially since the verification step (LLM call) can take several seconds.
+                    final_quote = await mdm.get_quote(d.ticker)
+                    if final_quote and final_quote.exists:
+                        if final_quote.price != exec_price:
+                            logger.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
+                            exec_price = final_quote.price
+                            
+                            # Re-verify limit price with the absolute latest market data
+                            if limit_price and exec_price > limit_price:
+                                reason = f"Limit price exceeded after refresh: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
+                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price Refresh): {reason}")
+                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                                rejected_decisions += 1
+                                continue
+
                     bp = portfolio.metrics.buying_power if portfolio.metrics else 0
                     total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
                     from core.config import MIN_TRADE_VALUE
@@ -210,6 +243,21 @@ async def _stage_decision_processing(
                         continue
 
                 elif d.signal.upper() == "SELL":
+                    # --- Final Price Refresh (SELL) ---
+                    final_quote = await mdm.get_quote(d.ticker)
+                    if final_quote and final_quote.exists:
+                        if final_quote.price != exec_price:
+                            logger.info(f"[{d.ticker}] Price moved during processing: ${exec_price:.2f} -> ${final_quote.price:.2f}")
+                            exec_price = final_quote.price
+                            
+                            # Re-verify limit price
+                            if limit_price and exec_price < limit_price:
+                                reason = f"Limit price not met after refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
+                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price Refresh): {reason}")
+                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                                rejected_decisions += 1
+                                continue
+
                     qty = getattr(d, "quantity", None) or int((d.allocation_percentage or 0 / 100.0) * portfolio.positions.get(d.ticker).quantity)
                     if not portfolio.metrics:
                         portfolio.calculate_reg_t_metrics(p_map)
@@ -229,8 +277,13 @@ async def _stage_decision_processing(
 
                 if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
                     qty = verification.adjusted_quantity
-                        
-                trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal)
+                
+                # --- Attribution Locking (Step 13 PRE-STEP) ---
+                # Save the decision first to get a stable decision_id for the trade record
+                decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
+                decision_id = decision_row.get("id")
+
+                trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal, decision_id=decision_id)
                 if trade_id:
                     status = "EXECUTED"
                     meta = {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}

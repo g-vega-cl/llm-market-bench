@@ -75,6 +75,7 @@ async def verify_trading_decision(
             advance_planning_notes=getattr(decision, "advance_planning_notes", "None"),
             quantity=getattr(decision, "quantity", 0) or 1,
             price=decision.price or "unknown",
+            limit_price=getattr(decision, "limit_price", "None"),
             portfolio_context=portfolio_context,
             context=aggregated_context,
             contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available.",

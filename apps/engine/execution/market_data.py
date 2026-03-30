@@ -16,19 +16,26 @@ from .providers.factory import get_financial_provider
 class MarketDataManager:
     """Manages market data retrieval with a database-backed cache."""
 
+    # Class-level cache for market status to avoid repeated API calls
+    _market_status_cache: dict = {
+        "is_open": None,
+        "fetched_at": None,
+        "ttl_seconds": 300  # 5 minutes
+    }
+
     def __init__(self, cache_ttl_seconds: Optional[int] = None):
         from core.config import MARKET_DATA_CACHE_TTL_SECONDS
         self.client = get_supabase_client()
         self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else MARKET_DATA_CACHE_TTL_SECONDS
-        
+
         # Initialize providers in priority order
         from core.config import FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER
-        
+
         provider_names = [FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER]
         # Remove duplicates while preserving order
         seen = set()
         unique_provider_names = [x for x in provider_names if not (x in seen or seen.add(x))]
-        
+
         self.providers = [get_financial_provider(name) for name in unique_provider_names]
 
     @property
@@ -46,10 +53,22 @@ class MarketDataManager:
 
     async def is_market_open(self) -> bool:
         """Checks if the US stock market (NASDAQ/NYSE) is currently open.
-        
+
         Prioritizes FMP API for holiday awareness, falls back to time-based check.
+        Uses a class-level cache to avoid repeated API calls within the same pipeline run.
         """
         import datetime
+        
+        # Check class-level cache first to avoid repeated API calls
+        now = datetime.datetime.now(datetime.timezone.utc)
+        cache = MarketDataManager._market_status_cache
+        
+        if cache["fetched_at"] is not None:
+            elapsed = (now - cache["fetched_at"]).total_seconds()
+            if elapsed < cache["ttl_seconds"]:
+                logger.debug(f"Using cached market status: {'OPEN' if cache['is_open'] else 'CLOSED'}")
+                return cache["is_open"]
+        
         try:
             from zoneinfo import ZoneInfo
             now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
@@ -71,10 +90,15 @@ class MarketDataManager:
                     resp = await client.get(url, params=params)
                     resp.raise_for_status()
                     data = resp.json()
-                    
+
                     if data and isinstance(data, list):
                         is_open = data[0].get("isMarketOpen", False)
                         logger.info(f"FMP Market Status (NASDAQ): {'OPEN' if is_open else 'CLOSED'}")
+                        
+                        # Cache the result
+                        cache["is_open"] = is_open
+                        cache["fetched_at"] = now
+                        
                         return is_open
             except Exception as e:
                 logger.warning(f"Failed to fetch market status from FMP: {e}. Falling back to time-based check.")
@@ -82,12 +106,17 @@ class MarketDataManager:
         # 2. Fallback Check: Time-based (Mon-Fri, 09:30-16:00 ET)
         # Weekends
         if now_et.weekday() >= 5: # 5=Sat, 6=Sun
-            return False
-            
-        market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
-        market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+            result = False
+        else:
+            market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+            market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+            result = market_start <= now_et <= market_end
         
-        return market_start <= now_et <= market_end
+        # Cache the fallback result as well
+        cache["is_open"] = result
+        cache["fetched_at"] = now
+        
+        return result
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> Optional[TickerData]:
         """Fetch stock quote, checking cache first unless force_refresh is True.

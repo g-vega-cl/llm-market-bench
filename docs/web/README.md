@@ -14,7 +14,37 @@ The frontend of AI Wall Street is a high-performance, type-safe web application 
 | **Language** | TypeScript |
 | **Testing** | [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/) |
 
-## 2. Pragmatic Architecture (Routes First)
+## 2. Design System
+
+### Typography
+- **Headlines:** Space Grotesk (tech-forward, distinctive)
+- **Body:** Satoshi (clean, modern, readable)
+- **Data:** JetBrains Mono (prices, timestamps, code)
+
+### Color Palette
+| Color | Purpose | Usage |
+|-------|---------|-------|
+| **Electric Blue** | Trust, Intelligence | Primary actions, links, hero gradients |
+| **Neon Green** | Gains, Success | BUY signals, positive metrics, live indicators |
+| **Alert Red** | Losses, Warnings | SELL signals, rejections, critical alerts |
+| **Deep Purple** | AI Cognition | Consensus insights, agent avatars |
+| **Cyber Yellow** | Catalysts, Attention | Horizon Watch, countdown timers |
+
+### Motion & Animation
+- **Staggered Reveals:** Sections animate in with 100ms delays
+- **Card Lift:** Hover effects with shadow and translateY
+- **Live Pulse:** Animated dots for real-time indicators
+- **Shimmer:** Loading states and gradient effects
+- **Float:** Gentle vertical motion for hero elements
+
+### Component Patterns
+- **Gradient Borders:** Hover-activated reveals using pseudo-elements
+- **Glass Morphism:** Backdrop blur for overlays and sticky headers
+- **Badge System:** Rounded pills with color-coded importance
+- **Timeline View:** Vertical connecting lines with dot markers
+- **Expandable Cards:** Click-to-reveal pattern for detailed reasoning
+
+## 3. Pragmatic Architecture (Routes First)
 
 We prioritize **colocation** (keeping things near their usage) to ensure the codebase remains maintainable as it grows.
 
@@ -31,7 +61,27 @@ We prioritize **colocation** (keeping things near their usage) to ensure the cod
 2. **Is it a generic UI primitive (e.g. Button)?** → Put it in **`components/ui`**.
 3. **Is it a business component used on multiple pages?** → Put it in **`shared/`**.
 
-## 3. Project Structure
+## 4. TODAY Dashboard Layout
+
+The root route (`/`) displays a comprehensive view of daily AI trading activity:
+
+### Sections (Top to Bottom)
+
+1. **Market Status Hero** - Full-width gradient banner with market status, AI sentiment gauge, and quick stats
+2. **AI Cognitive Synthesis** - Consensus insights with agent avatars and importance scores
+3. **Daily Intelligence Briefing** - Newsletter summaries in 2-column grid
+4. **Market Execution & Guardrails** - Trade feed with agent attribution and expandable reasoning
+5. **Horizon Watch** - Timeline of future catalysts with live countdowns
+
+### Features
+
+- **Auto-Refresh:** Every 5 minutes during market hours
+- **Empty State:** Rotating witty messages with CTAs when no activity
+- **Interactive Cards:** Click-to-expand for detailed reasoning
+- **Live Indicators:** Market status, countdown timers, pulse animations
+- **Agent Attribution:** Color-coded avatars showing which AI made each decision
+
+## 5. Project Structure
 
 ```text
 apps/web/
@@ -65,7 +115,7 @@ apps/web/
 └── vite.config.ts       # Vite and TanStack Start configuration
 ```
 
-## 4. Core Workflows
+## 6. Core Workflows
 
 ### Adding a New Route
 1. Create a folder in `src/routes/` (e.g., `src/routes/my-feature`).
@@ -78,7 +128,7 @@ apps/web/
 *   **SSR Safety**: Keep Loaders and `createServerFn` in routes or shared. Never perform data fetching inside `components/`.
 *   **Supabase SSR**: Use `getSupabaseServerClient` for Loaders/Server Functions and `getSupabaseBrowserClient` for client-side interactions.
 
-## 5. Development & Testing
+## 7. Development & Testing
 
 ### Local Setup
 1.  Ensure you have `pnpm` installed.
@@ -93,6 +143,9 @@ We use Vitest and React Testing Library. Tests are **colocated** next to the cod
 
 ### Design Aesthetics
 We follow a "Rich Aesthetics" approach using Tailwind CSS 4:
-*   Vibrant HSL-tailored colors.
-*   Glassmorphism effects for dashboard cards.
-*   Subtle micro-animations for interactive elements.
+*   Vibrant HSL-tailored colors with custom design tokens.
+*   Glassmorphism effects for dashboard cards and overlays.
+*   Subtle micro-animations for interactive elements (hover, focus, expand).
+*   Custom typography scale with Space Grotesk for headlines.
+*   Gradient backgrounds and border reveals for visual depth.
+*   Card-lift hover effects with shadow transitions.

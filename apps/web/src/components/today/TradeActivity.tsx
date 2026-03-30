@@ -1,108 +1,197 @@
 import * as React from 'react'
 
-export function TradeActivity({ trades, decisions }: { trades: any[], decisions: any[] }) {
-    const [expandedIdx, setExpandedIdx] = React.useState<number | null>(null);
+interface TradeActivityProps {
+    trades: any[]
+    decisions: any[]
+}
 
-    // Also include rejections from decisions
-    const rejections = decisions.filter(d => d.status && d.status.startsWith('REJECTED'));
+const agentConfig: Record<string, { name: string; color: string; bgColor: string; emoji: string }> = {
+    'gpt-5.4-nano': { name: 'OpenAI', color: 'text-emerald-500', bgColor: 'bg-emerald-500', emoji: '🟢' },
+    'claude-haiku-4-5': { name: 'Claude', color: 'text-amber-600', bgColor: 'bg-amber-600', emoji: '🟠' },
+    'gemini-3.1-flash-lite-preview': { name: 'Gemini', color: 'text-blue-500', bgColor: 'bg-blue-500', emoji: '🔵' },
+    'deepseek-reasoner': { name: 'DeepSeek', color: 'text-purple-500', bgColor: 'bg-purple-500', emoji: '🟣' },
+    'contrarian_agent': { name: 'Contrarian', color: 'text-rose-500', bgColor: 'bg-rose-500', emoji: '🔴' },
+}
+
+function getAgentInfo(ownerId: string) {
+    if (!ownerId) return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
+    const normalized = ownerId.toLowerCase().replace(/_/g, '-').replace(/-/g, '-')
+    for (const [key, config] of Object.entries(agentConfig)) {
+        if (normalized.includes(key.replace(/-/g, '')) || key.includes(normalized.replace(/-/g, ''))) {
+            return config
+        }
+    }
+    return { name: ownerId, color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
+}
+
+export function TradeActivity({ trades, decisions }: TradeActivityProps) {
+    const [expandedIdx, setExpandedIdx] = React.useState<number | null>(null)
+
+    // Include rejections from decisions
+    const rejections = decisions.filter(d => d.status && d.status.startsWith('REJECTED'))
 
     // Normalize and sort all activity
     const allActivity = [
         ...trades.map(t => {
-            // Find the decision that triggered this trade
-            const decision = decisions.find(d => d.id === t.decision_id || d.trade_id === t.id);
+            const decision = decisions.find(d => d.id === t.decision_id || d.trade_id === t.id)
             return {
                 ...t,
                 type: 'TRADE',
                 timestamp: t.executed_at,
-                reasoning: decision?.reasoning || 'No reasoning found for this execution.'
-            };
+                reasoning: decision?.reasoning || 'No reasoning found for this execution.',
+                model_name: decision?.model_name || t.portfolios?.owner_id,
+                confidence: decision?.confidence_score,
+            }
         }),
         ...rejections.map(r => ({
             ...r,
             type: 'REJECTION',
-            timestamp: r.created_at
+            timestamp: r.created_at,
         }))
-    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    if (!allActivity.length) return null;
+    if (!allActivity.length) return null
+
+    // Calculate stats
+    const totalTrades = trades.length
+    const buyTrades = trades.filter(t => t.signal === 'BUY').length
+    const sellTrades = trades.filter(t => t.signal === 'SELL').length
+    const rejectionCount = rejections.length
 
     return (
-        <section className="space-y-6">
-            <h2 className="text-2xl font-black text-zinc-900 dark:text-white flex items-center gap-3">
-                <span className="w-2 h-8 bg-emerald-500 rounded-full" />
-                Market Execution & Guardrails
-            </h2>
+        <section className="space-y-8 animate-slide-up">
+            <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
+                    <span className="w-3 h-10 bg-gradient-to-b from-neon-green-500 to-emerald-600 rounded-full" />
+                    <span className="text-gradient text-gradient-success">Market Execution & Guardrails</span>
+                </h2>
+
+                {/* Activity Stats */}
+                <div className="flex items-center gap-3">
+                    <StatPill label="Total" value={totalTrades} color="bg-zinc-500" />
+                    <StatPill label="Buys" value={buyTrades} color="bg-neon-green-500" />
+                    <StatPill label="Sells" value={sellTrades} color="bg-alert-red-500" />
+                    <StatPill label="Rejected" value={rejectionCount} color="bg-amber-500" />
+                </div>
+            </div>
+
             <div className="space-y-4">
                 {allActivity.map((item, idx) => {
-                    const isTrade = item.type === 'TRADE';
-                    const isRejection = item.type === 'REJECTION';
-                    const isExpanded = expandedIdx === idx;
-                    const rejectionReason = isRejection ? item.metadata?.reason || 'Reason not provided.' : null;
+                    const isTrade = item.type === 'TRADE'
+                    const isRejection = item.type === 'REJECTION'
+                    const isExpanded = expandedIdx === idx
+                    const agentInfo = getAgentInfo(item.model_name)
+                    const rejectionReason = isRejection ? item.metadata?.reason || 'Reason not provided.' : null
 
                     return (
                         <div
                             key={idx}
                             onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                            className={`flex flex-col p-6 border rounded-3xl bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 ${
-                                isRejection 
-                                    ? 'border-rose-100 dark:border-rose-950 hover:border-rose-500/50' 
-                                    : 'border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/50'
-                                } ${isExpanded ? (isRejection ? 'ring-2 ring-rose-500/20 shadow-lg' : 'ring-2 ring-emerald-500/20 shadow-lg') : ''
+                            className={`group flex flex-col p-6 border rounded-3xl bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 card-lift animate-slide-up ${
+                                isRejection
+                                    ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-500/50'
+                                    : 'border-zinc-200 dark:border-zinc-800 hover:border-neon-green-500/50'
+                            } ${isExpanded ? (isRejection ? 'ring-2 ring-rose-500/20 shadow-lg' : 'ring-2 ring-neon-green-500/20 shadow-lg') : ''
                             }`}
+                            style={{ animationDelay: `${idx * 50}ms` }}
                         >
+                            {/* Main Row */}
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xs ${isTrade
-                                        ? item.signal === 'BUY' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
-                                        : 'bg-rose-50 text-rose-500 dark:bg-rose-950/30'
-                                    }`}>
+                                {/* Signal Badge */}
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm transition-transform group-hover:scale-110 ${
+                                    isTrade
+                                        ? item.signal === 'BUY'
+                                            ? 'bg-gradient-to-br from-neon-green-400 to-emerald-500 text-white glow-success'
+                                            : 'bg-gradient-to-br from-alert-red-400 to-rose-500 text-white glow-alert'
+                                        : 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
+                                }`}>
                                     {isTrade ? item.signal : 'REJ'}
                                 </div>
+
+                                {/* Info */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-center mb-1">
                                         <div className="flex items-center gap-3">
-                                            <span className="font-black text-zinc-900 dark:text-white text-xl uppercase tracking-tight">{item.ticker}</span>
+                                            <span className="font-black text-zinc-900 dark:text-white text-2xl uppercase tracking-tight text-display">
+                                                {item.ticker}
+                                            </span>
                                             {isTrade && (
-                                                <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] font-bold rounded-lg uppercase">
-                                                    {item.portfolios?.owner_id?.replace(/-/g, ' ') || 'Primary'}
-                                                </span>
+                                                <>
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                                                        <span className="text-lg">{agentInfo.emoji}</span>
+                                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                                            {agentInfo.name}
+                                                        </span>
+                                                    </div>
+                                                    {item.confidence && (
+                                                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                                            item.confidence > 0.7
+                                                                ? 'bg-neon-green-100 dark:bg-neon-green-900/30 text-neon-green-600 dark:text-neon-green-400'
+                                                                : item.confidence > 0.4
+                                                                ? 'bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-600 dark:text-cyber-yellow-400'
+                                                                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                                                        }`}>
+                                                            {(item.confidence * 100).toFixed(0)}% conf
+                                                        </span>
+                                                    )}
+                                                </>
                                             )}
                                             {isRejection && (
                                                 <>
-                                                    <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/30 text-rose-500 text-[10px] font-bold rounded-lg uppercase">
+                                                    <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/30 text-rose-500 text-[9px] font-bold rounded-lg uppercase tracking-wider border border-rose-200 dark:border-rose-900/50">
                                                         Rejected
                                                     </span>
-                                                    <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] font-bold rounded-lg uppercase">
-                                                        {item.model_name || 'Unknown model'}
-                                                    </span>
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                                                        <span className="text-lg">{agentInfo.emoji}</span>
+                                                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                                            {agentInfo.name}
+                                                        </span>
+                                                    </div>
                                                 </>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
-                                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest">
+                                                {new Date(item.timestamp).toLocaleTimeString([], {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </span>
+                                            <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300">
+                                                    <path d="m6 9 6 6 6-6" />
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className={`text-sm font-medium ${isRejection ? 'text-rose-600/80 dark:text-rose-400/80' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                                        {isTrade
-                                            ? `${item.quantity} shares • $${Number(item.price).toFixed(2)}`
-                                            : item.status.replace(/_/g, ' ')
-                                        }
-                                    </p>
-                                </div>
-                                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300">
-                                        <path d="m6 9 6 6 6-6" />
-                                    </svg>
+                                    <div className="flex items-center gap-4">
+                                        <p className={`text-sm font-medium ${
+                                            isRejection ? 'text-rose-600/80 dark:text-rose-400/80' : 'text-zinc-500 dark:text-zinc-400'
+                                        }`}>
+                                            {isTrade
+                                                ? `${item.quantity?.toLocaleString() || 'N/A'} shares • $${Number(item.price).toFixed(2)}`
+                                                : item.status.replace(/_/g, ' ')
+                                            }
+                                        </p>
+                                        {isTrade && item.portfolios?.owner_id && (
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                {item.portfolios.owner_id.replace(/-/g, ' ')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Expanded Content */}
                             {isExpanded && (
-                                <div className="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
+                                <div className="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800 animate-slide-up space-y-4">
                                     {isRejection && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
-                                                <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Guardrail Rejection Detail</span>
+                                                <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
+                                                    Guardrail Rejection Detail
+                                                </span>
                                             </div>
                                             <div className="bg-rose-50/50 dark:bg-rose-950/10 p-4 rounded-2xl border border-rose-100/50 dark:border-rose-900/30">
                                                 <p className="text-sm text-rose-700 dark:text-rose-300 leading-relaxed font-bold">
@@ -112,10 +201,13 @@ export function TradeActivity({ trades, decisions }: { trades: any[], decisions:
                                         </div>
                                     )}
 
+                                    {/* Thought Process */}
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Thought Process & Reasoning</span>
+                                            <div className="w-1.5 h-1.5 bg-electric-blue-500 rounded-full" />
+                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                Thought Process & Reasoning
+                                            </span>
                                         </div>
                                         <div className="bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-900">
                                             <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium whitespace-pre-wrap">
@@ -123,6 +215,34 @@ export function TradeActivity({ trades, decisions }: { trades: any[], decisions:
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* Trade Details for Executed Trades */}
+                                    {isTrade && (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <DetailCard
+                                                label="Quantity"
+                                                value={item.quantity?.toLocaleString() || 'N/A'}
+                                                icon="📊"
+                                            />
+                                            <DetailCard
+                                                label="Price"
+                                                value={`$${Number(item.price).toFixed(2)}`}
+                                                icon="💰"
+                                            />
+                                            <DetailCard
+                                                label="Total Value"
+                                                value={`$${((item.quantity || 0) * Number(item.price)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                                                icon="💵"
+                                            />
+                                            {item.confidence && (
+                                                <DetailCard
+                                                    label="Confidence"
+                                                    value={`${(item.confidence * 100).toFixed(0)}%`}
+                                                    icon="🎯"
+                                                />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -130,5 +250,27 @@ export function TradeActivity({ trades, decisions }: { trades: any[], decisions:
                 })}
             </div>
         </section>
+    )
+}
+
+function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
+    return (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full">
+            <div className={`w-2 h-2 rounded-full ${color}`} />
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{label}</span>
+            <span className="text-sm font-black text-zinc-900 dark:text-white">{value}</span>
+        </div>
+    )
+}
+
+function DetailCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+    return (
+        <div className="p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
+            <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-lg">{icon}</span>
+                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">{label}</span>
+            </div>
+            <div className="text-lg font-black text-zinc-900 dark:text-white text-display">{value}</div>
+        </div>
     )
 }

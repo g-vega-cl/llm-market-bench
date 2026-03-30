@@ -434,7 +434,7 @@ aggregated_context = """
 **Phase 2 Summary**:
 - 1 Gemini Embedding API call (batch for all 4 queries)
 - 4 Supabase RPC calls (vector similarity search)
-- **Step 5.4: Calendar Context Injection**: For each model task, the engine calculates the **`current_day_info`** (Today's date, Day of Week, and proximity to month boundaries or holidays). This is injected into the prompt along with the **`CALENDAR_STRATEGY_KNOWLEDGE`** (Turn of the Month, Payday Anomaly, etc.) to enable seasonal anomaly reasoning. The engine also enforces a **Market Hours Guardrail** (09:30-16:00 ET, Mon-Fri) for all ingestion runs.
+- **Step 5.4: Calendar Context Injection**: For each model task, the engine calculates the **`current_day_info`** (Today's date, Day of Week, and proximity to month boundaries or holidays). This is injected into the prompt along with the **`CALENDAR_STRATEGY_KNOWLEDGE`** (Turn of the Month, Payday Anomaly, etc.) to enable seasonal anomaly reasoning. The engine also enforces a **Market Hours Guardrail** (09:30-16:00 ET, Mon-Fri) for all ingestion runs. The guardrail uses **FMP API with class-level caching (5-minute TTL)** to check market status only once per pipeline run, reducing redundant API calls while maintaining holiday awareness.
 - Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis.
 - Context labeled with **`[PAST REASONING (HISTORICAL)]`** to distinguish from current holdings.
 
@@ -993,13 +993,61 @@ await portfolio.record_performance_snapshot(price_map)
 
 ## Phase 11: Real-time Monitoring (TODAY Dashboard)
 
-The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). This view provides a clean, linear narrative of the day's activity:
-1. **Intelligence Briefing**: Summaries of newsletters ingested today.
-2. **AI Cognitive Synthesis**: A grouped view of global consensus, government incentives, and lessons learned, now including timestamps for each insight.
-3. **Execution & Guardrails**: A full-width feed of trades and rejections. Users can click any item to open a drawer and inspect the full LLM thought process and reasoning.
-4. **Horizon Watch**: A focused view of high-importance future events (`importance_score >= 8`) identified by the agents.
-   - **Timezone-Safe**: Dates are parsed to local midnight to prevent the "December 30" (UTC shift) bug.
-   - **Forward-Looking**: Strictly filters out past events to keep the focus on upcoming catalysts.
+The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). This view provides a clean, linear narrative of the day's activity with a modern, editorial-style design:
+
+### Dashboard Sections
+
+1. **Market Status Hero** (Full-width banner)
+   - Live market status indicator (Open/Closed with EST timezone awareness)
+   - AI Sentiment Gauge (Bullish/Bearish/Neutral based on trade flow)
+   - Real-time stats: Newsletters, Trades, Active Memories
+   - Visual design: Gradient background with animated dot pattern
+
+2. **AI Cognitive Synthesis**
+   - Grouped view of global consensus, government incentives, and lessons learned
+   - **Consensus Meter**: Visual progress bar showing agreement percentage
+   - **Agent Avatars**: Color-coded participation indicators (🟢 OpenAI, 🟠 Claude, 🔵 Gemini, 🟣 DeepSeek)
+   - **Importance Scores**: Badge display for each insight
+   - **Ticker Tags**: Related assets displayed as pills
+   - Each card features gradient backgrounds and hover lift animations
+
+3. **Daily Intelligence Briefing**
+   - Newsletter summaries in a 2-column grid
+   - Sender badges with gradient backgrounds
+   - Attachment indicators
+   - Character count and "Read More" links
+   - Hover effects with gradient border reveals
+
+4. **Market Execution & Guardrails**
+   - Full-width feed of trades and rejections
+   - **Activity Stats**: Pills showing Total, Buys, Sells, Rejected counts
+   - **Agent Attribution**: Each trade shows which AI executed it
+   - **Confidence Scores**: Badge display (High/Medium/Low)
+   - **Interactive Expansion**: Click to reveal full LLM reasoning
+   - **Detail Cards**: Quantity, Price, Total Value, Confidence
+   - Color-coded: Green for BUY, Red for SELL, Amber for REJECTED
+
+5. **Horizon Watch: Pending Events**
+   - **Timeline View**: Vertical timeline with connecting line and dots
+   - **Live Countdown**: Days/Hours/Minutes until each event
+   - **Importance Coding**: Color-coded by severity (Critical/High/Medium/Low)
+   - **Scenario Analysis**: Expandable trading plans for each outcome
+   - **Ticker Pills**: Related assets for trading ideas
+   - **Smart Filtering**: Only shows future events (past events auto-hidden)
+   - **Accurate Counter**: Badge shows count of visible (non-passed) events
+
+### Design Features
+
+- **Typography**: Space Grotesk (headlines), Satoshi (body), JetBrains Mono (data)
+- **Color System**: Electric Blue, Neon Green, Alert Red, Deep Purple, Cyber Yellow
+- **Motion**: Staggered reveals, card lift effects, live pulse indicators
+- **Empty State**: Rotating witty messages with CTAs when no activity
+
+### Technical Details
+
+- **Auto-Refresh**: Every 5 minutes during market hours
+- **Timezone-Safe**: All dates parsed to local midnight (America/New_York)
+- **Forward-Looking**: Horizon Watch strictly filters `is_future_catalyst = true` AND `target_date >= today`
 
 ---
 

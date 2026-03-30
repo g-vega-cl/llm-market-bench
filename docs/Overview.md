@@ -45,7 +45,7 @@ llm-market-bench/
 For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow.md)**.
 
 ### Phase 1: Ingestion & Normalization
-1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays.
+1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays. The market status check uses **class-level caching (5-minute TTL)** to ensure the FMP API is called only once per pipeline run, reducing redundant API calls while maintaining accurate holiday detection.
 2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
 3.  **Corporate Action Check:** (PENDING).
 4.  **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
@@ -71,7 +71,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
       - **DeepSeek**: Thinking mode support with auto-retry for empty content
       - **Claude**: Max tokens increased from 8K → 32K
       - **Gemini**: `List[Model]` handling for multiple function calls
-12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware), symbol existence, **1.0% price banding**, and liquidity checks.
+12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware, **cached with 5-minute TTL** to avoid redundant API calls), symbol existence, **1.0% price banding**, and liquidity checks.
 13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
 14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.
 13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
@@ -95,7 +95,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis**. Crucially, it now **audits the agent's strategic reasoning** (e.g., "sell X to fund Y") for logical consistency. It also validates adherence to **Calendar & Seasonal Strategies** (Turn of the Month, Payday Anomaly, etc.) by analyzing the injected current date context.*
 
 *   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer uses **Modular Provider Handlers** (e.g., `openai.py`, `deepseek.py`, `anthropic.py`) to handle idiosyncratic behaviors like DeepSeek's reasoning preservation. It is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous patterns.*
-*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **IBKR Proxy** (with YFinance fallback) if local data is missing for a new ticker. To optimize performance, the engine uses **Batch Upserts** when saving historical prices to Supabase, reducing network overhead significantly. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts. It also implements a unified **`ensure_list`** wrapper to resiliently handle both single and multi-block LLM responses. The **Anthropic handler** (`handlers/anthropic.py`) filters whitespace-only text blocks before building the message history, preventing `400 Bad Request: text content blocks must be non-empty` errors. The **FMP provider** (`execution/providers/fmp.py`) correctly passes the ticker as a query parameter to the `historical-price-eod/full` endpoint and handles both flat-list and nested `"historical"` response shapes, resolving prior `404` errors for tickers like `SMCI` and `OIH`. Crucially, it now integrates a **FMP-driven Market Status check** to enforce trading only during active US market hours, including automatic holiday detection.*
+*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **IBKR Proxy** (with YFinance fallback) if local data is missing for a new ticker. To optimize performance, the engine uses **Batch Upserts** when saving historical prices to Supabase, reducing network overhead significantly. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts. It also implements a unified **`ensure_list`** wrapper to resiliently handle both single and multi-block LLM responses. The **Anthropic handler** (`handlers/anthropic.py`) filters whitespace-only text blocks before building the message history, preventing `400 Bad Request: text content blocks must be non-empty` errors. The **FMP provider** (`execution/providers/fmp.py`) correctly passes the ticker as a query parameter to the `historical-price-eod/full` endpoint and handles both flat-list and nested `"historical"` response shapes, resolving prior `404` errors for tickers like `SMCI` and `OIH`. Crucially, it integrates a **FMP-driven Market Status check** with **class-level caching (5-minute TTL)** to enforce trading only during active US market hours, including automatic holiday detection. This ensures the market status API is called only once per pipeline run, reducing redundant API calls by ~99%.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
 **11. Pre-Execution Margin Validation** ✅
@@ -173,15 +173,42 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     - **Smart Caching:** Configurable stale times per route (2-10 minutes based on data volatility)
     - **Auto-Refresh:** Today page auto-refreshes every 5 minutes
     - **Zero Dependencies:** Custom error boundary using React's built-in APIs
-*   **TODAY Dashboard**: The primary entry point (`/`) providing a high-level narrative of the day's events, including AI consensus, news ingestion, and trade executions.
-    *   **Horizon Watch**:
+*   **TODAY Dashboard**: The primary entry point (`/`) providing a comprehensive, real-time view of AI trading activity with a modern editorial design.
+    *   **Market Status Hero**: Full-width gradient banner showing:
+        - Live market status (Open/Closed with EST timezone awareness)
+        - AI Sentiment Gauge (Bullish/Bearish/Neutral based on trade flow)
+        - Quick stats: Newsletters, Trades, Active Memories
+        - Animated gradient background with dot pattern
+    *   **AI Cognitive Synthesis**: Consensus insights with enhanced visualization:
+        - **Consensus Meter**: Progress bar showing agreement percentage
+        - **Agent Avatars**: Color-coded participation (🟢 OpenAI, 🟠 Claude, 🔵 Gemini, 🟣 DeepSeek)
+        - **Importance Scores**: Badge display for each insight
+        - **Ticker Tags**: Related assets as clickable pills
+    *   **Daily Intelligence Briefing**: Newsletter summaries in 2-column grid
+    *   **Market Execution & Guardrails**: Interactive trade feed with:
+        - Activity stats (Total, Buys, Sells, Rejected)
+        - Agent attribution with confidence scores
+        - Click-to-expand for full LLM reasoning
+        - Detail cards showing quantity, price, total value
+    *   **Horizon Watch**: Timeline of future catalysts with:
+        - **Live Countdown**: Days/Hours/Minutes until each event
+        - **Importance Coding**: Color-coded (Critical/High/Medium/Low)
+        - **Scenario Analysis**: Expandable trading plans
+        - **Smart Filtering**: Auto-hides past events
+        - **Accurate Counter**: Shows only visible (non-passed) events
+    *   **Horizon Watch** (Backend):
         - **Multi-Source Date Extraction**: The engine uses a multi-layered approach for date integrity. It first attempts to use LLM-extracted dates. If missing, the **`cleanup_catalysts.py`** script and the **frontend display layer** both use robust regex extraction to pull `YYYY-MM-DD` dates directly from the event title or content.
         - **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
         - **Tentative Notes & Time**: A `future_date_note` or `event_time` (e.g., "10:00 AM", "tentative") is extracted and stored, providing better context for Horizon Watch.
         - **Strict Separation & Calibration**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`. The cleanup script and ingestion pipeline automatically recalibrate these flags, ensuring that past events (Date < Today) or "Ongoing Trends" (e.g., Rotations, Investments) are moved to the general memory timeline and hidden from the future watcher. 
         - **Strict Catalyst Filter**: To qualify as a **Future Catalyst**, an event must be strictly PENDING and SCHEDULED. Vague timeframes like "later in 2026" or broad thematic shifts are excluded from this view.
         - **Multi-Outcome Scenarios**: Every Horizon Watch event is required to have a structured **Scenario Analysis** containing at least two possible outcomes and a dedicated **Trading Plan** for each.
-*   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. Clicking an item in the "Market Execution & Guardrails" section reveals the full LLM thought process and reasoning in an interactive drawer. For closed positions, the audit trail now displays the **Realized P&L** (USD and %) directly in the trades table.
+*   **Audit Trail:** Users can explore the AI's logic on any execution or rejection directly from the **TODAY** dashboard. 
+    - Click-to-expand cards reveal full LLM thought process and reasoning
+    - Agent attribution with confidence scores displayed as badges
+    - Detail cards show quantity, price, total value, and confidence
+    - Color-coded: Green (BUY), Red (SELL), Amber (REJECTED)
+    - For closed positions, the audit trail displays **Realized P&L** (USD and %) in the trades table
 *   **Agent Portfolios:** Dedicated [Portfolios UI](./web/portfolios-ui.md) for tracking AI agent performance and holdings.
     *   **Active vs Retired Classification:** Portfolios are automatically classified based on their `owner_id` matching current models in `packages/config/models.json`.
     *   **Retired Portfolios:** Outdated model portfolios (e.g., `gemini-3-flash-preview`, `mimo-v2-pro`) are moved to a "Retired Agents" section with visual distinction (grayed styling, reduced opacity).

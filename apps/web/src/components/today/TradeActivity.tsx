@@ -60,14 +60,14 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
 
     return (
         <section className="space-y-8 animate-slide-up">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
-                    <span className="w-3 h-10 bg-gradient-to-b from-neon-green-500 to-emerald-600 rounded-full" />
+                    <span className="w-3 h-10 bg-gradient-to-b from-neon-green-500 to-emerald-600 rounded-full shadow-lg" />
                     <span className="text-gradient text-gradient-success">Market Execution & Guardrails</span>
                 </h2>
 
                 {/* Activity Stats */}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <StatPill label="Total" value={totalTrades} color="bg-zinc-500" />
                     <StatPill label="Buys" value={buyTrades} color="bg-neon-green-500" />
                     <StatPill label="Sells" value={sellTrades} color="bg-alert-red-500" />
@@ -89,8 +89,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                             onClick={() => setExpandedIdx(isExpanded ? null : idx)}
                             className={`group flex flex-col p-6 border rounded-3xl bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 card-lift animate-slide-up ${
                                 isRejection
-                                    ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-500/50'
-                                    : 'border-zinc-200 dark:border-zinc-800 hover:border-neon-green-500/50'
+                                    ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
+                                    : 'border-zinc-200 dark:border-zinc-800 hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
                             } ${isExpanded ? (isRejection ? 'ring-2 ring-rose-500/20 shadow-lg' : 'ring-2 ring-neon-green-500/20 shadow-lg') : ''
                             }`}
                             style={{ animationDelay: `${idx * 50}ms` }}
@@ -98,7 +98,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                             {/* Main Row */}
                             <div className="flex items-center gap-4">
                                 {/* Signal Badge */}
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm transition-transform group-hover:scale-110 ${
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 group-hover:scale-110 shadow-lg ${
                                     isTrade
                                         ? item.signal === 'BUY'
                                             ? 'bg-gradient-to-br from-neon-green-400 to-emerald-500 text-white glow-success'
@@ -111,25 +111,25 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-center mb-1">
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             <span className="font-black text-zinc-900 dark:text-white text-2xl uppercase tracking-tight text-display">
                                                 {item.ticker}
                                             </span>
                                             {isTrade && (
                                                 <>
-                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
                                                         <span className="text-lg">{agentInfo.emoji}</span>
                                                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
                                                             {agentInfo.name}
                                                         </span>
                                                     </div>
                                                     {item.confidence && (
-                                                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
                                                             item.confidence > 0.7
-                                                                ? 'bg-neon-green-100 dark:bg-neon-green-900/30 text-neon-green-600 dark:text-neon-green-400'
+                                                                ? 'bg-neon-green-100 dark:bg-neon-green-900/30 text-neon-green-600 dark:text-neon-green-400 border-neon-green-200 dark:border-neon-green-800'
                                                                 : item.confidence > 0.4
-                                                                ? 'bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-600 dark:text-cyber-yellow-400'
-                                                                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                                                                ? 'bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-600 dark:text-cyber-yellow-400 border-cyber-yellow-200 dark:border-cyber-yellow-800'
+                                                                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
                                                         }`}>
                                                             {(item.confidence * 100).toFixed(0)}% conf
                                                         </span>
@@ -141,7 +141,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                     <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/30 text-rose-500 text-[9px] font-bold rounded-lg uppercase tracking-wider border border-rose-200 dark:border-rose-900/50">
                                                         Rejected
                                                     </span>
-                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
                                                         <span className="text-lg">{agentInfo.emoji}</span>
                                                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
                                                             {agentInfo.name}
@@ -151,20 +151,20 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest">
+                                            <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest tabular-nums">
                                                 {new Date(item.timestamp).toLocaleTimeString([], {
                                                     hour: '2-digit',
                                                     minute: '2-digit'
                                                 })}
                                             </span>
                                             <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300 group-hover:text-zinc-400 transition-colors">
                                                     <path d="m6 9 6 6 6-6" />
                                                 </svg>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         <p className={`text-sm font-medium ${
                                             isRejection ? 'text-rose-600/80 dark:text-rose-400/80' : 'text-zinc-500 dark:text-zinc-400'
                                         }`}>
@@ -188,7 +188,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                     {isRejection && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
+                                                <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-lg" />
                                                 <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
                                                     Guardrail Rejection Detail
                                                 </span>
@@ -204,7 +204,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                     {/* Thought Process */}
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 bg-electric-blue-500 rounded-full" />
+                                            <div className="w-1.5 h-1.5 bg-electric-blue-500 rounded-full shadow-lg" />
                                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                                                 Thought Process & Reasoning
                                             </span>
@@ -255,22 +255,22 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
 
 function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
     return (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full">
-            <div className={`w-2 h-2 rounded-full ${color}`} />
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-sm hover:shadow-md transition-all duration-300">
+            <div className={`w-2 h-2 rounded-full ${color} shadow-lg`} />
             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{label}</span>
-            <span className="text-sm font-black text-zinc-900 dark:text-white">{value}</span>
+            <span className="text-sm font-black text-zinc-900 dark:text-white tabular-nums">{value}</span>
         </div>
     )
 }
 
 function DetailCard({ label, value, icon }: { label: string; value: string; icon: string }) {
     return (
-        <div className="p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900">
+        <div className="p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-900 hover:border-electric-blue-300 dark:hover:border-electric-blue-700 transition-colors duration-300">
             <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-lg">{icon}</span>
                 <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">{label}</span>
             </div>
-            <div className="text-lg font-black text-zinc-900 dark:text-white text-display">{value}</div>
+            <div className="text-lg font-black text-zinc-900 dark:text-white text-display tabular-nums">{value}</div>
         </div>
     )
 }

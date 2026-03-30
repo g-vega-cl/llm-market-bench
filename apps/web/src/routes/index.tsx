@@ -63,35 +63,43 @@ function EmptyState({ hasFutureEvents, futureEvents }: { hasFutureEvents: boolea
         { emoji: '📊', title: 'The algorithms are sharpening their models.', subtitle: 'Quiet before the storm.' },
         { emoji: '🧠', title: 'Neural networks are dreaming of electric sheep.', subtitle: 'And alpha signals.' },
         { emoji: '⚡', title: 'Charging the neural nets.', subtitle: 'Back at 09:35 ET with market-moving insights.' },
+        { emoji: '🔮', title: 'Crystal ball is warming up.', subtitle: 'Predictions loading...' },
+        { emoji: '💤', title: 'Agents are in power-saving mode.', subtitle: 'Wake up call at 09:35 ET.' },
     ]
 
     const randomJoke = jokes[Math.floor(Math.random() * jokes.length)]
 
     return (
         <div className="animate-scale-in">
-            <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="flex flex-col items-center justify-center py-16 md:py-24 text-center">
                 <div className="relative mb-8">
-                    <div className="w-32 h-32 bg-gradient-to-br from-electric-blue-100 to-deep-purple-100 dark:from-electric-blue-950/30 dark:to-deep-purple-950/30 rounded-full flex items-center justify-center glow-electric">
-                        <span className="text-6xl animate-float">{randomJoke.emoji}</span>
+                    <div className="w-40 h-40 md:w-48 md:h-48 bg-gradient-to-br from-electric-blue-100 to-deep-purple-100 dark:from-electric-blue-950/30 dark:to-deep-purple-950/30 rounded-full flex items-center justify-center glow-electric shadow-2xl">
+                        <span className="text-7xl md:text-8xl animate-float">{randomJoke.emoji}</span>
                     </div>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-neon-green-500 rounded-full live-dot" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-neon-green-500 rounded-full live-dot shadow-lg shadow-neon-green-500/50" />
+                    {/* Decorative rings */}
+                    <div className="absolute inset-0 rounded-full border-2 border-electric-blue-200 dark:border-electric-blue-800 animate-ping opacity-20" style={{ animationDuration: '2s' }} />
+                    <div className="absolute inset-0 rounded-full border-2 border-deep-purple-200 dark:border-deep-purple-800 animate-ping opacity-20" style={{ animationDuration: '3s', animationDelay: '0.5s' }} />
                 </div>
-                <h2 className="text-3xl font-black text-zinc-900 dark:text-white mb-3 text-display">
+                <h2 className="text-2xl md:text-4xl font-black text-zinc-900 dark:text-white mb-3 text-display">
                     {randomJoke.title}
                 </h2>
-                <p className="text-zinc-500 dark:text-zinc-400 max-w-md mb-8 text-lg">
+                <p className="text-zinc-500 dark:text-zinc-400 max-w-md mb-8 text-base md:text-lg">
                     {randomJoke.subtitle}
                 </p>
                 <div className="flex gap-4 flex-wrap justify-center">
                     <a
                         href="/memories"
-                        className="px-6 py-3 bg-electric-blue-600 hover:bg-electric-blue-700 text-white font-bold rounded-xl transition-all card-lift"
+                        className="group px-6 py-3 bg-gradient-to-r from-electric-blue-600 to-deep-purple-600 hover:from-electric-blue-700 hover:to-deep-purple-700 text-white font-bold rounded-xl transition-all card-lift shadow-lg hover:shadow-xl flex items-center gap-2"
                     >
-                        View Historical Performance
+                        <span>View Historical Performance</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
                     </a>
                     <a
                         href="/how-it-works"
-                        className="px-6 py-3 bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 hover:border-electric-blue-500 text-zinc-900 dark:text-white font-bold rounded-xl transition-all card-lift"
+                        className="px-6 py-3 bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 hover:border-electric-blue-500 dark:hover:border-electric-blue-500 text-zinc-900 dark:text-white font-bold rounded-xl transition-all card-lift shadow-sm hover:shadow-md"
                     >
                         How It Works
                     </a>

@@ -36,24 +36,24 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
 
     return (
         <section className="space-y-8 animate-slide-up">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
-                    <span className="w-3 h-10 bg-gradient-to-b from-deep-purple-500 to-electric-blue-500 rounded-full" />
+                    <span className="w-3 h-10 bg-gradient-to-b from-deep-purple-500 to-electric-blue-500 rounded-full shadow-lg" />
                     <span className="text-gradient text-gradient-electric">AI Cognitive Synthesis</span>
                 </h2>
 
                 {/* Consensus Meter */}
                 {consensus.length > 0 && (
-                    <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                    <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-md">
                         <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Consensus</span>
                         <div className="flex items-center gap-2">
-                            <div className="w-32 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="w-32 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
                                 <div
-                                    className="h-full gradient-ai transition-all duration-1000"
+                                    className="h-full gradient-ai transition-all duration-1000 shadow-lg"
                                     style={{ width: `${consensusStrength}%` }}
                                 />
                             </div>
-                            <span className="text-sm font-black text-deep-purple-500">{Math.round(consensusStrength)}%</span>
+                            <span className="text-sm font-black text-deep-purple-500 tabular-nums">{Math.round(consensusStrength)}%</span>
                         </div>
                     </div>
                 )}
@@ -66,35 +66,38 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     return (
                         <div
                             key={m.id}
-                            className="group relative p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-deep-purple-50/50 via-electric-blue-50/30 to-transparent dark:from-deep-purple-950/20 dark:via-electric-blue-950/10 border-l-4 border-l-deep-purple-500 shadow-sm hover:shadow-lg transition-all duration-300 card-lift animate-slide-up"
+                            className="group relative p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-deep-purple-50/50 via-electric-blue-50/30 to-transparent dark:from-deep-purple-950/20 dark:via-electric-blue-950/10 border-l-4 border-l-deep-purple-500 shadow-sm hover:shadow-xl hover:shadow-deep-purple-500/10 transition-all duration-300 card-lift animate-slide-up"
                             style={{ animationDelay: `${idx * 100}ms` }}
                         >
+                            {/* Glow Effect on Hover */}
+                            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-deep-purple-500/0 via-transparent to-electric-blue-500/0 group-hover:from-deep-purple-500/5 group-hover:to-electric-blue-500/5 transition-all duration-500 pointer-events-none" />
+
                             {/* Agent Participation */}
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="px-3 py-1 bg-deep-purple-100 dark:bg-deep-purple-900/30 text-deep-purple-600 dark:text-deep-purple-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-deep-purple-200 dark:border-deep-purple-800">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="px-3 py-1 bg-deep-purple-100 dark:bg-deep-purple-900/30 text-deep-purple-600 dark:text-deep-purple-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-deep-purple-200 dark:border-deep-purple-800 shadow-sm">
                                         Market Consensus
                                     </span>
                                     {agents.length > 0 && (
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1 flex-wrap">
                                             {agents.slice(0, 4).map((agent, i) => (
                                                 <div
                                                     key={i}
-                                                    className={`w-6 h-6 rounded-full ${agent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900`}
+                                                    className={`w-7 h-7 rounded-full ${agent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900 shadow-md hover:scale-110 transition-transform cursor-help`}
                                                     title={agent.name}
                                                 >
                                                     {agent.emoji}
                                                 </div>
                                             ))}
                                             {agents.length > 4 && (
-                                                <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[9px] font-bold text-zinc-600 dark:text-zinc-300 border-2 border-white dark:border-zinc-900">
+                                                <div className="w-7 h-7 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[9px] font-bold text-zinc-600 dark:text-zinc-300 border-2 border-white dark:border-zinc-900 shadow-md">
                                                     +{agents.length - 4}
                                                 </div>
                                             )}
                                         </div>
                                     )}
                                 </div>
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                     {new Date(m.created_at).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
@@ -105,25 +108,27 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             </div>
 
                             {/* Content */}
-                            <p className="text-lg text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-4">
-                                "{m.content}"
+                            <p className="text-lg text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-4 relative">
+                                <span className="absolute -top-3 -left-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">"</span>
+                                {m.content}
+                                <span className="absolute -bottom-6 -right-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">"</span>
                             </p>
 
                             {/* Metadata */}
                             {m.metadata?.importance_score && (
-                                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                                <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-deep-purple-500 rounded-full" />
+                                        <div className="w-2 h-2 bg-deep-purple-500 rounded-full shadow-lg" />
                                         <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                                             Importance: {m.metadata.importance_score}/10
                                         </span>
                                     </div>
-                                    {m.metadata?.tickers && (
-                                        <div className="flex gap-2">
+                                    {m.metadata?.tickers && m.metadata.tickers.length > 0 && (
+                                        <div className="flex gap-2 flex-wrap">
                                             {m.metadata.tickers.slice(0, 5).map((ticker: string, i: number) => (
                                                 <span
                                                     key={i}
-                                                    className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded uppercase"
+                                                    className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded-md uppercase tracking-wide border border-zinc-200 dark:border-zinc-700 hover:border-deep-purple-400 transition-colors"
                                                 >
                                                     {ticker}
                                                 </span>
@@ -140,14 +145,19 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 {incentives.map((m, idx) => (
                     <div
                         key={m.id}
-                        className="group p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 shadow-sm hover:shadow-lg transition-all duration-300 card-lift animate-slide-up"
+                        className="group p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 card-lift animate-slide-up"
                         style={{ animationDelay: `${(consensus.length + idx) * 100}ms` }}
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-200 dark:border-emerald-800">
-                                Government Incentive
-                            </span>
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-200 dark:border-emerald-800 shadow-sm">
+                                    Government Incentive
+                                </span>
+                                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                                    <span>💰</span> Policy Alert
+                                </span>
+                            </div>
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                 {new Date(m.created_at).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric'
@@ -161,7 +171,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
 
                         {m.metadata?.budget && (
                             <div className="mt-4 flex items-center gap-2">
-                                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                                <span className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider rounded-lg border border-emerald-200 dark:border-emerald-800">
                                     Budget: {m.metadata.budget}
                                 </span>
                             </div>
@@ -173,19 +183,19 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 {lessons.map((m, idx) => (
                     <div
                         key={m.id}
-                        className="group p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 shadow-sm hover:shadow-lg transition-all duration-300 card-lift animate-slide-up"
+                        className="group p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 card-lift animate-slide-up"
                         style={{ animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms` }}
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-amber-200 dark:border-amber-800">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-amber-200 dark:border-amber-800 shadow-sm">
                                     Lesson Learned
                                 </span>
                                 <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
                                     <span>📝</span> Post-Analysis
                                 </span>
                             </div>
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                 {new Date(m.created_at).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric'
@@ -193,14 +203,14 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             </span>
                         </div>
 
-                        <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic">
+                        <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
                             "{m.content}"
                         </p>
 
                         {m.metadata?.related_trade && (
                             <div className="mt-4 flex items-center gap-2">
                                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    Related: {m.metadata.related_trade}
+                                    Related Trade: {m.metadata.related_trade}
                                 </span>
                             </div>
                         )}

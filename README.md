@@ -168,7 +168,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
 - [ ] **PnL Calculation Accuracy** - Verify and improve PnL calculations with proper average price tracking for buy/sell transactions
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
-- [ ] **Portfolio Price Fetch** - Fetch new prices for all portfolio holdings at pipeline start
 - [ ] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
 - [ ] **Limit Orders System** - Implement limit order functionality for precise trade execution
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation

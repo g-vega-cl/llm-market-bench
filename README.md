@@ -156,6 +156,32 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 *   **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
 *   **Semantic Redundancy**: Overtrading prevention via pgvector deduplication
 
+## 🗺️ Roadmap
+
+A living document of features and improvements in progress or planned for the platform.
+
+### 🎯 Active Development
+
+- [ ] **LLM Screener Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
+- [ ] **Global Macro Tracker** - Consistently track bond yields globally, market performance, interest rates, DXY (Dollar Index), and money flows
+- [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
+- [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
+- [ ] **PnL Calculation Accuracy** - Verify and improve PnL calculations with proper average price tracking for buy/sell transactions
+- [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
+- [ ] **Portfolio Price Fetch** - Fetch new prices for all portfolio holdings at pipeline start
+- [ ] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
+- [ ] **Limit Orders System** - Implement limit order functionality for precise trade execution
+- [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
+- [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
+- [ ] **Investable Assets Memory Review** - Align `/memories` investable assets section with context above; currently appears as random FMP queries
+
+### 🔄 Under Consideration
+
+- **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
+
+
+---
+
 ## 📄 Documentation
 
 ### Core Documentation

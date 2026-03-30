@@ -24,33 +24,44 @@ function getAgentInfo(ownerId: string) {
     return { name: ownerId, color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
 }
 
+type FilterType = 'ALL' | 'BUY' | 'SELL' | 'REJECTED'
+
 export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     const [expandedIdx, setExpandedIdx] = React.useState<number | null>(null)
+    const [filter, setFilter] = React.useState<FilterType>('ALL')
 
     // Include rejections from decisions
     const rejections = decisions.filter(d => d.status && d.status.startsWith('REJECTED'))
 
     // Normalize and sort all activity
-    const allActivity = [
-        ...trades.map(t => {
-            const decision = decisions.find(d => d.id === t.decision_id || d.trade_id === t.id)
-            return {
-                ...t,
-                type: 'TRADE',
-                timestamp: t.executed_at,
-                reasoning: decision?.reasoning || 'No reasoning found for this execution.',
-                model_name: decision?.model_name || t.portfolios?.owner_id,
-                confidence: decision?.confidence_score,
-            }
-        }),
-        ...rejections.map(r => ({
-            ...r,
-            type: 'REJECTION',
-            timestamp: r.created_at,
-        }))
-    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    const allActivity = React.useMemo(() => {
+        const activity = [
+            ...trades.map(t => {
+                const decision = decisions.find(d => d.id === t.decision_id || d.trade_id === t.id)
+                return {
+                    ...t,
+                    type: 'TRADE',
+                    timestamp: t.executed_at,
+                    reasoning: decision?.reasoning || 'No reasoning found for this execution.',
+                    model_name: decision?.model_name || t.portfolios?.owner_id,
+                    confidence: decision?.confidence_score,
+                }
+            }),
+            ...rejections.map(r => ({
+                ...r,
+                type: 'REJECTION',
+                timestamp: r.created_at,
+            }))
+        ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    if (!allActivity.length) return null
+        // Apply filter
+        if (filter === 'ALL') return activity
+        if (filter === 'BUY') return activity.filter(item => item.type === 'TRADE' && item.signal === 'BUY')
+        if (filter === 'SELL') return activity.filter(item => item.type === 'TRADE' && item.signal === 'SELL')
+        if (filter === 'REJECTED') return activity.filter(item => item.type === 'REJECTION')
+        
+        return activity
+    }, [trades, decisions, rejections, filter])
 
     // Calculate stats
     const totalTrades = trades.length
@@ -68,15 +79,40 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
 
                 {/* Activity Stats */}
                 <div className="flex flex-wrap items-center gap-3">
-                    <StatPill label="Total" value={totalTrades} color="bg-zinc-500" />
-                    <StatPill label="Buys" value={buyTrades} color="bg-neon-green-500" />
-                    <StatPill label="Sells" value={sellTrades} color="bg-alert-red-500" />
-                    <StatPill label="Rejected" value={rejectionCount} color="bg-amber-500" />
+                    <StatPill 
+                        label="Total" 
+                        value={totalTrades} 
+                        color="bg-zinc-500" 
+                        isActive={filter === 'ALL'}
+                        onClick={() => setFilter('ALL')}
+                    />
+                    <StatPill 
+                        label="Buys" 
+                        value={buyTrades} 
+                        color="bg-neon-green-500" 
+                        isActive={filter === 'BUY'}
+                        onClick={() => setFilter('BUY')}
+                    />
+                    <StatPill 
+                        label="Sells" 
+                        value={sellTrades} 
+                        color="bg-alert-red-500" 
+                        isActive={filter === 'SELL'}
+                        onClick={() => setFilter('SELL')}
+                    />
+                    <StatPill 
+                        label="Rejected" 
+                        value={rejectionCount} 
+                        color="bg-amber-500" 
+                        isActive={filter === 'REJECTED'}
+                        onClick={() => setFilter('REJECTED')}
+                    />
                 </div>
             </div>
 
-            <div className="space-y-4">
-                {allActivity.map((item, idx) => {
+            {allActivity.length > 0 ? (
+                <div className="space-y-4">
+                    {allActivity.map((item, idx) => {
                     const isTrade = item.type === 'TRADE'
                     const isRejection = item.type === 'REJECTION'
                     const isExpanded = expandedIdx === idx
@@ -87,13 +123,12 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                         <div
                             key={idx}
                             onClick={() => setExpandedIdx(isExpanded ? null : idx)}
-                            className={`group flex flex-col p-6 border rounded-3xl bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 card-lift animate-slide-up ${
+                            className={`group flex flex-col p-6 border rounded-3xl bg-white dark:bg-zinc-900 shadow-sm cursor-pointer transition-all duration-300 card-lift ${
                                 isRejection
                                     ? 'border-rose-200 dark:border-rose-900/50 hover:border-rose-500/50 hover:shadow-rose-500/10'
                                     : 'border-zinc-200 dark:border-zinc-800 hover:border-neon-green-500/50 hover:shadow-neon-green-500/10'
                             } ${isExpanded ? (isRejection ? 'ring-2 ring-rose-500/20 shadow-lg' : 'ring-2 ring-neon-green-500/20 shadow-lg') : ''
                             }`}
-                            style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             {/* Main Row */}
                             <div className="flex items-center gap-4">
@@ -249,17 +284,51 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                     )
                 })}
             </div>
+            ) : (
+                <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                    <p className="text-zinc-400 dark:text-zinc-500 font-medium">
+                        No {filter === 'ALL' ? 'activity' : filter.toLowerCase()} found
+                    </p>
+                </div>
+            )}
         </section>
     )
 }
 
-function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
+function StatPill({ 
+    label, 
+    value, 
+    color,
+    isActive,
+    onClick 
+}: { 
+    label: string
+    value: number
+    color: string
+    isActive?: boolean
+    onClick?: () => void
+}) {
     return (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-sm hover:shadow-md transition-all duration-300">
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border rounded-full shadow-sm transition-all duration-300 ${
+                isActive
+                    ? 'border-zinc-900 dark:border-white shadow-md scale-105'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:shadow-md hover:scale-105'
+            } cursor-pointer`}
+        >
             <div className={`w-2 h-2 rounded-full ${color} shadow-lg`} />
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{label}</span>
-            <span className="text-sm font-black text-zinc-900 dark:text-white tabular-nums">{value}</span>
-        </div>
+            <span className={`text-[10px] font-black uppercase tracking-wider ${
+                isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'
+            }`}>
+                {label}
+            </span>
+            <span className={`text-sm font-black tabular-nums ${
+                isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'
+            }`}>
+                {value}
+            </span>
+        </button>
     )
 }
 

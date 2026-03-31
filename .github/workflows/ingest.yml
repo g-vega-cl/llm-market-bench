@@ -1,4 +1,4 @@
-name: Daily Ingestion & Consensus
+name: Ingestion & Consensus
 
 on:
   schedule:

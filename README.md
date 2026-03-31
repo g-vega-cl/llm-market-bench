@@ -172,6 +172,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Investable Assets Memory Review** - Align `/memories` investable assets section with context above; currently appears as random FMP queries
+- [ ] **/portfolio table sorting** - Make sure you can sort your current portfolio table by Invested, % of Portfolio, P/L (USD), P/L (%)
+- [ ] **/portfolio chart overlay** - Add an overlay to show date and equity of the portfolio in the portfolio equity curve.
 
 ### 🔄 Under Consideration
 

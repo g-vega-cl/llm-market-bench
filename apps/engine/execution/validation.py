@@ -122,25 +122,32 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
     )
 
 
-async def validate_semantic_overlap(ticker: str, reasoning: str, threshold: float = 0.90) -> Optional[str]:
+async def validate_semantic_overlap(ticker: str, reasoning: str, model_name: Optional[str] = None, threshold: float = 0.90) -> Optional[str]:
     """Checks if this trade is redundant based on recent similar reasoning.
-    
+
+    Args:
+        ticker: The ticker symbol to check.
+        reasoning: The reasoning text to compare.
+        model_name: The agent/model name to filter by (ensures overlap only applies within same agent).
+        threshold: Similarity threshold (0.0-1.0).
+
     Returns:
         The reason/ID of the overlapping trade if found, else None.
     """
     if not reasoning:
         return None
-        
+
     from memory.store import find_similar_decision
-    
+
     similar = find_similar_decision(
         ticker=ticker,
         content=reasoning,
         threshold=threshold,
-        hours=24 # Look back 24 hours
+        hours=24, # Look back 24 hours
+        model_name=model_name
     )
-    
+
     if similar:
         return f"Semantic overlap with recent trade (ID: {similar['id']}). Reason: {similar['reasoning'][:100]}..."
-        
+
     return None

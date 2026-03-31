@@ -111,7 +111,8 @@ async def _stage_decision_processing(
                 continue
 
             # --- Semantic Overlap ---
-            overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning)
+            # Only check for overlap within the same agent's portfolio
+            overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
             if overlap_reason:
                 logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
                 save_decision(sb_client, d, status=ValidationStatus.REJECTED_REDUNDANCY.value, metadata={"reason": overlap_reason})

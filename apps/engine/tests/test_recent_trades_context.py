@@ -65,20 +65,52 @@ async def test_portfolio_summary_time_ago():
 async def test_semantic_overlap_detection():
     """Test that validate_semantic_overlap detects similar reasonings."""
     from execution.validation import validate_semantic_overlap
-    
+
     # Mock find_similar_decision to simulate a hit
     mock_similar = {
         "id": "existing-uuid",
         "reasoning": "AI Demand is surging for chips.",
         "ticker": "NVDA"
     }
-    
+
     with patch("memory.store.find_similar_decision", return_value=mock_similar):
-        overlap = await validate_semantic_overlap("NVDA", "AI structural growth is driving chip demand.")
+        overlap = await validate_semantic_overlap("NVDA", "AI structural growth is driving chip demand.", model_name="openai")
         assert overlap is not None
         assert "existing-uuid" in overlap
-        
+
     # Mock find_similar_decision to simulate a miss
     with patch("memory.store.find_similar_decision", return_value=None):
-        overlap = await validate_semantic_overlap("AAPL", "New iPhone launch seems promising.")
+        overlap = await validate_semantic_overlap("AAPL", "New iPhone launch seems promising.", model_name="openai")
+        assert overlap is None
+
+@pytest.mark.asyncio
+async def test_semantic_overlap_agent_isolation():
+    """Test that semantic overlap only applies within the same agent."""
+    from execution.validation import validate_semantic_overlap
+
+    # Simulate a trade from 'claude' on NKE
+    mock_claude_trade = {
+        "id": "claude-nke-uuid",
+        "reasoning": "Nike earnings TOMORROW. Stock at 8-year lows.",
+        "ticker": "NKE",
+        "model_name": "claude"
+    }
+
+    # Claude should see overlap with its own trade
+    with patch("memory.store.find_similar_decision", return_value=mock_claude_trade) as mock_find:
+        overlap = await validate_semantic_overlap("NKE", "Nike earnings coming, stock looks cheap.", model_name="claude")
+        # Verify model_name filter was passed
+        mock_find.assert_called_once()
+        call_kwargs = mock_find.call_args[1]
+        assert call_kwargs.get("model_name") == "claude"
+        assert overlap is not None
+        assert "claude-nke-uuid" in overlap
+
+    # Haiku should NOT see overlap with Claude's trade (different agent)
+    with patch("memory.store.find_similar_decision", return_value=None) as mock_find:
+        overlap = await validate_semantic_overlap("NKE", "Nike earnings tomorrow, good entry point.", model_name="haiku")
+        # Verify model_name filter was passed
+        mock_find.assert_called_once()
+        call_kwargs = mock_find.call_args[1]
+        assert call_kwargs.get("model_name") == "haiku"
         assert overlap is None

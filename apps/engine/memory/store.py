@@ -150,9 +150,18 @@ def find_similar_decision(
     content: str,
     threshold: float = 0.90,
     hours: int = 24,
-    embedding: list[float] = None
+    embedding: list[float] = None,
+    model_name: Optional[str] = None
 ) -> Optional[dict]:
     """Checks if a semantically similar trade decision exists for this ticker within the last N hours.
+
+    Args:
+        ticker: The ticker symbol to check.
+        content: The reasoning text to compare.
+        threshold: Similarity threshold (0.0-1.0).
+        hours: Lookback window in hours.
+        embedding: Pre-computed embedding (optional).
+        model_name: Filter by agent/model name to ensure semantic overlap only applies within the same agent.
 
     Returns:
         The similar decision record if found, None otherwise.
@@ -163,7 +172,8 @@ def find_similar_decision(
         threshold=threshold,
         hours=hours,
         embedding=embedding,
-        ticker_filter=ticker
+        ticker_filter=ticker,
+        model_name_filter=model_name
     )
 
 def find_similar_vector(
@@ -173,28 +183,31 @@ def find_similar_vector(
     hours: int = 24,
     embedding: list[float] = None,
     status_filter: Optional[str] = None,
-    ticker_filter: Optional[str] = None
+    ticker_filter: Optional[str] = None,
+    model_name_filter: Optional[str] = None
 ) -> Optional[Any]:
     """Generic semantic similarity check across tables with embeddings."""
     try:
         if embedding is None:
             embedding = get_embedding(content)
-        
+
         if not embedding:
             return None
 
         client = get_supabase_client()
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-        
+
         query = client.table(table_name).select("*").filter(
             "created_at", "gte", cutoff
         )
-        
+
         if status_filter:
             query = query.filter("status", "eq", status_filter)
         if ticker_filter:
             query = query.filter("ticker", "eq", ticker_filter)
-            
+        if model_name_filter:
+            query = query.filter("model_name", "eq", model_name_filter)
+
         recent_res = query.execute()
         
         if not recent_res.data:

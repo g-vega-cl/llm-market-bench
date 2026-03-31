@@ -55,9 +55,10 @@ LLMs, while powerful, can occasionally:
 - **Action**: Backfills the `price` field in the `DecisionObject` before it reaches the final validation phase. This prevents "lazy" models from being rejected for missing data if their ticker intent was clear.
 
 ### 9. Guardrail I: Semantic Redundancy (Overtrading Prevention)
-- **Logic**: Uses vector embeddings to compare the reasoning of a new trade signal against the reasonings of recently executed trades (last 24 hours) for the same ticker.
+- **Logic**: Uses vector embeddings to compare the reasoning of a new trade signal against the reasonings of recently executed trades (last 24 hours) for the same ticker **and the same agent**.
 - **Limit**: **Cosine Similarity > 0.90**.
-- **Action**: Reject the trade if it is based on the same sentiment or catalyst that the agent has already acted upon. This prevents overtrading when the ingestion loop runs frequently.
+- **Agent Isolation**: The semantic overlap check is **agent-specific**. For example, if CLAUDE recently traded NKE on earnings news, only CLAUDE will be blocked from making a similar NKE trade. Other agents (HAIKU, OpenAI, Gemini, etc.) can still trade NKE independently, as they maintain separate portfolios and decision contexts.
+- **Action**: Reject the trade if it is based on the same sentiment or catalyst that **the same agent** has already acted upon. This prevents overtrading when the ingestion loop runs frequently, while allowing different agents to act on the same market opportunities independently.
 
 ### Market Data Manager & Caching
 The engine now uses a centralized `MarketDataManager` that handles all ticker queries with a **cache-first** policy and a **multi-provider fallback chain**.

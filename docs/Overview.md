@@ -119,6 +119,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Atomic Settlement Pattern:** *Follows a **"Commit at the End"** logic where `cash_balance` and `sma` are only persisted to the `portfolios` table if both the `portfolio_positions` update and the `trades` ledger entry succeed. This prevents "Phantom Deductions" if the DB connection fails mid-operation.*
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
 *   **Rejection Logic**: Decisions that fail Validation, Reg T, **Ownership**, **Semantic Redundancy** (overtrading prevention), or **Hard Tool Enforcement** (e.g., selling without actually calling a calculation tool in the history) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`) to preserve the full "Audit Trail" of AI intent.
+    - **Agent-Specific Redundancy**: The semantic redundancy check is **agent-specific**. For example, if CLAUDE recently traded NKE on earnings news, only CLAUDE will be blocked from making a similar NKE trade. Other agents (HAIKU, OpenAI, Gemini, etc.) can still trade NKE independently, as they maintain separate portfolios and decision contexts.
 *
 *   documentation: ./engine/trade-settlement-walkthrough.md
 

@@ -114,7 +114,7 @@ async def test_run_ingest_hold_decision(mock_dependencies):
 async def test_run_ingest_buy_decision(mock_dependencies):
     """Test that a BUY decision executes a trade and passes trade_id."""
     md = mock_dependencies
-    
+
     # Setup BUY decision
     decision = DecisionObject(
         signal="BUY",
@@ -125,23 +125,29 @@ async def test_run_ingest_buy_decision(mock_dependencies):
         price=150.0
     )
     md["analyze"].return_value = ([decision], [], "Mocked context", "")
-    
+
     # Setup validation
     md["validate"].return_value = ValidationResult(
-        status=ValidationStatus.PASSED, 
+        status=ValidationStatus.PASSED,
         market_price=155.0,
         ticker="GOOGL"
     )
-    
+
     await run_ingest(force=True)
     # Verify portfolio execution
     md["portfolio"].execute_trade.assert_awaited_once()
+
+    # Verify save_decision called twice: first VALIDATED, then EXECUTED
+    assert md["save"].call_count == 2
     
-    # Verify save_decision called with trade_id
-    md["save"].assert_called_once()
-    kwargs = md["save"].call_args[1]
-    assert kwargs.get("trade_id") == "trade-uuid-123"
-    assert kwargs.get("status") == "EXECUTED"
+    # First call: VALIDATED status (to get decision_id)
+    first_call_kwargs = md["save"].call_args_list[0][1]
+    assert first_call_kwargs.get("status") == "VALIDATED"
+    
+    # Second call: EXECUTED status with trade_id
+    second_call_kwargs = md["save"].call_args_list[1][1]
+    assert second_call_kwargs.get("trade_id") == "trade-uuid-123"
+    assert second_call_kwargs.get("status") == "EXECUTED"
 
 @pytest.mark.asyncio
 async def test_run_ingest_rejected_decision(mock_dependencies):

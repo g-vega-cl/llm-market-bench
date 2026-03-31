@@ -73,9 +73,9 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
       - **Gemini**: `List[Model]` handling for multiple function calls
 12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware, **cached with 5-minute TTL** to avoid redundant API calls), symbol existence, **1.0% price banding**, and liquidity checks.
 13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
-14. **Trade Settlement**: Atomic updates to cash, positions, and ledger.
-13. **Attribution Locking:** Link final `TradeID` to the triggering decision.
-14. **Ledger Update:** Daily equity curve snapshot.
+14. **Trade Settlement**: Atomic updates to cash, positions, and ledger. **Pre-saves decision with `status="VALIDATED"` to obtain `decision_id` for trade foreign key**.
+15. **Attribution Locking:** **Two-phase commit** - links `TradeID` to decision after execution, completing the bidirectional `Decision ↔ Trade` link.
+16. **Ledger Update:** Daily equity curve snapshot.
 
 ### Phase 5: Feedback & Specialized Agents
 73. **Post-Analysis (Manager Agent):** Compare reasoning to multi-interval performance; generate lessons.
@@ -128,7 +128,11 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 **13. Attribution Locking** ✅
 *   **Tech:** Supabase Postgres
-*   *Update the `decisions` table to link the now-generated `TradeID` (from Step 12) to the `DecisionID`. We now have a machine-auditable path: **News -> Reasoning -> Decision -> Trade**.*
+*   *Uses a **two-phase commit pattern** to establish bidirectional links between decisions and trades:*
+    1.  *Pre-Trade: Save decision with `status="VALIDATED"` to obtain a `decision_id` (required foreign key for the `trades` table).*
+    2.  *Trade Execution: Insert trade record with the `decision_id`, generating a `trade_id`.*
+    3.  *Post-Trade: Update decision with `status="EXECUTED"` and the `trade_id`.*
+*   *We now have a machine-auditable path: **News -> Reasoning -> Decision ↔ Trade**.*
 *   documentation: ./engine/attribution-locking-walkthrough.md
 
 **14. Ledger & Equity Curve Update** ✅

@@ -33,15 +33,26 @@ Implementation: `apps/engine/execution/portfolio.py` -> `execute_trade()`
 ## 3. Atomic Database Updates
 To prevent "Phantom Cash Losses" (where cash is deducted but no position is recorded), we follow a strict **"Commit at the End"** sequence. If any step fails, the function returns `None` and the Agent's Portfolio remains in its previous state.
 
+### Pre-Step: Decision ID Attribution Lock
+Before trade execution, the engine saves the decision with `status="VALIDATED"` to obtain a `decision_id`. This is required because:
+- The `trades` table has a foreign key constraint referencing the `decisions` table.
+- This creates the initial link in the audit trail before execution begins.
+
+### Execution Sequence
+
 1.  **`portfolio_positions` table:**
     -   `UPSERT` the position row with new quantity/cost (Tickers are normalized to **UPPERCASE**).
     -   OR `DELETE` the row if quantity reached zero.
 2.  **`trades` table:**
     -   Insert a new record to generate a unique `TradeID`. This serves as the source of truth for the audit trail.
+    -   **The trade record includes the `decision_id` from the pre-step**, establishing the Decision → Trade link.
 3.  **`portfolios` table (The "Commit"):**
     -   **Only after** the previous two steps succeed, update the account's `cash_balance` and `sma`.
 4.  **Final Persistence:**
     -   Recalculate and save updated metrics (Total Equity, Buying Power) to the `portfolios` table for dashboard consistency.
+5.  **Post-Step: Attribution Completion**
+    -   After successful trade execution, the engine updates the decision record again with `status="EXECUTED"` and the `trade_id`.
+    -   This completes the **bidirectional attribution lock**: `Decision ↔ Trade`.
 ## 4. Quantity Calculation (Allocation %)
 - For **BUY** trades, the engine uses the `allocation_percentage` (1-100%) against available **Buying Power**.
 - **Dynamic Minimum:** If `Price * Qty < 10% of BP/Equity`, the engine attempts to "Bump" the allocation to meet the threshold if sufficient BP exists.

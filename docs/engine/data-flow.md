@@ -7,6 +7,7 @@ This document provides a detailed step-by-step walkthrough of the complete data 
 The pipeline has six main phases:
 
 1. **Ingestion**: Fetch newsletters from Gmail, identify macro catalysts from the Economic Calendar, clean them, and generate unique identifiers
+1.6 **Thematic Asset Discovery**: Map catalysts to sectors/industries, retrieve candidates, and re-rank via DeepSeek for high-conviction plays
 2. **Context Retrieval**: Embed queries and retrieve historical context from vector store
 3. **LLM Analysis**: Send enriched prompts to 4 LLM providers in parallel
 4. **Attribution & Consensus**: Save decisions with traceability and determine global market events
@@ -230,6 +231,31 @@ Twice a week (Sundays and Wednesdays), the engine fetches the global macro calen
 1. **Deduplication**: Checks `memories` for existing events (Similarity > 0.90) to avoid duplicates.
 2. **Insertion**: Saves as `CALENDAR_EVENT` memories with `target_date` for Horizon Watch.
 3. **Catalyst Marking**: Explicitly sets `is_future_catalyst = true` and `event_time` (e.g., "10:00 AM") in metadata to ensure promotion to the dashboard's Horizon Watch section.
+
+---
+
+## Phase 1.6: Thematic Asset Discovery (DiscoveryService)
+
+**File**: `apps/engine/analysis/discovery_service.py` → `discover_assets()`
+
+After an event is identified but before it is sent to the 4 parallel LLMs for deep analysis, the **Discovery Engine** identifies which assets are most likely to be impacted by the specific catalyst.
+
+### Step 1.6.1: Thematic Mapping (Gemini)
+1. **Mapping**: The engine uses `GEMINI_MODEL` to translate the event text into a set of `DiscoveryThemes` (sectors, industries, and keywords).
+2. **Market Cap**: A dynamic `market_cap_min` is generated to focus the search (e.g., "$5B+" for blue-chip catalysts or "$500M+" for niche innovation).
+
+### Step 1.6.2: Expanded Retrieval (FMP)
+1. **Screening**: The engine calls the FMP `screen_stocks` endpoint multiple times to fetch a broad candidate pool of up to **50+ assets**.
+2. **Filtering**: Initial filtering applies the `market_cap_min` to exclude irrelevant small caps.
+
+### Step 1.6.3: Thematic Re-Ranking (DeepSeek)
+1. **Scoring**: `DEEPSEEK_MODEL` performs a reasoning-heavy evaluation of the candidate pool.
+2. **Conviction**: Each asset is assigned a **Relevance Score (0-100)** and a `"How to Profit"` explanation.
+3. **Threshold**: Only assets with a score **>= 40** are passed forward to the full analysis phase.
+
+**Output**: A list of `RankedAsset` objects curated for the specific catalyst.
+
+See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for a technical deep-dive.
 
 ---
 

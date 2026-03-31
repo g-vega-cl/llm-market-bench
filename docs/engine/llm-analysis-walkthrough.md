@@ -1,6 +1,19 @@
 # Walkthrough: Step 5 - Parallel LLM Analysis
 
-The Parallel LLM Analysis engine orchestrates the evaluation of financial news using four independent LLMs (OpenAI, Claude, Gemini, and DeepSeek) to generate structured trading signals.
+The Parallel LLM Analysis engine orchestrates a multi-stage evaluation process, starting with **Thematic Asset Discovery** to identify target assets before triggering higher-reasoning LLMs for deep analysis.
+
+## Phase 0: Discovery (DiscoveryService)
+
+Before initiating parallel analysis, the system identifies the most relevant assets (stocks, ETFs) driven by the specific market event.
+
+### **Multi-Stage Discovery Architecture**
+1. **Mapping (Gemini)**: Maps market events to specific FMP sectors, industries, and keywords.
+2. **Retrieval (FMP)**: Fetches a broad candidate pool using dynamic `market_cap_min` filtering.
+3. **Re-Ranking (DeepSeek)**: Uses **Thinking Mode** to evaluate candidates against the event thesis, assigning a **Relevance Score (0-100)** and providing `"How to Profit"` reasoning.
+
+Assets with a **relevance score < 40** are filtered out, ensuring the analysis layer only evaluates high-conviction targets.
+
+See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for more details.
 
 ## 1. Technical Architecture
 

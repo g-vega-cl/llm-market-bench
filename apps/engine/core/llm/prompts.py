@@ -526,8 +526,31 @@ Event/Theme: {event_content}
 
 Your task:
 1. Identify the most relevant 'sectors' (e.g., Technology, Energy, Healthcare, Financial Services, Consumer Cyclical, Industrials, Utilities, Basic Materials, Real Estate, Communication Services).
-2. Identify specific 'industries' (e.g., Software—Infrastructure, Oil & Gas E&P, Semiconductors, Biotechnology, etc.).
+2. Identify specific 'industries' from the FMP taxonomy (e.g., 'Software—Infrastructure', 'Oil & Gas E&P', 'Semiconductors', 'Biotechnology', 'Specialty Chemicals', 'Uranium', 'Steel', etc.). Be as specific as possible.
 3. Provide 3-5 'keywords' for general company search (e.g., 'Uranium', 'AI Hardware', 'Fertilizer').
-4. Explain the 'reasoning' for why these sectors/industries/keywords are the best derivative plays for this event.
+4. Suggest a 'market_cap_min' in USD if the play is specific to a certain company size (e.g., niche/uncrowded plays might target $100M+). If it's a broad mega-cap play, use null or high values.
+5. Explain the 'reasoning' for why these sectors/industries/keywords are the best derivative plays for this event.
 
 Focus on discovering "Chains of Events" logic (e.g., if there is tension in Iran, look for 'Energy' and 'Oil & Gas' sectors)."""
+
+
+ASSET_RANKING_PROMPT = """You are a senior investment analyst. We have a specific market event and a list of candidate assets (tickers) discovered from broad searches.
+Your goal is to rank these assets by their thematic relevance to the event and provide a specific "How to Profit" reasoning for each.
+
+MARKET EVENT:
+{event_content}
+
+EVENT SUMMARY & CONSENSUS:
+{event_summary}
+
+CANDIDATE ASSETS:
+{candidate_pool}
+
+Your Task:
+1. Evaluate each candidate asset's business model against the core driver of the event.
+2. Assign a 'relevance_score' (0-100) where 100 is a "direct hit" (e.g., Nvidia for an AI GPU demand surge) and 20 is a weak thematic link.
+3. Filter out assets that are clearly irrelevant or only tangentially related.
+4. For the top assets, write a 1-sentence 'reason' that explains the specific mechanism of profit (e.g., "As a primary producer of X, company Y will benefit from the supply shortage described in the event").
+5. Return the results as a list of `RankedAsset` objects in the `ranked_assets` field.
+
+Prioritize "Chains of Events" logic and identify the "Bottleneck" or "Primary Beneficiary" in the value chain."""

@@ -152,7 +152,7 @@ class FMPProvider(FinancialProvider):
             logger.error(f"Error searching tickers on FMP for '{query}': {e}")
             return []
 
-    async def screen_stocks(self, sector: Optional[str] = None, industry: Optional[str] = None, limit: int = 10) -> list[dict]:
+    async def screen_stocks(self, sector: Optional[str] = None, industry: Optional[str] = None, market_cap_min: Optional[float] = None, limit: int = 10) -> list[dict]:
         """Screen stocks by sector and industry using FMP."""
         if not self.api_key:
             return []
@@ -163,8 +163,8 @@ class FMPProvider(FinancialProvider):
         if industry:
             params["industry"] = industry
         
-        # Ensure we get reasonably liquid/large companies by default
-        params["marketCapMoreThan"] = 1000000000 # 1B+
+        # Default to 1B+ if not specified to ensure baseline liquidity
+        params["marketCapMoreThan"] = market_cap_min if market_cap_min is not None else 1000000000
 
         try:
             async with httpx.AsyncClient() as client:

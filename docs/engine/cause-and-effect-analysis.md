@@ -58,6 +58,18 @@ Instead of a hardcoded mapping, the engine dynamically identifies relevant stock
 The engine pulls historical price data for all discovered tickers from the `MarketDataManager` to provide the LLM with concrete evidence of the event's impact.
 - **Benchmarks**: `SPY` and `QQQ` are included as a secondary baseline for comparison if room exists in the top 5 tickers.
 
+### **7. Discovery Pipeline Quality**
+
+The engine transitions from generic sector screening to **Multi-Stage Thematic Discovery**:
+1. **Mapping**: Translates catalysts to sectors/industries via Gemini.
+2. **Retrieval**: Uses FMP `screen_stocks` with dynamic `market_cap_min`.
+3. **Re-Ranking**: Uses DeepSeek Reasoner to score candidates (0-100) based on thematic relevance.
+
+You can use the test suite to verify the re-ranking and discovery logic:
+```bash
+pytest apps/engine/tests/test_discovery_quality.py
+```
+
 ## How to Run
 The Cause & Effect analysis is part of the main entry point:
 ```bash

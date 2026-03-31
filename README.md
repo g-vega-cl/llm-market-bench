@@ -166,7 +166,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Global Macro Tracker** - Consistently track bond yields globally, market performance, interest rates, DXY (Dollar Index), and money flows
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
-- [ ] **PnL Calculation Accuracy** - Verify and improve PnL calculations with proper average price tracking for buy/sell transactions
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
 - [ ] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation

@@ -173,6 +173,20 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Investable Assets Memory Review** - Align `/memories` investable assets section with context above; currently appears as random FMP queries
 - [ ] **/portfolio table sorting** - Make sure you can sort your current portfolio table by Invested, % of Portfolio, P/L (USD), P/L (%)
 - [ ] **/portfolio chart overlay** - Add an overlay to show date and equity of the portfolio in the portfolio equity curve.
+- [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
+- [ ] **Review lessons learned and the learning loop** - 
+- [ ] **Revisit the concepts map** - 
+- [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
+    - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
+- [ ] **Add specific dates to cause and effect specially when stock move percentages are mentioned so we know timeframes. For example, if it says SPY +1.2%, mention from when to when**
+- [ ] **Check reasoning step prompts** For example, I saw this and it needs to be fixed: 
+    - Recently Executed Trades (Last 48h):
+        - BUY MKC: 25 @ $53.29 (1d ago) - Reason: No reasoning stored.
+        - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.
+        - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
+        - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
+
+
 
 ### 🔄 Under Consideration
 

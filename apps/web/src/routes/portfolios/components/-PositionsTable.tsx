@@ -15,11 +15,64 @@ interface PositionsTableProps {
     positions: Position[]
 }
 
+type SortKey = 'invested' | 'portfolio_pct' | 'pnl_usd' | 'pnl_pct'
+type SortDirection = 'asc' | 'desc'
+
 export function PositionsTable({ positions }: PositionsTableProps) {
     const [expandedTicker, setExpandedTicker] = useState<string | null>(null)
+    const [sortKey, setSortKey] = useState<SortKey | null>(null)
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
     // Calculate total invested cash for the portfolio
     const totalInvestedCash = positions.reduce((sum, pos) => sum + pos.quantity * pos.average_cost_basis, 0)
+
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortKey(key)
+            setSortDirection('desc')
+        }
+    }
+
+    const getSortIcon = (key: SortKey) => {
+        if (sortKey !== key) return '↕'
+        return sortDirection === 'asc' ? '↑' : '↓'
+    }
+
+    const sortedPositions = React.useMemo(() => {
+        if (!sortKey) return positions
+
+        const sorted = [...positions].sort((a, b) => {
+            let aVal: number
+            let bVal: number
+
+            switch (sortKey) {
+                case 'invested':
+                    aVal = a.quantity * a.average_cost_basis
+                    bVal = b.quantity * b.average_cost_basis
+                    break
+                case 'portfolio_pct':
+                    aVal = totalInvestedCash ? (a.quantity * a.average_cost_basis) / totalInvestedCash * 100 : 0
+                    bVal = totalInvestedCash ? (b.quantity * b.average_cost_basis) / totalInvestedCash * 100 : 0
+                    break
+                case 'pnl_usd':
+                    aVal = a.unrealized_pnl_usd
+                    bVal = b.unrealized_pnl_usd
+                    break
+                case 'pnl_pct':
+                    aVal = a.unrealized_pnl_pct
+                    bVal = b.unrealized_pnl_pct
+                    break
+                default:
+                    return 0
+            }
+
+            return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+        })
+
+        return sorted
+    }, [positions, sortKey, sortDirection, totalInvestedCash])
 
     return (
         <div className="overflow-x-auto border border-zinc-200 rounded-xl bg-white shadow-sm">
@@ -30,14 +83,38 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Quantity</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Avg Cost</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Price</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Invested</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">% of Portfolio</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">P/L (USD)</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">P/L (%)</th>
+                        <th 
+                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
+                            onClick={() => handleSort('invested')}
+                            title="Click to sort by invested amount"
+                        >
+                            Invested {getSortIcon('invested')}
+                        </th>
+                        <th 
+                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
+                            onClick={() => handleSort('portfolio_pct')}
+                            title="Click to sort by portfolio percentage"
+                        >
+                            % of Portfolio {getSortIcon('portfolio_pct')}
+                        </th>
+                        <th 
+                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
+                            onClick={() => handleSort('pnl_usd')}
+                            title="Click to sort by profit/loss in USD"
+                        >
+                            P/L (USD) {getSortIcon('pnl_usd')}
+                        </th>
+                        <th 
+                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
+                            onClick={() => handleSort('pnl_pct')}
+                            title="Click to sort by profit/loss percentage"
+                        >
+                            P/L (%) {getSortIcon('pnl_pct')}
+                        </th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                    {positions?.map((pos) => (
+                    {sortedPositions?.map((pos) => (
                         <React.Fragment key={pos.ticker}>
                             <tr
                                 className="hover:bg-zinc-50/50 transition-colors cursor-pointer select-none group"

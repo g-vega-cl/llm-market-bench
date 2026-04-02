@@ -7,7 +7,7 @@ import netlify from '@netlify/vite-plugin-tanstack-start'
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: 3005,
     proxy: {
       '/ingest': {
         target: 'https://us.i.posthog.com',

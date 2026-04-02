@@ -16,6 +16,7 @@ vi.mock('d3', async (importOriginal) => {
       datum: vi.fn().mockReturnThis(),
       call: vi.fn().mockReturnThis(),
       on: vi.fn().mockReturnThis(),
+      empty: vi.fn().mockReturnValue(false),
     }),
   }
 })

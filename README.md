@@ -172,8 +172,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Investable Assets Memory Review** - Align `/memories` investable assets section with context above; currently appears as random FMP queries
-- [ ] **/portfolio table sorting** - Make sure you can sort your current portfolio table by Invested, % of Portfolio, P/L (USD), P/L (%)
-- [ ] **/portfolio chart overlay** - Add an overlay to show date and equity of the portfolio in the portfolio equity curve.
 - [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
 - [ ] **Review lessons learned and the learning loop** - 
 - [ ] **Revisit the concepts map** - 
@@ -186,6 +184,7 @@ A living document of features and improvements in progress or planned for the pl
         - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.
         - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
+- [ ] **SELL TOOLS** - DO not allow having less than 10% of your portfolio equity in a stock, if that's the case, sell the whole thing. For example, if you sold 10 shared of XYZ and went from owning $2500 to $800, and your equity is $10000, sell the whole thing. This is to avoid having many small positions polluting our portfolio.
 
 
 

@@ -12,6 +12,7 @@ interface PerformanceChartProps {
 
 export function PerformanceChart({ data }: PerformanceChartProps) {
   const svgRef = React.useRef<SVGSVGElement>(null)
+  const [tooltipData, setTooltipData] = React.useState<{ date: string; equity: number; x: number; y: number } | null>(null)
 
   React.useEffect(() => {
     if (!data || data.length === 0 || !svgRef.current) return
@@ -105,12 +106,86 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
       .attr('stop-color', '#0ea5e9')
       .attr('stop-opacity', 0)
 
+    // Create bisector for finding closest data point
+    const bisector = d3.bisector<{ date: Date; value: number }, Date>(d => d.date).left
+
+    // Add invisible overlay for mouse interaction
+    const overlay = g.append('rect')
+      .attr('class', 'overlay')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('fill', 'none')
+      .attr('pointer-events', 'all')
+      .on('mousemove', function(event) {
+        const [mouseX] = d3.pointer(event)
+        const x0 = bisector(parsedData, x.invert(mouseX), 1)
+        const d0 = parsedData[x0 - 1]
+        const d1 = parsedData[x0]
+        const d = d0 && d1 ? (mouseX - x(d0.date) < x(d1.date) - mouseX ? d0 : d1) : d0 || d1
+
+        if (d) {
+          setTooltipData({
+            date: d.date.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            }),
+            equity: d.value,
+            x: x(d.date),
+            y: y(d.value)
+          })
+        }
+      })
+      .on('mouseleave', function() {
+        setTooltipData(null)
+      })
+
+    // Add vertical line (crosshair)
+    const crosshair = g.append('line')
+      .attr('class', 'crosshair')
+      .attr('stroke', '#64748b')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '4,4')
+      .attr('opacity', 0)
+      .attr('x1', 0)
+      .attr('x2', 0)
+      .attr('y1', 0)
+      .attr('y2', height)
+
+    // Add dot marker
+    const dot = g.append('circle')
+      .attr('class', 'dot')
+      .attr('r', 6)
+      .attr('fill', '#0ea5e9')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2)
+      .attr('opacity', 0)
+
   }, [data])
+
+  // Update crosshair and dot position when tooltipData changes
+  React.useEffect(() => {
+    if (!svgRef.current || !tooltipData) return
+    
+    const svg = d3.select(svgRef.current)
+    if (svg.empty()) {
+      return
+    }
+
+    svg.select('.crosshair')
+      .attr('opacity', 1)
+      .attr('transform', `translate(${tooltipData.x},0)`)
+
+    svg.select('.dot')
+      .attr('opacity', 1)
+      .attr('cx', tooltipData.x)
+      .attr('cy', tooltipData.y)
+  }, [tooltipData])
 
   return (
     <div className="w-full bg-white border border-zinc-200 rounded-xl p-4 shadow-sm overflow-hidden">
       <h3 className="text-sm font-medium text-zinc-500 mb-4 uppercase tracking-wider">Equity Curve</h3>
-      <div className="w-full overflow-x-auto">
+      <div className="w-full overflow-x-auto relative">
         <svg
           ref={svgRef}
           width="100%"
@@ -118,6 +193,23 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
           viewBox="0 0 800 400"
           preserveAspectRatio="xMidYMid meet"
         />
+        {tooltipData && (
+          <div
+            className="absolute bg-zinc-900 text-white px-3 py-2 rounded-lg shadow-lg pointer-events-none z-10 text-sm"
+            style={{
+              left: Math.min(tooltipData.x + 10, 700),
+              top: Math.max(tooltipData.y - 60, 10),
+            }}
+          >
+            <div className="font-medium text-zinc-300 mb-1">{tooltipData.date}</div>
+            <div className="font-bold text-lg">
+              ${tooltipData.equity.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

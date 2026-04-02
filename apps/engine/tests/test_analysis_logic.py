@@ -127,6 +127,8 @@ class TestAnalysisOrchestration:
             # Mock market data manager
             mock_market_data = MagicMock()
             mock_market_data.get_quote = AsyncMock(return_value=None)
+            mock_market_data.get_quotes = AsyncMock(return_value={})
+            mock_market_data.get_history = AsyncMock(return_value=[])
             mock_market_data_class.return_value = mock_market_data
 
             decisions, events, _, _ = await analyze_chunks(chunks)
@@ -183,6 +185,8 @@ class TestAnalysisOrchestration:
             
             mock_market_data = MagicMock()
             mock_market_data.get_quote = AsyncMock(return_value=None)
+            mock_market_data.get_quotes = AsyncMock(return_value={})
+            mock_market_data.get_history = AsyncMock(return_value=[])
             mock_market_data_class.return_value = mock_market_data
 
             decisions, events, _, _ = await analyze_chunks(chunks)

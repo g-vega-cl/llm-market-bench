@@ -77,8 +77,10 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
         
         mock_market_data = MagicMock()
         mock_market_data.get_quote = AsyncMock(return_value=None)
+        mock_market_data.get_quotes = AsyncMock(return_value={})
+        mock_market_data.get_history = AsyncMock(return_value=[])
         mock_market_data_class.return_value = mock_market_data
-        
+
         # Run analysis
         decisions, events, _, _ = await analyze_chunks(chunks)
 

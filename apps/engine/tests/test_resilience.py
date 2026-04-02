@@ -52,9 +52,11 @@ async def test_individual_task_failure_does_not_halt_pipeline():
         
         mock_market_data = MagicMock()
         mock_market_data.get_quote = AsyncMock(return_value=None)
+        mock_market_data.get_quotes = AsyncMock(return_value={})
+        mock_market_data.get_history = AsyncMock(return_value=[])
         mock_market_data.is_market_open = AsyncMock(return_value=True)
         mock_market_data_class.return_value = mock_market_data
-        
+
         decisions, events, _, _ = await analyze_chunks(chunks)
 
     # 4 models total. OpenAI failed, so we should have 3 results.

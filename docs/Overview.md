@@ -219,6 +219,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     *   **Active vs Retired Classification:** Portfolios are automatically classified based on their `owner_id` matching current models in `packages/config/models.json`.
     *   **Retired Portfolios:** Outdated model portfolios (e.g., `gemini-3-flash-preview`, `mimo-v2-pro`) are moved to a "Retired Agents" section with visual distinction (grayed styling, reduced opacity).
     *   **Owner ID Normalization:** Handles formatting variations (spaces, dashes, underscores, case) for robust matching across different model name formats.
+    *   **Interactive Equity Curve**: Performance chart with hover tooltip overlay showing exact date and equity value, plus vertical crosshair for precise tracking.
+    *   **Sortable Positions Table**: Click-to-sort columns for Invested, % of Portfolio, P/L (USD), and P/L (%) with visual direction indicators.
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)
 *   **Live Dashboard:** [benchify.netlify.app](https://benchify.netlify.app)

@@ -29,8 +29,10 @@ The Portfolios section allows users to monitor the performance and holdings of e
 - **Description**: Provides an in-depth analysis of a specific agent's portfolio.
 - **Sections**:
     - **Header**: Shows the agent's name, total equity, and current cash balance.
-    - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity.
-    - **Current Positions**: A table listing all stocks currently held by the agent. Displays quantity, average cost, current price, **Invested Amount**, **% of Portfolio**, and P&L. Rows are interactive; clicking an entry expands to show the AI's reasoning.
+    - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity. Features an **interactive tooltip overlay** that displays the exact date and equity value on hover, with a vertical crosshair and dot marker for precise tracking.
+    - **Current Positions**: A table listing all stocks currently held by the agent. Displays quantity, average cost, current price, **Invested Amount**, **% of Portfolio**, and P&L (USD and %). 
+        - **Sortable Columns**: Click any of the sortable column headers (Invested, % of Portfolio, P/L USD, P/L %) to toggle between ascending and descending order. Visual indicators (↑↓↕) show the current sort direction.
+        - **Interactive Rows**: Rows are clickable; clicking an entry expands to show the AI's reasoning.
     - **Recent Trades**: A historical ledger of the agent's executions. Like the positions table, trade rows expand to reveal the specific reasoning behind the BUY or SELL signal.
 
 ## 3. Data Visualization: Equity Curve
@@ -43,8 +45,38 @@ The performance chart is built using **D3.js** to ensure maximum flexibility and
     - Linear y-axis with formatted currency labels.
     - Gradient area fill under the equity line for better visual depth.
     - Automated gridlines and axes using D3 primitives.
+    - **Interactive Tooltip Overlay** (2026-04-02):
+        - Hover anywhere on the chart to activate a vertical crosshair (dashed line) and dot marker.
+        - A tooltip displays the exact **date** and **equity value** for the nearest data point.
+        - Smart positioning ensures the tooltip stays within chart bounds.
+        - Mouse leave event clears the overlay and tooltip.
+    - **Implementation Details**:
+        - Uses D3 bisector to find the closest data point to the mouse position.
+        - Invisible overlay rect captures mouse events across the chart area.
+        - React state manages tooltip visibility and position.
+        - Crosshair and dot marker are updated via a separate `useEffect` hook for smooth animation.
     
-## 4. Interactive Reasoning (Thinking Process)
+## 4. Sortable Positions Table
+The positions table includes client-side sorting functionality for better data exploration.
+
+- **Component**: `apps/web/src/routes/portfolios/components/-PositionsTable.tsx`
+- **Sortable Columns** (2026-04-02):
+    - **Invested**: Sort by total capital deployed in the position (`quantity × average_cost_basis`).
+    - **% of Portfolio**: Sort by the position's weight relative to total invested cash.
+    - **P/L (USD)**: Sort by unrealized profit/loss in dollars.
+    - **P/L (%)**: Sort by unrealized profit/loss percentage.
+- **Features**:
+    - Click any sortable column header to toggle between ascending and descending order.
+    - Visual indicators show sort direction: `↕` (unsorted), `↑` (ascending), `↓` (descending).
+    - Default state is unsorted (positions appear in original order from the database).
+    - Sort state persists while expanding/collapsing individual position details.
+- **Implementation Details**:
+    - Uses React `useState` to track current sort key and direction.
+    - `useMemo` hook efficiently re-sorts positions only when dependencies change.
+    - Sort calculations are performed client-side for instant response.
+    - Total invested cash is recalculated on each render to ensure accurate portfolio percentages.
+
+## 5. Interactive Reasoning (Thinking Process)
 One of the core features of the Portfolio Detail page is the **Thinking Process** expansion. 
 
 - **Logic**: Each position or trade row in the table can be toggled to expand a detailed reasoning block.
@@ -56,7 +88,7 @@ One of the core features of the Portfolio Detail page is the **Thinking Process*
     3. **Fallback**: Match by the most recent relevant ticker signal.
 - **User Experience**: Provides transparency into *why* an agent made a specific trade, fulfilling the machine-auditable trail objective of the platform.
 
-## 4. Data Sources
+## 6. Data Sources
 
 ### Portfolios Table
 The summary page and header information are fetched from the `portfolios` table, which contains the latest calculated Reg T metrics for each agent.
@@ -76,7 +108,7 @@ These metrics are calculated client-side in the `PositionsTable` component to pr
 - **% of Portfolio**: `(Position Invested Cash / Total Portfolio Invested Cash) * 100` (The weight of the stock relative to the total cash invested across all active positions).
 
 
-## 5. Implementation Details
+## 7. Implementation Details
 
 ### Server Functions
 Data fetching is handled by TanStack Start server functions located in `apps/web/src/routes/portfolios/-queries.ts`. This ensures that sensitive database queries remain on the server and are delivered to the frontend in a type-safe manner.

@@ -106,48 +106,50 @@ function PortfoliosPage() {
   const deprecated = data?.filter((p) => p.is_active === false) ?? []
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-12">
-      <header className="mb-12">
-        <h1 className="text-4xl font-bold text-zinc-800 mb-4 tracking-tight">
-          Agent Portfolios
-        </h1>
-        <p className="text-zinc-500 text-lg max-w-2xl">
-          Live performance and current holdings of our AI trading agents.
-        </p>
-      </header>
-
-      {/* Active agents */}
-      <section className="mb-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {active.map((portfolio) => (
-            <PortfolioCard key={portfolio.id} portfolio={portfolio} />
-          ))}
-        </div>
-      </section>
-
-      {/* Deprecated / retired agents */}
-      {deprecated.length > 0 && (
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <h2 className="text-lg font-semibold text-zinc-400 tracking-wide uppercase text-sm">
-              Retired Agents
-            </h2>
-            <div className="flex-1 border-t border-zinc-200" />
-            <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-1 rounded-full">
-              No longer trading
-            </span>
-          </div>
-          <p className="text-sm text-zinc-400 mb-6">
-            These portfolios are preserved for historical reference. They no longer receive new
-            trade decisions but their full audit trail remains accessible.
+    <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
+      <div className="flex flex-col w-full">
+        <header className="mb-12">
+          <h1 className="text-4xl font-bold text-zinc-800 mb-4 tracking-tight">
+            Agent Portfolios
+          </h1>
+          <p className="text-zinc-500 text-lg leading-relaxed">
+            Live performance and current holdings of our AI trading agents.
           </p>
+        </header>
+
+        {/* Active agents */}
+        <section className="mb-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {deprecated.map((portfolio) => (
-              <PortfolioCard key={portfolio.id} portfolio={portfolio} deprecated />
+            {active.map((portfolio) => (
+              <PortfolioCard key={portfolio.id} portfolio={portfolio} />
             ))}
           </div>
         </section>
-      )}
+
+        {/* Deprecated / retired agents */}
+        {deprecated.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-lg font-semibold text-zinc-400 tracking-wide uppercase text-sm">
+                Retired Agents
+              </h2>
+              <div className="flex-1 border-t border-zinc-200" />
+              <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-1 rounded-full">
+                No longer trading
+              </span>
+            </div>
+            <p className="text-sm text-zinc-400 mb-6">
+              These portfolios are preserved for historical reference. They no longer receive new
+              trade decisions but their full audit trail remains accessible.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {deprecated.map((portfolio) => (
+                <PortfolioCard key={portfolio.id} portfolio={portfolio} deprecated />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   )
 }

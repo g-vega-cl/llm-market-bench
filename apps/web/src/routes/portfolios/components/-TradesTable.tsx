@@ -90,7 +90,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                             {expandedId === trade.id && (
                                 <tr className="bg-zinc-50/30">
                                     <td colSpan={7} className="px-12 py-6">
-                                        <div className="flex flex-col gap-4 max-w-4xl">
+                                        <div className="flex flex-col gap-4">
                                             <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 uppercase tracking-tight">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                                 Thinking Process

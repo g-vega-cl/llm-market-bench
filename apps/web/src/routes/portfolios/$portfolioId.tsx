@@ -48,33 +48,34 @@ function PortfolioDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 md:p-12">
-      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-bold text-zinc-900 mb-2 tracking-tight capitalize">
-            {portfolio.owner_id.replace(/-/g, ' ')}
-          </h1>
-          <p className="text-zinc-500 text-lg">
-            Portfolio analysis and performance timeline.
-          </p>
-        </div>
-        <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 flex gap-8">
+    <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
+      <div className="flex flex-col w-full">
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Total Equity</div>
-            <div className="text-2xl font-bold text-zinc-900">
-              ${Number(portfolio.total_equity || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <h1 className="text-4xl font-bold text-zinc-900 mb-2 tracking-tight capitalize">
+              {portfolio.owner_id.replace(/-/g, ' ')}
+            </h1>
+            <p className="text-zinc-500 text-lg">
+              Portfolio analysis and performance timeline.
+            </p>
+          </div>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 flex gap-8">
+            <div>
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Total Equity</div>
+              <div className="text-2xl font-bold text-zinc-900">
+                ${Number(portfolio.total_equity || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cash</div>
+              <div className="text-2xl font-bold text-zinc-900">
+                ${Number(portfolio.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cash</div>
-            <div className="text-2xl font-bold text-zinc-900">
-              ${Number(portfolio.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="grid grid-cols-1 gap-12">
+        <div className="flex flex-col space-y-12">
         {/* Performance Chart */}
         <section>
           <PerformanceChart data={history || []} />
@@ -101,6 +102,7 @@ function PortfolioDetailPage() {
           </div>
           <TradesTable trades={trades as any} />
         </section>
+        </div>
       </div>
     </div>
   )

@@ -31,18 +31,20 @@ function CauseAndEffectPage() {
   }, [])
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-12">
-      <header className="mb-12">
-        <h1 className="text-4xl font-bold text-zinc-400 mb-4 tracking-tight">
-          Cause & Effect Library
-        </h1>
-        <p className="text-zinc-400 text-lg max-w-2xl">
-          A historical playbook of market reactions. Explore why the market moved
-          following specific global events and use it as a frame for the future.
-        </p>
-      </header>
+    <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
+      <div className="flex flex-col w-full">
+        <header className="mb-12">
+          <h1 className="text-4xl font-bold text-zinc-400 mb-4 tracking-tight">
+            Cause & Effect Library
+          </h1>
+          <p className="text-zinc-400 text-lg leading-relaxed">
+            A historical playbook of market reactions. Explore why the market moved
+            following specific global events and use it as a frame for the future.
+          </p>
+        </header>
 
-      <CauseAndEffectList entries={(data as any[]) || []} />
+        <CauseAndEffectList entries={(data as any[]) || []} />
+      </div>
     </div>
   )
 }

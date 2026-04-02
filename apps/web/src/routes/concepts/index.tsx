@@ -42,20 +42,21 @@ function ConceptsRoute() {
   })
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
-          Concept Cluster Map
-        </h1>
-        <p className="text-gray-500 text-lg">
-          Semantic visualization of market narratives. Position represents
-          semantic similarity (PCA), color represents momentum velocity.
-        </p>
-      </div>
+    <div className="flex flex-col min-h-screen p-6 md:p-12">
+      <div className="flex flex-col w-full">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">
+            Concept Cluster Map
+          </h1>
+          <p className="text-gray-500 text-lg">
+            Semantic visualization of market narratives. Position represents
+            semantic similarity (PCA), color represents momentum velocity.
+          </p>
+        </div>
 
-      <ConceptMap data={data} />
+        <ConceptMap data={data} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8  border-t border-gray-100 pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8  border-t border-gray-100 pt-8">
         <div>
           <h3 className="font-semibold mb-2 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 via-green-500 to-red-500" />
@@ -89,6 +90,7 @@ function ConceptsRoute() {
             Concepts appearing close together share semantic meaning in the vector space (reduced from 768 dimensions via PCA).
           </p>
         </div>
+      </div>
       </div>
     </div>
   )

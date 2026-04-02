@@ -41,7 +41,8 @@ function TodayPage() {
             {/* Market Status Hero */}
             <MarketStatusHero data={data} />
 
-            <main className="max-w-7xl mx-auto px-6 md:px-12 py-12 space-y-24 pb-24">
+            <main className="flex flex-col px-6 md:px-12 py-12 space-y-24 pb-24">
+                <div className="flex flex-col w-full">
                 {isEmpty ? (
                     <EmptyState hasFutureEvents={!!data.futureEvents?.length} futureEvents={data.futureEvents} />
                 ) : (
@@ -52,6 +53,7 @@ function TodayPage() {
                         <FutureCatalysts events={data.futureEvents} />
                     </div>
                 )}
+                </div>
             </main>
         </div>
     )

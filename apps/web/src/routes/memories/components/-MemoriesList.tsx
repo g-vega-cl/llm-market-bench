@@ -16,142 +16,124 @@ interface MemoriesListProps {
   memories: Memory[]
 }
 
+const FILTERS = [
+  { id: 'all', label: 'All', icon: '◈' },
+  { id: 'consensus_event', label: 'Events', icon: '●' },
+  { id: 'decision_reasoning', label: 'Decisions', icon: '◆' },
+  { id: 'post_mortem', label: 'Post-Mortems', icon: '▲' },
+]
+
 export function MemoriesList({ memories }: MemoriesListProps) {
   const [filter, setFilter] = React.useState<string>('all')
-  const [view, setView] = React.useState<'list' | 'flow'>('list')
+  const [showFlow, setShowFlow] = React.useState(false)
+
+  // Normalize type to handle different formats in the database
+  const normalizeType = (type: string | undefined) => {
+    if (!type) return ''
+    return type.toLowerCase().replace(/[-_\s]+/g, '_')
+  }
 
   const filteredMemories = memories.filter((m) => {
     if (filter === 'all') return true
-    return m.metadata?.type === filter
+    const normalizedType = normalizeType(m.metadata?.type)
+    const normalizedFilter = normalizeType(filter)
+    return normalizedType === normalizedFilter
   })
 
   const handleMemorySelect = (id: string) => {
-    setView('list')
+    setShowFlow(false)
     setTimeout(() => {
       const element = document.getElementById(id)
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' })
-        element.classList.add('ring-2', 'ring-blue-500')
-        setTimeout(() => element.classList.remove('ring-2', 'ring-blue-500'), 1500)
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        element.classList.add('ring-2', 'ring-electric-blue-500', 'ring-offset-2')
+        setTimeout(() => element.classList.remove('ring-2', 'ring-electric-blue-500', 'ring-offset-2'), 2000)
       }
     }, 100)
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div className="flex gap-2">
-          {['all', 'consensus_event', 'decision_reasoning', 'post_mortem'].map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilter(type)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${filter === type
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+    <div className="flex flex-col space-y-8">
+      {/* Control Bar */}
+      <div className="sticky top-4 z-20 -mx-6 md:-mx-12 px-6 md:px-12 py-4 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800/60">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          {/* Filter Pills */}
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map((type) => (
+              <button
+                key={type.id}
+                onClick={() => setFilter(type.id)}
+                className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 cursor-pointer ${
+                  filter === type.id
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-lg shadow-zinc-900/20 dark:shadow-zinc-100/10 scale-105'
+                    : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200'
                 }`}
-            >
-              {type.replace('_', ' ').toUpperCase()}
-            </button>
-          ))}
-        </div>
+              >
+                <span className={`transition-transform duration-300 ${filter === type.id ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  {type.icon}
+                </span>
+                {type.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="flex gap-1 p-1 bg-zinc-100 rounded-lg border border-zinc-200">
+          {/* View Toggle */}
           <button
-            onClick={() => setView('list')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
-              }`}
+            onClick={() => setShowFlow(!showFlow)}
+            className={`group flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 cursor-pointer border ${
+              showFlow
+                ? 'bg-electric-blue-600 text-white border-electric-blue-600 shadow-lg shadow-electric-blue-500/25'
+                : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+            }`}
           >
-            List
-          </button>
-          <button
-            onClick={() => setView('flow')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide transition-all ${view === 'flow' ? 'bg-white text-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
-              }`}
-          >
-            Flow
+            <svg className={`w-4 h-4 transition-transform duration-500 ${showFlow ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>{showFlow ? 'Hide Flow' : 'Show Flow'}</span>
           </button>
         </div>
       </div>
 
-      {view === 'flow' && (
-        <MemoryFlow memories={filteredMemories} onSelect={handleMemorySelect} />
-      )}
-
-      {view === 'list' && (
-        <div className="grid gap-4">
-          {filteredMemories.map((memory) => (
-            <MemoryCard
-              key={memory.id}
-              memory={memory}
-              parentMemory={memory.parent_id ? memories.find(m => m.id === memory.parent_id) : undefined}
-            />
-          ))}
-
-          {filteredMemories.length === 0 && (
-            <div className="text-center py-12 text-zinc-500">
-              No memories found for this category.
-            </div>
-          )}
+      {/* Flow Visualization */}
+      {showFlow && (
+        <div className="w-full animate-scale-in">
+          <MemoryFlow memories={filteredMemories} onSelect={handleMemorySelect} />
         </div>
       )}
 
-      {/* 
-        In Flow view, we might still want to see the list below, 
-        or allow clicking nodes in Flow to jump to the list.
-        Let's render the list even in Flow mode but maybe hidden or below?
-        Proposed behavior: Flow View shows the graph. Clicking a node jumps to the list.
-        So list should probably always be rendered if we want to jump to it?
-        Or we switch view to 'list' when clicking a node?
-        Currently: MemoryFlow onClick does `element.scrollIntoView`.
-        Ideally, both can coexist, or Flow is a mode on top.
-        
-        Let's keep them separate "Tabs" for now as per "Flow View" request.
-        However, for the "Scroll to" feature to work, the List items must be in the DOM.
-        
-        Modification: If Flow view is active, should we show the list?
-        User asked for a "Flow View". 
-        If I click a node in Flow view, where do I go? "Go see it in the page".
-        So the list HAS to be there.
-        
-        Let's render the list ALWAYS, but hide it visually if in 'flow' mode?
-        No, if I click in Flow view, I expect to see the details.
-        Maybe Flow view is a "Header" visualization, and List is always below?
-        
-        "We need a "Flow" view where every event is linked..."
-        
-        Let's make "Flow" just show the graph AND the list below it, 
-        OR change the toggle logic.
-        
-        If view === 'flow', show Graph + List.
-        If view === 'list', show List only.
-        
-        Actually, let's keep the Toggle. If I click a node in Flow, it should open/reveal the card.
-        But if the card is hidden because view='flow', it won't be found.
-        
-        Solution: When in 'flow' view, render the list as well but maybe filtered or just normally?
-        The user might just want to see the graph.
-        
-        Let's assume "Flow View" is a full replacement visualization.
-        BUT, the graph nodes are small. Where do I read the full text?
-        In the tooltip I added.
-        
-        Wait, I added `scrollIntoView` logic in `MemoryFlow`. That requires the target element to exist.
-        So if `view === 'flow'` hides the list, `scrollIntoView` fails.
-        
-        Fix: Always render the list, but maybe put the Flow graph at the top when enabled?
-        Or, when in Flow view, show the Flow Graph AND the list.
-        When in List view, just the list.
-        
-        Let's change the logic:
-        Toggle Name: "Show Flow" vs "Hide Flow"?
-        Or View: "List" | "Flow + List".
-        
-        Let's stick to "List" vs "Flow". 
-        In "Flow", I'll render the Graph. If user clicks, I switch to List view and scroll? 
-        That works.
-        
-        Let's modify `MemoryFlow` to accept an `onNodeClick` prop.
-      */}
+      {/* Memory Cards */}
+      <div className="flex flex-col space-y-6">
+        {filteredMemories.map((memory, index) => (
+          <div
+            key={memory.id}
+            className="animate-slide-up"
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            <MemoryCard
+              memory={memory}
+              parentMemory={memory.parent_id ? memories.find(m => m.id === memory.parent_id) : undefined}
+            />
+          </div>
+        ))}
+
+        {filteredMemories.length === 0 && (
+          <div className="flex justify-center items-center py-20">
+            <div className="flex flex-col items-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-900 mb-4">
+                <svg className="w-8 h-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <p className="text-zinc-500 dark:text-zinc-400 font-medium">
+                No memories found in this category
+              </p>
+              <p className="text-zinc-400 dark:text-zinc-500 text-sm mt-1">
+                Try selecting a different filter
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

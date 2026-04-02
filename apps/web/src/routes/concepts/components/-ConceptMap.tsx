@@ -208,13 +208,13 @@ export function ConceptMap({ data }: { data: Concept[] }) {
   }, [data])
 
   return (
-    <div className="relative flex justify-center p-4">
+    <div className="relative flex justify-center p-4 w-full">
       <svg
         ref={svgRef}
         width="100%"
         height="100%"
         viewBox="0 0 800 600"
-        className="max-w-5xl border border-gray-200 rounded-xl bg-gray-50/30 shadow-sm"
+        className="w-full border border-gray-200 rounded-xl bg-gray-50/30 shadow-sm"
       />
 
       {/* Region Label - Now uses the cluster's specific color */}

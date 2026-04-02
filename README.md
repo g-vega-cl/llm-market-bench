@@ -178,13 +178,13 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
     - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
 - [ ] **Add specific dates to cause and effect** - specially when stock move percentages are mentioned so we know timeframes. For example, if it says SPY +1.2%, mention from when to when
-- [ ] **Check reasoning step prompts** For example, I saw this and it needs to be fixed: 
+- [ ] **Check reasoning step prompts** For example, I saw this and it needs to be fixed:
     - Recently Executed Trades (Last 48h):
         - BUY MKC: 25 @ $53.29 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.
         - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
-- [ ] **SELL TOOLS** - DO not allow having less than 10% of your portfolio equity in a stock, if that's the case, sell the whole thing. For example, if you sold 10 shared of XYZ and went from owning $2500 to $800, and your equity is $10000, sell the whole thing. This is to avoid having many small positions polluting our portfolio.
+- [ ] **BUY TOOLS** - Make sure we implement BUY tools too. Make sure to check if we have buy tools already and which ones we have.
 
 
 

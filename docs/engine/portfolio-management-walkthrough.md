@@ -92,16 +92,54 @@ Recently Executed Trades (Last 48h):
 ```
 
 ## 5. Decision Making (Allocation %)
-LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision. 
+LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
 - **BUY Logic:** The engine calculates `Allocation % * Buying Power` to determine the total USD to spend.
     - **Smart Bump:** If the calculated spend is below **$1,000**, the engine automatically "bumps" the spend to $1,000 (if Buying Power allows).
     - **Quantity:** The final share quantity is calculated based on the market price. If rounding down results in a value below $1,000, one share is added if affordable.
-- **SELL Logic:** **MANDATORY HARD TOOL ENFORCEMENT.** 
+- **SELL Logic:** **MANDATORY HARD TOOL ENFORCEMENT.**
     - **History Scan:** The engine performs a server-side scan of the conversation history to verify that a `sell_X_percent` tool was actually called for that ticker.
     - **Hallucination Check:** If an agent claims `sell_tool_called: true` but the history scan fails to find the call, the trade is rejected.
     - **Minimum Value:** By default, total proceeds must be >= $1,000. However, if a specific sell percentage tool is called, this threshold is waived to allow for precision exits and clearing "dust" trades.
-- **Dynamic Fallbacks:** 
+    - **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT):** The system AUTOMATICALLY sells any position whose value falls below 10% of total portfolio equity. If a partial sell leaves a position below this threshold (e.g., selling some shares leaves only $800 in a $10,000 portfolio), the remainder is automatically liquidated. The LLM does NOT need to call a tool - this happens automatically after trade execution and is recorded in the trade history.
+- **Dynamic Fallbacks:**
     - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
+
+## 5b. Automatic Dust Position Cleanup
+After EVERY trade execution (BUY or SELL), the engine performs an automatic post-trade check to prevent small positions from polluting the portfolio:
+
+1. **Threshold Check:** Scans all remaining positions and calculates their current market value
+2. **10% Rule:** Compares each position's value against 10% of total portfolio equity
+3. **Automatic Sale:** Any position below the threshold is automatically sold in full
+4. **Trade Ledger:** Each dust cleanup sale is recorded in the `trades` table with:
+   - `signal`: "SELL"
+   - `decision_id`: NULL (system-generated, not from LLM)
+   - `reasoning`: "Automatic dust position cleanup: Position value below 10% of portfolio equity"
+   - Proper P&L calculations (realized gain/loss)
+5. **Portfolio Updates:** Cash, SMA, and metrics are updated to reflect the dust sale
+6. **LLM Notification:** The cleanup is logged in the trade history, so the LLM can see what happened in the "Recently Executed Trades" section of their portfolio context
+
+**Example Scenario:**
+- Portfolio Equity: $10,000 (10% threshold = $1,000)
+- Agent owns 20 shares of XYZ @ $125 = $2,500 position
+- Agent sells 15 shares @ $125 = $1,875 (using `sell_75_percent` tool)
+- Remaining position: 5 shares @ $125 = $625 (below $1,000 threshold)
+- Post-trade cleanup detects $625 < $1,000 threshold
+- System automatically sells remaining 5 XYZ shares @ $125 = $625
+- Both trades recorded with full audit trail
+- LLM sees both sales in their trade history
+
+**Implementation:** `apps/engine/execution/portfolio.py` → `_check_and_sell_dust_positions()`
+
+## 5c. Available Sell Tools
+The system provides the following sell calculation tools for agents:
+- `sell_10_percent`: Calculate 10% of position (small profit-taking)
+- `sell_25_percent`: Calculate 25% of position (partial exit)
+- `sell_33_percent`: Calculate 33% of position (one-third exit)
+- `sell_50_percent`: Calculate 50% of position (half exit)
+- `sell_75_percent`: Calculate 75% of position (majority exit)
+- `sell_100_percent`: Calculate 100% of position (full exit)
+
+**Note:** The system does NOT require a tool call for dust cleanup - it happens automatically.
 
 ## 5a. Portfolio Ownership Guardrails (SELL)
 To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks:

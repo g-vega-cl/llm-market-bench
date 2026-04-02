@@ -657,21 +657,6 @@ SELL_100_PERCENT_TOOL_DEFINITION_GEMINI = {
     },
 }
 
-SELL_100_PERCENT_TOOL_DEFINITION_GEMINI = {
-    "name": "sell_100_percent",
-    "description": "Calculate exactly how many shares you currently own for a ticker to exit the position completely.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
 
 async def execute_stock_tool(ticker: str) -> str:
     """Executes the stock tool and returns a stringified result for the LLM.
@@ -881,6 +866,8 @@ async def execute_sell_75_percent_tool(ticker: str, owner_id: str) -> str:
 
 async def execute_sell_100_percent_tool(ticker: str, owner_id: str) -> str:
     return await _execute_sell_percentage_tool(ticker, owner_id, 1.0)
+
+
 async def execute_search_related_tickers_tool(theme: str) -> str:
     """Uses LLM to search for tickers related to a theme."""
     from core.llm import get_gemini_client, prompts

@@ -38,6 +38,8 @@ To ensure maximum feature coverage and performance, the system uses the official
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
 - **`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, `sell_100_percent`**: Calculates exact share quantities for partial or full exits of existing positions. **Using these tools natively via function calling is now MANDATORY for any SELL decision.**
 
+**Note on Dust Cleanup:** The system AUTOMATICALLY sells any position below 10% of portfolio equity. No tool call is required - this happens automatically after trade execution and is recorded in the trade history.
+
 ### **Web Search Integration (Real-Time Grounding)**
 Claude and Gemini agents can invoke native web search tools to access real-time information:
 

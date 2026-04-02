@@ -410,16 +410,113 @@ class Portfolio:
             # Use current prices for all held positions to avoid fallbacks
             current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
             current_prices[ticker] = price  # Ensure the execution price is used for the current trade
-            
+
             self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 
+            # 5. POST-TRADE DUST CHECK: After ANY trade, check if any position is below 10% of equity
+            # This ensures we don't accumulate small "dust" positions that pollute the portfolio
+            await self._check_and_sell_dust_positions(current_prices)
+
             return trade_id
-            
+
         except Exception as e:
             logger.error(f"DB Error executing trade for {ticker}: {e}")
             # In real system: Rollback local state
             return None
+
+    async def _check_and_sell_dust_positions(self, current_prices: Dict[str, float]):
+        """Check all positions and automatically sell any that are below 10% of portfolio equity.
+        
+        This prevents portfolio pollution from small 'dust' positions after partial sells.
+        
+        Args:
+            current_prices: Current market prices for all held positions.
+        """
+        if not self.metrics or not self.id:
+            return
+        
+        total_equity = self.metrics.total_equity
+        threshold = total_equity * 0.10  # 10% of portfolio equity
+        supabase = get_supabase_client()
+        
+        dust_positions_to_sell = []
+        
+        # Check each position
+        for pos_ticker, pos in self.positions.items():
+            pos_value = current_prices.get(pos_ticker, 0.0) * pos.quantity
+            
+            if pos_value < threshold and pos_value > 0:
+                dust_positions_to_sell.append((pos_ticker, pos.quantity, current_prices.get(pos_ticker, 0.0)))
+        
+        # Sell all dust positions
+        for dust_ticker, dust_qty, dust_price in dust_positions_to_sell:
+            if dust_qty <= 0 or dust_price <= 0:
+                continue
+                
+            logger.info(
+                f"[DUST CLEANUP] Automatically selling {dust_ticker} position: "
+                f"{dust_qty} shares @ ${dust_price:.2f} = ${dust_qty * dust_price:,.2f} "
+                f"(below 10% threshold of ${threshold:,.2f} for ${total_equity:,.2f} portfolio)"
+            )
+            
+            try:
+                # Capture cost basis for PnL
+                old_avg_cost = self.positions[dust_ticker].average_cost_basis if dust_ticker in self.positions else None
+                
+                # Update local state
+                self.cash_balance += (dust_price * dust_qty)
+                if dust_ticker in self.positions:
+                    del self.positions[dust_ticker]
+                
+                # Update SMA
+                margin_released = (dust_price * dust_qty) * 0.57
+                self.sma += margin_released
+                
+                # Delete position from DB
+                supabase.table("portfolio_positions").delete().match({
+                    "portfolio_id": str(self.id),
+                    "ticker": dust_ticker
+                }).execute()
+                
+                # Insert trade ledger entry
+                trade_data = {
+                    "portfolio_id": str(self.id),
+                    "ticker": dust_ticker,
+                    "signal": "SELL",
+                    "quantity": dust_qty,
+                    "price": dust_price,
+                    "total_cost": dust_price * dust_qty,
+                    "executed_at": "now()",
+                    "decision_id": None,  # System-generated, not from LLM decision
+                    "reasoning": "Automatic dust position cleanup: Position value below 10% of portfolio equity"
+                }
+                
+                # Add PnL info
+                if old_avg_cost is not None:
+                    realized_pnl = (dust_price - old_avg_cost) * dust_qty
+                    realized_pnl_pct = ((dust_price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
+                    trade_data["realized_pnl"] = realized_pnl
+                    trade_data["realized_pnl_pct"] = realized_pnl_pct
+                
+                trade_res = supabase.table("trades").insert(trade_data).execute()
+                logger.info(f"[DUST CLEANUP] Sold {dust_ticker}. TradeID: {trade_res.data[0]['id'] if trade_res.data else 'N/A'}")
+                
+            except Exception as e:
+                logger.error(f"[DUST CLEANUP] Failed to sell dust position {dust_ticker}: {e}")
+        
+        # Update portfolio cash and SMA if we sold any dust
+        if dust_positions_to_sell:
+            supabase.table("portfolios").update({
+                "cash_balance": self.cash_balance,
+                "sma": self.sma,
+                "last_updated_at": "now()"
+            }).eq("id", self.id).execute()
+            
+            # Recalculate metrics after dust cleanup
+            updated_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
+            self.calculate_reg_t_metrics(updated_prices)
+            await self.save_metrics()
 
     async def record_performance_snapshot(self, current_prices: Dict[str, float]):
         """Records an immutable daily performance snapshot of the portfolio."""

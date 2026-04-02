@@ -109,6 +109,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *
 *   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS a specific sell percentage tool (e.g., "sell 50%") is used, which allows for precision rebalancing and clearing "dust" positions.
 *
+*   **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT)**: The system AUTOMATICALLY sells any position whose value falls below 10% of total portfolio equity. After EVERY trade execution, the engine scans all positions and liquidates any that are below the threshold. This prevents portfolio pollution from small "dust" positions without requiring LLM intervention. All automatic sales are recorded in the trade ledger with full P&L tracking.
+*
 *   documentation: ./engine/portfolio-management-walkthrough.md
 
 **12. Trade Settlement & Ledgering** ✅

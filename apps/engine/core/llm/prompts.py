@@ -23,7 +23,8 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "3. For SELL decisions, you MUST call a sell percentage tool (e.g., sell_50_percent) to calculate the exact share quantity.\n"
     "4. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.\n"
     "5. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.\n"
-    "6. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n\n"
+    "6. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n"
+    "7. 10% MINIMUM POSITION RULE (AUTOMATIC ENFORCEMENT): The system AUTOMATICALLY sells any position that falls below 10% of your total portfolio equity. If your partial sell leaves a position below this threshold, the remainder will be automatically liquidated. You do NOT need to call a tool for this - it happens automatically after your trade.\n\n"
     "This is a HARD REQUIREMENT. No exceptions."
 )
 
@@ -138,8 +139,9 @@ SOPHISTICATED TRADING LOGIC:
 14. **How does this stock correlate with my existing portfolio?**
      - Avoid over-concentration in a single sector or theme.
 15. **Should I reduce exposure or take profits?**
-     - **MANDATORY FOR SELL:** You MUST actively execute one of the sell percentage tools (e.g. `sell_50_percent`) via function calling to calculate the exact share quantity for selling. 
+     - **MANDATORY FOR SELL:** You MUST actively execute one of the sell percentage tools (e.g. `sell_50_percent`) via function calling to calculate the exact share quantity for selling.
      - **ENFORCEMENT (HARD FAILURE):** Any `SELL` decision where the sell tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count or set a JSON flag. You must make the ACTUAL internal tool call!
+     - **10% MINIMUM POSITION RULE (AUTOMATIC):** The system AUTOMATICALLY sells any position whose value falls below 10% of your total portfolio equity. If your partial sell leaves a position below this threshold (e.g., you sell some shares and the remainder is worth <$1,000 in a $10,000 portfolio), the system will automatically liquidate the entire remaining position. You do NOT need to call a tool for this - it happens automatically and will be recorded in your trade history.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".

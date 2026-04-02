@@ -74,6 +74,7 @@ CORE_ANALYSIS_SYSTEM_PROMPT = """
 3. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.
 4. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.
 5. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.
+6. 10% MINIMUM POSITION RULE (AUTOMATIC): The system AUTOMATICALLY sells any position that falls below 10% of your total portfolio equity. If your partial sell leaves a position below this threshold, the remainder will be automatically liquidated. You do NOT need to call a tool for this - it happens automatically after your trade.
 
 This is a HARD REQUIREMENT. No exceptions.
 """

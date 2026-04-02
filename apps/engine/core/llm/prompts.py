@@ -252,6 +252,9 @@ You must provide a confidence score (0-100) and your reasoning for each trading 
 ### Current Portfolio Status:
 {portfolio_context}
 
+### Global Macro Environment:
+{macro_context}
+
 ### Historical Context (Relevant Past Events & Trends):
 {context}
 

@@ -158,6 +158,19 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
 
 ---
 
+## Phase 1: Global Macro Context (Market Regime)
+
+Before the LLMs receive the news batch, the system fetches a real-time **Global Macro Snapshot** to identify the current market "regime." This ensures that the agents understand the macro headwinds or tailwinds (e.g., a surging US Dollar or a spike in Bond Yields) that could override individual stock narratives.
+
+### **Macro-Driven Reasoning** 🧠
+- **Volatility Analysis**: The engine fetches current prices vs. 30-day historical standard deviation for 16 key assets (Equities, Forex, Commodities, Yields).
+- **Regime Shifts**: Significant moves ($> 2\sigma$) are flagged as `⚠️ HIGHLY UNUSUAL (Regime Shift)`.
+- **Systematic Constraint**: Agents are explicitly instructed: *"Do not bet against severe macro trends without an extraordinary catalyst."*
+
+See [GLOBAL_MACRO_TRACKER.md](./GLOBAL_MACRO_TRACKER.md) for technical implementation details.
+
+---
+
 ### **Provider-Specific Enhancements (2026-03-24 PM)**
 
 #### DeepSeek: Thinking Mode Support

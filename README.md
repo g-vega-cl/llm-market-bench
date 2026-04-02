@@ -162,8 +162,10 @@ A living document of features and improvements in progress or planned for the pl
 
 ### 🎯 Active Development
 
-- [ ] **LLM Screener Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
-- [ ] **Global Macro Tracker** - Consistently track bond yields globally, market performance, interest rates, DXY (Dollar Index), and money flows
+- [ ] **LLM Ranking Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
+- [ ] **LLM Screener Tool** - Build a tool to allow LLMs to screen stocks based on criteria.
+- [ ] **Global Macro Tracker** - Consistently track bond yields globally, market performance, interest rates, DXY (Dollar Index).
+- [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization

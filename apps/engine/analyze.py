@@ -100,6 +100,10 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     
     # 2. Batch fetch prices for all unique holdings
     market_data = MarketDataManager()
+    
+    from core.macro_tracker import get_global_macro_context
+    macro_context_str = await get_global_macro_context(market_data)
+    
     price_map = {}
     if all_tickers:
         logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
@@ -198,7 +202,8 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                 context=aggregated_context,
                 portfolio_context=portfolio_ctx,
                 current_day_info=day_info,
-                calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE
+                calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
+                macro_context=macro_context_str
             ))
             task_configs.append(config) # Track this task's model info
 

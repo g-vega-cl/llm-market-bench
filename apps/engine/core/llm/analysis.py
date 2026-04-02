@@ -23,7 +23,8 @@ async def analyze_with_provider(
     context: str = "",
     portfolio_context: str = "",
     current_day_info: str = "No date context available.",
-    calendar_knowledge: str = ""
+    calendar_knowledge: str = "",
+    macro_context: str = ""
 ) -> DecisionsResponse:
     """Analyzes a batch of newsletter chunks using the specified provider.
 
@@ -35,6 +36,7 @@ async def analyze_with_provider(
         portfolio_context: Current portfolio status context.
         current_day_info: Current date and week context.
         calendar_knowledge: Knowledge of calendar strategies.
+        macro_context: Recent macro-economic indicators and anomalies.
 
     Returns:
         A DecisionsResponse instance containing trading signals and macro events.
@@ -67,6 +69,7 @@ async def analyze_with_provider(
             min_trade_value=MIN_TRADE_VALUE,
             current_day_info=current_day_info,
             calendar_knowledge=calendar_knowledge,
+            macro_context=macro_context if macro_context else "No macro data available.",
             held_tickers_list=held_tickers_list
         )
 

@@ -259,6 +259,34 @@ See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for a technical deep-dive.
 
 ---
 
+## Phase 1.7: Global Macro Tracking (Market Regime Detection)
+
+**File**: `apps/engine/core/macro_tracker.py` → `get_global_macro_context()`
+
+Immediately before the parallel analysis starts, the engine fetches a real-time snapshot of the global macro environment to give the LLMs "regime awareness."
+
+### Step 1.7.1: Multi-Category Asset Fetching
+The tracker fetches current quotes for 16 key assets across four categories:
+1. **Equities**: SPY, QQQ, DIA, IWM (US Indices)
+2. **International**: EWJ, EWY, VGK, MCHI, EEM (Japan, Korea, Europe, China, Emerging)
+3. **Commodities**: GLD, SLV, CPER, USO (Gold, Silver, Copper, Oil)
+4. **Yields & Indices**: ^TNX (10-Yr Yield), DXY (Dollar), ^VIX (Volatility)
+
+### Step 1.7.2: Volatility & Regime Analysis
+For each ticker, the engine:
+1. Fetches **30 days of historical data**.
+2. Calculates the **daily percentage change** (current price vs. previous close).
+3. Computes the **historical standard deviation ($\sigma$)**.
+4. Assigns a **Regime Flag**:
+    - `Normal`: Change within $1.5\sigma$.
+    - `❗ UNUSUAL`: Change exceeds $1.5\sigma$.
+    - `⚠️ HIGHLY UNUSUAL (Regime Shift)`: Change exceeds $2.0\sigma$.
+
+**Output**: A formatted text block injected into the LLM prompt, e.g.:
+`US Dollar Index (DXY): 104.20 [+1.80% today] | ⚠️ HIGHLY UNUSUAL (Regime Shift) (30d stdev: 0.75%)`
+
+---
+
 ## Phase 2: Filtering & Context Retrieval
 
 ### Step 2.1: Filter Malformed Chunks & Initialize Portfolios

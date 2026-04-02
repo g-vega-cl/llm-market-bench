@@ -52,13 +52,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 5.  **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
+5.  **Global Macro Tracking**: The engine fetches real-time quotes and historical volatility for 16 key macro assets (Equities, Commodities, Yields/DXY). It identifies **Market Regime Shifts** ($> 2\sigma$ deviation) to provide high-level context before trade generation. See **[GLOBAL_MACRO_TRACKER.md](./engine/GLOBAL_MACRO_TRACKER.md)**.
+6.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine injects the live **Global Macro Snapshot** into each prompt, ensuring agents recognize "Risk-On/Risk-Off" environments before analysis. It initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
     -   **Reasoning Models (DeepSeek)**: DeepSeek runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context (`reasoning_content`) across tool iterations and handles empty content fallbacks for final structured extraction.
     -   **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
-6.  **RAG Context Retrieval:** Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
-7.  **Decision Attribution:** Map reasoning, strategy intent, and metadata to the `decisions` table.
-8.  **Event Consensus:** Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
-9.  **Trend Analysis:** Calculate concept momentum and update PCA coordinates for the map.
+7.  **RAG Context Retrieval**: Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
+8.  **Decision Attribution**: Map reasoning, strategy intent, and metadata to the `decisions` table.
+9.  **Event Consensus**: Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
+10. **Trend Analysis**: Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
@@ -483,13 +484,14 @@ graph TD
     end
 
     subgraph "Reasoning & Consensus (Phase 2)"
-        B --> C{Context Retrieval}
+        B --> GMT[Global Macro Tracker]
+        GMT --> C{Context Retrieval}
         C <-->|Query History| V[Supabase pgvector]
         
-        C --> D1[OpenAI Batch Analysis]
-        C --> D2[Claude Batch Analysis]
-        C --> D3[Gemini Batch Analysis]
-        C --> D4[DeepSeek Batch Analysis]
+        GMT --> D1[OpenAI Batch Analysis]
+        GMT --> D2[Claude Batch Analysis]
+        GMT --> D3[Gemini Batch Analysis]
+        GMT --> D4[DeepSeek Batch Analysis]
         
         D1 & D2 & D3 & D4 --> AT[Decision Attribution Layer]
         AT -->|Map Reasoning to ChunkID| DB[(Decisions Table)]

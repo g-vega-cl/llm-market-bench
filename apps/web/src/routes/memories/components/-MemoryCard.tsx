@@ -1,9 +1,10 @@
 import * as React from 'react'
 import type { Memory } from './-MemoriesList'
+import { Link } from '@tanstack/react-router'
 
 interface MemoryCardProps {
   memory: Memory
-  parentMemory?: Memory
+  parentMemory?: Memory | null
 }
 
 export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
@@ -218,15 +219,16 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
             </svg>
             <div className="flex-1 min-w-0">
               <span className="text-xs font-medium uppercase tracking-wide block mb-1">
-                {memory.relationship_type || 'Related to'}:
+                {memory.relationship_type || 'Update'}:
               </span>
-              <a
-                href={`#${memory.parent_id}`}
-                className="text-sm text-zinc-600 dark:text-zinc-400 hover:underline truncate block"
-                title="Click to view parent event"
+              <Link
+                to="/memories/chain/$memoryId"
+                params={{ memoryId: memory.id }}
+                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline block"
+                title="View full event chain"
               >
-                {parentMemory?.content || 'Previous Event'}
-              </a>
+                <span>View event chain →</span>
+              </Link>
             </div>
           </div>
         </div>

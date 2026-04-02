@@ -24,6 +24,7 @@ import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
+import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -100,6 +101,11 @@ const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedPostsRoute,
 } as any)
+const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
+  id: '/memories/chain/$memoryId',
+  path: '/memories/chain/$memoryId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedPostsPostIdRoute = AuthedPostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/portfolios': typeof PortfoliosIndexRoute
   '/reasoning': typeof ReasoningIndexRoute
   '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/posts': typeof AuthedPostsIndexRoute
 }
 export interface FileRoutesById {
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
 export interface FileRouteTypes {
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/portfolios/'
     | '/reasoning/'
     | '/posts/$postId'
+    | '/memories/chain/$memoryId'
     | '/posts/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/portfolios'
     | '/reasoning'
     | '/posts/$postId'
+    | '/memories/chain/$memoryId'
     | '/posts'
   id:
     | '__root__'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/portfolios/'
     | '/reasoning/'
     | '/_authed/posts/$postId'
+    | '/memories/chain/$memoryId'
     | '/_authed/posts/'
   fileRoutesById: FileRoutesById
 }
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   MemoriesIndexRoute: typeof MemoriesIndexRoute
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
   ReasoningIndexRoute: typeof ReasoningIndexRoute
+  MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -335,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedPostsIndexRouteImport
       parentRoute: typeof AuthedPostsRoute
     }
+    '/memories/chain/$memoryId': {
+      id: '/memories/chain/$memoryId'
+      path: '/memories/chain/$memoryId'
+      fullPath: '/memories/chain/$memoryId'
+      preLoaderRoute: typeof MemoriesChainMemoryIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/posts/$postId': {
       id: '/_authed/posts/$postId'
       path: '/$postId'
@@ -384,6 +404,7 @@ const rootRouteChildren: RootRouteChildren = {
   MemoriesIndexRoute: MemoriesIndexRoute,
   PortfoliosIndexRoute: PortfoliosIndexRoute,
   ReasoningIndexRoute: ReasoningIndexRoute,
+  MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

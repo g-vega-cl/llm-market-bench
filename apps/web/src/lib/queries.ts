@@ -98,6 +98,18 @@ export const queries = {
   },
 
   // --------------------------------------------------------------------------
+  // Event Chain
+  // --------------------------------------------------------------------------
+  eventChain: {
+    detail: <T,>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
+      queryOptions({
+        queryKey: queryKeys.eventChain.detail(opts.id),
+        queryFn: opts.fetchFn,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      }),
+  },
+
+  // --------------------------------------------------------------------------
   // Reasoning
   // --------------------------------------------------------------------------
   reasoning: {

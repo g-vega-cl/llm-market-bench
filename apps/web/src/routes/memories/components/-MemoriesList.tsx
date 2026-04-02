@@ -97,7 +97,7 @@ export function MemoriesList({ memories }: MemoriesListProps) {
           <div key={memory.id}>
             <MemoryCard
               memory={memory}
-              parentMemory={memory.parent_id ? memories.find(m => m.id === memory.parent_id) : undefined}
+              parentMemory={memory.parent_id ? memories.find(m => m.id === memory.parent_id) : null}
             />
           </div>
         ))}

@@ -2,13 +2,24 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MemoriesList, Memory } from './components/-MemoriesList'
 
+// Mock the Link component from TanStack Router
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual('@tanstack/react-router')
+  return {
+    ...actual,
+    Link: ({ children, ...props }: any) => (
+      <a {...props}>{children}</a>
+    ),
+  }
+})
+
 const mockMemories: Memory[] = [
   {
     id: '1',
     content: 'Consensus on rate hike',
     created_at: new Date().toISOString(),
-    metadata: { 
-      type: 'consensus_event', 
+    metadata: {
+      type: 'consensus_event',
       impact: 'BEARISH',
       scenario_analysis: 'Scenario A: Rates go up -> Trading Plan (How to Profit): Buy bank stocks. Scenario B: Rates go down -> Trading Plan (How to Profit): Buy tech stocks.'
     }
@@ -17,7 +28,9 @@ const mockMemories: Memory[] = [
     id: '2',
     content: 'Decision to buy TSLA',
     created_at: new Date().toISOString(),
-    metadata: { type: 'decision_reasoning', ticker: 'TSLA', signal: 'BUY' }
+    metadata: { type: 'decision_reasoning', ticker: 'TSLA', signal: 'BUY' },
+    parent_id: '1',
+    relationship_type: 'UPDATE'
   },
   {
     id: '3',
@@ -37,42 +50,49 @@ describe('MemoriesList', () => {
 
   it('filters memories by type when button is clicked', () => {
     render(<MemoriesList memories={mockMemories} />)
-    
-    const consensusButton = screen.getByText('CONSENSUS EVENT')
-    fireEvent.click(consensusButton)
-    
+
+    const eventsButton = screen.getByText('Events')
+    fireEvent.click(eventsButton)
+
     expect(screen.getByText('Consensus on rate hike')).toBeInTheDocument()
     expect(screen.queryByText('Decision to buy TSLA')).not.toBeInTheDocument()
     expect(screen.queryByText('Post-mortem on AAPL')).not.toBeInTheDocument()
-    
-    const decisionButton = screen.getByText('DECISION REASONING')
-    fireEvent.click(decisionButton)
-    
+
+    const decisionsButton = screen.getByText('Decisions')
+    fireEvent.click(decisionsButton)
+
     expect(screen.queryByText('Consensus on rate hike')).not.toBeInTheDocument()
     expect(screen.getByText('Decision to buy TSLA')).toBeInTheDocument()
   })
 
-  it('displays metadata correctly', () => {
+  it('displays metadata badges correctly', () => {
     render(<MemoriesList memories={mockMemories} />)
-    expect(screen.getByText('Impact: BEARISH')).toBeInTheDocument()
-    expect(screen.getByText('Ticker: TSLA')).toBeInTheDocument()
+    expect(screen.getByText('BEARISH')).toBeInTheDocument()
+    expect(screen.getByText('$TSLA')).toBeInTheDocument()
     expect(screen.getByText('Regret')).toBeInTheDocument()
   })
 
   it('shows empty state when no memories match filter', () => {
     render(<MemoriesList memories={[]} />)
-    expect(screen.getByText('No memories found for this category.')).toBeInTheDocument()
+    expect(screen.getByText('No memories found in this category')).toBeInTheDocument()
   })
 
-  it('expands how to profit section when button is clicked', () => {
+  it('expands scenario analysis when button is clicked', () => {
+    render(<MemoriesList memories={mockMemories} />)
+
+    const analysisButton = screen.getByText('Show Analysis')
+    expect(screen.queryByText('Scenario Analysis')).not.toBeInTheDocument()
+
+    fireEvent.click(analysisButton)
+
+    expect(screen.getByText('Scenario Analysis')).toBeInTheDocument()
+    expect(screen.getByText('Buy bank stocks.')).toBeInTheDocument()
+  })
+
+  it('shows event chain link for memories with parent', () => {
     render(<MemoriesList memories={mockMemories} />)
     
-    const profitButton = screen.getByText('How to Profit from this')
-    expect(screen.queryByText('Profit Analysis & Chains of Events')).not.toBeInTheDocument()
-    
-    fireEvent.click(profitButton)
-    
-    expect(screen.getByText('Profit Analysis & Chains of Events')).toBeInTheDocument()
-    expect(screen.getByText('Buy bank stocks.')).toBeInTheDocument()
+    // Memory 2 has a parent
+    expect(screen.getByText('View event chain →')).toBeInTheDocument()
   })
 })

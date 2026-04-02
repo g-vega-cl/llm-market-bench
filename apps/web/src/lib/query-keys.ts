@@ -24,6 +24,12 @@ export const queryKeys = {
     detail: (id: string) => ['benchify', 'memories', 'detail', id] as const,
   },
 
+  // Event Chain
+  eventChain: {
+    all: ['benchify', 'eventChain'] as const,
+    detail: (id: string) => ['benchify', 'eventChain', 'detail', id] as const,
+  },
+
   // Reasoning logs
   reasoning: {
     all: ['benchify', 'reasoning'] as const,

@@ -73,11 +73,9 @@ async def analyze_with_provider(
             held_tickers_list=held_tickers_list
         )
 
-        # Use enhanced Claude-specific system prompt for Claude models
-        if provider == "anthropic":
-            system_prompt = prompts.CLAUDE_ANALYSIS_SYSTEM_PROMPT
-        else:
-            system_prompt = prompts.ANALYSIS_SYSTEM_PROMPT
+        # Use the unified high-fidelity system prompt for ALL models
+        # to ensure consistent tool usage and sophisticated logic.
+        system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -113,7 +111,12 @@ async def analyze_with_provider(
                 logger.info("[%s/%s] DeepSeek returned empty content. Requesting JSON output.", provider, model_name)
                 messages.append({
                     "role": "user",
-                    "content": "Output ONLY a valid JSON object with 'decisions' and 'macro_events' arrays. No reasoning, no explanations. Example: {\"decisions\": [], \"macro_events\": []}"
+                    "content": (
+                        "Your previous output was empty or only contains reasoning. "
+                        "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
+                        "No more reasoning, no explanations. Just the raw JSON object. "
+                        "Example: {\"decisions\": [], \"macro_events\": []}"
+                    )
                 })
 
         final_args = {

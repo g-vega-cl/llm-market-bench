@@ -62,22 +62,18 @@ The enforcement system operates at **four layers**:
 
 ## Layer 1: Pre-Prompt Strengthening
 
-### Claude-Specific System Prompt
+### Unified High-Fidelity System Prompt
 
-Claude models receive an enhanced system prompt (`CLAUDE_ANALYSIS_SYSTEM_PROMPT`) with explicit requirements:
+All models (OpenAI, Anthropic, Gemini, DeepSeek) now receive a unified high-fidelity system prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`). This ensures consistent tool usage and strict logic enforcement across the entire market engine.
 
 ```python
-CLAUDE_ANALYSIS_SYSTEM_PROMPT = """
+CORE_ANALYSIS_SYSTEM_PROMPT = """
 === CRITICAL TOOL USAGE REQUIREMENTS ===
 1. BEFORE recommending ANY trade (BUY or SELL), you MUST call get_stock_quote(ticker) via function calling.
 2. For SELL decisions, you MUST call a sell percentage tool (e.g., sell_50_percent) to calculate exact share quantity.
 3. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.
 4. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.
 5. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.
-
-TOOL CALL FORMAT (Anthropic):
-When you need to verify a stock, output a tool_use block like:
-{"type": "tool_use", "id": "call_123", "name": "get_stock_quote", "input": {"ticker": "AAPL"}}
 
 This is a HARD REQUIREMENT. No exceptions.
 """
@@ -265,10 +261,14 @@ Invalid JSON: EOF while parsing a value at line 1 column 47
 2. Added `has_valid_content()` function to detect empty responses
 3. In `analysis.py`: Auto-appends JSON request prompt if content is empty:
    ```python
-   messages.append({
-       "role": "user",
-       "content": "Output ONLY a valid JSON object with 'decisions' and 'macro_events' arrays..."
-   })
+    messages.append({
+        "role": "user",
+        "content": (
+            "Your previous output was empty or only contains reasoning. "
+            "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
+            "No more reasoning, no explanations. Just the raw JSON object."
+        )
+    })
    ```
 
 ---

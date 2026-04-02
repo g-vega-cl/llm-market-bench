@@ -2,6 +2,12 @@
 
 ## Status: Implemented & Verified ✅
 
+> [!NOTE]
+> These requirements have been consolidated into the unified `CORE_ANALYSIS_SYSTEM_PROMPT` in `llm-market-bench/apps/engine/core/llm/prompts.py`. This ensures that all models (not just Claude/OpenAI) adhere to the government incentive and macro-event criteria.
+
+### CORE_ANALYSIS_SYSTEM_PROMPT Integration
+The unified prompt now automatically includes the logic to enforce tool verification before trades and to identify government policy content for macro-event generation.
+
 This enhancement addresses a critical gap in the LLM analysis pipeline: **failure to capture government policy changes as macro events**.
 
 ### Problem Identified

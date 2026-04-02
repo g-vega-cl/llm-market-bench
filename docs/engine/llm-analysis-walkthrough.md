@@ -125,19 +125,21 @@ class DecisionObject(BaseModel):
 
 The engine now implements **multi-layer verification** to prevent hallucinated tool usage:
 
-1. **Pre-Prompt Strengthening**: Claude models receive enhanced system prompts with explicit tool usage requirements and few-shot examples showing correct vs incorrect tool invocation patterns.
+1. **Unified System Prompt**: All models receive the `CORE_ANALYSIS_SYSTEM_PROMPT` with explicit tool usage requirements and few-shot examples showing correct vs incorrect tool invocation patterns.
 
 2. **Real-Time Tool Interception**: After LLM analysis completes, the engine scans the actual conversation history to verify that required tools were executed via native function calling:
    - `get_stock_quote` for ALL BUY/SELL decisions
    - `sell_X_percent` tools for ALL SELL decisions
    
-3. **Confidence Scoring**: Decisions without verified tool calls receive a 50% confidence penalty.
+3. **Gemini Safety Relaxation**: Gemini safety settings are set to `BLOCK_NONE` to prevent blocking of government policy content.
 
-4. **Price Source Declaration**: LLMs must explicitly declare `price_source` as either:
+4. **Confidence Scoring**: Decisions without verified tool calls receive a 50% confidence penalty.
+
+5. **Price Source Declaration**: LLMs must explicitly declare `price_source` as either:
    - `"get_stock_quote tool call"` - if tool was called
    - `"hallucinated"` - if price was not verified (trade will be rejected)
 
-5. **Ownership Pre-Validation**: Before analysis completes, the engine filters out SELL signals for tickers not in the portfolio, converting them to HOLD with rejection reasoning (preserves audit trail).
+6. **Ownership Pre-Validation**: Before analysis completes, the engine filters out SELL signals for tickers not in the portfolio, converting them to HOLD with rejection reasoning (preserves audit trail).
 
 **Example Tool Call Verification:**
 ```python

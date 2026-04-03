@@ -261,7 +261,7 @@ class TestComplexScenarios:
         """Test average cost basis through BUY-SELL-BUY sequence."""
         p = Portfolio("test_agent")
         p.id = "test-portfolio-1"
-        
+
         mock_db = MagicMock()
         mock_table = MagicMock()
         mock_db.table.return_value = mock_table
@@ -269,25 +269,25 @@ class TestComplexScenarios:
         mock_table.delete.return_value.execute.return_value = MagicMock()
         mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-1"}])
         mock_table.update.return_value.execute.return_value = MagicMock()
-        
+
         with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
             p.cash_balance = 50000.00
             p.positions = {}
-            
-            # BUY 1: 100 shares @ $50
-            await p.execute_trade("AMD", 100, 50.00, "BUY", decision_id="dec-1")
+
+            # BUY 1: 1000 shares @ $50 = $50,000
+            await p.execute_trade("AMD", 1000, 50.00, "BUY", decision_id="dec-1")
             assert p.positions["AMD"].average_cost_basis == 50.00
-            
-            # SELL 1: 50 shares @ $80 (profit)
-            await p.execute_trade("AMD", 50, 80.00, "SELL", decision_id="dec-2")
-            # Remaining: 50 shares @ $50 (avg cost unchanged)
-            assert p.positions["AMD"].quantity == 50
+
+            # SELL 1: 500 shares @ $80 (profit)
+            await p.execute_trade("AMD", 500, 80.00, "SELL", decision_id="dec-2")
+            # Remaining: 500 shares @ $50 (avg cost unchanged)
+            assert p.positions["AMD"].quantity == 500
             assert p.positions["AMD"].average_cost_basis == 50.00
-            
-            # BUY 2: 100 shares @ $90
-            await p.execute_trade("AMD", 100, 90.00, "BUY", decision_id="dec-3")
-            # New avg: (50*50 + 100*90) / 150 = 76.67
-            assert p.positions["AMD"].quantity == 150
+
+            # BUY 2: 1000 shares @ $90
+            await p.execute_trade("AMD", 1000, 90.00, "BUY", decision_id="dec-3")
+            # New avg: (500*50 + 1000*90) / 1500 = 76.67
+            assert p.positions["AMD"].quantity == 1500
             assert p.positions["AMD"].average_cost_basis == pytest.approx(76.67, abs=0.01)
 
     @pytest.mark.asyncio
@@ -295,7 +295,7 @@ class TestComplexScenarios:
         """Test a complex sequence of multiple buys and sells."""
         p = Portfolio("test_agent")
         p.id = "test-portfolio-1"
-        
+
         mock_db = MagicMock()
         mock_table = MagicMock()
         mock_db.table.return_value = mock_table
@@ -303,34 +303,34 @@ class TestComplexScenarios:
         mock_table.delete.return_value.execute.return_value = MagicMock()
         mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-1"}])
         mock_table.update.return_value.execute.return_value = MagicMock()
-        
+
         with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
             p.cash_balance = 100000.00
             p.positions = {}
-            
-            # Step 1: BUY 10 @ $100
-            await p.execute_trade("NVDA", 10, 100.00, "BUY", decision_id="dec-1")
+
+            # Step 1: BUY 100 @ $100 = $10,000
+            await p.execute_trade("NVDA", 100, 100.00, "BUY", decision_id="dec-1")
             assert p.positions["NVDA"].average_cost_basis == 100.00
-            
-            # Step 2: BUY 10 @ $120
-            await p.execute_trade("NVDA", 10, 120.00, "BUY", decision_id="dec-2")
-            # (10*100 + 10*120)/20 = 110
-            assert p.positions["NVDA"].quantity == 20
+
+            # Step 2: BUY 100 @ $120 = $12,000
+            await p.execute_trade("NVDA", 100, 120.00, "BUY", decision_id="dec-2")
+            # (100*100 + 100*120)/200 = 110
+            assert p.positions["NVDA"].quantity == 200
             assert p.positions["NVDA"].average_cost_basis == 110.00
-            
-            # Step 3: SELL 5 @ $130
-            await p.execute_trade("NVDA", 5, 130.00, "SELL", decision_id="dec-3")
-            # Realized PnL: (130 - 110) * 5 = 100
+
+            # Step 3: SELL 50 @ $130
+            await p.execute_trade("NVDA", 50, 130.00, "SELL", decision_id="dec-3")
+            # Realized PnL: (130 - 110) * 50 = 1000
             insert_call = mock_table.insert.call_args_list[-1]
             trade_data = insert_call[0][0]
-            assert trade_data["realized_pnl"] == 100.00
-            assert p.positions["NVDA"].quantity == 15
+            assert trade_data["realized_pnl"] == 1000.00
+            assert p.positions["NVDA"].quantity == 150
             assert p.positions["NVDA"].average_cost_basis == 110.00
-            
-            # Step 4: BUY 5 @ $150
-            await p.execute_trade("NVDA", 5, 150.00, "BUY", decision_id="dec-4")
-            # (15*110 + 5*150)/20 = (1650 + 750)/20 = 2400/20 = 120
-            assert p.positions["NVDA"].quantity == 20
+
+            # Step 4: BUY 50 @ $150
+            await p.execute_trade("NVDA", 50, 150.00, "BUY", decision_id="dec-4")
+            # (150*110 + 50*150)/200 = (16500 + 7500)/200 = 24000/200 = 120
+            assert p.positions["NVDA"].quantity == 200
             assert p.positions["NVDA"].average_cost_basis == 120.00
             
             # Step 5: SELL 20 @ $160
@@ -339,7 +339,8 @@ class TestComplexScenarios:
             insert_call = mock_table.insert.call_args_list[-1]
             trade_data = insert_call[0][0]
             assert trade_data["realized_pnl"] == 800.00
-            assert "NVDA" not in p.positions
+            assert p.positions["NVDA"].quantity == 180
+            assert p.positions["NVDA"].average_cost_basis == 120.00
 
     @pytest.mark.asyncio
     async def test_sell_without_position_returns_none(self):

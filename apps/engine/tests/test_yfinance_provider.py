@@ -8,7 +8,7 @@ from execution.providers.yfinance import YFinanceProvider
 async def test_yfinance_provider_get_ticker_data_success():
     """Test successful data retrieval from yfinance."""
     provider = YFinanceProvider()
-    
+
     mock_ticker = MagicMock()
     mock_ticker.info = {
         "symbol": "AAPL",
@@ -17,10 +17,11 @@ async def test_yfinance_provider_get_ticker_data_success():
         "currency": "USD",
         "exchange": "NMS"
     }
-    
-    with patch("yfinance.Ticker", return_value=mock_ticker):
+
+    with patch("yfinance.Ticker", return_value=mock_ticker), \
+         patch("core.config.FINANCIAL_API_THROTTLE_SECONDS", 0):
         data = await provider.get_ticker_data("AAPL")
-        
+
         assert data is not None
         assert data.ticker == "AAPL"
         assert data.price == 150.0
@@ -32,12 +33,13 @@ async def test_yfinance_provider_get_ticker_data_success():
 async def test_yfinance_provider_get_ticker_data_not_found():
     """Test when a ticker is not found on yfinance."""
     provider = YFinanceProvider()
-    
+
     # yfinance often returns an info dict without the essential keys if not found
     mock_ticker = MagicMock()
     mock_ticker.info = {}
-    
-    with patch("yfinance.Ticker", return_value=mock_ticker):
+
+    with patch("yfinance.Ticker", return_value=mock_ticker), \
+         patch("core.config.FINANCIAL_API_THROTTLE_SECONDS", 0):
         data = await provider.get_ticker_data("INVALID")
         assert data is None
 
@@ -45,7 +47,8 @@ async def test_yfinance_provider_get_ticker_data_not_found():
 async def test_yfinance_provider_get_ticker_data_error():
     """Test error handling in yfinance provider."""
     provider = YFinanceProvider()
-    
-    with patch("yfinance.Ticker", side_effect=Exception("API Error")):
+
+    with patch("yfinance.Ticker", side_effect=Exception("API Error")), \
+         patch("core.config.FINANCIAL_API_THROTTLE_SECONDS", 0):
         data = await provider.get_ticker_data("AAPL")
         assert data is None

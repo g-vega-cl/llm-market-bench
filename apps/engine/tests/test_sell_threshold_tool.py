@@ -1,233 +1,175 @@
-"""Tests for the sell_if_below_10_percent_threshold tool."""
+"""Tests for the 10% minimum position threshold (automatic dust cleanup).
+
+Note: The 10% threshold rule is AUTOMATIC - there is no LLM tool for this.
+The engine automatically sells positions below 10% of portfolio equity after every trade.
+See: execution/portfolio.py -> _check_and_sell_dust_positions()
+
+These tests verify the automatic enforcement behavior, not a callable tool.
+"""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from core.llm import tools
+from unittest.mock import MagicMock, patch
+from execution.portfolio import Portfolio
 
 
 @pytest.fixture
-def mock_supabase_and_market_data():
-    """Setup mock Supabase client and MarketDataManager."""
-    with patch("core.llm.tools.get_supabase_client") as mock_get_client, \
-         patch("core.llm.tools.MarketDataManager") as MockMDM:
-        
+def mock_supabase():
+    """Setup mock Supabase client for dust cleanup tests."""
+    with patch("execution.portfolio.get_supabase_client") as mock_get_client:
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
-        
-        mock_mdm = MockMDM.return_value
-        mock_mdm.get_quote = AsyncMock()
-        
-        yield {
-            "client": mock_client,
-            "mdm": mock_mdm
-        }
 
+        portfolio_data = [
+            {
+                "id": "test-portfolio-id",
+                "owner_id": "test-agent",
+                "cash_balance": 5000.0,
+                "sma": 5000.0,
+                "total_equity": 10000.0,
+                "buying_power": 20000.0,
+                "excess_liquidity": 7000.0,
+                "maintenance_margin": 3000.0,
+                "realized": 5000.0
+            }
+        ]
 
-def setup_position_mock(client, quantity, avg_cost, portfolio_id):
-    """Helper to setup position query mock."""
-    position_data = [{"quantity": quantity, "average_cost_basis": avg_cost, "portfolio_id": portfolio_id}]
-    client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = position_data
-    return position_data
+        positions_data = [
+            {"ticker": "AAPL", "quantity": 10, "average_cost_basis": 150.0},
+            {"ticker": "XYZ", "quantity": 5, "average_cost_basis": 100.0}
+        ]
 
+        def table_side_effect(table_name):
+            mock_table = MagicMock()
+            if table_name == "portfolios":
+                mock_table.select.return_value.eq.return_value.execute.return_value.data = portfolio_data
+            elif table_name == "portfolio_positions":
+                mock_table.select.return_value.eq.return_value.execute.return_value.data = positions_data
+            return mock_table
 
-def setup_portfolio_mock(client, total_equity):
-    """Helper to setup portfolio equity query mock."""
-    portfolio_data = [{"total_equity": total_equity}]
-    # Need to chain the calls differently for the second query
-    client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = portfolio_data
-    return portfolio_data
-
-
-@pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_below_limit(mock_supabase_and_market_data):
-    """Verify tool returns SELL recommendation when position is below 10% threshold."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Setup mocks with side_effect for sequential calls
-    position_data = [{"quantity": 5, "average_cost_basis": 100.0, "portfolio_id": "port-123"}]
-    portfolio_data = [{"total_equity": 10000.0}]
-    
-    # Configure table().select() to return different results based on context
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    
-    # First call (position): .eq("ticker", ticker).eq("portfolio_id", owner_id)
-    # Second call (portfolio): .eq("id", portfolio_id)
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = position_data
-    mock_eq_portfolio.execute.return_value.data = portfolio_data
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    # Mock market price: $100
-    quote = MagicMock()
-    quote.exists = True
-    quote.price = 100.0
-    mocks["mdm"].get_quote.return_value = quote
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    assert "BELOW THRESHOLD" in result
-    assert "SELL ALL 5 shares" in result
-    assert "Position Value: $500.00" in result
-    assert "10% Threshold: $1,000.00" in result
+        mock_client.table.side_effect = table_side_effect
+        yield mock_client
 
 
 @pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_above_limit(mock_supabase_and_market_data):
-    """Verify tool returns no action when position is above 10% threshold."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Mock position: 100 shares @ $150 = $15,000 value
-    position_data = [{"quantity": 100, "average_cost_basis": 150.0, "portfolio_id": "port-123"}]
-    portfolio_data = [{"total_equity": 10000.0}]
-    
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = position_data
-    mock_eq_portfolio.execute.return_value.data = portfolio_data
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    # Mock market price: $150
-    quote = MagicMock()
-    quote.exists = True
-    quote.price = 150.0
-    mocks["mdm"].get_quote.return_value = quote
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    assert "ABOVE THRESHOLD" in result
-    assert "No action required" in result
-    assert "Position Value: $15,000.00" in result
+async def test_automatic_dust_cleanup_below_threshold(mock_supabase):
+    """Verify system automatically sells positions below 10% of equity."""
+    portfolio = Portfolio(owner_id="test-agent")
+    await portfolio.initialize()
+
+    # Setup: $10,000 equity, 5 shares @ $100 = $500 (below 10% = $1,000)
+    portfolio.positions = {
+        "AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)
+    }
+    portfolio.metrics = MagicMock(total_equity=10000.0)
+    portfolio.cash_balance = 5000.0
+    portfolio.id = "test-portfolio-id"
+
+    current_prices = {"AAPL": 100.0}
+
+    await portfolio._check_and_sell_dust_positions(current_prices)
+
+    # Position should be automatically liquidated
+    assert "AAPL" not in portfolio.positions
+    # Cash should increase by sale proceeds
+    assert portfolio.cash_balance == 5500.0  # 5000 + (5 * 100)
 
 
 @pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_no_position(mock_supabase_and_market_data):
-    """Verify tool handles case where position doesn't exist."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Mock no position
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = []
-    mock_eq_portfolio.execute.return_value.data = [{"total_equity": 10000.0}]
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    assert "do not currently own" in result
+async def test_no_cleanup_for_positions_above_threshold(mock_supabase):
+    """Verify positions above 10% threshold are not automatically sold."""
+    portfolio = Portfolio(owner_id="test-agent")
+    await portfolio.initialize()
+
+    # Setup: $10,000 equity, 100 shares @ $150 = $15,000 (above 10% = $1,000)
+    portfolio.positions = {
+        "AAPL": MagicMock(ticker="AAPL", quantity=100, average_cost_basis=150.0)
+    }
+    portfolio.metrics = MagicMock(total_equity=10000.0)
+    portfolio.cash_balance = 5000.0
+    portfolio.id = "test-portfolio-id"
+
+    current_prices = {"AAPL": 150.0}
+    initial_call_count = len(mock_supabase.table.call_args_list)
+
+    await portfolio._check_and_sell_dust_positions(current_prices)
+
+    # No trades should have been executed
+    new_calls = mock_supabase.table.call_args_list[initial_call_count:]
+    trade_calls = [c for c in new_calls if len(c[0]) > 0 and c[0][0] == "trades"]
+    assert len(trade_calls) == 0
+    # Position should still exist
+    assert "AAPL" in portfolio.positions
 
 
 @pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_zero_quantity(mock_supabase_and_market_data):
-    """Verify tool handles zero quantity position."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Mock zero quantity
-    position_data = [{"quantity": 0, "average_cost_basis": 100.0, "portfolio_id": "port-123"}]
-    
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = position_data
-    mock_eq_portfolio.execute.return_value.data = [{"total_equity": 10000.0}]
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    assert "own 0 shares" in result
+async def test_handles_zero_quantity_position(mock_supabase):
+    """Verify zero quantity positions are ignored."""
+    portfolio = Portfolio(owner_id="test-agent")
+    await portfolio.initialize()
+
+    portfolio.positions = {
+        "DEAD": MagicMock(ticker="DEAD", quantity=0, average_cost_basis=50.0)
+    }
+    portfolio.metrics = MagicMock(total_equity=10000.0)
+    portfolio.cash_balance = 5000.0
+    portfolio.id = "test-portfolio-id"
+
+    current_prices = {"DEAD": 0.0}
+    initial_call_count = len(mock_supabase.table.call_args_list)
+
+    await portfolio._check_and_sell_dust_positions(current_prices)
+
+    new_calls = mock_supabase.table.call_args_list[initial_call_count:]
+    trade_calls = [c for c in new_calls if len(c[0]) > 0 and c[0][0] == "trades"]
+    assert len(trade_calls) == 0
 
 
 @pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_market_data_error(mock_supabase_and_market_data):
-    """Verify tool handles market data fetch error."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Mock position exists
-    position_data = [{"quantity": 5, "average_cost_basis": 100.0, "portfolio_id": "port-123"}]
-    
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = position_data
-    mock_eq_portfolio.execute.return_value.data = [{"total_equity": 10000.0}]
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    # Mock market data error
-    mocks["mdm"].get_quote.return_value = None
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    assert "Error" in result
-    assert "Could not fetch current price" in result
+async def test_handles_market_data_error_gracefully(mock_supabase):
+    """Verify positions with zero/negative value are not sold."""
+    portfolio = Portfolio(owner_id="test-agent")
+    await portfolio.initialize()
+
+    portfolio.positions = {
+        "AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)
+    }
+    portfolio.metrics = MagicMock(total_equity=10000.0)
+    portfolio.cash_balance = 5000.0
+    portfolio.id = "test-portfolio-id"
+
+    # Simulate market data error (price = 0)
+    current_prices = {"AAPL": 0.0}
+    initial_call_count = len(mock_supabase.table.call_args_list)
+
+    await portfolio._check_and_sell_dust_positions(current_prices)
+
+    # Should not attempt to sell a position with zero value
+    new_calls = mock_supabase.table.call_args_list[initial_call_count:]
+    trade_calls = [c for c in new_calls if len(c[0]) > 0 and c[0][0] == "trades"]
+    assert len(trade_calls) == 0
 
 
 @pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_portfolio_error(mock_supabase_and_market_data):
-    """Verify tool handles portfolio equity fetch error."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Mock position exists
-    position_data = [{"quantity": 5, "average_cost_basis": 100.0, "portfolio_id": "port-123"}]
-    
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = position_data
-    mock_eq_portfolio.execute.return_value.data = []  # Empty = error
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    # Mock market price
-    quote = MagicMock()
-    quote.exists = True
-    quote.price = 100.0
-    mocks["mdm"].get_quote.return_value = quote
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    assert "Error" in result
-    assert "Could not fetch portfolio equity" in result
+async def test_exact_threshold_boundary(mock_supabase):
+    """Verify behavior when position is exactly at 10% threshold."""
+    portfolio = Portfolio(owner_id="test-agent")
+    await portfolio.initialize()
 
+    # 10 shares @ $100 = $1,000 (exactly 10% of $10,000)
+    portfolio.positions = {
+        "AAPL": MagicMock(ticker="AAPL", quantity=10, average_cost_basis=100.0)
+    }
+    portfolio.metrics = MagicMock(total_equity=10000.0)
+    portfolio.cash_balance = 5000.0
+    portfolio.id = "test-portfolio-id"
 
-@pytest.mark.asyncio
-async def test_sell_if_below_10_percent_threshold_exact_threshold(mock_supabase_and_market_data):
-    """Verify tool behavior when position is exactly at 10% threshold."""
-    mocks = mock_supabase_and_market_data
-    client = mocks["client"]
-    
-    # Mock position: 10 shares @ $100 = $1,000 value (exactly 10% of $10k)
-    position_data = [{"quantity": 10, "average_cost_basis": 100.0, "portfolio_id": "port-123"}]
-    portfolio_data = [{"total_equity": 10000.0}]
-    
-    mock_table = client.table.return_value
-    mock_select = mock_table.select.return_value
-    mock_eq_ticker = mock_select.eq.return_value
-    mock_eq_portfolio = MagicMock()
-    mock_eq_ticker.eq.return_value.execute.return_value.data = position_data
-    mock_eq_portfolio.execute.return_value.data = portfolio_data
-    mock_eq_ticker.eq.return_value = mock_eq_portfolio
-    
-    # Mock market price: $100
-    quote = MagicMock()
-    quote.exists = True
-    quote.price = 100.0
-    mocks["mdm"].get_quote.return_value = quote
-    
-    result = await tools.execute_sell_if_below_10_percent_threshold_tool("AAPL", "test-agent")
-    
-    # At exactly 10%, should be considered ABOVE threshold (not below)
-    assert "ABOVE THRESHOLD" in result
-    assert "No action required" in result
+    current_prices = {"AAPL": 100.0}
+    initial_call_count = len(mock_supabase.table.call_args_list)
+
+    await portfolio._check_and_sell_dust_positions(current_prices)
+
+    # Position at exactly 10% should NOT be sold (condition is < threshold, not <=)
+    new_calls = mock_supabase.table.call_args_list[initial_call_count:]
+    trade_calls = [c for c in new_calls if len(c[0]) > 0 and c[0][0] == "trades"]
+    assert len(trade_calls) == 0
+    assert "AAPL" in portfolio.positions

@@ -185,6 +185,9 @@ A living document of features and improvements in progress or planned for the pl
         - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
 - [ ] **BUY TOOLS** - Make sure we implement BUY tools too. Make sure to check if we have buy tools already and which ones we have.
+- [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
+- [ ] **Posthog** - Make sure it's working - I might need to add a reverse proxy.
+
 
 
 

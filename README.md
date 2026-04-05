@@ -184,7 +184,6 @@ A living document of features and improvements in progress or planned for the pl
         - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.
         - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
-- [x] **BUY TOOLS** - Implemented `calculate_buy_quantity` with 10% equity floor enforcement.
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Posthog** - Make sure it's working - I might need to add a reverse proxy.
 

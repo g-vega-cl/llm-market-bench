@@ -150,7 +150,7 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 
 ### Guardrails & Validation
 
-*   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `sell_X_percent`) were actually called
+*   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`) were actually called
 *   **Pre-Market Validation**: FMP-verified market hours, symbol existence, 1.0% price banding, liquidity checks
 *   **Reg T Margin Validation**: Buying power checks with $1,000 absolute minimum trade value
 *   **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
@@ -184,7 +184,7 @@ A living document of features and improvements in progress or planned for the pl
         - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.
         - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
-- [ ] **BUY TOOLS** - Make sure we implement BUY tools too. Make sure to check if we have buy tools already and which ones we have.
+- [x] **BUY TOOLS** - Implemented `calculate_buy_quantity` with 10% equity floor enforcement.
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Posthog** - Make sure it's working - I might need to add a reverse proxy.
 

@@ -63,7 +63,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 3: Execution & Guardrails
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
-11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, and `sell_X_percent` for all SELLs) were actually executed via native function calling. The scan is **robust to formatting variances**, automatically stripping whitespace and normalizing casing for tickers to prevent false rejections. Hallucinated or text-only tool usage results in trade rejection.
+11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, `calculate_buy_quantity` for BUYs, and `calculate_sell_quantity` for SELLs) were actually executed via native function calling. The scan is **robust to formatting variances**, automatically stripping whitespace and normalizing casing for tickers to prevent false rejections. Hallucinated or text-only tool usage results in trade rejection.
     - **Multi-Layer Verification**: See [TOOL_ENFORCEMENT.md](./engine/TOOL_ENFORCEMENT.md) for detailed documentation on the 4-layer enforcement system.
     - **Pre-Prompt Strengthening**: Claude models receive enhanced system prompts with few-shot examples.
     - **Confidence Penalties**: Decisions without verified tool calls receive 50% confidence reduction.
@@ -105,11 +105,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
 *   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the suggested price deviates by more than **5.0%** from market data, reject the trade to prevent negative balances or execution based on stale/hallucinated data.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
-*   **Portfolio Context Injection**: LLMs receive their current Cash, Equity, and Buying Power in the prompt, along with real-time market prices for all holdings (fetched in parallel before analysis), allowing them to make **"Allocation %"** decisions for BUYS. For SELLS, LLMs are now REQUIRED to use calculation tools (10% - 100%) to determine the exact share quantity.
+*   **Portfolio Context Injection**: LLMs receive their current Cash, Equity, and Buying Power in the prompt, along with real-time market prices for all holdings (fetched in parallel before analysis), allowing them to make **"Allocation %"** decisions for BUYS. For ALL trades (BUY or SELL), LLMs are now REQUIRED to use calculation tools (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine the exact share quantity.
 *
-*   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS a specific sell percentage tool (e.g., "sell 50%") is used, which allows for precision rebalancing and clearing "dust" positions.
+*   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS the `calculate_sell_quantity` tool is used with a percentage, which allows for precision rebalancing and clearing "dust" positions.
 *
-*   **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT)**: The system AUTOMATICALLY sells any position whose value falls below 10% of total portfolio equity. After EVERY trade execution, the engine scans all positions and liquidates any that are below the threshold. This prevents portfolio pollution from small "dust" positions without requiring LLM intervention. All automatic sales are recorded in the trade ledger with full P&L tracking.
+*   **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT)**: The system requires every position to be at least 10% of total portfolio equity. 
+    - For BUYS: The `calculate_buy_quantity` tool automatically up-sizes the request to meet this floor.
+    - For SELLS: The `calculate_sell_quantity` tool automatically mandates a 100% (FULL) sell if the remaining position would fall below the 10% threshold.
+    This prevents portfolio pollution from small "dust" positions while providing agents with immediate feedback through the tool response.
 *
 *   documentation: ./engine/portfolio-management-walkthrough.md
 

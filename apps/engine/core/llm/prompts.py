@@ -20,11 +20,13 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "=== CRITICAL TOOL USAGE REQUIREMENTS ===\n"
     "1. BEFORE recommending ANY trade (BUY or SELL), you MUST call get_stock_quote(ticker) via function calling.\n"
     "2. You MUST set a 'limit_price' for every trade based on the price returned by the tool (e.g., set limit slightly above current for BUY, slightly below for SELL to ensure execution).\n"
-    "3. For SELL decisions, you MUST call a sell percentage tool (e.g., sell_50_percent) to calculate the exact share quantity.\n"
+    "3. For BUY and SELL decisions, you MUST call the respective calculation tool (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine the exact share quantity.\n"
     "4. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.\n"
-    "5. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.\n"
+    "5. Your trade will be AUTOMATICALLY REJECTED if the tool use block is not found in your conversation history.\n"
     "6. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n"
-    "7. 10% MINIMUM POSITION RULE (AUTOMATIC ENFORCEMENT): The system AUTOMATICALLY sells any position that falls below 10% of your total portfolio equity. If your partial sell leaves a position below this threshold, the remainder will be automatically liquidated. You do NOT need to call a tool for this - it happens automatically after your trade.\n\n"
+    "7. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. \n"
+    "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
+    "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
     "This is a HARD REQUIREMENT. No exceptions."
 )
 
@@ -44,8 +46,11 @@ Analyze the current portfolio and the news snippets and the state of the market,
 ```
 [Assistant outputs tool_use block]
 {{"type": "tool_use", "id": "call_abc123", "name": "get_stock_quote", "input": {{"ticker": "NVDA"}}}}
+[Assistant outputs tool_use block]
+{{"type": "tool_use", "id": "call_def456", "name": "calculate_buy_quantity", "input": {{"ticker": "NVDA", "percentage": 10}}}}
 
 [Tool returns: Ticker: NVDA, Current Price: $120.50, Market Cap: $2.97T]
+[Tool returns: Quantity: 83]
 
 [Assistant then outputs decision]
 {{
@@ -54,7 +59,7 @@ Analyze the current portfolio and the news snippets and the state of the market,
     "signal": "BUY",
     "price": 120.50,
     "limit_price": 121.00,
-    "reasoning": "After verifying the current price of $120.50 via get_stock_quote, I am setting a limit price of $121.00 to ensure we execute at or near this level..."
+    "reasoning": "After verifying the current price of $120.50 via get_stock_quote and calculating quantity via calculate_buy_quantity..."
   }}]
 }}
 ```
@@ -138,10 +143,10 @@ SOPHISTICATED TRADING LOGIC:
     - Consider what could go wrong.
 14. **How does this stock correlate with my existing portfolio?**
      - Avoid over-concentration in a single sector or theme.
-15. **Should I reduce exposure or take profits?**
-     - **MANDATORY FOR SELL:** You MUST actively execute one of the sell percentage tools (e.g. `sell_50_percent`) via function calling to calculate the exact share quantity for selling.
-     - **ENFORCEMENT (HARD FAILURE):** Any `SELL` decision where the sell tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count or set a JSON flag. You must make the ACTUAL internal tool call!
-     - **10% MINIMUM POSITION RULE (AUTOMATIC):** The system AUTOMATICALLY sells any position whose value falls below 10% of your total portfolio equity. If your partial sell leaves a position below this threshold (e.g., you sell some shares and the remainder is worth <$1,000 in a $10,000 portfolio), the system will automatically liquidate the entire remaining position. You do NOT need to call a tool for this - it happens automatically and will be recorded in your trade history.
+15. **MANDATORY QUANTITY CALCULATION:** 
+     - **For BUY:** You MUST execute `calculate_buy_quantity(ticker, percentage)` to determine the exact shares based on your Buying Power. The tool will ensure you meet the **10% Equity Floor**.
+     - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary.
+     - **ENFORCEMENT (HARD FAILURE):** Any `BUY` or `SELL` decision where the respective calculation tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".

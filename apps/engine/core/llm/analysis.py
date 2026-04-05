@@ -149,8 +149,23 @@ async def analyze_with_provider(
             if decision.signal in ["BUY", "SELL"]:
                 results = _scan_history_for_tools(messages, decision.ticker)
 
-                # Update sell_tool_called based on ACTUAL history
-                if decision.signal == "SELL":
+                # Update buy_tool_called/sell_tool_called based on ACTUAL history
+                if decision.signal == "BUY":
+                    was_self_reported = decision.buy_tool_called
+                    decision.buy_tool_called = results["buy_tool_found"]
+
+                    if was_self_reported and not results["buy_tool_found"]:
+                        logger.warning(
+                            "[%s/%s] HARD ENFORCEMENT: Agent claimed buy tool was called for %s but it was NOT found in history. Rejecting trade.",
+                            provider, model_name, decision.ticker
+                        )
+                    elif not results["buy_tool_found"]:
+                        logger.warning(
+                            "[%s/%s] HARD ENFORCEMENT: Agent recommended BUY for %s without executing 'calculate_buy_quantity' tool. Rejecting trade.",
+                            provider, model_name, decision.ticker
+                        )
+
+                elif decision.signal == "SELL":
                     was_self_reported = decision.sell_tool_called
                     decision.sell_tool_called = results["sell_tool_found"]
 
@@ -161,7 +176,7 @@ async def analyze_with_provider(
                         )
                     elif not results["sell_tool_found"]:
                         logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing a sell percentage tool. Rejecting trade.",
+                            "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing 'calculate_sell_quantity' tool. Rejecting trade.",
                             provider, model_name, decision.ticker
                         )
 
@@ -258,11 +273,13 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     Returns:
         dict: {
             "quote_found": bool,
+            "buy_tool_found": bool,
             "sell_tool_found": bool
         }
     """
     ticker = ticker.strip().upper()
     quote_found = False
+    buy_tool_found = False
     sell_tool_found = False
 
     for m in messages:
@@ -312,11 +329,18 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
                 if name == "get_stock_quote":
                     quote_found = True
                     logger.debug(f"Confirmed 'get_stock_quote' call for {ticker} in history.")
-                elif name.startswith("sell_") and name.endswith("_percent"):
+                elif name == "calculate_buy_quantity":
+                    buy_tool_found = True
+                    logger.debug(f"Confirmed 'calculate_buy_quantity' call for {ticker} in history.")
+                elif name == "calculate_sell_quantity":
                     sell_tool_found = True
-                    logger.debug(f"Confirmed '{name}' call for {ticker} in history.")
+                    logger.debug(f"Confirmed 'calculate_sell_quantity' call for {ticker} in history.")
 
-    return {"quote_found": quote_found, "sell_tool_found": sell_tool_found}
+    return {
+        "quote_found": quote_found, 
+        "buy_tool_found": buy_tool_found,
+        "sell_tool_found": sell_tool_found
+    }
 
 
 def _extract_held_tickers(portfolio_context: str) -> List[str]:

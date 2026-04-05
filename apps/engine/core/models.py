@@ -88,9 +88,13 @@ class DecisionObject(BaseModel):
         None,
         description="Notes for planning decisions in advance (e.g., selling X for Y)"
     )
+    buy_tool_called: bool = Field(
+        False,
+        description="MANDATORY for BUY: Whether the buy quantity tool was called to verify position size"
+    )
     sell_tool_called: bool = Field(
         False,
-        description="MANDATORY for SELL: Whether one of the sell percentage tools was called to calculate quantity"
+        description="MANDATORY for SELL: Whether the sell quantity tool was called to verify position size"
     )
     quantity: int | None = Field(
         None,

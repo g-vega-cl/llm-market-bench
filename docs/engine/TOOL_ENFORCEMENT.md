@@ -70,11 +70,13 @@ All models (OpenAI, Anthropic, Gemini, DeepSeek) now receive a unified high-fide
 CORE_ANALYSIS_SYSTEM_PROMPT = """
 === CRITICAL TOOL USAGE REQUIREMENTS ===
 1. BEFORE recommending ANY trade (BUY or SELL), you MUST call get_stock_quote(ticker) via function calling.
-2. For SELL decisions, you MUST call a sell percentage tool (e.g., sell_50_percent) to calculate exact share quantity.
+2. For BUY or SELL decisions, you MUST call the respective calculation tool (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine exact share quantity.
 3. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.
 4. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.
 5. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.
-6. 10% MINIMUM POSITION RULE (AUTOMATIC): The system AUTOMATICALLY sells any position that falls below 10% of your total portfolio equity. If your partial sell leaves a position below this threshold, the remainder will be automatically liquidated. You do NOT need to call a tool for this - it happens automatically after your trade.
+6. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. 
+   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. 
+   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.
 
 This is a HARD REQUIREMENT. No exceptions.
 """
@@ -155,7 +157,8 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     Returns:
         dict: {
             "quote_found": bool,      # get_stock_quote was called
-            "sell_tool_found": bool   # sell_X_percent was called
+            "buy_tool_found": bool,   # calculate_buy_quantity was called
+            "sell_tool_found": bool   # calculate_sell_quantity was called
         }
     """
     # Handles multiple provider formats:

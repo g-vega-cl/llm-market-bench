@@ -77,7 +77,7 @@ DEEPSEEK_API_KEY=your_deepseek_key
 
 # Market Data
 FMP_API_KEY=your_fmp_key
-FINANCIAL_PROVIDER=ibkr_proxy  # Options: fmp, yfinance, ibkr, ibkr_proxy
+FINANCIAL_PROVIDER=fmp  # Options: fmp, yfinance
 IBKR_PROXY_URL=your_ibkr_proxy_url
 IBKR_PROXY_TOKEN=your_ibkr_proxy_token
 
@@ -151,8 +151,8 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 ### Guardrails & Validation
 
 *   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`) were actually called
-*   **Pre-Market Validation**: FMP-verified market hours, symbol existence, 1.0% price banding, liquidity checks
-*   **Reg T Margin Validation**: Buying power checks with $1,000 absolute minimum trade value
+*   **Pre-Market Validation**: FMP-verified market hours, symbol existence, 5.0% limit order price deviation check, liquidity checks
+*   **Reg T Margin Validation**: Buying power checks with 10% of Total Equity minimum (absolute floor of $1,000 for BUY orders)
 *   **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
 *   **Semantic Redundancy**: Overtrading prevention via pgvector deduplication
 
@@ -194,6 +194,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Find uncorrelated sectors** - Like energy X Tech https://g.co/gemini/share/68876564a362.
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
+- [ ] **Corporate Action Check** - Detect and ingest corporate actions (splits, dividends, mergers) to automatically adjust positions and prevent stale price assumptions. Currently marked "not implemented" in the pipeline (Phase 1, Step 3).
+- [ ] **Cross-Language Schema Contract Detection** - Build a scanner that compares Supabase migration files against TypeScript type definitions to catch structural mismatches when a new DB column is added in Python but the frontend types aren't updated.
 
 
 ### 🔄 Under Consideration

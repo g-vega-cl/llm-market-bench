@@ -4,7 +4,7 @@
 
 ### What It Does
 
-An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Three times a day during market hours (09:30, 12:30, 15:30 ET), they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
+An automated platform where four primary LLMs (**OpenAI, Claude, Gemini, DeepSeek**) compete in a virtual stock market, with two meta-agents (**Contrarian Agent, Manager Agent**) reviewing consensus and counter-positioning after primary analysis. Three times a day during market hours (09:30, 12:30, 15:30 ET), they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
 
 **New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
 
@@ -40,56 +40,56 @@ llm-market-bench/
 └── tests/                   # Engine & Web tests
 ```
 
-## 3. The Daily Pipeline (Phase 1-22)
+## 3. The Daily Pipeline
 
 For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow.md)**.
 
 ### Phase 1: Ingestion & Normalization
 1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays. The market status check uses **class-level caching (5-minute TTL)** to ensure the FMP API is called only once per pipeline run, reducing redundant API calls while maintaining accurate holiday detection.
 2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
-3.  **Corporate Action Check:** (PENDING).
+3.  **Corporate Action Check:** *(Not yet implemented — see Roadmap.)*
 4.  **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
 5.  **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
-5.  **Global Macro Tracking**: The engine fetches real-time quotes and historical volatility for 16 key macro assets (Equities, Commodities, Yields/DXY). It identifies **Market Regime Shifts** ($> 2\sigma$ deviation) to provide high-level context before trade generation. See **[GLOBAL_MACRO_TRACKER.md](./engine/GLOBAL_MACRO_TRACKER.md)**.
-6.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine injects the live **Global Macro Snapshot** into each prompt, ensuring agents recognize "Risk-On/Risk-Off" environments before analysis. It initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
+6.  **Global Macro Tracking**: The engine fetches real-time quotes and historical volatility for 16 key macro assets (Equities, Commodities, Yields/DXY). It identifies **Market Regime Shifts** ($> 2\sigma$ deviation) to provide high-level context before trade generation. See **[GLOBAL_MACRO_TRACKER.md](./engine/GLOBAL_MACRO_TRACKER.md)**.
+7.  **Parallel LLM Analysis**: OpenAI, Claude, Gemini, and DeepSeek generate trade signals using active tools. The engine injects the live **Global Macro Snapshot** into each prompt, ensuring agents recognize "Risk-On/Risk-Off" environments before analysis. It initializes all agent portfolios and fetches current market prices for all unique holdings in parallel before analysis, ensuring consistent and fresh data injection. The engine uses **Modular Handlers** (dedicated logic for each provider) to manage diverse tool-calling behaviors. To ensure output reliability and prevent token truncation, the engine implements **[Asynchronous Chunk Batching](./engine/BatchingStrategy.md)** (processing news in batches of 20).
     -   **Reasoning Models (DeepSeek)**: DeepSeek runs in **Thinking Mode** (CoT reasoning) with a dedicated handler that preserves reasoning context (`reasoning_content`) across tool iterations and handles empty content fallbacks for final structured extraction.
     -   **Web Search Integration**: Claude and Gemini agents can invoke native web search tools to verify time-sensitive information (breaking news, corporate actions, government announcements) with automatic citation tracking.
-7.  **RAG Context Retrieval**: Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
-8.  **Decision Attribution**: Map reasoning, strategy intent, and metadata to the `decisions` table.
-9.  **Event Consensus**: Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
-10. **Trend Analysis**: Calculate concept momentum and update PCA coordinates for the map.
+8.  **RAG Context Retrieval**: Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
+9.  **Decision Attribution**: Map reasoning, strategy intent, and metadata to the `decisions` table.
+10. **Event Consensus**: Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
+11. **Trend Analysis**: Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
-10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
-11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, `calculate_buy_quantity` for BUYs, and `calculate_sell_quantity` for SELLs) were actually executed via native function calling. The scan is **robust to formatting variances**, automatically stripping whitespace and normalizing casing for tickers to prevent false rejections. Hallucinated or text-only tool usage results in trade rejection.
+12. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
+13. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, `calculate_buy_quantity` for BUYs, and `calculate_sell_quantity` for SELLs) were actually executed via native function calling. The scan is **robust to formatting variances**, automatically stripping whitespace and normalizing casing for tickers to prevent false rejections. Hallucinated or text-only tool usage results in trade rejection.
     - **Multi-Layer Verification**: See [TOOL_ENFORCEMENT.md](./engine/TOOL_ENFORCEMENT.md) for detailed documentation on the 4-layer enforcement system.
     - **Pre-Prompt Strengthening**: All models receive an enhanced unified system prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`) equipped with strict high-fidelity few-shot tool usage examples.
     - **Portfolio Isolation**: The engine guarantees strict portfolio context scoping across batched tasks, preventing state leakage between distinct providers (e.g. Anthropic does not see DeepSeek's holdings).
     - **Confidence Penalties**: Decisions without verified tool calls receive 50% confidence reduction.
     - **Ownership Pre-Validation**: SELL signals for unheld tickers are caught before verification layer.
-    - **Provider-Specific Fixes (2026-03-24 PM)**:
+    - **Provider-Specific Fixes**:
       - **DeepSeek**: Thinking mode support with auto-retry for empty content
       - **Claude**: Max tokens increased from 8K → 32K
       - **Gemini**: `List[Model]` handling for multiple function calls
-12. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware, **cached with 5-minute TTL** to avoid redundant API calls), symbol existence, **1.0% price banding**, and liquidity checks.
-13. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
-14. **Trade Settlement**: Atomic updates to cash, positions, and ledger. **Pre-saves decision with `status="VALIDATED"` to obtain `decision_id` for trade foreign key**.
-15. **Attribution Locking:** **Two-phase commit** - links `TradeID` to decision after execution, completing the bidirectional `Decision ↔ Trade` link.
-16. **Ledger Update:** Daily equity curve snapshot.
+14. **Pre-Market Validation**: **FMP-Verified Market Hours** (holiday-aware, **cached with 5-minute TTL** to avoid redundant API calls), symbol existence, **5.0% price banding**, and liquidity checks.
+15. **Reg T Margin Validation**: Ensure buying power and the $1,000 **absolute minimum trade value** (waived for SELL orders if a specific sell tool is used).
+16. **Trade Settlement**: Atomic updates to cash, positions, and ledger. **Pre-saves decision with `status="VALIDATED"` to obtain `decision_id` for trade foreign key**.
+17. **Attribution Locking:** **Two-phase commit** - links `TradeID` to decision after execution, completing the bidirectional `Decision ↔ Trade` link.
+18. **Ledger Update:** Daily equity curve snapshot.
 
-### Phase 5: Feedback & Specialized Agents
-73. **Post-Analysis (Manager Agent):** Compare reasoning to multi-interval performance; generate lessons.
-74. **Contrarian Agent:** Identifies crowded trades or missed risks.
-75. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
-76. **Government Tracking:** Monthly audit of incentives and policies.
-77. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (via FMP API) to identify sector proxies, ETFs, and derivative play tickers for any market theme, powering the 'How to Profit' feature.
-78. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
+### Phase 4: Feedback & Specialized Agents
+19. **Post-Analysis (Manager Agent):** Compare reasoning to multi-interval performance; generate lessons.
+20. **Contrarian Agent:** Identifies crowded trades or missed risks.
+21. **Skeptical Verifier Agent:** Performs just-in-time audits of every trade signal.
+22. **Government Tracking:** Monthly audit of incentives and policies.
+23. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (via FMP API) to identify sector proxies, ETFs, and derivative play tickers for any market theme, powering the 'How to Profit' feature.
+24. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
 
-### Phase 3: Market Execution (Sequential)
+### Phase 5: Market Execution (Sequential)
 
-**10. Second-Step Verification** ✅
+**12. Second-Step Verification** ✅
 
 *   **Tech:** Python / Multi-Provider Tool Loop
 *   **Logic:** *Every BUY/SELL signal is intercepted by a dedicated verifier.*
@@ -97,18 +97,18 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Skepticism SOP**: *Checks if news is "priced in" via history, identifies at least two failure modes, and searches for "Silver to our Gold" alternative plays using **Vector-Based Sector Analysis**. Crucially, it now **audits the agent's strategic reasoning** (e.g., "sell X to fund Y") for logical consistency. It also validates adherence to **Calendar & Seasonal Strategies** (Turn of the Month, Payday Anomaly, etc.) by analyzing the injected current date context.*
 
 *   **Robust Tooling**: *Universal tool implementation supports complex structured outputs (Anthropic) and safe content parsing (Gemini), enabling diverse models to act as verifiers. The verification layer uses **Modular Provider Handlers** (e.g., `openai.py`, `deepseek.py`, `anthropic.py`) to handle idiosyncratic behaviors like DeepSeek's reasoning preservation. It is designed with **Sync/Async Resilience**, safely handling both native Google SDK response objects and asynchronous patterns.*
-*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **IBKR Proxy** (with YFinance fallback) if local data is missing for a new ticker. To optimize performance, the engine uses **Batch Upserts** when saving historical prices to Supabase, reducing network overhead significantly. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts. It also implements a unified **`ensure_list`** wrapper to resiliently handle both single and multi-block LLM responses. The **Anthropic handler** (`handlers/anthropic.py`) filters whitespace-only text blocks before building the message history, preventing `400 Bad Request: text content blocks must be non-empty` errors. The **FMP provider** (`execution/providers/fmp.py`) correctly passes the ticker as a query parameter to the `historical-price-eod/full` endpoint and handles both flat-list and nested `"historical"` response shapes, resolving prior `404` errors for tickers like `SMCI` and `OIH`. Crucially, it integrates a **FMP-driven Market Status check** with **class-level caching (5-minute TTL)** to enforce trading only during active US market hours, including automatic holiday detection. This ensures the market status API is called only once per pipeline run, reducing redundant API calls by ~99%.*
+*   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **FMP** (with YFinance fallback) if local data is missing for a new ticker. To optimize performance, the engine uses **Batch Upserts** when saving historical prices to Supabase, reducing network overhead significantly. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts. It also implements a unified **`ensure_list`** wrapper to resiliently handle both single and multi-block LLM responses. The **Anthropic handler** (`handlers/anthropic.py`) filters whitespace-only text blocks before building the message history, preventing `400 Bad Request: text content blocks must be non-empty` errors. The **FMP provider** (`execution/providers/fmp.py`) correctly passes the ticker as a query parameter to the `historical-price-eod/full` endpoint and handles both flat-list and nested `"historical"` response shapes, resolving prior `404` errors for tickers like `SMCI` and `OIH`. Crucially, it integrates a **FMP-driven Market Status check** with **class-level caching (5-minute TTL)** to enforce trading only during active US market hours, including automatic holiday detection. This ensures the market status API is called only once per pipeline run, reducing redundant API calls by ~99%.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
-**11. Pre-Execution Margin Validation** ✅
+**13. Pre-Execution Margin Validation** ✅
 
 *   **Tech:** Python / Supabase / Reg T Logic
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
-*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the suggested price deviates by more than **5.0%** from market data, reject the trade to prevent negative balances or execution based on stale/hallucinated data.*
+*   **Rule:** *Check `portfolio.buying_power` against the estimated cost of the trade. If `Cost > Buying Power`, or if the limit order price submitted by the LLM deviates by more than **5.0%** from current market data, reject the trade to prevent execution based on stale or hallucinated prices.*
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection**: LLMs receive their current Cash, Equity, and Buying Power in the prompt, along with real-time market prices for all holdings (fetched in parallel before analysis), allowing them to make **"Allocation %"** decisions for BUYS. For ALL trades (BUY or SELL), LLMs are now REQUIRED to use calculation tools (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine the exact share quantity.
 *
-*   **Dynamic Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS the `calculate_sell_quantity` tool is used with a percentage, which allows for precision rebalancing and clearing "dust" positions.
+*   **Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS the `calculate_sell_quantity` tool is used with a percentage, which allows for precision rebalancing and clearing "dust" positions.
 *
 *   **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT)**: The system requires every position to be at least 10% of total portfolio equity. 
     - For BUYS: The `calculate_buy_quantity` tool automatically up-sizes the request to meet this floor.
@@ -117,7 +117,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *
 *   documentation: ./engine/portfolio-management-walkthrough.md
 
-**12. Trade Settlement & Ledgering** ✅
+**14. Trade Settlement & Ledgering** ✅
 
 *   **Tech:** Python / Portfolio Class
 *   **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
@@ -130,11 +130,11 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *
 *   documentation: ./engine/trade-settlement-walkthrough.md
 
-**12a. Real-time P&L Tracking (SQL View)** ✅
+**14a. Real-time P&L Tracking (SQL View)** ✅
 
 *   **Outcome:** Provides live Profit/Loss USD and % for all active positions.
 
-**13. Attribution Locking** ✅
+**15. Attribution Locking** ✅
 *   **Tech:** Supabase Postgres
 *   *Uses a **two-phase commit pattern** to establish bidirectional links between decisions and trades:*
     1.  *Pre-Trade: Save decision with `status="VALIDATED"` to obtain a `decision_id` (required foreign key for the `trades` table).*
@@ -143,7 +143,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   *We now have a machine-auditable path: **News -> Reasoning -> Decision ↔ Trade**.*
 *   documentation: ./engine/attribution-locking-walkthrough.md
 
-**14. Ledger & Equity Curve Update** ✅
+**16. Ledger & Equity Curve Update** ✅
 
 *   **Tech:** Supabase Postgres
 *   **Action:** *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
@@ -151,14 +151,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Idempotency:** *Enforce database constraints on `(portfolio_id, date)` to ensure performance is never double-counted.*
 *   documentation: [step-14-ledger-equity-curve.md](./engine/step-14-ledger-equity-curve.md)
 
-**14a. Price Update Utility (Non-LLM)** ✅
+**16a. Price Update Utility (Non-LLM)** ✅
 
 *   **Tech:** Python / `update_prices.py`
 *   **Goal:** Refresh market prices and recalculate portfolio metrics without invoking the expensive LLM analysis loop.
-*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions. Automatically triggered every 30 minutes during market hours (approx. 14:00 - 21:00 UTC) via GitHub Actions.
+*   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions. Automatically triggered every 30 minutes during market hours (approx. 13:30 - 20:00 UTC) via GitHub Actions.
 *   File: `apps/engine/update_prices.py`
 
-**15. Long-term Memory Embedding** ✅
+**17. Long-term Memory Embedding** ✅
 
 *   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
@@ -171,7 +171,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 4: Frontend & Feedback
 
-**16. Interactive Dashboard** ✅
+**18. Interactive Dashboard** ✅
 
 *   **Tech:** **TanStack Start (Vite + React)**
 *   *Server-side rendering for SEO, client-side hydration for interactivity.*
@@ -230,7 +230,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Documentation:** [Web Application Architecture & Structure](./web/README.md)
 *   **Hosting & Deployment:** [Netlify Deployment (benchify)](./web/tanstack-start-deploy-official.md)
 *   **Live Dashboard:** [benchify.netlify.app](https://benchify.netlify.app)
-*   **Public Insights:** A public [Memories Page](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/memories/index.tsx) allows users to explore the AI's long-term market perspective.
+*   **Public Insights:** A public [Memories Page](/memories) allows users to explore the AI's long-term market perspective.
     *   **How to Profit:** Each memory card features an interactive "How to Profit" section that displays actionable investment ideas and specific FMP-verified assets based on the AI's scenario analysis.
     *   **Event Linking:** Browse related "Update" events and trace their parent origins.
     *   **Flow View:** An interactive, infinite-canvas visualization of narrative threads and event chains.
@@ -239,7 +239,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     *   **Phase Breakdown:** Ingestion → Analysis → Verification → Execution → Feedback.
     *   **User Education:** Helps users understand the data flow from newsletters to executed trades.
 
-**16a. TanStack Query Architecture** ✅
+**18a. TanStack Query Architecture** ✅
 *   **Tech:** **TanStack Query v5 + TanStack Start**
 *   **Goal:** Single source of truth for all data fetching with automatic caching, deduplication, and background refetching.
 *   **Implementation:** Hybrid pattern - server loaders for fast initial page load (SEO, FCP) + `useQuery` for client-side caching and real-time updates.
@@ -256,12 +256,12 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 *   **Documentation:** [TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md), [Reasoning Page Optimization](./web/reasoning-page-optimization.md)
 
-**16b. Testing Infrastructure** ✅
+**18b. Testing Infrastructure** ✅
 *   **Tech:** **Vitest + React Testing Library**
 *   **Goal:** Ensure UI reliability and logic correctness for complex frontend components.
 *   **Documentation:** [Frontend Testing](./web/testing.md)
 
-**16c. Concept Cluster Map** ✅
+**18c. Concept Cluster Map** ✅
 *   **Tech:** **D3.js + React**
 *   **Visualizing Trends:** A 2D scatter plot visualizing semantic relationships between market concepts.
 *   **Coordinates:** Calculated via PCA (Principal Component Analysis) on the python backend to reduce 768-dim embeddings to 2D.
@@ -272,35 +272,35 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     *   **Interactive Topography:** Hovering over a background region highlights the entire cluster and identifies the Region Name, creating an explorable "Terrain Map" of the market.
     *   **Temporal Tracking:** Tooltips display both **"First seen"** and **"Last seen"** dates for each concept, allowing users to track the lifespan of market narratives.
 
-**17. Google Authentication** ✅
+**19. Google Authentication** ✅
 *   **Tech:** **Supabase Auth (OAuth 2.0)**
 *   **Goal:** Enable secure, one-click login for users using their Google accounts, integrated with the project's RLS policies.
 *   **Action:** Uses `signInWithOAuth` on the client side to handle the redirect flow and session management.
 *   **Implementation Best Practice:** Uses a dual-client approach (Server Client for SSR/Server Functions and Browser Client for OAuth redirects) to maintain session consistency.
 *   documentation: [auth-walkthrough.md](./engine/auth-walkthrough.md)
 
-**18. Community Interaction**
+**20. Community Interaction**
 *   **Tech:** **Supabase Auth**
 *   *Users log in to comment on trades.*
 *   **Security:** *Postgres Row Level Security (RLS) ensures only authenticated users can post, and only Admins can write to the Ledger.*
 
-**19. Observability & Health**
+**21. Observability & Health**
 * **Tech:** Sentry
 * *Log parsing failures or API timeouts.*
 
-**20. Analytics & Growth**
+**22. Analytics & Growth**
 
 * **Tech:** PostHog
 * *Track which AI's reasoning page is most read.*
 
-**21. Regret-Driven Reinforcement (Post-Analysis & Manager Agent)** ✅
+**23. Regret-Driven Reinforcement (Post-Analysis & Manager Agent)** ✅
 
 * **Tech:** Python / Gemini Flash 3 / pgvector
 * **Logic:** *At multiple intervals (5, 14, 30 days) after a trade, the **Manager Agent** performs a "Post-Analysis." It compares the AI's reasoning to the actual price performance.*
 * **Outcome:** *Generates "Lessons Learned" (stored as `LESSON_LEARNED` memories) and injects them back into the Long-term Memory (pgvector). This allows the AI to recognize its own past hallucinations or **strategic planning errors** in future RAG retrievals.*
 * File: `apps/engine/analysis/post_analysis.py`
 
-**22. Contrarian Agent Execution** ✅
+**24. Contrarian Agent Execution** ✅
 
 * **Tech:** Python / Gemini Flash 3
 * **Logic:** *Runs after the primary agents, analyzing their consensus to identify crowded trades or missed risks.*
@@ -308,14 +308,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 * **Outcome:** *Executes contrarian trades in a dedicated portfolio.*
 * File: `apps/engine/analysis/contrarian.py`
 
-**23. Government Budget & Policy Tracking** ✅
+**25. Government Budget & Policy Tracking** ✅
 
 * **Tech:** Python / Gemini Flash 3
 * **Logic:** *Monthly pipeline that identifies government incentives, budgets, and objectives. The engine enforces strict compliance in the analysis loop, triggering warnings if models fail to flag clear government policy content.*
 * **Outcome:** *Stores findings as `GOVERNMENT_INCENTIVE` memories with expiry dates to inform future analysis. Prompt instructions are explicitly strengthened to ensure models link policy keywords to the `is_government_incentive` flag.*
 * File: `apps/engine/ingest/government.py`
 
-**24. Uncrowded Trades Identification** ✅
+**26. Uncrowded Trades Identification** ✅
 
 * **Tech:** Python / Multi-LLM
 * **Logic:** *Agents are instructed to actively look for secondary / derivative effects of news (e.g., fertilizer supply shocks from an oil conflict) that the broader market hasn't priced in. These opportunities are flagged as `UNCROWDED_TRADE`.*
@@ -325,7 +325,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ---
 
-## 5. Maintenance & Utilities
+## 4. Maintenance & Utilities
 
 The engine provides several utility scripts for managing the system state and performing maintenance tasks without re-running the entire pipeline.
 
@@ -363,7 +363,7 @@ To normalize Horizon Watch catalysts (ISO dates, notes, and importance) and ensu
 *   **Usage:** `python cleanup_catalysts.py`
 *   **Goal:** Enforces data integrity for "Horizon Watch" entries by standardizing non-ISO dates and ensuring materiality. It uses **Regex-based Date Extraction** to recover missing dates from event text and recalibrates the `is_future_catalyst` flag to strictly filter for upcoming events (Date >= Today), moving past events and ongoing thematic rotations to general memory.
 
-## 6. Environment & Security
+## 5. Environment & Security
 ### Key Management Strategy
 
 We use a **Scoped `.env**` approach. Each service only has access to the variables it needs. For local development, use a `.env.example` as a template.
@@ -378,19 +378,19 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `SUPABASE_URL` | Supabase API URL | Web (Frontend), Engine |
 | **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: `gpt-5.4-nano`) | Trading Analysis, Embeddings |
 |  | `ANTHROPIC_API_KEY` | Claude API Key (Model: `claude-haiku-4-5`) | Trading Analysis |
-|  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3-flash-preview`) | Trading Analysis |
+|  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3.1-flash-lite-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
-|  | `FMP_API_KEY` | e.g., Financial Modeling Prep (Required) | Price Data & Validation |
-|  | `FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `fmp`) | Selection of primary price data source |
-|  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `ibkr_proxy`) | Selection of first fallback source |
-|  | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `fmp`, `yfinance`, `ibkr` or `ibkr_proxy` (Default: `yfinance`) | Selection of second fallback source |
+|  | `FMP_API_KEY` | Financial Modeling Prep API Key (Required) | Price Data & Validation |
+|  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `fmp`) | Selection of primary price data source |
+|  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of first fallback source |
+|  | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of second fallback source |
 |  | `MARKET_DATA_CACHE_TTL_SECONDS` | Cache duration in seconds (Default: 2) | Price Fetching Optimization |
 |  | `MARKET_DATA_RETRIES` | Number of attempts per provider (Default: 2) | Configurable retry logic |
-|  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY] Local market data via IBKR |
-|  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY] Local market data via IBKR |
-|  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY] Local market data via IBKR |
-|  | `IBKR_PROXY_URL` | URL of the IBKR Proxy server | Market data via Proxy |
-|  | `IBKR_PROXY_TOKEN` | Auth token for the IBKR Proxy (Optional if using JWT) | Market data via Proxy |
+|  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY — not in active use] |
+|  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY — not in active use] |
+|  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY — not in active use] |
+|  | `IBKR_PROXY_URL` | URL of the IBKR Proxy server | [LEGACY — not in active use] |
+|  | `IBKR_PROXY_TOKEN` | Auth token for the IBKR Proxy | [LEGACY — not in active use] |
 
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | **INTERNAL CONSTANT** (0.2s). Formerly an environment variable, now hardcoded for high-performance parallel fetching. | Rate Limit Prevention |
@@ -461,14 +461,13 @@ When a provider's model is upgraded (e.g., `gpt-4o-mini` → `gpt-5.4-nano`), th
 The daily pipeline in `.github/workflows/ingest.yml` explicitly maps Secrets and Variables to the engine. Ensure the following are set in GitHub to avoid failures:
 
 #### Required Secrets
-- `IBKR_PROXY_URL`: The public URL of your proxy.
-- `IBKR_PROXY_TOKEN`: The secret key for your proxy.
-- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.
+- `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
+- `FMP_API_KEY`: Financial Modeling Prep API key.
 - `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 #### Optional Variables
 You can override default providers without code changes by adding these as **Repository Variables**:
-- `FINANCIAL_PROVIDER`: Defaults to `ibkr_proxy`.
+- `FINANCIAL_PROVIDER`: Defaults to `fmp`.
 
 > [!NOTE]
 > Model names (`OPENAI_MODEL`, `GEMINI_MODEL`, etc.) are **no longer environment variables**. They are defined in the shared JSON file at `packages/config/models.json`. Update that file directly when switching models.
@@ -508,26 +507,25 @@ graph TD
         
         CP --> VER[Skeptical Verifier Agent]
           MDM[MarketDataManager]
-        MDM -->|Primary| IBKR[IBKR Proxy]
-        MDM -->|Fallback 1| FMP[Financial Modeling Prep]
-        MDM -->|Fallback 2| YF[YFinance]
-        VER -->|Abort/Adjust| E{Execution Guardrails}
+        MDM -->|Primary| FMP[Financial Modeling Prep]
+        MDM -->|Fallback| YF[YFinance]
+        VER -->|Abort/Adjust| EG{Execution Guardrails}
         
-        E -->|Cleanup| CL[Provider disconnect_all]
+        EG -->|Cleanup| CL[Provider disconnect_all]
         
         CP -->|Semantic Grouping + Dedupe| SYN[LLM Synthesis]
         
         SYN --> TM[Trend & Momentum Analysis]
         TM -->|Update Velocity| CM[(Concept Metrics)]
-        TM -->|Promote 2+ Agreement| G[Global Timeline]
+        TM -->|Promote 2+ Agreement| GT[Global Timeline]
         
-        SYN --> E{Hallucination Guardrails}
+        SYN --> HG{Hallucination Guardrails}
     end
 
     subgraph "Execution & Memory (Phase 3 & 4)"
-        E -->|Fail| F[Reject (Hallucination Guardrails)]
-        E -->|Pass| G[Global Timeline]
-        E -->|Pass| H[Execution Engine]
+        HG -->|Fail| F[Reject]
+        EG -->|Pass| GT
+        EG -->|Pass| H[Execution Engine]
         
         H --> I[Supabase Ledger]
         I -->|Link TradeID| DB
@@ -538,7 +536,7 @@ graph TD
         I --> ME[Memory Embedding]
         ME -->|Vectorize reasoning| V
         
-        G --> J
+        GT --> J
         K[User Comments] -->|Supabase Auth| J
     end
 
@@ -571,7 +569,7 @@ The system performs a bi-weekly retrospective audit of market events to track pr
 | **Fed Rate Hike Pause** | SPY, QQQ, JPM, GS | Financials outpaced tech as yield uncertainty stabilized. | The pause provided relief to regional banks, while mega-cap tech remained flat due to high valuations. |
 | **Iran-Israel Tension** | USO, XOM, LMT, RTX | Energy and Defense sectors spiked 3-5% intraday. | Geopolitical risk premium was immediately priced into Brent crude futures and defense contractors. |
 
-## 6a. FMP API Documentation
+## 7. FMP API Documentation
 
 For detailed Financial Modeling Prep (FMP) API reference, see:
 
@@ -585,7 +583,7 @@ For detailed Financial Modeling Prep (FMP) API reference, see:
     *   ETFs, Mutual Funds, and Crypto APIs
 *   **Usage:** All endpoints use base URL `https://financialmodelingprep.com/stable/` with API key authentication via header or query parameter.
 
-## 7. Deployment & Hosting
+## 8. Deployment & Hosting
 
 The application is deployed as a Serverless TanStack Start app on Netlify.
 

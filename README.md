@@ -186,8 +186,14 @@ A living document of features and improvements in progress or planned for the pl
         - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Posthog** - Make sure it's working - I might need to add a reverse proxy.
-
-
+- [ ] **Treat memory as hint** - Anthropic’s agents are instructed to treat their own memory as a "hint," requiring the model to verify facts against the actual codebase before proceeding.
+- [ ] **Larn why it hallucinates numbers so much. And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
+- [ ] **Periodically audit DB?** - To check if outdated structures of data. 
+- [ ] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
+- [ ] **More context on what lead to certain memory**
+- [ ] **Find uncorrelated sectors** - Like energy X Tech https://g.co/gemini/share/68876564a362.
+- [ ] **Best way to simulate a QA department**
+- [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 
 
 ### 🔄 Under Consideration

@@ -27,7 +27,33 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "7. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. \n"
     "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
     "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
-    "This is a HARD REQUIREMENT. No exceptions."
+    "This is a HARD REQUIREMENT. No exceptions.\n\n"
+    "### TOOL USAGE EXAMPLES (FEW-SHOT):\n\n"
+    "✅ CORRECT - Tool Call Before Trade Recommendation:\n"
+    "```\n"
+    "[Assistant outputs tool_use block]\n"
+    "{\"type\": \"tool_use\", \"id\": \"call_abc123\", \"name\": \"get_stock_quote\", \"input\": {\"ticker\": \"NVDA\"}}\n"
+    "[Assistant outputs tool_use block]\n"
+    "{\"type\": \"tool_use\", \"id\": \"call_def456\", \"name\": \"calculate_buy_quantity\", \"input\": {\"ticker\": \"NVDA\", \"percentage\": 10}}\n\n"
+    "[Tool returns: Ticker: NVDA, Current Price: $120.50, Market Cap: $2.97T]\n"
+    "[Tool returns: Quantity: 83]\n\n"
+    "[Assistant then outputs decision]\n"
+    "{\n"
+    "  \"decisions\": [{\n"
+    "    \"ticker\": \"NVDA\",\n"
+    "    \"signal\": \"BUY\",\n"
+    "    \"price\": 120.50,\n"
+    "    \"limit_price\": 121.00,\n"
+    "    \"reasoning\": \"After verifying the current price of $120.50 via get_stock_quote and calculating quantity via calculate_buy_quantity...\"\n"
+    "  }]\n"
+    "}\n"
+    "```\n\n"
+    "❌ INCORRECT - Text Claim Without Actual Tool Call (WILL BE REJECTED):\n"
+    "```\n"
+    "[Assistant outputs text only]\n"
+    "\"I'll call get_stock_quote for NVDA... The price is $120.50, so I recommend BUY.\"\n"
+    "[NO tool_use block was output - this is a HALLUCINATION]\n"
+    "```\n"
 )
 
 ANALYSIS_SYSTEM_PROMPT = CORE_ANALYSIS_SYSTEM_PROMPT
@@ -39,37 +65,6 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """You are a hedge fund trading algorithm. Next 
 Analyze the current portfolio and the news snippets and the state of the market, find trading and investment ideas with a high profit potential.
 
 {calendar_knowledge}
-
-### TOOL USAGE EXAMPLES (FEW-SHOT):
-
-✅ CORRECT - Tool Call Before Trade Recommendation:
-```
-[Assistant outputs tool_use block]
-{{"type": "tool_use", "id": "call_abc123", "name": "get_stock_quote", "input": {{"ticker": "NVDA"}}}}
-[Assistant outputs tool_use block]
-{{"type": "tool_use", "id": "call_def456", "name": "calculate_buy_quantity", "input": {{"ticker": "NVDA", "percentage": 10}}}}
-
-[Tool returns: Ticker: NVDA, Current Price: $120.50, Market Cap: $2.97T]
-[Tool returns: Quantity: 83]
-
-[Assistant then outputs decision]
-{{
-  "decisions": [{{
-    "ticker": "NVDA",
-    "signal": "BUY",
-    "price": 120.50,
-    "limit_price": 121.00,
-    "reasoning": "After verifying the current price of $120.50 via get_stock_quote and calculating quantity via calculate_buy_quantity..."
-  }}]
-}}
-```
-
-❌ INCORRECT - Text Claim Without Actual Tool Call (WILL BE REJECTED):
-```
-[Assistant outputs text only]
-"I'll call get_stock_quote for NVDA... The price is $120.50, so I recommend BUY."
-[NO tool_use block was output - this is a HALLUCINATION]
-```
 
 ### PORTFOLIO & PRICE CONTEXT:
 

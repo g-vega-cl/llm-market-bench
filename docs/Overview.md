@@ -65,7 +65,8 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 10. **Second-Step Verification**: A skeptical "Verifier" agent audits BUY/SELL signals.
 11. **Hard Tool Enforcement**: The engine performs a mandatory server-side scan of the conversation history to confirm that required tools (`get_stock_quote` for all trades, `calculate_buy_quantity` for BUYs, and `calculate_sell_quantity` for SELLs) were actually executed via native function calling. The scan is **robust to formatting variances**, automatically stripping whitespace and normalizing casing for tickers to prevent false rejections. Hallucinated or text-only tool usage results in trade rejection.
     - **Multi-Layer Verification**: See [TOOL_ENFORCEMENT.md](./engine/TOOL_ENFORCEMENT.md) for detailed documentation on the 4-layer enforcement system.
-    - **Pre-Prompt Strengthening**: Claude models receive enhanced system prompts with few-shot examples.
+    - **Pre-Prompt Strengthening**: All models receive an enhanced unified system prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`) equipped with strict high-fidelity few-shot tool usage examples.
+    - **Portfolio Isolation**: The engine guarantees strict portfolio context scoping across batched tasks, preventing state leakage between distinct providers (e.g. Anthropic does not see DeepSeek's holdings).
     - **Confidence Penalties**: Decisions without verified tool calls receive 50% confidence reduction.
     - **Ownership Pre-Validation**: SELL signals for unheld tickers are caught before verification layer.
     - **Provider-Specific Fixes (2026-03-24 PM)**:

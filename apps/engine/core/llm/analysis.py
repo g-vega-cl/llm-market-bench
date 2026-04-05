@@ -121,7 +121,7 @@ async def analyze_with_provider(
 
         final_args = {
             "model": model_name,
-            "response_model": List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
+            "response_model": DecisionsResponse if provider != "gemini" else List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
             "messages": messages,
             "max_retries": 2,
         }

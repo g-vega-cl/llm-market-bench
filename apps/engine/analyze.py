@@ -148,19 +148,8 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
 
         if not chunks_to_analyze:
             logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
-            # We still need to return an empty DecisionsResponse structure for gather to work
-            # or handle the missing task. For simplicity, we just pass empty chunks to the provider.
-            # But it's better to just not append the task and handle it in processing.
-            # However, indices matter for gather. Let's just pass empty chunks if possible.
-        # 2. Create parallel analysis tasks (Batch Mode)
-    analysis_tasks_info = [] # List of (config, task)
-    for config in MODELS:
-        provider = config["provider"]
-        model = config["model"]
+            continue
 
-        # ... [omitting unchanged portfolio initialization for brevity, will use multi-replacement if needed]
-        # Actually I need the whole block to be safe with replace_file_content.
-        # I'll use view_file to get the current state after my last edit.
         from datetime import datetime
         import calendar
         

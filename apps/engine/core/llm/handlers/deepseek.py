@@ -67,7 +67,7 @@ async def run_tool_loop(
                 "role": "assistant",
                 "content": msg.content or "",
                 "reasoning_content": msg.reasoning_content,
-                "tool_calls": getattr(msg, "tool_calls", None)
+                "tool_calls": [tc.model_dump() for tc in msg.tool_calls] if getattr(msg, "tool_calls", None) else None
             })
         else:
             # model_dump() usually strips reasoning_content if it's not in the official OpenAI schema

@@ -97,9 +97,9 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
     - **Smart Bump:** If the calculated spend is below **$1,000**, the engine automatically "bumps" the spend to $1,000 (if Buying Power allows).
     - **Quantity:** The final share quantity is calculated based on the market price. If rounding down results in a value below $1,000, one share is added if affordable.
 - **SELL Logic:** **MANDATORY HARD TOOL ENFORCEMENT.**
-    - **History Scan:** The engine performs a server-side scan of the conversation history to verify that a `sell_X_percent` tool was actually called for that ticker.
+    - **History Scan:** The engine performs a server-side scan of the conversation history to verify that the `calculate_sell_quantity` tool was actually called for that ticker.
     - **Hallucination Check:** If an agent claims `sell_tool_called: true` but the history scan fails to find the call, the trade is rejected.
-    - **Minimum Value:** By default, total proceeds must be >= $1,000. However, if a specific sell percentage tool is called, this threshold is waived to allow for precision exits and clearing "dust" trades.
+    - **Minimum Value:** By default, total proceeds must be >= $1,000. However, if the `calculate_sell_quantity` tool is called with a percentage, this threshold is waived to allow for precision exits and clearing "dust" trades.
     - **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT):** The system AUTOMATICALLY sells any position whose value falls below 10% of total portfolio equity. If a partial sell leaves a position below this threshold (e.g., selling some shares leaves only $800 in a $10,000 portfolio), the remainder is automatically liquidated. The LLM does NOT need to call a tool - this happens automatically after trade execution and is recorded in the trade history.
 - **Dynamic Fallbacks:**
     - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
@@ -121,7 +121,7 @@ After EVERY trade execution (BUY or SELL), the engine performs an automatic post
 **Example Scenario:**
 - Portfolio Equity: $10,000 (10% threshold = $1,000)
 - Agent owns 20 shares of XYZ @ $125 = $2,500 position
-- Agent sells 15 shares @ $125 = $1,875 (using `sell_75_percent` tool)
+- Agent sells 15 shares @ $125 = $1,875 (using `calculate_sell_quantity` with `percentage=75`)
 - Remaining position: 5 shares @ $125 = $625 (below $1,000 threshold)
 - Post-trade cleanup detects $625 < $1,000 threshold
 - System automatically sells remaining 5 XYZ shares @ $125 = $625
@@ -131,13 +131,8 @@ After EVERY trade execution (BUY or SELL), the engine performs an automatic post
 **Implementation:** `apps/engine/execution/portfolio.py` → `_check_and_sell_dust_positions()`
 
 ## 5c. Available Sell Tools
-The system provides the following sell calculation tools for agents:
-- `sell_10_percent`: Calculate 10% of position (small profit-taking)
-- `sell_25_percent`: Calculate 25% of position (partial exit)
-- `sell_33_percent`: Calculate 33% of position (one-third exit)
-- `sell_50_percent`: Calculate 50% of position (half exit)
-- `sell_75_percent`: Calculate 75% of position (majority exit)
-- `sell_100_percent`: Calculate 100% of position (full exit)
+The system provides a single unified sell calculation tool for agents:
+- `calculate_sell_quantity(ticker, percentage)`: Calculates exact share quantity to sell based on a percentage (1-100%) of the current position. The tool automatically enforces the 10% minimum position rule — if the remaining balance would fall below 10% of total equity, it mandates a 100% (FULL) sell to avoid "dust" positions.
 
 **Note:** The system does NOT require a tool call for dust cleanup - it happens automatically.
 

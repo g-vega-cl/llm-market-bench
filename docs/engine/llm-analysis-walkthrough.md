@@ -36,7 +36,8 @@ To ensure maximum feature coverage and performance, the system uses the official
 - **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
-- **`sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, `sell_100_percent`**: Calculates exact share quantities for partial or full exits of existing positions. **Using these tools natively via function calling is now MANDATORY for any SELL decision.**
+- **`calculate_buy_quantity(ticker, percentage)`**: Calculates exact shares to buy based on a percentage of available buying power. Automatically enforces the 10% minimum position size rule.
+- **`calculate_sell_quantity(ticker, percentage)`**: Calculates exact share quantity to sell based on a percentage (1-100%) of the current position. Automatically enforces the 10% minimum position rule — if the remaining balance would fall below 10% of total equity, it mandates a 100% (FULL) sell to avoid "dust" positions. **Using this tool natively via function calling is MANDATORY for any SELL decision.**
 
 **Note on Dust Cleanup:** The system AUTOMATICALLY sells any position below 10% of portfolio equity. No tool call is required - this happens automatically after trade execution and is recorded in the trade history.
 
@@ -260,7 +261,7 @@ To move beyond simple "news-chasing," the system now enforces a multi-step quali
 6.  **Avoid Overtrading**: If a trade was executed recently (last 48h) for the same reasoning, the model is instructed to avoid repeating it.
 7.  **What is being incentivized right now?** (Government budgets and objectives). Models are strictly required to set `is_government_incentive=true` if government policy content is detected, even if no direct trade is identified.
 8.  **If I already own this stock, has this trade been profitable?** (Using `get_position_pnl`)
-9.  **Should I reduce exposure or take profits?** (Using the granular sell tools like `sell_10_percent` through `sell_100_percent` to calculate exact quantities. **MANDATORY for all SELLs.**)
+9.  **Should I reduce exposure or take profits?** (Using `calculate_sell_quantity(ticker, percentage)` to calculate exact quantities. **MANDATORY for all SELLs.**)
 10. **What is the expected timeline for this catalyst to materialize?**
 11. **What are the primary risks or counter-arguments to this trade?**
 12. **How does this stock correlate with my existing portfolio?**

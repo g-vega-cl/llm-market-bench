@@ -512,7 +512,7 @@ To ensure high reasoning quality and avoid output token limits (16k), the engine
 prompt = f"""You are a hedge fund trading algorithm.
 CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL.
 This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
-Use `sell_10_percent`, `sell_25_percent`, `sell_33_percent`, `sell_50_percent`, `sell_75_percent`, or `sell_100_percent` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs; hard-enforced by the engine).
+Use `calculate_sell_quantity(ticker, percentage)` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs; hard-enforced by the engine).
 
 WEB SEARCH CAPABILITY: You have access to real-time web search via the `web_search` tool.
 Use it to verify breaking news, check corporate actions (earnings, splits, M&A), confirm government policy announcements, and fact-check claims before trading.

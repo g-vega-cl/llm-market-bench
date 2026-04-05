@@ -25,8 +25,8 @@ def test_history_scanner_with_objects():
             {
                 "id": "1",
                 "function": {
-                    "name": "sell_50_percent",
-                    "arguments": json.dumps({"ticker": "AAPL"})
+                    "name": "calculate_sell_quantity",
+                    "arguments": json.dumps({"ticker": "AAPL", "percentage": 50})
                 }
             }
         ]

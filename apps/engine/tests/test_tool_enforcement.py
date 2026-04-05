@@ -32,7 +32,7 @@ def test_scan_history_openai_format():
             "role": "assistant",
             "tool_calls": [
                 {
-                    "function": {"name": "sell_50_percent", "arguments": '{"ticker": "AAPL"}'},
+                    "function": {"name": "calculate_sell_quantity", "arguments": '{"ticker": "AAPL", "percentage": 50}'},
                     "id": "call_1"
                 },
                 {
@@ -85,7 +85,7 @@ def test_scan_history_gemini_format():
     messages = [
         MockContent([
             MockPart("get_stock_quote", {"ticker": "GOOG"}),
-            MockPart("sell_100_percent", {"ticker": "GOOG"})
+            MockPart("calculate_sell_quantity", {"ticker": "GOOG", "percentage": 100})
         ])
     ]
     

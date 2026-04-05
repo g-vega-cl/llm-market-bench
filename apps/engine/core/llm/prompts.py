@@ -352,7 +352,7 @@ SOPHISTICATED CONTRARIAN LOGIC:
 
 CRITICAL (HARD ENFORCEMENT): You MUST actively execute the `get_stock_quote` tool via function calling for ANY ticker you intend to BUY or SELL. 
 You MUST also set a 'limit_price' for every trade based on the price returned by the tool (e.g., set limit slightly above current for BUY, slightly below for SELL to ensure execution).
-For SELL decisions, you MUST actively execute a sell percentage tool (e.g. `sell_50_percent`) via function calling to determine the exact share quantity. Do not just guess the quantity or output text. If you do not formally accomplish these tool calls, your trade will be REJECTED.
+For SELL decisions, you MUST actively execute the `calculate_sell_quantity(ticker, percentage)` tool via function calling to determine the exact share quantity. Do not just guess the quantity or output text. If you do not formally accomplish these tool calls, your trade will be REJECTED.
 
 ### News Batch:
 {news_content}

@@ -372,6 +372,96 @@ CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_ANTHROPIC = {
     },
 }
 
+# =============================================================================
+# GEMINI TOOL DEFINITIONS (for core market data tools)
+# =============================================================================
+
+STOCK_TOOL_DEFINITION_GEMINI = {
+    "name": "get_stock_quote",
+    "description": (
+        "Get real-time price and market cap for a stock ticker to verify "
+        "its existence and liquidity."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+PRICE_HISTORY_TOOL_DEFINITION_GEMINI = {
+    "name": "get_price_history",
+    "description": "Get historical price data for a stock ticker to see if news is priced in.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            },
+            "days": {
+                "type": "integer",
+                "description": "Number of days of history to retrieve (default 7).",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+POSITION_PNL_TOOL_DEFINITION_GEMINI = {
+    "name": "get_position_pnl",
+    "description": "Get current unrealized P&L and cost basis for a stock you already own.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+VOLATILITY_METRICS_TOOL_DEFINITION_GEMINI = {
+    "name": "get_volatility_metrics",
+    "description": "Calculate price standard deviation and range to assess if a stock is over-extended.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            },
+            "days": {
+                "type": "integer",
+                "description": "Number of days of history to retrieve (default 14).",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
+SECTOR_ALTERNATIVES_TOOL_DEFINITION_GEMINI = {
+    "name": "get_sector_alternatives",
+    "description": "Identify correlated stocks or competitors in the same sector to find less crowded plays.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "The stock ticker symbol.",
+            }
+        },
+        "required": ["ticker"],
+    },
+}
+
 CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_GEMINI = {
     "name": "calculate_buy_quantity",
     "description": (

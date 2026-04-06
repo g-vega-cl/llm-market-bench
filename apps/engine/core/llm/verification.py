@@ -183,39 +183,20 @@ async def verify_trading_decision(
         wrapped_results = ensure_list(wrapper)
         final_resp = wrapped_results[-1] if wrapped_results else VerificationResult(status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0)
         
-        # --- Tool Integrity Enforcement ---
-        # Verify that mandatory tools were called based on the decision signal
-        tool_calls_found = []
-        for m in messages:
-            if isinstance(m, dict):
-                # Handle OpenAI / Anthropic / Gemini / Normalized dicts
-                content = m.get("content", "")
-                if isinstance(content, list):
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") == "tool_use":
-                            tool_calls_found.append(part.get("name"))
-                elif isinstance(content, str) and "[Tool Call:" in content:
-                    matches = re.findall(r"\[Tool Call: (\w+)\(", content)
-                    tool_calls_found.extend(matches)
+        # --- Tool Integrity Enforcement (Deliverable 4 Hardening) ---
+        # Verifier must consume the CANONICAL transcript as the sole source of truth
+        from core.llm.normalization import normalize_transcript
 
-                if m.get("tool_calls"):
-                    for tc in m["tool_calls"]:
-                        name = tc.get("function", {}).get("name") if isinstance(tc, dict) else getattr(tc.function, "name", None)
-                        if name:
-                            tool_calls_found.append(name)
+        # Sterilize messages for normalization to handle multi-provider types
+        def _sterilize(obj):
+            if isinstance(obj, list): return [_sterilize(x) for x in obj]
+            if isinstance(obj, dict): return {k: _sterilize(v) for k, v in obj.items()}
+            if hasattr(obj, "model_dump"): return obj.model_dump()
+            if hasattr(obj, "to_dict"): return obj.to_dict()
+            return obj
 
-                parts = m.get("parts")
-                if isinstance(parts, list):
-                    for part in parts:
-                        if isinstance(part, dict):
-                            fc = part.get("function_call")
-                            if fc:
-                                tool_calls_found.append(fc.get("name"))
-            elif hasattr(m, "parts"):
-                # Handle Google GenAI Content objects
-                for part in m.parts:
-                    if hasattr(part, "function_call") and part.function_call:
-                        tool_calls_found.append(part.function_call.name)
+        canonical = normalize_transcript(_sterilize(messages))
+        tool_calls_found = [tc.name for tc in canonical.tool_calls]
 
         # Mandatory Tools Invariant
         mandatory_tools = ["get_stock_quote"]
@@ -234,19 +215,24 @@ async def verify_trading_decision(
                 confidence_score=0
             )
 
-        # Log completion
+        # Log completion with decision_id anchor for precise attribution
+        # Blocker 3 Fix: Include decision_id if available
+        meta = {
+            "ticker": decision.ticker,
+            "signal": decision.signal,
+            "source_id": decision.source_id,
+            "mandatory_tools_verified": not missing_mandatory,
+        }
+        if getattr(decision, "id", None):
+            meta["decision_id"] = str(decision.id)
+
         await log_reasoning_trace(
             task_type="VERIFICATION",
             model_provider=provider,
             model_name=model_name,
             prompt=instructor_messages,
             response=final_resp,
-            metadata={
-                "ticker": decision.ticker,
-                "signal": decision.signal,
-                "source_id": decision.source_id,
-                "mandatory_tools_verified": not missing_mandatory
-            }
+            metadata=meta
         )
 
         return final_resp

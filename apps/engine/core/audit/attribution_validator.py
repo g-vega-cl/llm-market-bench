@@ -64,12 +64,16 @@ def validate_trade_attribution(trade_id: str) -> AttributionAuditResult:
                     lineage_found.append("news_source")
 
             # 4. Check LLM Reasoning Log
-            # For a trade, we expect a reasoning log associated with this ticker and source_id.
-            logs = audit_repo.fetch_reasoning_logs_for_ticker_source(ticker, source_id)
+            # Blocker 3 Fix: Prefer precise decision_id anchoring, fallback to ticker/source
+            logs = audit_repo.fetch_reasoning_logs_by_decision_id(decision_id)
+
+            if not logs:
+                # Fallback for historical logs that might not have decision_id anchor
+                logs = audit_repo.fetch_reasoning_logs_for_ticker_source(ticker, source_id)
 
             if not logs:
                 missing_elements.append("reasoning_log")
-                failure_reasons.append("missing_reasoning: No LLM reasoning logs found for this ticker/source.")
+                failure_reasons.append(f"missing_reasoning: No LLM reasoning logs found for decision {decision_id} or ticker {ticker}")
             else:
                 lineage_found.append("reasoning_log")
 

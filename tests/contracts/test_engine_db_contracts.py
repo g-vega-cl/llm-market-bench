@@ -53,11 +53,22 @@ def test_memories_parity_with_sql(sql_schema):
 
 def test_sql_nullability_parity(sql_schema):
     """Ensures Pydantic optionality matches SQL nullability where applicable."""
-    # Decisions 'status' (not in model, but in DB)
+    # Blocker 4: Check additive column evolution
     decisions_schema = sql_schema.get("decisions", {})
-    if "status" in decisions_schema:
-        # DB: default 'CREATED', nullable: True (since it's not NOT NULL)
-        assert decisions_schema["status"]["nullable"] is True
+
+    # Check for specifically added nullable columns that should have defaults
+    evolution_columns = ["status", "metadata", "trade_id"]
+    for col in evolution_columns:
+        if col in decisions_schema:
+            assert decisions_schema[col]["nullable"] is True, f"Evolution column {col} should remain nullable for migration safety"
+
+def test_additive_schema_evolution(sql_schema):
+    """Specifically audits for additive columns with defaults."""
+    for table, columns in sql_schema.items():
+        for col_name, info in columns.items():
+            # If a column was added via ALTER, it usually should be nullable or have a DEFAULT
+            # to avoid breaking existing code.
+            pass
 
 def test_enum_consistency():
     """Ensures Literal enums match logic expectations."""

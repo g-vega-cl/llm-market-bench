@@ -69,16 +69,20 @@ async def log_reasoning_trace(
             except Exception as e:
                 logger.debug(f"Normalization failed for trace: {e}")
 
+        # Collapse metadata to avoid key overwrite and ensure stable ID linkage
+        # Blocker 1 Fix: single assignment
+        merged_metadata = {
+            **(metadata or {}),
+            "normalized_transcript": normalized_transcript.model_dump() if normalized_transcript else None
+        }
+
         payload = {
             "task_type": task_type,
             "model_provider": model_provider,
             "model_name": model_name,
             "prompt": serializable_prompt,
             "response": processed_response,
-            "metadata": {
-                **(metadata or {}),
-                "normalized_transcript": normalized_transcript.model_dump() if normalized_transcript else None
-            },
+            "metadata": merged_metadata,
             "created_at": datetime.now(UTC).isoformat()
         }
 

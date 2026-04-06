@@ -1,6 +1,7 @@
 """Core LLM analysis logic for trading decisions."""
 
 import asyncio
+import copy
 import json
 import logging
 from typing import List
@@ -122,7 +123,7 @@ async def analyze_with_provider(
         final_args = {
             "model": model_name,
             "response_model": DecisionsResponse if provider != "gemini" else List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
-            "messages": messages,
+            "messages": copy.deepcopy(messages),
             "max_retries": 2,
         }
 

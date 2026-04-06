@@ -54,9 +54,10 @@ The enforcement system operates at **four layers**:
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ Layer 4: Structured Output Enforcement                      │
+│ Layer 4: Structured Output & Data Isolation                 │
 │ - price_source field declaration                            │
 │ - Audit trail preservation                                  │
+│ - Deep-copy isolation before model execution                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -233,6 +234,24 @@ PRICE SOURCE REQUIREMENT:
 - If you did NOT call get_stock_quote, set 'price_source' to "hallucinated" (your trade will be rejected).
 - This is a HARD REQUIREMENT for all BUY and SELL decisions.
 ```
+
+### Data Isolation Guardrails (Deep-Copy)
+
+To prevent the library used for structured extraction (`instructor`) from mutating the conversation history before it is logged, the engine now implements **Data Isolation Guardrails**.
+
+**The Problem**: For certain providers (DeepSeek/OpenAI), `instructor` appends a massive JSON Schema string to the system prompt in-place to ensure the model follows the Pydantic schema. This can bloat auditing logs.
+
+**The Fix**:
+```python
+# Before calling the model for extraction:
+create_args = {
+    "model": model_name,
+    "response_model": List[VerificationResult],
+    "messages": copy.deepcopy(messages), # Isolated from original history
+    ...
+}
+```
+This ensures that the `messages` array used in `log_reasoning_trace` remains clean, reflecting only the instructions you defined in `prompts.py`.
 
 ## Implementation Files
 

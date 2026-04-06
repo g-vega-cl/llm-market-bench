@@ -1,6 +1,7 @@
 """Second-step trade verification logic."""
 
 import asyncio
+import copy
 import json
 import logging
 from typing import Any, List, Optional
@@ -168,7 +169,7 @@ async def verify_trading_decision(
         create_args = {
             "model": model_name,
             "response_model": List[VerificationResult], # Use List to handle Gemini multi-block tool calls
-            "messages": instructor_messages,
+            "messages": copy.deepcopy(instructor_messages),
             "max_retries": 2
         }
         if provider == "anthropic":

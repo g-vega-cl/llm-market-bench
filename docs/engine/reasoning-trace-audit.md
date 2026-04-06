@@ -63,5 +63,31 @@ A premium audit dashboard is available at `/reasoning` for visual exploration of
   - **Decision Cards**: Trading signals and catalyst metadata displayed in high-contrast grids.
 - **Fallback & Export**: A "RAW" tab allows for instant JSON inspection and one-click clipboard copying.
 
+## Audit Findings: Prompt Size Discrepancy (Instructor Injection)
+
+During an audit of the `llm_reasoning_logs` table, a significant discrepancy in system prompt size was observed between providers (e.g., DeepSeek vs. Gemini).
+
+### The Root Cause
+The difference is structural and related to how the `instructor` library handles Pydantic schema validation:
+
+1.  **DeepSeek/OpenAI (JSON Mode)**: When using `instructor.Mode.JSON` or standard tools, the library generates a massive JSON Schema string from your Pydantic models. To guide the model, Instructor **appends this schema directly to the system message content**. Because the message list is mutable in Python, this mutation happened **in-place**.
+2.  **Gemini (GENAI_TOOLS Mode)**: Google's SDK natively accepts schemas via a `response_schema` parameter in the API config. Instructor does not need to inject text into the prompt, so the system instruction remains clean.
+
+### The Fix: Deep-Copy Data Isolation
+To ensure that all reasoning logs perfectly reflect the authored prompts (without artificial Pydantic bloat), the engine now implements **Data Isolation Guardrails**.
+
+Whenever a message history is passed to an Instructor `create()` call, it is wrapped in `copy.deepcopy()`. This ensures that any in-place mutations made by the library for API compliance are isolated from the original message history used for logging and audit trails.
+
+```python
+# Implementation in analysis.py / verification.py
+create_args = {
+    "messages": copy.deepcopy(messages),
+    ...
+}
+```
+
+This ensures that tracers and the `/reasoning` dashboard remain clean, comparable, and human-readable across all LLM providers.
+
 ## Implementation Details
 Traces are captured asynchronously using the `core.llm.logger.log_reasoning_trace` utility. This ensures that logging overhead never crashes the main trading pipeline.
+

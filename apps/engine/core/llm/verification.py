@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Any, List, Optional
 
-from core.models import DecisionObject, VerificationResult, CanonicalTranscript, CanonicalToolCall
+from core.models import DecisionObject, VerificationResult
 from core.llm import clients, prompts, tools
 from .utils import ensure_list
 from core.llm.handlers import base
@@ -184,7 +184,8 @@ async def verify_trading_decision(
         final_resp = wrapped_results[-1] if wrapped_results else VerificationResult(status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0)
         
         # --- Tool Integrity Enforcement (Deliverable 4 Hardening) ---
-        # Verifier must consume the CANONICAL transcript as the sole source of truth
+        # Verifier must consume the CANONICAL transcript as the sole source of truth.
+        # Normalization failure is treated as missing tools (safe-fail: reject rather than approve).
         from core.llm.normalization import normalize_transcript
 
         # Sterilize messages for normalization to handle multi-provider types
@@ -195,12 +196,16 @@ async def verify_trading_decision(
             if hasattr(obj, "to_dict"): return obj.to_dict()
             return obj
 
-        canonical = normalize_transcript(
-            _sterilize(messages),
-            model_name=model_name,
-            provider=provider
-        )
-        tool_calls_found = [tc.name for tc in canonical.tool_calls]
+        try:
+            canonical = normalize_transcript(
+                _sterilize(messages),
+                model_name=model_name,
+                provider=provider
+            )
+            tool_calls_found = [tc.name for tc in canonical.tool_calls]
+        except Exception as e:
+            logger.warning(f"[{decision.ticker}] Transcript normalization failed, treating as missing tools: {e}")
+            tool_calls_found = []
 
         # Mandatory Tools Invariant
         mandatory_tools = ["get_stock_quote"]
@@ -211,7 +216,8 @@ async def verify_trading_decision(
 
         missing_mandatory = [t for t in mandatory_tools if t not in tool_calls_found]
 
-        if missing_mandatory and final_resp.status == "APPROVED":
+        # Block ANY non-rejected outcome — APPROVED and ADJUSTED_ALLOCATION both require tool evidence
+        if missing_mandatory and final_resp.status != "REJECTED_VERIFICATION":
             logger.warning(f"[{decision.ticker}] Hardening Reject: Missing mandatory tools {missing_mandatory}")
             final_resp = VerificationResult(
                 status="REJECTED_VERIFICATION",
@@ -226,8 +232,8 @@ async def verify_trading_decision(
             "source_id": decision.source_id,
             "mandatory_tools_verified": not missing_mandatory,
         }
-        if getattr(decision, "id", None):
-            meta["decision_id"] = str(decision.id)
+        if getattr(decision, "provisional_id", None):
+            meta["decision_id"] = str(decision.provisional_id)
 
         log_id = await log_reasoning_trace(
             task_type="VERIFICATION",
@@ -243,8 +249,8 @@ async def verify_trading_decision(
     except Exception as e:
         logger.error(f"Verification failed for {decision.ticker} ({provider}): {e}")
         return VerificationResult(
-            status="APPROVED",
-            verification_reasoning=f"Verification failed due to error: {e}. Defaulting to approval.",
+            status="REJECTED_VERIFICATION",
+            verification_reasoning=f"Verification failed due to an internal error. Rejecting as a safety precaution.",
             confidence_score=0
         ), None
     finally:

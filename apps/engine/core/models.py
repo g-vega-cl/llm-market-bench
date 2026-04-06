@@ -110,6 +110,10 @@ class DecisionObject(BaseModel):
         None,
         description="The limit price for the order. If set, the trade will only execute at this price or better."
     )
+    provisional_id: str | None = Field(
+        None,
+        description="Client-generated UUID set before verification, used to anchor the verification log to this decision."
+    )
 
     @field_validator("ticker")
     @classmethod

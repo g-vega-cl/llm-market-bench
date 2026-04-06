@@ -25,7 +25,7 @@ def fetch_news_by_source_id(source_id: str) -> Optional[Dict[str, Any]]:
 def fetch_reasoning_logs_for_ticker_source(ticker: str, source_id: str) -> List[Dict[str, Any]]:
     client = get_supabase_client()
     res = client.table("llm_reasoning_logs") \
-        .select("id, task_type, metadata") \
+        .select("id, task_type, metadata, normalized_transcript") \
         .filter("metadata->>ticker", "eq", ticker) \
         .filter("metadata->>source_id", "eq", source_id) \
         .execute()

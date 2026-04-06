@@ -38,11 +38,14 @@ def mock_dependencies():
         mock_mdm_instance.get_quote = AsyncMock()
         mock_mdm_instance.get_quote.return_value = MagicMock(price=100.0)
         
+        mock_verify.return_value = (MagicMock(status="APPROVED", verification_reasoning="Verified", confidence_score=100, alternative_ticker=None), "log-123")
+
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()
         MockPortfolio.return_value = mock_portfolio_instance
         mock_portfolio_instance.initialize = AsyncMock()
         mock_portfolio_instance.execute_trade = AsyncMock()
+        mock_portfolio_instance.get_portfolio_summary = AsyncMock(return_value="Mocked Port Summary")
         mock_portfolio_instance.calculate_reg_t_metrics = MagicMock()
         
         yield {

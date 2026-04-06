@@ -50,7 +50,7 @@ def persist_rejection(
     # 2. Write to dedicated trade_rejections table for detailed audit
     try:
         rejection_payload = {
-            "provider": decision.model_name or "unknown",
+            "provider": decision.model_provider or "unknown",
             "ticker": decision.ticker,
             "requested_action": decision.signal,
             "requested_quantity": getattr(decision, "quantity", None),

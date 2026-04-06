@@ -55,8 +55,8 @@ def normalize_transcript(
                 if isinstance(tool_args, str):
                     try:
                         tool_args = json.loads(tool_args)
-                    except:
-                        pass
+                    except (json.JSONDecodeError, TypeError):
+                        tool_args = {}
 
                 # Find matching result
                 result = None
@@ -134,7 +134,7 @@ def normalize_transcript(
                         id=tool_name, # Fallback to name as ID for Gemini
                         name=normalize_tool_name(tool_name),
                         arguments=tool_args or {},
-                        result=str(result) if result is not None else None,
+                        result=json.dumps(result) if isinstance(result, dict) else (str(result) if result is not None else None),
                         raw_name=tool_name,
                         raw_arguments=str(tool_args),
                         raw_result=result

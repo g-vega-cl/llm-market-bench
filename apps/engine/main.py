@@ -6,6 +6,7 @@ including newsletter ingestion, database snapshotting, and LLM analysis.
 
 import argparse
 import asyncio
+import uuid
 
 from analyze import analyze_chunks
 from consensus import process_consensus
@@ -199,15 +200,18 @@ async def _stage_decision_processing(
                 p_map = {t: (await mdm.get_quote(t)).price for t in all_pos_tickers if await mdm.get_quote(t)}
 
                 verification = None
+                tool_trace_id = None
                 qty = 0
+
+                # Generate a stable provisional ID to anchor the verification log to this decision
+                d.provisional_id = str(uuid.uuid4())
 
                 if d.signal.upper() == "BUY":
                     if not portfolio.metrics:
                         portfolio.calculate_reg_t_metrics(p_map)
-                    
+
                     # --- Skeptical Verification ---
-                    logger.info(f"[{d.ticker}] Verifying...")
-                    # Search for contrarian thoughts on this ticker
+                    logger.info(f"[{d.ticker}] Verifying BUY...")
                     contrarian_text = "\n".join([f"- {c.model_name}: {c.reasoning}" for c in contrarian_decisions if c.ticker == d.ticker])
 
                     verification, tool_trace_id = await verify_trading_decision(
@@ -217,7 +221,7 @@ async def _stage_decision_processing(
                         contrarian_context=contrarian_text,
                         uncrowded_context=uncrowded_context
                     )
-                    
+
                     if verification.status == "REJECTED_VERIFICATION":
                         persist_rejection(
                             sb_client, d, verification.verification_reasoning,
@@ -227,7 +231,7 @@ async def _stage_decision_processing(
                         )
                         rejected_decisions += 1
                         continue
-                    
+
                     meta.update({
                         "verification_reasoning": verification.verification_reasoning,
                         "verification_confidence": verification.confidence_score,
@@ -286,13 +290,45 @@ async def _stage_decision_processing(
                         continue
 
                 elif d.signal.upper() == "SELL":
+                    if not portfolio.metrics:
+                        portfolio.calculate_reg_t_metrics(p_map)
+
+                    # --- Skeptical Verification (SELL) ---
+                    logger.info(f"[{d.ticker}] Verifying SELL...")
+                    contrarian_text = "\n".join([f"- {c.model_name}: {c.reasoning}" for c in contrarian_decisions if c.ticker == d.ticker])
+
+                    verification, tool_trace_id = await verify_trading_decision(
+                        decision=d,
+                        portfolio_context=await portfolio.get_portfolio_summary(p_map),
+                        aggregated_context=aggregated_context,
+                        contrarian_context=contrarian_text,
+                        uncrowded_context=uncrowded_context
+                    )
+
+                    if verification.status == "REJECTED_VERIFICATION":
+                        persist_rejection(
+                            sb_client, d, verification.verification_reasoning,
+                            status="REJECTED_VERIFICATION",
+                            market_price=exec_price,
+                            tool_trace_id=tool_trace_id
+                        )
+                        rejected_decisions += 1
+                        continue
+
+                    meta.update({
+                        "verification_reasoning": verification.verification_reasoning,
+                        "verification_confidence": verification.confidence_score,
+                        "suggested_alternative": verification.alternative_ticker,
+                        "tool_trace_id": tool_trace_id
+                    })
+
                     # --- Final Price Refresh (SELL) ---
                     final_quote = await mdm.get_quote(d.ticker)
                     if final_quote and final_quote.exists:
                         if final_quote.price != exec_price:
                             logger.info(f"[{d.ticker}] Price moved during processing: ${exec_price:.2f} -> ${final_quote.price:.2f}")
                             exec_price = final_quote.price
-                            
+
                             # Re-verify limit price
                             if limit_price and exec_price < limit_price:
                                 reason = f"Limit price not met after refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"

@@ -70,4 +70,4 @@ def test_normalize_gemini_transcript():
     assert len(transcript.tool_calls) == 1
     call = transcript.tool_calls[0]
     assert call.name == "get_stock_quote"
-    assert call.result == "{'result': '800.0'}" # Gemini mock normalization result
+    assert call.result == '{"result": "800.0"}' # Gemini result dicts are JSON-serialized

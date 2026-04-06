@@ -18,7 +18,7 @@ def test_validate_trade_attribution_success(mock_repo):
     ]
     mock_repo.fetch_lessons_for_trade.return_value = [{"id": "lesson-xyz"}]
 
-    result = validate_trade_attribution("trade-123")
+    result = validate_trade_attribution("trade-123", strict=True)
 
     assert result.is_valid is True
     assert "trade_record" in result.lineage_found
@@ -27,6 +27,26 @@ def test_validate_trade_attribution_success(mock_repo):
     assert "reasoning_log" in result.lineage_found
     assert "post_trade_lesson" in result.lineage_found
     assert not result.missing_elements
+
+def test_validate_trade_attribution_permissive_mode(mock_repo):
+    """Tests that permissive mode (strict=False) ignores missing transcripts."""
+    mock_repo.fetch_trade_by_id.return_value = {"id": "old-trade", "ticker": "AAPL", "decision_id": "old-dec"}
+    mock_repo.fetch_decision_by_id.return_value = {"id": "old-dec", "source_id": "old-news", "ticker": "AAPL"}
+    mock_repo.fetch_news_by_source_id.return_value = {"id": "old-news-row"}
+    # Logs WITHOUT normalized transcript
+    mock_repo.fetch_reasoning_logs_by_decision_id.return_value = [
+        {"id": "old-log", "task_type": "VERIFICATION", "metadata": {}}
+    ]
+    mock_repo.fetch_lessons_for_trade.return_value = [{"id": "old-lesson"}]
+
+    # Strict should fail
+    result_strict = validate_trade_attribution("old-trade", strict=True)
+    assert result_strict.is_valid is False
+    assert "normalized_transcript" in result_strict.missing_elements
+
+    # Permissive should pass
+    result_permissive = validate_trade_attribution("old-trade", strict=False)
+    assert result_permissive.is_valid is True
 
 def test_validate_trade_attribution_missing_decision(mock_repo):
     """Tests failure when decision link is missing."""

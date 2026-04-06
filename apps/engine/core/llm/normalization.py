@@ -46,7 +46,11 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
                     id=call_id or "unknown",
                     name=tool_name or "unknown",
                     arguments=tool_args or {},
-                    result=str(result) if result is not None else None
+                    result=str(result) if result is not None else None,
+                    raw_name=tool_name,
+                    raw_arguments=str(tc.get("function", {}).get("arguments")),
+                    raw_result=result,
+                    provider_call_id=call_id
                 ))
 
         # 2. Anthropic Format (content as list of blocks)
@@ -74,7 +78,11 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
                         id=call_id or "unknown",
                         name=tool_name or "unknown",
                         arguments=tool_args or {},
-                        result=str(result) if result is not None else None
+                        result=str(result) if result is not None else None,
+                        raw_name=tool_name,
+                        raw_arguments=str(tool_args),
+                        raw_result=result,
+                        provider_call_id=call_id
                     ))
 
         # 3. Gemini Format (parts)
@@ -103,7 +111,10 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
                         id=tool_name, # Fallback to name as ID for Gemini
                         name=tool_name or "unknown",
                         arguments=tool_args or {},
-                        result=str(result) if result is not None else None
+                        result=str(result) if result is not None else None,
+                        raw_name=tool_name,
+                        raw_arguments=str(tool_args),
+                        raw_result=result
                     ))
 
     return CanonicalTranscript(

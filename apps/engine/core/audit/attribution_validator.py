@@ -16,8 +16,14 @@ class AttributionAuditResult(BaseModel):
     missing_elements: List[str]
     failure_reasons: List[str] = Field(default_factory=list)
 
-def validate_trade_attribution(trade_id: str) -> AttributionAuditResult:
-    """Verifies end-to-end lineage for any trade_id."""
+def validate_trade_attribution(trade_id: str, strict: bool = True) -> AttributionAuditResult:
+    """Verifies end-to-end lineage for any trade_id.
+
+    Args:
+        trade_id: The ID of the trade to audit.
+        strict: If True, requires modern evidence like normalized transcripts.
+                If False, allows historical runs without modern metadata.
+    """
     lineage_found = []
     missing_elements = []
     failure_reasons = []
@@ -85,10 +91,15 @@ def validate_trade_attribution(trade_id: str) -> AttributionAuditResult:
                 else:
                      lineage_found.append("verification_trace")
                      # deliverable 4 check: verify transcript exists
+                     found_transcript = False
                      for v_log in verification_logs:
                          if v_log.get("metadata", {}).get("normalized_transcript"):
                              lineage_found.append("normalized_transcript")
+                             found_transcript = True
                              break
+
+                     if strict and not found_transcript:
+                         missing_elements.append("normalized_transcript")
 
     # 6. Check Post-Trade Lesson
     lessons = audit_repo.fetch_lessons_for_trade(trade_id)

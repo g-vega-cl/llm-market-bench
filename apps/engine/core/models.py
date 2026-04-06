@@ -4,7 +4,7 @@ This module defines the data models used for validating and structuring
 LLM responses, ensuring type safety throughout the pipeline.
 """
 
-from typing import Literal
+from typing import Literal, Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -304,11 +304,17 @@ class DiscoveryRankingResponse(BaseModel):
 
 
 class CanonicalToolCall(BaseModel):
-    """Normalized schema for a single LLM tool call."""
+    """Normalized schema for a single LLM tool call with lossless evidence."""
     id: str
     name: str
     arguments: dict
     result: str | None = None
+
+    # Forensic replay fields (Blocker: Lossless Evidence)
+    raw_name: str | None = None
+    raw_arguments: str | None = None
+    raw_result: Any | None = None
+    provider_call_id: str | None = None
 
 
 class CanonicalTranscript(BaseModel):

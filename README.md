@@ -194,8 +194,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Find uncorrelated sectors** - Like energy X Tech https://g.co/gemini/share/68876564a362.
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
-- [ ] **Corporate Action Check** - Detect and ingest corporate actions (splits, dividends, mergers) to automatically adjust positions and prevent stale price assumptions. Currently marked "not implemented" in the pipeline (Phase 1, Step 3).
-- [ ] **Cross-Language Schema Contract Detection** - Build a scanner that compares Supabase migration files against TypeScript type definitions to catch structural mismatches when a new DB column is added in Python but the frontend types aren't updated.
 
 
 ### 🔄 Under Consideration

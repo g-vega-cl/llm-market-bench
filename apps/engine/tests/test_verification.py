@@ -37,16 +37,18 @@ async def test_verify_trading_decision_approved():
         
         mock_client.client = MagicMock() # For the tool loop
         
-        # Mock generate_content for the tool loop
-        mock_gen_resp = MagicMock()
-        mock_gen_resp.candidates = [MagicMock(content=MagicMock(parts=[]))] # No tool calls
-        mock_client.client.aio.models.generate_content = AsyncMock(return_value=mock_gen_resp)
-        
-        mock_factory.return_value = mock_client
-        mock_factories.get.return_value = mock_factory
-        
-        with patch("core.llm.clients.close_client", new_callable=AsyncMock):
-            result = await verify_trading_decision(
+        # Mock run_tool_loop to simulate mandatory tool calls
+        async def mock_run_tool_loop(client, model, messages, *args, **kwargs):
+            messages.append({"role": "assistant", "tool_calls": [{"id": "c1", "function": {"name": "get_stock_quote", "arguments": "{}"}}]})
+            messages.append({"role": "assistant", "tool_calls": [{"id": "c2", "function": {"name": "calculate_buy_quantity", "arguments": "{}"}}]})
+
+        with patch("apps.engine.core.llm.verification.openai.run_tool_loop", side_effect=mock_run_tool_loop):
+            mock_factory.return_value = mock_client
+            mock_factories.get.return_value = mock_factory
+
+            with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
+                 patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
+                result = await verify_trading_decision(
                 decision=decision,
                 portfolio_context="Cash: $10,000",
                 aggregated_context="Historical context"
@@ -132,11 +134,16 @@ async def test_verify_trading_decision_anthropic():
         mock_client.client = MagicMock() # Mock raw Anthropic client
         
         # Mock run_tool_loop for Anthropic (to avoid actually calling Anthropic)
-        with patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock) as mock_loop:
+        async def mock_loop_fn(client, model, messages, *args, **kwargs):
+            messages.append({"role": "assistant", "content": [{"type": "tool_use", "id": "t1", "name": "get_stock_quote", "input": {}}]})
+            messages.append({"role": "assistant", "content": [{"type": "tool_use", "id": "t2", "name": "calculate_sell_quantity", "input": {}}]})
+
+        with patch("apps.engine.core.llm.verification.anthropic.run_tool_loop", side_effect=mock_loop_fn) as mock_loop:
             mock_factory.return_value = mock_client
             mock_factories.get.return_value = mock_factory
             
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+            with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
+                 patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Positions: AAPL (100)",
@@ -177,11 +184,17 @@ async def test_verify_trading_decision_gemini():
         mock_client.client = MagicMock() # Mock raw Gemini client (using genai SDK)
         
         # Mock run_tool_loop for Gemini
-        with patch("core.llm.handlers.gemini.run_tool_loop", new_callable=AsyncMock) as mock_loop:
+        async def mock_loop_fn(client, model, messages, *args, **kwargs):
+            from google.genai import types
+            messages.append(types.Content(role="model", parts=[types.Part.from_function_call(name="get_stock_quote", args={})]))
+            messages.append(types.Content(role="model", parts=[types.Part.from_function_call(name="calculate_buy_quantity", args={})]))
+
+        with patch("apps.engine.core.llm.verification.gemini.run_tool_loop", side_effect=mock_loop_fn) as mock_loop:
             mock_factory.return_value = mock_client
             mock_factories.get.return_value = mock_factory
             
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+            with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
+                 patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -222,11 +235,17 @@ async def test_verify_trading_decision_sync_resilience():
         mock_client.chat = mock_instructor_client
         mock_client.client = MagicMock()
         
-        with patch("core.llm.handlers.gemini.run_tool_loop", new_callable=AsyncMock):
+        async def mock_loop_fn(client, model, messages, *args, **kwargs):
+            from google.genai import types
+            messages.append(types.Content(role="model", parts=[types.Part.from_function_call(name="get_stock_quote", args={})]))
+            messages.append(types.Content(role="model", parts=[types.Part.from_function_call(name="calculate_buy_quantity", args={})]))
+
+        with patch("apps.engine.core.llm.verification.gemini.run_tool_loop", side_effect=mock_loop_fn):
             mock_factory.return_value = mock_client
             mock_factories.get.return_value = mock_factory
             
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+            with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
+                 patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",

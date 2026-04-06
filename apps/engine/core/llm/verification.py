@@ -3,17 +3,17 @@
 import asyncio
 import json
 import logging
+import re
 from typing import Any, List, Optional
 
-from core.models import DecisionObject, VerificationResult
+from core.models import DecisionObject, VerificationResult, CanonicalTranscript, CanonicalToolCall
 from core.llm import clients, prompts, tools
 from .utils import ensure_list
 from core.llm.handlers import base
+from core.llm.handlers import openai, deepseek, anthropic, gemini
 from core.llm.logger import log_reasoning_trace
 
 logger = logging.getLogger("engine")
-
-from core.models import DecisionObject, VerificationResult, CanonicalTranscript, CanonicalToolCall
 
 async def verify_trading_decision(
     decision: DecisionObject,
@@ -97,8 +97,7 @@ async def verify_trading_decision(
                 tools.VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI,
                 tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI,
             ]
-            from .handlers.openai import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
+            await openai.run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
         elif provider == "deepseek":
             verifier_tools = [
                 tools.STOCK_TOOL_DEFINITION_OPENAI,
@@ -106,8 +105,7 @@ async def verify_trading_decision(
                 tools.VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI,
                 tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI,
             ]
-            from .handlers.deepseek import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
+            await deepseek.run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
             
         elif provider == "anthropic":
             verifier_tools = [
@@ -116,8 +114,7 @@ async def verify_trading_decision(
                 tools.VOLATILITY_METRICS_TOOL_DEFINITION_ANTHROPIC,
                 tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_ANTHROPIC,
             ]
-            from core.llm.handlers.anthropic import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
+            await anthropic.run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
             
         elif provider == "gemini":
             verifier_tools = [
@@ -126,8 +123,7 @@ async def verify_trading_decision(
                 tools.VOLATILITY_METRICS_TOOL_DEFINITION_GEMINI,
                 tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_GEMINI,
             ]
-            from core.llm.handlers.gemini import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
+            await gemini.run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
 
         # 3. Final Extraction using Instructor for structured VerificationResult
         instructor_messages = []
@@ -190,16 +186,36 @@ async def verify_trading_decision(
         # --- Tool Integrity Enforcement ---
         # Verify that mandatory tools were called based on the decision signal
         tool_calls_found = []
-        for m in instructor_messages:
-            content = m.get("content", "")
-            if "[Tool Call:" in str(content):
-                import re
-                matches = re.findall(r"\[Tool Call: (\w+)\(", str(content))
-                tool_calls_found.extend(matches)
-            # Also check raw tool_calls for OpenAI/DeepSeek
-            if m.get("tool_calls"):
-                for tc in m["tool_calls"]:
-                    tool_calls_found.append(tc.get("function", {}).get("name") or tc.get("name"))
+        for m in messages:
+            if isinstance(m, dict):
+                # Handle OpenAI / Anthropic / Gemini / Normalized dicts
+                content = m.get("content", "")
+                if isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "tool_use":
+                            tool_calls_found.append(part.get("name"))
+                elif isinstance(content, str) and "[Tool Call:" in content:
+                    matches = re.findall(r"\[Tool Call: (\w+)\(", content)
+                    tool_calls_found.extend(matches)
+
+                if m.get("tool_calls"):
+                    for tc in m["tool_calls"]:
+                        name = tc.get("function", {}).get("name") if isinstance(tc, dict) else getattr(tc.function, "name", None)
+                        if name:
+                            tool_calls_found.append(name)
+
+                parts = m.get("parts")
+                if isinstance(parts, list):
+                    for part in parts:
+                        if isinstance(part, dict):
+                            fc = part.get("function_call")
+                            if fc:
+                                tool_calls_found.append(fc.get("name"))
+            elif hasattr(m, "parts"):
+                # Handle Google GenAI Content objects
+                for part in m.parts:
+                    if hasattr(part, "function_call") and part.function_call:
+                        tool_calls_found.append(part.function_call.name)
 
         # Mandatory Tools Invariant
         mandatory_tools = ["get_stock_quote"]

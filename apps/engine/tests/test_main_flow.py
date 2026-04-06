@@ -21,6 +21,7 @@ def mock_dependencies():
          patch("main.Portfolio") as MockPortfolio, \
          patch("execution.market_data.MarketDataManager") as MockMDM, \
          patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
+         patch("main.persist_rejection") as mock_reject, \
          patch("main.save_decision") as mock_save:
         
         # Setup defaults
@@ -76,6 +77,7 @@ def mock_dependencies():
             "portfolio_cls": MockPortfolio,
             "portfolio": mock_portfolio_instance,
             "save": mock_save,
+            "reject": mock_reject,
             "verify": mock_verify
         }
 
@@ -104,6 +106,7 @@ async def test_run_ingest_hold_decision(mock_dependencies):
     
     await run_ingest(force=True)
     # Verify save_decision called with trade_id=None
+    # For HOLD, it still calls save_decision directly as it's not a "rejection"
     md["save"].assert_called_once()
     call_args = md["save"].call_args
     # call_args[1] is kwargs
@@ -174,11 +177,11 @@ async def test_run_ingest_rejected_decision(mock_dependencies):
     # Verify no execution
     md["portfolio"].execute_trade.assert_not_called()
     
-    # Verify save_decision
-    md["save"].assert_called_once()
-    kwargs = md["save"].call_args[1]
-    assert kwargs.get("trade_id") is None
+    # Verify persist_rejection
+    md["reject"].assert_called_once()
+    args, kwargs = md["reject"].call_args
     assert kwargs.get("status") == "REJECTED_LIQUIDITY"
+    assert "Market cap too low" in args[2]
 
 @pytest.mark.asyncio
 async def test_run_ingest_sell_tool_enforcement(mock_dependencies):
@@ -202,9 +205,10 @@ async def test_run_ingest_sell_tool_enforcement(mock_dependencies):
     await run_ingest(force=True)
     # Verify rejection
     md["portfolio"].execute_trade.assert_not_called()
-    md["save"].assert_called_once()
-    kwargs = md["save"].call_args[1]
+    md["reject"].assert_called_once()
+    args, kwargs = md["reject"].call_args
     assert kwargs.get("status") == "REJECTED_TOOL_USAGE"
+    assert "Sell tool must be called" in args[2]
 
 @pytest.mark.asyncio
 async def test_run_ingest_sell_with_tool(mock_dependencies):

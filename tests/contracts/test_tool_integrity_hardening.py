@@ -66,7 +66,7 @@ async def test_verification_approves_if_tools_called(mock_client):
         messages.append({"role": "assistant", "tool_calls": [{"id": "call_2", "function": {"name": "calculate_buy_quantity"}}]})
         messages.append({"role": "tool", "tool_call_id": "call_2", "content": "Qty: 10"})
 
-    with patch("apps.engine.core.llm.handlers.openai.run_tool_loop", side_effect=mock_run_tool_loop):
+    with patch("apps.engine.core.llm.verification.openai.run_tool_loop", side_effect=mock_run_tool_loop):
         mock_client.chat.completions.create.return_value = [
             VerificationResult(status="APPROVED", verification_reasoning="Tools were used.", confidence_score=100)
         ]

@@ -21,6 +21,7 @@ def mock_dependencies():
          patch("main.Portfolio") as MockPortfolio, \
          patch("execution.market_data.MarketDataManager") as MockMDM, \
          patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
+         patch("main.persist_rejection") as mock_reject, \
          patch("main.save_decision") as mock_save:
         
         # Setup defaults
@@ -48,7 +49,8 @@ def mock_dependencies():
             "analyze": mock_analyze,
             "validate_decision": mock_validate,
             "portfolio": mock_portfolio_instance,
-            "save": mock_save
+            "save": mock_save,
+            "reject": mock_reject
         }
 
 @pytest.mark.asyncio
@@ -90,12 +92,12 @@ async def test_run_ingest_rejected_small_sell(mock_dependencies):
     # Verify rejection logic in main.py loop
     md["portfolio"].execute_trade.assert_not_called()
     
-    # Verify save_decision called with REJECTED_MARGIN
+    # Verify persist_rejection called with REJECTED_MARGIN
     # The fix ensures SELL calls validate_trade, which should fail if below 1000
-    assert md["save"].called
-    kwargs = md["save"].call_args[1]
+    assert md["reject"].called
+    args, kwargs = md["reject"].call_args
     assert kwargs.get("status") == "REJECTED_MARGIN"
-    assert "below minimum threshold" in kwargs.get("metadata", {}).get("reason", "")
+    assert "below minimum threshold" in args[2]
 
 @pytest.mark.asyncio
 async def test_run_ingest_passed_large_sell(mock_dependencies):

@@ -802,17 +802,22 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
 
 async def execute_search_related_tickers_tool(theme: str) -> str:
     """Uses LLM to search for tickers related to a theme."""
-    from core.llm import get_gemini_client, prompts
+    from core.llm.prompt_factory import PromptFactory
     from core.config import GEMINI_MODEL
     from core.models import TickerSuggestion
     
     client = get_gemini_client()
     try:
-        prompt = prompts.TICKER_SUGGESTION_PROMPT.format(event_summary=theme)
+        # Use centralized PromptFactory for ticker suggestions
+        messages = PromptFactory.build_ticker_suggestion_messages(
+            provider="gemini",
+            event_summary=theme
+        )
+        
         resp = client.chat.completions.create(
             model=GEMINI_MODEL,
             response_model=TickerSuggestion,
-            messages=[{"role": "user", "content": prompt}]
+            messages=messages
         )
         import asyncio
         if asyncio.iscoroutine(resp):

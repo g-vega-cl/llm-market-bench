@@ -8,7 +8,7 @@ from typing import List
 
 from core.models import DecisionsResponse
 from core.llm import clients
-from core.llm import prompts
+from core.llm.prompt_factory import PromptFactory
 from core.llm import tools
 from .utils import ensure_list
 from core.llm.logger import log_reasoning_trace
@@ -63,7 +63,20 @@ async def analyze_with_provider(
         held_tickers = _extract_held_tickers(portfolio_context)
         held_tickers_list = ", ".join(held_tickers) if held_tickers else "None (you have no positions)"
 
-        prompt = prompts.ANALYSIS_USER_PROMPT_TEMPLATE.format(
+        # Determine if web search should be enabled for this provider
+        enable_web_search = False
+        if provider == "anthropic":
+            from core.config import ENABLE_ANTHROPIC_WEB_SEARCH
+            enable_web_search = ENABLE_ANTHROPIC_WEB_SEARCH
+        elif provider == "gemini":
+            from core.config import ENABLE_GEMINI_WEB_SEARCH
+            enable_web_search = ENABLE_GEMINI_WEB_SEARCH
+        elif provider == "openai":
+            from core.config import ENABLE_OPENAI_WEB_SEARCH
+            enable_web_search = ENABLE_OPENAI_WEB_SEARCH
+
+        messages = PromptFactory.build_analysis_messages(
+            provider=provider,
             portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
             context=context if context else "No relevant historical context found.",
             news_content=news_content,
@@ -71,32 +84,24 @@ async def analyze_with_provider(
             current_day_info=current_day_info,
             calendar_knowledge=calendar_knowledge,
             macro_context=macro_context if macro_context else "No macro data available.",
-            held_tickers_list=held_tickers_list
+            held_tickers_list=held_tickers_list,
+            enable_web_search=enable_web_search
         )
-
-        # Use the unified high-fidelity system prompt for ALL models
-        # to ensure consistent tool usage and sophisticated logic.
-        system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
-        ]
 
         # Tool execution loop (delegated to provider-specific handlers)
         raw_client = client.client
         if provider == "openai":
             from .handlers import openai
-            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=False)
+            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
         elif provider == "deepseek":
             from .handlers import deepseek
-            await deepseek.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=False)
+            await deepseek.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
         elif provider == "anthropic":
             from .handlers import anthropic
-            await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=True)  # Enable by default
+            await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=enable_web_search)
         elif provider == "gemini":
             from .handlers import gemini
-            await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=True)  # Enable by default
+            await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=enable_web_search)
 
         # Final structured extraction using Instructor
         logger.debug("Executing final extraction for %s/%s", provider, model_name)

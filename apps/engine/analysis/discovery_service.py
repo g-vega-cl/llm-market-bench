@@ -7,7 +7,8 @@ actual companies and ETFs related to those themes.
 from typing import List, Optional
 import asyncio
 from core.config import logger, GEMINI_MODEL, DEEPSEEK_MODEL
-from core.llm import get_gemini_client, get_deepseek_client, prompts
+from core.llm import get_gemini_client, get_deepseek_client
+from core.llm.prompt_factory import PromptFactory
 from core.models import DiscoveryThemes, RankedAsset, DiscoveryRankingResponse
 from execution.providers.fmp import FMPProvider
 
@@ -25,11 +26,14 @@ class DiscoveryService:
         
         # 1. Map Theme to Discovery Categories (Gemini)
         try:
-            prompt = prompts.DISCOVERY_PROMPT.format(event_content=event_content)
+            messages = PromptFactory.build_discovery_messages(
+                provider="gemini",
+                event_content=event_content
+            )
             resp = self.gemini_client.chat.completions.create(
                 model=GEMINI_MODEL,
                 response_model=DiscoveryThemes,
-                messages=[{"role": "user", "content": prompt}]
+                messages=messages
             )
             
             if asyncio.iscoroutine(resp):
@@ -92,7 +96,8 @@ class DiscoveryService:
             # Format candidate pool for prompt
             pool_text = "\n".join([f"- {c['ticker']}: {c['name']} (Industry: {c['industry']})" for c in candidate_pool[:40]])
             
-            ranking_prompt = prompts.ASSET_RANKING_PROMPT.format(
+            messages = PromptFactory.build_asset_ranking_messages(
+                provider="deepseek",
                 event_content=event_content,
                 event_summary=event_summary or "Detailed analysis of the event drivers and thematic impact.",
                 candidate_pool=pool_text
@@ -101,7 +106,7 @@ class DiscoveryService:
             ranked_resp = self.deepseek_client.chat.completions.create(
                 model=DEEPSEEK_MODEL,
                 response_model=DiscoveryRankingResponse,
-                messages=[{"role": "user", "content": ranking_prompt}]
+                messages=messages
             )
             
             if asyncio.iscoroutine(ranked_resp):

@@ -7,7 +7,8 @@ import logging
 from typing import Any, List, Optional
 
 from core.models import DecisionObject, VerificationResult
-from core.llm import clients, prompts, tools
+from core.llm import clients, tools
+from core.llm.prompt_factory import PromptFactory
 from .utils import ensure_list
 from core.llm.handlers import base
 from core.llm.logger import log_reasoning_trace
@@ -68,7 +69,8 @@ async def verify_trading_decision(
     
     try:
         # 1. Prepare Prompt
-        prompt = prompts.VERIFIER_USER_PROMPT_TEMPLATE.format(
+        messages = PromptFactory.build_verifier_messages(
+            provider=provider,
             ticker=decision.ticker,
             signal=decision.signal,
             reasoning=decision.reasoning,
@@ -82,11 +84,6 @@ async def verify_trading_decision(
             contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available.",
             uncrowded_context=uncrowded_context if uncrowded_context else "No specific secondary effects noted."
         )
-
-        messages = [
-            {"role": "system", "content": prompts.VERIFIER_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ]
 
         # 2. Select Verifier Tools based on Provider
         if provider == "openai":

@@ -10,7 +10,8 @@ from typing import List, Any
 
 from core.config import logger, GEMINI_MODEL
 from core.db import get_supabase_client
-from core.llm import get_gemini_client, prompts
+from core.llm import get_gemini_client
+from core.llm.prompt_factory import PromptFactory
 from core.models import CauseAndEffectResult, TickerSuggestion
 from execution.market_data import MarketDataManager
 from memory.store import find_similar_memory
@@ -19,11 +20,14 @@ async def extract_related_tickers(event_summary: str) -> list[str]:
     """Uses LLM to suggest relevant tickers for an event."""
     client = get_gemini_client()
     try:
-        prompt = prompts.TICKER_SUGGESTION_PROMPT.format(event_summary=event_summary)
+        messages = PromptFactory.build_ticker_suggestion_messages(
+            provider="gemini",
+            event_summary=event_summary
+        )
         resp = client.chat.completions.create(
             model=GEMINI_MODEL,
             response_model=TickerSuggestion,
-            messages=[{"role": "user", "content": prompt}]
+            messages=messages
         )
         # Handle instructor's potential sync/async return
         import asyncio
@@ -129,7 +133,8 @@ async def perform_cause_and_effect_analysis():
         performance_text = "\n".join(market_context) if market_context else "No specific market data available."
 
         # 4. Generate Analysis via LLM
-        prompt = prompts.CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE.format(
+        messages = PromptFactory.build_cause_effect_messages(
+            provider="gemini",
             event_name=content[:100], # Use first 100 chars as name if none
             event_summary=content,
             scenario_analysis=scenario_analysis,
@@ -141,10 +146,7 @@ async def perform_cause_and_effect_analysis():
             create_call = client.chat.completions.create(
                 model=GEMINI_MODEL,
                 response_model=CauseAndEffectResult,
-                messages=[
-                    {"role": "system", "content": prompts.CAUSE_AND_EFFECT_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ]
+                messages=messages
             )
             
             import asyncio

@@ -9,7 +9,7 @@ import logging
 from typing import List, Tuple
 
 from core.models import DecisionObject, MacroEvent, DecisionsResponse, ContrarianAgentResponse
-from core.llm import get_gemini_client, prompts
+from core.llm import get_gemini_client
 from core.config import GEMINI_MODEL, logger
 from execution.portfolio import Portfolio
 from execution.market_data import MarketDataManager
@@ -79,25 +79,25 @@ async def run_contrarian_analysis(
     # 3. Call Gemini Flash 3
     client = get_gemini_client()
 
-    prompt = prompts.CONTRARIAN_USER_PROMPT_TEMPLATE.format(
-        news_content=news_content,
-        decisions_context=decisions_context,
-        context=context,
-        portfolio_context=portfolio_ctx
-    )
-
     try:
         from core.models import DecisionsResponse
         from typing import List
+        from core.llm.prompt_factory import PromptFactory
+
+        messages = PromptFactory.build_contrarian_messages(
+            provider="gemini",
+            news_content=news_content,
+            decisions_context=decisions_context,
+            context=context,
+            portfolio_context=portfolio_ctx
+        )
+
         # Use List[DecisionsResponse] to handle Gemini emitting multiple tool call blocks
         # This is expected behavior with instructor.Mode.GENAI_TOOLS and multiple news chunks
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
             response_model=List[DecisionsResponse],
-            messages=[
-                {"role": "system", "content": prompts.CONTRARIAN_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
+            messages=messages,
             max_retries=2
         )
 

@@ -63,9 +63,14 @@ The enforcement system operates at **four layers**:
 
 ## Layer 1: Pre-Prompt Strengthening
 
-### Unified High-Fidelity System Prompt
+### Unified High-Fidelity System Prompt via PromptFactory
 
-All models (OpenAI, Anthropic, Gemini, DeepSeek) now receive a unified high-fidelity system prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`). This ensures consistent tool usage and strict logic enforcement across the entire market engine.
+All models (OpenAI, Anthropic, Gemini, DeepSeek) now receive a unified high-fidelity system prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`) managed centrally by the **`PromptFactory`** (`apps/engine/core/llm/prompt_factory.py`). This ensures:
+1. **Semantic Consistency**: All agents receive the exact same core tactical instructions regardless of the underlying LLM provider.
+2. **Provider Adaptation**: The factory automatically handles role mapping (e.g., `user` -> `model` for Gemini) and strips unreachable instructions (e.g., removing web search for Gemini when functions are present) to prevent hallucinated tool usage.
+3. **Auditability**: All prompt mutations are centralized, making it easy to track how instructions evolve over time.
+
+The `CORE_ANALYSIS_SYSTEM_PROMPT` includes explicit tool usage requirements and strict logic enforcement:
 
 ```python
 CORE_ANALYSIS_SYSTEM_PROMPT = """
@@ -257,14 +262,16 @@ This ensures that the `messages` array used in `log_reasoning_trace` remains cle
 
 | File | Changes |
 |------|---------|
-| `core/llm/prompts.py` | Added `CLAUDE_ANALYSIS_SYSTEM_PROMPT`, few-shot examples, enhanced portfolio/price sections |
-| `core/llm/analysis.py` | Added `_extract_held_tickers()`, history scanning, confidence penalties, ownership validation, DeepSeek message preparation |
+| `core/llm/prompt_factory.py` | **NEW**: Centralized factory for assembling all agent prompts and message lists. |
+| `core/llm/prompts.py` | Repository for static prompt templates; now strictly accessed via `PromptFactory`. |
+| `core/llm/analysis.py` | Integrated `PromptFactory` for unified analysis prompts; includes history scanning and penalties. |
+| `core/llm/verification.py` | Integrated `PromptFactory` for consistent verifier intelligence profiles. |
 | `core/models.py` | Added `price_source` field to `DecisionObject` |
 | `core/llm/handlers/deepseek.py` | Added `prepare_messages_for_instructor()`, `has_valid_content()` for thinking mode support |
 | `core/llm/handlers/anthropic.py` | Increased max_tokens from 8000 to 32000 |
 | `core/llm/handlers/gemini.py` | Enhanced multi-function-call handling |
 | `core/llm/clients.py` | Added `mode=instructor.Mode.GENAI_TOOLS` for Gemini |
-| `analysis/contrarian.py` | Changed to `List[ContrarianAgentResponse]` for Gemini multi-block support |
+| `analysis/contrarian.py` | Integrated `PromptFactory`; changed to `List[ContrarianAgentResponse]` for Gemini support |
 
 ## Provider-Specific Fixes (2026-03-24 PM)
 

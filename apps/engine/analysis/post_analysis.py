@@ -10,7 +10,8 @@ from typing import Any, List
 
 from core.config import logger, GEMINI_MODEL
 from core.db import get_supabase_client
-from core.llm import get_gemini_client, prompts
+from core.llm import get_gemini_client
+from core.llm.prompt_factory import PromptFactory
 from execution.market_data import MarketDataManager
 from memory.store import add_memory
 from pydantic import BaseModel, Field
@@ -83,28 +84,29 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
             if signal.upper() == "SELL":
                 price_change_pct = -price_change_pct
                 
-            # 5. Ask Agent to analyze
-            prompt = prompts.MANAGER_USER_PROMPT_TEMPLATE.format(
-                ticker=ticker,
-                signal=signal,
-                entry_price=entry_price,
-                current_price=current_price,
-                price_change_pct=price_change_pct,
-                reasoning=reasoning,
-                strategy_reasoning=strategy_reasoning
-            )
-            
             try:
+                messages = PromptFactory.build_manager_messages(
+                    provider="gemini",
+                    ticker=ticker,
+                    signal=signal,
+                    entry_price=entry_price,
+                    current_price=current_price,
+                    price_change_pct=price_change_pct,
+                    reasoning=reasoning,
+                    strategy_reasoning=strategy_reasoning
+                )
+                
                 # Use a modified system prompt or context if it's a longer term window
                 # For now, using same templates but adding window context in the lesson content
+                for msg in messages:
+                    if msg["role"] == "user":
+                        msg["content"] = f"[WINDOW: {days_back} DAYS] " + msg["content"]
+
                 resp = await client.chat.completions.create(
                     model=GEMINI_MODEL,
                     # instructor handles the structured output mapping to PostAnalysisResult
                     response_model=PostAnalysisResult,
-                    messages=[
-                        {"role": "system", "content": prompts.MANAGER_SYSTEM_PROMPT},
-                        {"role": "user", "content": f"[WINDOW: {days_back} DAYS] {prompt}"}
-                    ]
+                    messages=messages
                 )
                 
                 # 6. Inject into Memory

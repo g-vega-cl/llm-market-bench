@@ -194,7 +194,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Find uncorrelated sectors** - Like energy X Tech https://g.co/gemini/share/68876564a362.
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
-
+- [ ] **LLM prompt Factory** - A tool to create and manage LLM prompts to make sure all prompts are the same across my agents.  
 
 ### 🔄 Under Consideration
 

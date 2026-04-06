@@ -80,6 +80,18 @@ To improve code maintainability and adhere to Google's Python Style Guide, the t
 
 This separation ensures that each provider's unique API requirements are isolated, making the codebase easier to test and extend.
 
+### **Prompt Factory & Message Construction**
+To eliminate "prompt drift" and ensure semantic consistency across all LLM providers, the engine utilizes a centralized **`PromptFactory`** (`apps/engine/core/llm/prompt_factory.py`).
+
+| Feature | Description |
+| --- | --- |
+| **Single Source of Truth** | All agent prompts (Analysis, Verification, Contrarian, Manager, etc.) are managed through a unified API. |
+| **Provider-Specific Adaptation** | The factory automatically maps generic roles (e.g., `user`, `assistant`) to provider-specific equivalents (e.g., `model` for Gemini). |
+| **Dynamic Instruction Stripping** | Automatically removes web search prompts for providers where search is functionally blocked (e.g., Gemini and DeepSeek when function tools are present). |
+| **Macro Context Injection** | Centralizes the injection of the Global Macro Snapshot and Portfolio status into the system prompts. |
+
+**Impact**: Ensures that every agent, regardless of the underlying LLM provider, receives the exact same tactical instructions and constraints, preserving the integrity of the benchmark.
+
 ## 2. Configuration & Model Selection
 
 Model names are defined in the shared JSON configuration file at [`packages/config/models.json`](../../packages/config/models.json) — **not** set via environment variables. To change a model, edit this JSON file directly. Both the Python engine and the TypeScript frontend read from it. 

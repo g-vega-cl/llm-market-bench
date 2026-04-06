@@ -3,7 +3,8 @@
 import asyncio
 import logging
 from core import config
-from core.llm import clients, prompts
+from core.llm import clients
+from core.llm.prompt_factory import PromptFactory
 from core.models import NewsletterCleaningResponse
 
 logger = logging.getLogger("engine")
@@ -27,16 +28,15 @@ async def clean_newsletter_content(content: str) -> str:
     client = clients.get_gemini_client()
     
     try:
+        messages = PromptFactory.build_de_advertisement_messages(
+            provider="gemini",
+            content=content
+        )
+        
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
             response_model=NewsletterCleaningResponse,
-            messages=[
-                {"role": "system", "content": prompts.DE_ADVERTISEMENT_SYSTEM_PROMPT},
-                {
-                    "role": "user", 
-                    "content": prompts.DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE.format(content=content)
-                },
-            ],
+            messages=messages,
             max_retries=2
         )
         

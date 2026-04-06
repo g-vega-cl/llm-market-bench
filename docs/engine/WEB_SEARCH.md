@@ -203,14 +203,25 @@ ENABLE_OPENAI_WEB_SEARCH=true
 
 ## Prompt Engineering
 
-The system prompt has been updated to inform agents about web search capability:
+The system prompt is dynamically managed by the **`PromptFactory`** (`apps/engine/core/llm/prompt_factory.py`). It informs agents about web search capabilities while ensuring instructions are only present when the model can or should actually use them.
 
-```
-You are a hedge fund trading algorithm with access to real-time web search.
-Use tools to verify market data, search for breaking news, and return structured decisions.
-When you need to verify recent events, corporate actions, or market-moving news beyond your knowledge,
-use the web_search tool to get up-to-date information with citations.
-```
+### Centralized Management
+
+Instead of static templates, all prompts are assembled via the factory, which applies the following logic:
+
+1. **Instruction Injection**: If web search is enabled for a provider (e.g., Anthropic), the following capability is injected:
+   ```text
+   You are a hedge fund trading algorithm with access to real-time web search.
+   Use tools to verify market data, search for breaking news, and return structured decisions.
+   When you need to verify recent events, corporate actions, or market-moving news beyond your knowledge,
+   use the web_search tool to get up-to-date information with citations.
+   ```
+
+2. **Dynamic Stripping**: The factory **automatically strips** web search instructions for providers where search is functionally blocked or unsupported. This prevents "tool hallucination" where a model claims to search in text but cannot invoke the tool.
+   - **Gemini**: Search is stripped when function tools (e.g., `get_stock_quote`) are present, as Gemini disables search grounding in the presence of custom functions.
+   - **DeepSeek**: Search is stripped as the current handler calls the OpenAI-compatible endpoint with `enable_web_search=False`.
+
+### Best Practices for Agents
 
 ### Best Practices for Agents
 

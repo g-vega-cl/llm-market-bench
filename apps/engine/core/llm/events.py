@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from core import config
 from core.llm import clients
-from core.llm import prompts
+from core.llm.prompt_factory import PromptFactory
 from core.llm.logger import log_reasoning_trace
 
 logger = logging.getLogger("engine")
@@ -63,7 +63,8 @@ async def synthesize_event(
         combined_reasonings = "\n".join([f"- {r}" for r in reasonings])
         combined_scenarios = "\n".join([f"- {s}" for s in scenarios]) if scenarios else "No explicit scenario analysis provided."
 
-        prompt = prompts.SYNTHESIS_USER_PROMPT_TEMPLATE.format(
+        messages = PromptFactory.build_synthesis_messages(
+            provider="gemini",
             event_name=event_name,
             impact=impact,
             combined_reasonings=combined_reasonings,
@@ -85,13 +86,7 @@ async def synthesize_event(
             model=config.GEMINI_MODEL,
             # Use List to handle Gemini's tendency to emit multiple tool calls for the schema
             response_model=List[SynthesisResponse], 
-            messages=[
-                {
-                    "role": "system",
-                    "content": prompts.SYNTHESIS_SYSTEM_PROMPT,
-                },
-                {"role": "user", "content": prompt},
-            ],
+            messages=messages,
             max_retries=2,
         )
 
@@ -112,10 +107,7 @@ async def synthesize_event(
             task_type="CONSENSUS",
             model_provider="gemini", # Hardcoded since synthesize_event uses gemini client
             model_name=config.GEMINI_MODEL,
-            prompt=[
-                {"role": "system", "content": prompts.SYNTHESIS_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
+            prompt=messages,
             response=resp,
             metadata={
                 "event_name": event_name, 
@@ -179,7 +171,8 @@ async def analyze_event_relationship(
         for i, acc in enumerate(potential_ancestors):
             ancestors_text += f"\n[{i}] ID: {acc['id']}\nContent: {acc['content']}\n"
 
-        prompt = prompts.RELATIONSHIP_USER_PROMPT_TEMPLATE.format(
+        messages = PromptFactory.build_relationship_messages(
+            provider="openai",
             new_event=new_event,
             ancestors_text=ancestors_text,
         )
@@ -192,13 +185,7 @@ async def analyze_event_relationship(
         resp = await client.chat.completions.create(
             model=config.OPENAI_MODEL,
             response_model=RelationshipResponse,
-            messages=[
-                {
-                    "role": "system",
-                    "content": prompts.RELATIONSHIP_SYSTEM_PROMPT,
-                },
-                {"role": "user", "content": prompt},
-            ],
+            messages=messages,
             max_retries=2,
         )
 
@@ -207,10 +194,7 @@ async def analyze_event_relationship(
             task_type="CONSENSUS_RELATIONSHIP",
             model_provider="openai", # Hardcoded since analyze_event_relationship uses openai client
             model_name=config.OPENAI_MODEL,
-            prompt=[
-                {"role": "system", "content": prompts.RELATIONSHIP_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
+            prompt=messages,
             response=resp,
             metadata={"new_event_preview": new_event[:100]}
         )

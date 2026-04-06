@@ -21,6 +21,7 @@ async def verify_trading_decision(
     aggregated_context: str,
     contrarian_context: str = "",
     uncrowded_context: str = "",
+    decision_id: str | None = None,
     max_tool_steps: int = 5
 ) -> tuple[VerificationResult, Optional[str]]:
     """Performs a skeptical second reasoning step on a proposed trade.
@@ -88,6 +89,7 @@ async def verify_trading_decision(
             {"role": "system", "content": prompts.VERIFIER_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
+        raw_messages = messages
 
         # 2. Select Verifier Tools based on Provider
         if provider == "openai":
@@ -127,7 +129,7 @@ async def verify_trading_decision(
 
         # 3. Final Extraction using Instructor for structured VerificationResult
         instructor_messages = []
-        for m in messages:
+        for m in raw_messages:
             if isinstance(m, dict):
                 # IMPORTANT: For OpenAI/DeepSeek, we MUST preserve tool_calls and tool_call_id
                 # to avoid "Invalid parameter: messages with role 'tool' must be a response to a preceeding message with 'tool_calls'"
@@ -198,7 +200,7 @@ async def verify_trading_decision(
 
         try:
             canonical = normalize_transcript(
-                _sterilize(messages),
+                _sterilize(raw_messages),
                 model_name=model_name,
                 provider=provider
             )
@@ -232,14 +234,14 @@ async def verify_trading_decision(
             "source_id": decision.source_id,
             "mandatory_tools_verified": not missing_mandatory,
         }
-        if getattr(decision, "provisional_id", None):
-            meta["decision_id"] = str(decision.provisional_id)
+        if decision_id:
+            meta["decision_id"] = str(decision_id)
 
         log_id = await log_reasoning_trace(
             task_type="VERIFICATION",
             model_provider=provider,
             model_name=model_name,
-            prompt=instructor_messages,
+            prompt=raw_messages,
             response=final_resp,
             metadata=meta
         )

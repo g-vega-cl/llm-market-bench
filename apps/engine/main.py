@@ -6,7 +6,6 @@ including newsletter ingestion, database snapshotting, and LLM analysis.
 
 import argparse
 import asyncio
-import uuid
 
 from analyze import analyze_chunks
 from consensus import process_consensus
@@ -194,7 +193,7 @@ async def _stage_decision_processing(
                 all_pos_tickers = list(portfolio.positions.keys())
                 if d.ticker not in all_pos_tickers:
                     all_pos_tickers.append(d.ticker)
-                
+
                 from execution.market_data import MarketDataManager
                 mdm = MarketDataManager()
                 p_map = {t: (await mdm.get_quote(t)).price for t in all_pos_tickers if await mdm.get_quote(t)}
@@ -203,8 +202,12 @@ async def _stage_decision_processing(
                 tool_trace_id = None
                 qty = 0
 
-                # Generate a stable provisional ID to anchor the verification log to this decision
-                d.provisional_id = str(uuid.uuid4())
+                # Persist the decision before verification so the audit log can anchor
+                # to the actual decision row id instead of the temporary provisional UUID.
+                decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
+                decision_id = decision_row.get("id")
+                if decision_id:
+                    meta["decision_id"] = decision_id
 
                 if d.signal.upper() == "BUY":
                     if not portfolio.metrics:
@@ -219,7 +222,8 @@ async def _stage_decision_processing(
                         portfolio_context=await portfolio.get_portfolio_summary(p_map),
                         aggregated_context=aggregated_context,
                         contrarian_context=contrarian_text,
-                        uncrowded_context=uncrowded_context
+                        uncrowded_context=uncrowded_context,
+                        decision_id=decision_id
                     )
 
                     if verification.status == "REJECTED_VERIFICATION":
@@ -227,6 +231,7 @@ async def _stage_decision_processing(
                             sb_client, d, verification.verification_reasoning,
                             status="REJECTED_VERIFICATION",
                             market_price=exec_price,
+                            metadata=meta,
                             tool_trace_id=tool_trace_id
                         )
                         rejected_decisions += 1
@@ -254,6 +259,7 @@ async def _stage_decision_processing(
                                 persist_rejection(
                                     sb_client, d, reason,
                                     status=ValidationStatus.REJECTED_LIMIT_PRICE.value,
+                                    metadata=meta,
                                     market_price=exec_price
                                 )
                                 rejected_decisions += 1
@@ -279,6 +285,7 @@ async def _stage_decision_processing(
                         persist_rejection(
                             sb_client, d, validation_res.reason,
                             status="REJECTED_MARGIN",
+                            metadata=meta,
                             portfolio_state={
                                 "portfolio_id": str(portfolio.portfolio_id) if hasattr(portfolio, "portfolio_id") else None,
                                 "cash_before": portfolio.cash_balance,
@@ -302,7 +309,8 @@ async def _stage_decision_processing(
                         portfolio_context=await portfolio.get_portfolio_summary(p_map),
                         aggregated_context=aggregated_context,
                         contrarian_context=contrarian_text,
-                        uncrowded_context=uncrowded_context
+                        uncrowded_context=uncrowded_context,
+                        decision_id=decision_id
                     )
 
                     if verification.status == "REJECTED_VERIFICATION":
@@ -310,6 +318,7 @@ async def _stage_decision_processing(
                             sb_client, d, verification.verification_reasoning,
                             status="REJECTED_VERIFICATION",
                             market_price=exec_price,
+                            metadata=meta,
                             tool_trace_id=tool_trace_id
                         )
                         rejected_decisions += 1
@@ -335,6 +344,7 @@ async def _stage_decision_processing(
                                 persist_rejection(
                                     sb_client, d, reason,
                                     status=ValidationStatus.REJECTED_LIMIT_PRICE.value,
+                                    metadata=meta,
                                     market_price=exec_price
                                 )
                                 rejected_decisions += 1
@@ -349,6 +359,7 @@ async def _stage_decision_processing(
                         persist_rejection(
                             sb_client, d, validation_res.reason,
                             status="REJECTED_MARGIN",
+                            metadata=meta,
                             portfolio_state={
                                 "portfolio_id": str(portfolio.portfolio_id) if hasattr(portfolio, "portfolio_id") else None,
                                 "cash_before": portfolio.cash_balance,
@@ -362,24 +373,28 @@ async def _stage_decision_processing(
                 if qty <= 0:
                     qty = getattr(d, "quantity", 0) or 1
                 if qty <= 0:
+                    persist_rejection(
+                        sb_client, d, "Computed trade quantity is zero.",
+                        status="REJECTED_MARGIN",
+                        metadata=meta,
+                        market_price=exec_price
+                    )
                     rejected_decisions += 1
                     continue
 
                 if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
                     qty = verification.adjusted_quantity
                 
-                # --- Attribution Locking (Step 13 PRE-STEP) ---
-                # Save the decision first to get a stable decision_id for the trade record
-                decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
-                decision_id = decision_row.get("id")
-
                 trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal, decision_id=decision_id)
                 if trade_id:
                     status = "EXECUTED"
-                    meta = {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
+                    meta.update({
+                        "trade_id": str(trade_id),
+                        "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"
+                    })
                 else:
                     status = "ERROR_EXECUTION"
-                    meta = {"info": "Execution Failed"}
+                    meta.update({"info": "Execution Failed"})
 
             save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None)
             if status in ["EXECUTED", "VALIDATED"]:

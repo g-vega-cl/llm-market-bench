@@ -36,7 +36,7 @@ async def test_verification_rejects_if_missing_tools(mock_client):
             VerificationResult(status="APPROVED", verification_reasoning="Looks good to me!", confidence_score=100)
         ]
 
-        result = await verify_trading_decision(
+        result, log_id = await verify_trading_decision(
             decision=decision,
             portfolio_context="Empty",
             aggregated_context="Empty"
@@ -71,7 +71,7 @@ async def test_verification_approves_if_tools_called(mock_client):
             VerificationResult(status="APPROVED", verification_reasoning="Tools were used.", confidence_score=100)
         ]
 
-        result = await verify_trading_decision(
+        result, log_id = await verify_trading_decision(
             decision=decision,
             portfolio_context="Empty",
             aggregated_context="Empty"

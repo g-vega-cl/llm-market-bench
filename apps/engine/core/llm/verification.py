@@ -22,7 +22,7 @@ async def verify_trading_decision(
     contrarian_context: str = "",
     uncrowded_context: str = "",
     max_tool_steps: int = 5
-) -> VerificationResult:
+) -> tuple[VerificationResult, Optional[str]]:
     """Performs a skeptical second reasoning step on a proposed trade.
 
     Args:
@@ -34,14 +34,14 @@ async def verify_trading_decision(
         max_tool_steps: Maximum iterations for the verifier's tool loop.
 
     Returns:
-        A VerificationResult object.
+        A tuple of (VerificationResult object, Optional log_trace_id).
     """
     if decision.signal == "HOLD":
         return VerificationResult(
             status="APPROVED",
             verification_reasoning="HOLD decisions do not require second-step verification.",
             confidence_score=100
-        )
+        ), None
 
     # Use the same provider and model as the original decision
     provider = decision.model_provider or "openai" # Default to openai if not set
@@ -220,7 +220,6 @@ async def verify_trading_decision(
             )
 
         # Log completion with decision_id anchor for precise attribution
-        # Blocker 3 Fix: Include decision_id if available
         meta = {
             "ticker": decision.ticker,
             "signal": decision.signal,
@@ -230,7 +229,7 @@ async def verify_trading_decision(
         if getattr(decision, "id", None):
             meta["decision_id"] = str(decision.id)
 
-        await log_reasoning_trace(
+        log_id = await log_reasoning_trace(
             task_type="VERIFICATION",
             model_provider=provider,
             model_name=model_name,
@@ -239,7 +238,7 @@ async def verify_trading_decision(
             metadata=meta
         )
 
-        return final_resp
+        return final_resp, log_id
 
     except Exception as e:
         logger.error(f"Verification failed for {decision.ticker} ({provider}): {e}")
@@ -247,6 +246,6 @@ async def verify_trading_decision(
             status="APPROVED",
             verification_reasoning=f"Verification failed due to error: {e}. Defaulting to approval.",
             confidence_score=0
-        )
+        ), None
     finally:
         await clients.close_client(client, provider)

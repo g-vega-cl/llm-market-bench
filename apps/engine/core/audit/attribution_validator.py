@@ -21,8 +21,8 @@ def validate_trade_attribution(trade_id: str, strict: bool = True) -> Attributio
 
     Args:
         trade_id: The ID of the trade to audit.
-        strict: If True, requires modern evidence like normalized transcripts.
-                If False, allows historical runs without modern metadata.
+        strict: If True, requires full audit evidence including normalized transcripts.
+                If False, allows historical benchmark runs for longitudinal comparability.
     """
     lineage_found = []
     missing_elements = []
@@ -70,7 +70,7 @@ def validate_trade_attribution(trade_id: str, strict: bool = True) -> Attributio
                     lineage_found.append("news_source")
 
             # 4. Check LLM Reasoning Log
-            # Blocker 3 Fix: Prefer precise decision_id anchoring, fallback to ticker/source
+            # Prefer precise decision_id anchoring, fallback to ticker/source
             logs = audit_repo.fetch_reasoning_logs_by_decision_id(decision_id)
 
             if not logs:
@@ -91,9 +91,10 @@ def validate_trade_attribution(trade_id: str, strict: bool = True) -> Attributio
                 else:
                      lineage_found.append("verification_trace")
                      # deliverable 4 check: verify transcript exists
+                     # Handle both legacy metadata and hardened column
                      found_transcript = False
                      for v_log in verification_logs:
-                         if v_log.get("metadata", {}).get("normalized_transcript"):
+                         if v_log.get("normalized_transcript") or v_log.get("metadata", {}).get("normalized_transcript"):
                              lineage_found.append("normalized_transcript")
                              found_transcript = True
                              break
@@ -108,6 +109,13 @@ def validate_trade_attribution(trade_id: str, strict: bool = True) -> Attributio
         missing_elements.append("post_trade_lesson")
     else:
         lineage_found.append("post_trade_lesson")
+
+    # 7. Check for explicit rejections in trade_rejections table
+    rejections = audit_repo.fetch_trade_rejections_by_ticker(ticker)
+    # This is a supplemental check - a trade existence means it wasn't rejected,
+    # but the validator can note if there were prior rejections for this ticker.
+    if rejections:
+        lineage_found.append("historical_rejections")
 
     is_valid = len(missing_elements) == 0
     return AttributionAuditResult(

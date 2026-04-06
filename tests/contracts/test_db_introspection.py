@@ -32,15 +32,3 @@ def test_live_db_schema_parity():
                          pass
         except Exception as e:
             pytest.fail(f"Table '{table}' query failed. Possible schema drift or missing table: {e}")
-
-def test_db_introspection_via_rpc():
-    """Attempts to use Postgres introspection if allowed."""
-    try:
-        client = get_supabase_client()
-    except ValueError:
-        pytest.skip("Supabase env vars not set")
-
-    # In many Supabase setups, we can't query information_schema directly via postgrest
-    # unless we have a custom RPC. If we don't have one, this is a placeholder
-    # for the "Best" recommendation from the review.
-    pass

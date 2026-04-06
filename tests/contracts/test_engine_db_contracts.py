@@ -51,9 +51,21 @@ def test_memories_parity_with_sql(sql_schema):
     assert "memory_type" in expected_columns
     assert "importance_score" in expected_columns
 
+def test_trade_rejections_parity_with_sql(sql_schema):
+    """Ensures the new trade_rejections table matches our persistence expectations."""
+    expected_columns = sql_schema.get("trade_rejections", {})
+    assert expected_columns, "Detailed trade_rejections table missing from migrations."
+
+    required_audit_fields = [
+        "provider", "ticker", "requested_action", "rejection_reason",
+        "decision_trace_id", "market_price"
+    ]
+    for field in required_audit_fields:
+        assert field in expected_columns, f"Audit field {field} missing in trade_rejections table"
+
 def test_sql_nullability_parity(sql_schema):
     """Ensures Pydantic optionality matches SQL nullability where applicable."""
-    # Blocker 4: Check additive column evolution
+    # Check additive column evolution
     decisions_schema = sql_schema.get("decisions", {})
 
     # Check for specifically added nullable columns that should have defaults
@@ -62,13 +74,20 @@ def test_sql_nullability_parity(sql_schema):
         if col in decisions_schema:
             assert decisions_schema[col]["nullable"] is True, f"Evolution column {col} should remain nullable for migration safety"
 
+    # Reasoning logs evolution
+    logs_schema = sql_schema.get("llm_reasoning_logs", {})
+    if "normalized_transcript" in logs_schema:
+        assert logs_schema["normalized_transcript"]["nullable"] is True
+
 def test_additive_schema_evolution(sql_schema):
     """Specifically audits for additive columns with defaults."""
     for table, columns in sql_schema.items():
         for col_name, info in columns.items():
-            # If a column was added via ALTER, it usually should be nullable or have a DEFAULT
-            # to avoid breaking existing code.
-            pass
+            # If a column was added via ALTER, it MUST be nullable or have a DEFAULT
+            # to avoid breaking existing engine logic during migrations.
+            if info.get("is_additive"):
+                assert info["nullable"] or info["default"] is not None, \
+                    f"Additive column '{col_name}' in table '{table}' must be nullable or have a DEFAULT."
 
 def test_enum_consistency():
     """Ensures Literal enums match logic expectations."""

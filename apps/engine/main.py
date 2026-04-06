@@ -106,7 +106,11 @@ async def _stage_decision_processing(
             validation = await validate_decision(d.ticker, getattr(d, "price", None))
             
             if validation.status != ValidationStatus.PASSED:
-                persist_rejection(sb_client, d, validation.reason, status=validation.status.value)
+                persist_rejection(
+                    sb_client, d, validation.reason,
+                    status=validation.status.value,
+                    market_price=validation.market_price
+                )
                 rejected_decisions += 1
                 continue
 
@@ -114,7 +118,11 @@ async def _stage_decision_processing(
             # Only check for overlap within the same agent's portfolio
             overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
             if overlap_reason:
-                persist_rejection(sb_client, d, overlap_reason, status=ValidationStatus.REJECTED_REDUNDANCY.value)
+                persist_rejection(
+                    sb_client, d, overlap_reason,
+                    status=ValidationStatus.REJECTED_REDUNDANCY.value,
+                    market_price=validation.market_price
+                )
                 rejected_decisions += 1
                 continue
 
@@ -122,23 +130,38 @@ async def _stage_decision_processing(
             status = "VALIDATED"
             meta = {"info": "Validation Passed (No Trade)"}
             trade_id = None
-            
+            exec_price = validation.market_price or getattr(d, "price", 0)
+
             if d.signal.upper() in ["BUY", "SELL"]:
                 portfolio = Portfolio(owner_id=d.model_name)
                 await portfolio.initialize()
                 
                 # --- SELL Guardrails ---
                 if d.signal.upper() == "SELL":
+                    port_state = {
+                        "portfolio_id": str(portfolio.portfolio_id) if hasattr(portfolio, "portfolio_id") else None,
+                        "cash_before": portfolio.cash_balance,
+                        "position_before": portfolio.positions.get(d.ticker).quantity if d.ticker in portfolio.positions else 0
+                    }
                     if d.ticker not in portfolio.positions:
-                        persist_rejection(sb_client, d, "Ticker not held.", status="REJECTED_OWNERSHIP")
+                        persist_rejection(
+                            sb_client, d, "Ticker not held.",
+                            status="REJECTED_OWNERSHIP",
+                            portfolio_state=port_state,
+                            market_price=exec_price
+                        )
                         rejected_decisions += 1
                         continue
                     if not getattr(d, "sell_tool_called", False):
-                        persist_rejection(sb_client, d, "Sell tool must be called.", status="REJECTED_TOOL_USAGE")
+                        persist_rejection(
+                            sb_client, d, "Sell tool must be called.",
+                            status="REJECTED_TOOL_USAGE",
+                            portfolio_state=port_state,
+                            market_price=exec_price
+                        )
                         rejected_decisions += 1
                         continue
 
-                exec_price = validation.market_price or d.price
                 if not exec_price or exec_price <= 0:
                     logger.error(f"[{d.ticker}] No valid price.")
                     rejected_decisions += 1
@@ -149,12 +172,20 @@ async def _stage_decision_processing(
                 if limit_price:
                     if d.signal.upper() == "BUY" and exec_price > limit_price:
                         reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                        persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
+                        persist_rejection(
+                            sb_client, d, reason,
+                            status=ValidationStatus.REJECTED_LIMIT_PRICE.value,
+                            market_price=exec_price
+                        )
                         rejected_decisions += 1
                         continue
                     elif d.signal.upper() == "SELL" and exec_price < limit_price:
                         reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                        persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
+                        persist_rejection(
+                            sb_client, d, reason,
+                            status=ValidationStatus.REJECTED_LIMIT_PRICE.value,
+                            market_price=exec_price
+                        )
                         rejected_decisions += 1
                         continue
                 
@@ -179,7 +210,7 @@ async def _stage_decision_processing(
                     # Search for contrarian thoughts on this ticker
                     contrarian_text = "\n".join([f"- {c.model_name}: {c.reasoning}" for c in contrarian_decisions if c.ticker == d.ticker])
 
-                    verification = await verify_trading_decision(
+                    verification, tool_trace_id = await verify_trading_decision(
                         decision=d,
                         portfolio_context=await portfolio.get_portfolio_summary(p_map),
                         aggregated_context=aggregated_context,
@@ -188,14 +219,20 @@ async def _stage_decision_processing(
                     )
                     
                     if verification.status == "REJECTED_VERIFICATION":
-                        persist_rejection(sb_client, d, verification.verification_reasoning, status="REJECTED_VERIFICATION")
+                        persist_rejection(
+                            sb_client, d, verification.verification_reasoning,
+                            status="REJECTED_VERIFICATION",
+                            market_price=exec_price,
+                            tool_trace_id=tool_trace_id
+                        )
                         rejected_decisions += 1
                         continue
                     
                     meta.update({
                         "verification_reasoning": verification.verification_reasoning,
                         "verification_confidence": verification.confidence_score,
-                        "suggested_alternative": verification.alternative_ticker
+                        "suggested_alternative": verification.alternative_ticker,
+                        "tool_trace_id": tool_trace_id
                     })
 
                     # --- Final Price Refresh (BUY) ---
@@ -210,7 +247,11 @@ async def _stage_decision_processing(
                             # Re-verify limit price with the absolute latest market data
                             if limit_price and exec_price > limit_price:
                                 reason = f"Limit price exceeded after refresh: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                                persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
+                                persist_rejection(
+                                    sb_client, d, reason,
+                                    status=ValidationStatus.REJECTED_LIMIT_PRICE.value,
+                                    market_price=exec_price
+                                )
                                 rejected_decisions += 1
                                 continue
 
@@ -231,7 +272,16 @@ async def _stage_decision_processing(
 
                     validation_res = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal)
                     if not validation_res.passed:
-                        persist_rejection(sb_client, d, validation_res.reason, status="REJECTED_MARGIN")
+                        persist_rejection(
+                            sb_client, d, validation_res.reason,
+                            status="REJECTED_MARGIN",
+                            portfolio_state={
+                                "portfolio_id": str(portfolio.portfolio_id) if hasattr(portfolio, "portfolio_id") else None,
+                                "cash_before": portfolio.cash_balance,
+                                "position_before": portfolio.positions.get(d.ticker).quantity if d.ticker in portfolio.positions else 0
+                            },
+                            market_price=exec_price
+                        )
                         rejected_decisions += 1
                         continue
 
@@ -246,7 +296,11 @@ async def _stage_decision_processing(
                             # Re-verify limit price
                             if limit_price and exec_price < limit_price:
                                 reason = f"Limit price not met after refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                                persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
+                                persist_rejection(
+                                    sb_client, d, reason,
+                                    status=ValidationStatus.REJECTED_LIMIT_PRICE.value,
+                                    market_price=exec_price
+                                )
                                 rejected_decisions += 1
                                 continue
 
@@ -256,7 +310,16 @@ async def _stage_decision_processing(
                     
                     validation_res = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal, is_sell_tool_used=getattr(d, "sell_tool_called", False))
                     if not validation_res.passed:
-                        persist_rejection(sb_client, d, validation_res.reason, status="REJECTED_MARGIN")
+                        persist_rejection(
+                            sb_client, d, validation_res.reason,
+                            status="REJECTED_MARGIN",
+                            portfolio_state={
+                                "portfolio_id": str(portfolio.portfolio_id) if hasattr(portfolio, "portfolio_id") else None,
+                                "cash_before": portfolio.cash_balance,
+                                "position_before": portfolio.positions.get(d.ticker).quantity if d.ticker in portfolio.positions else 0
+                            },
+                            market_price=exec_price
+                        )
                         rejected_decisions += 1
                         continue
                 

@@ -34,7 +34,7 @@ def mock_dependencies():
             market_price=150.0,
             ticker="DEFAULT"
         )
-        mock_verify.return_value = MagicMock(status="APPROVED", verification_reasoning="Verified", confidence_score=100, alternative_ticker=None)
+        mock_verify.return_value = (MagicMock(status="APPROVED", verification_reasoning="Verified", confidence_score=100, alternative_ticker=None), "log-123")
         
         # Mock MarketDataManager
         mock_mdm_instance = MockMDM.return_value

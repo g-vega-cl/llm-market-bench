@@ -17,7 +17,7 @@ async def log_reasoning_trace(
     prompt: List[dict],
     response: Any,
     metadata: Optional[dict] = None
-) -> None:
+) -> Optional[str]:
     """Asynchronously logs an LLM reasoning trace to Supabase.
     
     Args:
@@ -74,12 +74,7 @@ async def log_reasoning_trace(
             except Exception as e:
                 logger.debug(f"Normalization failed for trace: {e}")
 
-        # Collapse metadata to avoid key overwrite and ensure stable ID linkage
-        # Blocker 1 Fix: single assignment
-        merged_metadata = {
-            **(metadata or {}),
-            "normalized_transcript": normalized_transcript.model_dump() if normalized_transcript else None
-        }
+        merged_metadata = {**(metadata or {})}
 
         payload = {
             "task_type": task_type,
@@ -88,6 +83,7 @@ async def log_reasoning_trace(
             "prompt": serializable_prompt,
             "response": processed_response,
             "metadata": merged_metadata,
+            "normalized_transcript": normalized_transcript.model_dump() if normalized_transcript else None,
             "created_at": datetime.now(UTC).isoformat()
         }
 
@@ -97,8 +93,10 @@ async def log_reasoning_trace(
         
         # We don't want to block the main pipeline indefinitely, 
         # but we want to ensure the log is attempted.
-        client.table("llm_reasoning_logs").insert(payload).execute()
+        res = client.table("llm_reasoning_logs").insert(payload).execute()
+        return res.data[0].get("id") if res.data else None
         
     except Exception as e:
         # We log the error but don't re-raise to avoid crashing the main pipeline
         pipeline_logger.error(f"Failed to log reasoning trace for {task_type}: {e}")
+        return None

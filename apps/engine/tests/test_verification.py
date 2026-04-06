@@ -48,11 +48,11 @@ async def test_verify_trading_decision_approved():
 
             with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
                  patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
-                result = await verify_trading_decision(
-                decision=decision,
-                portfolio_context="Cash: $10,000",
-                aggregated_context="Historical context"
-            )
+                result, log_id = await verify_trading_decision(
+                    decision=decision,
+                    portfolio_context="Cash: $10,000",
+                    aggregated_context="Historical context"
+                )
             
     assert result.status == "APPROVED"
     assert result.confidence_score == 90
@@ -94,8 +94,9 @@ async def test_verify_trading_decision_rejected():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
         
-        with patch("core.llm.clients.close_client", new_callable=AsyncMock):
-            result = await verify_trading_decision(
+        with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
+             patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
+            result, log_id = await verify_trading_decision(
                 decision=decision,
                 portfolio_context="Cash: $10,000",
                 aggregated_context="Historical context"
@@ -103,6 +104,7 @@ async def test_verify_trading_decision_rejected():
             
     assert result.status == "REJECTED_VERIFICATION"
     assert "Too much volatility" in result.verification_reasoning
+
 @pytest.mark.asyncio
 async def test_verify_trading_decision_anthropic():
     """Test that verifier works with Anthropic provider."""
@@ -144,7 +146,7 @@ async def test_verify_trading_decision_anthropic():
             
             with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
                  patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
-                result = await verify_trading_decision(
+                result, log_id = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Positions: AAPL (100)",
                     aggregated_context="Historical context"
@@ -195,7 +197,7 @@ async def test_verify_trading_decision_gemini():
             
             with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
                  patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
-                result = await verify_trading_decision(
+                result, log_id = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
                     aggregated_context="Historical context"
@@ -246,7 +248,7 @@ async def test_verify_trading_decision_sync_resilience():
             
             with patch("core.llm.clients.close_client", new_callable=AsyncMock), \
                  patch("apps.engine.core.llm.verification.log_reasoning_trace", new_callable=AsyncMock):
-                result = await verify_trading_decision(
+                result, log_id = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
                     aggregated_context="Historical context"

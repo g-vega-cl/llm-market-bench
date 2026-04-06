@@ -35,9 +35,14 @@ def fetch_reasoning_logs_by_decision_id(decision_id: str) -> List[Dict[str, Any]
     """Fetches logs anchored by decision_id for precise lineage."""
     client = get_supabase_client()
     res = client.table("llm_reasoning_logs") \
-        .select("id, task_type, metadata") \
+        .select("id, task_type, metadata, normalized_transcript") \
         .filter("metadata->>decision_id", "eq", str(decision_id)) \
         .execute()
+    return res.data if res.data else []
+
+def fetch_trade_rejections_by_ticker(ticker: str) -> List[Dict[str, Any]]:
+    client = get_supabase_client()
+    res = client.table("trade_rejections").select("*").eq("ticker", ticker).execute()
     return res.data if res.data else []
 
 def fetch_lessons_for_trade(trade_id: str) -> List[Dict[str, Any]]:

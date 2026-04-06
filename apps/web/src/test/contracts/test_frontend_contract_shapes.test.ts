@@ -17,9 +17,9 @@ interface ReasoningTrace {
     metadata: {
         ticker?: string
         source_id?: string
-        normalized_transcript?: any // Deliverable 4: Normalized transcript support
         [key: string]: any
     }
+    normalized_transcript?: any // Deliverable 4 Hardened Column
     created_at: string
 }
 
@@ -53,16 +53,16 @@ describe('Frontend Data Contract Audit', () => {
         prompt: [],
         response: {},
         metadata: {
-            ticker: 'AAPL',
-            normalized_transcript: {
-                messages: [],
-                tool_calls: []
-            }
+            ticker: 'AAPL'
+        },
+        normalized_transcript: {
+            messages: [],
+            tool_calls: []
         },
         created_at: new Date().toISOString()
     }
 
-    expect(trace.metadata.normalized_transcript).toBeDefined()
+    expect(trace.normalized_transcript).toBeDefined()
   })
 
   it('should support the audit-hardened Decision shape (including rejections)', () => {
@@ -83,5 +83,28 @@ describe('Frontend Data Contract Audit', () => {
     }
 
     expect(decision.metadata.rejection_reason).toBe('Missing mandatory tools')
+  })
+
+  it('should support the new TradeRejection shape for audit views', () => {
+      interface TradeRejection {
+          id: string
+          provider: string
+          ticker: string
+          requested_action: string
+          rejection_reason: string
+          market_price?: number
+          created_at: string
+      }
+
+      const rejection: TradeRejection = {
+          id: 'rej-123',
+          provider: 'openai',
+          ticker: 'AAPL',
+          requested_action: 'BUY',
+          rejection_reason: 'Insufficient buying power',
+          created_at: new Date().toISOString()
+      }
+
+      expect(rejection.rejection_reason).toBeDefined()
   })
 })

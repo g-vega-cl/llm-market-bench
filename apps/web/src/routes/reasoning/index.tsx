@@ -23,6 +23,7 @@ interface ReasoningTrace {
     prompt: any[]
     response: any
     metadata: any
+    normalized_transcript: any | null
     created_at: string
 }
 
@@ -212,6 +213,11 @@ function ReasoningPage() {
                             </div>
 
                             <div className="flex-1 overflow-y-auto space-y-10 pr-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                                {/* Deliverable 4 Hardened Trace */}
+                                {selectedLog.normalized_transcript && (
+                                    <NormalizedAuditView transcript={selectedLog.normalized_transcript} />
+                                )}
+
                                 {/* Conversation Trace */}
                                 <HumanFriendlyPrompt prompt={selectedLog.prompt} />
 
@@ -223,6 +229,37 @@ function ReasoningPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export function NormalizedAuditView({ transcript }: { transcript: any }) {
+    return (
+        <section className="bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-3xl mb-8">
+            <div className="flex items-center gap-4 mb-4">
+                <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Verified Tool Transcript</h4>
+                <div className="h-px flex-1 bg-emerald-500/20" />
+            </div>
+            <div className="space-y-4">
+                {transcript.tool_calls?.map((call: any, idx: number) => (
+                    <div key={idx} className="bg-white dark:bg-gray-950/50 p-4 rounded-2xl border border-emerald-500/10 shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">{call.name}</span>
+                            <span className="text-[9px] text-gray-400 font-mono">{call.id}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-[9px] text-gray-500 uppercase font-bold mb-1">Arguments</p>
+                                <pre className="text-[10px] bg-gray-50 dark:bg-gray-900 p-2 rounded-lg overflow-x-auto">{JSON.stringify(call.arguments, null, 2)}</pre>
+                            </div>
+                            <div>
+                                <p className="text-[9px] text-gray-500 uppercase font-bold mb-1">Result</p>
+                                <pre className="text-[10px] bg-gray-50 dark:bg-gray-900 p-2 rounded-lg overflow-x-auto whitespace-pre-wrap">{call.result}</pre>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
     )
 }
 

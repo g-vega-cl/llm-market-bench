@@ -26,7 +26,7 @@ def get_sql_schema_from_migrations(migrations_path: str) -> Dict[str, Dict[str, 
             clean_content = re.sub(r'--.*$', '', content, flags=re.MULTILINE)
 
             # Extract CREATE TABLE statements
-            # Blocker 4 Fix: More robust table/column parsing
+            # More robust table/column parsing
             create_tables = re.findall(r"CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?(\w+)\s*\((.*?)\)\s*;", clean_content, re.DOTALL | re.IGNORECASE)
 
             for table_name, columns_block in create_tables:
@@ -68,7 +68,8 @@ def get_sql_schema_from_migrations(migrations_path: str) -> Dict[str, Dict[str, 
                         schema[table_name][col_name] = {
                             "type": col_type,
                             "nullable": nullable,
-                            "default": re.search(r"DEFAULT\s+([^\s,]+)", line, re.I).group(1) if "DEFAULT" in upper_line else None
+                            "default": re.search(r"DEFAULT\s+([^\s,]+)", line, re.I).group(1) if "DEFAULT" in upper_line else None,
+                            "is_additive": False
                         }
 
             # Extract ALTER TABLE ADD COLUMN statements
@@ -80,7 +81,9 @@ def get_sql_schema_from_migrations(migrations_path: str) -> Dict[str, Dict[str, 
                 if table_name in schema:
                     schema[table_name][col_name] = {
                         "type": col_type.upper(),
-                        "nullable": "NOT NULL" not in constraints.upper()
+                        "nullable": "NOT NULL" not in constraints.upper(),
+                        "default": re.search(r"DEFAULT\s+([^\s,]+)", constraints, re.I).group(1) if "DEFAULT" in constraints.upper() else None,
+                        "is_additive": True
                     }
 
     return schema

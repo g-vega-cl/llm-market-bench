@@ -311,7 +311,7 @@ class CanonicalToolCall(BaseModel):
     arguments: dict
     result: str | None = None
 
-    # Forensic replay fields (Blocker: Lossless Evidence)
+    # Forensic replay fields
     raw_name: str | None = None
     raw_arguments: str | None = None
     raw_result: Any | None = None

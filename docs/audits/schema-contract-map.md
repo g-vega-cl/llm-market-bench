@@ -80,11 +80,28 @@ Full trace of LLM interactions for auditability.
 | `prompt` | `JSONB` | `list[dict]` | `any[]` | No | Engine (History) |
 | `response` | `JSONB` | `dict \| str` | `any` | Yes | Engine (LLM) |
 | `metadata` | `JSONB` | `dict` | `any` | Yes | Engine |
+| `normalized_transcript`| `JSONB`| `dict` | `any` | Yes | Engine (Normalization) |
 | `created_at` | `TIMESTAMPTZ` | `datetime` | `string` | Yes | DB |
 
 ---
 
-### 5. Portfolios (`portfolios`)
+### 5. Trade Rejections (`trade_rejections`)
+Detailed audit log for failed trade executions.
+
+| Column | DB Type | Python Type | TS Type | Nullable | Source of Truth |
+|--------|---------|-------------|---------|----------|-----------------|
+| `id` | `UUID` | `str` | `string` | No | DB |
+| `provider` | `TEXT` | `str` | `string` | No | Engine |
+| `ticker` | `TEXT` | `str` | `string` | No | Engine |
+| `requested_action`| `TEXT`| `str` | `string` | No | Engine |
+| `market_price` | `NUMERIC` | `float` | `number` | Yes | Engine |
+| `rejection_reason`| `TEXT` | `str` | `string` | No | Engine |
+| `decision_trace_id`| `UUID` | `str` | `string` | Yes | Engine |
+| `portfolio_id` | `UUID` | `str` | `string` | Yes | Engine |
+
+---
+
+### 6. Portfolios (`portfolios`)
 Owner-specific balances and margin metrics.
 
 | Column | DB Type | Python Type | TS Type | Nullable | Source of Truth |

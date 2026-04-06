@@ -14,7 +14,7 @@ def test_validate_trade_attribution_success(mock_repo):
     mock_repo.fetch_decision_by_id.return_value = {"id": "dec-456", "source_id": "news-789", "ticker": "AAPL"}
     mock_repo.fetch_news_by_source_id.return_value = {"id": "news-row-123"}
     mock_repo.fetch_reasoning_logs_by_decision_id.return_value = [
-        {"id": "log-abc", "task_type": "VERIFICATION", "metadata": {"normalized_transcript": {"tool_calls": []}}}
+        {"id": "log-abc", "task_type": "VERIFICATION", "normalized_transcript": {"tool_calls": []}, "metadata": {}}
     ]
     mock_repo.fetch_lessons_for_trade.return_value = [{"id": "lesson-xyz"}]
 

@@ -10,6 +10,7 @@ export interface ReasoningLog {
     prompt: any[]
     response: any
     metadata: any
+    normalized_transcript: any | null
     created_at: string
 }
 

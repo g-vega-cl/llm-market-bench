@@ -301,3 +301,17 @@ class RankedAsset(BaseModel):
 class DiscoveryRankingResponse(BaseModel):
     """Container for the re-ranking step of discovery."""
     ranked_assets: list[RankedAsset] = Field(default_factory=list, description="List of assets ranked by thematic relevance")
+
+
+class CanonicalToolCall(BaseModel):
+    """Normalized schema for a single LLM tool call."""
+    id: str
+    name: str
+    arguments: dict
+    result: str | None = None
+
+
+class CanonicalTranscript(BaseModel):
+    """Normalized schema for an entire tool interaction transcript."""
+    messages: list[dict] = Field(..., description="The sequence of messages in the conversation")
+    tool_calls: list[CanonicalToolCall] = Field(default_factory=list)

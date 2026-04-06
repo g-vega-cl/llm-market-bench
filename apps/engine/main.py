@@ -17,6 +17,7 @@ from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMEN
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, validate_semantic_overlap, ValidationStatus
 from execution.portfolio import Portfolio
+from trading.rejections import persist_rejection
 from ingest.newsletter import ingest_newsletters
 from ingest.government import run_government_pipeline
 from ingest.calendar import run_calendar_pipeline
@@ -105,8 +106,7 @@ async def _stage_decision_processing(
             validation = await validate_decision(d.ticker, getattr(d, "price", None))
             
             if validation.status != ValidationStatus.PASSED:
-                logger.warning(f"[{d.ticker}] REJECTED (Market Guardrails): {validation.reason}")
-                save_decision(sb_client, d, status=validation.status.value, metadata={"reason": validation.reason})
+                persist_rejection(sb_client, d, validation.reason, status=validation.status.value)
                 rejected_decisions += 1
                 continue
 
@@ -114,8 +114,7 @@ async def _stage_decision_processing(
             # Only check for overlap within the same agent's portfolio
             overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
             if overlap_reason:
-                logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
-                save_decision(sb_client, d, status=ValidationStatus.REJECTED_REDUNDANCY.value, metadata={"reason": overlap_reason})
+                persist_rejection(sb_client, d, overlap_reason, status=ValidationStatus.REJECTED_REDUNDANCY.value)
                 rejected_decisions += 1
                 continue
 
@@ -131,13 +130,11 @@ async def _stage_decision_processing(
                 # --- SELL Guardrails ---
                 if d.signal.upper() == "SELL":
                     if d.ticker not in portfolio.positions:
-                        logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
-                        save_decision(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."})
+                        persist_rejection(sb_client, d, "Ticker not held.", status="REJECTED_OWNERSHIP")
                         rejected_decisions += 1
                         continue
                     if not getattr(d, "sell_tool_called", False):
-                        logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
-                        save_decision(sb_client, d, status="REJECTED_TOOL_USAGE", metadata={"reason": "Sell tool must be called."})
+                        persist_rejection(sb_client, d, "Sell tool must be called.", status="REJECTED_TOOL_USAGE")
                         rejected_decisions += 1
                         continue
 
@@ -152,14 +149,12 @@ async def _stage_decision_processing(
                 if limit_price:
                     if d.signal.upper() == "BUY" and exec_price > limit_price:
                         reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                        logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
-                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                        persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
                         rejected_decisions += 1
                         continue
                     elif d.signal.upper() == "SELL" and exec_price < limit_price:
                         reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                        logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
-                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                        persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
                         rejected_decisions += 1
                         continue
                 
@@ -193,8 +188,7 @@ async def _stage_decision_processing(
                     )
                     
                     if verification.status == "REJECTED_VERIFICATION":
-                        logger.warning(f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}")
-                        save_decision(sb_client, d, status="REJECTED_VERIFICATION", metadata={"reason": verification.verification_reasoning})
+                        persist_rejection(sb_client, d, verification.verification_reasoning, status="REJECTED_VERIFICATION")
                         rejected_decisions += 1
                         continue
                     
@@ -216,8 +210,7 @@ async def _stage_decision_processing(
                             # Re-verify limit price with the absolute latest market data
                             if limit_price and exec_price > limit_price:
                                 reason = f"Limit price exceeded after refresh: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price Refresh): {reason}")
-                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                                persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
                                 rejected_decisions += 1
                                 continue
 
@@ -238,8 +231,7 @@ async def _stage_decision_processing(
 
                     validation_res = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal)
                     if not validation_res.passed:
-                        logger.warning(f"[{d.ticker}] REJECTED (Margin): {validation_res.reason}")
-                        save_decision(sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason})
+                        persist_rejection(sb_client, d, validation_res.reason, status="REJECTED_MARGIN")
                         rejected_decisions += 1
                         continue
 
@@ -254,8 +246,7 @@ async def _stage_decision_processing(
                             # Re-verify limit price
                             if limit_price and exec_price < limit_price:
                                 reason = f"Limit price not met after refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price Refresh): {reason}")
-                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                                persist_rejection(sb_client, d, reason, status=ValidationStatus.REJECTED_LIMIT_PRICE.value)
                                 rejected_decisions += 1
                                 continue
 
@@ -265,8 +256,7 @@ async def _stage_decision_processing(
                     
                     validation_res = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal, is_sell_tool_used=getattr(d, "sell_tool_called", False))
                     if not validation_res.passed:
-                        logger.warning(f"[{d.ticker}] REJECTED (Margin): {validation_res.reason}")
-                        save_decision(sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason})
+                        persist_rejection(sb_client, d, validation_res.reason, status="REJECTED_MARGIN")
                         rejected_decisions += 1
                         continue
                 

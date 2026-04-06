@@ -13,6 +13,8 @@ from core.llm.logger import log_reasoning_trace
 
 logger = logging.getLogger("engine")
 
+from core.models import DecisionObject, VerificationResult, CanonicalTranscript, CanonicalToolCall
+
 async def verify_trading_decision(
     decision: DecisionObject,
     portfolio_context: str,
@@ -185,6 +187,37 @@ async def verify_trading_decision(
         wrapped_results = ensure_list(wrapper)
         final_resp = wrapped_results[-1] if wrapped_results else VerificationResult(status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0)
         
+        # --- Tool Integrity Enforcement ---
+        # Verify that mandatory tools were called based on the decision signal
+        tool_calls_found = []
+        for m in instructor_messages:
+            content = m.get("content", "")
+            if "[Tool Call:" in str(content):
+                import re
+                matches = re.findall(r"\[Tool Call: (\w+)\(", str(content))
+                tool_calls_found.extend(matches)
+            # Also check raw tool_calls for OpenAI/DeepSeek
+            if m.get("tool_calls"):
+                for tc in m["tool_calls"]:
+                    tool_calls_found.append(tc.get("function", {}).get("name") or tc.get("name"))
+
+        # Mandatory Tools Invariant
+        mandatory_tools = ["get_stock_quote"]
+        if decision.signal == "BUY":
+            mandatory_tools.append("calculate_buy_quantity")
+        elif decision.signal == "SELL":
+            mandatory_tools.append("calculate_sell_quantity")
+
+        missing_mandatory = [t for t in mandatory_tools if t not in tool_calls_found]
+
+        if missing_mandatory and final_resp.status == "APPROVED":
+            logger.warning(f"[{decision.ticker}] Hardening Reject: Missing mandatory tools {missing_mandatory}")
+            final_resp = VerificationResult(
+                status="REJECTED_VERIFICATION",
+                verification_reasoning=f"Verification rejected due to missing mandatory tool calls: {', '.join(missing_mandatory)}. Verifier must prove claims using tools.",
+                confidence_score=0
+            )
+
         # Log completion
         await log_reasoning_trace(
             task_type="VERIFICATION",
@@ -195,7 +228,8 @@ async def verify_trading_decision(
             metadata={
                 "ticker": decision.ticker,
                 "signal": decision.signal,
-                "source_id": decision.source_id
+                "source_id": decision.source_id,
+                "mandatory_tools_verified": not missing_mandatory
             }
         )
 

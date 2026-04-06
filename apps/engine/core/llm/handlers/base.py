@@ -1,6 +1,7 @@
 """Base logic for tool execution in LLM handlers."""
 
 from core.llm import tools
+from core.models import CanonicalToolCall
 
 async def execute_tool(name: str, args: dict, model_name: str) -> str:
     """Dispatches tool execution to the correct tool implementation.

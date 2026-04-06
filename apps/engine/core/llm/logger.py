@@ -6,6 +6,7 @@ from datetime import datetime, UTC
 
 from core.db import get_supabase_client
 from core.config import logger as pipeline_logger
+from core.llm.normalization import normalize_transcript
 
 logger = logging.getLogger("engine.llm_logger")
 
@@ -59,13 +60,25 @@ async def log_reasoning_trace(
 
         serializable_prompt = sterilize_data(prompt)
 
+        # --- Transcript Normalization ---
+        # If the task involves tool use, normalize the transcript
+        normalized_transcript = None
+        if isinstance(serializable_prompt, list):
+            try:
+                normalized_transcript = normalize_transcript(serializable_prompt)
+            except Exception as e:
+                logger.debug(f"Normalization failed for trace: {e}")
+
         payload = {
             "task_type": task_type,
             "model_provider": model_provider,
             "model_name": model_name,
             "prompt": serializable_prompt,
             "response": processed_response,
-            "metadata": metadata or {},
+            "metadata": {
+                **(metadata or {}),
+                "normalized_transcript": normalized_transcript.model_dump() if normalized_transcript else None
+            },
             "created_at": datetime.now(UTC).isoformat()
         }
 

@@ -196,7 +196,8 @@ async def _stage_decision_processing(
 
                 from execution.market_data import MarketDataManager
                 mdm = MarketDataManager()
-                p_map = {t: (await mdm.get_quote(t)).price for t in all_pos_tickers if await mdm.get_quote(t)}
+                quotes = {t: q for t in all_pos_tickers if (q := await mdm.get_quote(t)) and q.exists}
+                p_map = {t: q.price for t, q in quotes.items()}
 
                 verification = None
                 tool_trace_id = None
@@ -424,7 +425,7 @@ async def _stage_snapshots_and_pca(sb_client):
             all_tickers.update(p.positions.keys())
             portfolios.append(p)
         
-        price_map = {t: (await mdm.get_quote(t)).price for t in all_tickers if await mdm.get_quote(t)}
+        price_map = {t: q.price for t in all_tickers if (q := await mdm.get_quote(t)) and q.exists}
         for p in portfolios:
             await p.record_performance_snapshot(price_map)
             await p.save_metrics()

@@ -16,10 +16,11 @@ async def log_reasoning_trace(
     model_name: str,
     prompt: List[dict],
     response: Any,
-    metadata: Optional[dict] = None
+    metadata: Optional[dict] = None,
+    pre_normalized_transcript: Optional[Any] = None
 ) -> Optional[str]:
     """Asynchronously logs an LLM reasoning trace to Supabase.
-    
+
     Args:
         task_type: The category of the LLM task (e.g. 'INGESTION', 'VERIFICATION').
         model_provider: The LLM provider (openai, anthropic, etc).
@@ -27,6 +28,7 @@ async def log_reasoning_trace(
         prompt: The full list of messages sent to the model.
         response: The structured or raw response received.
         metadata: Additional context like ticker, source_id, etc.
+        pre_normalized_transcript: Optional pre-normalized transcript to avoid redundant work.
     """
     try:
         # Prepare the payload
@@ -61,10 +63,9 @@ async def log_reasoning_trace(
         serializable_prompt = sterilize_data(prompt)
 
         # --- Transcript Normalization ---
-        # --- Transcript Normalization ---
-        # If the task involves tool use, normalize the transcript
-        normalized_transcript = None
-        if isinstance(serializable_prompt, list):
+        # Use pre-normalized transcript if provided to avoid redundant work
+        normalized_transcript = pre_normalized_transcript
+        if normalized_transcript is None and isinstance(serializable_prompt, list):
             try:
                 normalized_transcript = normalize_transcript(
                     serializable_prompt,

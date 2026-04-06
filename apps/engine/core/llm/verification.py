@@ -194,8 +194,8 @@ async def verify_trading_decision(
         def _sterilize(obj):
             if isinstance(obj, list): return [_sterilize(x) for x in obj]
             if isinstance(obj, dict): return {k: _sterilize(v) for k, v in obj.items()}
-            if hasattr(obj, "model_dump"): return obj.model_dump()
-            if hasattr(obj, "to_dict"): return obj.to_dict()
+            if hasattr(obj, "model_dump"): return _sterilize(obj.model_dump())
+            if hasattr(obj, "to_dict"): return _sterilize(obj.to_dict())
             return obj
 
         try:
@@ -208,6 +208,7 @@ async def verify_trading_decision(
         except Exception as e:
             logger.warning(f"[{decision.ticker}] Transcript normalization failed, treating as missing tools: {e}")
             tool_calls_found = []
+            canonical = None
 
         # Mandatory Tools Invariant
         mandatory_tools = ["get_stock_quote"]
@@ -243,7 +244,8 @@ async def verify_trading_decision(
             model_name=model_name,
             prompt=raw_messages,
             response=final_resp,
-            metadata=meta
+            metadata=meta,
+            pre_normalized_transcript=canonical,
         )
 
         return final_resp, log_id

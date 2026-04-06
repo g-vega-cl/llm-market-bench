@@ -61,11 +61,16 @@ async def log_reasoning_trace(
         serializable_prompt = sterilize_data(prompt)
 
         # --- Transcript Normalization ---
+        # --- Transcript Normalization ---
         # If the task involves tool use, normalize the transcript
         normalized_transcript = None
         if isinstance(serializable_prompt, list):
             try:
-                normalized_transcript = normalize_transcript(serializable_prompt)
+                normalized_transcript = normalize_transcript(
+                    serializable_prompt,
+                    model_name=model_name,
+                    provider=model_provider
+                )
             except Exception as e:
                 logger.debug(f"Normalization failed for trace: {e}")
 

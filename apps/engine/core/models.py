@@ -4,8 +4,9 @@ This module defines the data models used for validating and structuring
 LLM responses, ensuring type safety throughout the pipeline.
 """
 
-from typing import Literal, Any
+from typing import Literal, Any, Dict, List
 
+from datetime import datetime, UTC
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -315,9 +316,13 @@ class CanonicalToolCall(BaseModel):
     raw_arguments: str | None = None
     raw_result: Any | None = None
     provider_call_id: str | None = None
+    retry_parent_id: str | None = None
 
 
 class CanonicalTranscript(BaseModel):
     """Normalized schema for an entire tool interaction transcript."""
     messages: list[dict] = Field(..., description="The sequence of messages in the conversation")
     tool_calls: list[CanonicalToolCall] = Field(default_factory=list)
+    model_name: str | None = None
+    provider: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

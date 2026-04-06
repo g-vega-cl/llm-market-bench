@@ -8,11 +8,34 @@ import json
 from typing import Any, List, Dict
 from core.models import CanonicalTranscript, CanonicalToolCall
 
-def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
+# Semantic normalization map for tool names
+# Protects against provider-specific naming drift or aliases
+TOOL_NAME_MAP = {
+    "get_stock_quote": "get_stock_quote",
+    "get_quote": "get_stock_quote",
+    "stock_quote": "get_stock_quote",
+    "calculate_buy_quantity": "calculate_buy_quantity",
+    "buy_quantity": "calculate_buy_quantity",
+    "calculate_sell_quantity": "calculate_sell_quantity",
+    "sell_quantity": "calculate_sell_quantity",
+}
+
+def normalize_tool_name(name: str | None) -> str:
+    if not name:
+        return "unknown"
+    return TOOL_NAME_MAP.get(name.lower(), name)
+
+def normalize_transcript(
+    messages: List[Dict[str, Any]],
+    model_name: str | None = None,
+    provider: str | None = None
+) -> CanonicalTranscript:
     """Normalizes provider-specific message history into a canonical transcript.
 
     Args:
         messages: The raw message history from an LLM provider (OpenAI, Anthropic, Gemini, etc.).
+        model_name: Optional name of the model that generated the transcript.
+        provider: Optional name of the provider.
 
     Returns:
         A CanonicalTranscript object containing normalized tool calls and messages.
@@ -44,7 +67,7 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
 
                 normalized_calls.append(CanonicalToolCall(
                     id=call_id or "unknown",
-                    name=tool_name or "unknown",
+                    name=normalize_tool_name(tool_name),
                     arguments=tool_args or {},
                     result=str(result) if result is not None else None,
                     raw_name=tool_name,
@@ -76,7 +99,7 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
 
                     normalized_calls.append(CanonicalToolCall(
                         id=call_id or "unknown",
-                        name=tool_name or "unknown",
+                        name=normalize_tool_name(tool_name),
                         arguments=tool_args or {},
                         result=str(result) if result is not None else None,
                         raw_name=tool_name,
@@ -109,7 +132,7 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
 
                     normalized_calls.append(CanonicalToolCall(
                         id=tool_name, # Fallback to name as ID for Gemini
-                        name=tool_name or "unknown",
+                        name=normalize_tool_name(tool_name),
                         arguments=tool_args or {},
                         result=str(result) if result is not None else None,
                         raw_name=tool_name,
@@ -119,5 +142,7 @@ def normalize_transcript(messages: List[Dict[str, Any]]) -> CanonicalTranscript:
 
     return CanonicalTranscript(
         messages=messages,
-        tool_calls=normalized_calls
+        tool_calls=normalized_calls,
+        model_name=model_name,
+        provider=provider
     )

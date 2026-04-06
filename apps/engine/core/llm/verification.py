@@ -195,7 +195,11 @@ async def verify_trading_decision(
             if hasattr(obj, "to_dict"): return obj.to_dict()
             return obj
 
-        canonical = normalize_transcript(_sterilize(messages))
+        canonical = normalize_transcript(
+            _sterilize(messages),
+            model_name=model_name,
+            provider=provider
+        )
         tool_calls_found = [tc.name for tc in canonical.tool_calls]
 
         # Mandatory Tools Invariant

@@ -323,6 +323,30 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 * File: `apps/engine/core/models.py`, `apps/engine/core/llm/prompts.py`, `apps/engine/core/llm/verification.py`
 
 
+## 9. Reasoning Rigor & Validation
+
+To ensure high-fidelity decision-making and prevent "shallow" market analysis, the system enforces a strict reasoning framework across all agents.
+
+### The "5 Whys" Technique
+All reasoning agents (Analysis, Manager, Cause & Effect) are required to apply recursive causal analysis:
+1. **Why** is this news market-moving?
+2. **Why** will this specific asset benefit?
+3. **Why** is this not already priced in?
+4. **Why** is the proposed action the most efficient way to profit?
+5. **Why** could this trade fail (Root Cause of Risk)?
+
+This prevents agents from simply repeating news headlines and forces them to identify the actual "Profit Mechanism" and "Supply Chain Bottlenecks."
+
+### Catalyst Logic Synchronization
+The system synchronizes strict filtering logic between the **Analysis** and **Synthesis** layers to prevent "Horizon Watch" dashboard pollution:
+- **Negative Constraints:** Vague themes (e.g., "AI growth"), broad years (e.g., "in 2026"), or non-specific timeframes (e.g., "later this year") are explicitly rejected as future catalysts.
+- **Actionable Events:** Only events with a specific expected date or a very tight window (e.g., "this week") are promoted to the Horizon Watch dashboard.
+
+### Hard Tool Enforcement
+The **Execution Engine** performs server-side verification of the `tool_use` blocks in the LLM response history. 
+- **Requirement:** `get_stock_quote`, `calculate_buy_quantity`, and `calculate_sell_quantity` must be physically executed.
+- **Hallucination Guard:** If an LLM claims in text to have called a tool but the actual functional block is missing, the trade is automatically rejected as a hallucination.
+
 ---
 
 ## 4. Maintenance & Utilities
@@ -519,7 +543,8 @@ graph TD
         TM -->|Update Velocity| CM[(Concept Metrics)]
         TM -->|Promote 2+ Agreement| GT[Global Timeline]
         
-        SYN --> HG{Hallucination Guardrails}
+        SYN --> FW[5 Whys Reasoning Check]
+        FW --> HG{Hallucination Guardrails}
     end
 
     subgraph "Execution & Memory (Phase 3 & 4)"

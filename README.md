@@ -151,6 +151,8 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 ### Guardrails & Validation
 
 *   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`) were actually called
+*   **Reasoning Rigor (5 Whys)**: Forced recursive causal analysis across all reasoning agents (Manager, Cause & Effect, Analysis) to identify root drivers and profit mechanisms
+*   **Catalyst Logic Synchronization**: Strict filtering of vague "future catalysts" (no themes/broad years) to prevent Horizon Watch dashboard pollution
 *   **Pre-Market Validation**: FMP-verified market hours, symbol existence, 5.0% limit order price deviation check, liquidity checks
 *   **Reg T Margin Validation**: Buying power checks with 10% of Total Equity minimum (absolute floor of $1,000 for BUY orders)
 *   **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
@@ -168,7 +170,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
-- [ ] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
+- [x] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Investable Assets Memory Review** - Align `/memories` investable assets section with context above; currently appears as random FMP queries

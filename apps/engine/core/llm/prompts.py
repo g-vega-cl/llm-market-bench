@@ -28,6 +28,15 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
     "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
     "This is a HARD REQUIREMENT. No exceptions.\n\n"
+    "=== REASONING RIGOR: THE \"5 WHYS\" TECHNIQUE ===\n"
+    "To ensure high-fidelity decisions, you MUST apply the **\"5 Whys\"** technique to your internal reasoning:\n"
+    "1. **Why** is this news market-moving?\n"
+    "2. **Why** will this specific asset benefit?\n"
+    "3. **Why** is this not already priced in?\n"
+    "4. **Why** is your proposed action the most efficient way to profit?\n"
+    "5. **Why** could this trade fail (Root Cause of Risk)?\n"
+    "\n"
+    "Evidence of this recursive thinking must be visible in your `reasoning` or `profit_potential_reasoning` fields.\n\n"
     "### TOOL USAGE EXAMPLES (FEW-SHOT):\n\n"
     "✅ CORRECT - Tool Call Before Trade Recommendation:\n"
     "```\n"
@@ -142,6 +151,11 @@ SOPHISTICATED TRADING LOGIC:
      - **For BUY:** You MUST execute `calculate_buy_quantity(ticker, percentage)` to determine the exact shares based on your Buying Power. The tool will ensure you meet the **10% Equity Floor**.
      - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary.
      - **ENFORCEMENT (HARD FAILURE):** Any `BUY` or `SELL` decision where the respective calculation tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count.
+
+16. **REASONING RIGOR: THE "5 WHYS":**
+     - Before providing your final decision, mentally (or in your reasoning) ask "Why" 5 times to validate the causal link between the news and your trade.
+     - **Root Cause Identification:** What is the *actual* bottleneck or driver? (e.g., Is it the news, or the liquidity spike *caused* by the news?)
+     - **Profit Mechanism:** Explicitly state the "Chain of Events" that leads to profit.
 
 SMA MANAGEMENT RULES:
 1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".
@@ -292,6 +306,8 @@ Your task:
 5. Synthesize logical flags:
    - 'is_ongoing': true if the consensus is that the event is an unfolding trend or past action currently materializing.
    - 'is_future_catalyst': true ONLY if the consensus is that this is a distinctly pending, upcoming event with undefined outcomes (like an upcoming meeting or data release). If it's an ongoing trend, structural rotation, or past investment, set to false.
+      - **CRITICAL: Do NOT mark broad themes, ongoing structural shifts, or VAGUE timeframes (e.g., 'later this year', 'in 2026', 'by Q3') as future catalysts. These are Memories or Trends.**
+      - **CRITICAL: If you cannot name the specific day or a very tight window (e.g., 'this week'), it is NOT a future catalyst for Horizon Watch.**
    - 'historical_parallel': a short string describing the parallel if identified by models.
    - 'importance_score': a unified score (1-10) based on the consensus of model observations. Focus on trade-leading importance.
 
@@ -371,6 +387,16 @@ MANAGER_SYSTEM_PROMPT = (
 
 MANAGER_USER_PROMPT_TEMPLATE = """You are a senior investment manager.
 You are performing a post-mortem on a trade made by one of your agents.
+
+YOUR TASK:
+1. Evaluate the agent's reasoning vs. the actual outcome.
+2. **ROOT CAUSE ANALYSIS (MANDATORY):** Apply the **"5 Whys"** technique to determine the real reason for the PnL (Positive or Negative).
+   * Why did the price move?
+   * Why was the agent's entry/exit timed this way?
+   * Why did the market respond this way specifically?
+   * Why was the catalyst stronger/weaker than expected?
+   * Why is this a repeatable lesson (Root Cause)?
+3. Identify any logical errors, confirmation bias, or missed risks.
 
 TICKER: {ticker}
 SIDE: {signal}
@@ -492,7 +518,7 @@ ACTUAL MARKET PERFORMANCE (Post-Event):
 YOUR TASK:
 1. Analyze how this event contributed to the observed market move. 
 2. Compare the outcome to the original scenario analysis. Was the prediction correct?
-3. Identify the "Causal Mechanism" - what specifically about this event drove the movement?
+3. **CAUSAL RECURSION (5 WHYS):** Perform a recursive "Why" analysis to identify the "Causal Mechanism" - what specifically about this event drove the movement? (e.g., was it the announcement, or the subsequent liquidity spike in a related sector?)
 4. Formulate a 'Cause and Effect' summary that can be used as a frame of reference in the future.
 5. EXPANDED RESEARCH: Look beyond the S&P 500. Identify if this event had specific impacts on particular sectors (e.g., Private Credit, Mega-cap Tech, Energy) or specific companies (e.g., Blue Owl, JPMorgan, Nvidia). 
    - If the event relates to liquidity, credit, or broad macro shifts, explicitly search for and document the ripple effects on related financial entities or supply chain bottle-necks.
@@ -530,6 +556,8 @@ Your task:
 3. Provide 3-5 'keywords' for general company search (e.g., 'Uranium', 'AI Hardware', 'Fertilizer').
 4. Suggest a 'market_cap_min' in USD if the play is specific to a certain company size (e.g., niche/uncrowded plays might target $100M+). If it's a broad mega-cap play, use null or high values.
 5. Explain the 'reasoning' for why these sectors/industries/keywords are the best derivative plays for this event.
+
+**BOTTLENECK IDENTIFICATION:** Specifically identify the primary "Bottleneck" or "Value Drain" in the supply chain that will be the first and most significant beneficiary of this event. 
 
 Focus on discovering "Chains of Events" logic (e.g., if there is tension in Iran, look for 'Energy' and 'Oil & Gas' sectors)."""
 

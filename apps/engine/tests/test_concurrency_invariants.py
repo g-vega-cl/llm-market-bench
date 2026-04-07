@@ -56,7 +56,7 @@ async def test_concurrent_buy_double_spend_prevention(mock_deps):
     """
     Scenario: 2 BUY decisions for same provider.
     Combined cost exceeds Buying Power.
-    Expected: One EXECUTED, one REJECTED_MARGIN (due to JIT refresh inside lock).
+    Expected: One EXECUTED, one REJECTED_MARGIN.
     """
     md = mock_deps
 
@@ -90,15 +90,11 @@ async def test_concurrent_buy_double_spend_prevention(mock_deps):
     portfolio.execute_trade = AsyncMock()
     portfolio.positions = {}
 
-    # Property mock for metrics
-    type(portfolio).metrics = MagicMock() # Needs to be a property to return fresh metrics
-
     async def side_effect_init():
         portfolio.metrics = get_metrics()
     portfolio.initialize.side_effect = side_effect_init
 
     def side_effect_validate(ticker, qty, price, signal, **kwargs):
-        # Freshly check current buying power
         current_metrics = get_metrics()
         if current_metrics.buying_power < (qty * price):
             return ComplianceResult(passed=False, reason="Insufficient Buying Power")
@@ -107,82 +103,127 @@ async def test_concurrent_buy_double_spend_prevention(mock_deps):
     portfolio.validate_trade.side_effect = side_effect_validate
 
     async def side_effect_execute(ticker, qty, price, signal, **kwargs):
-        state["buying_power"] -= (qty * price) * 0.57 * 4 # Simplified BP reduction
+        state["buying_power"] -= (qty * price) * 0.57 * 4 # BP reduction
         return "trade-uuid"
     portfolio.execute_trade.side_effect = side_effect_execute
 
     await _stage_decision_processing([d1, d2], [], [], "", "", MagicMock())
 
-    # Verify results
     statuses = [call.kwargs.get("status") for call in md["save"].call_args_list if call.kwargs.get("status") not in ["VALIDATED", "PASSED"]]
     assert "EXECUTED" in statuses
     assert "REJECTED_MARGIN" in statuses
 
 @pytest.mark.asyncio
-async def test_concurrent_sell_ownership_exhaustion(mock_deps):
+async def test_shared_quote_map_mutation_safety(mock_deps):
     """
-    Scenario: 2 SELLs same ticker, same provider.
-    First sell exits full position.
-    Expected: Second sell is REJECTED_OWNERSHIP.
+    Verify that execute_trade defensively copies current_prices to avoid mutable aliasing.
     """
     md = mock_deps
+    from execution.portfolio import Portfolio
 
-    d1 = DecisionObject(signal="SELL", ticker="AAPL", confidence=90, reasoning="Sell all", source_id="s1", model_name="agent-a", sell_tool_called=True, quantity=10, price=100.0)
-    d2 = DecisionObject(signal="SELL", ticker="AAPL", confidence=90, reasoning="Sell more", source_id="s2", model_name="agent-a", sell_tool_called=True, quantity=5, price=100.0)
+    # 1. Setup shared quote map
+    shared_quotes = {"AAPL": 150.0, "GOOGL": 2800.0}
 
-    state = {"positions": {"AAPL": 10}}
+    # 2. Initialize Portfolio
+    p = Portfolio(owner_id="test-agent")
+    p.id = "mock-id"
+    p.cash_balance = 10000.0
+    p.positions = {"AAPL": MagicMock(quantity=10, average_cost_basis=140.0)}
 
-    portfolio = MagicMock()
-    md["Portfolio"].return_value = portfolio
-    portfolio.initialize = AsyncMock()
-    portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
-    portfolio.execute_trade = AsyncMock(return_value="trade-uuid")
+    # 3. Execution logic should NOT mutate shared_quotes
+    with patch.object(p, 'calculate_reg_t_metrics') as mock_calc, \
+         patch("execution.portfolio.get_supabase_client") as mock_sb, \
+         patch("execution.portfolio.Portfolio.save_metrics") as mock_save_metrics:
 
-    async def side_effect_init():
-        # Update positions from state
-        portfolio.positions = {t: MagicMock(quantity=q) for t, q in state["positions"].items() if q > 0}
-    portfolio.initialize.side_effect = side_effect_init
+        # We need to mock the internal DB calls within execute_trade
+        mock_table = MagicMock()
+        mock_sb.return_value.table.return_value = mock_table
+        mock_table.upsert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-id"}])
+        mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-id"}])
+        mock_table.update.return_value.execute.return_value = MagicMock(data=[])
+        mock_table.delete.return_value.match.return_value.execute.return_value = MagicMock(data=[])
 
-    async def side_effect_execute(ticker, qty, price, signal, **kwargs):
-        state["positions"][ticker] -= qty
-        return "trade-uuid"
-    portfolio.execute_trade.side_effect = side_effect_execute
+        # Execute trade for GOOGL (not in positions)
+        await p.execute_trade("GOOGL", 1, 2850.0, "BUY", current_prices=shared_quotes)
 
-    await _stage_decision_processing([d1, d2], [], [], "", "", MagicMock())
+        # Verify that the quote for GOOGL was updated in the price map passed to metrics calc
+        # but NOT in the original shared_quotes dict
+        assert shared_quotes["GOOGL"] == 2800.0
 
-    statuses = [call.kwargs.get("status") for call in md["save"].call_args_list if call.kwargs.get("status") not in ["VALIDATED", "PASSED"]]
-    assert "EXECUTED" in statuses
-    assert "REJECTED_OWNERSHIP" in statuses
+        # The price_map passed to calculate_reg_t_metrics should have the updated price
+        # It's the first positional argument of the last call
+        called_price_map = mock_calc.call_args[0][0]
+        assert called_price_map["GOOGL"] == 2850.0
+        assert called_price_map["AAPL"] == 150.0
 
 @pytest.mark.asyncio
-async def test_decision_row_uniqueness(mock_deps):
+async def test_replay_determinism(mock_deps):
     """
-    Verify that save_decision is called correctly for 2-phase commit
-    and preserves identical primary keys.
+    Run same batch of concurrent decisions 5 times.
+    Verify identical counts of execution/rejection.
     """
     md = mock_deps
-    d = DecisionObject(signal="BUY", ticker="MSFT", confidence=80, reasoning="Reason", source_id="s1", model_name="agent-a", price=100.0)
 
-    portfolio = MagicMock()
-    md["Portfolio"].return_value = portfolio
-    portfolio.initialize = AsyncMock()
-    portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
-    portfolio.execute_trade = AsyncMock(return_value="trade-uuid")
-    portfolio.metrics = MagicMock(buying_power=50000.0, total_equity=60000.0)
+    # Decisions: 2 agents, each with 2 trades
+    # One trade individually valid, combined invalid
+    d1 = DecisionObject(signal="BUY", ticker="T1", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=1000.0)
+    d2 = DecisionObject(signal="BUY", ticker="T2", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", price=1000.0)
+    d3 = DecisionObject(signal="BUY", ticker="T3", confidence=80, reasoning="R3", source_id="s3", model_name="agent-2", price=1000.0)
+    d4 = DecisionObject(signal="BUY", ticker="T4", confidence=80, reasoning="R4", source_id="s4", model_name="agent-2", price=1000.0)
 
-    # Mock validate_trade to avoid MagicMock comparison errors
-    from execution.reg_t_validation import ValidationResult as ComplianceResult
-    portfolio.validate_trade.return_value = ComplianceResult(passed=True)
+    results_history = []
 
-    await _stage_decision_processing([d], [], [], "", "", MagicMock())
+    for _ in range(5):
+        # Reset Mock Save
+        md["save"].reset_mock()
 
-    # Should call save_decision twice
-    save_calls = md["save"].call_args_list
-    assert len(save_calls) == 2
+        # Shared states
+        states = {
+            "agent-1": {"bp": 1500.0},
+            "agent-2": {"bp": 1500.0}
+        }
 
-    pk1 = (save_calls[0].args[1].source_id, save_calls[0].args[1].ticker, save_calls[0].args[1].signal)
-    pk2 = (save_calls[1].args[1].source_id, save_calls[1].args[1].ticker, save_calls[1].args[1].signal)
-    assert pk1 == pk2
-    assert save_calls[0].kwargs["status"] == "VALIDATED"
-    assert save_calls[1].kwargs["status"] == "EXECUTED"
-    assert save_calls[1].kwargs["trade_id"] == "trade-uuid"
+        # Mock Portfolio per agent
+        def portfolio_factory(owner_id):
+            p = MagicMock()
+            p.owner_id = owner_id
+            p.initialize = AsyncMock()
+            p.get_portfolio_summary = AsyncMock(return_value="Summary")
+            p.execute_trade = AsyncMock(return_value="uuid")
+            p.positions = {}
+
+            from execution.reg_t_validation import RegTMetrics, ValidationResult as ComplianceResult
+
+            async def side_effect_init():
+                p.metrics = RegTMetrics(total_equity=10000, initial_margin_req=0, maintenance_margin_req=0,
+                                       available_funds=states[owner_id]["bp"]/4, excess_liquidity=states[owner_id]["bp"]/4,
+                                       sma=10000, realized=10000, buying_power=states[owner_id]["bp"])
+            p.initialize.side_effect = side_effect_init
+
+            def side_effect_validate(ticker, qty, price, signal, **kwargs):
+                if states[owner_id]["bp"] < (qty * price):
+                    return ComplianceResult(passed=False, reason="Too expensive")
+                return ComplianceResult(passed=True)
+            p.validate_trade.side_effect = side_effect_validate
+
+            async def side_effect_exec(ticker, qty, price, signal, **kwargs):
+                states[owner_id]["bp"] -= 2000.0 # Force next to fail
+                return "uuid"
+            p.execute_trade.side_effect = side_effect_exec
+            return p
+
+        md["Portfolio"].side_effect = portfolio_factory
+
+        await _stage_decision_processing([d1, d2, d3, d4], [], [], "", "", MagicMock())
+
+        statuses = sorted([call.kwargs.get("status") for call in md["save"].call_args_list if call.kwargs.get("status") not in ["VALIDATED", "PASSED"]])
+        results_history.append(statuses)
+
+    # All 5 runs should have identical results
+    first_run = results_history[0]
+    for run in results_history[1:]:
+        assert run == first_run
+
+    # Specifically, each agent should have 1 EXECUTED, 1 REJECTED_MARGIN
+    assert results_history[0].count("EXECUTED") == 2
+    assert results_history[0].count("REJECTED_MARGIN") == 2

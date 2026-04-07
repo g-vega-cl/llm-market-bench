@@ -104,99 +104,99 @@ async def _process_single_decision(
             meta = {"info": "Validation Passed (No Trade)"}
             trade_id = None
             
-            if d.signal.upper() in ["BUY", "SELL"]:
-                portfolio = Portfolio(owner_id=d.model_name)
-                # Note: we initialize early for context, but will re-refresh later
-                await portfolio.initialize()
-                
-                # --- SELL Guardrails ---
-                if d.signal.upper() == "SELL":
-                    if d.ticker not in portfolio.positions:
-                        logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
-                        save_decision(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."})
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
-                    if not getattr(d, "sell_tool_called", False):
-                        logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
-                        save_decision(sb_client, d, status="REJECTED_TOOL_USAGE", metadata={"reason": "Sell tool must be called."})
+            # --- PROTECTED EXECUTION BLOCK ---
+            # We use a per-portfolio lock to ensure atomic refreshes and executions
+            lock = lock_manager.get_lock(d.model_name)
+
+            async with lock:
+                if d.signal.upper() in ["BUY", "SELL"]:
+                    portfolio = Portfolio(owner_id=d.model_name)
+                    # Note: we initialize inside the lock to ensure we have the most current DB state
+                    await portfolio.initialize()
+
+                    # --- SELL Guardrails ---
+                    if d.signal.upper() == "SELL":
+                        if d.ticker not in portfolio.positions:
+                            logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
+                            save_decision(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."})
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+                        if not getattr(d, "sell_tool_called", False):
+                            logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
+                            save_decision(sb_client, d, status="REJECTED_TOOL_USAGE", metadata={"reason": "Sell tool must be called."})
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                    exec_price = validation.market_price or d.price
+                    if not exec_price or exec_price <= 0:
+                        logger.error(f"[{d.ticker}] No valid price.")
                         async with counters["lock"]:
                             counters["rejected"] += 1
                         return False
 
-                exec_price = validation.market_price or d.price
-                if not exec_price or exec_price <= 0:
-                    logger.error(f"[{d.ticker}] No valid price.")
-                    async with counters["lock"]:
-                        counters["rejected"] += 1
-                    return False
-
-                # --- Limit Price Check ---
-                limit_price = getattr(d, "limit_price", None)
-                if limit_price:
-                    if d.signal.upper() == "BUY" and exec_price > limit_price:
-                        reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                        logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
-                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
-                    elif d.signal.upper() == "SELL" and exec_price < limit_price:
-                        reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                        logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
-                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
-                
-                # Fetch market data for verification
-                from execution.market_data import MarketDataManager
-                mdm = MarketDataManager()
-                all_pos_tickers = list(portfolio.positions.keys())
-                if d.ticker not in all_pos_tickers:
-                    all_pos_tickers.append(d.ticker)
-                
-                quotes = await mdm.get_quotes(all_pos_tickers)
-                p_map = {t: data.price for t, data in quotes.items()}
-
-                verification = None
-                qty = 0
-
-                if d.signal.upper() == "BUY":
-                    if not portfolio.metrics:
-                        portfolio.calculate_reg_t_metrics(p_map)
+                    # --- Limit Price Check ---
+                    limit_price = getattr(d, "limit_price", None)
+                    if limit_price:
+                        if d.signal.upper() == "BUY" and exec_price > limit_price:
+                            reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
+                            logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
+                            save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+                        elif d.signal.upper() == "SELL" and exec_price < limit_price:
+                            reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
+                            logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
+                            save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
                     
-                    # --- Skeptical Verification ---
-                    logger.info(f"[{d.ticker}] Verifying...")
-                    # Search for contrarian thoughts on this ticker
-                    contrarian_text = "\n".join([f"- {c.model_name}: {c.reasoning}" for c in contrarian_decisions if c.ticker == d.ticker])
-
-                    verification = await verify_trading_decision(
-                        decision=d,
-                        portfolio_context=await portfolio.get_portfolio_summary(p_map),
-                        aggregated_context=aggregated_context,
-                        contrarian_context=contrarian_text,
-                        uncrowded_context=uncrowded_context
-                    )
+                    # Fetch market data for verification
+                    from execution.market_data import MarketDataManager
+                    mdm = MarketDataManager()
+                    all_pos_tickers = list(portfolio.positions.keys())
+                    if d.ticker not in all_pos_tickers:
+                        all_pos_tickers.append(d.ticker)
                     
-                    if verification.status == "REJECTED_VERIFICATION":
-                        logger.warning(f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}")
-                        save_decision(sb_client, d, status="REJECTED_VERIFICATION", metadata={"reason": verification.verification_reasoning})
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
-                    
-                    meta.update({
-                        "verification_reasoning": verification.verification_reasoning,
-                        "verification_confidence": verification.confidence_score,
-                        "suggested_alternative": verification.alternative_ticker
-                    })
+                    quotes = await mdm.get_quotes(all_pos_tickers)
+                    p_map = {t: data.price for t, data in quotes.items()}
 
-                # --- PROTECTED EXECUTION BLOCK ---
-                # We use a per-portfolio lock to ensure atomic refreshes and executions
-                lock = lock_manager.get_lock(d.model_name)
+                    verification = None
+                    qty = 0
 
-                async with lock:
+                    if d.signal.upper() == "BUY":
+                        if not portfolio.metrics:
+                            portfolio.calculate_reg_t_metrics(p_map)
+
+                        # --- Skeptical Verification ---
+                        logger.info(f"[{d.ticker}] Verifying...")
+                        # Search for contrarian thoughts on this ticker
+                        contrarian_text = "\n".join([f"- {c.model_name}: {c.reasoning}" for c in contrarian_decisions if c.ticker == d.ticker])
+
+                        verification = await verify_trading_decision(
+                            decision=d,
+                            portfolio_context=await portfolio.get_portfolio_summary(p_map),
+                            aggregated_context=aggregated_context,
+                            contrarian_context=contrarian_text,
+                            uncrowded_context=uncrowded_context
+                        )
+
+                        if verification.status == "REJECTED_VERIFICATION":
+                            logger.warning(f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}")
+                            save_decision(sb_client, d, status="REJECTED_VERIFICATION", metadata={"reason": verification.verification_reasoning})
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        meta.update({
+                            "verification_reasoning": verification.verification_reasoning,
+                            "verification_confidence": verification.confidence_score,
+                            "suggested_alternative": verification.alternative_ticker
+                        })
+
                     # 1. Semantic Overlap (Inside Lock to prevent race between concurrent same-agent trades)
                     overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
                     if overlap_reason:
@@ -254,7 +254,7 @@ async def _process_single_decision(
 
                         if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
                             usd_to_spend = min_buy_threshold
-                            
+
                         qty = int(usd_to_spend / exec_price)
                         if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
                             qty += 1
@@ -302,12 +302,20 @@ async def _process_single_decision(
                         status = "ERROR_EXECUTION"
                         meta.update({"info": "Execution Failed"})
 
-            # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
-            # This call updates the same record with the final status and trade_id.
-            save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None)
-            logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
-            async with counters["lock"]:
-                counters["saved"] += 1
+                    # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
+                    # We call this INSIDE the lock to ensure attribution record is final before next trade starts
+                    save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None)
+                    logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
+                    async with counters["lock"]:
+                        counters["saved"] += 1
+                else:
+                    # Not a BUY/SELL (e.g. HOLD or non-actionable)
+                    # We still save attribution but it doesn't need JIT refresh logic
+                    save_decision(sb_client, d, status=status, metadata=meta)
+                    logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
+                    async with counters["lock"]:
+                        counters["saved"] += 1
+
             return status == "EXECUTED" or status == "VALIDATED"
         except Exception as e:
             logger.error(f"Failed to process decision for {d.ticker}: {e}")

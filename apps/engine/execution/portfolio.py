@@ -41,6 +41,10 @@ class Portfolio:
         """Loads from DB or creates a new portfolio if none exists."""
         supabase = get_supabase_client()
         
+        # Reset cached state to ensure JIT refresh integrity
+        self.metrics = None
+        self.positions = {}
+
         # Try to fetch existing
         res = supabase.table("portfolios").select("*").eq("owner_id", self.owner_id).execute()
         
@@ -91,7 +95,7 @@ class Portfolio:
         # but if we are in an async function we should verify usage.
         # Assuming standard usage here.
         pos_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", self.id).execute()
-        self.positions = {}  # Clear existing positions before loading fresh from DB
+        # Note: self.positions is already cleared in initialize() before this call
         for p in pos_res.data:
             ticker = p["ticker"].upper()
             self.positions[ticker] = Position(
@@ -409,13 +413,12 @@ class Portfolio:
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
             
             # 4. Update and save metrics to ensure table consistency
-            # Use provided prices or fallback to cost basis for other positions
-            if current_prices is None:
-                current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
+            # Defensive copy of current_prices to avoid mutable aliasing contamination
+            price_map = dict(current_prices) if current_prices is not None else {t: p.average_cost_basis for t, p in self.positions.items()}
 
-            current_prices[ticker] = price  # Ensure the execution price is used for the current trade
+            price_map[ticker] = price  # Ensure the execution price is used for the current trade
 
-            self.calculate_reg_t_metrics(current_prices)
+            self.calculate_reg_t_metrics(price_map)
             await self.save_metrics()
 
             # 5. POST-TRADE DUST CHECK: After ANY trade, check if any position is below 10% of equity

@@ -344,6 +344,11 @@ async def _stage_decision_processing(
     decisions.extend(contrarian_decisions)
     macro_events.extend(contrarian_events)
 
+    # --- DETERMINISTIC SORTING ---
+    # Sort decisions by (generated_at, model_name, ticker) to ensure stable execution order
+    # even when processing in parallel. This preserves replay determinism.
+    decisions.sort(key=lambda d: (getattr(d, "generated_at", ""), d.model_name or "", d.ticker))
+
     # Use a semaphore to limit concurrent LLM calls (Approach A)
     semaphore = asyncio.Semaphore(3)
     # Per-portfolio locks to prevent race conditions during execution

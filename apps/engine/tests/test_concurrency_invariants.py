@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from core.models import DecisionObject
 from execution.validation import ValidationResult, ValidationStatus
@@ -48,7 +49,8 @@ def mock_deps():
             "MDM": MockMDM,
             "mdm_instance": mock_mdm_instance,
             "analyze": mock_analyze,
-            "overlap": mock_overlap
+            "overlap": mock_overlap,
+            "verify": mock_verify
         }
 
 @pytest.mark.asyncio
@@ -151,7 +153,6 @@ async def test_shared_quote_map_mutation_safety(mock_deps):
         assert shared_quotes["GOOGL"] == 2800.0
 
         # The price_map passed to calculate_reg_t_metrics should have the updated price
-        # It's the first positional argument of the last call
         called_price_map = mock_calc.call_args[0][0]
         assert called_price_map["GOOGL"] == 2850.0
         assert called_price_map["AAPL"] == 150.0
@@ -164,8 +165,6 @@ async def test_replay_determinism(mock_deps):
     """
     md = mock_deps
 
-    # Decisions: 2 agents, each with 2 trades
-    # One trade individually valid, combined invalid
     d1 = DecisionObject(signal="BUY", ticker="T1", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=1000.0)
     d2 = DecisionObject(signal="BUY", ticker="T2", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", price=1000.0)
     d3 = DecisionObject(signal="BUY", ticker="T3", confidence=80, reasoning="R3", source_id="s3", model_name="agent-2", price=1000.0)
@@ -174,16 +173,12 @@ async def test_replay_determinism(mock_deps):
     results_history = []
 
     for _ in range(5):
-        # Reset Mock Save
         md["save"].reset_mock()
-
-        # Shared states
         states = {
             "agent-1": {"bp": 1500.0},
             "agent-2": {"bp": 1500.0}
         }
 
-        # Mock Portfolio per agent
         def portfolio_factory(owner_id):
             p = MagicMock()
             p.owner_id = owner_id
@@ -213,17 +208,107 @@ async def test_replay_determinism(mock_deps):
             return p
 
         md["Portfolio"].side_effect = portfolio_factory
-
         await _stage_decision_processing([d1, d2, d3, d4], [], [], "", "", MagicMock())
-
         statuses = sorted([call.kwargs.get("status") for call in md["save"].call_args_list if call.kwargs.get("status") not in ["VALIDATED", "PASSED"]])
         results_history.append(statuses)
 
-    # All 5 runs should have identical results
     first_run = results_history[0]
     for run in results_history[1:]:
         assert run == first_run
 
-    # Specifically, each agent should have 1 EXECUTED, 1 REJECTED_MARGIN
     assert results_history[0].count("EXECUTED") == 2
     assert results_history[0].count("REJECTED_MARGIN") == 2
+
+@pytest.mark.asyncio
+async def test_stable_execution_order(mock_deps):
+    """
+    Verify that decisions are executed in deterministic order regardless of verifier completion time.
+    """
+    md = mock_deps
+
+    # Setup 3 decisions
+    # IMPORTANT: We use distinct source_ids/tickers to avoid semantic overlap interference in this specific test
+    d1 = DecisionObject(signal="BUY", ticker="A", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=100.0, generated_at="2024-01-01T00:00:00Z")
+    d2 = DecisionObject(signal="BUY", ticker="B", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", price=100.0, generated_at="2024-01-01T00:00:01Z")
+    d3 = DecisionObject(signal="BUY", ticker="C", confidence=80, reasoning="R3", source_id="s3", model_name="agent-1", price=100.0, generated_at="2024-01-01T00:00:02Z")
+
+    # Mock verifier to finish in reverse order
+    delays = {"A": 0.1, "B": 0.05, "C": 0.01}
+    async def side_effect_verify(decision, **kwargs):
+        await asyncio.sleep(delays.get(decision.ticker, 0))
+        return MagicMock(status="APPROVED", verification_reasoning="OK", confidence_score=100)
+
+    md["verify"].side_effect = side_effect_verify
+
+    # Track execution order
+    execution_sequence = []
+
+    portfolio = MagicMock()
+    md["Portfolio"].return_value = portfolio
+    portfolio.initialize = AsyncMock()
+    portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
+    portfolio.metrics = MagicMock(buying_power=10000.0, total_equity=10000.0)
+
+    async def side_effect_exec(ticker, *args, **kwargs):
+        execution_sequence.append(ticker)
+        return "uuid"
+    portfolio.execute_trade.side_effect = side_effect_exec
+
+    # Mock validate_trade
+    from execution.reg_t_validation import ValidationResult as ComplianceResult
+    portfolio.validate_trade.return_value = ComplianceResult(passed=True)
+
+    # Note: stage_decision_processing sorts inputs
+    await _stage_decision_processing([d3, d2, d1], [], [], "", "", MagicMock())
+
+    # Even though C finishes verifier first, the sorting by generated_at should ensure A -> B -> C execution order.
+    assert execution_sequence == ["A", "B", "C"]
+
+@pytest.mark.asyncio
+async def test_timestamp_lineage(mock_deps):
+    """
+    Verify that generated_at is preserved and captured.
+    """
+    md = mock_deps
+
+    # We test the analyze phase to ensure it sets generated_at
+    from analyze import analyze_chunks
+
+    # Mock llm.analyze_with_provider
+    with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_prov, \
+         patch("analyze.get_supabase_client") as mock_sb, \
+         patch("execution.market_data.get_supabase_client") as mock_mdm_sb, \
+         patch("execution.portfolio.get_supabase_client") as mock_port_sb, \
+         patch("core.macro_tracker.get_global_macro_context", new_callable=AsyncMock) as mock_macro:
+        from core.models import DecisionsResponse
+        mock_prov.return_value = DecisionsResponse(decisions=[
+            DecisionObject(signal="BUY", ticker="TSLA", confidence=80, reasoning="R", source_id="s1")
+        ])
+        mock_macro.return_value = "Macro Context"
+
+        # Mock embeddings to avoid Gemini API call
+        with patch("memory.store.retrieve_context_batch") as mock_rag, \
+             patch("memory.embeddings.get_embeddings_batch") as mock_emb, \
+             patch("memory.store.get_top_trending_concepts") as mock_trend:
+            mock_emb.return_value = [[0.1] * 768]
+            mock_rag.return_value = ["Context"]
+            mock_trend.return_value = "Trending"
+
+            # Portfolio context mocks
+            portfolio = MagicMock()
+            md["Portfolio"].return_value = portfolio
+            portfolio.initialize = AsyncMock()
+            portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
+            portfolio.calculate_reg_t_metrics = MagicMock()
+            portfolio.save_metrics = AsyncMock()
+            portfolio.positions = {}
+
+            decisions, _, _, _ = await analyze_chunks([{"source_id": "s1", "content": "news"}])
+
+            # analyze_chunks runs once per model in MODELS
+            from analyze import MODELS
+            assert len(decisions) == len(MODELS)
+            assert decisions[0].generated_at is not None
+            # Should be a valid ISO string
+            dt = datetime.fromisoformat(decisions[0].generated_at)
+            assert dt.tzinfo == timezone.utc

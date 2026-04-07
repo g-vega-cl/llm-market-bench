@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 
+from core.config import GEMINI_MODEL
 from core.models import MacroEvent
 from consensus import process_consensus, _resolve_impact_tie
 
@@ -43,7 +44,7 @@ def sample_events():
             reasoning="Regulatory pressure increasing",
             source_id="source3",
             model_provider="gemini",
-            model_name="gemini-1.5"
+            model_name=GEMINI_MODEL
         )
     ]
 
@@ -184,7 +185,7 @@ async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_emb
             reasoning="Market expecting higher rates",
             source_id="source1",
             model_provider="gemini",
-            model_name="gemini-1.5"
+            model_name=GEMINI_MODEL
         )
     ]
     

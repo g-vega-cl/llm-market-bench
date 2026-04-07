@@ -8,6 +8,8 @@ An automated platform where four primary LLMs (**OpenAI, Claude, Gemini, DeepSee
 
 **New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
 
+**New: Stock Screener Tool & Discovery Agent** - All primary LLMs can invoke `run_stock_screener` to find investable assets by sector, market cap, beta, volume, and dividends. A specialized `DiscoveryAgent` uses this and web search in a tool-calling loop to populate the "Investable Assets" section of the AI's memory with high-conviction, liquidity-filtered candidates (NYSE/NASDAQ only, max 15 tickers).
+
 ### Why It Matters
 
 * **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
@@ -86,6 +88,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 22. **Government Tracking:** Monthly audit of incentives and policies.
 23. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (via FMP API) to identify sector proxies, ETFs, and derivative play tickers for any market theme, powering the 'How to Profit' feature.
 24. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
+25. **Alpha Discovery Agent (`DiscoveryAgent`):** A specialized agent that replaces hardcoded multi-stage discovery logic. It uses a `run_stock_screener` tool-calling loop to convert market themes into a high-conviction candidate list for the "Investable Assets" memory section. Enforces NYSE/NASDAQ-only, actively trading, and a 15-ticker cap to ensure liquidity and prevent context bloating.
 
 ### Phase 5: Market Execution (Sequential)
 

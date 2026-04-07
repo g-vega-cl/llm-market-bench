@@ -152,19 +152,68 @@ class FMPProvider(FinancialProvider):
             logger.error(f"Error searching tickers on FMP for '{query}': {e}")
             return []
 
-    async def screen_stocks(self, sector: Optional[str] = None, industry: Optional[str] = None, market_cap_min: Optional[float] = None, limit: int = 10) -> list[dict]:
-        """Screen stocks by sector and industry using FMP."""
+    async def screen_stocks(
+        self, 
+        market_cap_more_than: Optional[float] = None, 
+        market_cap_lower_than: Optional[float] = None,
+        price_more_than: Optional[float] = None,
+        price_lower_than: Optional[float] = None,
+        beta_more_than: Optional[float] = None,
+        beta_lower_than: Optional[float] = None,
+        volume_more_than: Optional[float] = None,
+        volume_lower_than: Optional[float] = None,
+        dividend_more_than: Optional[float] = None,
+        dividend_lower_than: Optional[float] = None,
+        sector: Optional[str] = None, 
+        industry: Optional[str] = None, 
+        exchange: Optional[str] = "NYSE,NASDAQ",
+        limit: int = 10,
+        is_actively_trading: bool = True
+    ) -> list[dict]:
+        """Screen stocks using FMP /company-screener with advanced filters."""
         if not self.api_key:
             return []
 
-        params = {"limit": limit, "apikey": self.api_key}
+        # Construction of parameters for FMP API
+        # Mapping our snake_case snake_case to FMP's camelCase
+        params = {
+            "limit": min(limit, 15), # Cap at 15 for context efficiency
+            "apikey": self.api_key,
+            "isActivelyTrading": str(is_actively_trading).lower()
+        }
+
+        if exchange:
+            params["exchange"] = exchange
         if sector:
             params["sector"] = sector
         if industry:
             params["industry"] = industry
         
-        # Default to 1B+ if not specified to ensure baseline liquidity
-        params["marketCapMoreThan"] = market_cap_min if market_cap_min is not None else 1000000000
+        # Numeric filters
+        if market_cap_more_than is not None:
+            params["marketCapMoreThan"] = market_cap_more_than
+        elif not sector and not industry:
+            # Default to 1B+ if no specific sector/industry to ensure baseline liquidity
+            params["marketCapMoreThan"] = 1000000000
+            
+        if market_cap_lower_than is not None:
+            params["marketCapLowerThan"] = market_cap_lower_than
+        if price_more_than is not None:
+            params["priceMoreThan"] = price_more_than
+        if price_lower_than is not None:
+            params["priceLowerThan"] = price_lower_than
+        if beta_more_than is not None:
+            params["betaMoreThan"] = beta_more_than
+        if beta_lower_than is not None:
+            params["betaLowerThan"] = beta_lower_than
+        if volume_more_than is not None:
+            params["volumeMoreThan"] = volume_more_than
+        if volume_lower_than is not None:
+            params["volumeLowerThan"] = volume_lower_than
+        if dividend_more_than is not None:
+            params["dividendMoreThan"] = dividend_more_than
+        if dividend_lower_than is not None:
+            params["dividendLowerThan"] = dividend_lower_than
 
         try:
             async with httpx.AsyncClient() as client:

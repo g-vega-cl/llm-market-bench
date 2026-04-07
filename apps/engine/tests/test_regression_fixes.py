@@ -11,6 +11,53 @@ from core.llm.handlers.deepseek import run_tool_loop
 from execution.market_data import MarketDataManager
 from execution.providers.base import TickerData
 
+
+@pytest.mark.asyncio
+async def test_discovery_agent_invokes_gemini_handler_submodule():
+    """
+    Regression test for discovery agent handler imports.
+    Ensures the Gemini tool loop is resolved from the concrete submodule.
+    """
+    dummy_client = MagicMock()
+
+    async def fake_run_tool_loop(raw_client, model_name, messages, **kwargs):
+        messages.append({"role": "assistant", "content": "AI infrastructure beneficiaries: NVDA, ARM"})
+
+    with patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"gemini": lambda: dummy_client}), \
+         patch("analysis.discovery_agent.gemini.run_tool_loop", new=AsyncMock(side_effect=fake_run_tool_loop)) as mock_loop:
+        from analysis.discovery_agent import DiscoveryAgent
+
+        agent = DiscoveryAgent(model_name="gemini-2.0-flash")
+        result = await agent.discover_assets("AI infrastructure demand")
+
+    assert result == "AI infrastructure beneficiaries: NVDA, ARM"
+    assert mock_loop.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_discovery_agent_does_not_echo_theme_when_tool_loop_stalls():
+    """
+    Regression test for the discovery fallback path.
+    If no assistant/model text is produced, the original theme prompt must not be returned.
+    """
+    dummy_client = MagicMock()
+
+    async def stalled_run_tool_loop(raw_client, model_name, messages, **kwargs):
+        messages.append({"role": "tool", "content": "partial tool output"})
+
+    with patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"openai": lambda: dummy_client}), \
+         patch("analysis.discovery_agent.openai.run_tool_loop", new=AsyncMock(side_effect=stalled_run_tool_loop)) as mock_loop:
+        from analysis.discovery_agent import DiscoveryAgent
+
+        agent = DiscoveryAgent(model_name="gpt-4o-mini")
+        theme = "Global uranium supply shortage"
+        result = await agent.discover_assets(theme)
+
+    assert result == "No assets discovered."
+    assert "THEME:" not in result
+    assert result != theme
+    assert mock_loop.await_count == 1
+
 @pytest.mark.asyncio
 async def test_deepseek_reasoning_preservation_regression():
     """

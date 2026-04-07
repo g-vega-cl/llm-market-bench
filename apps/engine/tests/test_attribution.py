@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 import pytest
 from core.models import DecisionObject
+from core.config import GEMINI_MODEL
 from attribution.service import save_decision
 
 
@@ -70,7 +71,7 @@ def test_save_decision_with_trade_id(mock_supabase):
         ticker="NVDA",
         source_id="news_789",
         model_provider="gemini",
-        model_name="gemini-1.5-pro"
+        model_name=GEMINI_MODEL
     )
     
     trade_id = "550e8400-e29b-41d4-a716-446655440000"

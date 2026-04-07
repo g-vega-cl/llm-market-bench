@@ -4,7 +4,20 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from core.llm import analyze_with_provider
+from core.llm.handlers.gemini import _build_gemini_tools
 from core.models import DecisionsResponse, DecisionObject
+from core.config import GEMINI_MODEL
+
+def test_build_gemini_tools_includes_search_with_function_tools():
+    """Google Search grounding should be added even when function tools exist."""
+    function_tools = [{"name": "run_stock_screener", "parameters": {}}]
+
+    gemini_tools = _build_gemini_tools(function_tools=function_tools, enable_google_search=True)
+
+    assert len(gemini_tools) == 2
+    assert getattr(gemini_tools[0], "function_declarations", None) is not None
+    assert getattr(gemini_tools[1], "google_search", None) is not None
+
 
 @pytest.mark.asyncio
 async def test_analyze_with_provider_gemini_tool_loop():
@@ -76,7 +89,7 @@ async def test_analyze_with_provider_gemini_tool_loop():
         mock_client.chat.completions.create = AsyncMock(return_value=[mock_final_decision])
         
         # Execute
-        result = await analyze_with_provider("gemini", "gemini-3-flash-preview", mock_chunks)
+        result = await analyze_with_provider("gemini", GEMINI_MODEL, mock_chunks)
         
         # Assertions
         assert len(result.decisions) == 1

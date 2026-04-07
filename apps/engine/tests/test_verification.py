@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from core.models import DecisionObject, VerificationResult
 from core.llm.verification import verify_trading_decision
+from core.config import GEMINI_MODEL, ANTHROPIC_MODEL
 
 @pytest.mark.asyncio
 async def test_verify_trading_decision_approved():
@@ -111,7 +112,7 @@ async def test_verify_trading_decision_anthropic():
         ticker="AAPL",
         source_id="src_anth",
         model_provider="anthropic",
-        model_name="claude-3-5-sonnet"
+        model_name=ANTHROPIC_MODEL
     )
     
     mock_result = VerificationResult(
@@ -156,7 +157,7 @@ async def test_verify_trading_decision_gemini():
         ticker="TSLA",
         source_id="src_gem",
         model_provider="gemini",
-        model_name="gemini-3-flash-preview"
+        model_name=GEMINI_MODEL
     )
     
     mock_result = VerificationResult(
@@ -201,7 +202,7 @@ async def test_verify_trading_decision_sync_resilience():
         ticker="RESIL",
         source_id="src_resil",
         model_provider="gemini",
-        model_name="gemini-3-flash-preview"
+        model_name=GEMINI_MODEL
     )
     
     mock_result = VerificationResult(

@@ -4,6 +4,8 @@ An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contra
 
 **New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
 
+**New: Stock Screener Tool & Discovery Agent** - All LLMs can now invoke a `run_stock_screener` tool to find investable assets by sector, market cap, beta, volume, and dividend filters. A specialized `DiscoveryAgent` uses this tool to populate the "Investable Assets" section of the AI's memory with high-conviction, data-backed candidates.
+
 ## 🚀 Project Overview
 
 This project benchmarks the reasoning capabilities of leading LLMs against the real-world performance of the S&P 500. It features a robust Python-based data engine and a modern React-based frontend.
@@ -133,6 +135,7 @@ We maintain a high stability gate for the core engine:
 3. **Execution & Guardrails**: Second-step verification, hard tool enforcement, Reg T margin validation
 4. **Frontend & Feedback**: Interactive dashboard, memory embedding, post-analysis
 5. **Specialized Agents**: Contrarian trades, government tracking, cause & effect analysis
+6. **Discovery Agent**: Converts market themes into a high-conviction "Investable Assets" list using `run_stock_screener` and web search in a tool-calling reasoning loop
 
 For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/engine/data-flow.md)**.
 
@@ -150,7 +153,7 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 
 ### Guardrails & Validation
 
-*   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`) were actually called
+*   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`, `run_stock_screener`) were actually called
 *   **Reasoning Rigor (5 Whys)**: Forced recursive causal analysis across all reasoning agents (Manager, Cause & Effect, Analysis) to identify root drivers and profit mechanisms
 *   **Catalyst Logic Synchronization**: Strict filtering of vague "future catalysts" (no themes/broad years) to prevent Horizon Watch dashboard pollution
 *   **Pre-Market Validation**: FMP-verified market hours, symbol existence, 5.0% limit order price deviation check, liquidity checks
@@ -166,7 +169,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] **Paralelism calls** - Make the LLM calls parallel or semi-paralel with semaphor to improve performance
 - [ ] **LLM Ranking Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
-- [ ] **LLM Screener Tool** - Build a tool to allow LLMs to screen stocks based on criteria.
+- [x] **LLM Screener Tool** - `run_stock_screener` is now available to all provider handlers (OpenAI, Anthropic, Gemini). Screens by sector, market cap, beta, volume, dividends, and exchange with a 15-ticker cap.
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
@@ -174,7 +177,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
-- [ ] **Investable Assets Memory Review** - Align `/memories` investable assets section with context above; currently appears as random FMP queries
+- [x] **Investable Assets Memory Review** - `DiscoveryAgent` now replaces the hardcoded multi-stage pipeline; it uses `run_stock_screener` and web search in a tool-calling loop to populate the `/memories` investable assets section with relevant, liquidity-filtered candidates.
 - [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
 - [ ] **Review lessons learned and the learning loop** - 
 - [ ] **Revisit the concepts map** - 

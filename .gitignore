@@ -12,3 +12,6 @@ venv/
 **/bin/activate
 # Local Netlify folder
 .netlify
+
+# LLM
+.qwen

@@ -16,12 +16,14 @@ from .providers.factory import get_financial_provider
 class MarketDataManager:
     """Manages market data retrieval with a database-backed cache."""
 
-    # Class-level cache for market status to avoid repeated API calls
     _market_status_cache: dict = {
         "is_open": None,
         "fetched_at": None,
         "ttl_seconds": 300  # 5 minutes
     }
+
+    # In-memory cache for screener results to avoid redundant API hits within a session
+    _screener_cache: dict = {}
 
     def __init__(self, cache_ttl_seconds: Optional[int] = None):
         from core.config import MARKET_DATA_CACHE_TTL_SECONDS
@@ -165,6 +167,66 @@ class MarketDataManager:
 
         logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
+
+    async def screen_stocks(
+        self, 
+        market_cap_more_than: Optional[float] = None, 
+        market_cap_lower_than: Optional[float] = None,
+        price_more_than: Optional[float] = None,
+        price_lower_than: Optional[float] = None,
+        beta_more_than: Optional[float] = None,
+        beta_lower_than: Optional[float] = None,
+        volume_more_than: Optional[float] = None,
+        volume_lower_than: Optional[float] = None,
+        dividend_more_than: Optional[float] = None,
+        dividend_lower_than: Optional[float] = None,
+        sector: Optional[str] = None, 
+        industry: Optional[str] = None, 
+        exchange: Optional[str] = "NYSE,NASDAQ",
+        limit: int = 10,
+        is_actively_trading: bool = True
+    ) -> list[dict]:
+        """Exposes stock screening capabilities, checking cache first."""
+        
+        # Create a cache key from the parameters
+        cache_key = f"{market_cap_more_than}-{market_cap_lower_than}-{price_more_than}-{price_lower_than}-{beta_more_than}-{beta_lower_than}-{volume_more_than}-{volume_lower_than}-{dividend_more_than}-{dividend_lower_than}-{sector}-{industry}-{exchange}-{limit}-{is_actively_trading}"
+        
+        if cache_key in MarketDataManager._screener_cache:
+            logger.debug(f"Returning cached screener results for key: {cache_key[:30]}...")
+            return MarketDataManager._screener_cache[cache_key]
+
+        # Currently only FMP supports direct screening tool
+        provider = self.provider # Primary provider
+        if not hasattr(provider, "screen_stocks"):
+            logger.error(f"Primary provider {provider.provider_name} does not support screening.")
+            return []
+
+        try:
+            results = await provider.screen_stocks(
+                market_cap_more_than=market_cap_more_than,
+                market_cap_lower_than=market_cap_lower_than,
+                price_more_than=price_more_than,
+                price_lower_than=price_lower_than,
+                beta_more_than=beta_more_than,
+                beta_lower_than=beta_lower_than,
+                volume_more_than=volume_more_than,
+                volume_lower_than=volume_lower_than,
+                dividend_more_than=dividend_more_than,
+                dividend_lower_than=dividend_lower_than,
+                sector=sector,
+                industry=industry,
+                exchange=exchange,
+                limit=limit,
+                is_actively_trading=is_actively_trading
+            )
+            
+            # Save to cache
+            MarketDataManager._screener_cache[cache_key] = results
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error executing stock screen via {provider.provider_name}: {e}")
+            return []
 
     async def get_quotes(self, tickers: list[str], force_refresh: bool = False) -> dict[str, TickerData]:
         """Fetch multiple stock quotes, checking cache first where possible.

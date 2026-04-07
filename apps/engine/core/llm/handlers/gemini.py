@@ -21,31 +21,34 @@ DEFAULT_GEMINI_TOOLS = [
 GEMINI_GOOGLE_SEARCH_TOOL = tools.GEMINI_GOOGLE_SEARCH_TOOL
 
 
-def _build_gemini_tools(enable_google_search: bool = False) -> list:
+def _build_gemini_tools(
+    function_tools: list | None = None,
+    enable_google_search: bool = False
+) -> list:
     """Builds the tool list for Gemini API.
-    
+
     Args:
+        function_tools: Optional list of function tool definitions.
+            Defaults to DEFAULT_GEMINI_TOOLS.
         enable_google_search: Whether to include Google Search grounding.
-        
+
     Returns:
         List of tool definitions.
     """
-    function_tools = DEFAULT_GEMINI_TOOLS.copy()
-    
+    if function_tools is None:
+        function_tools = DEFAULT_GEMINI_TOOLS.copy()
+
     # Build the tools list with proper Gemini types
     gemini_tools = []
-    
+
     # Add function declarations
     if function_tools:
         gemini_tools.append(types.Tool(function_declarations=function_tools))
-    
-    # Add Google Search grounding ONLY if NO function tools are present
-    # Combining them is restricted in the GenAI API
-    if enable_google_search and not function_tools:
+
+    # Gemini can use Google Search grounding alongside function declarations.
+    if enable_google_search:
         gemini_tools.append(types.Tool(google_search={}))
-    elif enable_google_search and function_tools:
-        logger.debug("Skipping Gemini Google Search because function tools are present (API Restriction)")
-    
+
     return gemini_tools
 
 
@@ -136,7 +139,7 @@ async def run_tool_loop(
 
         try:
             # Build tools list with Google Search if enabled
-            gemini_tools = _build_gemini_tools(enable_google_search)
+            gemini_tools = _build_gemini_tools(tool_defs, enable_google_search)
             
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,

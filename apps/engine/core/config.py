@@ -43,6 +43,7 @@ with open(_MODELS_JSON) as _f:
 OPENAI_MODEL: str = _models["OPENAI_MODEL"]
 ANTHROPIC_MODEL: str = _models["ANTHROPIC_MODEL"]
 GEMINI_MODEL: str = _models["GEMINI_MODEL"]
+GEMINI_EMBEDDING_MODEL: str = _models["GEMINI_EMBEDDING_MODEL"]
 DEEPSEEK_MODEL: str = _models["DEEPSEEK_MODEL"]
 CONTRARIAN_AGENT_ID: str = _models["CONTRARIAN_AGENT_ID"]
 ACTIVE_OWNER_IDS: list[str] = list(_models.values())

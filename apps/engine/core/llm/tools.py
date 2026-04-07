@@ -1,6 +1,7 @@
 """Tool definitions and execution logic for LLMs."""
 
 import httpx
+from typing import Optional
 from execution.market_data import MarketDataManager
 from core.db import get_supabase_client
 
@@ -262,6 +263,63 @@ SECTOR_ALTERNATIVES_TOOL_DEFINITION_ANTHROPIC = {
     },
 }
 
+RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "run_stock_screener",
+        "description": (
+            "Screen for stocks using various financial filters. Use this to identify "
+            "investable assets when you have a market theme but no specific tickers."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
+                "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
+                "price_more_than": {"type": "number", "description": "Minimum stock price."},
+                "price_lower_than": {"type": "number", "description": "Maximum stock price."},
+                "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
+                "beta_lower_than": {"type": "number", "description": "Maximum beta."},
+                "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
+                "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
+                "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
+                "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
+                "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services')."},
+                "industry": {"type": "string", "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors')."},
+                "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage."},
+                "limit": {"type": "integer", "description": "Maximum number of results (default 10, max 15)."}
+            }
+        },
+    },
+}
+
+RUN_STOCK_SCREENER_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "run_stock_screener",
+    "description": (
+        "Screen for stocks using various financial filters. Use this to identify "
+        "investable assets when you have a market theme but no specific tickers."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
+            "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
+            "price_more_than": {"type": "number", "description": "Minimum stock price."},
+            "price_lower_than": {"type": "number", "description": "Maximum stock price."},
+            "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
+            "beta_lower_than": {"type": "number", "description": "Maximum beta."},
+            "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
+            "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
+            "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
+            "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
+            "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services')."},
+            "industry": {"type": "string", "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors')."},
+            "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage."},
+            "limit": {"type": "integer", "description": "Maximum number of results (default 10, max 15)."}
+        }
+    },
+}
+
 # =============================================================================
 # CONSOLIDATED QUANTITY CALCULATION TOOLS
 # =============================================================================
@@ -508,6 +566,33 @@ CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_GEMINI = {
     },
 }
 
+RUN_STOCK_SCREENER_TOOL_DEFINITION_GEMINI = {
+    "name": "run_stock_screener",
+    "description": (
+        "Screen for stocks using various financial filters. Use this to identify "
+        "investable assets when you have a market theme but no specific tickers."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
+            "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
+            "price_more_than": {"type": "number", "description": "Minimum stock price."},
+            "price_lower_than": {"type": "number", "description": "Maximum stock price."},
+            "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
+            "beta_lower_than": {"type": "number", "description": "Maximum beta."},
+            "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
+            "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
+            "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
+            "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
+            "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare')."},
+            "industry": {"type": "string", "description": "Filter by specific industry."},
+            "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ')."},
+            "limit": {"type": "integer", "description": "Maximum number of results (max 15)."}
+        }
+    },
+}
+
 
 
 async def execute_stock_tool(ticker: str) -> str:
@@ -606,6 +691,61 @@ async def execute_volatility_metrics_tool(ticker: str, days: int = 14) -> str:
         )
     except Exception as e:
         return f"Error calculating volatility for {ticker}: {str(e)}"
+
+
+async def execute_stock_screener_tool(
+    market_cap_more_than: Optional[float] = None,
+    market_cap_lower_than: Optional[float] = None,
+    price_more_than: Optional[float] = None,
+    price_lower_than: Optional[float] = None,
+    beta_more_than: Optional[float] = None,
+    beta_lower_than: Optional[float] = None,
+    volume_more_than: Optional[float] = None,
+    volume_lower_than: Optional[float] = None,
+    dividend_more_than: Optional[float] = None,
+    dividend_lower_than: Optional[float] = None,
+    sector: Optional[str] = None,
+    industry: Optional[str] = None,
+    exchange: Optional[str] = "NYSE,NASDAQ",
+    limit: int = 10,
+    is_actively_trading: bool = True
+) -> str:
+    """Executes the stock screener tool and returns a formatted list of candidates."""
+    manager = MarketDataManager()
+    try:
+        results = await manager.screen_stocks(
+            market_cap_more_than=market_cap_more_than,
+            market_cap_lower_than=market_cap_lower_than,
+            price_more_than=price_more_than,
+            price_lower_than=price_lower_than,
+            beta_more_than=beta_more_than,
+            beta_lower_than=beta_lower_than,
+            volume_more_than=volume_more_than,
+            volume_lower_than=volume_lower_than,
+            dividend_more_than=dividend_more_than,
+            dividend_lower_than=dividend_lower_than,
+            sector=sector,
+            industry=industry,
+            exchange=exchange,
+            limit=limit,
+            is_actively_trading=is_actively_trading
+        )
+
+        if not results:
+            return "No stocks found matching the criteria."
+
+        output = f"Stock Screening Results (Top {len(results)}):\n"
+        for item in results:
+            output += (
+                f"- ${item.get('symbol')} ({item.get('companyName')}): "
+                f"Price: ${item.get('price', 0):.2f}, "
+                f"Market Cap: ${item.get('marketCap', 0) / 1e9:.2f}B, "
+                f"Sector: {item.get('sector')}\n"
+            )
+        
+        return output
+    except Exception as e:
+        return f"Error executing stock screener: {str(e)}"
 
 from memory.embeddings import get_embedding
 

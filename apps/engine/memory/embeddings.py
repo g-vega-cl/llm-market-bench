@@ -3,11 +3,9 @@
 import logging
 from google import genai
 from core import config
+from core.config import GEMINI_EMBEDDING_MODEL
 
 logger = logging.getLogger("engine")
-
-# Use gemini-embedding-001 and request 768 dimensions for compatibility
-EMBEDDING_MODEL = "gemini-embedding-001"
 
 def get_embedding(text: str) -> list[float]:
     """Generates a vector embedding for the given text using Gemini.
@@ -41,7 +39,7 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         # Gemini's embed_content naturally supports lists of strings
         logger.info(f"Calling Gemini embeddings for {len(texts)} texts")
         response = client.models.embed_content(
-            model=EMBEDDING_MODEL,
+            model=GEMINI_EMBEDDING_MODEL,
             contents=texts,
             config={'output_dimensionality': 768}
         )

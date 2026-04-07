@@ -234,26 +234,25 @@ Twice a week (Sundays and Wednesdays), the engine fetches the global macro calen
 
 ---
 
-## Phase 1.6: Thematic Asset Discovery (DiscoveryService)
+## Phase 1.6: Alpha Discovery Agent (`DiscoveryAgent`)
 
-**File**: `apps/engine/analysis/discovery_service.py` → `discover_assets()`
+**File**: `apps/engine/analysis/discovery_service.py` → `discover_assets()`, `apps/engine/analysis/discovery_agent.py`
 
-After an event is identified but before it is sent to the 4 parallel LLMs for deep analysis, the **Discovery Engine** identifies which assets are most likely to be impacted by the specific catalyst.
+After an event is identified but before it is sent to the 4 parallel LLMs for deep analysis, the **Alpha Discovery Agent** identifies which assets are most likely to be impacted by the specific catalyst.
 
-### Step 1.6.1: Thematic Mapping (Gemini)
-1. **Mapping**: The engine uses `GEMINI_MODEL` to translate the event text into a set of `DiscoveryThemes` (sectors, industries, and keywords).
-2. **Market Cap**: A dynamic `market_cap_min` is generated to focus the search (e.g., "$5B+" for blue-chip catalysts or "$500M+" for niche innovation).
+### Step 1.6.1: Mission Setup
+1. **Delegation**: `DiscoveryService` delegates the theme and context to the `DiscoveryAgent`.
+2. **Provider Selection**: The agent selects a provider (Defaults to `GEMINI_MODEL`) and initializes the appropriate tool definitions for the reasoning mission.
 
-### Step 1.6.2: Expanded Retrieval (FMP)
-1. **Screening**: The engine calls the FMP `screen_stocks` endpoint multiple times to fetch a broad candidate pool of up to **50+ assets**.
-2. **Filtering**: Initial filtering applies the `market_cap_min` to exclude irrelevant small caps.
+### Step 1.6.2: Autonomous Discovery Mission (Tool-Calling Loop)
+The agent executes up to **3 tool-calling steps** to identify beneficiaries:
+1. **Screening**: Calls `run_stock_screener` to find candidates based on financial filters (Market Cap, Beta, Sector, etc.).
+2. **Verification**: Uses **Web Search** to verify business models and confirm thematic relevance.
+3. **Guardrails**: Filters for NYSE/NASDAQ-only, actively trading assets, and enforces a **15-ticker cap** to ensure liquidity and prevent context bloating.
 
-### Step 1.6.3: Thematic Re-Ranking (DeepSeek)
-1. **Scoring**: `DEEPSEEK_MODEL` performs a reasoning-heavy evaluation of the candidate pool.
-2. **Conviction**: Each asset is assigned a **Relevance Score (0-100)** and a `"How to Profit"` explanation.
-3. **Threshold**: Only assets with a score **>= 40** are passed forward to the full analysis phase.
-
-**Output**: A list of `RankedAsset` objects curated for the specific catalyst.
+### Step 1.6.3: High-Fidelity Synthesis
+1. **Ranking**: The agent ranks the candidates by relevance and profit mechanism.
+2. **Storage**: The complete analysis is returned to the service and saved as a single `AGENT_DISCOVERY` entry in the `memories` table, providing a "How to Profit" playbook for the reasoning manager.
 
 See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for a technical deep-dive.
 

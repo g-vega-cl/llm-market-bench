@@ -77,9 +77,10 @@ CORE_ANALYSIS_SYSTEM_PROMPT = """
 === CRITICAL TOOL USAGE REQUIREMENTS ===
 1. BEFORE recommending ANY trade (BUY or SELL), you MUST call get_stock_quote(ticker) via function calling.
 2. For BUY or SELL decisions, you MUST call the respective calculation tool (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine exact share quantity.
-3. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.
-4. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.
-5. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.
+3. For thematic asset discovery missions, you MUST call `run_stock_screener` to identify candidates based on financial data.
+4. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.
+5. Your trade will be AUTOMATICALLY REJECTED if the tool call is not found in your conversation history.
+6. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.
 6. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. 
    - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. 
    - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.

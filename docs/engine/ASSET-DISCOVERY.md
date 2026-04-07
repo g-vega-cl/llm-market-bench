@@ -1,97 +1,86 @@
-# Asset Discovery: Thematic Pipeline
+# Asset Discovery: Alpha Discovery Agent
 
-The **Asset Discovery Pipeline** is a specialized engine that identifies actionable investment assets (stocks, ETFs) driven by specific market catalysts or macro events. 
+The **Alpha Discovery Agent** is a specialized, tool-calling reasoning engine that identifies actionable investment assets (stocks, ETFs) driven by specific market catalysts or macro events. 
 
-Unlike generic screening, this pipeline uses a **three-stage AI-driven process** to ensure that identified assets are not only sectorally relevant but also logically aligned with the event's "How to Profit" thesis.
+Unlike the previous hardcoded multi-stage pipeline, this agent uses a dynamic, autonomous reasoning loop to ensure that identified assets are logically aligned with the event's "How to Profit" thesis and verified against real-time market data.
 
 ---
 
 ## 1. Discovery Architecture
 
-The pipeline consists of three distinct phases: **Mapping**, **Retrieval**, and **Re-Ranking**.
+The discovery process is encapsulated within the `DiscoveryAgent` class, which operates as a standalone "mission" for each market theme.
 
-### **Phase 1: Thematic Mapping (Gemini)**
-- **Objective**: Translate a complex market event (e.g., "Suez Canal Blockage") into specific financial search parameters.
-- **Provider**: `GEMINI_MODEL` (Gemini 2.x/3.x Flash)
-- **Output**: `DiscoveryThemes` object containing:
-    - Target **Sectors** and **Industries**.
-    - Search **Keywords** for business description matching.
-    - `market_cap_min`: A dynamic floor to filter out "uncrowded" or "niche" plays.
+### **Reasoning Loop (Tool-Calling)**
+The agent uses a **Tool-Calling Reasoning Loop** (up to 3 steps) to perform its mission:
+1.  **Mission Start**: Receives the market theme and context.
+2.  **Screening**: Invokes the `run_stock_screener` tool to find candidates based on financial metrics (Market Cap, Beta, Sector, Industry).
+3.  **Research & Verification**: Uses native **Web Search** (Google Search for Gemini, Anthropic Web Search for Claude) to verify the business model, thematic relevance, and recent news for the candidates.
+4.  **Synthesis**: Ranks the candidates and formulates a "Mechanism of Profit" for each.
 
-### **Phase 2: Expanded Candidate Retrieval (FMP)**
-- **Objective**: Fetch a broad pool of candidates using the mapping parameters.
-- **Provider**: **Financial Modeling Prep (FMP)** `screen_stocks` endpoint.
-- **Logic**: 
-    - Executes multiple screening calls based on mapped sectors and industries.
-    - Applies the dynamic `market_cap_min` filter (typically $2B+ default, but can be lower for niche themes).
-    - Collects up to **50+ candidates** per theme.
-
-### **Phase 3: Thematic Re-Ranking (DeepSeek)**
-- **Objective**: Perform high-reasoning evaluation of the candidate pool against the specific event thesis.
-- **Provider**: `DEEPSEEK_MODEL` (DeepSeek-Reasoner) using **Thinking Mode**.
-- **Logic**: 
-    - Evaluates each asset's business model against the "Bottleneck" or "Primary Beneficiary" logic of the event.
-    - **Relevance Score (0-100)**: Assigns a score based on conviction.
-    - **How to Profit Reasoning**: Explains *why* this specific asset is expected to move (e.g., "Direct exposure to localized supply chain disruptions").
-    - **Filtering**: Assets with a score `< 40` are automatically excluded from the final analysis.
+### **Thematic Mapping Logic**
+The agent is guided by the **"5 Whys"** technique to ensure high-fidelity discovery:
+- **Why** is this theme market-moving?
+- **Why** will these specific assets benefit?
+- **Why** are these not already priced in?
+- **Why** is this the most efficient way to profit?
+- **Why** is this recommendation the best beneficiary?
 
 ---
 
-## 2. Technical Data Models
+## 2. The `run_stock_screener` Tool
 
-The discovery engine uses structured Pydantic models to ensure predictable data flow:
+This tool is available to all primary providers (OpenAI, Anthropic, Gemini) and serves as the backbone for asset retrieval.
 
-### **`RankedAsset`**
-```python
-class RankedAsset(BaseModel):
-    ticker: str
-    name: str
-    relevance_score: int  # 0-100
-    how_to_profit: str    # Why this ticker is relevant to the theme
-    sector: str
-    industry: str
-```
+### **Supported Filters**
+- **Market Cap**: `market_cap_more_than`, `market_cap_lower_than`
+- **Price**: `price_more_than`, `price_lower_than`
+- **Beta (Volatility)**: `beta_more_than`, `beta_lower_than`
+- **Volume**: `volume_more_than`, `volume_lower_than`
+- **Dividend Yield**: `dividend_more_than`, `dividend_lower_than`
+- **Classification**: `sector`, `industry`, `exchange` (Defaults to NYSE,NASDAQ)
+- **Limits**: Maximum of 15 results per call to ensure context efficiency.
 
-### **`DiscoveryRankingResponse`**
-```python
-class DiscoveryRankingResponse(BaseModel):
-    ranked_assets: List[RankedAsset]
-```
-
-### **`DiscoveryThemes`**
-```python
-class DiscoveryThemes(BaseModel):
-    sectors: List[str]
-    industries: List[str]
-    keywords: List[str]
-    market_cap_min: float  # In USD (e.g. 2000000000.0)
-```
+### **Implementation Detail**
+The tool is implemented in `apps/engine/core/llm/tools.py` and executed via the `MarketDataManager`. It hits the **Financial Modeling Prep (FMP)** `/company-screener` endpoint.
 
 ---
 
-## 3. Why This Approach?
+## 3. Provider Support
 
-#### **Precision vs. Recall**
-Generic screeners have high recall (they find all tech stocks) but low precision (most aren't relevant to a specific AI chip shortage). By using **DeepSeek re-ranking**, we filter out the "noise" and provide the Parallel LLM Analysis engine with high-conviction targets.
+The `DiscoveryAgent` automatically detects the provider and configures the appropriate tool definitions and handlers:
 
-#### **Low-Latency Synthesis**
-While we fetch 50+ candidates, only the **Top 15-20** highest-ranked assets are passed to the 4 parallel LLMs. This keeps token usage efficient and focuses the "skeptical verifiers" on the most plausible trades.
-
-#### **Dynamic Market Cap Filtering**
-The engine can now automatically pivot between "Blue Chip" safety and "Small Cap" opportunity based on the event's scale, removing the hardcoded $1B+ floor that previously limited discovery.
+| Provider | Handler | Search Tool | Screener Definition |
+|----------|---------|-------------|---------------------|
+| **Gemini** | `gemini.run_tool_loop` | `google_search` | `RUN_STOCK_SCREENER_TOOL_DEFINITION_GEMINI` |
+| **Anthropic** | `anthropic.run_tool_loop` | `web_search_20250305` | `RUN_STOCK_SCREENER_TOOL_DEFINITION_ANTHROPIC` |
+| **OpenAI** | `openai.run_tool_loop` | `web_search` (native) | `RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI` |
 
 ---
 
 ## 4. Operational Flow
 
-1. **`DiscoveryService.discover_assets(event)`**: Entry point.
-2. **`_map_event_to_themes(event)`**: Gemini pass.
-3. **`_fetch_candidates(themes)`**: FMP screening pass.
-4. **`_rank_candidates_with_llm(candidates, event)`**: DeepSeek re-ranking pass.
-5. **Output**: List of `RankedAsset` objects.
+1.  **`DiscoveryService.discover_assets(event)`**: Entry point.
+2.  **`DiscoveryAgent.discover_assets(theme)`**: Starts the tool-calling mission.
+3.  **Loop Step 1-3**: Agent calls `run_stock_screener` and `web_search`.
+4.  **Final Extraction**: The agent's last assistant/model message containing the ranked analysis is returned.
+5.  **Memory Storage**: The result is wrapped as a single high-fidelity "AGENT_DISCOVERY" asset in the `memories` table to preserve the agent's full reasoning.
 
 ---
 
-## 5. Verification
+## 5. Why This Approach?
+
+#### **Autonomous Precision**
+By moving from a hardcoded 3-stage pipeline to an autonomous agent, the system can adapt its search strategy based on the theme. For example, it might choose to search for "niche lithium miners" via web search first, then use the screener to verify their liquidity.
+
+#### **Liquidity & Quality Guardrails**
+The agent is explicitly prompted to filter for **NYSE/NASDAQ** only and ensure assets are **actively trading**. It also enforces a **15-ticker cap** to prevent "context bloating" for the downstream parallel analysis LLMs.
+
+#### **Institutional Memory**
+By storing the agent's full analysis in the "Investable Assets" section of the memory, we provide the Reasoning Manager with a rich "How to Profit" playbook rather than just a list of tickers.
+
+---
+
+## 6. Verification
 The discovery pipeline quality is verified using:
-- **`pytest apps/engine/tests/test_discovery_quality.py`**: Validates the end-to-end multi-stage flow and scoring logic.
+- **`pytest apps/engine/tests/test_discovery_quality.py`**: Validates that the service correctly delegates to the agent.
+- **`pytest apps/engine/tests/test_regression_fixes.py`**: Verifies handler imports and fallback paths for the agent.

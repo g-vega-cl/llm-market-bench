@@ -164,6 +164,7 @@ A living document of features and improvements in progress or planned for the pl
 
 ### 🎯 Active Development
 
+- [ ] **Paralelism calls** - Make the LLM calls parallel or semi-paralel with semaphor to improve performance
 - [ ] **LLM Ranking Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
 - [ ] **LLM Screener Tool** - Build a tool to allow LLMs to screen stocks based on criteria.
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.

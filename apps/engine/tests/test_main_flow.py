@@ -18,6 +18,7 @@ def mock_dependencies():
          patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
+         patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap, \
          patch("main.Portfolio") as MockPortfolio, \
          patch("execution.market_data.MarketDataManager") as MockMDM, \
          patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
@@ -28,6 +29,7 @@ def mock_dependencies():
         mock_consensus.return_value = []
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
+        mock_overlap.return_value = None
         mock_validate.return_value = ValidationResult(
             status=ValidationStatus.PASSED,
             market_price=150.0,

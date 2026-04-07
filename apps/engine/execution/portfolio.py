@@ -91,6 +91,7 @@ class Portfolio:
         # but if we are in an async function we should verify usage.
         # Assuming standard usage here.
         pos_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", self.id).execute()
+        self.positions = {}  # Clear existing positions before loading fresh from DB
         for p in pos_res.data:
             ticker = p["ticker"].upper()
             self.positions[ticker] = Position(
@@ -272,7 +273,7 @@ class Portfolio:
             is_sell_tool_used=is_sell_tool_used
         )
 
-    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str, decision_id: str | None = None) -> Optional[UUID]:
+    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str, decision_id: str | None = None, current_prices: Dict[str, float] = None) -> Optional[UUID]:
         """Executes the trade by updating cash, positions, and ledger.
         
         Args:
@@ -281,6 +282,7 @@ class Portfolio:
             price: Execution price.
             signal: "BUY" or "SELL".
             decision_id: Optional ID of the decision that triggered this trade.
+            current_prices: Optional map of all portfolio prices to avoid re-fetching.
             
         Returns:
             The UUID of the generated trade record, or None if failed.
@@ -407,8 +409,10 @@ class Portfolio:
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
             
             # 4. Update and save metrics to ensure table consistency
-            # Use current prices for all held positions to avoid fallbacks
-            current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
+            # Use provided prices or fallback to cost basis for other positions
+            if current_prices is None:
+                current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
+
             current_prices[ticker] = price  # Ensure the execution price is used for the current trade
 
             self.calculate_reg_t_metrics(current_prices)

@@ -38,7 +38,9 @@ def mock_dependencies():
         # Mock MarketDataManager
         mock_mdm_instance = MockMDM.return_value
         mock_mdm_instance.get_quote = AsyncMock()
-        mock_mdm_instance.get_quote.side_effect = lambda t: MagicMock(price=150.0) if t == "GOOGL" else MagicMock(price=100.0)
+        mock_mdm_instance.get_quote.side_effect = lambda t, **kwargs: MagicMock(price=150.0) if t == "GOOGL" else MagicMock(price=100.0)
+        mock_mdm_instance.get_quotes = AsyncMock()
+        mock_mdm_instance.get_quotes.side_effect = lambda tickers, **kwargs: {t: (MagicMock(price=150.0) if t == "GOOGL" else MagicMock(price=100.0)) for t in tickers}
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()

@@ -82,23 +82,11 @@ async def _stage_analysis_and_consensus(data, sb_client):
         return [], [], "", ""
 
 
-async def _stage_decision_processing(
-    decisions, macro_events, data, aggregated_context, uncrowded_context, sb_client
+async def _process_single_decision(
+    d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
 ):
-    """Stage 3: Decision attribution, validation, and execution."""
-    # --- Contrarian Analysis (Phase 2.5) ---
-    logger.info("Starting Contrarian Agent Analysis...")
-    contrarian_decisions, contrarian_events = await run_contrarian_analysis(
-        data, decisions, context=aggregated_context
-    )
-    decisions.extend(contrarian_decisions)
-    macro_events.extend(contrarian_events)
-
-    saved_decisions = 0
-    rejected_decisions = 0
-    actionable_decisions = []
-    
-    for d in decisions:
+    """Processes a single trading decision with concurrency controls."""
+    async with semaphore:
         try:
             # --- Pre-Market Validation ---
             d.ticker = d.ticker.upper()
@@ -107,17 +95,9 @@ async def _stage_decision_processing(
             if validation.status != ValidationStatus.PASSED:
                 logger.warning(f"[{d.ticker}] REJECTED (Market Guardrails): {validation.reason}")
                 save_decision(sb_client, d, status=validation.status.value, metadata={"reason": validation.reason})
-                rejected_decisions += 1
-                continue
-
-            # --- Semantic Overlap ---
-            # Only check for overlap within the same agent's portfolio
-            overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
-            if overlap_reason:
-                logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
-                save_decision(sb_client, d, status=ValidationStatus.REJECTED_REDUNDANCY.value, metadata={"reason": overlap_reason})
-                rejected_decisions += 1
-                continue
+                async with counters["lock"]:
+                    counters["rejected"] += 1
+                return False
 
             # --- Execution Logic ---
             status = "VALIDATED"
@@ -126,6 +106,7 @@ async def _stage_decision_processing(
             
             if d.signal.upper() in ["BUY", "SELL"]:
                 portfolio = Portfolio(owner_id=d.model_name)
+                # Note: we initialize early for context, but will re-refresh later
                 await portfolio.initialize()
                 
                 # --- SELL Guardrails ---
@@ -133,19 +114,22 @@ async def _stage_decision_processing(
                     if d.ticker not in portfolio.positions:
                         logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
                         save_decision(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."})
-                        rejected_decisions += 1
-                        continue
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
                     if not getattr(d, "sell_tool_called", False):
                         logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
                         save_decision(sb_client, d, status="REJECTED_TOOL_USAGE", metadata={"reason": "Sell tool must be called."})
-                        rejected_decisions += 1
-                        continue
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
 
                 exec_price = validation.market_price or d.price
                 if not exec_price or exec_price <= 0:
                     logger.error(f"[{d.ticker}] No valid price.")
-                    rejected_decisions += 1
-                    continue
+                    async with counters["lock"]:
+                        counters["rejected"] += 1
+                    return False
 
                 # --- Limit Price Check ---
                 limit_price = getattr(d, "limit_price", None)
@@ -154,23 +138,26 @@ async def _stage_decision_processing(
                         reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
                         logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
                         save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                        rejected_decisions += 1
-                        continue
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
                     elif d.signal.upper() == "SELL" and exec_price < limit_price:
                         reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
                         logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
                         save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                        rejected_decisions += 1
-                        continue
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
                 
                 # Fetch market data for verification
+                from execution.market_data import MarketDataManager
+                mdm = MarketDataManager()
                 all_pos_tickers = list(portfolio.positions.keys())
                 if d.ticker not in all_pos_tickers:
                     all_pos_tickers.append(d.ticker)
                 
-                from execution.market_data import MarketDataManager
-                mdm = MarketDataManager()
-                p_map = {t: (await mdm.get_quote(t)).price for t in all_pos_tickers if await mdm.get_quote(t)}
+                quotes = await mdm.get_quotes(all_pos_tickers)
+                p_map = {t: data.price for t, data in quotes.items()}
 
                 verification = None
                 qty = 0
@@ -195,8 +182,9 @@ async def _stage_decision_processing(
                     if verification.status == "REJECTED_VERIFICATION":
                         logger.warning(f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}")
                         save_decision(sb_client, d, status="REJECTED_VERIFICATION", metadata={"reason": verification.verification_reasoning})
-                        rejected_decisions += 1
-                        continue
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
                     
                     meta.update({
                         "verification_reasoning": verification.verification_reasoning,
@@ -204,103 +192,161 @@ async def _stage_decision_processing(
                         "suggested_alternative": verification.alternative_ticker
                     })
 
-                    # --- Final Price Refresh (BUY) ---
-                    # Check the price again just before execution to ensure we have the most up-to-date data,
-                    # especially since the verification step (LLM call) can take several seconds.
-                    final_quote = await mdm.get_quote(d.ticker)
+                # --- PROTECTED EXECUTION BLOCK ---
+                # We use a per-portfolio lock to ensure atomic refreshes and executions
+                lock = portfolio_locks.get(d.model_name)
+                if not lock:
+                    # Thread-safe creation of locks (though we are in single-threaded event loop)
+                    lock = asyncio.Lock()
+                    portfolio_locks[d.model_name] = lock
+
+                async with lock:
+                    # 1. Semantic Overlap (Inside Lock to prevent race between concurrent same-agent trades)
+                    overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
+                    if overlap_reason:
+                        logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
+                        save_decision(sb_client, d, status=ValidationStatus.REJECTED_REDUNDANCY.value, metadata={"reason": overlap_reason})
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
+
+                    # 2. JUST-IN-TIME (JIT) Refresh
+                    # Refresh entire portfolio state from DB to account for previous parallel trades
+                    await portfolio.initialize()
+
+                    # 3. Final Price Refresh
+                    final_quote = await mdm.get_quote(d.ticker, force_refresh=False) # 2s cache is fine per user
                     if final_quote and final_quote.exists:
                         if final_quote.price != exec_price:
                             logger.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
                             exec_price = final_quote.price
                             
-                            # Re-verify limit price with the absolute latest market data
-                            if limit_price and exec_price > limit_price:
-                                reason = f"Limit price exceeded after refresh: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price Refresh): {reason}")
+                        # Re-verify limit price with the absolute latest market data
+                        if limit_price:
+                            if d.signal.upper() == "BUY" and exec_price > limit_price:
+                                reason = f"Limit price exceeded after JIT refresh: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
+                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price JIT): {reason}")
                                 save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                                rejected_decisions += 1
-                                continue
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
+                            elif d.signal.upper() == "SELL" and exec_price < limit_price:
+                                reason = f"Limit price not met after JIT refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
+                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price JIT): {reason}")
+                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
 
-                    bp = portfolio.metrics.buying_power if portfolio.metrics else 0
-                    total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
-                    from core.config import MIN_TRADE_VALUE
-                    
-                    alloc_pct = d.allocation_percentage or 5
-                    min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * max(bp, total_equity))
-                    usd_to_spend = (alloc_pct / 100.0) * bp
-                    
-                    if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
-                        usd_to_spend = min_buy_threshold
-                        
-                    qty = int(usd_to_spend / exec_price)
-                    if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
-                        qty += 1
+                    # 4. Recalculate Metrics for current trade
+                    # Fetch fresh prices for ALL holdings for accurate margin check
+                    all_pos_tickers = list(portfolio.positions.keys())
+                    if d.ticker not in all_pos_tickers:
+                        all_pos_tickers.append(d.ticker)
+                    fresh_quotes = await mdm.get_quotes(all_pos_tickers)
+                    fresh_p_map = {t: data.price for t, data in fresh_quotes.items()}
+                    portfolio.calculate_reg_t_metrics(fresh_p_map)
 
-                    validation_res = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal)
-                    if not validation_res.passed:
-                        logger.warning(f"[{d.ticker}] REJECTED (Margin): {validation_res.reason}")
-                        save_decision(sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason})
-                        rejected_decisions += 1
-                        continue
+                    if d.signal.upper() == "BUY":
+                        bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                        total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
+                        from core.config import MIN_TRADE_VALUE
 
-                elif d.signal.upper() == "SELL":
-                    # --- Final Price Refresh (SELL) ---
-                    final_quote = await mdm.get_quote(d.ticker)
-                    if final_quote and final_quote.exists:
-                        if final_quote.price != exec_price:
-                            logger.info(f"[{d.ticker}] Price moved during processing: ${exec_price:.2f} -> ${final_quote.price:.2f}")
-                            exec_price = final_quote.price
+                        alloc_pct = d.allocation_percentage or 5
+                        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * max(bp, total_equity))
+                        usd_to_spend = (alloc_pct / 100.0) * bp
+
+                        if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
+                            usd_to_spend = min_buy_threshold
                             
-                            # Re-verify limit price
-                            if limit_price and exec_price < limit_price:
-                                reason = f"Limit price not met after refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price Refresh): {reason}")
-                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                                rejected_decisions += 1
-                                continue
+                        qty = int(usd_to_spend / exec_price)
+                        if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
+                            qty += 1
 
-                    qty = getattr(d, "quantity", None) or int((d.allocation_percentage or 0 / 100.0) * portfolio.positions.get(d.ticker).quantity)
-                    if not portfolio.metrics:
-                        portfolio.calculate_reg_t_metrics(p_map)
+                    elif d.signal.upper() == "SELL":
+                        if d.ticker not in portfolio.positions:
+                             save_decision(sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker sold by concurrent trade."})
+                             async with counters["lock"]:
+                                 counters["rejected"] += 1
+                             return False
+                        qty = getattr(d, "quantity", None) or int((d.allocation_percentage or 0 / 100.0) * portfolio.positions.get(d.ticker).quantity)
+
+                    if qty <= 0:
+                        qty = getattr(d, "quantity", 0) or 1
                     
+                    if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
+                        qty = verification.adjusted_quantity
+
+                    if qty <= 0:
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
+
+                    # Final Margin Validation
                     validation_res = portfolio.validate_trade(d.ticker, qty, exec_price, d.signal, is_sell_tool_used=getattr(d, "sell_tool_called", False))
                     if not validation_res.passed:
-                        logger.warning(f"[{d.ticker}] REJECTED (Margin): {validation_res.reason}")
+                        logger.warning(f"[{d.ticker}] REJECTED (Margin JIT): {validation_res.reason}")
                         save_decision(sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason})
-                        rejected_decisions += 1
-                        continue
+                        async with counters["lock"]:
+                            counters["rejected"] += 1
+                        return False
                 
-                if qty <= 0:
-                    qty = getattr(d, "quantity", 0) or 1
-                if qty <= 0:
-                    rejected_decisions += 1
-                    continue
+                    # 5. Atomic EXECUTE
+                    # Attribution Locking (Step 13 PRE-STEP)
+                    decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
+                    decision_id = decision_row.get("id")
 
-                if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
-                    qty = verification.adjusted_quantity
-                
-                # --- Attribution Locking (Step 13 PRE-STEP) ---
-                # Save the decision first to get a stable decision_id for the trade record
-                decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
-                decision_id = decision_row.get("id")
-
-                trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal, decision_id=decision_id)
-                if trade_id:
-                    status = "EXECUTED"
-                    meta = {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
-                else:
-                    status = "ERROR_EXECUTION"
-                    meta = {"info": "Execution Failed"}
+                    trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map)
+                    if trade_id:
+                        status = "EXECUTED"
+                        meta = {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
+                    else:
+                        status = "ERROR_EXECUTION"
+                        meta = {"info": "Execution Failed"}
 
             save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None)
-            if status in ["EXECUTED", "VALIDATED"]:
-                actionable_decisions.append(d)
-            saved_decisions += 1
-            logger.info(f"[{d.ticker}] {d.signal}: Saved attribution.")
+            logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
+            async with counters["lock"]:
+                counters["saved"] += 1
+            return status == "EXECUTED" or status == "VALIDATED"
         except Exception as e:
             logger.error(f"Failed to process decision for {d.ticker}: {e}")
+            return False
 
-    logger.info(f"Processing complete: {saved_decisions} saved, {rejected_decisions} rejected.")
+
+async def _stage_decision_processing(
+    decisions, macro_events, data, aggregated_context, uncrowded_context, sb_client
+):
+    """Stage 3: Decision attribution, validation, and execution with concurrency."""
+    # --- Contrarian Analysis (Phase 2.5) ---
+    logger.info("Starting Contrarian Agent Analysis...")
+    contrarian_decisions, contrarian_events = await run_contrarian_analysis(
+        data, decisions, context=aggregated_context
+    )
+    decisions.extend(contrarian_decisions)
+    macro_events.extend(contrarian_events)
+
+    # Use a semaphore to limit concurrent LLM calls (Approach A)
+    semaphore = asyncio.Semaphore(3)
+    # Per-portfolio locks to prevent race conditions during execution
+    portfolio_locks = {}
+
+    counters = {
+        "saved": 0,
+        "rejected": 0,
+        "lock": asyncio.Lock()
+    }
+
+    tasks = [
+        _process_single_decision(
+            d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+        )
+        for d in decisions
+    ]
+
+    await asyncio.gather(*tasks)
+
+    logger.info(f"Processing complete: {counters['saved']} saved, {counters['rejected']} rejected.")
 
 
 async def _stage_snapshots_and_pca(sb_client):

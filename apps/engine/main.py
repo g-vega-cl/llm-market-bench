@@ -83,7 +83,7 @@ async def _stage_analysis_and_consensus(data, sb_client):
 
 
 async def _process_single_decision(
-    d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+    d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, lock_manager, counters
 ):
     """Processes a single trading decision with concurrency controls."""
     async with semaphore:
@@ -194,11 +194,7 @@ async def _process_single_decision(
 
                 # --- PROTECTED EXECUTION BLOCK ---
                 # We use a per-portfolio lock to ensure atomic refreshes and executions
-                lock = portfolio_locks.get(d.model_name)
-                if not lock:
-                    # Thread-safe creation of locks (though we are in single-threaded event loop)
-                    lock = asyncio.Lock()
-                    portfolio_locks[d.model_name] = lock
+                lock = lock_manager.get_lock(d.model_name)
 
                 async with lock:
                     # 1. Semantic Overlap (Inside Lock to prevent race between concurrent same-agent trades)
@@ -214,8 +210,8 @@ async def _process_single_decision(
                     # Refresh entire portfolio state from DB to account for previous parallel trades
                     await portfolio.initialize()
 
-                    # 3. Final Price Refresh
-                    final_quote = await mdm.get_quote(d.ticker, force_refresh=False) # 2s cache is fine per user
+                    # 3. Final Price Refresh (force_refresh=True for maximum execution accuracy)
+                    final_quote = await mdm.get_quote(d.ticker, force_refresh=True)
                     if final_quote and final_quote.exists:
                         if final_quote.price != exec_price:
                             logger.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
@@ -269,7 +265,7 @@ async def _process_single_decision(
                              async with counters["lock"]:
                                  counters["rejected"] += 1
                              return False
-                        qty = getattr(d, "quantity", None) or int((d.allocation_percentage or 0 / 100.0) * portfolio.positions.get(d.ticker).quantity)
+                        qty = getattr(d, "quantity", None) or int(((d.allocation_percentage or 0) / 100.0) * portfolio.positions.get(d.ticker).quantity)
 
                     if qty <= 0:
                         qty = getattr(d, "quantity", 0) or 1
@@ -293,17 +289,21 @@ async def _process_single_decision(
                 
                     # 5. Atomic EXECUTE
                     # Attribution Locking (Step 13 PRE-STEP)
+                    # We pre-save to get the ID for the trade link
                     decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
                     decision_id = decision_row.get("id")
 
                     trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map)
+
                     if trade_id:
                         status = "EXECUTED"
-                        meta = {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
+                        meta.update({"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"})
                     else:
                         status = "ERROR_EXECUTION"
-                        meta = {"info": "Execution Failed"}
+                        meta.update({"info": "Execution Failed"})
 
+            # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
+            # This call updates the same record with the final status and trade_id.
             save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None)
             logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
             async with counters["lock"]:
@@ -313,6 +313,16 @@ async def _process_single_decision(
             logger.error(f"Failed to process decision for {d.ticker}: {e}")
             return False
 
+
+from collections import defaultdict
+
+class PortfolioExecutionLockManager:
+    """Manages asyncio locks per portfolio to prevent concurrent execution races."""
+    def __init__(self):
+        self._locks = defaultdict(asyncio.Lock)
+
+    def get_lock(self, owner_id: str) -> asyncio.Lock:
+        return self._locks[owner_id]
 
 async def _stage_decision_processing(
     decisions, macro_events, data, aggregated_context, uncrowded_context, sb_client
@@ -329,7 +339,7 @@ async def _stage_decision_processing(
     # Use a semaphore to limit concurrent LLM calls (Approach A)
     semaphore = asyncio.Semaphore(3)
     # Per-portfolio locks to prevent race conditions during execution
-    portfolio_locks = {}
+    lock_manager = PortfolioExecutionLockManager()
 
     counters = {
         "saved": 0,
@@ -339,7 +349,7 @@ async def _stage_decision_processing(
 
     tasks = [
         _process_single_decision(
-            d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+            d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, lock_manager, counters
         )
         for d in decisions
     ]

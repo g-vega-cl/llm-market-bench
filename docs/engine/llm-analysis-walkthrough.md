@@ -2,16 +2,15 @@
 
 The Parallel LLM Analysis engine orchestrates a multi-stage evaluation process, starting with **Thematic Asset Discovery** to identify target assets before triggering higher-reasoning LLMs for deep analysis.
 
-## Phase 0: Discovery (DiscoveryService)
+## Phase 0: Discovery (Alpha Discovery Agent)
 
 Before initiating parallel analysis, the system identifies the most relevant assets (stocks, ETFs) driven by the specific market event.
 
-### **Multi-Stage Discovery Architecture**
-1. **Mapping (Gemini)**: Maps market events to specific FMP sectors, industries, and keywords.
-2. **Retrieval (FMP)**: Fetches a broad candidate pool using dynamic `market_cap_min` filtering.
-3. **Re-Ranking (DeepSeek)**: Uses **Thinking Mode** to evaluate candidates against the event thesis, assigning a **Relevance Score (0-100)** and providing `"How to Profit"` reasoning.
-
-Assets with a **relevance score < 40** are filtered out, ensuring the analysis layer only evaluates high-conviction targets.
+### **Thematic Discovery Mission**
+1. **Delegation**: `DiscoveryService` triggers a tool-calling mission via the `DiscoveryAgent`.
+2. **Autonomous Search**: The agent uses `run_stock_screener` and **Web Search** (Google/Anthropic) to find and verify thematic beneficiaries.
+3. **Reasoning Loop**: Up to 3 steps of multi-turn reasoning to ensure logical alignment with the event thesis and liquidity (NYSE/NASDAQ) verification.
+4. **Synthesis**: Candidates are ranked and formatted with a "Mechanism of Profit," then stored as an `AGENT_DISCOVERY` memory.
 
 See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for more details.
 

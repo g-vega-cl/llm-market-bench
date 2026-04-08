@@ -413,12 +413,13 @@ class Portfolio:
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
             
             # 4. Update and save metrics to ensure table consistency
-            # Defensive copy of current_prices to avoid mutable aliasing contamination
-            price_map = dict(current_prices) if current_prices is not None else {t: p.average_cost_basis for t, p in self.positions.items()}
+            # Use provided prices or fallback to cost basis for other positions
+            if current_prices is None:
+                current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
 
-            price_map[ticker] = price  # Ensure the execution price is used for the current trade
+            current_prices[ticker] = price  # Ensure the execution price is used for the current trade
 
-            self.calculate_reg_t_metrics(price_map)
+            self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 
             # 5. POST-TRADE DUST CHECK: After ANY trade, check if any position is below 10% of equity

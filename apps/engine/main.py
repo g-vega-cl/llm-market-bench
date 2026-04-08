@@ -6,6 +6,7 @@ including newsletter ingestion, database snapshotting, and LLM analysis.
 
 import argparse
 import asyncio
+from collections import defaultdict
 
 from analyze import analyze_chunks
 from consensus import process_consensus
@@ -83,7 +84,7 @@ async def _stage_analysis_and_consensus(data, sb_client):
 
 
 async def _process_single_decision(
-    d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, lock_manager, counters
+    d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
 ):
     """Processes a single trading decision with concurrency controls."""
     async with semaphore:
@@ -106,7 +107,7 @@ async def _process_single_decision(
             
             # --- PROTECTED EXECUTION BLOCK ---
             # We use a per-portfolio lock to ensure atomic refreshes and executions
-            lock = lock_manager.get_lock(d.model_name)
+            lock = portfolio_locks[d.model_name]
 
             async with lock:
                 if d.signal.upper() in ["BUY", "SELL"]:
@@ -210,8 +211,8 @@ async def _process_single_decision(
                     # Refresh entire portfolio state from DB to account for previous parallel trades
                     await portfolio.initialize()
 
-                    # 3. Final Price Refresh (force_refresh=True for maximum execution accuracy)
-                    final_quote = await mdm.get_quote(d.ticker, force_refresh=True)
+                    # 3. Final Price Refresh (using default 2s cache)
+                    final_quote = await mdm.get_quote(d.ticker)
                     if final_quote and final_quote.exists:
                         if final_quote.price != exec_price:
                             logger.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
@@ -322,16 +323,6 @@ async def _process_single_decision(
             return False
 
 
-from collections import defaultdict
-
-class PortfolioExecutionLockManager:
-    """Manages asyncio locks per portfolio to prevent concurrent execution races."""
-    def __init__(self):
-        self._locks = defaultdict(asyncio.Lock)
-
-    def get_lock(self, owner_id: str) -> asyncio.Lock:
-        return self._locks[owner_id]
-
 async def _stage_decision_processing(
     decisions, macro_events, data, aggregated_context, uncrowded_context, sb_client
 ):
@@ -345,14 +336,14 @@ async def _stage_decision_processing(
     macro_events.extend(contrarian_events)
 
     # --- DETERMINISTIC SORTING ---
-    # Sort decisions by (generated_at, model_name, ticker) to ensure stable execution order
+    # Sort decisions by (model_name, ticker) to ensure stable execution order
     # even when processing in parallel. This preserves replay determinism.
-    decisions.sort(key=lambda d: (getattr(d, "generated_at", ""), d.model_name or "", d.ticker))
+    decisions.sort(key=lambda d: (d.model_name or "", d.ticker))
 
     # Use a semaphore to limit concurrent LLM calls (Approach A)
     semaphore = asyncio.Semaphore(3)
     # Per-portfolio locks to prevent race conditions during execution
-    lock_manager = PortfolioExecutionLockManager()
+    portfolio_locks = defaultdict(asyncio.Lock)
 
     counters = {
         "saved": 0,
@@ -362,7 +353,7 @@ async def _stage_decision_processing(
 
     tasks = [
         _process_single_decision(
-            d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, lock_manager, counters
+            d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
         )
         for d in decisions
     ]

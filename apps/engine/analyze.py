@@ -209,9 +209,6 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         valid_events = []
         
         # 4. Process results
-        from datetime import datetime, timezone
-        generation_time = datetime.now(timezone.utc).isoformat()
-
         for i, res in enumerate(results):
             config = task_configs[i] # Use the tracked config for this specific task
 
@@ -223,7 +220,6 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                 for decision in res.decisions:
                     decision.model_provider = config["provider"]
                     decision.model_name = config["model"]
-                    decision.generated_at = generation_time
 
                     # Backfill price if missing but ticker is present
                     if decision.ticker and (decision.price is None or decision.price <= 0):

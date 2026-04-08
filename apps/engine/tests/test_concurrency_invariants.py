@@ -62,29 +62,17 @@ async def test_concurrent_buy_double_spend_prevention(mock_deps):
     """
     md = mock_deps
 
-    # Decisions
     d1 = DecisionObject(signal="BUY", ticker="TICK1", confidence=80, reasoning="R1", source_id="s1", model_name="agent-a", price=1000.0)
     d2 = DecisionObject(signal="BUY", ticker="TICK2", confidence=80, reasoning="R2", source_id="s2", model_name="agent-a", price=1000.0)
 
-    # Shared state for mock portfolio
-    state = {
-        "buying_power": 1500.0,
-        "total_equity": 10000.0
-    }
-
+    state = {"bp": 1500.0}
     from execution.reg_t_validation import RegTMetrics, ValidationResult as ComplianceResult
 
     def get_metrics():
-        return RegTMetrics(
-            total_equity=state["total_equity"],
-            initial_margin_req=0, maintenance_margin_req=0,
-            available_funds=state["buying_power"]/4,
-            excess_liquidity=state["buying_power"]/4,
-            sma=10000.0, realized=10000.0,
-            buying_power=state["buying_power"]
-        )
+        return RegTMetrics(total_equity=10000, initial_margin_req=0, maintenance_margin_req=0,
+                          available_funds=state["bp"]/4, excess_liquidity=state["bp"]/4,
+                          sma=10000, realized=10000, buying_power=state["bp"])
 
-    # Mock Portfolio
     portfolio = MagicMock()
     md["Portfolio"].return_value = portfolio
     portfolio.initialize = AsyncMock()
@@ -97,15 +85,13 @@ async def test_concurrent_buy_double_spend_prevention(mock_deps):
     portfolio.initialize.side_effect = side_effect_init
 
     def side_effect_validate(ticker, qty, price, signal, **kwargs):
-        current_metrics = get_metrics()
-        if current_metrics.buying_power < (qty * price):
+        if get_metrics().buying_power < (qty * price):
             return ComplianceResult(passed=False, reason="Insufficient Buying Power")
         return ComplianceResult(passed=True)
-
     portfolio.validate_trade.side_effect = side_effect_validate
 
     async def side_effect_execute(ticker, qty, price, signal, **kwargs):
-        state["buying_power"] -= (qty * price) * 0.57 * 4 # BP reduction
+        state["bp"] -= 2000.0 # Force next to fail
         return "trade-uuid"
     portfolio.execute_trade.side_effect = side_effect_execute
 
@@ -122,20 +108,15 @@ async def test_replay_determinism(mock_deps):
     Verify identical counts of execution/rejection.
     """
     md = mock_deps
-
     d1 = DecisionObject(signal="BUY", ticker="T1", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=1000.0)
     d2 = DecisionObject(signal="BUY", ticker="T2", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", price=1000.0)
     d3 = DecisionObject(signal="BUY", ticker="T3", confidence=80, reasoning="R3", source_id="s3", model_name="agent-2", price=1000.0)
     d4 = DecisionObject(signal="BUY", ticker="T4", confidence=80, reasoning="R4", source_id="s4", model_name="agent-2", price=1000.0)
 
     results_history = []
-
     for _ in range(5):
         md["save"].reset_mock()
-        states = {
-            "agent-1": {"bp": 1500.0},
-            "agent-2": {"bp": 1500.0}
-        }
+        states = {"agent-1": {"bp": 1500.0}, "agent-2": {"bp": 1500.0}}
 
         def portfolio_factory(owner_id):
             p = MagicMock()
@@ -144,63 +125,90 @@ async def test_replay_determinism(mock_deps):
             p.get_portfolio_summary = AsyncMock(return_value="Summary")
             p.execute_trade = AsyncMock(return_value="uuid")
             p.positions = {}
-
             from execution.reg_t_validation import RegTMetrics, ValidationResult as ComplianceResult
-
             async def side_effect_init():
                 p.metrics = RegTMetrics(total_equity=10000, initial_margin_req=0, maintenance_margin_req=0,
                                        available_funds=states[owner_id]["bp"]/4, excess_liquidity=states[owner_id]["bp"]/4,
                                        sma=10000, realized=10000, buying_power=states[owner_id]["bp"])
             p.initialize.side_effect = side_effect_init
-
             def side_effect_validate(ticker, qty, price, signal, **kwargs):
                 if states[owner_id]["bp"] < (qty * price):
                     return ComplianceResult(passed=False, reason="Too expensive")
                 return ComplianceResult(passed=True)
             p.validate_trade.side_effect = side_effect_validate
-
             async def side_effect_exec(ticker, qty, price, signal, **kwargs):
-                states[owner_id]["bp"] -= 2000.0 # Force next to fail
+                states[owner_id]["bp"] -= 2000.0
                 return "uuid"
             p.execute_trade.side_effect = side_effect_exec
             return p
 
         md["Portfolio"].side_effect = portfolio_factory
         await _stage_decision_processing([d1, d2, d3, d4], [], [], "", "", MagicMock())
-
         statuses = sorted([call.kwargs.get("status") for call in md["save"].call_args_list if call.kwargs.get("status") not in ["VALIDATED", "PASSED"]])
         results_history.append(statuses)
 
     first_run = results_history[0]
     for run in results_history[1:]:
         assert run == first_run
-
     assert results_history[0].count("EXECUTED") == 2
     assert results_history[0].count("REJECTED_MARGIN") == 2
 
 @pytest.mark.asyncio
 async def test_stable_execution_order(mock_deps):
     """
-    Verify that decisions are executed in deterministic order regardless of verifier completion time.
+    Verify that decisions are executed in deterministic order (ticker/signal) regardless of verifier completion time.
     """
     md = mock_deps
-
-    # Setup 3 decisions
-    # Sorting is by (model_name, ticker)
     d1 = DecisionObject(signal="BUY", ticker="A", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=100.0)
     d2 = DecisionObject(signal="BUY", ticker="B", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", price=100.0)
     d3 = DecisionObject(signal="BUY", ticker="C", confidence=80, reasoning="R3", source_id="s3", model_name="agent-1", price=100.0)
 
-    # Mock verifier to finish in reverse order
     delays = {"A": 0.1, "B": 0.05, "C": 0.01}
     async def side_effect_verify(decision, **kwargs):
         await asyncio.sleep(delays.get(decision.ticker, 0))
         return MagicMock(status="APPROVED", verification_reasoning="OK", confidence_score=100)
-
     md["verify"].side_effect = side_effect_verify
 
-    # Track execution order
     execution_sequence = []
+    portfolio = MagicMock()
+    md["Portfolio"].return_value = portfolio
+    portfolio.initialize = AsyncMock()
+    portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
+    portfolio.metrics = MagicMock(buying_power=10000.0, total_equity=10000.0)
+    async def side_effect_exec(ticker, *args, **kwargs):
+        execution_sequence.append(ticker)
+        return "uuid"
+    portfolio.execute_trade.side_effect = side_effect_exec
+    from execution.reg_t_validation import ValidationResult as ComplianceResult
+    portfolio.validate_trade.return_value = ComplianceResult(passed=True)
+
+    await _stage_decision_processing([d3, d2, d1], [], [], "", "", MagicMock())
+    assert execution_sequence == ["A", "B", "C"]
+
+@pytest.mark.asyncio
+async def test_concurrent_buy_sell_same_ticker(mock_deps):
+    """
+    Scenario: BUY AAPL + SELL AAPL same agent in one batch.
+    Verify they execute in deterministic order (BUY then SELL based on sort)
+    and JIT refresh updates positions between them.
+    """
+    md = mock_deps
+
+    # Decisions (same model, same ticker, different signals)
+    # Sorting key (model_name, ticker, signal) -> BUY then SELL
+    d_buy = DecisionObject(signal="BUY", ticker="AAPL", confidence=80, reasoning="Add", source_id="s1", model_name="agent-1", price=100.0)
+    d_sell = DecisionObject(signal="SELL", ticker="AAPL", confidence=80, reasoning="Trim", source_id="s2", model_name="agent-1", price=100.0, sell_tool_called=True, quantity=5)
+
+    # Mock verifier delays (SELL finishes first)
+    delays = {"BUY": 0.1, "SELL": 0.01}
+    async def side_effect_verify(decision, **kwargs):
+        await asyncio.sleep(delays.get(decision.signal, 0))
+        return MagicMock(status="APPROVED", verification_reasoning="OK", confidence_score=100)
+    md["verify"].side_effect = side_effect_verify
+
+    # Tracking state
+    state = {"positions": {}} # Start with 0 AAPL
+    execution_order = []
 
     portfolio = MagicMock()
     md["Portfolio"].return_value = portfolio
@@ -208,15 +216,30 @@ async def test_stable_execution_order(mock_deps):
     portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
     portfolio.metrics = MagicMock(buying_power=10000.0, total_equity=10000.0)
 
-    async def side_effect_exec(ticker, *args, **kwargs):
-        execution_sequence.append(ticker)
+    async def side_effect_init():
+        portfolio.positions = {t: MagicMock(quantity=q) for t, q in state["positions"].items()}
+    portfolio.initialize.side_effect = side_effect_init
+
+    async def side_effect_exec(ticker, qty, price, signal, **kwargs):
+        execution_order.append(signal)
+        if signal == "BUY":
+            state["positions"][ticker] = state["positions"].get(ticker, 0) + qty
+        else:
+            state["positions"][ticker] = state["positions"].get(ticker, 0) - qty
         return "uuid"
     portfolio.execute_trade.side_effect = side_effect_exec
 
-    # Mock validate_trade
     from execution.reg_t_validation import ValidationResult as ComplianceResult
     portfolio.validate_trade.return_value = ComplianceResult(passed=True)
 
-    await _stage_decision_processing([d3, d2, d1], [], [], "", "", MagicMock())
+    # Process batch
+    await _stage_decision_processing([d_sell, d_buy], [], [], "", "", MagicMock())
 
-    assert execution_sequence == ["A", "B", "C"]
+    # 1. Verify Execution Order (Should be BUY then SELL due to deterministic sorting)
+    assert execution_order == ["BUY", "SELL"]
+
+    # 2. Verify JIT refresh logic:
+    # When SELL started, it should have seen the position added by the BUY
+    # If JIT refresh failed, SELL would have seen 0 shares and failed REJECTED_OWNERSHIP
+    statuses = [call.kwargs.get("status") for call in md["save"].call_args_list if call.kwargs.get("status") not in ["VALIDATED", "PASSED"]]
+    assert statuses == ["EXECUTED", "EXECUTED"]

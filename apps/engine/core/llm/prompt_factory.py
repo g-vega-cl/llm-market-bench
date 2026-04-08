@@ -67,17 +67,13 @@ class PromptFactory:
         enable_search = kwargs.get("enable_web_search", False)
         
         # Special case: Anthropic is our primary search provider.
-        # Gemini search grounding is currently incompatible with function tools 
-        # (which are always present in our analysis pipeline).
-        # We always strip search instructions for Gemini to prevent hallucinated tool calls.
-        if not enable_search or provider == "gemini":
+        # Gemini now supports combined built-in and function tools when the
+        # server-side invocation flag is enabled, so we only strip search
+        # instructions when search is disabled.
+        if not enable_search:
             user_content = cls._strip_web_search_capabilities(user_content)
             if system_content:
                 system_content = cls._strip_web_search_capabilities(system_content)
-        elif provider == "gemini":
-            # This branch is now unreachable due to the check above, but preserved
-            # for logic clarity if native search is eventually supported with tools.
-            pass
 
         # 2. Build message list
         messages = []

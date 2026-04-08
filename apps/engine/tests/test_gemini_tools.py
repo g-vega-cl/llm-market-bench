@@ -4,6 +4,7 @@ import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from core.llm import analyze_with_provider
+import core.llm.handlers.gemini as gemini_handler
 from core.llm.handlers.gemini import _build_gemini_tools
 from core.models import DecisionsResponse, DecisionObject
 from core.config import GEMINI_MODEL
@@ -17,6 +18,34 @@ def test_build_gemini_tools_includes_search_with_function_tools():
     assert len(gemini_tools) == 2
     assert getattr(gemini_tools[0], "function_declarations", None) is not None
     assert getattr(gemini_tools[1], "google_search", None) is not None
+
+
+@pytest.mark.asyncio
+async def test_gemini_tool_loop_enables_server_side_tool_invocations(monkeypatch):
+    """Gemini search + function tools should opt into server-side tool invocations."""
+    captured = {}
+
+    class FakeGenerateContentConfig:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(gemini_handler.types, "GenerateContentConfig", FakeGenerateContentConfig)
+
+    mock_raw_client = MagicMock()
+    mock_raw_client.aio.models.generate_content = AsyncMock(
+        return_value=MagicMock(candidates=[])
+    )
+
+    messages = [{"role": "user", "content": "Check AAPL and search the news."}]
+
+    await gemini_handler.run_tool_loop(
+        mock_raw_client,
+        model_name=GEMINI_MODEL,
+        messages=messages,
+        enable_google_search=True
+    )
+
+    assert captured.get("include_server_side_tool_invocations") is True
 
 
 @pytest.mark.asyncio

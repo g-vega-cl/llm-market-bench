@@ -67,7 +67,7 @@ The enforcement system operates at **four layers**:
 
 All models (OpenAI, Anthropic, Gemini, DeepSeek) now receive a unified high-fidelity system prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`) managed centrally by the **`PromptFactory`** (`apps/engine/core/llm/prompt_factory.py`). This ensures:
 1. **Semantic Consistency**: All agents receive the exact same core tactical instructions regardless of the underlying LLM provider.
-2. **Provider Adaptation**: The factory automatically handles role mapping (e.g., `user` -> `model` for Gemini) and strips unreachable instructions (e.g., removing web search for Gemini when functions are present) to prevent hallucinated tool usage.
+2. **Provider Adaptation**: The factory automatically handles role mapping (e.g., `user` -> `model` for Gemini) and strips unreachable instructions only when search is disabled. When Gemini combined tool use is enabled, search guidance is preserved so server-side invocations can be returned and audited.
 3. **Auditability**: All prompt mutations are centralized, making it easy to track how instructions evolve over time.
 
 The `CORE_ANALYSIS_SYSTEM_PROMPT` includes explicit tool usage requirements and strict logic enforcement:

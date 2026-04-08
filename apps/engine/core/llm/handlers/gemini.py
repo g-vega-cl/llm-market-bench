@@ -2,6 +2,7 @@
 
 import json
 import logging
+import inspect
 from google.genai import types
 from core.llm import tools
 from core.llm.handlers import base
@@ -19,6 +20,21 @@ DEFAULT_GEMINI_TOOLS = [
 
 # Gemini Google Search grounding tool
 GEMINI_GOOGLE_SEARCH_TOOL = tools.GEMINI_GOOGLE_SEARCH_TOOL
+
+
+def _generate_content_config_supports(field_name: str) -> bool:
+    """Checks whether the local Gemini SDK supports a GenerateContentConfig field."""
+    config_cls = types.GenerateContentConfig
+
+    for attr_name in ("model_fields", "__annotations__", "__dataclass_fields__"):
+        fields = getattr(config_cls, attr_name, None)
+        if fields and field_name in fields:
+            return True
+
+    try:
+        return field_name in inspect.signature(config_cls).parameters
+    except (TypeError, ValueError):
+        return False
 
 
 def _build_gemini_tools(
@@ -144,6 +160,11 @@ async def run_tool_loop(
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 tools=gemini_tools,
+                **(
+                    {"include_server_side_tool_invocations": True}
+                    if enable_google_search and _generate_content_config_supports("include_server_side_tool_invocations")
+                    else {}
+                ),
                 safety_settings=[
                     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),

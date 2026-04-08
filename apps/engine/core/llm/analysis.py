@@ -6,7 +6,7 @@ import json
 import logging
 from typing import List
 
-from core.models import DecisionsResponse
+from core.models import DecisionsResponse, MacroEvent
 from core.llm import clients
 from core.llm.prompt_factory import PromptFactory
 from core.llm import tools
@@ -215,6 +215,10 @@ async def analyze_with_provider(
             validated_decisions.append(decision)
         final_resp.decisions = validated_decisions
 
+        # GOVERNMENT INCENTIVE ENFORCEMENT: Promote or synthesize government policy events
+        # so obvious policy/news signals are not dropped if the model misses the flag.
+        _ensure_government_incentive_events(final_resp, chunks, provider, model_name)
+
         # GOVERNMENT INCENTIVE ENFORCEMENT: Check if news contains government policy content
         # but no macro_events were generated
         gov_keywords = [
@@ -271,6 +275,123 @@ async def analyze_with_provider(
         await clients.close_client(client, provider)
 
 
+def _ensure_government_incentive_events(
+    response: DecisionsResponse,
+    chunks: list[dict],
+    provider: str,
+    model_name: str,
+) -> None:
+    """Ensures policy-heavy snippets are represented by at least one flagged macro event."""
+    gov_keywords = [
+        "bill", "act", "congress", "parliament", "legislation", "subsidy", "grant",
+        "incentive", "budget", "funding", "appropriation", "tax credit", "policy",
+        "regulation", "directive", "executive order", "defense production act",
+        "government program", "federal", "treasury", "usda", "dod", "doe", "sec",
+        "appropriations", "tariff", "deregulation"
+    ]
+
+    def chunk_has_gov_content(content: str) -> bool:
+        content_lower = content.lower()
+        return any(kw in content_lower for kw in gov_keywords)
+
+    def event_looks_like_gov_policy(event: MacroEvent) -> bool:
+        event_text = " ".join(
+            str(part or "")
+            for part in (
+                event.event_name,
+                event.reasoning,
+                event.scenario_analysis,
+                event.expiry_date,
+            )
+        ).lower()
+        return any(kw in event_text for kw in gov_keywords) or "government" in event_text or "policy" in event_text
+
+    def mark_event(event: MacroEvent) -> None:
+        if not event.is_government_incentive:
+            event.is_government_incentive = True
+            logger.info(
+                "[%s/%s] GOVERNMENT INCENTIVE ENFORCEMENT: Auto-marked macro event '%s' as government incentive.",
+                provider, model_name, event.event_name
+            )
+
+    fallback_scenarios = (
+        "Scenario A: Policy advances or expands -> Trading Plan: Favor direct beneficiaries, "
+        "sector ETFs, and suppliers tied to the incentive.\n"
+        "Scenario B: Policy stalls, dilutes, or faces legal delay -> Trading Plan: Trim exposure "
+        "to direct beneficiaries and shift to defensive hedges or broader indices."
+    )
+
+    gov_chunks = [chunk for chunk in chunks if chunk_has_gov_content(chunk.get("content", ""))]
+    if not gov_chunks:
+        return
+
+    if not response.macro_events:
+        for chunk in gov_chunks:
+            response.macro_events.append(
+                MacroEvent(
+                    event_name="Government Policy Update",
+                    impact="NEUTRAL",
+                    catalyst_type="REGULATORY",
+                    is_ongoing=False,
+                    is_future_catalyst=False,
+                    historical_parallel=None,
+                    is_government_incentive=True,
+                    expiry_date=None,
+                    importance_score=6,
+                    confidence=55,
+                    reasoning=(
+                        "Fallback macro event synthesized because the source chunk contains "
+                        "government policy content but the model returned no macro event."
+                    ),
+                    scenario_analysis=fallback_scenarios,
+                    source_id=chunk.get("source_id", "unknown"),
+                    model_provider=provider,
+                    model_name=model_name,
+                )
+            )
+        return
+
+    for chunk in gov_chunks:
+        source_id = str(chunk.get("source_id", "unknown")).strip().lower()
+        related_events = [
+            event for event in response.macro_events
+            if str(getattr(event, "source_id", "unknown")).strip().lower() == source_id
+        ]
+
+        flagged_events = [event for event in related_events if getattr(event, "is_government_incentive", False)]
+        if flagged_events:
+            continue
+
+        gov_related_events = [event for event in related_events if event_looks_like_gov_policy(event)]
+        target_event = gov_related_events[0] if gov_related_events else (related_events[0] if related_events else None)
+
+        if target_event is not None:
+            mark_event(target_event)
+        else:
+            response.macro_events.append(
+                MacroEvent(
+                    event_name="Government Policy Update",
+                    impact="NEUTRAL",
+                    catalyst_type="REGULATORY",
+                    is_ongoing=False,
+                    is_future_catalyst=False,
+                    historical_parallel=None,
+                    is_government_incentive=True,
+                    expiry_date=None,
+                    importance_score=6,
+                    confidence=55,
+                    reasoning=(
+                        "Fallback macro event synthesized because the source chunk contains "
+                        "government policy content but no matching macro event was returned."
+                    ),
+                    scenario_analysis=fallback_scenarios,
+                    source_id=chunk.get("source_id", "unknown"),
+                    model_provider=provider,
+                    model_name=model_name,
+                )
+            )
+
+
 def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     """Scans message history for tool calls related to a specific ticker.
 
@@ -288,59 +409,109 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     buy_tool_found = False
     sell_tool_found = False
 
-    for m in messages:
+    def _record_call(name, args):
+        nonlocal quote_found, buy_tool_found, sell_tool_found
+
+        if not name:
+            return
+
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except Exception:
+                return
+
+        if not isinstance(args, dict):
+            return
+
+        call_ticker = str(args.get("ticker", "")).strip().upper()
+        if call_ticker != ticker:
+            return
+
+        if name == "get_stock_quote":
+            quote_found = True
+            logger.debug("Confirmed 'get_stock_quote' call for %s in history.", ticker)
+        elif name == "calculate_buy_quantity":
+            buy_tool_found = True
+            logger.debug("Confirmed 'calculate_buy_quantity' call for %s in history.", ticker)
+        elif name == "calculate_sell_quantity":
+            sell_tool_found = True
+            logger.debug("Confirmed 'calculate_sell_quantity' call for %s in history.", ticker)
+
+    def _extract_calls(value):
         calls = []
-        # 1. Handle dictionaries (OpenAI, Anthropic, Instructor-formatted)
-        if isinstance(m, dict):
-            # OpenAI style tool calls
-            tool_calls = m.get("tool_calls")
+
+        if value is None:
+            return calls
+
+        if isinstance(value, dict):
+            tool_calls = value.get("tool_calls")
             if tool_calls:
                 for tc in tool_calls:
                     if isinstance(tc, dict):
                         func = tc.get("function", {})
-                        calls.append((func.get("name"), func.get("arguments", "{}")))
+                        if isinstance(func, dict):
+                            calls.append((func.get("name"), func.get("arguments", "{}")))
+                        else:
+                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
                     else:
-                        calls.append((getattr(tc.function, "name", None), getattr(tc.function, "arguments", "{}")))
-            # Anthropic style tool calls (content list)
-            elif isinstance(m.get("content"), list):
-                for part in m["content"]:
-                    if isinstance(part, dict) and part.get("type") == "tool_use":
-                        calls.append((part.get("name"), part.get("input", {})))
+                        func = getattr(tc, "function", None)
+                        if func is not None:
+                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
 
-        # Use getattr to be safe with different object types
-        elif getattr(m, "parts", None):
-            # Gemini native type
-            for part in m.parts:
-                f_call = getattr(part, "function_call", None)
-                if f_call:
-                    calls.append((f_call.name, f_call.args))
+            content = value.get("content")
+            if isinstance(content, list):
+                for part in content:
+                    calls.extend(_extract_calls(part))
 
-        elif getattr(m, "tool_calls", None):
-            # OpenAI/DeepSeek native type
-            for tc in m.tool_calls:
+            parts = value.get("parts")
+            if isinstance(parts, list):
+                for part in parts:
+                    calls.extend(_extract_calls(part))
+
+            if value.get("type") in {"tool_use", "function_call", "functionCall"}:
+                if "name" in value:
+                    calls.append((value.get("name"), value.get("input", value.get("arguments", {}))))
+                elif "function" in value:
+                    func = value.get("function", {})
+                    if isinstance(func, dict):
+                        calls.append((func.get("name"), func.get("arguments", "{}")))
+
+            return calls
+
+        tool_calls = getattr(value, "tool_calls", None)
+        if tool_calls:
+            for tc in tool_calls:
                 func = getattr(tc, "function", None)
-                if func:
+                if func is not None:
                     calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
 
-        for name, args in calls:
-            # args can be a string (JSON) or a dictionary
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except:
-                    continue
+        parts = getattr(value, "parts", None)
+        if parts:
+            for part in parts:
+                f_call = getattr(part, "function_call", None)
+                if f_call is not None:
+                    calls.append((getattr(f_call, "name", None), getattr(f_call, "args", getattr(f_call, "arguments", {}))))
+                tool_call = getattr(part, "tool_call", None)
+                if tool_call is not None:
+                    calls.append((getattr(tool_call, "name", None), getattr(tool_call, "args", getattr(tool_call, "arguments", {}))))
 
-            call_ticker = str(args.get("ticker", "")).strip().upper()
-            if call_ticker == ticker:
-                if name == "get_stock_quote":
-                    quote_found = True
-                    logger.debug(f"Confirmed 'get_stock_quote' call for {ticker} in history.")
-                elif name == "calculate_buy_quantity":
-                    buy_tool_found = True
-                    logger.debug(f"Confirmed 'calculate_buy_quantity' call for {ticker} in history.")
-                elif name == "calculate_sell_quantity":
-                    sell_tool_found = True
-                    logger.debug(f"Confirmed 'calculate_sell_quantity' call for {ticker} in history.")
+        content = getattr(value, "content", None)
+        if isinstance(content, list):
+            for part in content:
+                calls.extend(_extract_calls(part))
+
+        if getattr(value, "type", None) in {"tool_use", "function_call", "functionCall"}:
+            name = getattr(value, "name", None)
+            args = getattr(value, "input", getattr(value, "arguments", {}))
+            if name is not None:
+                calls.append((name, args))
+
+        return calls
+
+    for message in messages:
+        for name, args in _extract_calls(message):
+            _record_call(name, args)
 
     return {
         "quote_found": quote_found, 

@@ -18,6 +18,7 @@ def mock_dependencies():
          patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
+         patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap, \
          patch("main.Portfolio") as MockPortfolio, \
          patch("execution.market_data.MarketDataManager") as MockMDM, \
          patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
@@ -27,6 +28,7 @@ def mock_dependencies():
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
+        mock_overlap.return_value = None
         mock_validate.return_value = ValidationResult(
             status=ValidationStatus.PASSED,
             market_price=150.0,
@@ -36,6 +38,8 @@ def mock_dependencies():
         mock_mdm_instance = MockMDM.return_value
         mock_mdm_instance.get_quote = AsyncMock()
         mock_mdm_instance.get_quote.return_value = MagicMock(price=100.0)
+        mock_mdm_instance.get_quotes = AsyncMock()
+        mock_mdm_instance.get_quotes.return_value = {"AAPL": MagicMock(price=100.0), "DEFAULT": MagicMock(price=150.0)}
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()

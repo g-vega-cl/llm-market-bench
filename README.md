@@ -167,17 +167,13 @@ A living document of features and improvements in progress or planned for the pl
 
 ### 🎯 Active Development
 
-- [ ] **Paralelism calls** - Make the LLM calls parallel or semi-paralel with semaphor to improve performance
 - [ ] **LLM Ranking Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
-- [x] **LLM Screener Tool** - `run_stock_screener` is now available to all provider handlers (OpenAI, Anthropic, Gemini). Screens by sector, market cap, beta, volume, dividends, and exchange with a 15-ticker cap.
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
-- [x] **Prompt Validation** - Audit and verify all prompts in the "reasoning" tab for correctness - ask "Why" 5 times to find root causes.
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
-- [x] **Investable Assets Memory Review** - `DiscoveryAgent` now replaces the hardcoded multi-stage pipeline; it uses `run_stock_screener` and web search in a tool-calling loop to populate the `/memories` investable assets section with relevant, liquidity-filtered candidates.
 - [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
 - [ ] **Review lessons learned and the learning loop** - 
 - [ ] **Revisit the concepts map** - 
@@ -200,6 +196,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Find uncorrelated sectors** - Like energy X Tech https://g.co/gemini/share/68876564a362.
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
+- [ ] **Set up Test driven development** - 
+- [ ] **Find trading papers not just investing** - But low sell high?
+- [ ] **Include VOLUME** - And volume strategies and their meanings
 
 ### 🔄 Under Consideration
 

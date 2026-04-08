@@ -109,6 +109,10 @@ class DecisionObject(BaseModel):
         None,
         description="The limit price for the order. If set, the trade will only execute at this price or better."
     )
+    original_index: int | None = Field(
+        None,
+        description="Stable sequence number preserving the model's original reasoning order"
+    )
 
     @field_validator("ticker")
     @classmethod

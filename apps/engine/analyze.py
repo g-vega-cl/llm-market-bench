@@ -217,9 +217,13 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             else:
                 # res is a DecisionsResponse object
                 # Process decisions
-                for decision in res.decisions:
+                for j, decision in enumerate(res.decisions):
                     decision.model_provider = config["provider"]
                     decision.model_name = config["model"]
+                    # original_index preserves the order within the task batch results
+                    # and implicitly the batch sequence. Since each model's batches
+                    # are generated in order, this number remains unique and stable per model.
+                    decision.original_index = (i * 1000) + j
 
                     # Backfill price if missing but ticker is present
                     if decision.ticker and (decision.price is None or decision.price <= 0):

@@ -336,10 +336,9 @@ async def _stage_decision_processing(
     macro_events.extend(contrarian_events)
 
     # --- DETERMINISTIC SORTING ---
-    # Sort decisions by (model_name, ticker, signal) to ensure stable execution order
-    # even when processing in parallel. This preserves replay determinism even for
-    # multiple trades on the same ticker (e.g., BUY then SELL or vice-versa).
-    decisions.sort(key=lambda d: (d.model_name or "", d.ticker, d.signal))
+    # Sort decisions by (model_name, original_index) to ensure stable execution order
+    # that preserves the model's original conviction priority.
+    decisions.sort(key=lambda d: (d.model_name or "", getattr(d, "original_index", 0)))
 
     # Use a semaphore to limit concurrent LLM calls (Approach A)
     semaphore = asyncio.Semaphore(3)

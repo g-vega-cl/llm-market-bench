@@ -79,7 +79,7 @@ DEEPSEEK_API_KEY=your_deepseek_key
 
 # Market Data
 FMP_API_KEY=your_fmp_key
-FINANCIAL_PROVIDER=fmp  # Options: fmp, yfinance
+FINANCIAL_PROVIDER=fmp
 IBKR_PROXY_URL=your_ibkr_proxy_url
 IBKR_PROXY_TOKEN=your_ibkr_proxy_token
 
@@ -199,6 +199,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Set up Test driven development** - 
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Include VOLUME** - And volume strategies and their meanings
+- [x] **remove fallback providers** - FMP is best.
 
 ### 🔄 Under Consideration
 
@@ -243,7 +244,7 @@ A living document of features and improvements in progress or planned for the pl
 *   **Language**: Python 3.10+
 *   **LLM Providers**: OpenAI, Anthropic, Google Gemini, DeepSeek
 *   **Database**: Supabase Postgres with pgvector
-*   **Market Data**: IBKR Proxy, FMP, YFinance (fallback chain)
+*   **Market Data**: IBKR Proxy, FMP, YFinance
 *   **Embeddings**: Google Gemini (gemini-embedding-001)
 
 ### Frontend (Web)

@@ -569,7 +569,7 @@ sequenceDiagram
     participant Core as Engine Core (llm.py)
     participant MDM as MarketDataManager (Cache-First)
     participant DB as Supabase (market_data_cache)
-    participant API as External API (yfinance/Primary)
+    participant API as External API (configured provider)
 
     Core->>LLM: 1. Send News Batch + Tools Definition
     LLM-->>Core: 2. Tool Call: get_stock_quote(ticker='TSLA')
@@ -696,8 +696,8 @@ This layer ensures that every ticker is liquid and real. It is utilized both as 
 #### Cache-First Logic:
 1.  **Check Persistence**: Query `market_data_cache` in Supabase.
 2.  **TTL Verification**: If `fetched_at` is older than 2 seconds (configurable), proceed to fetch.
-3.  **External Fetch**: Hit the primary provider (typically `yfinance`) via the `FinancialProvider` interface.
-4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()` to ensure the first valid fallback is selected.
+3.  **External Fetch**: Hit the configured provider via the `FinancialProvider` interface.
+4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()`.
 5.  **Batch Upsert & Teardown**: The engine uses **Batch Upserts** to save historical price data to Supabase in a single call. Then, it invokes `disconnect_all()` via the provider class to release any persistent resources.
 
 #### The Three Guardrails:
@@ -922,7 +922,7 @@ Before any trade is executed, it must pass a strict validation layer. This runs 
 | **D: Buying Power** | `cost <= buying_power` | Ensure margin compliance. |
 | E: Minimum Value | `Trade Cost > $1,000` | Prevent insignificant BUYS; waived for SELLS via tools. |
 | **F: SMA Floor** | `Projected SMA > 10% Eq` | Safety margin for Reg T. |
-| **G: Fallback Path** | `Proxy -> FMP -> YF` | Corrected `FMP_API_KEY` ensures robust fallback when proxy is 503. |
+| **G: Historical Backfill** | `price_history` | Uses the last known stored price when live fetch fails. |
 
 ```python
 # Validation Result
@@ -1172,7 +1172,7 @@ MOMENTUM & CONSENSUS PHASE:
 └─ Total: Varies by number of concepts
 
 VALIDATION & EXECUTION PHASE:
-├─ Financial API (FMP/yfinance): Real-time price checks (Cached)
+├─ Financial API (configured provider): Real-time price checks (Cached)
 ├─ Supabase DB: Portfolio & Position updates
 └─ Total: 1-2 DB writes per trade
 
@@ -1253,4 +1253,3 @@ Bi-weekly (Tuesdays & Fridays), the engine performs a retrospective audit of mar
 | `apps/engine/attribution/service.py` | Decision persistence + attribution |
 | `apps/engine/analysis/post_mortem.py` | Regret-driven reinforcement logic |
 | `apps/engine/analysis/cause_and_effect_analysis.py` | Market impact attribution logic |
-

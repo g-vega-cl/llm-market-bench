@@ -26,28 +26,19 @@ class MarketDataManager:
     _screener_cache: dict = {}
 
     def __init__(self, cache_ttl_seconds: Optional[int] = None):
-        from core.config import MARKET_DATA_CACHE_TTL_SECONDS
+        from core.config import FINANCIAL_PROVIDER, MARKET_DATA_CACHE_TTL_SECONDS
         self.client = get_supabase_client()
         self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else MARKET_DATA_CACHE_TTL_SECONDS
-
-        # Initialize providers in priority order
-        from core.config import FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER
-
-        provider_names = [FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, SECOND_FALLBACK_FINANCIAL_PROVIDER]
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_provider_names = [x for x in provider_names if not (x in seen or seen.add(x))]
-
-        self.providers = [get_financial_provider(name) for name in unique_provider_names]
+        self.providers = [get_financial_provider(FINANCIAL_PROVIDER)]
 
     @property
     def provider(self):
-        """Getter for the primary provider (first in the chain)."""
+        """Getter for the configured provider."""
         return self.providers[0] if self.providers else None
 
     @provider.setter
     def provider(self, value):
-        """Setter to allow manual override of the primary provider (for legacy tests)."""
+        """Setter to allow manual override of the configured provider."""
         if self.providers:
             self.providers[0] = value
         else:
@@ -141,18 +132,14 @@ class MarketDataManager:
             if cached_data:
                 return cached_data
 
-        # 2. Fetch from Providers in sequence
-        data = None
-        for i, provider in enumerate(self.providers):
-            priority = "primary" if i == 0 else f"fallback {i}"
-            logger.info(f"Fetching {ticker} from {priority} provider ({provider.provider_name})...")
-            
-            data = await self._fetch_with_backoff(provider, ticker)
-            if data:
-                break
-            
-            if i < len(self.providers) - 1:
-                logger.warning(f"{priority.capitalize()} provider failed for {ticker}. Trying next fallback...")
+        # 2. Fetch from the configured provider
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for {ticker}.")
+            return None
+
+        logger.info(f"Fetching {ticker} from configured provider ({provider.provider_name})...")
+        data = await self._fetch_with_backoff(provider, ticker)
 
         if data:
             # 3. Save to Cache and Return
@@ -256,36 +243,32 @@ class MarketDataManager:
         if not missing_tickers:
             return results
 
-        # 2. Fetch missing from Providers in sequence
-        for i, provider in enumerate(self.providers):
-            priority = "primary" if i == 0 else f"fallback {i}"
-            logger.info(f"Batch fetching {len(missing_tickers)} tickers from {priority} provider ({provider.provider_name})...")
-            
-            try:
-                batch_results = await provider.get_ticker_data_batch(missing_tickers)
-                if batch_results:
-                    # Save successes to cache and results
-                    valid_batch_results = []
-                    for t, data in batch_results.items():
-                        if data and data.exists and not math.isnan(data.price):
-                            results[t] = data
-                            valid_batch_results.append(data)
-                            if t in missing_tickers:
-                                missing_tickers.remove(t)
-                    
-                    if valid_batch_results:
-                        self._save_batch_to_cache(valid_batch_results)
-            except Exception as e:
-                logger.error(f"Batch fetch failed for {provider.provider_name}: {e}")
+        # 2. Fetch missing from the configured provider
+        provider = self.provider
+        if provider is None:
+            logger.error("No financial provider configured for batch quote retrieval.")
+            return results
 
-            if not missing_tickers:
-                break
-            
-            if i < len(self.providers) - 1:
-                logger.warning(f"{priority.capitalize()} provider batch failed for {len(missing_tickers)} tickers. Trying next fallback...")
+        logger.info(f"Batch fetching {len(missing_tickers)} tickers from configured provider ({provider.provider_name})...")
 
-        # 3. Final Fallback: Individual get_quote for anything still missing
-        # This handles providers that don't support batching or intermittent failures
+        try:
+            batch_results = await provider.get_ticker_data_batch(missing_tickers)
+            if batch_results:
+                # Save successes to cache and results
+                valid_batch_results = []
+                for t, data in batch_results.items():
+                    if data and data.exists and not math.isnan(data.price):
+                        results[t] = data
+                        valid_batch_results.append(data)
+                        if t in missing_tickers:
+                            missing_tickers.remove(t)
+
+                if valid_batch_results:
+                    self._save_batch_to_cache(valid_batch_results)
+        except Exception as e:
+            logger.error(f"Batch fetch failed for {provider.provider_name}: {e}")
+
+        # 3. Final pass: resolve anything still missing individually.
         if missing_tickers:
             logger.info(f"Still missing {len(missing_tickers)} tickers after batch fetch. Trying individual retrieval...")
             for ticker in list(missing_tickers):
@@ -441,19 +424,15 @@ class MarketDataManager:
         except Exception as e:
             logger.warning(f"Error checking local price history for {ticker}: {e}")
 
-        # 2. Fetch from Providers in sequence
-        history = None
-        for i, provider in enumerate(self.providers):
-            priority = "primary" if i == 0 else f"fallback {i}"
-            logger.info(f"Fetching history for {ticker} from {priority} provider ({provider.provider_name})...")
-            
-            history = await provider.get_history(ticker, days)
-            if history:
-                break
-            
-            if i < len(self.providers) - 1:
-                logger.warning(f"{priority.capitalize()} provider history failed for {ticker}. Trying next fallback...")
-            
+        # 2. Fetch from the configured provider
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for history retrieval for {ticker}.")
+            return []
+
+        logger.info(f"Fetching history for {ticker} from configured provider ({provider.provider_name})...")
+        history = await provider.get_history(ticker, days)
+
         if history:
             # 3. Save to history table so it's available next time
             try:
@@ -480,4 +459,3 @@ class MarketDataManager:
             return history
             
         return []
-

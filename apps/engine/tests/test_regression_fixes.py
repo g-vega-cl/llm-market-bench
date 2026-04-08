@@ -109,8 +109,8 @@ async def test_deepseek_reasoning_preservation_regression():
 @pytest.mark.asyncio
 async def test_market_data_fallback_logic_regression():
     """
-    Regression test for market data fallback logic.
-    Mocks providers to verify that if primary fails, fallback is used.
+    Regression test for market data provider wiring.
+    Verifies the configured provider is used and cached successfully.
     This avoids hitting real APIs in CI while verifying the structural fix.
     """
     with patch("execution.market_data.get_supabase_client") as mock_get_db:
@@ -122,19 +122,14 @@ async def test_market_data_fallback_logic_regression():
         # Mock history miss
         mock_db.table().select().eq().order().limit().execute.return_value = MagicMock(data=[])
 
-        # Initialize manager - it will load configured providers
+        # Initialize manager - it will load the configured provider
         manager = MarketDataManager()
         
-        # Mock the providers inside the manager
+        # Mock the provider inside the manager
         primary = AsyncMock()
         primary.provider_name = "mock_primary"
-        primary.get_ticker_data.return_value = None # Simulate failure
-        
-        fallback = AsyncMock()
-        fallback.provider_name = "mock_fallback"
-        fallback.get_ticker_data.return_value = TickerData(ticker="AMZN", price=150.0, market_cap=1e12, exists=True)
-        
-        manager.providers = [primary, fallback]
+        primary.get_ticker_data.return_value = TickerData(ticker="AMZN", price=150.0, market_cap=1e12, exists=True)
+        manager.provider = primary
         
         # Execute
         quote = await manager.get_quote("AMZN")
@@ -143,8 +138,7 @@ async def test_market_data_fallback_logic_regression():
         assert quote is not None
         assert quote.price == 150.0
         assert primary.get_ticker_data.called
-        assert fallback.get_ticker_data.called
-        assert mock_db.table("market_data_cache").upsert.called, "Should have saved fallback result to cache"
+        assert mock_db.table("market_data_cache").upsert.called, "Should have saved provider result to cache"
 
 def test_config_fmp_key_resolution():
     """

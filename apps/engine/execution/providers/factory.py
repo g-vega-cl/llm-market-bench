@@ -1,6 +1,6 @@
 """Factory for financial data providers."""
 
-from core.config import FINANCIAL_PROVIDER, FALLBACK_FINANCIAL_PROVIDER, logger
+from core.config import FINANCIAL_PROVIDER, logger
 from .base import FinancialProvider
 from .fmp import FMPProvider
 from .yfinance import YFinanceProvider
@@ -26,8 +26,8 @@ def get_financial_provider(provider_name: str = None) -> FinancialProvider:
         return ProxyIBKRProvider()
     
     # Default/Fallback
-    logger.warning(f"Unknown financial provider '{target}'. Defaulting to yfinance.")
-    return YFinanceProvider()
+    logger.warning(f"Unknown financial provider '{target}'. Defaulting to fmp.")
+    return FMPProvider()
 
 def get_active_provider_class():
     """Returns the class of the currently configured provider."""
@@ -39,4 +39,4 @@ def get_active_provider_class():
         return IBKRProvider
     elif FINANCIAL_PROVIDER == "ibkr_proxy":
         return ProxyIBKRProvider
-    return YFinanceProvider
+    return FMPProvider

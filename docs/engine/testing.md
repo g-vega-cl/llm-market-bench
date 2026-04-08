@@ -61,7 +61,7 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 | Test File | Coverage |
 |-----------|----------|
 | `test_validation.py` | Existence, price banding, and liquidity guardrails |
-| `test_market_data.py` | Cache-first architecture, TTL expiration, fallback logic |
+| `test_market_data.py` | Cache-first architecture, TTL expiration, last-known-price backfill |
 | `test_yfinance_provider.py` | yfinance provider integration and error handling |
 
 ### 5. Attribution & Pipeline
@@ -154,4 +154,3 @@ Tests are automatically executed on every Push and Pull Request via GitHub Actio
 
 ---
 *Last Updated: March 2026*
-

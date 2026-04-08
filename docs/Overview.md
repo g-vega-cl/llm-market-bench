@@ -408,9 +408,7 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3.1-flash-lite-preview`) | Trading Analysis |
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
 |  | `FMP_API_KEY` | Financial Modeling Prep API Key (Required) | Price Data & Validation |
-|  | `FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `fmp`) | Selection of primary price data source |
-|  | `FALLBACK_FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of first fallback source |
-|  | `SECOND_FALLBACK_FINANCIAL_PROVIDER` | `fmp` or `yfinance` (Default: `yfinance`) | Selection of second fallback source |
+|  | `FINANCIAL_PROVIDER` | Primary market data provider (Default: `fmp`) | Selection of the single market data source |
 |  | `MARKET_DATA_CACHE_TTL_SECONDS` | Cache duration in seconds (Default: 2) | Price Fetching Optimization |
 |  | `MARKET_DATA_RETRIES` | Number of attempts per provider (Default: 2) | Configurable retry logic |
 |  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY — not in active use] |

@@ -117,7 +117,7 @@ def test_scan_history_robust_matching():
 
 @pytest.mark.asyncio
 async def test_analyze_with_provider_government_enforcement(mock_clients, caplog):
-    """Verify that government incentive enforcement triggers warnings."""
+    """Verify that government incentive enforcement synthesizes a fallback macro event when government keywords are present but no macro_events are returned."""
     mock_instructor = mock_clients["instructor"]
     
     # Return a response with gov content but NO macro events
@@ -130,14 +130,17 @@ async def test_analyze_with_provider_government_enforcement(mock_clients, caplog
     
     with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock), \
          patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock):
-        await analyze_with_provider(
+        result = await analyze_with_provider(
             provider="openai",
             model_name="gpt-4",
             chunks=chunks
         )
     
-    assert "GOVERNMENT INCENTIVE ENFORCEMENT" in caplog.text
-    assert "contains government policy content but NO macro_events were generated" in caplog.text
+    # Verify a fallback macro event was synthesized (government enforcement in action)
+    assert len(result.macro_events) == 1
+    assert result.macro_events[0].is_government_incentive is True
+    assert result.macro_events[0].catalyst_type == "REGULATORY"
+    assert "government policy content" in result.macro_events[0].reasoning.lower()
 
 @pytest.mark.asyncio
 async def test_analyze_with_provider_hard_enforcement(mock_clients):

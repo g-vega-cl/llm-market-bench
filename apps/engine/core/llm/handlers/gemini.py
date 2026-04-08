@@ -4,6 +4,7 @@ import json
 import logging
 import inspect
 from google.genai import types
+from google.genai import models as genai_models
 from core.llm import tools
 from core.llm.handlers import base
 
@@ -157,23 +158,31 @@ async def run_tool_loop(
             # Build tools list with Google Search if enabled
             gemini_tools = _build_gemini_tools(tool_defs, enable_google_search)
             
-            config = types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                tools=gemini_tools,
-                **(
-                    {"include_server_side_tool_invocations": True}
-                    if enable_google_search and _generate_content_config_supports("include_server_side_tool_invocations")
-                    else {}
-                ),
-                safety_settings=[
+            config_kwargs = {
+                "system_instruction": system_instruction,
+                "tools": gemini_tools,
+                "safety_settings": [
                     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE"),
                 ]
-            )
-
+            }
+            
+            # Enable server-side tool invocations when using built-in tools (google_search)
+            # with function declarations - required by Gemini API
+            if enable_google_search:
+                config_kwargs["tool_config"] = types.ToolConfig(
+                    include_server_side_tool_invocations=True
+                )
+                # Disable AFC when using google_search with function declarations
+                config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(
+                    disable=True
+                )
+            
+            config = types.GenerateContentConfig(**config_kwargs)
+            
             resp = await raw_client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,

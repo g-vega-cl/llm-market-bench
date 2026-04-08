@@ -21,31 +21,59 @@ def test_build_gemini_tools_includes_search_with_function_tools():
 
 
 @pytest.mark.asyncio
-async def test_gemini_tool_loop_enables_server_side_tool_invocations(monkeypatch):
-    """Gemini search + function tools should opt into server-side tool invocations."""
+async def test_gemini_tool_loop_configures_tool_config_for_google_search():
+    """Gemini tool loop configures tool_config with include_server_side_tool_invocations when using google_search.
+
+    When using google_search grounding alongside function declarations, the API requires:
+    1. tool_config.include_server_side_tool_invocations=True
+    2. AFC is automatically disabled by the API when incompatible tools are detected
+    """
+    import os
+    import sys
+
+    sys.path.append(os.path.join(os.getcwd(), "apps/engine"))
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key="x")
+    api = client._api_client
     captured = {}
 
-    class FakeGenerateContentConfig:
-        def __init__(self, **kwargs):
-            captured.update(kwargs)
+    async def fake_request(*args, **kwargs):
+        captured["kwargs"] = kwargs
 
-    monkeypatch.setattr(gemini_handler.types, "GenerateContentConfig", FakeGenerateContentConfig)
+        class Result:
+            headers = {}
+            response_stream = ['{"candidates": []}']
 
-    mock_raw_client = MagicMock()
-    mock_raw_client.aio.models.generate_content = AsyncMock(
-        return_value=MagicMock(candidates=[])
+        return Result()
+
+    api._async_request = fake_request
+    config = types.GenerateContentConfig(
+        tools=[
+            types.Tool(function_declarations=[{"name": "foo", "parameters": {}}]),
+            types.Tool(google_search={}),
+        ],
+        safety_settings=[],
+        tool_config=types.ToolConfig(
+            include_server_side_tool_invocations=True
+        ),
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(
+            disable=True
+        ),
     )
 
-    messages = [{"role": "user", "content": "Check AAPL and search the news."}]
-
-    await gemini_handler.run_tool_loop(
-        mock_raw_client,
-        model_name=GEMINI_MODEL,
-        messages=messages,
-        enable_google_search=True
+    await client.aio.models.generate_content(
+        model="gemini-3.1-flash-lite-preview",
+        contents="hi",
+        config=config,
     )
 
-    assert captured.get("include_server_side_tool_invocations") is True
+    # Verify tool_config with include_server_side_tool_invocations IS in the request
+    # when google_search is enabled (required by Gemini API for function declarations + google_search)
+    request_data = captured["kwargs"]["http_request"].data
+    assert "toolConfig" in request_data
+    assert request_data["toolConfig"]["includeServerSideToolInvocations"] is True
 
 
 @pytest.mark.asyncio

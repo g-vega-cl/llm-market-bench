@@ -1,16 +1,9 @@
 import * as React from 'react'
 import { MemoryCard } from './-MemoryCard'
 import { MemoryFlow } from './-MemoryFlow'
+import type { Memory } from '@llm-market-bench/database'
 
-export type Memory = {
-  id: string
-  content: string
-  created_at: string
-  metadata: any
-  status?: 'ACTIVE' | 'RESOLVED' | 'SUPERSEDED'
-  parent_id?: string
-  relationship_type?: 'REVERSAL' | 'UPDATE' | 'RESOLUTION' | 'GENERAL'
-}
+export type { Memory }
 
 interface MemoriesListProps {
   memories: Memory[]

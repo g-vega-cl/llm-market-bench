@@ -197,7 +197,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
                         {hoveredNode.content}
                     </div>
                     <div className="text-xs text-zinc-400 border-t border-zinc-200 dark:border-zinc-800 pt-2">
-                        {new Date(hoveredNode.created_at).toLocaleString()}
+                        {hoveredNode.created_at ? new Date(hoveredNode.created_at).toLocaleString() : '-'}
                     </div>
                 </div>
             )}

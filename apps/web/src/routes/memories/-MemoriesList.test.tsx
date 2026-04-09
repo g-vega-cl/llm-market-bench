@@ -22,7 +22,14 @@ const mockMemories: Memory[] = [
       type: 'consensus_event',
       impact: 'BEARISH',
       scenario_analysis: 'Scenario A: Rates go up -> Trading Plan (How to Profit): Buy bank stocks. Scenario B: Rates go down -> Trading Plan (How to Profit): Buy tech stocks.'
-    }
+    },
+    status: 'ACTIVE',
+    parent_id: null,
+    relationship_type: null,
+    relevance_score: null,
+    memory_type: 'MARKET_EVENT',
+    importance_score: null,
+    target_date: null
   },
   {
     id: '2',
@@ -30,13 +37,25 @@ const mockMemories: Memory[] = [
     created_at: new Date().toISOString(),
     metadata: { type: 'decision_reasoning', ticker: 'TSLA', signal: 'BUY' },
     parent_id: '1',
-    relationship_type: 'UPDATE'
+    relationship_type: 'UPDATE',
+    status: 'ACTIVE',
+    relevance_score: null,
+    memory_type: null,
+    importance_score: null,
+    target_date: null
   },
   {
     id: '3',
     content: 'Post-mortem on AAPL',
     created_at: new Date().toISOString(),
-    metadata: { type: 'post_mortem', ticker: 'AAPL', is_regret: true }
+    metadata: { type: 'post_mortem', ticker: 'AAPL', is_regret: true },
+    status: 'RESOLVED',
+    parent_id: null,
+    relationship_type: null,
+    relevance_score: null,
+    memory_type: null,
+    importance_score: null,
+    target_date: null
   }
 ]
 

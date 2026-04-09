@@ -1,10 +1,8 @@
 import * as React from 'react'
 import * as d3 from 'd3'
+import type { PortfolioPerformance } from '@llm-market-bench/database'
 
-export type PerformanceSnapshot = {
-  date: string
-  total_equity: number
-}
+export type PerformanceSnapshot = Pick<PortfolioPerformance, 'date' | 'total_equity'>
 
 interface PerformanceChartProps {
   data: PerformanceSnapshot[]

@@ -199,7 +199,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Set up Test driven development** - 
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Include VOLUME** - And volume strategies and their meanings
-- [ ] **Make sure types are consistent across database and FE**
+- [x] **Make sure types are consistent across database and FE**
+- [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 
 ### 🔄 Under Consideration
 
@@ -213,6 +214,7 @@ A living document of features and improvements in progress or planned for the pl
 ### Core Documentation
 *   [System Overview](./docs/Overview.md)
 *   [Database Schema](./docs/database-schema.md)
+*   [Type Generation from Supabase](./supabase/TYPE_GENERATION.md)
 *   [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
 *   [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)
 *   [Trade Settlement Walkthrough](./docs/engine/trade-settlement-walkthrough.md)

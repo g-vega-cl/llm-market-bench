@@ -38,9 +38,14 @@ llm-market-bench/
 │       ├── main.py          # Pipeline entry point
 │       └── update_prices.py # Utility
 ├── supabase/                # SQL Migrations & RLS
+├── packages/
+│   ├── config/              # Shared configuration (models.json)
+│   └── database/            # Generated TypeScript types from Supabase schema
 ├── docs/                    # Technical Walkthroughs
 └── tests/                   # Engine & Web tests
 ```
+
+> **Type Safety**: Frontend types are generated from the Supabase database schema via `@llm-market-bench/database`. See [supabase/TYPE_GENERATION.md](../supabase/TYPE_GENERATION.md) for regeneration instructions.
 
 ## 3. The Daily Pipeline
 

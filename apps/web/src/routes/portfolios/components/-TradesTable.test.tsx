@@ -5,22 +5,30 @@ import { TradesTable, Trade } from './-TradesTable'
 const mockTrades: Trade[] = [
     {
         id: 't1',
+        portfolio_id: 'p1',
         ticker: 'AAPL',
         signal: 'BUY',
         quantity: 10,
         price: 150,
         total_cost: 1500,
         executed_at: new Date().toISOString(),
+        decision_id: null,
+        realized_pnl: null,
+        realized_pnl_pct: null,
         reasoning: 'Strong earnings report.'
     },
     {
         id: 't2',
+        portfolio_id: 'p1',
         ticker: 'TSLA',
         signal: 'SELL',
         quantity: 5,
         price: 700,
         total_cost: 3500,
         executed_at: new Date().toISOString(),
+        decision_id: null,
+        realized_pnl: null,
+        realized_pnl_pct: null,
         reasoning: 'Technical breakdown below support.'
     }
 ]

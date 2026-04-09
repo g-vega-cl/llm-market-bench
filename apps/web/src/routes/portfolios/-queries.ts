@@ -1,7 +1,16 @@
 import { getSupabaseServerClient } from '~/lib/supabase'
 import { getActiveOwnerIds } from './-config'
+import type { 
+  Portfolio, 
+  Trade, 
+  PositionPnl, 
+  Decision,
+  PortfolioPerformance,
+  PositionWithReasoning,
+  TradeWithReasoning
+} from '@llm-market-bench/database'
 
-export async function fetchPortfolios() {
+export async function fetchPortfolios(): Promise<(Portfolio & { is_active: boolean })[]> {
   const supabase = getSupabaseServerClient()
   const { data, error } = await supabase
     .from('portfolios')
@@ -17,19 +26,15 @@ export async function fetchPortfolios() {
   }))
 }
 
-/**
- * Normalizes owner_id strings for consistent comparison.
- * Handles common formatting variations (spaces, dashes, underscores, case).
- */
 export function normalizeOwnerId(ownerId: string | null): string {
   if (!ownerId) return ''
   return ownerId
     .toLowerCase()
-    .replace(/[\s_-]+/g, '-') // Normalize spaces, underscores, dashes to single dash
-    .replace(/^-+|-+$/g, '') // Trim leading/trailing dashes
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
-export async function fetchPortfolioById(id: string) {
+export async function fetchPortfolioById(id: string): Promise<Portfolio> {
   const supabase = getSupabaseServerClient()
   const { data, error } = await supabase
     .from('portfolios')
@@ -41,10 +46,9 @@ export async function fetchPortfolioById(id: string) {
   return data
 }
 
-export async function fetchPositions(portfolioId: string) {
+export async function fetchPositions(portfolioId: string): Promise<PositionWithReasoning[]> {
   const supabase = getSupabaseServerClient()
 
-  // 1. Fetch current positions from the pnl view
   const { data: positions, error: posError } = await supabase
     .from('position_pnl')
     .select('*')
@@ -56,9 +60,6 @@ export async function fetchPositions(portfolioId: string) {
 
   const tickers = positions.map(p => p.ticker)
 
-  // 2. Fetch latest decisions for these tickers
-  // We don't join with trades here because many decisions lack trade_id or are for different portfolios.
-  // Instead, we fetch the latest valid signals for these tickers.
   const { data: decisions, error: decError } = await supabase
     .from('decisions')
     .select('ticker, reasoning, signal, created_at, trade_id')
@@ -68,13 +69,8 @@ export async function fetchPositions(portfolioId: string) {
 
   if (decError) throw decError
 
-  // 3. Map reasoning to positions
-  // Strategy: 
-  // 1. If we have a trade_id match (not common but best), use it.
-  // 2. Otherwise fall back to the most recent BUY/HOLD signal for that ticker.
   const reasoningMap = new Map<string, string>()
 
-  // First pass: Ticker latest (since it's ordered by created_at desc)
   decisions?.forEach(d => {
     if (!reasoningMap.has(d.ticker)) {
       reasoningMap.set(d.ticker, d.reasoning)
@@ -87,10 +83,9 @@ export async function fetchPositions(portfolioId: string) {
   }))
 }
 
-export async function fetchTrades(portfolioId: string) {
+export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoning[]> {
   const supabase = getSupabaseServerClient()
 
-  // 1. Fetch trades
   const { data: trades, error: tradeError } = await supabase
     .from('trades')
     .select('*')
@@ -101,7 +96,6 @@ export async function fetchTrades(portfolioId: string) {
   if (tradeError) throw tradeError
   if (!trades || trades.length === 0) return []
 
-  // 2. Fetch recent decisions for these tickers to fill in missing reasoning
   const tickers = Array.from(new Set(trades.map(t => t.ticker)))
   const { data: decisions, error: decError } = await supabase
     .from('decisions')
@@ -112,20 +106,15 @@ export async function fetchTrades(portfolioId: string) {
 
   if (decError) throw decError
 
-  // 3. Match decisions to trades
   return trades.map(trade => {
-    // Try 1: Explicit decision_id on trade
     if (trade.decision_id) {
       const match = decisions?.find(d => d.id === trade.decision_id)
       if (match) return { ...trade, reasoning: match.reasoning }
     }
 
-    // Try 2: Decision that points to this trade_id
     const tradePointerMatch = decisions?.find(d => d.trade_id === trade.id)
     if (tradePointerMatch) return { ...trade, reasoning: tradePointerMatch.reasoning }
 
-    // Try 3: Latest decision for this ticker and signal that happened around the same time
-    // We look for a decision within 24 hours of the trade
     const tradeTime = new Date(trade.executed_at).getTime()
     const proximityMatch = decisions?.find(d =>
       d.ticker === trade.ticker &&
@@ -134,7 +123,6 @@ export async function fetchTrades(portfolioId: string) {
     )
     if (proximityMatch) return { ...trade, reasoning: proximityMatch.reasoning }
 
-    // Try 4: Last resort - any latest decision for this ticker
     const fallbackMatch = decisions?.find(d => d.ticker === trade.ticker)
 
     return {
@@ -144,7 +132,7 @@ export async function fetchTrades(portfolioId: string) {
   })
 }
 
-export async function fetchPerformanceHistory(portfolioId: string) {
+export async function fetchPerformanceHistory(portfolioId: string): Promise<PortfolioPerformance[]> {
   const supabase = getSupabaseServerClient()
   const { data, error } = await supabase
     .from('portfolio_performance')

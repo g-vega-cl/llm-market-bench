@@ -1,15 +1,8 @@
 import * as React from 'react'
 import { useState } from 'react'
+import type { PositionWithReasoning } from '@llm-market-bench/database'
 
-export type Position = {
-    ticker: string
-    quantity: number
-    average_cost_basis: number
-    current_price?: number
-    unrealized_pnl_usd: number
-    unrealized_pnl_pct: number
-    reasoning: string
-}
+export type Position = PositionWithReasoning
 
 interface PositionsTableProps {
     positions: Position[]
@@ -24,7 +17,7 @@ export function PositionsTable({ positions }: PositionsTableProps) {
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
     // Calculate total invested cash for the portfolio
-    const totalInvestedCash = positions.reduce((sum, pos) => sum + pos.quantity * pos.average_cost_basis, 0)
+    const totalInvestedCash = positions.reduce((sum, pos) => sum + (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0), 0)
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -49,20 +42,20 @@ export function PositionsTable({ positions }: PositionsTableProps) {
 
             switch (sortKey) {
                 case 'invested':
-                    aVal = a.quantity * a.average_cost_basis
-                    bVal = b.quantity * b.average_cost_basis
+                    aVal = (a.quantity ?? 0) * (a.average_cost_basis ?? 0)
+                    bVal = (b.quantity ?? 0) * (b.average_cost_basis ?? 0)
                     break
                 case 'portfolio_pct':
-                    aVal = totalInvestedCash ? (a.quantity * a.average_cost_basis) / totalInvestedCash * 100 : 0
-                    bVal = totalInvestedCash ? (b.quantity * b.average_cost_basis) / totalInvestedCash * 100 : 0
+                    aVal = totalInvestedCash ? ((a.quantity ?? 0) * (a.average_cost_basis ?? 0)) / totalInvestedCash * 100 : 0
+                    bVal = totalInvestedCash ? ((b.quantity ?? 0) * (b.average_cost_basis ?? 0)) / totalInvestedCash * 100 : 0
                     break
                 case 'pnl_usd':
-                    aVal = a.unrealized_pnl_usd
-                    bVal = b.unrealized_pnl_usd
+                    aVal = a.unrealized_pnl_usd ?? 0
+                    bVal = b.unrealized_pnl_usd ?? 0
                     break
                 case 'pnl_pct':
-                    aVal = a.unrealized_pnl_pct
-                    bVal = b.unrealized_pnl_pct
+                    aVal = a.unrealized_pnl_pct ?? 0
+                    bVal = b.unrealized_pnl_pct ?? 0
                     break
                 default:
                     return 0
@@ -139,10 +132,10 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                                     ${Number(pos.current_price || pos.average_cost_basis).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-6 py-4 text-right text-zinc-700 cursor-pointer">
-                                    ${(pos.quantity * pos.average_cost_basis).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ${((pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-6 py-4 text-right text-zinc-700 cursor-pointer">
-                                    {totalInvestedCash ? ((pos.quantity * pos.average_cost_basis) / totalInvestedCash * 100).toFixed(2) + '%' : '0%'}
+                                    {totalInvestedCash ? (((pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)) / totalInvestedCash * 100).toFixed(2) + '%' : '0%'}
                                 </td>
                                 <td className={`px-6 py-4 text-right font-medium cursor-pointer ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
                                 >

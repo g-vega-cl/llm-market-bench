@@ -4,19 +4,27 @@ import { PositionsTable, Position } from './-PositionsTable'
 
 const mockPositions: Position[] = [
     {
+        position_id: '1',
+        portfolio_id: 'p1',
+        owner_id: 'owner1',
         ticker: 'AAPL',
         quantity: 10,
         average_cost_basis: 150,
         current_price: 160,
+        price_fetched_at: '2026-01-01',
         unrealized_pnl_usd: 100,
         unrealized_pnl_pct: 6.67,
         reasoning: 'Strong iPhone sales and services growth.'
     },
     {
+        position_id: '2',
+        portfolio_id: 'p1',
+        owner_id: 'owner1',
         ticker: 'TSLA',
         quantity: 5,
         average_cost_basis: 700,
         current_price: 650,
+        price_fetched_at: '2026-01-01',
         unrealized_pnl_usd: -250,
         unrealized_pnl_pct: -7.14,
         reasoning: 'Macro headwinds affecting EV demand.'
@@ -24,7 +32,7 @@ const mockPositions: Position[] = [
 ]
 
 // Calculate expected invested cash and percentages
-const totalInvested = mockPositions.reduce((sum, p) => sum + p.quantity * p.average_cost_basis, 0)
+const totalInvested = mockPositions.reduce((sum, p) => sum + (p.quantity ?? 0) * (p.average_cost_basis ?? 0), 0)
 
 describe('PositionsTable', () => {
     it('renders all positions in the table', () => {

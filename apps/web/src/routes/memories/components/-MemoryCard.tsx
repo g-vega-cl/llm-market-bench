@@ -49,13 +49,13 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
         </div>
         
         <span className="text-xs text-zinc-400 font-mono">
-          {new Date(memory.created_at).toLocaleString('en-US', { 
+          {memory.created_at ? new Date(memory.created_at).toLocaleString('en-US', { 
             month: 'short', 
             day: 'numeric',
             year: 'numeric',
             hour: '2-digit', 
             minute: '2-digit' 
-          })}
+          }) : '-'}
         </span>
       </div>
 

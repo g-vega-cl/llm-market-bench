@@ -394,7 +394,7 @@ async def run_ingest(force: bool = False):
     """Runs the full ingestion and analysis pipeline."""
     import io
     import logging
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)
@@ -405,9 +405,10 @@ async def run_ingest(force: bool = False):
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
-    run_id = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
-    run_date = datetime.utcnow().date()
-    current_hour = datetime.utcnow().hour
+    now = datetime.now(timezone.utc)
+    run_id = now.strftime("%Y-%m-%d_%H-%M-%S")
+    run_date = now.date()
+    current_hour = now.hour
     run_number = 1 if current_hour < 12 else (2 if current_hour < 15 else 3)
 
     log_blob = ""

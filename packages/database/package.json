@@ -4,5 +4,8 @@
   "private": true,
   "description": "Shared Supabase types and schemas",
   "main": "index.ts",
-  "types": "index.ts"
+  "types": "index.ts",
+  "scripts": {
+    "generate:types": "supabase gen types typescript --linked > supabase-types.ts"
+  }
 }

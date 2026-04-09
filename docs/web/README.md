@@ -136,6 +136,13 @@ apps/web/
 3.  Configure `.env` in `apps/web/.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. or build-time variables without the prefix like `SUPABASE_URL` and `SUPABASE_ANON_KEY`
 4.  Run the development server: `pnpm --filter web dev`.
 
+### Type Safety
+
+Frontend types are generated from the Supabase database schema for type safety. See [Type Generation Documentation](../../supabase/TYPE_GENERATION.md) for details on:
+*   How to regenerate types after database migrations
+*   Which tables are included/excluded
+*   Importing types from `@llm-market-bench/database`
+
 ### Testing
 We use Vitest and React Testing Library. Tests are **colocated** next to the code they test using the `*.test.tsx` suffix.
 *   Run tests: `pnpm test`

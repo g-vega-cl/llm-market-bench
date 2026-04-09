@@ -126,7 +126,7 @@ function ReasoningPage() {
                                     {log.task_type}
                                 </span>
                                 <span className="text-[10px] text-gray-400 font-mono italic">
-                                    {new Date(log.created_at).toLocaleTimeString()}
+                                    {log.created_at ? new Date(log.created_at).toLocaleTimeString() : '-'}
                                 </span>
                             </div>
                             <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg leading-tight group-hover:text-blue-500 transition-colors">
@@ -206,7 +206,7 @@ function ReasoningPage() {
                                         </span>
                                     </div>
                                     <p className="text-xs text-gray-400 font-mono tracking-tighter bg-gray-100 dark:bg-gray-800/50 px-2 py-1 rounded-md w-fit">
-                                        UUID: {selectedLog.id} • {new Date(selectedLog.created_at).toLocaleString()}
+                                        UUID: {selectedLog.id} • {selectedLog.created_at ? new Date(selectedLog.created_at).toLocaleString() : '-'}
                                     </p>
                                 </div>
                             </div>

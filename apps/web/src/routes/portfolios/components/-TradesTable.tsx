@@ -1,18 +1,8 @@
 import * as React from 'react'
 import { useState } from 'react'
+import type { TradeWithReasoning } from '@llm-market-bench/database'
 
-export type Trade = {
-    id: string
-    ticker: string
-    signal: string
-    quantity: number
-    price: number
-    total_cost: number
-    executed_at: string
-    reasoning: string
-    realized_pnl?: number
-    realized_pnl_pct?: number
-}
+export type Trade = TradeWithReasoning
 
 interface TradesTableProps {
     trades: Trade[]
@@ -43,7 +33,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                 onClick={() => setExpandedId(expandedId === trade.id ? null : trade.id)}
                             >
                                 <td className="px-6 py-4 text-zinc-500 cursor-pointer text-sm">
-                                    {new Date(trade.executed_at).toLocaleDateString()}
+                                    {trade.executed_at ? new Date(trade.executed_at).toLocaleDateString() : '-'}
                                 </td>
                                 <td className="px-6 py-4 font-bold text-zinc-900 cursor-pointer">
                                     <div className="flex items-center gap-2">

@@ -199,7 +199,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Set up Test driven development** - 
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Include VOLUME** - And volume strategies and their meanings
-- [x] **Make sure types are consistent across database and FE**
 - [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 
 ### 🔄 Under Consideration

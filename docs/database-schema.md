@@ -175,9 +175,50 @@ SELECT * FROM match_memories(
 ### `match_decisions`
 Retrieves past agent reasoning for consistent RAG retrieval.
 
+### `exec_sql`
+Executes arbitrary read queries for audit checks. Used internally by the audit system.
+```sql
+SELECT * FROM exec_sql(
+  query := 'SELECT row_to_json(t)::jsonb FROM (SELECT id, status FROM decisions LIMIT 5) t'
+);
+```
+
 ---
 
-## 6. Views
+## 6. System Auditing
+
+### `system_audits`
+Tracks database anomalies, data quality issues, and code errors discovered during weekly audits.
+- `id` (UUID): Primary key.
+- `audit_type` (TEXT): `DB_ANOMALY`, `DATA_QUALITY`, `CODE_ERROR`, `SYSTEM_LOG`, `IMPROVEMENT`.
+- `severity` (TEXT): `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
+- `title` (TEXT): Short summary.
+- `description` (TEXT): Detailed findings.
+- `suggestion` (TEXT): LLM-generated resolution suggestion.
+- `status` (TEXT): `OPEN`, `IN_PROGRESS`, `RESOLVED`, `IGNORED`.
+- `source_table` (TEXT): Table where anomaly was found.
+- `source_id` (UUID): ID of the problematic record.
+- `metadata` (JSONB): Additional context.
+- `audit_run_id` (TEXT): Links to the weekly audit run.
+- `analysis_method` (TEXT): `SQL_CHECK` or `LLM_ANALYSIS`.
+- `created_by` (TEXT): `SYSTEM` or `MANUAL`.
+- `resolved_at`, `resolved_by`: Resolution tracking.
+- `created_at` (TIMESTAMPTZ): Entry timestamp.
+
+### `ingestion_logs`
+Stores pipeline stdout/stderr blobs for log analysis and debugging.
+- `id` (UUID): Primary key.
+- `run_id` (TEXT): Unique run identifier (e.g., `2026-04-09_15-30-45`).
+- `run_date` (DATE): Date of ingestion.
+- `run_number` (INT): 1 (09:30), 2 (12:30), or 3 (15:30).
+- `log_blob` (TEXT): Full stdout/stderr capture.
+- `created_at` (TIMESTAMPTZ): Entry timestamp.
+
+**Retention:** Logs are automatically deleted after 48 hours via GitHub Actions cleanup job.
+
+---
+
+## 7. Views
 
 ### `position_pnl`
 Calculates real-time P&L for all active positions by joining `portfolio_positions` with `market_data_cache`.

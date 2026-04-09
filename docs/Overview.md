@@ -325,6 +325,21 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 * **Outcome:** *The Verification step uses a specialized rule set for `UNCROWDED_TRADE`s, bypassing strict volatility/momentum guardrails to prioritize the fundamental entry thesis.*
 * File: `apps/engine/core/models.py`, `apps/engine/core/llm/prompts.py`, `apps/engine/core/llm/verification.py`
 
+**27. System Audits** ✅
+
+* **Tech:** Python / DeepSeek / GitHub Actions / Supabase
+* **Logic:** *Weekly audit system that checks for database anomalies and analyzes system logs.*
+* **Components:**
+  - **SQL Anomaly Checks:** 10 checks for orphaned references, invalid status values, stale data, and data quality issues.
+  - **Log Analysis:** DeepSeek-powered analysis of ingestion logs to identify errors and failures.
+  - **Public Dashboard:** `/audits` page displays all findings for transparency.
+* **Schedule:** Weekly on Fridays at 16:00 EST via GitHub Actions.
+* **Retention:** `system_audits` resolved/ignored entries deleted after 30 days; `ingestion_logs` deleted after 48 hours.
+* **Files:**
+  - Engine: `apps/engine/core/audit/`
+  - Workflow: `.github/workflows/audit.yml`
+  - Frontend: `apps/web/src/routes/audits/`
+
 
 ## 9. Reasoning Rigor & Validation
 
@@ -489,6 +504,7 @@ The daily pipeline in `.github/workflows/ingest.yml` explicitly maps Secrets and
 - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
 - `FMP_API_KEY`: Financial Modeling Prep API key.
 - `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- `DEEPSEEK_API_KEY`: Used for both trading analysis and audit log analysis.
 
 #### Optional Variables
 You can override default providers without code changes by adding these as **Repository Variables**:

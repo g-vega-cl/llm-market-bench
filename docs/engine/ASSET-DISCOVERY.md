@@ -14,7 +14,7 @@ The discovery process is encapsulated within the `DiscoveryAgent` class, which o
 The agent uses a **Tool-Calling Reasoning Loop** (up to 3 steps) to perform its mission:
 1.  **Mission Start**: Receives the market theme and context.
 2.  **Screening**: Invokes the `run_stock_screener` tool to find candidates based on financial metrics (Market Cap, Beta, Sector, Industry).
-3.  **Research & Verification**: Uses native **Web Search** (Google Search for Gemini, Anthropic Web Search for Claude) to verify the business model, thematic relevance, and recent news for the candidates.
+3.  **Research & Verification**: Uses native **Web Search** (OpenAI `web_search`, Anthropic `web_search`, Google Search for Gemini) to verify the business model, thematic relevance, and recent news for the candidates.
 4.  **Synthesis**: Ranks the candidates and formulates a "Mechanism of Profit" for each.
 
 ### **Thematic Mapping Logic**
@@ -47,22 +47,31 @@ The tool is implemented in `apps/engine/core/llm/tools.py` and executed via the 
 
 ## 3. Provider Support
 
-The `DiscoveryAgent` automatically detects the provider and configures the appropriate tool definitions and handlers:
+The `DiscoveryAgent` uses **OpenAI (gpt-5.4-nano)** as the primary provider by default. The `DiscoveryService` initializes the agent with `OPENAI_MODEL` from the shared config.
+
+The agent automatically detects the provider and configures the appropriate tool definitions and handlers:
 
 | Provider | Handler | Search Tool | Screener Definition |
 |----------|---------|-------------|---------------------|
+| **OpenAI** *(primary)* | `openai.run_tool_loop` | `web_search` (native) | `RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI` |
 | **Gemini** | `gemini.run_tool_loop` | `google_search` | `RUN_STOCK_SCREENER_TOOL_DEFINITION_GEMINI` |
 | **Anthropic** | `anthropic.run_tool_loop` | `web_search_20250305` | `RUN_STOCK_SCREENER_TOOL_DEFINITION_ANTHROPIC` |
-| **OpenAI** | `openai.run_tool_loop` | `web_search` (native) | `RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI` |
+
+> **Note:** OpenAI is preferred because it has straightforward function calling without the Gemini quirk of rejecting combined built-in tools + custom function declarations.
+
+### **Client Architecture**
+The `DiscoveryAgent` passes the **raw OpenAI client** (`client.client`) to `run_tool_loop` rather than the Instructor-wrapped client. This is because Instructor intercepts `chat.completions.create()` calls and expects a `response_model` argument, which `run_tool_loop` doesn't provide.
 
 ---
 
 ## 4. Operational Flow
 
-1.  **`DiscoveryService.discover_assets(event)`**: Entry point.
+1.  **`DiscoveryService.discover_assets(event)`**: Entry point. Initializes `DiscoveryAgent` with `OPENAI_MODEL`.
 2.  **`DiscoveryAgent.discover_assets(theme)`**: Starts the tool-calling mission.
 3.  **Loop Step 1-3**: Agent calls `run_stock_screener` and `web_search`.
-4.  **Final Extraction**: The agent's last assistant/model message containing the ranked analysis is returned.
+4.  **Final Extraction**: The agent walks backward through messages to find:
+    - First, the last assistant message with meaningful text content
+    - If none found, collects relevant tool results (stock screening output)
 5.  **Memory Storage**: The result is wrapped as a single high-fidelity "AGENT_DISCOVERY" asset in the `memories` table to preserve the agent's full reasoning.
 
 ---

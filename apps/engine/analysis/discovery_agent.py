@@ -82,9 +82,10 @@ class DiscoveryAgent:
                 max_tool_steps=3
             )
         else:
-            # Default OpenAI handler
+            # Default OpenAI handler - use raw client (client.client) since Instructor-wrapped
+            # clients intercept chat.completions.create and expect response_model
             await openai.run_tool_loop(
-                raw_client=self.client,
+                raw_client=self.client.client,
                 model_name=self.model_name,
                 messages=messages,
                 override_tools=self.discovery_tools,
@@ -108,6 +109,23 @@ class DiscoveryAgent:
                 continue
             if content and isinstance(content, str) and content.strip():
                 return content
+
+        # If no assistant text found, collect meaningful content from tool results
+        tool_results = []
+        for msg in messages:
+            if isinstance(msg, dict) and msg.get("role") == "tool":
+                content = msg.get("content", "")
+                if content and isinstance(content, str) and content.strip():
+                    # Skip "no stocks found", errors, and partial/incomplete results
+                    lower_content = content.lower()
+                    if "no stocks found" not in lower_content and "error" not in lower_content:
+                        # Only include results that look like actual stock screening output
+                        if "stock screening results" in lower_content or content.startswith("$"):
+                            tool_results.append(content)
+
+        if tool_results:
+            return "Stock Screening Results:\n" + "\n---\n".join(tool_results)
+
         return "No assets discovered."
 
     async def close(self):

@@ -6,7 +6,7 @@ discover actual companies and ETFs related to those themes.
 
 from typing import List, Optional
 import logging
-from core.config import GEMINI_MODEL
+from core.config import OPENAI_MODEL
 from analysis.discovery_agent import DiscoveryAgent
 
 logger = logging.getLogger("engine")
@@ -15,8 +15,7 @@ class DiscoveryService:
     """Service for discovering investment assets based on market events."""
 
     def __init__(self):
-        # We use Gemini-2.0-Flash as the primary Discovery Agent
-        self.agent = DiscoveryAgent(model_name=GEMINI_MODEL)
+        self.agent = DiscoveryAgent(model_name=OPENAI_MODEL)
 
     async def discover_assets(self, event_content: str, event_summary: Optional[str] = None) -> List[dict]:
         """Delegates asset discovery to a specialized Discovery Agent.

@@ -62,6 +62,12 @@ export const queryKeys = {
     list: () => ['benchify', 'causeAndEffect', 'list'] as const,
   },
 
+  // Audits
+  audits: {
+    all: ['benchify', 'audits'] as const,
+    list: () => ['benchify', 'audits', 'list'] as const,
+  },
+
   // Auth
   auth: {
     all: ['benchify', 'auth'] as const,

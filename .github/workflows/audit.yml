@@ -1,0 +1,66 @@
+name: System Audit
+
+on:
+  schedule:
+    # Friday 16:00 EST = 21:00 UTC
+    - cron: "0 21 * * 5"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run system audit
+        run: |
+          python main.py audit
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: audit
+
+    steps:
+      - name: Cleanup old records
+        run: |
+          python -c "
+          import os
+          from supabase import create_client
+          
+          client = create_client(os.environ['SUPABASE_PROJECT_URL'], os.environ['SUPABASE_SERVICE_ROLE_KEY'])
+          
+          # Delete ingestion_logs older than 48 hours
+          client.table('ingestion_logs').delete() \
+               .lt('created_at', 'now() - interval \"48 hours\"') \
+               .execute()
+          
+          # Delete resolved/ignored audits older than 30 days
+          client.table('system_audits').delete() \
+               .in_('status', ['RESOLVED', 'IGNORED']) \
+               .lt('created_at', 'now() - interval \"30 days\"') \
+               .execute()
+          "
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

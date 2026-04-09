@@ -84,6 +84,7 @@ COMMAND_POST_ANALYSIS = "post-analysis"
 COMMAND_GOVERNMENT = "government"
 COMMAND_CALENDAR = "calendar"
 COMMAND_CAUSE_AND_EFFECT = "analyze-impact"
+COMMAND_AUDIT = "audit"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

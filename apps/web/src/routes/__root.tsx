@@ -181,14 +181,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Reasoning
           </Link>
-          <Link
+<Link
             to="/cause-and-effect"
             activeProps={{
-              className: 'text-blue-600',
+              className: "text-blue-600",
             }}
-            className="hover:text-blue-500 transition-colors"
           >
             Cause & Effect
+          </Link>
+          <Link
+            to="/audits"
+            activeProps={{
+              className: "text-blue-600",
+            }}
+          >
+            Audits
           </Link>
           <div className="ml-auto flex items-center gap-4">
             {user ? (

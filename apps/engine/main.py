@@ -14,7 +14,7 @@ from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
 from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
-from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, logger
+from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, validate_semantic_overlap, ValidationStatus
 from execution.portfolio import Portfolio
@@ -25,6 +25,7 @@ from memory.store import add_memory
 from analysis.post_analysis import perform_post_analysis
 from analysis.pca_utils import update_pca_coordinates
 from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
+from core.audit import run_audit
 
 
 async def _stage_ingest_and_snapshot():
@@ -391,28 +392,79 @@ async def _stage_snapshots_and_pca(sb_client):
 
 async def run_ingest(force: bool = False):
     """Runs the full ingestion and analysis pipeline."""
-    from core.utils import is_market_open_with_logging
-    if not await is_market_open_with_logging(force):
-        return
+    import io
+    import logging
+    from datetime import datetime
 
-    # 1. Ingest & Snapshot
-    data, sb_client = await _stage_ingest_and_snapshot()
-    if not data:
-        return
+    log_capture = io.StringIO()
+    handler = logging.StreamHandler(log_capture)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
+    handler.setFormatter(formatter)
+    logger = logging.getLogger("engine")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+
+    run_id = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+    run_date = datetime.utcnow().date()
+    current_hour = datetime.utcnow().hour
+    run_number = 1 if current_hour < 12 else (2 if current_hour < 15 else 3)
+
+    log_blob = ""
+    sb_client = None
 
     try:
-        # 2. Analysis & Consensus
-        decisions, macro_events, agg_ctx, uncrowded_ctx = await _stage_analysis_and_consensus(data, sb_client)
-        
-        # 3. Decision Processing & Execution
-        await _stage_decision_processing(decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client)
+        from core.utils import is_market_open_with_logging
+        if not await is_market_open_with_logging(force):
+            log_blob = log_capture.getvalue()
+            if log_blob:
+                try:
+                    sb_client = get_supabase_client()
+                    sb_client.table("ingestion_logs").insert({
+                        "run_id": run_id,
+                        "run_date": str(run_date),
+                        "run_number": run_number,
+                        "log_blob": log_blob[:1000000]
+                    }).execute()
+                except Exception as e:
+                    logger.error(f"Failed to save ingestion log: {e}")
+            return
 
-        # 4. Snapshots & Cleanup
-        await _stage_snapshots_and_pca(sb_client)
+        data, sb_client = await _stage_ingest_and_snapshot()
+        if not data:
+            log_blob = log_capture.getvalue()
+            if log_blob:
+                try:
+                    sb_client.table("ingestion_logs").insert({
+                        "run_id": run_id,
+                        "run_date": str(run_date),
+                        "run_number": run_number,
+                        "log_blob": log_blob[:1000000]
+                    }).execute()
+                except Exception as e:
+                    logger.error(f"Failed to save ingestion log: {e}")
+            return
 
+        try:
+            decisions, macro_events, agg_ctx, uncrowded_ctx = await _stage_analysis_and_consensus(data, sb_client)
+            await _stage_decision_processing(decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client)
+            await _stage_snapshots_and_pca(sb_client)
+        finally:
+            from execution.providers.factory import get_active_provider_class
+            await get_active_provider_class().disconnect_all()
+
+        log_blob = log_capture.getvalue()
+        try:
+            sb_client.table("ingestion_logs").insert({
+                "run_id": run_id,
+                "run_date": str(run_date),
+                "run_number": run_number,
+                "log_blob": log_blob[:1000000]
+            }).execute()
+        except Exception as e:
+            logger.error(f"Failed to save ingestion log: {e}")
     finally:
-        from execution.providers.factory import get_active_provider_class
-        await get_active_provider_class().disconnect_all()
+        logger.removeHandler(handler)
 
 
 async def run_post_analysis():
@@ -442,7 +494,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT],
+        choices=[COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT],
         help="Action to perform"
     )
 
@@ -464,6 +516,13 @@ def main():
         asyncio.run(run_calendar_pipeline())
     elif args.command == COMMAND_CAUSE_AND_EFFECT:
         asyncio.run(run_cause_and_effect())
+    elif args.command == COMMAND_AUDIT:
+        from core.audit.runner import configure as configure_audit
+        from core.audit.analyzer import configure as configure_analyzer
+        from core.config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DEEPSEEK_API_KEY
+        configure_audit(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        configure_analyzer(DEEPSEEK_API_KEY)
+        asyncio.run(run_audit())
 
 
 if __name__ == "__main__":

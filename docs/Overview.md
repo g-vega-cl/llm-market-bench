@@ -66,6 +66,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 8.  **RAG Context Retrieval**: Query `memories` and `decisions` for historical context (labeled to distinguish from current holdings).
 9.  **Decision Attribution**: Map reasoning, strategy intent, and metadata to the `decisions` table.
 10. **Event Consensus**: Synthesize global macro events with structured **Scenario Analysis** (requiring at least two distinct outcomes AND a specific **Trading Plan** for each); group semantically via pgvector.
+    -   **Alpha Discovery Agent (`DiscoveryAgent`)**: During consensus synthesis, when an event reaches the promotion threshold, the `DiscoveryService` automatically delegates asset discovery to the `DiscoveryAgent`. This specialized agent uses a `run_stock_screener` tool-calling loop to convert market themes into a high-conviction candidate list for the "Investable Assets" section of the consensus event's metadata. Enforces NYSE/NASDAQ-only, actively trading, and a 15-ticker cap to ensure liquidity and prevent context bloating. See **[ASSET-DISCOVERY.md](./engine/ASSET-DISCOVERY.md)**.
 11. **Trend Analysis**: Calculate concept momentum and update PCA coordinates for the map.
 
 ### Phase 3: Execution & Guardrails
@@ -93,7 +94,6 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 22. **Government Tracking:** Monthly audit of incentives and policies.
 23. **Cause & Effect Analysis:** Bi-weekly audit of market events to track predicted vs actual impact (Tuesdays & Fridays). Now includes **Semantic Deduplication** (pgvector) to prevent redundant analysis and **Dynamic Ticker Discovery** (via FMP API) to identify sector proxies, ETFs, and derivative play tickers for any market theme, powering the 'How to Profit' feature.
 24. **Economic Calendar Ingestion:** Twice-weekly fetch of global macro catalysts from Trading Economics (Sundays & Wednesdays).
-25. **Alpha Discovery Agent (`DiscoveryAgent`):** A specialized agent that replaces hardcoded multi-stage discovery logic. It uses a `run_stock_screener` tool-calling loop to convert market themes into a high-conviction candidate list for the "Investable Assets" memory section. Enforces NYSE/NASDAQ-only, actively trading, and a 15-ticker cap to ensure liquidity and prevent context bloating.
 
 ### Phase 5: Market Execution (Sequential)
 

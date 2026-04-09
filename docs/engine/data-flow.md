@@ -7,10 +7,9 @@ This document provides a detailed step-by-step walkthrough of the complete data 
 The pipeline has six main phases:
 
 1. **Ingestion**: Fetch newsletters from Gmail, identify macro catalysts from the Economic Calendar, clean them, and generate unique identifiers
-1.6 **Thematic Asset Discovery**: Map catalysts to sectors/industries, retrieve candidates, and re-rank via DeepSeek for high-conviction plays
 2. **Context Retrieval**: Embed queries and retrieve historical context from vector store
 3. **LLM Analysis**: Send enriched prompts to 4 LLM providers in parallel
-4. **Attribution & Consensus**: Save decisions with traceability and determine global market events
+4. **Attribution & Consensus**: Save decisions with traceability, determine global market events, and invoke Alpha Discovery Agent to map events to investable assets
 5. **Validation & Execution**: Enforce guardrails and reconcile trades in the ledger
 6. **Reinforcement**: Perform post-analysis on past trades to improve future reasoning
 
@@ -234,31 +233,7 @@ Twice a week (Sundays and Wednesdays), the engine fetches the global macro calen
 
 ---
 
-## Phase 1.6: Alpha Discovery Agent (`DiscoveryAgent`)
-
-**File**: `apps/engine/analysis/discovery_service.py` → `discover_assets()`, `apps/engine/analysis/discovery_agent.py`
-
-After an event is identified but before it is sent to the 4 parallel LLMs for deep analysis, the **Alpha Discovery Agent** identifies which assets are most likely to be impacted by the specific catalyst.
-
-### Step 1.6.1: Mission Setup
-1. **Delegation**: `DiscoveryService` delegates the theme and context to the `DiscoveryAgent`.
-2. **Provider Selection**: The agent selects a provider (Defaults to `GEMINI_MODEL`) and initializes the appropriate tool definitions for the reasoning mission.
-
-### Step 1.6.2: Autonomous Discovery Mission (Tool-Calling Loop)
-The agent executes up to **3 tool-calling steps** to identify beneficiaries:
-1. **Screening**: Calls `run_stock_screener` to find candidates based on financial filters (Market Cap, Beta, Sector, etc.).
-2. **Verification**: Uses **Web Search** to verify business models and confirm thematic relevance.
-3. **Guardrails**: Filters for NYSE/NASDAQ-only, actively trading assets, and enforces a **15-ticker cap** to ensure liquidity and prevent context bloating.
-
-### Step 1.6.3: High-Fidelity Synthesis
-1. **Ranking**: The agent ranks the candidates by relevance and profit mechanism.
-2. **Storage**: The complete analysis is returned to the service and saved as a single `AGENT_DISCOVERY` entry in the `memories` table, providing a "How to Profit" playbook for the reasoning manager.
-
-See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for a technical deep-dive.
-
----
-
-## Phase 1.7: Global Macro Tracking (Market Regime Detection)
+## Phase 1.6: Global Macro Tracking (Market Regime Detection)
 
 **File**: `apps/engine/core/macro_tracker.py` → `get_global_macro_context()`
 

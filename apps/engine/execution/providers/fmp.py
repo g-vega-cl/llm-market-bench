@@ -64,10 +64,16 @@ class FMPProvider(FinancialProvider):
             if e.response.status_code == 402:
                 logger.error(f"FMP API Quota Exceeded (402 Payment Required): {e.response.url}")
             else:
-                logger.error(f"HTTP error fetching data from FMP for {ticker}: {e}")
+                logger.error(
+                    f"HTTP error fetching data from FMP for {ticker}: "
+                    f"status={e.response.status_code}, "
+                    f"response={e.response.text[:500] if e.response.text else 'empty'}, "
+                    f"error={repr(e)}"
+                )
             return None
         except Exception as e:
-            logger.error(f"Unexpected error fetching data from FMP for {ticker}: {e}")
+            error_details = repr(e) if str(e) == "" else f"{e} ({repr(e)})"
+            logger.error(f"Unexpected error fetching data from FMP for {ticker}: {error_details}")
             return None
 
     async def get_ticker_data_batch(self, tickers: list[str]) -> dict[str, TickerData]:

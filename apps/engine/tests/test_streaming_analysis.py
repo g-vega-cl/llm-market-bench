@@ -405,3 +405,61 @@ class TestClientCleanup:
         # Should not have logged any errors
         error_calls = [c for c in caplog.records if c.levelno >= logging.ERROR]
         assert len(error_calls) == 0, f"Unexpected error logs: {error_calls}"
+
+    @pytest.mark.asyncio
+    async def test_close_client_logs_when_underlying_is_none(self, caplog):
+        """Test that close_client logs debug message when underlying client is None."""
+        import logging
+        caplog.set_level(logging.DEBUG)
+        
+        from core.llm.clients import close_client
+        
+        mock_client = MagicMock()
+        mock_client.client = None
+        
+        await close_client(mock_client, "gemini")
+        
+        # Should log debug message about None underlying
+        debug_calls = [(c.levelno, c.message) for c in caplog.records if c.levelno == logging.DEBUG]
+        assert any("underlying client is None" in msg for _, msg in debug_calls), \
+            f"Expected debug log about None underlying, got: {debug_calls}"
+
+    @pytest.mark.asyncio
+    async def test_close_client_logs_when_no_close_method(self, caplog):
+        """Test that close_client logs debug message when no close method is found."""
+        import logging
+        caplog.set_level(logging.DEBUG)
+        
+        from core.llm.clients import close_client
+        
+        mock_underlying = MagicMock(spec=["__class__"])  # No close method
+        mock_client = MagicMock()
+        mock_client.client = mock_underlying
+        
+        await close_client(mock_client, "gemini")
+        
+        # Should log debug message about no close method
+        debug_calls = [(c.levelno, c.message) for c in caplog.records if c.levelno == logging.DEBUG]
+        assert any("No close method found" in msg for _, msg in debug_calls), \
+            f"Expected debug log about no close method, got: {debug_calls}"
+
+    @pytest.mark.asyncio
+    async def test_close_client_logs_warning_on_exception(self, caplog):
+        """Test that close_client logs warning with repr when exception occurs."""
+        import logging
+        caplog.set_level(logging.WARNING)
+        
+        from core.llm.clients import close_client
+        
+        mock_underlying = MagicMock()
+        mock_underlying.close = AsyncMock(side_effect=RuntimeError("Close failed"))
+        mock_client = MagicMock()
+        mock_client.client = mock_underlying
+        
+        await close_client(mock_client, "gemini")
+        
+        # Should log warning with exception details
+        warning_calls = [(c.levelno, c.message) for c in caplog.records if c.levelno == logging.WARNING]
+        assert len(warning_calls) > 0, "Expected warning log on exception"
+        assert any("RuntimeError" in msg for _, msg in warning_calls), \
+            f"Expected warning to contain RuntimeError, got: {warning_calls}"

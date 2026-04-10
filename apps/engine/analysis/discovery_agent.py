@@ -93,9 +93,37 @@ class DiscoveryAgent:
                 max_tool_steps=3
             )
 
-        # Walk backward to find the last assistant/model message with meaningful text.
-        # Tool messages and the initial user theme prompt are ignored so a stalled
-        # tool loop cannot return the original input as the "result".
+        result = self._extract_final_response(messages)
+        
+        if not result or len(result.strip()) < 50:
+            logger.warning("DiscoveryAgent: Empty response, trying tool results fallback")
+            result = self._collect_tool_results_fallback(messages)
+        
+        validated = self._validate_and_enhance_result(result)
+        return validated
+
+    def _collect_tool_results_fallback(self, messages: list) -> str:
+        """Collect meaningful content from tool results as fallback."""
+        tool_results = []
+        for msg in messages:
+            if isinstance(msg, dict) and msg.get("role") == "tool":
+                content = msg.get("content", "")
+                if content and isinstance(content, str) and content.strip():
+                    lower_content = content.lower()
+                    if "no stocks found" not in lower_content and "error" not in lower_content:
+                        if "stock screening results" in lower_content or content.startswith("$"):
+                            tool_results.append(content)
+
+        if tool_results:
+            return "Stock Screening Results:\n" + "\n---\n".join(tool_results)
+        return ""
+
+    def _extract_final_response(self, messages: list) -> str:
+        """Walk backward to find the last assistant/model message with meaningful text.
+        
+        Tool messages and the initial user theme prompt are ignored so a stalled
+        tool loop cannot return the original input as the "result".
+        """
         for msg in reversed(messages):
             if isinstance(msg, dict):
                 if msg.get("role") not in {"assistant", "model"}:
@@ -110,23 +138,50 @@ class DiscoveryAgent:
             if content and isinstance(content, str) and content.strip():
                 return content
 
-        # If no assistant text found, collect meaningful content from tool results
-        tool_results = []
-        for msg in messages:
-            if isinstance(msg, dict) and msg.get("role") == "tool":
-                content = msg.get("content", "")
-                if content and isinstance(content, str) and content.strip():
-                    # Skip "no stocks found", errors, and partial/incomplete results
-                    lower_content = content.lower()
-                    if "no stocks found" not in lower_content and "error" not in lower_content:
-                        # Only include results that look like actual stock screening output
-                        if "stock screening results" in lower_content or content.startswith("$"):
-                            tool_results.append(content)
+        return ""
 
-        if tool_results:
-            return "Stock Screening Results:\n" + "\n---\n".join(tool_results)
+    def _validate_5_whys(self, content: str) -> tuple[bool, list[str]]:
+        """Validate that all 5 Whys questions are answered in the output.
+        
+        Returns:
+            Tuple of (is_valid, list of missing questions)
+        """
+        required_patterns = [
+            r"1\.\s*\*\*Why\*\*.*?is this theme market-moving",
+            r"2\.\s*\*\*Why\*\*.*?will these specific assets benefit",
+            r"3\.\s*\*\*Why\*\*.*?not already priced in",
+            r"4\.\s*\*\*Why\*\*.*?most efficient way to profit",
+            r"5\.\s*\*\*Why\*\*.*?best beneficiary",
+        ]
+        
+        import re
+        missing = []
+        for i, pattern in enumerate(required_patterns, 1):
+            if not re.search(pattern, content, re.IGNORECASE | re.DOTALL):
+                missing.append(f"Why #{i}")
+        
+        return len(missing) == 0, missing
 
-        return "No assets discovered."
+    def _validate_and_enhance_result(self, result: str) -> str:
+        """Validate result has 5 Whys and adequate content, improve if needed."""
+        
+        if not result or len(result.strip()) < 50:
+            logger.warning("DiscoveryAgent: Empty result after fallback")
+            return "Insufficient analysis produced. Please retry with more specific theme."
+
+        is_valid, missing = self._validate_5_whys(result)
+        
+        if is_valid:
+            logger.info(f"DiscoveryAgent: 5 Whys validated successfully")
+            return result
+        
+        logger.warning(f"DiscoveryAgent: Missing 5 Whys sections: {missing}")
+        
+        if len(result.strip()) < 200:
+            logger.warning("DiscoveryAgent: Result too short, adding enhancement note")
+            result += f"\n\n**Note:** This analysis is incomplete. Missing: {', '.join(missing)}"
+        
+        return result
 
     async def close(self):
         """Closes the underlying LLM client."""

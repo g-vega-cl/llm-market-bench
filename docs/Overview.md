@@ -313,6 +313,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 * **Tech:** Python / Gemini Flash 3
 * **Logic:** *Runs after the primary agents, analyzing their consensus to identify crowded trades or missed risks.*
 * **Multi-Block Robustness:** *Uses a `ContrarianAgentResponse` wrapper model (`responses: List[DecisionsResponse]`) to safely aggregate responses from multiple Gemini tool-call blocks, avoiding `Instructor does not support multiple function calls` errors.*
+* **Dependency Injection:** *Supports DI via optional parameters (`portfolio`, `market_data`, `llm_client`, `retrieve_context_fn`) for testability. See [Testing](./engine/testing.md#dependency-injection-for-analysis-functions).*
 * **Outcome:** *Executes contrarian trades in a dedicated portfolio.*
 * File: `apps/engine/analysis/contrarian.py`
 

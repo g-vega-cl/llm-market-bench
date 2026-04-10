@@ -27,7 +27,7 @@ function AuditsPage() {
 
   const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
   const sortedAudits = [...audits].sort(
-    (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
+    (a, b) => severityOrder[a.severity as keyof typeof severityOrder] - severityOrder[b.severity as keyof typeof severityOrder]
   )
 
   const dbAudits = sortedAudits.filter(
@@ -114,12 +114,12 @@ function AuditCard({ audit }: { audit: any }) {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <span
-              className={`px-2 py-1 text-xs font-semibold rounded border ${severityColors[audit.severity]}`}
+              className={`px-2 py-1 text-xs font-semibold rounded border ${severityColors[audit.severity as keyof typeof severityColors]}`}
             >
               {audit.severity}
             </span>
             <span className="text-xs text-zinc-500 uppercase tracking-wider">
-              {typeLabels[audit.audit_type] || audit.audit_type}
+              {typeLabels[audit.audit_type as keyof typeof typeLabels] || audit.audit_type}
             </span>
             <span className="text-xs text-zinc-600">
               {new Date(audit.created_at).toLocaleDateString('en-US', {

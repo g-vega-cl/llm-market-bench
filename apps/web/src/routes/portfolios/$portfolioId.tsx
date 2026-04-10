@@ -33,7 +33,7 @@ function PortfolioDetailPage() {
   const getPortfolioDataFn = useServerFn(getPortfolioData)
 
   const { data } = useSuspenseQuery({
-    ...queries.portfolios.detail({ id: initialData.portfolio.id, fetchFn: () => getPortfolioDataFn(initialData.portfolio.id) }),
+    ...queries.portfolios.detail({ id: initialData.portfolio.id, fetchFn: () => getPortfolioDataFn({ data: initialData.portfolio.id }) }),
     initialData,
   })
 

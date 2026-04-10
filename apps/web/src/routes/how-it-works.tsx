@@ -143,7 +143,7 @@ function HowItWorks() {
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
                                     <li><strong className="text-emerald-300">FMP-Verified Market Hours</strong>: Holiday-aware with 5-minute TTL caching</li>
-                                    <li><strong className="text-emerald-300">5.0% Price Banding</strong>: Rejects trades where AI price deviates >5% from market</li>
+                                    <li><strong className="text-emerald-300">5.0% Price Banding</strong>: Rejects trades where AI price deviates &gt;5% from market</li>
                                     <li><strong className="text-emerald-300">Reg T Margin Validation</strong>: Buying power check with $1,000 absolute minimum for BUYs</li>
                                     <li><strong className="text-emerald-300">10% Minimum Position Rule</strong>: Auto-upsize for BUYs; 100% sell for SELLS below floor</li>
                                     <li><strong className="text-emerald-300">Atomic Settlement</strong>: Cash/positions update only if ledger entry succeeds — prevents "Phantom Deductions"</li>
@@ -183,7 +183,7 @@ function HowItWorks() {
                                 </ul>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
                                     <li><strong className="text-pink-300">Long-term Memory</strong>: pgvector store with Scenario Analysis (multi-outcome + trading plans)</li>
-                                    <li><strong className="text-pink-300">Semantic Deduplication</strong>: 24-hour lookback, >0.90 similarity threshold prevents duplicates</li>
+                                    <li><strong className="text-pink-300">Semantic Deduplication</strong>: 24-hour lookback, &gt;0.90 similarity threshold prevents duplicates</li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
                                     <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">Manager Agent</span>

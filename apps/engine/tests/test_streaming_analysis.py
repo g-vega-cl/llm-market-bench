@@ -187,7 +187,7 @@ class TestEarlyContrarianStart:
         mock_response.macro_events = []
         mock_gemini_client.chat.completions.create = AsyncMock(return_value=[mock_response])
 
-        with patch("execution.portfolio.Portfolio", return_value=mock_portfolio), \
+        with patch("analysis.contrarian.Portfolio", return_value=mock_portfolio), \
              patch("execution.market_data.MarketDataManager", return_value=mock_market_data), \
              patch("core.llm.get_gemini_client", return_value=mock_gemini_client), \
              patch("memory.store.retrieve_context_batch", return_value=[]):

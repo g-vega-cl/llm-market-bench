@@ -237,11 +237,11 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
       {/* Asset Detail Modal */}
       {selectedAsset && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-black/50"
           onClick={() => setSelectedAsset(null)}
         >
           <div
-            className="relative w-full max-w-xl bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800"
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -267,18 +267,18 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
             </div>
 
             {/* Content */}
-            <div className="p-4">
+            <div className="p-4 md:p-6">
               <div className="mb-3">
                 <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide mb-2">
                   Investment Thesis
                 </h4>
-                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                <div className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap max-h-[50vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent pr-2">
                   {selectedAsset.reason}
-                </p>
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <div className="flex flex-col sm:flex-row gap-3 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <a
                   href={`https://finance.yahoo.com/quote/${selectedAsset.ticker}`}
                   target="_blank"

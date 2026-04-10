@@ -18,12 +18,30 @@ The agent uses a **Tool-Calling Reasoning Loop** (up to 3 steps) to perform its 
 4.  **Synthesis**: Ranks the candidates and formulates a "Mechanism of Profit" for each.
 
 ### **Thematic Mapping Logic**
-The agent is guided by the **"5 Whys"** technique to ensure high-fidelity discovery:
-- **Why** is this theme market-moving?
-- **Why** will these specific assets benefit?
-- **Why** are these not already priced in?
-- **Why** is this the most efficient way to profit?
-- **Why** is this recommendation the best beneficiary?
+The agent is guided by the **"5 Whys"** technique to ensure high-fidelity discovery. The agent is **required** to include explicit answers to all 5 Whys in its output:
+
+1. **Why** is this theme market-moving?
+2. **Why** will these specific assets benefit?
+3. **Why** are these not already priced in?
+4. **Why** is this the most efficient way to profit?
+5. **Why** is your recommendation the best beneficiary?
+
+The output must follow this structured format:
+
+```markdown
+## 5 Whys Analysis
+Answer EACH of the following questions explicitly:
+1. **Why** is this theme market-moving? [Your detailed answer]
+2. **Why** will these specific assets benefit? [Your detailed answer]
+3. **Why** are these not already priced in? [Your detailed answer]
+4. **Why** is this the most efficient way to profit? [Your detailed answer]
+5. **Why** is your recommendation the best beneficiary? [Your detailed answer]
+
+## Recommended Assets
+| Ticker | Company Name | Relevance Score | Mechanism of Profit |
+|--------|--------------|-----------------|---------------------|
+| AAPL   | Apple Inc.  | 85              | [Why it benefits]   |
+```
 
 ---
 
@@ -71,8 +89,9 @@ The `DiscoveryAgent` passes the **raw OpenAI client** (`client.client`) to `run_
 3.  **Loop Step 1-3**: Agent calls `run_stock_screener` and `web_search`.
 4.  **Final Extraction**: The agent walks backward through messages to find:
     - First, the last assistant message with meaningful text content
-    - If none found, collects relevant tool results (stock screening output)
-5.  **Memory Storage**: The result is wrapped as a single high-fidelity "AGENT_DISCOVERY" asset in the `memories` table to preserve the agent's full reasoning.
+    - If none found (or content < 50 chars), collects relevant tool results (stock screening output)
+5.  **5 Whys Validation**: The `_validate_5_whys()` method validates that all 5 Whys questions are explicitly answered using regex pattern matching. If validation fails and content is short, a note is appended indicating which Whys are missing.
+6.  **Memory Storage**: The result is wrapped as a single high-fidelity "AGENT_DISCOVERY" asset in the `memories` table to preserve the agent's full reasoning.
 
 ---
 

@@ -5,6 +5,7 @@ on the market, creating a historical library of cause-and-effect relationships.
 """
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Any
 
@@ -39,6 +40,8 @@ async def extract_related_tickers(event_summary: str) -> list[str]:
     except Exception as e:
         logger.error(f"Failed to suggest tickers: {e}")
         return []
+
+TICKER_BLACKLIST = {"EVENT", "AI", "US", "A", "THE", "AND", "MARKET", "GDP", "CPI", "FDA", "SEC", "FED"}
 
 async def perform_cause_and_effect_analysis():
     """Analyzes recent market events and their impact."""
@@ -104,18 +107,29 @@ async def perform_cause_and_effect_analysis():
         for b in benchmarks:
             if b not in tickers_to_check:
                 tickers_to_check.append(b)
-                
-        # Limit to top 5 tickers to keep context manageable but granular
-        tickers_to_check = tickers_to_check[:5]
-        TICKER_BLACKLIST = {"EVENT", "AI", "US", "A", "THE", "AND", "MARKET", "GDP", "CPI", "FDA", "SEC", "FED"}
+        
+        # Clean tickers early: strip whitespace/punctuation, filter invalid patterns
+        # This handles LLM output like ['XOM', 'CVX,', 'HAL', 'DAL', ','] -> ['XOM', 'CVX', 'HAL', 'DAL']
+        # Must happen BEFORE the [:5] slice to avoid losing valid tickers to arbitrary set ordering
+        cleaned = []
+        for t in tickers_to_check:
+            t = t.strip().rstrip(',.').upper()
+            if re.match(r'^[A-Z]{1,5}$', t) and t not in TICKER_BLACKLIST:
+                cleaned.append(t)
+        tickers_to_check = cleaned
         
         # Extract tickers from content if possible (regex for 1-5 uppercase letters)
-        import re
         content_tickers = re.findall(r'\b[A-Z]{1,5}\b', content)
         filtered_tickers = [t for t in content_tickers if t not in TICKER_BLACKLIST]
         
         tickers_to_check.extend(filtered_tickers)
         tickers_to_check = list(set(tickers_to_check))
+        
+        # Limit to top 5 tickers to keep context manageable but granular
+        # This is done AFTER cleaning to ensure we keep the valid ones
+        # Sort for deterministic ordering before slicing
+        tickers_to_check.sort()
+        tickers_to_check = tickers_to_check[:5]
 
         performance_text = ""
         market_context = []

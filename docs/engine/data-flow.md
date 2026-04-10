@@ -1111,9 +1111,10 @@ This phase bridges the gap between AI predictions and real-world outcomes by aud
 
 **Process**:
 1. **Fetch Mature Events**: Retrieve `MARKET_EVENT` memories that are >24h old.
-2. **Retrieve Sector Performance**: Fetch historical prices for the S&P 500 (`SPY`), Nasdaq (`QQQ`), and any tickers mentioned in the event content.
-3. **Causal Logic**: The LLM compares the original "Scenario Analysis" (the "If X vs If Y" reasoning) to the actual price action to determine the **Actual Market Outcome**.
-4. **Institutional Learning**: The result is stored in the `cause_and_effect` table, creating an auditable history of how specific news types (e.g., Fed cuts) actually moved the needle.
+2. **Dynamic Ticker Discovery**: Call Gemini to suggest relevant tickers, then clean/validate (strip punctuation, filter blacklist, regex validate `^[A-Z]{1,5}$`).
+3. **Retrieve Sector Performance**: Fetch historical prices for the S&P 500 (`SPY`), Nasdaq (`QQQ`), and any tickers mentioned in the event content.
+4. **Causal Logic**: The LLM compares the original "Scenario Analysis" (the "If X vs If Y" reasoning) to the actual price action to determine the **Actual Market Outcome**.
+5. **Institutional Learning**: The result is stored in the `cause_and_effect` table, creating an auditable history of how specific news types (e.g., Fed cuts) actually moved the needle.
 
 **Schedule**: Bi-Weekly (Tuesdays & Fridays at 20:00 UTC).
 

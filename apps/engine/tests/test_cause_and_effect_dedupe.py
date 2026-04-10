@@ -223,5 +223,79 @@ async def test_cause_and_effect_includes_dates_in_market_performance():
         print(f"\nTest Passed: Dates included in market_performance text.")
 
 
+@pytest.mark.asyncio
+async def test_cause_and_effect_ticker_cleaning():
+    """Verify that malformed tickers from LLM are cleaned before market data lookup.
+    
+    This tests the fix for LLM output like ['XOM', 'CVX,', 'HAL', 'DAL', ',']
+    which should be cleaned to ['XOM', 'CVX', 'HAL', 'DAL'].
+    
+    Also verifies blacklist filtering on LLM-suggested tickers.
+    """
+    
+    mock_sb = MagicMock()
+    mock_gemini_client = MagicMock()
+    
+    event = {
+        "id": "uuid-ticker-clean",
+        "content": "Energy sector experiencing volatility due to Strait of Hormuz tensions.",
+        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "metadata": {}
+    }
+    
+    mock_sb.table.return_value.select.return_value.filter.return_value.filter.return_value.execute.return_value.data = [event]
+    mock_sb.table.return_value.select.return_value.filter.return_value.execute.return_value.data = []
+
+    with patch("apps.engine.analysis.cause_and_effect_analysis.get_supabase_client", return_value=mock_sb), \
+         patch("apps.engine.analysis.cause_and_effect_analysis.get_gemini_client", return_value=mock_gemini_client), \
+         patch("apps.engine.analysis.cause_and_effect_analysis.MarketDataManager") as mock_mdm_cls, \
+         patch("apps.engine.analysis.cause_and_effect_analysis.find_similar_memory", return_value=None), \
+         patch("apps.engine.analysis.cause_and_effect_analysis.extract_related_tickers") as mock_extract:
+        
+        mock_mdm_instance = AsyncMock()
+        mock_mdm_cls.return_value = mock_mdm_instance
+        mock_mdm_instance.get_history.return_value = [{"price": 100, "fetched_at": "now"}, {"price": 90, "fetched_at": "then"}]
+        
+        # Simulate malformed LLM output: trailing commas, empty strings, punctuation
+        mock_extract.return_value = ["XOM", "CVX,", "HAL", "DAL", ",", "  SPY  ", "US", "A", "THE"]
+        
+        mock_resp = MagicMock()
+        mock_resp.analysis = "Energy sector analysis"
+        mock_resp.market_outcome = "XOM outperformed"
+        mock_resp.confidence = 85
+        mock_resp.tags = ["energy"]
+        mock_gemini_client.chat.completions.create.return_value = mock_resp
+        
+        await perform_cause_and_effect_analysis()
+        
+        # VERIFICATION: get_history should be called with CLEANED tickers
+        called_tickers = [call.args[0] for call in mock_mdm_instance.get_history.call_args_list]
+        
+        # Should NOT contain malformed tickers
+        assert "CVX," not in called_tickers, f"Trailing comma not stripped: {called_tickers}"
+        assert "," not in called_tickers, f"Empty string with comma in ticker list: {called_tickers}"
+        assert "  SPY  " not in called_tickers, f"Whitespace not stripped: {called_tickers}"
+        
+        # Should NOT contain blacklist items (even if LLM suggests them)
+        assert "US" not in called_tickers, f"Blacklist ticker 'US' should be filtered: {called_tickers}"
+        assert "A" not in called_tickers, f"Blacklist ticker 'A' should be filtered: {called_tickers}"
+        assert "THE" not in called_tickers, f"Blacklist ticker 'THE' should be filtered: {called_tickers}"
+        
+        # Should contain cleaned tickers (some of these may be sliced out due to 5-ticker limit)
+        # We verify at least some expected cleaned tickers are present
+        cleaned_expected = {"XOM", "CVX", "HAL", "DAL", "SPY"}
+        called_set = set(called_tickers)
+        assert len(called_set & cleaned_expected) >= 3, f"At least 3 expected cleaned tickers should survive. Got: {called_tickers}"
+        
+        # Benchmarks should be present
+        assert "QQQ" in called_tickers, f"QQQ benchmark should be in list: {called_tickers}"
+        assert "SPY" in called_tickers, f"SPY benchmark should be in list: {called_tickers}"
+        
+        # No empty strings or single characters (other than valid tickers like "X" if it existed)
+        assert "" not in called_tickers, f"Empty string should not be in tickers: {called_tickers}"
+        
+        print(f"\nTest Passed: Ticker cleaning removed malformed entries. Final tickers: {called_tickers}")
+
+
 if __name__ == "__main__":
     asyncio.run(test_cause_and_effect_semantic_dedupe())

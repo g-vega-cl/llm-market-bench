@@ -53,6 +53,13 @@ Instead of a hardcoded mapping, the engine dynamically identifies relevant stock
 - **Function**: `extract_related_tickers` in `apps/engine/analysis/cause_and_effect_analysis.py`.
 - **Model**: Uses Gemini Flash with the `TickerSuggestion` Pydantic model.
 - **Capabilities**: **Prioritizes individual companies**, suppliers, or competitors directly affected by the news. It only falls back to broad sector ETFs (e.g., XLK) if no specific company-level impact is found.
+- **Ticker Cleaning & Validation**: Raw LLM output is cleaned before market data lookup:
+  - Strips whitespace and trailing punctuation (`,`, `.`)
+  - Uppercases all tickers
+  - Validates against `^[A-Z]{1,5}$` regex pattern
+  - Filters against a blacklist (`EVENT`, `AI`, `US`, `A`, `THE`, `AND`, `MARKET`, `GDP`, `CPI`, `FDA`, `SEC`, `FED`)
+  - Sorts for deterministic ordering before applying the 5-ticker limit
+  - Example: `['XOM', 'CVX,', 'HAL', 'DAL', ',']` → `['XOM', 'CVX', 'HAL', 'DAL']`
 
 ### 3. Historical Data Context
 The engine pulls historical price data for all discovered tickers from the `MarketDataManager` to provide the LLM with concrete evidence of the event's impact.
@@ -79,7 +86,13 @@ python main.py
 It only executes on the scheduled days (Tuesdays and Fridays) as defined in the `perform_cause_and_effect_analysis()` entry condition.
 
 ## Manual Verification
-You can use the test suite to verify the deduplication and discovery logic:
+You can use the test suite to verify the deduplication, ticker cleaning, and discovery logic:
 ```bash
 pytest apps/engine/tests/test_cause_and_effect_dedupe.py
 ```
+
+**Test coverage:**
+- `test_cause_and_effect_semantic_dedupe` - Verifies similar events are skipped
+- `test_cause_and_effect_expanded_tickers` - Verifies LLM ticker extraction
+- `test_cause_and_effect_includes_dates_in_market_performance` - Verifies date ranges in output
+- `test_cause_and_effect_ticker_cleaning` - Verifies malformed tickers are cleaned (trailing commas, punctuation, blacklist filtering)

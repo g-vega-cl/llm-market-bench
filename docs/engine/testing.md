@@ -140,6 +140,72 @@ async def test_ingest_newsletters_summary(caplog):
     await ingest_newsletters(newer_than_days=1)
 ```
 
+### Dependency Injection for Analysis Functions
+
+Analysis functions like `run_contrarian_analysis` accept dependencies via parameters rather than creating them internally. This enables clean unit testing without patching internal imports.
+
+**Pattern (contrarian.py example)**:
+```python
+async def run_contrarian_analysis(
+    chunks: List[dict],
+    other_decisions: List[DecisionObject],
+    context: str = "",
+    portfolio: Portfolio = None,
+    market_data: MarketDataManager = None,
+    llm_client = None,
+    retrieve_context_fn: Callable = None
+) -> Tuple[List[DecisionObject], List[MacroEvent]]:
+    # Use provided dependencies, or create defaults
+    if portfolio is None:
+        portfolio = Portfolio(owner_id="contrarian_agent")
+    # ...
+```
+
+**Testing with DI**:
+```python
+@pytest.mark.asyncio
+async def test_contrarian_with_di(self):
+    """Test using dependency injection - no internal import patching needed."""
+    mock_portfolio = MagicMock()
+    mock_portfolio.positions = {}
+    mock_portfolio.initialize = AsyncMock(return_value=None)
+    mock_portfolio.calculate_reg_t_metrics = MagicMock()
+    mock_portfolio.save_metrics = AsyncMock(return_value=None)
+    mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
+
+    mock_market_data = MagicMock()
+    mock_market_data.get_quote = AsyncMock(return_value=None)
+
+    mock_gemini_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.decisions = []
+    mock_response.macro_events = []
+    mock_gemini_client.chat.completions.create = AsyncMock(return_value=[mock_response])
+
+    mock_retrieve_context = MagicMock(return_value=[])
+
+    from analysis.contrarian import run_contrarian_analysis
+    
+    result_decisions, result_events = await run_contrarian_analysis(
+        [{"source_id": "src_1", "content": "test"}],
+        [DecisionObject(signal="BUY", confidence=80, reasoning="Test", ticker="AAPL", source_id="src_1")],
+        context="test context",
+        portfolio=mock_portfolio,
+        market_data=mock_market_data,
+        llm_client=mock_gemini_client,
+        retrieve_context_fn=mock_retrieve_context
+    )
+
+    assert isinstance(result_decisions, list)
+    assert isinstance(result_events, list)
+```
+
+**Why DI over patching internal imports?**
+- **Explicit dependencies**: Tests clearly show what the function needs
+- **No import ordering issues**: No need to patch before module import
+- **No fragile patch paths**: No `patch("analysis.contrarian.X")` required
+- **Follows SOLID principles**: Single responsibility, dependency inversion
+
 ### Market Hours & Determinism
 The `run_ingest` function in `main.py` contains a mandatory check for US Market Hours (09:30–16:00 ET). To ensure tests are deterministic and can run at any time (e.g., during overnight CI/CD runs), always pass `force=True` when calling `run_ingest` in test cases:
 
@@ -153,4 +219,4 @@ await run_ingest(force=True)
 Tests are automatically executed on every Push and Pull Request via GitHub Actions. A failure in any test prevents merging to the main branch.
 
 ---
-*Last Updated: March 2026*
+*Last Updated: April 2026*

@@ -156,21 +156,14 @@ class TestEarlyContrarianStart:
     """Tests for early contrarian start behavior."""
 
     @pytest.mark.asyncio
-    async def test_contrarian_starts_after_first_model(self):
-        """Test that contrarian can start with partial decisions from first model.
+    async def test_contrarian_starts_with_partial_decisions(self):
+        """Contrarian can start analysis with partial decisions from first model.
         
-        The key behavior we're testing is that contrarian doesn't need ALL model
-        decisions before it can start - it can work with partial decisions.
+        This test verifies that:
+        1. run_contrarian_analysis accepts dependencies via DI
+        2. It works with partial decisions (not all models needed)
+        3. It returns valid list types for decisions and events
         """
-        from analysis.contrarian import run_contrarian_analysis
-        
-        partial_decisions = [
-            DecisionObject(
-                signal="BUY", confidence=80, reasoning="First model done",
-                ticker="AAPL", source_id="src_1"
-            )
-        ]
-        
         mock_portfolio = MagicMock()
         mock_portfolio.positions = {}
         mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -187,20 +180,22 @@ class TestEarlyContrarianStart:
         mock_response.macro_events = []
         mock_gemini_client.chat.completions.create = AsyncMock(return_value=[mock_response])
 
-        with patch("analysis.contrarian.Portfolio", return_value=mock_portfolio), \
-             patch("analysis.contrarian.MarketDataManager", return_value=mock_market_data), \
-             patch("execution.market_data.MarketDataManager", return_value=mock_market_data), \
-             patch("core.llm.get_gemini_client", return_value=mock_gemini_client), \
-             patch("memory.store.retrieve_context_batch", return_value=[]):
-            
-            result_decisions, result_events = await run_contrarian_analysis(
-                [{"source_id": "src_1", "content": "test"}],
-                partial_decisions,
-                context="test context"
-            )
-            
-            assert isinstance(result_decisions, list)
-            assert isinstance(result_events, list)
+        mock_retrieve_context = MagicMock(return_value=[])
+
+        from analysis.contrarian import run_contrarian_analysis
+        
+        result_decisions, result_events = await run_contrarian_analysis(
+            [{"source_id": "src_1", "content": "test"}],
+            [DecisionObject(signal="BUY", confidence=80, reasoning="First model done", ticker="AAPL", source_id="src_1")],
+            context="test context",
+            portfolio=mock_portfolio,
+            market_data=mock_market_data,
+            llm_client=mock_gemini_client,
+            retrieve_context_fn=mock_retrieve_context
+        )
+
+        assert isinstance(result_decisions, list)
+        assert isinstance(result_events, list)
 
 
 class TestDecisionCallback:

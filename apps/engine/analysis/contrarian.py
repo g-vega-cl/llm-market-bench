@@ -6,7 +6,7 @@ contrarian opportunities or missed risks.
 
 import asyncio
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Callable, Optional
 
 from core.models import DecisionObject, MacroEvent, DecisionsResponse, ContrarianAgentResponse
 from core.llm import get_gemini_client
@@ -18,7 +18,11 @@ from memory.store import retrieve_context_batch
 async def run_contrarian_analysis(
     chunks: List[dict],
     other_decisions: List[DecisionObject],
-    context: str = ""
+    context: str = "",
+    portfolio: Portfolio = None,
+    market_data: MarketDataManager = None,
+    llm_client = None,
+    retrieve_context_fn: Callable = None
 ) -> Tuple[List[DecisionObject], List[MacroEvent]]:
     """Runs the contrarian analysis using Gemini Flash 3.
 
@@ -26,17 +30,28 @@ async def run_contrarian_analysis(
         chunks: The original news chunks.
         other_decisions: Decisions made by the primary LLM agents.
         context: Aggregated historical context.
+        portfolio: Portfolio instance (creates default if not provided).
+        market_data: MarketDataManager instance (creates default if not provided).
+        llm_client: Pre-initialized Gemini client (creates default if not provided).
+        retrieve_context_fn: Function for retrieving context (defaults to retrieve_context_batch).
 
     Returns:
         A tuple of (decisions, macro_events).
     """
     logger.info("Starting Contrarian Agent analysis...")
 
+    if portfolio is None:
+        portfolio = Portfolio(owner_id="contrarian_agent")
+    if market_data is None:
+        market_data = MarketDataManager()
+    if llm_client is None:
+        llm_client = get_gemini_client()
+    if retrieve_context_fn is None:
+        retrieve_context_fn = retrieve_context_batch
+
     # 1. Initialize Portfolio
-    portfolio = Portfolio(owner_id="contrarian_agent")
     await portfolio.initialize()
 
-    market_data = MarketDataManager()
     current_prices = {}
     if portfolio.positions:
         logger.info(f"Fetching current prices for {len(portfolio.positions)} contrarian portfolio tickers in parallel...")
@@ -55,10 +70,10 @@ async def run_contrarian_analysis(
     if not context:
         queries = [chunk["content"] for chunk in chunks if chunk.get("content")]
         if queries:
-            context_results = retrieve_context_batch(queries)
+            context_results = retrieve_context_fn(queries)
             # Include government incentives and lessons for contrarian as well
-            gov_context = retrieve_context_batch(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"])
-            lesson_context = retrieve_context_batch(queries, limit=2, memory_types=["LESSON_LEARNED"])
+            gov_context = retrieve_context_fn(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"])
+            lesson_context = retrieve_context_fn(queries, limit=2, memory_types=["LESSON_LEARNED"])
             all_contexts = context_results + gov_context + lesson_context
             context = "\n".join(list(set([c for c in all_contexts if c])))
     news_content = "".join([
@@ -77,7 +92,7 @@ async def run_contrarian_analysis(
         decisions_context = "No consensus decisions available."
 
     # 3. Call Gemini Flash 3
-    client = get_gemini_client()
+    client = llm_client
 
     try:
         from core.models import DecisionsResponse

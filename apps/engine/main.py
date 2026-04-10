@@ -12,18 +12,16 @@ from analyze import analyze_chunks, analyze_chunks_streaming
 from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
-from core.llm import get_gemini_client
 from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
 from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, validate_semantic_overlap, ValidationStatus
 from execution.portfolio import Portfolio
-from execution.market_data import MarketDataManager
 from ingest.newsletter import ingest_newsletters
 from ingest.government import run_government_pipeline
 from ingest.calendar import run_calendar_pipeline
-from memory.store import add_memory, retrieve_context_batch
+from memory.store import add_memory
 from analysis.post_analysis import perform_post_analysis
 from analysis.pca_utils import update_pca_coordinates
 from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
@@ -349,18 +347,15 @@ async def _stage_decision_processing(
     
     # --- Contrarian Analysis starts IMMEDIATELY (not after consensus) ---
     logger.info("Starting Contrarian Agent Analysis (in parallel with primary decisions)...")
-    contrarian_portfolio = Portfolio(owner_id="contrarian_agent")
-    contrarian_market_data = MarketDataManager()
-    contrarian_llm_client = get_gemini_client()
     contrarian_task = asyncio.create_task(
         run_contrarian_analysis(
             data,
             decisions,
             context=aggregated_context,
-            portfolio=contrarian_portfolio,
-            market_data=contrarian_market_data,
-            llm_client=contrarian_llm_client,
-            retrieve_context_fn=retrieve_context_batch
+            portfolio=None,
+            market_data=None,
+            llm_client=None,
+            retrieve_context_fn=None
         )
     )
     

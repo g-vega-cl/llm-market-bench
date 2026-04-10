@@ -244,7 +244,7 @@ The tracker fetches current quotes for 16 key assets across four categories:
 1. **Equities**: SPY, QQQ, DIA, IWM (US Indices)
 2. **International**: EWJ, EWY, VGK, MCHI, EEM (Japan, Korea, Europe, China, Emerging)
 3. **Commodities**: GLD, SLV, CPER, USO (Gold, Silver, Copper, Oil)
-4. **Yields & Indices**: ^TNX (10-Yr Yield), DXY (Dollar), ^VIX (Volatility)
+4. **Yields & Indices**: IEF (10-Yr Treasury), UUP (Dollar), VIXY (Volatility)
 
 ### Step 1.7.2: Volatility & Regime Analysis
 For each ticker, the engine:

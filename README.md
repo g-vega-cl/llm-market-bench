@@ -198,7 +198,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Include VOLUME** - And volume strategies and their meanings
 - [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
-- [ ] **Fix general market tickers discovery** - Multiple requests for ^TNX (10-year Treasury yield) and DX-Y.NYB (US Dollar Index) faileds:w
+- [x] **Fix general market tickers discovery** - Replaced ^TNX → IEF, DX-Y.NYB → UUP, ^VIX → VIXY for FMP compatibility
 
 ### 🔄 Under Consideration
 

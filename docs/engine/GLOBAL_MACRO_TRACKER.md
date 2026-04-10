@@ -15,7 +15,7 @@ The tracker monitors 16 high-liquidity assets that serve as proxies for global g
 | **Equities** | `SPY`, `QQQ`, `DIA`, `IWM` | US Broad Market, Tech, Blue Chip, Small Cap |
 | **International** | `EWJ`, `EWY`, `VGK`, `MCHI`, `EEM` | Japan, South Korea, Europe, China, Emerging Markets |
 | **Commodities** | `GLD`, `SLV`, `CPER`, `USO` | Gold & Silver (Inflation/Safety), Copper (Growth), Oil |
-| **Yields & Indices** | `^TNX`, `DX-Y.NYB`, `^VIX` | 10-Yr Treasury (Rates), US Dollar (DXY), Volatility |
+| **Yields & Indices** | `IEF`, `UUP`, `VIXY` | 10-Yr Treasury (Rates), US Dollar (DXY), Volatility |
 
 ## 2. Volatility & Regime Detection
 

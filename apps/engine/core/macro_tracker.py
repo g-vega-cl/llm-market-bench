@@ -34,9 +34,9 @@ MACRO_TICKERS = {
         "USO": "Oil (WTI)"
     },
     "Yields & Indices": {
-        "^TNX": "10-Yr US Treasury Yield",
-        "DX-Y.NYB": "US Dollar Index (DXY)",
-        "^VIX": "Volatility Index"
+        "IEF": "10-Yr US Treasury Yield (IEF)",
+        "UUP": "US Dollar Index (DXY)",
+        "VIXY": "Volatility Index (VIX)"
     }
 }
 

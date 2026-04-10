@@ -243,9 +243,14 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
     *   **Event Linking:** Browse related "Update" events and trace their parent origins.
     *   **Flow View:** An interactive, infinite-canvas visualization of narrative threads and event chains.
 *   **Reasoning**: A research-grade audit trail with a human-friendly tabbed UI, showing every LLM interaction, tool call, and internal "thought" trace categorized by task type.
-*   **How it Works**: A conceptual overview of the agentic pipeline.
-    *   **Phase Breakdown:** Ingestion → Analysis → Verification → Execution → Feedback.
-    *   **User Education:** Helps users understand the data flow from newsletters to executed trades.
+*   **How it Works**: A detailed conceptual overview of the agentic pipeline with technical depth.
+    *   **Phase Breakdown:** 
+        - **Phase 1: Ingestion** (Tripled trigger: 09:30, 12:30, 15:30 ET via GitHub Actions, Holiday-Aware Market Hours Check via FMP with 5-min TTL caching, Gmail newsletter scraping, Economic Calendar from Trading Economics)
+        - **Phase 2: Analysis** (Parallel LLM analysis via PromptFactory, Global Macro Tracker with 16 assets and regime detection at 2σ, Asynchronous Chunk Batching (20 chunks), Web Search with citations, Stock Screener tool, DiscoveryAgent for Alpha Discovery)
+        - **Phase 3: Verification** (4-Layer Enforcement System, Hard Tool Enforcement requiring native function calls, Ownership Pre-Validation, 50% Confidence Penalty, Strategic Reasoning Audit)
+        - **Phase 4: Execution** (FMP-Verified Market Hours, 5.0% Price Banding, Reg T Margin Validation with $1,000 minimum, Atomic Settlement "Commit at End" pattern, Two-Phase Attribution Locking)
+        - **Phase 5: Feedback** (Manager Agent with 5/14/30-day post-analysis, Contrarian Agent, Government Tracking monthly audit, Cause & Effect bi-weekly with semantic deduplication, pgvector RAG with Scenario Analysis)
+    *   **Models:** OpenAI (gpt-5.4-nano), Claude (claude-haiku-4-5), Gemini (gemini-3.1-flash-lite-preview), DeepSeek (deepseek-reasoner)
 
 **18a. TanStack Query Architecture** ✅
 *   **Tech:** **TanStack Query v5 + TanStack Start**

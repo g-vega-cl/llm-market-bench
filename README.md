@@ -179,8 +179,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Revisit the concepts map** - 
 - [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
     - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
-- [x] **Add specific dates to cause and effect** - specially when stock move percentages are mentioned so we know timeframes. For example, if it says SPY +1.2%, mention from when to when
-- [ ] **Check reasoning step prompts** For example, I saw this and it needs to be fixed:
+- [ ] **Check reasoning ste prompts** For example, I saw this and it needs to be fixed:
     - Recently Executed Trades (Last 48h):
         - BUY MKC: 25 @ $53.29 (1d ago) - Reason: No reasoning stored.
         - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.

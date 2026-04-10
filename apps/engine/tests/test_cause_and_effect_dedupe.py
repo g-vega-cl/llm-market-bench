@@ -142,5 +142,86 @@ async def test_cause_and_effect_expanded_tickers():
         
         print("\nTest Passed: LLM-based ticker extraction correctly identified private credit tickers.")
 
+
+@pytest.mark.asyncio
+async def test_cause_and_effect_includes_dates_in_market_performance():
+    """Verify that market_performance text includes specific date ranges for stock moves.
+    
+    This ensures that when the LLM generates cause & effect analysis, it knows
+    the timeframe of stock movements (e.g., 'SPY +1.2% (2026-03-27 to 2026-04-10)').
+    Without dates, the analysis lacks temporal context for proper causal reasoning.
+    """
+    
+    mock_sb = MagicMock()
+    mock_gemini_client = MagicMock()
+    
+    event = {
+        "id": "uuid-date-test",
+        "content": "Fed announced rate pause affecting banking sector.",
+        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "metadata": {
+            "scenario_analysis": "Banks should benefit from stable yields."
+        }
+    }
+    
+    mock_sb.table.return_value.select.return_value.filter.return_value.filter.return_value.execute.return_value.data = [event]
+    mock_sb.table.return_value.select.return_value.filter.return_value.execute.return_value.data = []
+
+    with patch("apps.engine.analysis.cause_and_effect_analysis.get_supabase_client", return_value=mock_sb), \
+         patch("apps.engine.analysis.cause_and_effect_analysis.get_gemini_client", return_value=mock_gemini_client), \
+         patch("apps.engine.analysis.cause_and_effect_analysis.MarketDataManager") as mock_mdm_cls, \
+         patch("apps.engine.analysis.cause_and_effect_analysis.find_similar_memory", return_value=None), \
+         patch("apps.engine.analysis.cause_and_effect_analysis.extract_related_tickers", return_value=["JPM"]):
+        
+        mock_mdm_instance = AsyncMock()
+        mock_mdm_cls.return_value = mock_mdm_instance
+        
+        mock_mdm_instance.get_history.return_value = [
+            {"price": 210.50, "fetched_at": "2026-04-10"},
+            {"price": 205.75, "fetched_at": "2026-04-09"},
+            {"price": 202.30, "fetched_at": "2026-04-08"},
+            {"price": 198.00, "fetched_at": "2026-04-07"},
+            {"price": 195.00, "fetched_at": "2026-04-06"},
+            {"price": 192.50, "fetched_at": "2026-04-05"},
+            {"price": 190.00, "fetched_at": "2026-04-04"},
+            {"price": 188.00, "fetched_at": "2026-04-03"},
+            {"price": 186.00, "fetched_at": "2026-04-02"},
+            {"price": 184.50, "fetched_at": "2026-04-01"},
+            {"price": 183.00, "fetched_at": "2026-03-31"},
+            {"price": 181.50, "fetched_at": "2026-03-30"},
+            {"price": 180.00, "fetched_at": "2026-03-28"},
+            {"price": 179.25, "fetched_at": "2026-03-27"},
+        ]
+        
+        mock_resp = MagicMock()
+        mock_resp.analysis = "JPM rallied as banks benefited."
+        mock_resp.market_outcome = "JPM up 17.4% over the period."
+        mock_resp.confidence = 85
+        mock_resp.tags = ["banking", "fed"]
+        mock_gemini_client.chat.completions.create.return_value = mock_resp
+        
+        await perform_cause_and_effect_analysis()
+        
+        assert mock_gemini_client.chat.completions.create.call_count == 1
+        
+        call_args = mock_gemini_client.chat.completions.create.call_args
+        messages = call_args.kwargs.get("messages", call_args.args[1] if len(call_args.args) > 1 else [])
+        
+        user_message = None
+        for msg in messages:
+            if msg.get("role") == "user":
+                user_message = msg.get("content", "")
+                break
+        
+        assert user_message is not None, "No user message found in LLM call"
+        
+        assert "2026-03-27" in user_message, f"Start date missing from market_performance. Got: {user_message}"
+        assert "2026-04-10" in user_message, f"End date missing from market_performance. Got: {user_message}"
+        
+        assert "17.43%" in user_message, f"Percentage change should be calculated. Got: {user_message}"
+        
+        print(f"\nTest Passed: Dates included in market_performance text.")
+
+
 if __name__ == "__main__":
     asyncio.run(test_cause_and_effect_semantic_dedupe())

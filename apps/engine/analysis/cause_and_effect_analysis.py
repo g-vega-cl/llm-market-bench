@@ -125,10 +125,15 @@ async def perform_cause_and_effect_analysis():
             history = await mdm.get_history(ticker, days=14)
             if history and len(history) >= 2:
                 # get_history returns newest first, so history[0] is latest, history[-1] is oldest
+                start_date = history[-1]["fetched_at"]
+                end_date = history[0]["fetched_at"]
                 start_price = history[-1]["price"]
                 end_price = history[0]["price"]
                 change = ((end_price - start_price) / start_price) * 100
-                market_context.append(f"{ticker}: {change:+.2f}% (${start_price:.2f} -> ${end_price:.2f})")
+                market_context.append(
+                    f"{ticker}: {change:+.2f}% ({start_date} to {end_date}, "
+                    f"${start_price:.2f} -> ${end_price:.2f})"
+                )
 
         performance_text = "\n".join(market_context) if market_context else "No specific market data available."
 

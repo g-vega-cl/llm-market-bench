@@ -57,6 +57,7 @@ Instead of a hardcoded mapping, the engine dynamically identifies relevant stock
 ### 3. Historical Data Context
 The engine pulls historical price data for all discovered tickers from the `MarketDataManager` to provide the LLM with concrete evidence of the event's impact.
 - **Benchmarks**: `SPY` and `QQQ` are included as a secondary baseline for comparison if room exists in the top 5 tickers.
+- **Date-Ranged Performance**: Each ticker's performance output includes a date range (e.g., `SPY: +1.23% (2026-03-27 to 2026-04-10, $520.50 -> $526.90)`) so the LLM has full temporal context for causal reasoning.
 
 ### **7. Discovery Pipeline Quality**
 

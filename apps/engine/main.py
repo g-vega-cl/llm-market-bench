@@ -8,7 +8,7 @@ import argparse
 import asyncio
 from collections import defaultdict
 
-from analyze import analyze_chunks
+from analyze import analyze_chunks, analyze_chunks_streaming
 from consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
@@ -54,33 +54,22 @@ async def _stage_ingest_and_snapshot():
 
 
 async def _stage_analysis_and_consensus(data, sb_client):
-    """Stage 2: Run parallel LLM analysis and event consensus."""
+    """Stage 2: Run parallel LLM analysis and event consensus.
+    
+    Note: Consensus and momentum now run as background tasks in _stage_decision_processing
+    to allow decision execution to start sooner.
+    """
     logger.info("Starting Parallel LLM Analysis...")
     try:
-        # Note: analyze_chunks now handles fetching government and lesson context
         decisions, macro_events, aggregated_context, uncrowded_context = await analyze_chunks(data)
         logger.info(f"Analysis complete. Generated {len(decisions)} decisions and {len(macro_events)} raw macro events.")
 
         if not decisions and not macro_events:
             logger.warning("No decisions or events generated from analysis. Check LLM provider connectivity.")
         
-        # --- Event Consensus Protocol ---
-        logger.info("Running Event Consensus Protocol...")
-        consensus_events = await process_consensus(macro_events)
-        logger.info(f"Consensus protocol finished. Promoted {len(consensus_events)} events to memory.")
-
-        # --- Trend & Concept Momentum Analysis ---
-        logger.info("Starting Trend & Concept Momentum Analysis...")
-        await analyze_momentum(sb_client, consensus_events)
-
-        # --- Decay ---
-        await decay_stale_concepts(sb_client)
-        from memory.store import decay_memories
-        decay_memories(sb_client)
-
         return decisions, macro_events, aggregated_context, uncrowded_context
     except Exception as e:
-        logger.error(f"Analysis or Consensus failed: {e}")
+        logger.error(f"Analysis failed: {e}")
         return [], [], "", ""
 
 
@@ -327,23 +316,45 @@ async def _process_single_decision(
 async def _stage_decision_processing(
     decisions, macro_events, data, aggregated_context, uncrowded_context, sb_client
 ):
-    """Stage 3: Decision attribution, validation, and execution with concurrency."""
-    # --- Contrarian Analysis (Phase 2.5) ---
-    logger.info("Starting Contrarian Agent Analysis...")
-    contrarian_decisions, contrarian_events = await run_contrarian_analysis(
-        data, decisions, context=aggregated_context
+    """Stage 3: Decision attribution, validation, and execution with concurrency.
+    
+    Now runs:
+    - Contrarian analysis immediately (doesn't wait for consensus)
+    - Primary decision execution in parallel with contrarian
+    - Consensus/momentum as fire-and-forget background tasks
+    """
+    # --- Start Consensus/Momentum as background tasks (fire-and-forget) ---
+    async def run_consensus_background():
+        try:
+            logger.info("Running Event Consensus Protocol (background)...")
+            consensus_events = await process_consensus(macro_events)
+            logger.info(f"Background consensus finished. Promoted {len(consensus_events)} events.")
+            
+            logger.info("Starting Trend & Concept Momentum Analysis (background)...")
+            await analyze_momentum(sb_client, consensus_events)
+            logger.info("Background momentum finished.")
+            
+            await decay_stale_concepts(sb_client)
+            from memory.store import decay_memories
+            decay_memories(sb_client)
+            
+            return consensus_events
+        except Exception as e:
+            logger.error(f"Background consensus/momentum failed: {e}")
+            return []
+    
+    consensus_bg_task = asyncio.create_task(run_consensus_background())
+    
+    # --- Contrarian Analysis starts IMMEDIATELY (not after consensus) ---
+    logger.info("Starting Contrarian Agent Analysis (in parallel with primary decisions)...")
+    contrarian_task = asyncio.create_task(
+        run_contrarian_analysis(data, decisions, context=aggregated_context)
     )
-    decisions.extend(contrarian_decisions)
-    macro_events.extend(contrarian_events)
-
+    
     # --- DETERMINISTIC SORTING ---
-    # Sort decisions by (model_name, original_index) to ensure stable execution order
-    # that preserves the model's original conviction priority.
     decisions.sort(key=lambda d: (d.model_name or "", getattr(d, "original_index", 0)))
 
-    # Use a semaphore to limit concurrent LLM calls (Approach A)
     semaphore = asyncio.Semaphore(3)
-    # Per-portfolio locks to prevent race conditions during execution
     portfolio_locks = defaultdict(asyncio.Lock)
 
     counters = {
@@ -352,15 +363,34 @@ async def _stage_decision_processing(
         "lock": asyncio.Lock()
     }
 
-    tasks = [
+    # --- Execute primary decisions while contrarian is running ---
+    logger.info(f"Executing {len(decisions)} primary decisions in parallel with contrarian...")
+    primary_tasks = [
         _process_single_decision(
-            d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+            d, [], aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
         )
         for d in decisions
     ]
-
-    await asyncio.gather(*tasks)
-
+    
+    await asyncio.gather(*primary_tasks)
+    
+    # --- Wait for contrarian and execute its decisions ---
+    contrarian_decisions, contrarian_events = await contrarian_task
+    logger.info(f"Contrarian analysis complete. Generated {len(contrarian_decisions)} decisions.")
+    
+    if contrarian_decisions:
+        # Give contrarian its own semaphore to avoid overwhelming the system
+        contrarian_semaphore = asyncio.Semaphore(3)
+        contrarian_tasks = [
+            _process_single_decision(
+                d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, contrarian_semaphore, portfolio_locks, counters
+            )
+            for d in contrarian_decisions
+        ]
+        await asyncio.gather(*contrarian_tasks)
+    
+    # Don't await consensus_bg_task - let it run in background
+    
     logger.info(f"Processing complete: {counters['saved']} saved, {counters['rejected']} rejected.")
 
 

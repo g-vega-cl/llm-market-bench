@@ -69,13 +69,18 @@ async def close_client(client, provider: str):
         client: The instructor-wrapped client instance.
         provider: The provider name for logging purposes.
     """
+    if client is None:
+        return
+        
     try:
         # Instructor wraps clients but preserves the underlying client reference
         if hasattr(client, "client"):
             underlying = client.client
+            if underlying is None:
+                return
             if hasattr(underlying, "close"):
                 await underlying.close()
-            elif hasattr(underlying, "_async_httpx_client"):
+            elif hasattr(underlying, "_async_httpx_client") and underlying._async_httpx_client is not None:
                 await underlying._async_httpx_client.aclose()
     except Exception as e:
         logger.debug("Failed to close %s client: %s", provider, e)

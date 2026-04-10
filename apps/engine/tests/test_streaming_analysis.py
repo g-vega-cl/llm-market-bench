@@ -164,8 +164,6 @@ class TestEarlyContrarianStart:
         """
         from analysis.contrarian import run_contrarian_analysis
         
-        # This test verifies that run_contrarian_analysis can be called with
-        # partial decisions and will still produce results
         partial_decisions = [
             DecisionObject(
                 signal="BUY", confidence=80, reasoning="First model done",
@@ -173,22 +171,33 @@ class TestEarlyContrarianStart:
             )
         ]
         
-        # Mock the internal LLM call to avoid actual API calls
-        with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_analyze:
-            mock_analyze.return_value = DecisionsResponse(
-                decisions=[],
-                macro_events=[]
-            )
+        mock_portfolio = MagicMock()
+        mock_portfolio.positions = {}
+        mock_portfolio.initialize = AsyncMock(return_value=None)
+        mock_portfolio.calculate_reg_t_metrics = MagicMock()
+        mock_portfolio.save_metrics = AsyncMock(return_value=None)
+        mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
+
+        mock_market_data = MagicMock()
+        mock_market_data.get_quote = AsyncMock(return_value=None)
+
+        mock_gemini_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.decisions = []
+        mock_response.macro_events = []
+        mock_gemini_client.chat.completions.create = AsyncMock(return_value=[mock_response])
+
+        with patch("execution.portfolio.Portfolio", return_value=mock_portfolio), \
+             patch("execution.market_data.MarketDataManager", return_value=mock_market_data), \
+             patch("core.llm.get_gemini_client", return_value=mock_gemini_client), \
+             patch("memory.store.retrieve_context_batch", return_value=[]):
             
-            # Call contrarian with just one model's decisions (partial)
             result_decisions, result_events = await run_contrarian_analysis(
                 [{"source_id": "src_1", "content": "test"}],
-                partial_decisions,  # Only 1 model's decisions, not all 4
+                partial_decisions,
                 context="test context"
             )
             
-            # Contrarian should have run (even with partial decisions)
-            # We just verify it completed without error
             assert isinstance(result_decisions, list)
             assert isinstance(result_events, list)
 

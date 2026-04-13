@@ -62,44 +62,65 @@ class DiscoveryAgent:
             {"role": "user", "content": f"THEME: {theme}\n\nCONTEXT: {context or 'None'}"}
         ]
 
-        # Use the standard tool loop handler for the provider
-        if self.provider == "gemini":
-            await gemini.run_tool_loop(
-                raw_client=self.client,
-                model_name=self.model_name,
-                messages=messages,
-                override_tools=self.discovery_tools,
-                enable_google_search=True,
-                max_tool_steps=3
-            )
-        elif self.provider == "anthropic":
-            await anthropic.run_tool_loop(
-                raw_client=self.client,
-                model_name=self.model_name,
-                messages=messages,
-                override_tools=self.discovery_tools,
-                enable_web_search=True,
-                max_tool_steps=3
-            )
-        else:
-            # Default OpenAI handler - use raw client (client.client) since Instructor-wrapped
-            # clients intercept chat.completions.create and expect response_model
-            await openai.run_tool_loop(
-                raw_client=self.client.client,
-                model_name=self.model_name,
-                messages=messages,
-                override_tools=self.discovery_tools,
-                enable_web_search=True,
-                max_tool_steps=3
-            )
+        max_attempts = 2
+        
+        for attempt in range(max_attempts):
+            messages = [
+                {"role": "system", "content": prompts.DISCOVERY_AGENT_SYSTEM_PROMPT},
+                {"role": "user", "content": f"THEME: {theme}\n\nCONTEXT: {context or 'None'}"}
+            ]
+            
+            if attempt > 0:
+                correction_prompt = self._build_correction_prompt(theme, context, result, missing)
+                messages.append({"role": "user", "content": correction_prompt})
+            
+            if self.provider == "gemini":
+                await gemini.run_tool_loop(
+                    raw_client=self.client,
+                    model_name=self.model_name,
+                    messages=messages,
+                    override_tools=self.discovery_tools,
+                    enable_google_search=True,
+                    max_tool_steps=5
+                )
+            elif self.provider == "anthropic":
+                await anthropic.run_tool_loop(
+                    raw_client=self.client,
+                    model_name=self.model_name,
+                    messages=messages,
+                    override_tools=self.discovery_tools,
+                    enable_web_search=True,
+                    max_tool_steps=5
+                )
+            else:
+                await openai.run_tool_loop(
+                    raw_client=self.client.client,
+                    model_name=self.model_name,
+                    messages=messages,
+                    override_tools=self.discovery_tools,
+                    enable_web_search=True,
+                    max_tool_steps=5
+                )
 
-        result = self._extract_final_response(messages)
+            result = self._extract_final_response(messages)
+            
+            if not result or len(result.strip()) < 50:
+                logger.warning(f"DiscoveryAgent: Empty response on attempt {attempt + 1}, trying tool results fallback")
+                result = self._collect_tool_results_fallback(messages)
+            
+            validated = self._validate_and_enhance_result(result)
+            is_valid, missing = self._validate_5_whys(validated)
+            
+            if is_valid:
+                logger.info(f"DiscoveryAgent: 5 Whys validated successfully on attempt {attempt + 1}")
+                return validated
+            
+            logger.warning(f"DiscoveryAgent: 5 Whys validation failed on attempt {attempt + 1}, missing: {missing}")
+            
+            if attempt == max_attempts - 1:
+                break
         
-        if not result or len(result.strip()) < 50:
-            logger.warning("DiscoveryAgent: Empty response, trying tool results fallback")
-            result = self._collect_tool_results_fallback(messages)
-        
-        validated = self._validate_and_enhance_result(result)
+        logger.warning("DiscoveryAgent: Max attempts reached, returning best result with note")
         return validated
 
     def _collect_tool_results_fallback(self, messages: list) -> str:
@@ -111,12 +132,30 @@ class DiscoveryAgent:
                 if content and isinstance(content, str) and content.strip():
                     lower_content = content.lower()
                     if "no stocks found" not in lower_content and "error" not in lower_content:
-                        if "stock screening results" in lower_content or content.startswith("$"):
+                        if "stock screening results" in lower_content or content.startswith("$") or "$" in content:
                             tool_results.append(content)
 
         if tool_results:
             return "Stock Screening Results:\n" + "\n---\n".join(tool_results)
         return ""
+
+    def _build_correction_prompt(self, theme: str, context: str, previous_result: str, missing: list) -> str:
+        """Build a structured correction prompt for retry attempts."""
+        return f"""PREVIOUS ATTEMPT RESULTS:
+{previous_result}
+
+ISSUES IDENTIFIED:
+- Missing 5 Whys sections: {', '.join(missing) if missing else 'None'}
+
+Please analyze the previous result and produce an improved response that:
+1. Explicitly addresses each of the missing 5 Whys sections
+2. Provides detailed answers (2-3 sentences each)
+3. Includes specific tickers with rationale
+
+THEME: {theme}
+CONTEXT: {context or 'None'}
+
+Output the complete improved 5 Whys analysis and recommended assets."""
 
     def _extract_final_response(self, messages: list) -> str:
         """Walk backward to find the last assistant/model message with meaningful text.

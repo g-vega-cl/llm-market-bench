@@ -57,7 +57,7 @@ async def test_discovery_agent_does_not_echo_theme_when_tool_loop_stalls():
     assert result == "Insufficient analysis produced. Please retry with more specific theme."
     assert "THEME:" not in result
     assert result != theme
-    assert mock_loop.await_count == 1
+    assert mock_loop.await_count == 2
 
 @pytest.mark.asyncio
 async def test_deepseek_reasoning_preservation_regression():

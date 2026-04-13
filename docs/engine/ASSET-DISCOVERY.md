@@ -49,6 +49,9 @@ Answer EACH of the following questions explicitly:
 
 This tool is available to all primary providers (OpenAI, Anthropic, Gemini) and serves as the backbone for asset retrieval.
 
+### **Volume Context Enrichment**
+The screener automatically enriches each result with **volume context** by fetching per-stock historical volume data and computing a human-readable comparison string (e.g., "2.3x above 20-day average (85th percentile)"). This helps identify stocks with unusual trading activity.
+
 ### **Supported Filters**
 - **Market Cap**: `market_cap_more_than`, `market_cap_lower_than`
 - **Price**: `price_more_than`, `price_lower_than`

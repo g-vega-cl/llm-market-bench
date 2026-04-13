@@ -10,14 +10,14 @@ async def test_market_data_manager_get_history_cache_hit():
     mock_supabase = MagicMock()
     mock_res = MagicMock()
     mock_res.data = [
-        {"price": 100.0, "fetched_at": "2026-02-01T10:00:00"},
-        {"price": 101.0, "fetched_at": "2026-02-02T10:00:00"},
-        {"price": 102.0, "fetched_at": "2026-02-03T10:00:00"},
-        {"price": 103.0, "fetched_at": "2026-02-04T10:00:00"},
-        {"price": 104.0, "fetched_at": "2026-02-05T10:00:00"},
-        {"price": 105.0, "fetched_at": "2026-02-06T10:00:00"},
-        {"price": 106.0, "fetched_at": "2026-02-07T10:00:00"},
-        {"price": 107.0, "fetched_at": "2026-02-08T10:00:00"},
+        {"price": 100.0, "volume": 10000000, "fetched_at": "2026-02-01T10:00:00"},
+        {"price": 101.0, "volume": 10000000, "fetched_at": "2026-02-02T10:00:00"},
+        {"price": 102.0, "volume": 10000000, "fetched_at": "2026-02-03T10:00:00"},
+        {"price": 103.0, "volume": 10000000, "fetched_at": "2026-02-04T10:00:00"},
+        {"price": 104.0, "volume": 10000000, "fetched_at": "2026-02-05T10:00:00"},
+        {"price": 105.0, "volume": 10000000, "fetched_at": "2026-02-06T10:00:00"},
+        {"price": 106.0, "volume": 10000000, "fetched_at": "2026-02-07T10:00:00"},
+        {"price": 107.0, "volume": 10000000, "fetched_at": "2026-02-08T10:00:00"},
     ]
     
     # Supabase chaining mock
@@ -47,8 +47,8 @@ async def test_market_data_manager_get_history_fallback_batch_upsert():
     
     mock_provider = AsyncMock()
     mock_provider.get_history.return_value = [
-        {"price": 150.0, "fetched_at": "2026-02-01T10:00:00"},
-        {"price": 151.0, "fetched_at": "2026-02-02T10:00:00"}
+        {"price": 150.0, "volume": 10000000, "fetched_at": "2026-02-01T10:00:00"},
+        {"price": 151.0, "volume": 10000000, "fetched_at": "2026-02-02T10:00:00"}
     ]
     
     with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):

@@ -3,9 +3,16 @@
 import asyncio
 import time
 import httpx
-from typing import Optional
+from typing import Optional, TypedDict
 from .base import FinancialProvider, TickerData
 from core.config import FMP_API_KEY, logger
+
+
+class HistoryEntry(TypedDict):
+    """Historical price entry with volume data."""
+    price: float
+    volume: int | None
+    fetched_at: str
 
 
 class FMPProvider(FinancialProvider):
@@ -105,14 +112,13 @@ class FMPProvider(FinancialProvider):
         
         return results
 
-    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
-        """Fetch historical price data using FMP."""
+    async def get_history(self, ticker: str, days: int = 14) -> list[HistoryEntry]:
+        """Fetch historical price data with volume using FMP."""
         if not self.api_key:
             return []
 
         try:
             async with httpx.AsyncClient() as client:
-                # FMP historical-price-eod/full requires symbol as query parameter
                 resp = await client.get(
                     f"{self.BASE_URL}/historical-price-eod/full",
                     params={"symbol": ticker, "timeseries": days, "apikey": self.api_key}
@@ -120,7 +126,6 @@ class FMPProvider(FinancialProvider):
                 resp.raise_for_status()
                 data = resp.json()
 
-                # Handle both list (stable/v4) and dict with 'historical' key (v3)
                 historical_data = data if isinstance(data, list) else data.get("historical", [])
 
                 if not historical_data:
@@ -129,12 +134,12 @@ class FMPProvider(FinancialProvider):
 
                 results = []
                 for entry in historical_data:
-                    results.append({
-                        "price": float(entry["close"]),
-                        "fetched_at": entry["date"] # FMP provides YYYY-MM-DD
-                    })
+                    results.append(HistoryEntry(
+                        price=float(entry["close"]),
+                        volume=entry.get("volume"),
+                        fetched_at=entry["date"]
+                    ))
                 
-                # FMP usually returns descending (latest first)
                 return results
 
         except Exception as e:

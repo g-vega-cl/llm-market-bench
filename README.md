@@ -195,7 +195,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [ ] **Set up Test driven development** - 
 - [ ] **Find trading papers not just investing** - But low sell high?
-- [ ] **Include VOLUME** - And volume strategies and their meanings
+- [x] **Include VOLUME** - Volume context added to `get_volatility_metrics` and `run_stock_screener` tools (e.g., "2.3x above 20-day average (85th percentile)")
 - [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 - [ ] **Make sure CI/CD tests behave same as local tests**
 - [ ] **Use frontend skills to improve frontend**

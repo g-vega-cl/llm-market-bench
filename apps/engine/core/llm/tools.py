@@ -193,7 +193,7 @@ VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI = {
     "type": "function",
     "function": {
         "name": "get_volatility_metrics",
-        "description": "Calculate price standard deviation and range to assess if a stock is over-extended.",
+        "description": "Calculate price volatility metrics and volume context to assess if a stock is over-extended or has unusual trading activity.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -213,7 +213,7 @@ VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI = {
 
 VOLATILITY_METRICS_TOOL_DEFINITION_ANTHROPIC = {
     "name": "get_volatility_metrics",
-    "description": "Calculate price standard deviation and range to assess if a stock is over-extended.",
+    "description": "Calculate price volatility metrics and volume context to assess if a stock is over-extended or has unusual trading activity.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -488,7 +488,7 @@ POSITION_PNL_TOOL_DEFINITION_GEMINI = {
 
 VOLATILITY_METRICS_TOOL_DEFINITION_GEMINI = {
     "name": "get_volatility_metrics",
-    "description": "Calculate price standard deviation and range to assess if a stock is over-extended.",
+    "description": "Calculate price volatility metrics and volume context to assess if a stock is over-extended or has unusual trading activity.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -663,7 +663,7 @@ async def execute_position_pnl_tool(ticker: str, owner_id: str) -> str:
         return f"Error fetching position P&L for {ticker}: {str(e)}"
 
 async def execute_volatility_metrics_tool(ticker: str, days: int = 14) -> str:
-    """Calculates volatility metrics for a ticker."""
+    """Calculates volatility metrics and volume context for a ticker."""
     manager = MarketDataManager()
     try:
         data = await manager.get_history(ticker, days)
@@ -671,7 +671,6 @@ async def execute_volatility_metrics_tool(ticker: str, days: int = 14) -> str:
         if not data or len(data) < 2:
             return f"Insufficient historical data for {ticker} to calculate volatility."
         
-        # Data is latest first
         curr = data[0]["price"]
         prices = [p["price"] for p in data]
         
@@ -687,10 +686,35 @@ async def execute_volatility_metrics_tool(ticker: str, days: int = 14) -> str:
             f"- Avg Price: ${avg:.2f}\n"
             f"- Std Dev: ${stdev:.2f}\n"
             f"- Range: ${p_min:.2f} - ${p_max:.2f}\n"
-            f"- Distance from Mean: {((curr - avg) / stdev):.2f} standard deviations"
+            f"- Distance from Mean: {((curr - avg) / stdev):.2f} standard deviations\n"
+            f"- Volume Context: {compute_volume_context(data)}"
         )
     except Exception as e:
         return f"Error calculating volatility for {ticker}: {str(e)}"
+
+
+def compute_volume_context(history: list[dict]) -> str:
+    """
+    Compute human-readable volume context from price history.
+    Uses up to 20-day lookback for baseline, dynamic if fewer days available.
+    Returns: "2.3x above 20-day average (85th percentile)"
+    """
+    volumes = [h["volume"] for h in history if h.get("volume")]
+    if not volumes or len(volumes) < 5:
+        return "insufficient volume data"
+    
+    latest_volume = volumes[0]
+    lookback = volumes[:20] if len(volumes) >= 20 else volumes
+    avg_volume = sum(lookback) / len(lookback)
+    lookback_days = min(20, len(volumes))
+    
+    ratio = latest_volume / avg_volume if avg_volume > 0 else 0
+    
+    sorted_vols = sorted(volumes)
+    below_count = sum(1 for v in sorted_vols if v < latest_volume)
+    percentile = (below_count / len(sorted_vols)) * 100
+    
+    return f"{ratio:.1f}x above {lookback_days}-day average ({percentile:.0f}th percentile)"
 
 
 async def execute_stock_screener_tool(
@@ -710,7 +734,7 @@ async def execute_stock_screener_tool(
     limit: int = 10,
     is_actively_trading: bool = True
 ) -> str:
-    """Executes the stock screener tool and returns a formatted list of candidates."""
+    """Executes the stock screener tool and returns a formatted list of candidates with volume context."""
     manager = MarketDataManager()
     try:
         results = await manager.screen_stocks(
@@ -734,13 +758,23 @@ async def execute_stock_screener_tool(
         if not results:
             return "No stocks found matching the criteria."
 
-        output = f"Stock Screening Results (Top {len(results)}):\n"
+        enriched_results = []
         for item in results:
+            ticker = item.get('symbol')
+            if ticker:
+                history = await manager.get_history(ticker, days=20)
+                vol_context = compute_volume_context(history) if history else "no volume data"
+            else:
+                vol_context = "unknown"
+            enriched_results.append({**item, "volume_context": vol_context})
+
+        output = f"Stock Screening Results (Top {len(enriched_results)}):\n"
+        for item in enriched_results:
             output += (
-                f"- ${item.get('symbol')} ({item.get('companyName')}): "
+                f"- {item.get('symbol')} ({item.get('companyName')}): "
                 f"Price: ${item.get('price', 0):.2f}, "
                 f"Market Cap: ${item.get('marketCap', 0) / 1e9:.2f}B, "
-                f"Sector: {item.get('sector')}\n"
+                f"Volume Context: {item.get('volume_context')}\n"
             )
         
         return output

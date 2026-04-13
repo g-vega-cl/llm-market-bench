@@ -1,10 +1,39 @@
 """Script to update market prices and recalculate portfolio metrics without LLM calls."""
 
 import asyncio
+import time
 from core.config import logger
-from core.db import get_supabase_client
+from core.db import get_supabase_client, is_transient_supabase_error, SUPABASE_RETRIES
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
+
+
+async def initialize_with_retry(owner: str) -> Portfolio:
+    """Initialize a portfolio with retry logic for transient Supabase errors."""
+    p = Portfolio(owner_id=owner)
+    
+    for attempt in range(1, SUPABASE_RETRIES + 1):
+        try:
+            await p.initialize()
+            return p
+        except Exception as exc:
+            if not is_transient_supabase_error(exc):
+                logger.error(f"initialize_portfolio({owner}) failed with non-transient error: {exc}")
+                raise
+            
+            if attempt < SUPABASE_RETRIES:
+                wait_time = 2 ** (attempt - 1)
+                logger.warning(
+                    f"initialize_portfolio({owner}) failed (attempt {attempt}/{SUPABASE_RETRIES}), "
+                    f"retrying in {wait_time}s. Error: {exc}"
+                )
+                time.sleep(wait_time)
+            else:
+                logger.error(f"initialize_portfolio({owner}) failed after {SUPABASE_RETRIES} attempts: {exc}")
+                raise
+    
+    return p
+
 
 async def update_prices():
     """Main function to update prices and metrics."""
@@ -19,12 +48,26 @@ async def update_prices():
         return
 
     # 1. Get all active portfolios
-    try:
-        port_res = sb_client.table("portfolios").select("owner_id").execute()
-        owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
-    except Exception as e:
-        logger.error(f"Failed to fetch portfolios: {e}")
-        return
+    def fetch_portfolios():
+        return sb_client.table("portfolios").select("owner_id").execute()
+    
+    for attempt in range(1, SUPABASE_RETRIES + 1):
+        try:
+            port_res = fetch_portfolios()
+            owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
+            break
+        except Exception as exc:
+            if not is_transient_supabase_error(exc):
+                logger.error(f"fetch_portfolios failed with non-transient error: {exc}")
+                raise
+            if attempt < SUPABASE_RETRIES:
+                wait_time = 2 ** (attempt - 1)
+                logger.warning(f"fetch_portfolios failed (attempt {attempt}/{SUPABASE_RETRIES}), "
+                             f"retrying in {wait_time}s. Error: {exc}")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Failed to fetch portfolios after {SUPABASE_RETRIES} attempts: {exc}")
+                return
 
     if not owners:
         logger.warning("No portfolios found to update.")
@@ -37,10 +80,13 @@ async def update_prices():
     portfolios_to_update = []
     
     for owner in owners:
-        p = Portfolio(owner_id=owner)
-        await p.initialize()
-        all_tickers.update(p.positions.keys())
-        portfolios_to_update.append(p)
+        try:
+            p = await initialize_with_retry(owner)
+            all_tickers.update(p.positions.keys())
+            portfolios_to_update.append(p)
+        except Exception as e:
+            logger.error(f"Failed to initialize portfolio {owner}: {e}")
+            continue
     
     logger.info(f"Identified {len(all_tickers)} unique tickers: {all_tickers}")
 

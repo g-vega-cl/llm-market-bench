@@ -1,9 +1,14 @@
+import time
 import httpx
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 from supabase import Client, create_client, ClientOptions
 
 from .config import SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL, logger
+
+T = TypeVar("T")
+
+SUPABASE_RETRIES = 3
 
 
 def get_supabase_client() -> Client:
@@ -37,6 +42,74 @@ def get_supabase_client() -> Client:
     )
     
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
+
+
+def is_transient_supabase_error(exc: Exception) -> bool:
+    """Check if an exception is a transient Supabase error worth retrying."""
+    error_str = str(exc).lower()
+    
+    transient_codes = {"502", "503", "504", "429"}
+    for code in transient_codes:
+        if code in error_str:
+            return True
+    
+    transient_keywords = [
+        "bad gateway",
+        "service unavailable", 
+        "gateway timeout",
+        "too many requests",
+        "connection error",
+        "connection reset",
+        "network error",
+        "timeout",
+        "timed out",
+        "could not connect",
+        "connection refused",
+    ]
+    return any(kw in error_str for kw in transient_keywords)
+
+
+def with_retry(operation: Callable[[], T], operation_name: str = "operation") -> T:
+    """Execute a Supabase operation with retry logic and exponential backoff.
+    
+    Retries on transient errors (502, 503, 504, timeouts, connection errors).
+    
+    Args:
+        operation: A callable that performs the Supabase operation.
+        operation_name: Human-readable name for logging purposes.
+        
+    Returns:
+        The result of the operation.
+        
+    Raises:
+        The last exception if all retries are exhausted.
+    """
+    last_exception = None
+    
+    for attempt in range(1, SUPABASE_RETRIES + 1):
+        try:
+            return operation()
+        except Exception as exc:
+            last_exception = exc
+            
+            if not is_transient_supabase_error(exc):
+                logger.error(f"{operation_name} failed with non-transient error: {exc}")
+                raise
+            
+            if attempt < SUPABASE_RETRIES:
+                wait_time = 2 ** (attempt - 1)
+                logger.warning(
+                    f"{operation_name} failed (attempt {attempt}/{SUPABASE_RETRIES}), "
+                    f"retrying in {wait_time}s. Error: {exc}"
+                )
+                time.sleep(wait_time)
+            else:
+                logger.error(
+                    f"{operation_name} failed after {SUPABASE_RETRIES} attempts. "
+                    f"Last error: {exc}"
+                )
+    
+    raise last_exception
 
 
 def upsert_newsletter_snapshot(

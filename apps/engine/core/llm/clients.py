@@ -1,5 +1,6 @@
 """LLM client factories and registry."""
 
+import inspect
 import logging
 
 import instructor
@@ -80,7 +81,11 @@ async def close_client(client, provider: str):
                 logger.debug("Cannot close %s client: underlying client is None", provider)
                 return
             if hasattr(underlying, "close"):
-                await underlying.close()
+                close_method = underlying.close
+                if inspect.iscoroutinefunction(close_method):
+                    await close_method()
+                else:
+                    close_method()
             elif hasattr(underlying, "_async_httpx_client") and underlying._async_httpx_client is not None:
                 await underlying._async_httpx_client.aclose()
             else:

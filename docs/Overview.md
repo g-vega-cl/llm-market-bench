@@ -164,6 +164,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Tech:** Python / `update_prices.py`
 *   **Goal:** Refresh market prices and recalculate portfolio metrics without invoking the expensive LLM analysis loop.
 *   **Usage:** Use this script to update the dashboard's "Live Equity" and "Buying Power" between daily newsletter ingestions. Automatically triggered every 30 minutes during market hours (approx. 13:30 - 20:00 UTC) via GitHub Actions.
+*   **Resilience:** Implements retry logic with exponential backoff (3 retries: 1s, 2s, 4s) for transient Supabase errors (502, 503, 504, timeouts, connection errors).
 *   File: `apps/engine/update_prices.py`
 
 **17. Long-term Memory Embedding** ✅

@@ -4,6 +4,7 @@ This module analyzes past trades at multiple intervals (5, 14, 30 days)
 against actual price performance to generate 'lessons learned' for long-term memory.
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, List
@@ -102,12 +103,16 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
                     if msg["role"] == "user":
                         msg["content"] = f"[WINDOW: {days_back} DAYS] " + msg["content"]
 
-                resp = await client.chat.completions.create(
+                resp_awaitable = client.chat.completions.create(
                     model=GEMINI_MODEL,
-                    # instructor handles the structured output mapping to PostAnalysisResult
                     response_model=PostAnalysisResult,
                     messages=messages
                 )
+                
+                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                    resp = await resp_awaitable
+                else:
+                    resp = resp_awaitable
                 
                 # 6. Inject into Memory
                 memory_content = (

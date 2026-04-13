@@ -29,11 +29,12 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 ### 1. Analysis & LLM
 
 | Test File | Coverage |
-|-----------|----------|
+|-----------|---------|
 | `test_analysis_logic.py` | Schema validation, `analyze_chunks` orchestration, batch processing |
 | `test_batch_analysis.py` | Validates all chunks are analyzed in a single LLM call per provider |
 | `test_llm_tools.py` | Tool calling interface for `get_stock_quote` across providers |
 | `test_call_counts.py` | Verifies API call efficiency and batching |
+| `test_post_analysis.py` | Post-analysis model validation, existing memory skipping, price change calculation |
 
 ### 2. Consensus & Memory
 

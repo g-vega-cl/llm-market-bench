@@ -200,13 +200,12 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Make sure CI/CD tests behave same as local tests**
 - [ ] **Use frontend skills to improve frontend**
 - [ ] **Sector leaderboard**
-- [ ] **A famous financial anomaly is that the stock market mostly goes up when it’s closed:**
+- [ ] **A famous financial anomaly is that the stock market mostly goes up when it’s closed:** -goes along with papers
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
 - [ ] **Remove view on Yahoo finance button. Or make it so each ticket it's its own button.**
 - [ ] **I don't see percentages in scenarios anymore**
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
-- [ ] **Deepseek hasn't made a trade in 10 days. Why? - GPT 4 nano in even longer**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
 - [ ] **Run memories during the weekend.**

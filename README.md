@@ -208,8 +208,10 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
 - [ ] **Run memories during the weekend.**
-- [ ] **Post trade analysis re-visit**
-
+- [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
+- [ ] **Why do I have stock screening top 10 and then top 15?**
+- [ ] **How I'm feeling and why** about the market state right now. Trying to predict the market direction? And learning from failures?
+- [ ] **Compare portfolios against benchmarks**
 
 ### 🔄 Under Consideration
 

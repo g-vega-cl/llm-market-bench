@@ -1,12 +1,13 @@
 """Specialized agent for discovering investable assets based on market themes."""
 
+import json
 import logging
-from typing import Optional
+import re
+from typing import List, Optional
 
 from core.config import GEMINI_MODEL
 from core.llm import clients, prompts, tools
 from core.llm.handlers import gemini, openai, anthropic
-from execution.market_data import MarketDataManager
 
 logger = logging.getLogger("engine")
 
@@ -31,7 +32,6 @@ class DiscoveryAgent:
         self.provider = get_provider_from_model(model_name)
         self.client = clients.CLIENT_FACTORIES[self.provider]()
         
-        # Tools specifically for discovery
         if self.provider == "gemini":
             self.discovery_tools = [
                 tools.RUN_STOCK_SCREENER_TOOL_DEFINITION_GEMINI,
@@ -45,15 +45,15 @@ class DiscoveryAgent:
                 tools.RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI,
             ]
 
-    async def discover_assets(self, theme: str, context: Optional[str] = None) -> str:
-        """Executes a tool-calling mission to find assets for a given theme.
+    async def discover_assets(self, theme: str, context: Optional[str] = None) -> List[dict]:
+        """Executes a single-call tool-calling mission to find ~5 assets for a given theme.
         
         Args:
             theme: The market theme or macro event (e.g., "AI infrastructure demand").
             context: Optional additional context or past events.
             
         Returns:
-            A string containing the agent's findings and recommended tickers.
+            A list of dicts with ticker, name, and reason keys.
         """
         logger.info(f"DiscoveryAgent starting mission for theme: {theme}")
         
@@ -62,107 +62,51 @@ class DiscoveryAgent:
             {"role": "user", "content": f"THEME: {theme}\n\nCONTEXT: {context or 'None'}"}
         ]
 
-        max_attempts = 2
+        if self.provider == "gemini":
+            await gemini.run_tool_loop(
+                raw_client=self.client,
+                model_name=self.model_name,
+                messages=messages,
+                override_tools=self.discovery_tools,
+                enable_google_search=True,
+                max_tool_steps=3
+            )
+        elif self.provider == "anthropic":
+            await anthropic.run_tool_loop(
+                raw_client=self.client,
+                model_name=self.model_name,
+                messages=messages,
+                override_tools=self.discovery_tools,
+                enable_web_search=True,
+                max_tool_steps=3
+            )
+        else:
+            await openai.run_tool_loop(
+                raw_client=self.client.client,
+                model_name=self.model_name,
+                messages=messages,
+                override_tools=self.discovery_tools,
+                enable_web_search=True,
+                max_tool_steps=3
+            )
+
+        final_text = self._extract_final_text(messages)
         
-        for attempt in range(max_attempts):
-            messages = [
-                {"role": "system", "content": prompts.DISCOVERY_AGENT_SYSTEM_PROMPT},
-                {"role": "user", "content": f"THEME: {theme}\n\nCONTEXT: {context or 'None'}"}
-            ]
-            
-            if attempt > 0:
-                correction_prompt = self._build_correction_prompt(theme, context, result, missing)
-                messages.append({"role": "user", "content": correction_prompt})
-            
-            if self.provider == "gemini":
-                await gemini.run_tool_loop(
-                    raw_client=self.client,
-                    model_name=self.model_name,
-                    messages=messages,
-                    override_tools=self.discovery_tools,
-                    enable_google_search=True,
-                    max_tool_steps=5
-                )
-            elif self.provider == "anthropic":
-                await anthropic.run_tool_loop(
-                    raw_client=self.client,
-                    model_name=self.model_name,
-                    messages=messages,
-                    override_tools=self.discovery_tools,
-                    enable_web_search=True,
-                    max_tool_steps=5
-                )
-            else:
-                await openai.run_tool_loop(
-                    raw_client=self.client.client,
-                    model_name=self.model_name,
-                    messages=messages,
-                    override_tools=self.discovery_tools,
-                    enable_web_search=True,
-                    max_tool_steps=5
-                )
-
-            result = self._extract_final_response(messages)
-            
-            if not result or len(result.strip()) < 50:
-                logger.warning(f"DiscoveryAgent: Empty response on attempt {attempt + 1}, trying tool results fallback")
-                result = self._collect_tool_results_fallback(messages)
-            
-            validated = self._validate_and_enhance_result(result)
-            is_valid, missing = self._validate_5_whys(validated)
-            
-            if is_valid:
-                logger.info(f"DiscoveryAgent: 5 Whys validated successfully on attempt {attempt + 1}")
-                return validated
-            
-            logger.warning(f"DiscoveryAgent: 5 Whys validation failed on attempt {attempt + 1}, missing: {missing}")
-            
-            if attempt == max_attempts - 1:
-                break
+        if not final_text:
+            logger.warning("DiscoveryAgent: No text content in final response")
+            return []
         
-        logger.warning("DiscoveryAgent: Max attempts reached, returning best result with note")
-        return validated
-
-    def _collect_tool_results_fallback(self, messages: list) -> str:
-        """Collect meaningful content from tool results as fallback."""
-        tool_results = []
-        for msg in messages:
-            if isinstance(msg, dict) and msg.get("role") == "tool":
-                content = msg.get("content", "")
-                if content and isinstance(content, str) and content.strip():
-                    lower_content = content.lower()
-                    if "no stocks found" not in lower_content and "error" not in lower_content:
-                        if "stock screening results" in lower_content or content.startswith("$") or "$" in content:
-                            tool_results.append(content)
-
-        if tool_results:
-            return "Stock Screening Results:\n" + "\n---\n".join(tool_results)
-        return ""
-
-    def _build_correction_prompt(self, theme: str, context: str, previous_result: str, missing: list) -> str:
-        """Build a structured correction prompt for retry attempts."""
-        return f"""PREVIOUS ATTEMPT RESULTS:
-{previous_result}
-
-ISSUES IDENTIFIED:
-- Missing 5 Whys sections: {', '.join(missing) if missing else 'None'}
-
-Please analyze the previous result and produce an improved response that:
-1. Explicitly addresses each of the missing 5 Whys sections
-2. Provides detailed answers (2-3 sentences each)
-3. Includes specific tickers with rationale
-
-THEME: {theme}
-CONTEXT: {context or 'None'}
-
-Output the complete improved 5 Whys analysis and recommended assets."""
-
-    def _extract_final_response(self, messages: list) -> str:
-        """Walk backward to find the last assistant/model message with meaningful text.
+        assets = self._parse_json_response(final_text)
         
-        Tool messages and the initial user theme prompt are ignored so a stalled
-        tool loop cannot return the original input as the "result".
-        """
+        if not assets:
+            logger.warning(f"DiscoveryAgent: Failed to parse JSON from response")
+            return []
+        
+        logger.info(f"DiscoveryAgent: Successfully extracted {len(assets)} assets")
+        return assets[:5]
+
+    def _extract_final_text(self, messages: list) -> str:
+        """Walk backward to find the last assistant/model message with meaningful text."""
         for msg in reversed(messages):
             if isinstance(msg, dict):
                 if msg.get("role") not in {"assistant", "model"}:
@@ -176,51 +120,58 @@ Output the complete improved 5 Whys analysis and recommended assets."""
                 continue
             if content and isinstance(content, str) and content.strip():
                 return content
-
         return ""
 
-    def _validate_5_whys(self, content: str) -> tuple[bool, list[str]]:
-        """Validate that all 5 Whys questions are answered in the output.
+    def _parse_json_response(self, text: str) -> List[dict]:
+        """Extract and parse JSON from the response text."""
+        json_match = None
         
-        Returns:
-            Tuple of (is_valid, list of missing questions)
-        """
-        required_patterns = [
-            r"1\.\s*\*\*Why\*\*.*?is this theme market-moving",
-            r"2\.\s*\*\*Why\*\*.*?will these specific assets benefit",
-            r"3\.\s*\*\*Why\*\*.*?not already priced in",
-            r"4\.\s*\*\*Why\*\*.*?most efficient way to profit",
-            r"5\.\s*\*\*Why\*\*.*?best beneficiary",
-        ]
+        json_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', text, re.DOTALL)
+        if json_block_match:
+            try:
+                parsed = json.loads(json_block_match.group(1))
+                json_match = parsed
+            except json.JSONDecodeError:
+                pass
         
-        import re
-        missing = []
-        for i, pattern in enumerate(required_patterns, 1):
-            if not re.search(pattern, content, re.IGNORECASE | re.DOTALL):
-                missing.append(f"Why #{i}")
+        if not json_match:
+            json_array_match = re.search(r'\[[\s\S]*\]', text)
+            if json_array_match:
+                try:
+                    json_match = json.loads(json_array_match.group(0))
+                except json.JSONDecodeError:
+                    pass
         
-        return len(missing) == 0, missing
-
-    def _validate_and_enhance_result(self, result: str) -> str:
-        """Validate result has 5 Whys and adequate content, improve if needed."""
+        if not json_match:
+            json_obj_match = re.search(r'\{[\s\S]*\}', text)
+            if json_obj_match:
+                try:
+                    json_match = json.loads(json_obj_match.group(0))
+                except json.JSONDecodeError:
+                    pass
         
-        if not result or len(result.strip()) < 50:
-            logger.warning("DiscoveryAgent: Empty result after fallback")
-            return "Insufficient analysis produced. Please retry with more specific theme."
-
-        is_valid, missing = self._validate_5_whys(result)
+        if not json_match:
+            logger.warning("DiscoveryAgent: No JSON found in response")
+            return []
         
-        if is_valid:
-            logger.info(f"DiscoveryAgent: 5 Whys validated successfully")
-            return result
+        if isinstance(json_match, dict) and "assets" in json_match:
+            assets = json_match["assets"]
+        elif isinstance(json_match, list):
+            assets = json_match
+        else:
+            logger.warning("DiscoveryAgent: JSON does not contain assets array")
+            return []
         
-        logger.warning(f"DiscoveryAgent: Missing 5 Whys sections: {missing}")
+        validated = []
+        for asset in assets:
+            if isinstance(asset, dict) and "ticker" in asset:
+                validated.append({
+                    "ticker": str(asset.get("ticker", "")).upper(),
+                    "name": asset.get("name", ""),
+                    "reason": asset.get("reason", "")
+                })
         
-        if len(result.strip()) < 200:
-            logger.warning("DiscoveryAgent: Result too short, adding enhancement note")
-            result += f"\n\n**Note:** This analysis is incomplete. Missing: {', '.join(missing)}"
-        
-        return result
+        return validated
 
     async def close(self):
         """Closes the underlying LLM client."""

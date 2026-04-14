@@ -1,8 +1,8 @@
 # Asset Discovery: Alpha Discovery Agent
 
-The **Alpha Discovery Agent** is a specialized, tool-calling reasoning engine that identifies actionable investment assets (stocks, ETFs) driven by specific market catalysts or macro events. 
+The **Alpha Discovery Agent** is a specialized, tool-calling reasoning engine that identifies actionable investment assets (stocks, ETFs) driven by specific market catalysts or macro events.
 
-Unlike the previous hardcoded multi-stage pipeline, this agent uses a dynamic, autonomous reasoning loop to ensure that identified assets are logically aligned with the event's "How to Profit" thesis and verified against real-time market data.
+The agent uses a **single-call approach** with up to 3 tool steps, outputting structured JSON for direct frontend rendering.
 
 ---
 
@@ -10,38 +10,37 @@ Unlike the previous hardcoded multi-stage pipeline, this agent uses a dynamic, a
 
 The discovery process is encapsulated within the `DiscoveryAgent` class, which operates as a standalone "mission" for each market theme.
 
-### **Reasoning Loop (Tool-Calling)**
-The agent uses a **Tool-Calling Reasoning Loop** (up to 5 steps) to perform its mission:
+### **Single-Call Flow (max 3 tool steps)**
 1.  **Mission Start**: Receives the market theme and context.
-2.  **Screening**: Invokes the `run_stock_screener` tool to find candidates based on financial metrics (Market Cap, Beta, Sector, Industry).
-3.  **Research & Verification**: Uses native **Web Search** (OpenAI `web_search`, Anthropic `web_search`, Google Search for Gemini) to verify the business model, thematic relevance, and recent news for the candidates.
-4.  **Synthesis**: Ranks the candidates and formulates a "Mechanism of Profit" for each.
+2.  **Step 1**: Invokes the `run_stock_screener` tool to find up to 15 candidates based on financial metrics.
+3.  **Step 2** (optional): Uses native **Web Search** to verify business models and thematic relevance.
+4.  **Step 3**: LLM synthesizes findings and outputs structured JSON directly.
 
-### **Thematic Mapping Logic**
-The agent is guided by the **"5 Whys"** technique to ensure high-fidelity discovery. The agent is **required** to include explicit answers to all 5 Whys in its output:
+### **Strategic Framework**
+The agent is guided by:
+1. **Identify the Bottleneck:** Who owns the critical infrastructure or supply that everyone else needs?
+2. **Chain of Events:** If X happens, who are the secondary and tertiary beneficiaries?
+3. **Uncrowwd Plays:** Look for mid-cap or niche companies that aren't yet priced in.
 
-1. **Why** is this theme market-moving?
-2. **Why** will these specific assets benefit?
-3. **Why** are these not already priced in?
-4. **Why** is this the most efficient way to profit?
-5. **Why** is your recommendation the best beneficiary?
+### **Output Format**
+The LLM outputs **structured JSON** for direct frontend rendering:
 
-The output must follow this structured format:
-
-```markdown
-## 5 Whys Analysis
-Answer EACH of the following questions explicitly:
-1. **Why** is this theme market-moving? [Your detailed answer]
-2. **Why** will these specific assets benefit? [Your detailed answer]
-3. **Why** are these not already priced in? [Your detailed answer]
-4. **Why** is this the most efficient way to profit? [Your detailed answer]
-5. **Why** is your recommendation the best beneficiary? [Your detailed answer]
-
-## Recommended Assets
-| Ticker | Company Name | Relevance Score | Mechanism of Profit |
-|--------|--------------|-----------------|---------------------|
-| AAPL   | Apple Inc.  | 85              | [Why it benefits]   |
+```json
+{
+  "assets": [
+    {
+      "ticker": "AAPL",
+      "name": "Apple Inc.",
+      "reason": "Primary beneficiary of AI integration in consumer devices - specific profit mechanism"
+    }
+  ]
+}
 ```
+
+**Rules:**
+- Maximum **5 assets** (fewer is fine)
+- NYSE/NASDAQ only, actively trading
+- Each asset has: `ticker`, `name`, `reason`
 
 ---
 
@@ -88,36 +87,29 @@ The `DiscoveryAgent` passes the **raw OpenAI client** (`client.client`) to `run_
 ## 4. Operational Flow
 
 1.  **`DiscoveryService.discover_assets(event)`**: Entry point. Initializes `DiscoveryAgent` with `OPENAI_MODEL`.
-2.  **`DiscoveryAgent.discover_assets(theme)`**: Starts the tool-calling mission with **retry logic** (up to 2 attempts).
-3.  **Loop Step 1-5**: Agent calls `run_stock_screener` and `web_search` (increased from 3 to 5 steps).
-4.  **Final Extraction**: The agent walks backward through messages to find:
-    - First, the last assistant message with meaningful text content
-    - If none found (or content < 50 chars), collects relevant tool results (stock screening output)
-5.  **5 Whys Validation**: The `_validate_5_whys()` method validates that all 5 Whys questions are explicitly answered using regex pattern matching.
-6.  **Retry on Failure**: If 5 Whys validation fails or result is empty:
-    - A correction prompt is appended with the previous result and missing sections
-    - The agent is re-invoked with the correction (attempt 2 of 2)
-    - If still invalid after 2 attempts, the best result is returned with an enhancement note
-7.  **Tool Results Fallback**: Improved `_collect_tool_results_fallback()` now captures all valid tool results containing "$" (not just those starting with "$" or containing "stock screening results").
-8.  **Memory Storage**: The result is wrapped as a single high-fidelity "AGENT_DISCOVERY" asset in the `memories` table to preserve the agent's full reasoning.
+2.  **`DiscoveryAgent.discover_assets(theme)`**: Single tool-calling mission with `max_tool_steps=3`.
+3.  **Tool Loop**: Agent calls `run_stock_screener` (step 1), optionally `web_search` (step 2), then synthesizes JSON (step 3).
+4.  **JSON Parsing**: Final text is searched for JSON blocks (markdown ```json ``` or raw JSON). Parsed into `List[dict]` with `ticker`, `name`, `reason`.
+5.  **Validation**: Tickers are uppercased, assets without tickers are filtered out.
+6.  **Return**: Returns `List[dict]` (max 5 assets) directly — no wrapper.
 
 ---
 
 ## 5. Why This Approach?
 
-#### **Autonomous Precision**
-By moving from a hardcoded 3-stage pipeline to an autonomous agent, the system can adapt its search strategy based on the theme. For example, it might choose to search for "niche lithium miners" via web search first, then use the screener to verify their liquidity.
+#### **Simplicity & Reliability**
+Single-call flow with JSON output eliminates the complexity of retry logic and multiple fallback mechanisms, reducing failure modes.
+
+#### **Frontend-Ready Output**
+Structured JSON is designed for direct frontend rendering in the "Investable Assets" section of memory cards, without requiring additional parsing or transformation.
 
 #### **Liquidity & Quality Guardrails**
-The agent is explicitly prompted to filter for **NYSE/NASDAQ** only and ensure assets are **actively trading**. It also enforces a **15-ticker cap** to prevent "context bloating" for the downstream parallel analysis LLMs.
-
-#### **Institutional Memory**
-By storing the agent's full analysis in the "Investable Assets" section of the memory, we provide the Reasoning Manager with a rich "How to Profit" playbook rather than just a list of tickers.
+The agent is explicitly prompted to filter for **NYSE/NASDAQ** only and ensure assets are **actively trading**. The screener returns up to 15 candidates; the LLM narrows to best ~5.
 
 ---
 
 ## 6. Verification
 The discovery pipeline quality is verified using:
-- **`pytest apps/engine/tests/test_discovery_agent.py`**: Unit tests for retry logic, 5 Whys validation, fallback collection, and correction prompt generation.
-- **`pytest apps/engine/tests/test_discovery_quality.py`**: Integration tests validating the service correctly delegates to the agent and handles retry behavior.
-- **`pytest apps/engine/tests/test_regression_fixes.py`**: Verifies handler imports and fallback paths for the agent.
+- **`pytest apps/engine/tests/test_discovery_agent.py`**: Unit tests for JSON parsing, single-call behavior, and validation.
+- **`pytest apps/engine/tests/test_discovery_quality.py`**: Integration tests validating the service correctly delegates to the agent.
+- **`pytest apps/engine/tests/test_regression_fixes.py`**: Verifies handler imports and stalled loop behavior.

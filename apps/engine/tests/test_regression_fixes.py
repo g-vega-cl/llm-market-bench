@@ -21,7 +21,13 @@ async def test_discovery_agent_invokes_gemini_handler_submodule():
     dummy_client = MagicMock()
 
     async def fake_run_tool_loop(raw_client, model_name, messages, **kwargs):
-        messages.append({"role": "assistant", "content": "## 5 Whys Analysis\n1. **Why** is this theme market-moving? [Theme explanation]\n2. **Why** will these specific assets benefit? [Benefit explanation]\n3. **Why** are these not already priced in? [Priced in explanation]\n4. **Why** is this the most efficient way to profit? [Profit explanation]\n5. **Why** is your recommendation the best beneficiary? [Best beneficiary explanation]\n\n## Recommended Assets\n| Ticker | Company Name | Relevance Score | Mechanism of Profit |\n|--------|--------------|-----------------|---------------------|\n| NVDA   | NVIDIA Corp  | 95              | [Why it benefits] |"})
+        messages.append({"role": "assistant", "content": """```json
+{
+  "assets": [
+    {"ticker": "NVDA", "name": "NVIDIA", "reason": "Primary GPU supplier for AI workloads"}
+  ]
+}
+```"""})
 
     with patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"gemini": lambda: dummy_client}), \
          patch("analysis.discovery_agent.gemini.run_tool_loop", new=AsyncMock(side_effect=fake_run_tool_loop)) as mock_loop:
@@ -30,16 +36,16 @@ async def test_discovery_agent_invokes_gemini_handler_submodule():
         agent = DiscoveryAgent(model_name="gemini-2.0-flash")
         result = await agent.discover_assets("AI infrastructure demand")
 
-    assert "## 5 Whys Analysis" in result
-    assert "NVDA" in result
+    assert len(result) == 1
+    assert result[0]["ticker"] == "NVDA"
     assert mock_loop.await_count == 1
 
 
 @pytest.mark.asyncio
-async def test_discovery_agent_does_not_echo_theme_when_tool_loop_stalls():
+async def test_discovery_agent_returns_empty_when_tool_loop_stalls():
     """
-    Regression test for the discovery fallback path.
-    If no assistant/model text is produced, the original theme prompt must not be returned.
+    Regression test for stalled tool loop.
+    If no assistant/model text is produced, returns empty list (not echoed theme).
     """
     dummy_client = MagicMock()
 
@@ -54,10 +60,8 @@ async def test_discovery_agent_does_not_echo_theme_when_tool_loop_stalls():
         theme = "Global uranium supply shortage"
         result = await agent.discover_assets(theme)
 
-    assert result == "Insufficient analysis produced. Please retry with more specific theme."
-    assert "THEME:" not in result
-    assert result != theme
-    assert mock_loop.await_count == 2
+    assert result == []
+    assert mock_loop.await_count == 1
 
 @pytest.mark.asyncio
 async def test_deepseek_reasoning_preservation_regression():

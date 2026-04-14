@@ -9,8 +9,7 @@ Before initiating parallel analysis, the system identifies the most relevant ass
 ### **Thematic Discovery Mission**
 1. **Delegation**: `DiscoveryService` triggers a tool-calling mission via the `DiscoveryAgent`.
 2. **Autonomous Search**: The agent uses `run_stock_screener` and **Web Search** (OpenAI, Anthropic, Google) to find and verify thematic beneficiaries.
-3. **Reasoning Loop**: Up to 3 steps of multi-turn reasoning to ensure logical alignment with the event thesis and liquidity (NYSE/NASDAQ) verification.
-4. **Synthesis**: Candidates are ranked and formatted with a "Mechanism of Profit," then stored as an `AGENT_DISCOVERY` memory.
+3. **Synthesis**: Up to 3 tool steps (screener + optional web search + JSON output). Candidates are ranked and returned as structured JSON with real tickers (max 5), each with `ticker`, `name`, and `reason` fields.
 
 See [ASSET-DISCOVERY.md](./ASSET-DISCOVERY.md) for more details.
 

@@ -20,30 +20,17 @@ class DiscoveryService:
     async def discover_assets(self, event_content: str, event_summary: Optional[str] = None) -> List[dict]:
         """Delegates asset discovery to a specialized Discovery Agent.
         
-        The agent uses a reasoning loop (Tool-Calling) to identify beneficiaries,
+        The agent uses a single-call tool-calling approach to identify ~5 beneficiaries,
         run screens, and rank results based on the provided theme.
         """
         logger.info(f"Delegating asset discovery to DiscoveryAgent for: {event_content[:50]}...")
         
         try:
-            # The agent returns a structured string/analysis
-            raw_findings = await self.agent.discover_assets(
+            assets = await self.agent.discover_assets(
                 theme=event_content,
                 context=event_summary
             )
-            
-            # Since the engine currently expects a List[dict] for its internal memory
-            # and generic 'Investable Assets' display, we wrap the raw analysis.
-            # In a future iteration, we could parse the agent's structured response
-            # into individual RankedAsset objects if needed.
-            
-            # For now, we return a single "summary" asset that contains the full analysis
-            # to preserve the agent's high-fidelity reasoning in the 'Investable Assets' section.
-            return [{
-                "ticker": "AGENT_DISCOVERY",
-                "name": "Thematic Discovery Report",
-                "reason": raw_findings
-            }]
+            return assets
 
         except Exception as e:
             logger.error(f"Discovery Agent failed: {e}")

@@ -170,7 +170,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **LLM Ranking Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
-- [ ] **Trade Timing Optimization** - Ensure price analysis happens as close to trade execution as possible for maximum accuracy
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
@@ -212,6 +211,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Why do I have stock screening top 10 and then top 15?**
 - [ ] **How I'm feeling and why** about the market state right now. Trying to predict the market direction? And learning from failures?
 - [ ] **Compare portfolios against benchmarks**
+- [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 
+- [ ] **Money Stuff newsletter not getting any data**
 
 ### 🔄 Under Consideration
 

@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
-import { fetchPortfolioById, fetchPositions, fetchPerformanceHistory, fetchTrades } from './-queries'
+import { fetchPortfolioById, fetchPositions, fetchPerformanceHistory, fetchTrades, fetchBenchmarkHistory } from './-queries'
 import { PerformanceChart } from './components/-PerformanceChart'
 import { PositionsTable } from './components/-PositionsTable'
 import { TradesTable } from './components/-TradesTable'
+import { BenchmarkSelector } from './components/-BenchmarkSelector'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { queries } from '~/lib/queries'
 import * as React from 'react'
@@ -22,6 +23,13 @@ const getPortfolioData = createServerFn({ method: 'GET' })
     return { portfolio, positions, history, trades }
   })
 
+const getBenchmarkData = createServerFn({ method: 'GET' })
+  .inputValidator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
+  .handler(async ({ data }: { data: { tickers: string[]; startDate: string; endDate: string } }) => {
+    if (data.tickers.length === 0) return {}
+    return fetchBenchmarkHistory(data.tickers, data.startDate, data.endDate)
+  })
+
 export const Route = createFileRoute('/portfolios/$portfolioId')({
   loader: ({ params }) => getPortfolioData({ data: params.portfolioId }),
   component: PortfolioDetailPage,
@@ -31,6 +39,9 @@ function PortfolioDetailPage() {
   const posthog = usePostHog()
   const initialData = Route.useLoaderData()
   const getPortfolioDataFn = useServerFn(getPortfolioData)
+  const getBenchmarkDataFn = useServerFn(getBenchmarkData)
+
+  const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('')
 
   const { data } = useSuspenseQuery({
     ...queries.portfolios.detail({ id: initialData.portfolio.id, fetchFn: () => getPortfolioDataFn({ data: initialData.portfolio.id }) }),
@@ -38,6 +49,19 @@ function PortfolioDetailPage() {
   })
 
   const { portfolio, positions, history, trades } = data
+
+  const hasHistory = history && history.length > 0
+  const startDate = hasHistory ? history[0].date : ''
+  const endDate = hasHistory ? history[history.length - 1].date : ''
+
+  const { data: benchmarkData } = useSuspenseQuery(
+    queries.benchmarks.history({
+      tickers: selectedBenchmark ? [selectedBenchmark] : [],
+      startDate,
+      endDate,
+      fetchFn: () => getBenchmarkDataFn({ data: { tickers: selectedBenchmark ? [selectedBenchmark] : [], startDate, endDate } }),
+    })
+  )
 
   React.useEffect(() => {
     posthog.capture('portfolio_viewed', { portfolio_id: portfolio.id, owner_id: portfolio.owner_id })
@@ -78,7 +102,18 @@ function PortfolioDetailPage() {
         <div className="flex flex-col space-y-12">
         {/* Performance Chart */}
         <section>
-          <PerformanceChart data={history || []} />
+          <div className="flex items-center justify-between mb-4">
+            <BenchmarkSelector
+              selected={selectedBenchmark}
+              onChange={setSelectedBenchmark}
+            />
+          </div>
+          <PerformanceChart
+            data={history || []}
+            benchmarkData={benchmarkData}
+            selectedBenchmark={selectedBenchmark}
+            showPercentage={!!selectedBenchmark}
+          />
           {(!history || history.length === 0) && (
             <div className="mt-4 p-8 border border-dashed border-zinc-300 rounded-xl text-center text-zinc-500">
               No performance history available yet. Performance is recorded daily.

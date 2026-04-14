@@ -94,6 +94,16 @@ export const queries = {
       }),
   },
   
+  // Benchmark history query (for portfolio comparison)
+  benchmarks: {
+    history: (opts: { tickers: string[]; startDate: string; endDate: string; fetchFn?: () => Promise<any> }) =>
+      queryOptions({
+        queryKey: queryKeys.benchmarks.history(opts.tickers, opts.startDate, opts.endDate),
+        queryFn: opts.fetchFn,
+        staleTime: 1000 * 60 * 5,
+      }),
+  },
+  
   // Infinite query with cursor pagination
   reasoning: {
     list: (opts?: { cursor?: string; fetchFn?: (cursor: string | undefined) => Promise<any> }) =>

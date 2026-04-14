@@ -30,6 +30,9 @@ The Portfolios section allows users to monitor the performance and holdings of e
 - **Sections**:
     - **Header**: Shows the agent's name, total equity, and current cash balance.
     - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity. Features an **interactive tooltip overlay** that displays the exact date and equity value on hover, with a vertical crosshair and dot marker for precise tracking.
+        - **Benchmark Comparison**: Users can select a benchmark (S&P 500, Nasdaq 100, Total World, Gold, Euro Stoxx, Japan Nikkei, Emerging Markets, Russell 2000, Dow Jones) to overlay on the chart for performance comparison.
+        - **Percentage Normalization**: When a benchmark is selected, the chart automatically switches to percentage returns view (day 1 = 0%), enabling direct comparison between portfolio and benchmark performance.
+        - **Outperformance Display**: Tooltips show portfolio return %, benchmark return %, and the outperformance differential in real-time.
     - **Current Positions**: A table listing all stocks currently held by the agent. Displays quantity, average cost, current price, **Invested Amount**, **% of Portfolio**, and P&L (USD and %). 
         - **Sortable Columns**: Click any of the sortable column headers (Invested, % of Portfolio, P/L USD, P/L %) to toggle between ascending and descending order. Visual indicators (↑↓↕) show the current sort direction.
         - **Interactive Rows**: Rows are clickable; clicking an entry expands to show the AI's reasoning.
@@ -50,6 +53,17 @@ The performance chart is built using **D3.js** to ensure maximum flexibility and
         - A tooltip displays the exact **date** and **equity value** for the nearest data point.
         - Smart positioning ensures the tooltip stays within chart bounds.
         - Mouse leave event clears the overlay and tooltip.
+    - **Benchmark Comparison** (2026-04-14):
+        - Multi-line support for overlaying benchmark index performance.
+        - Portfolio line: solid sky-500 color with gradient area fill.
+        - Benchmark line: dashed amber color for visual distinction.
+        - Percentage normalization when benchmark is selected (both lines normalized to 0% at day 1).
+        - Color-coded legend identifying portfolio vs benchmark.
+    - **Outperformance Tooltip** (2026-04-14):
+        - When benchmark is active, tooltip shows:
+            - Portfolio return % (or $ value in absolute mode)
+            - Benchmark return % (or $ value in absolute mode)
+            - Outperformance differential with color coding (green for positive, red for negative)
     - **Implementation Details**:
         - Uses D3 bisector to find the closest data point to the mouse position.
         - Invisible overlay rect captures mouse events across the chart area.
@@ -107,8 +121,26 @@ These metrics are calculated client-side in the `PositionsTable` component to pr
 - **Invested (Cash)**: `quantity * average_cost_basis` (Total capital deployed in the position).
 - **% of Portfolio**: `(Position Invested Cash / Total Portfolio Invested Cash) * 100` (The weight of the stock relative to the total cash invested across all active positions).
 
+### Benchmark Data (price_history)
+Benchmark index prices are fetched from the existing `price_history` table using the `fetchBenchmarkHistory` function. This enables portfolio-to-benchmark comparison without storing separate benchmark snapshots.
 
 ## 7. Implementation Details
+
+### Benchmark Selector Component
+- **File**: `apps/web/src/routes/portfolios/components/-BenchmarkSelector.tsx`
+- **Purpose**: Dropdown component for selecting a benchmark index to compare against portfolio performance.
+- **Available Benchmarks**:
+  - S&P 500 (SPY) - US Large Cap
+  - Nasdaq 100 (QQQ) - US Tech
+  - Total World (URTH) - Global Equity
+  - Gold (GLD) - Commodities
+  - Euro Stoxx (VGK) - Europe
+  - Japan Nikkei (EWJ) - Japan
+  - Emerging Markets (EEM) - EM Equity
+  - Russell 2000 (IWM) - US Small Cap
+  - Dow Jones (DIA) - US Blue Chip
+- **Integration**: Works with TanStack Query to fetch benchmark data on selection change.
+- **Tests**: `apps/web/src/routes/portfolios/components/-BenchmarkSelector.test.tsx`
 
 ### Server Functions
 Data fetching is handled by TanStack Start server functions located in `apps/web/src/routes/portfolios/-queries.ts`. This ensures that sensitive database queries remain on the server and are delivered to the frontend in a type-safe manner.

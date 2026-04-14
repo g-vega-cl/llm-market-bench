@@ -50,6 +50,13 @@ export const queryKeys = {
       ['benchify', 'portfolios', 'detail', portfolioId, 'performance'] as const,
   },
 
+  // Benchmarks
+  benchmarks: {
+    all: ['benchify', 'benchmarks'] as const,
+    history: (tickers: string[], startDate: string, endDate: string) =>
+      ['benchify', 'benchmarks', 'history', tickers.join(','), startDate, endDate] as const,
+  },
+
   // Concepts
   concepts: {
     all: ['benchify', 'concepts'] as const,

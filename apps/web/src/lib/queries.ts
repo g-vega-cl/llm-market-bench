@@ -124,6 +124,19 @@ export const queries = {
   },
 
   // --------------------------------------------------------------------------
+  // Benchmarks
+  // --------------------------------------------------------------------------
+  benchmarks: {
+    history: <T,>(opts: { tickers: string[]; startDate: string; endDate: string; fetchFn?: () => Promise<T> }) =>
+      queryOptions({
+        queryKey: queryKeys.benchmarks.history(opts.tickers, opts.startDate, opts.endDate),
+        queryFn: opts.fetchFn,
+        staleTime: 1000 * 60 * 5,
+        enabled: opts.tickers.length > 0 && !!opts.startDate && !!opts.endDate,
+      }),
+  },
+
+  // --------------------------------------------------------------------------
   // Reasoning
   // --------------------------------------------------------------------------
   reasoning: {

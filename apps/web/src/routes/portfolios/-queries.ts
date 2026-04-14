@@ -143,3 +143,43 @@ export async function fetchPerformanceHistory(portfolioId: string): Promise<Port
   if (error) throw error
   return data
 }
+
+export interface BenchmarkDataPoint {
+  date: string
+  price: number
+}
+
+export async function fetchBenchmarkHistory(
+  tickers: string[],
+  startDate: string,
+  endDate: string
+): Promise<Record<string, BenchmarkDataPoint[]>> {
+  if (tickers.length === 0) return {}
+
+  const supabase = getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from('price_history')
+    .select('ticker, price, fetched_at')
+    .in('ticker', tickers)
+    .gte('fetched_at', startDate)
+    .lte('fetched_at', endDate)
+    .order('fetched_at', { ascending: true })
+
+  if (error) throw error
+
+  const result: Record<string, BenchmarkDataPoint[]> = {}
+  for (const ticker of tickers) {
+    result[ticker] = []
+  }
+
+  data?.forEach(row => {
+    if (result[row.ticker]) {
+      result[row.ticker].push({
+        date: row.fetched_at.split('T')[0],
+        price: Number(row.price)
+      })
+    }
+  })
+
+  return result
+}

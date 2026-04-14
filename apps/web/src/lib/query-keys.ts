@@ -65,7 +65,7 @@ export const queryKeys = {
   // Audits
   audits: {
     all: ['benchify', 'audits'] as const,
-    list: () => ['benchify', 'audits', 'list'] as const,
+    list: (cursor?: string) => ['benchify', 'audits', 'list', cursor] as const,
   },
 
   // Auth

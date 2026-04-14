@@ -212,7 +212,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Compare portfolios against benchmarks**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 
 - [ ] **Money Stuff newsletter not getting any data**
-- [ ] **Why is my AMZN position that's worth only $211 not being cleared at GPT 5.4 nano?**
 
 ### 🔄 Under Consideration
 

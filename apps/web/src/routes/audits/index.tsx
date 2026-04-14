@@ -2,31 +2,40 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { fetchAudits } from './-queries'
 import { queries } from '~/lib/queries'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import * as React from 'react'
 
-const getAudits = createServerFn({ method: 'GET' }).handler(async () => {
-  return fetchAudits()
-})
+const getAudits = createServerFn({ method: 'GET' })
+  .handler(async ({ data }: { data?: string }) => {
+    return fetchAudits(data)
+  })
 
 export const Route = createFileRoute('/audits/')({
-  loader: async () => await getAudits(),
   component: AuditsPage,
 })
 
 function AuditsPage() {
-  const initialData = Route.useLoaderData()
   const getAuditsFn = useServerFn(getAudits)
 
-  const { data } = useSuspenseQuery({
-    ...queries.audits.list({ fetchFn: () => getAuditsFn() }),
-    initialData,
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    status,
+    error
+  } = useInfiniteQuery({
+    ...queries.audits.list({ cursor: undefined, fetchFn: (pageParam) => getAuditsFn({ data: pageParam } as any) }),
   })
 
-  const audits = (data as any[]) || []
+  const allAudits = React.useMemo(
+    () => data?.pages.flatMap(page => page.data) || [],
+    [data]
+  )
 
   const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
-  const sortedAudits = [...audits].sort(
+  const sortedAudits = [...allAudits].sort(
     (a, b) => severityOrder[a.severity as keyof typeof severityOrder] - severityOrder[b.severity as keyof typeof severityOrder]
   )
 
@@ -34,6 +43,24 @@ function AuditsPage() {
     (a) => a.audit_type === 'DB_ANOMALY' || a.audit_type === 'DATA_QUALITY' || a.audit_type === 'CODE_ERROR'
   )
   const logAudits = sortedAudits.filter((a) => a.audit_type === 'SYSTEM_LOG')
+
+  if (status === 'pending') {
+    return (
+      <div className="flex flex-col min-h-screen px-6 md:px-12 py-12 items-center justify-center">
+        <div className="w-16 h-16 border-4 border-zinc-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-zinc-400 text-lg">Loading audits...</p>
+      </div>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col min-h-screen px-6 md:px-12 py-12 items-center justify-center">
+        <p className="text-red-400 text-lg mb-2">Failed to load audits</p>
+        <p className="text-zinc-500 text-sm">{(error as Error).message}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
@@ -84,6 +111,37 @@ function AuditsPage() {
               </div>
             )}
           </section>
+
+          {hasNextPage && (
+            <div className="pt-4 pb-2">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full py-4 px-6 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isFetchingNextPage ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  'Load More'
+                )}
+              </button>
+            </div>
+          )}
+
+          {!hasNextPage && allAudits.length > 0 && (
+            <div className="text-center py-4 text-zinc-500 text-xs uppercase tracking-widest">
+              • End of audit findings •
+            </div>
+          )}
+
+          {isFetching && !isFetchingNextPage && (
+            <div className="text-center py-2">
+              <div className="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            </div>
+          )}
         </div>
       </div>
     </div>

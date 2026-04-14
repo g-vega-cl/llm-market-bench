@@ -81,10 +81,12 @@ export const queries = {
   // Audits
   // --------------------------------------------------------------------------
   audits: {
-    list: <T,>(opts?: { fetchFn?: () => Promise<T> }) =>
-      queryOptions({
-        queryKey: queryKeys.audits.list(),
-        queryFn: opts?.fetchFn,
+    list: <T,>(opts?: { cursor?: string; fetchFn?: (cursor: string | undefined) => Promise<T> }) =>
+      infiniteQueryOptions({
+        queryKey: queryKeys.audits.list(opts?.cursor),
+        queryFn: ({ pageParam }) => opts?.fetchFn ? opts.fetchFn(pageParam) : Promise.reject(new Error('fetchFn required')),
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
   },

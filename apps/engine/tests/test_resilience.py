@@ -89,24 +89,23 @@ def test_main_ingestion_guardrail(monkeypatch):
     mock_logger.warning.assert_called()
 
 
-def test_main_does_not_call_db_when_no_newsletters(monkeypatch):
-    """Test that database operations are skipped when no newsletters found."""
+def test_main_dust_cleanup_runs_even_without_newsletters(fully_mocked_main):
+    """Test that dust cleanup runs regardless of newsletter data.
+    
+    Dust cleanup is intentionally designed to run before the newsletter check,
+    as it's a safety net for accumulated dust from any source.
+    """
     from main import main
-    from unittest.mock import AsyncMock
-
-    # Mock ingest_newsletters to return empty
-    monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
-    # Mock logger
-    mock_logger = MagicMock()
-    monkeypatch.setattr("main.logger", mock_logger)
-
+    
+    md = fully_mocked_main
+    md["ingest"].return_value = []  # No newsletters
+    md["dust_cleanup"].return_value = None
+    
     # Simulate 'python main.py ingest'
-    monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
-
-    # Mock MarketDataManager to avoid DB initialization in __init__
-    with patch("core.utils.MarketDataManager") as mock_mdm_cls:
-        mock_mdm = mock_mdm_cls.return_value
-        mock_mdm.is_market_open = AsyncMock(return_value=True)
-        with patch("main.get_supabase_client") as mock_db:
-            main()
-        mock_db.assert_not_called()
+    import sys
+    sys.argv = ["main.py", "ingest"]
+    
+    main()
+    
+    # Verify dust cleanup was called (runs before newsletter check)
+    md["dust_cleanup"].assert_called_once()

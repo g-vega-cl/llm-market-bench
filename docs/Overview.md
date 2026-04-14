@@ -53,10 +53,11 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 1: Ingestion & Normalization
 1. **Triple Trigger (09:30, 12:30, 15:30 ET):** GitHub Actions fires the pipeline. The engine enforces a **Holiday-Aware Market Hours Check** (via FMP API) and skips execution if triggered outside 09:30-16:00 ET, on weekends, or on US stock market holidays. The market status check uses **class-level caching (5-minute TTL)** to ensure the FMP API is called only once per pipeline run, reducing redundant API calls while maintaining accurate holiday detection.
-2. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
-3.  **Corporate Action Check:** *(Not yet implemented — see Roadmap.)*
-4.  **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
-5.  **Data Snapshotting:** Save raw text and current prices with idempotency keys.
+2. **Pre-Analysis Dust Cleanup:** Before any LLM analysis, the engine automatically sells any positions worth less than 10% of portfolio equity (dust positions). This ensures LLMs never see or manage tiny leftover positions when making allocation decisions. Dust cleanup runs on all active portfolios regardless of whether newsletter data exists.
+3. **Newsletter Ingestion:** Scrapes unread emails; removes ads via Gemini Flash.
+4. **Corporate Action Check:** *(Not yet implemented — see Roadmap.)*
+5. **Economic Calendar Ingestion:** Fetches live events from Trading Economics (bi-weekly).
+6. **Data Snapshotting:** Save raw text and current prices with idempotency keys.
 
 ### Phase 2: Consensus & Attribution
 6.  **Global Macro Tracking**: The engine fetches real-time quotes and historical volatility for 16 key macro assets (Equities, Commodities, Yields/DXY). It identifies **Market Regime Shifts** ($> 2\sigma$ deviation) to provide high-level context before trade generation. See **[GLOBAL_MACRO_TRACKER.md](./engine/GLOBAL_MACRO_TRACKER.md)**.

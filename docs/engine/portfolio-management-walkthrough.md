@@ -105,30 +105,34 @@ LLMs can now output an `allocation_percentage` (0-100%) in their JSON decision.
     - If `allocation_percentage` is missing, the system defaults to **5%** (then applies the $1,000 bump logic).
 
 ## 5b. Automatic Dust Position Cleanup
-After EVERY trade execution (BUY or SELL), the engine performs an automatic post-trade check to prevent small positions from polluting the portfolio:
+Before LLM analysis begins (during the Pre-Analysis Dust Cleanup phase), the engine performs an automatic check to prevent small positions from polluting the portfolio:
 
-1. **Threshold Check:** Scans all remaining positions and calculates their current market value
-2. **10% Rule:** Compares each position's value against 10% of total portfolio equity
-3. **Automatic Sale:** Any position below the threshold is automatically sold in full
-4. **Trade Ledger:** Each dust cleanup sale is recorded in the `trades` table with:
+1. **Timing:** Runs at the START of each pipeline execution, BEFORE any LLM analysis
+2. **Threshold Check:** Scans all remaining positions and calculates their current market value
+3. **10% Rule:** Compares each position's value against 10% of total portfolio equity
+4. **Automatic Sale:** Any position below the threshold is automatically sold in full
+5. **Trade Ledger:** Each dust cleanup sale is recorded in the `trades` table with:
    - `signal`: "SELL"
    - `decision_id`: NULL (system-generated, not from LLM)
    - `reasoning`: "Automatic dust position cleanup: Position value below 10% of portfolio equity"
    - Proper P&L calculations (realized gain/loss)
-5. **Portfolio Updates:** Cash, SMA, and metrics are updated to reflect the dust sale
-6. **LLM Notification:** The cleanup is logged in the trade history, so the LLM can see what happened in the "Recently Executed Trades" section of their portfolio context
+6. **LLM Context:** After cleanup, LLMs analyze a dust-free portfolio with no small positions to manage
 
 **Example Scenario:**
 - Portfolio Equity: $10,000 (10% threshold = $1,000)
-- Agent owns 20 shares of XYZ @ $125 = $2,500 position
-- Agent sells 15 shares @ $125 = $1,875 (using `calculate_sell_quantity` with `percentage=75`)
-- Remaining position: 5 shares @ $125 = $625 (below $1,000 threshold)
-- Post-trade cleanup detects $625 < $1,000 threshold
-- System automatically sells remaining 5 XYZ shares @ $125 = $625
-- Both trades recorded with full audit trail
-- LLM sees both sales in their trade history
+- Agent holds 1 share of XYZ @ $211 = $211 position (below $1,000 threshold)
+- Pre-analysis dust cleanup detects $211 < $1,000 threshold
+- System automatically sells 1 XYZ share @ $211 = $211
+- Trade recorded with full audit trail
+- LLM analyzes portfolio without seeing the XYZ dust position
 
-**Implementation:** `apps/engine/execution/portfolio.py` → `_check_and_sell_dust_positions()`
+**Why Pre-Analysis Instead of Post-Trade?**
+- LLMs never see or waste context on "dust" positions
+- Portfolio is always clean before allocation decisions
+- No edge cases where HOLD decisions leave dust accumulated
+- Simpler mental model: dust is a system concern, not an LLM concern
+
+**Implementation:** `apps/engine/main.py` → `_stage_dust_cleanup()` and `apps/engine/execution/portfolio.py` → `_check_and_sell_dust_positions()`
 
 ## 5c. Available Sell Tools
 The system provides a single unified sell calculation tool for agents:

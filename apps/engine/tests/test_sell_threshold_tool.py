@@ -1,8 +1,10 @@
 """Tests for the 10% minimum position threshold (automatic dust cleanup).
 
 Note: The 10% threshold rule is AUTOMATIC - there is no LLM tool for this.
-The engine automatically sells positions below 10% of portfolio equity after every trade.
-See: execution/portfolio.py -> _check_and_sell_dust_positions()
+The engine automatically sells positions below 10% of portfolio equity during the
+Pre-Analysis Dust Cleanup phase (before LLM analysis begins).
+
+See: main.py -> _stage_dust_cleanup() and execution/portfolio.py -> _check_and_sell_dust_positions()
 
 These tests verify the automatic enforcement behavior, not a callable tool.
 """

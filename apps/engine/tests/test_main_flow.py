@@ -12,6 +12,7 @@ def mock_dependencies():
     with patch("main.ingest_newsletters") as mock_ingest, \
          patch("main.get_supabase_client") as mock_get_client, \
          patch("main.upsert_newsletter_snapshot") as mock_upsert, \
+         patch("main._stage_dust_cleanup", new_callable=AsyncMock) as mock_dust, \
          patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze, \
          patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
          patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
@@ -21,6 +22,7 @@ def mock_dependencies():
          patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap, \
          patch("main.Portfolio") as MockPortfolio, \
          patch("execution.market_data.MarketDataManager") as MockMDM, \
+         patch("core.utils.MarketDataManager") as MockMDMUtils, \
          patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
          patch("main.save_decision") as mock_save:
         
@@ -43,6 +45,12 @@ def mock_dependencies():
         mock_mdm_instance.get_quote.side_effect = lambda t, **kwargs: MagicMock(price=150.0) if t == "GOOGL" else MagicMock(price=100.0)
         mock_mdm_instance.get_quotes = AsyncMock()
         mock_mdm_instance.get_quotes.side_effect = lambda tickers, **kwargs: {t: (MagicMock(price=150.0) if t == "GOOGL" else MagicMock(price=100.0)) for t in tickers}
+        mock_mdm_instance.is_market_open = AsyncMock(return_value=True)
+        
+        # Mock MarketDataManager for core.utils (used by is_market_open_with_logging)
+        mock_mdm_utils_instance = MagicMock()
+        MockMDMUtils.return_value = mock_mdm_utils_instance
+        mock_mdm_utils_instance.is_market_open = AsyncMock(return_value=True)
         
         # Mock Portfolio instance
         mock_portfolio_instance = MagicMock()
@@ -80,7 +88,9 @@ def mock_dependencies():
             "portfolio_cls": MockPortfolio,
             "portfolio": mock_portfolio_instance,
             "save": mock_save,
-            "verify": mock_verify
+            "verify": mock_verify,
+            "dust_cleanup": mock_dust,
+            "db": mock_get_client
         }
 
 @pytest.mark.asyncio
@@ -243,3 +253,19 @@ async def test_run_ingest_sell_with_tool(mock_dependencies):
     assert args[0] == "AAPL"
     assert args[1] == 5
     assert args[3] == "SELL"
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_calls_dust_cleanup_first(mock_dependencies):
+    """Verify that dust cleanup runs BEFORE analysis to ensure a clean portfolio."""
+    md = mock_dependencies
+    
+    # Return empty to skip analysis
+    md["analyze"].return_value = ([], [], "", "")
+    
+    await run_ingest(force=True)
+    
+    # Verify dust cleanup was called
+    md["dust_cleanup"].assert_called_once()
+    # Verify DB client was accessed (called multiple times during full pipeline)
+    md["db"].assert_called()

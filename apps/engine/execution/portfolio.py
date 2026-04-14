@@ -422,10 +422,6 @@ class Portfolio:
             self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 
-            # 5. POST-TRADE DUST CHECK: After ANY trade, check if any position is below 10% of equity
-            # This ensures we don't accumulate small "dust" positions that pollute the portfolio
-            await self._check_and_sell_dust_positions(current_prices)
-
             return trade_id
 
         except Exception as e:

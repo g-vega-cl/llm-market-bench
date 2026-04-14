@@ -53,6 +53,58 @@ async def _stage_ingest_and_snapshot():
     return data, sb_client
 
 
+async def _stage_dust_cleanup(sb_client):
+    """Stage 1.5: Clean dust positions from all active portfolios BEFORE LLM analysis.
+    
+    This ensures LLMs never see "dust" positions (<10% of portfolio equity)
+    when making allocation decisions. Runs regardless of whether newsletter data exists,
+    as it's a safety net for accumulated dust from any source.
+    """
+    from execution.market_data import MarketDataManager
+    from analyze import MODELS
+    
+    logger.info("Starting Pre-Analysis Dust Cleanup...")
+    mdm = MarketDataManager()
+    total_cleaned = 0
+    cleaned_tickers = []
+    
+    for config in MODELS:
+        model = config["model"]
+        try:
+            portfolio = Portfolio(owner_id=model)
+            await portfolio.initialize()
+            
+            if not portfolio.positions:
+                logger.info(f"[{model}] No positions to check.")
+                continue
+            
+            logger.info(f"[{model}] Checking {len(portfolio.positions)} positions for dust...")
+            
+            # Get current prices for all positions
+            price_tasks = [mdm.get_quote(ticker) for ticker in portfolio.positions.keys()]
+            quotes = await asyncio.gather(*price_tasks)
+            price_map = {q.ticker: q.price for q in quotes if q}
+            
+            # Calculate threshold for logging
+            if portfolio.metrics:
+                threshold = portfolio.metrics.total_equity * 0.10
+                logger.info(f"[{model}] 10% dust threshold: ${threshold:,.2f} (total equity: ${portfolio.metrics.total_equity:,.2f})")
+            
+            # Run dust cleanup (modifies portfolio state in-place)
+            await portfolio._check_and_sell_dust_positions(price_map)
+            
+            # Count cleaned positions
+            for ticker in list(portfolio.positions.keys()):
+                if ticker not in price_map:
+                    cleaned_tickers.append((model, ticker))
+                    total_cleaned += 1
+            
+        except Exception as e:
+            logger.error(f"Dust cleanup failed for {model}: {e}")
+    
+    logger.info(f"Pre-Analysis Dust Cleanup complete. Cleaned {total_cleaned} dust positions: {cleaned_tickers}")
+
+
 async def _stage_analysis_and_consensus(data, sb_client):
     """Stage 2: Run parallel LLM analysis and event consensus.
     
@@ -468,6 +520,12 @@ async def run_ingest(force: bool = False):
                 except Exception as e:
                     logger.error(f"Failed to save ingestion log: {e}")
             return
+
+        # Initialize Supabase client for dust cleanup and subsequent stages
+        sb_client = get_supabase_client()
+
+        # Pre-Analysis Dust Cleanup: Ensure no dust positions exist before LLMs analyze
+        await _stage_dust_cleanup(sb_client)
 
         data, sb_client = await _stage_ingest_and_snapshot()
         if not data:

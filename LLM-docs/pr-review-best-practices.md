@@ -23,7 +23,19 @@ Confirm each point during review:
 - **Prefer logical NOT (!)**: Use `!value` instead of `value === false` for cleaner, more idiomatic boolean checks that handle edge cases like null or undefined more predictably.
 - **Follow React Hooks rules**: Call hooks only at the top level of function components; never inside callbacks, event handlers, loops, or conditionals.
 - **Memoize callback props**: Use `useCallback` for functions passed as props to preserve `React.memo` benefits and prevent unnecessary re-renders.
-- **Complete hook dependency arrays**: Include all referenced variables in hook dependency arrays to avoid stale closures and ensure correct updates.
+- **Complete hook dependency arrays**: Include all referenced variables in hook dependency arrays to avoid staleclosures and ensure correct updates.
+
+# Python Test Patterns (Engine)
+
+When reviewing `apps/engine/tests/` code:
+
+- **Mock at function boundaries**: Tests should mock `raw_client.aio.models.generate_content` (or equivalent) and inspect the config/args passed, NOT patch SDK internals or intercept HTTP requests.
+- **No API keys in test code**: Even dummy keys are fine if truly unused, but prefer full mocking of the client. Tests must not make real network calls.
+- **Avoid `genai.Client` in tests**: Create `MagicMock` with necessary `aio.models.generate_content` method instead of instantiating a real SDK client.
+- **Inspect config objects directly**: Assert on `config.automatic_function_calling.disable` not on `request_data["automaticFunctionCalling"]` (which tests serialization, not your code).
+- **Use `AsyncMock` for async methods**: Ensure `mock_aio.models.generate_content = AsyncMock(return_value=...)`.
+- **Keep tests fast**: Unit tests should run in <100ms each; if slow, you're probably hitting the network.
+- **Stub response minimally**: Return `MagicMock(candidates=[MagicMock(content=None)])` unless you need specific content for loop logic.
 
 # Advanced Refactoring (Tidy First)
 - **Use guard clauses**: Place precondition checks at function start and return early when conditions fail to flatten control flow and highlight the happy path.

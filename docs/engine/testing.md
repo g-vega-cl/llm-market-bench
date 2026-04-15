@@ -165,6 +165,61 @@ async def test_ingest_newsletters_summary(caplog):
     await ingest_newsletters(newer_than_days=1)
 ```
 
+### Unit Testing LLM Handlers: Mock at the Boundary
+
+When testing LLM handler methods (like `gemini.run_tool_loop`), create pure unit tests by:
+
+1. **Mock the raw client's `aio.models.generate_content` method directly**, not the SDK internals
+2. **Inspect the `config` argument** passed to the mock to verify correct configuration
+3. **Do NOT rely on HTTP request interception** or SDK serialization internals
+4. **Never use real API keys** — the mock provides all needed responses
+
+**❌ Bad Pattern** (brittle, tests SDK internals, relies on serialization):
+```python
+# DO NOT: Creates real client, patches internal _async_request, inspects serialized HTTP body
+client = genai.Client(api_key="x")
+api = client._api_client
+api._async_request = fake_request
+await client.aio.models.generate_content(...)
+request_data = captured["kwargs"]["http_request"].data
+assert "automaticFunctionCalling" in request_data  # Tests SDK serialization!
+```
+
+**✅ Good Pattern** (isolated, fast, tests your logic only):
+```python
+@pytest.mark.asyncio
+async def test_gemini_afc_configuration():
+    from unittest.mock import AsyncMock, MagicMock
+    from core.llm.handlers import gemini
+
+    raw_client = MagicMock()
+    mock_aio = raw_client.aio
+    mock_aio.models.generate_content = AsyncMock(
+        return_value=MagicMock(candidates=[MagicMock(content=None)])
+    )
+
+    messages = [{"role": "user", "content": "hi"}]
+    await gemini.run_tool_loop(
+        raw_client=raw_client,
+        model_name="gemini-1.5-flash",
+        messages=messages,
+        override_tools=[{"name": "foo", "parameters": {}}],
+        enable_google_search=True,
+    )
+
+    # Verify the config object itself — no serialization involved
+    config = mock_aio.models.generate_content.call_args.kwargs['config']
+    assert config.automatic_function_calling is not None
+    assert config.automatic_function_calling.disable is True
+```
+
+**Why the good pattern is better:**
+- Tests **your code's behavior** (setting config fields) not SDK internals
+- Immune to SDK version changes (serialization details may vary)
+- Faster (no HTTP layer, no pydantic model serialization)
+- No need for valid API keys
+- Clear intent: "when google_search=True, handler should set `config.automatic_function_calling.disable = True`"
+
 ### Dependency Injection for Analysis Functions
 
 Analysis functions like `run_contrarian_analysis` accept dependencies via parameters rather than creating them internally. This enables clean unit testing without patching internal imports.

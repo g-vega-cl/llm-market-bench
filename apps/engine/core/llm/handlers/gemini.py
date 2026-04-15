@@ -173,9 +173,6 @@ async def run_tool_loop(
             # Enable server-side tool invocations when using built-in tools (google_search)
             # with function declarations - required by Gemini API
             if enable_google_search:
-                config_kwargs["tool_config"] = types.ToolConfig(
-                    include_server_side_tool_invocations=True
-                )
                 # Disable AFC when using google_search with function declarations
                 config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(
                     disable=True

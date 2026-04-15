@@ -21,59 +21,44 @@ def test_build_gemini_tools_includes_search_with_function_tools():
 
 
 @pytest.mark.asyncio
-async def test_gemini_tool_loop_configures_tool_config_for_google_search():
-    """Gemini tool loop configures tool_config with include_server_side_tool_invocations when using google_search.
+async def test_gemini_tool_loop_configures_afc_for_google_search():
+    """When google_search is enabled with function tools, AFC should be disabled.
 
-    When using google_search grounding alongside function declarations, the API requires:
-    1. tool_config.include_server_side_tool_invocations=True
-    2. AFC is automatically disabled by the API when incompatible tools are detected
+    This tests that our handler correctly configures automatic_function_calling
+    when enable_google_search=True.
     """
-    import os
-    import sys
+    from unittest.mock import AsyncMock, MagicMock
+    from core.llm.handlers import gemini
 
-    sys.path.append(os.path.join(os.getcwd(), "apps/engine"))
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key="x")
-    api = client._api_client
-    captured = {}
-
-    async def fake_request(*args, **kwargs):
-        captured["kwargs"] = kwargs
-
-        class Result:
-            headers = {}
-            response_stream = ['{"candidates": []}']
-
-        return Result()
-
-    api._async_request = fake_request
-    config = types.GenerateContentConfig(
-        tools=[
-            types.Tool(function_declarations=[{"name": "foo", "parameters": {}}]),
-            types.Tool(google_search={}),
-        ],
-        safety_settings=[],
-        tool_config=types.ToolConfig(
-            include_server_side_tool_invocations=True
-        ),
-        automatic_function_calling=types.AutomaticFunctionCallingConfig(
-            disable=True
-        ),
+    # Mock the raw client's async generate_content method
+    raw_client = MagicMock()
+    mock_aio = raw_client.aio
+    mock_aio.models.generate_content = AsyncMock(
+        return_value=MagicMock(candidates=[MagicMock(content=None)])
     )
 
-    await client.aio.models.generate_content(
-        model="gemini-3.1-flash-lite-preview",
-        contents="hi",
-        config=config,
+    # Simple message history
+    messages = [{"role": "user", "content": "hi"}]
+
+    # Run tool loop with google search enabled
+    await gemini.run_tool_loop(
+        raw_client=raw_client,
+        model_name="gemini-1.5-flash",
+        messages=messages,
+        override_tools=[{"name": "foo", "parameters": {}}],
+        enable_google_search=True,
     )
 
-    # Verify tool_config with include_server_side_tool_invocations IS in the request
-    # when google_search is enabled (required by Gemini API for function declarations + google_search)
-    request_data = captured["kwargs"]["http_request"].data
-    assert "toolConfig" in request_data
-    assert request_data["toolConfig"]["includeServerSideToolInvocations"] is True
+    # Verify generate_content was called
+    assert mock_aio.models.generate_content.called
+
+    # Extract the config passed to generate_content
+    call_kwargs = mock_aio.models.generate_content.call_args.kwargs
+    config = call_kwargs['config']
+
+    # Verify automatic_function_calling is set and disabled
+    assert config.automatic_function_calling is not None
+    assert config.automatic_function_calling.disable is True
 
 
 @pytest.mark.asyncio

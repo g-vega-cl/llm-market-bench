@@ -178,12 +178,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Revisit the concepts map** - 
 - [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
     - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
-- [ ] **Check reasoning ste prompts** For example, I saw this and it needs to be fixed:
-    - Recently Executed Trades (Last 48h):
-        - BUY MKC: 25 @ $53.29 (1d ago) - Reason: No reasoning stored.
-        - BUY QQQ: 1 @ $557.66 (1d ago) - Reason: No reasoning stored.
-        - SELL DKNG: 50 @ $20.80 (1d ago) - Reason: No reasoning stored.
-        - BUY QQQ: 2 @ $563.02 (1d ago) - Reason: No reasoning stored.
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Posthog** - Make sure it's working - I might need to add a reverse proxy.
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
@@ -201,16 +195,14 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it’s closed:** -goes along with papers
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
-- [ ] **Remove view on Yahoo finance button. Or make it so each ticket it's its own button.**
 - [ ] **I don't see percentages in scenarios anymore**
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
 - [ ] **Run memories during the weekend.**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
-- [ ] **How I'm feeling and why** about the market state right now. Trying to predict the market direction? And learning from failures?
+- [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 
-- [ ] **Improve how portfolio chat and tooltip looks on mobile**
 - [ ] **Paper trade audit** - maybe IBKR api?
 - [ ] **Recheck calendar events**
 

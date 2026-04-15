@@ -378,6 +378,42 @@ export function PerformanceChart({
 
   const hasBenchmark = selectedBenchmark && benchmarkData && benchmarkData[selectedBenchmark]
 
+  const getLatestWithBenchmark = () => {
+    if (data.length === 0) return null
+    
+    const latestDate = data[data.length - 1].date
+    const equity = Number(data[data.length - 1].total_equity)
+    
+    if (!selectedBenchmark || !benchmarkData?.[selectedBenchmark]) {
+      return { date: latestDate, equity, x: 0, y: 0 }
+    }
+    
+    const benchmarkPoints = benchmarkData[selectedBenchmark]
+    const benchmarkPoint = benchmarkPoints.find(p => p.date === latestDate) 
+      || benchmarkPoints[benchmarkPoints.length - 1]
+    
+    let outperformance: number | undefined
+    if (showPercentage && benchmarkPoint && data.length > 0) {
+      const portfolioStart = Number(data[0].total_equity) || 1
+      const benchmarkStart = benchmarkPoints[0]?.price || 1
+      const portfolioChange = ((equity - portfolioStart) / portfolioStart) * 100
+      const benchmarkChange = ((benchmarkPoint.price - benchmarkStart) / benchmarkStart) * 100
+      outperformance = portfolioChange - benchmarkChange
+    }
+    
+    return {
+      date: latestDate,
+      equity,
+      benchmarkValue: benchmarkPoint?.price,
+      benchmarkTicker: selectedBenchmark,
+      outperformance,
+      x: 0,
+      y: 0
+    }
+  }
+
+  const displayData = tooltipData || getLatestWithBenchmark()
+
   return (
     <div className="w-full bg-white border border-zinc-200 rounded-xl p-4 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between mb-4">
@@ -390,6 +426,38 @@ export function PerformanceChart({
           </div>
         )}
       </div>
+      {displayData && (
+        <div className="mb-4 p-3 bg-zinc-50 rounded-lg border border-zinc-100">
+          <div className="text-xs text-zinc-500 mb-1">{displayData.date}</div>
+          <div className="flex items-baseline gap-3">
+            <span className="text-xl font-bold text-sky-600">
+              {showPercentage && hasBenchmark
+                ? `${displayData.equity > 0 ? '+' : ''}${displayData.equity.toFixed(2)}%`
+                : `$${displayData.equity.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+              }
+            </span>
+          </div>
+          {displayData.benchmarkValue !== undefined && (
+            <div className="mt-2 pt-2 border-t border-zinc-200">
+              <div className="text-sm text-amber-600">
+                {BENCHMARK_OPTIONS.find(b => b.ticker === selectedBenchmark)?.label}: {' '}
+                {showPercentage
+                  ? `${displayData.benchmarkValue > 0 ? '+' : ''}${displayData.benchmarkValue.toFixed(2)}%`
+                  : `$${displayData.benchmarkValue?.toLocaleString()}`
+                }
+              </div>
+              {displayData.outperformance !== undefined && (
+                <div className={`text-xs mt-1 ${displayData.outperformance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {displayData.outperformance >= 0 ? '+' : ''}{displayData.outperformance.toFixed(2)}% outperformance
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div className="w-full overflow-x-auto relative">
         <svg
           ref={svgRef}
@@ -398,42 +466,6 @@ export function PerformanceChart({
           viewBox="0 0 800 400"
           preserveAspectRatio="xMidYMid meet"
         />
-        {tooltipData && (
-          <div
-            className="absolute bg-zinc-900 text-white px-3 py-2 rounded-lg shadow-lg pointer-events-none z-10 text-sm w-40 sm:w-48"
-            style={{
-              left: Math.min(tooltipData.x + 10, window.innerWidth - 180),
-              top: tooltipData.y - 70 > 0 ? tooltipData.y - 70 : tooltipData.y + 20,
-            }}
-          >
-            <div className="font-medium text-zinc-300 mb-1">{tooltipData.date}</div>
-            <div className="font-bold text-lg text-sky-400">
-              {showPercentage && hasBenchmark
-                ? `${tooltipData.equity > 0 ? '+' : ''}${tooltipData.equity.toFixed(2)}%`
-                : `$${tooltipData.equity.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
-              }
-            </div>
-            {tooltipData.benchmarkValue !== undefined && (
-              <div className="mt-1 pt-1 border-t border-zinc-700">
-                <div className="text-amber-400 text-sm">
-                  {BENCHMARK_OPTIONS.find(b => b.ticker === selectedBenchmark)?.label}: {' '}
-                  {showPercentage
-                    ? `${tooltipData.benchmarkValue > 0 ? '+' : ''}${tooltipData.benchmarkValue.toFixed(2)}%`
-                    : `$${tooltipData.benchmarkValue.toLocaleString()}`
-                  }
-                </div>
-                {tooltipData.outperformance !== undefined && (
-                  <div className={`text-xs mt-1 ${tooltipData.outperformance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {tooltipData.outperformance >= 0 ? '+' : ''}{tooltipData.outperformance.toFixed(2)}% outperformance
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

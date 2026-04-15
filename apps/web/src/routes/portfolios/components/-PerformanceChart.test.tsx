@@ -101,3 +101,14 @@ test('renders without benchmark when showPercentage is false', () => {
   )
   expect(screen.getByText(/Equity Curve/i)).toBeInTheDocument()
 })
+
+test('displays latest equity value in inline card', () => {
+  const mockData = [
+    { date: '2023-01-01', total_equity: 10000 },
+    { date: '2023-01-02', total_equity: 10500 },
+  ]
+
+  render(<PerformanceChart data={mockData} />)
+  expect(screen.getByText('$10,500.00')).toBeInTheDocument()
+  expect(screen.getByText('2023-01-02')).toBeInTheDocument()
+})

@@ -29,10 +29,10 @@ The Portfolios section allows users to monitor the performance and holdings of e
 - **Description**: Provides an in-depth analysis of a specific agent's portfolio.
 - **Sections**:
     - **Header**: Shows the agent's name, total equity, and current cash balance.
-    - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity. Features an **interactive tooltip overlay** that displays the exact date and equity value on hover, with a vertical crosshair and dot marker for precise tracking.
+    - **Performance Timeline**: A D3-based line chart (Equity Curve) showing the daily progress of the portfolio's total equity. Features an **inline data display** that shows the current/hovered point's data between the title and chart, with a vertical crosshair and dot marker for visual tracking when hovering.
         - **Benchmark Comparison**: Users can select a benchmark (S&P 500, Nasdaq 100, Total World, Gold, Euro Stoxx, Japan Nikkei, Emerging Markets, Russell 2000, Dow Jones) to overlay on the chart for performance comparison.
         - **Percentage Normalization**: When a benchmark is selected, the chart automatically switches to percentage returns view (day 1 = 0%), enabling direct comparison between portfolio and benchmark performance.
-        - **Outperformance Display**: Tooltips show portfolio return %, benchmark return %, and the outperformance differential in real-time.
+        - **Outperformance Display**: The inline display shows portfolio return %, benchmark return %, and the outperformance differential with color coding (green for positive, red for negative).
     - **Current Positions**: A table listing all stocks currently held by the agent. Displays quantity, average cost, current price, **Invested Amount**, **% of Portfolio**, and P&L (USD and %). 
         - **Sortable Columns**: Click any of the sortable column headers (Invested, % of Portfolio, P/L USD, P/L %) to toggle between ascending and descending order. Visual indicators (↑↓↕) show the current sort direction.
         - **Interactive Rows**: Rows are clickable; clicking an entry expands to show the AI's reasoning.
@@ -48,26 +48,28 @@ The performance chart is built using **D3.js** to ensure maximum flexibility and
     - Linear y-axis with formatted currency labels.
     - Gradient area fill under the equity line for better visual depth.
     - Automated gridlines and axes using D3 primitives.
-    - **Interactive Tooltip Overlay** (2026-04-02):
-        - Hover anywhere on the chart to activate a vertical crosshair (dashed line) and dot marker.
-        - A tooltip displays the exact **date** and **equity value** for the nearest data point.
-        - Smart positioning ensures the tooltip stays within chart bounds.
-        - Mouse leave event clears the overlay and tooltip.
+    - **Inline Data Display** (2026-04-15):
+        - A card between the chart title and the chart displays the current/hovered data point.
+        - Shows date, portfolio value (or % when benchmark selected), benchmark value, and outperformance.
+        - Default state shows the latest data point.
+        - Hovering updates the display with the hovered point's data.
+        - No floating tooltip - all information is visible inline for better mobile experience.
+        - Crosshair and dot marker still appear on hover for visual tracking.
     - **Benchmark Comparison** (2026-04-14):
         - Multi-line support for overlaying benchmark index performance.
         - Portfolio line: solid sky-500 color with gradient area fill.
         - Benchmark line: dashed amber color for visual distinction.
         - Percentage normalization when benchmark is selected (both lines normalized to 0% at day 1).
         - Color-coded legend identifying portfolio vs benchmark.
-    - **Outperformance Tooltip** (2026-04-14):
-        - When benchmark is active, tooltip shows:
+    - **Outperformance Display** (2026-04-14):
+        - When benchmark is active, the inline display shows:
             - Portfolio return % (or $ value in absolute mode)
             - Benchmark return % (or $ value in absolute mode)
             - Outperformance differential with color coding (green for positive, red for negative)
     - **Implementation Details**:
         - Uses D3 bisector to find the closest data point to the mouse position.
         - Invisible overlay rect captures mouse events across the chart area.
-        - React state manages tooltip visibility and position.
+        - React state manages hover data and inline display.
         - Crosshair and dot marker are updated via a separate `useEffect` hook for smooth animation.
     
 ## 4. Sortable Positions Table
@@ -174,8 +176,8 @@ The portfolio pages are optimized for mobile devices with the following improvem
 - **Stats Card**: Padding and gap reduce on mobile (`p-3 md:p-4`, `gap-4 md:gap-8`)
 
 ### Performance Chart
-- **Tooltip**: Width is responsive (`w-40 sm:w-48`) and uses `window.innerWidth` for boundary detection instead of hardcoded 600px
-- **Positioning**: Tooltip stays below chart line when near top edge (`tooltipData.y - 70 > 0 ? tooltipData.y - 70 : tooltipData.y + 20`)
+- **Inline Display**: Data is shown in a card between title and chart, eliminating tooltip positioning issues on mobile
+- **Crosshair**: Still appears on hover for visual tracking but no floating overlay
 
 ### Positions Table
 - **Minimum Width**: `min-w-[800px]` ensures horizontal scroll on small screens

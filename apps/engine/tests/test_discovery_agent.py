@@ -50,6 +50,13 @@ def mock_provider():
         yield {"gemini": mock_gemini, "openai": mock_openai, "anthropic": mock_anthropic}
 
 
+@pytest.fixture
+def mock_client_factory():
+    """Fixture to mock client factory to avoid real API calls."""
+    with patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"gemini": MagicMock, "openai": MagicMock, "anthropic": MagicMock}):
+        yield
+
+
 class TestDiscoveryAgentSingleCall:
     """Tests for single-call JSON output in discover_assets."""
 
@@ -150,6 +157,11 @@ Just some text without proper JSON."""
 class TestJSONParsing:
     """Tests for _parse_json_response method."""
 
+    @pytest.fixture(autouse=True)
+    def setup_mocks(self, mock_client_factory):
+        """Apply mock_client_factory to all tests in this class."""
+        pass
+
     def test_parse_valid_json_with_assets_key(self):
         """Verify parsing JSON object with assets array."""
         agent = DiscoveryAgent(model_name="gemini/gemini-2.0-flash")
@@ -207,6 +219,11 @@ class TestJSONParsing:
 
 class TestExtractFinalText:
     """Tests for _extract_final_text method."""
+
+    @pytest.fixture(autouse=True)
+    def setup_mocks(self, mock_client_factory):
+        """Apply mock_client_factory to all tests in this class."""
+        pass
 
     def test_finds_last_assistant_message(self):
         """Verify last assistant message is found."""

@@ -67,22 +67,40 @@ async def test_individual_task_failure_does_not_halt_pipeline():
 
 def test_main_ingestion_guardrail(monkeypatch):
     """Test that main.py stops if no newsletters are returned."""
-    from main import main
     from unittest.mock import AsyncMock
 
-    # Mock ingest_newsletters to return empty
-    monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
-    # Mock logger to verify it's called
-    mock_logger = MagicMock()
-    monkeypatch.setattr("main.logger", mock_logger)
+    # Mock get_supabase_client BEFORE importing main to prevent DB initialization
+    with patch("core.db.get_supabase_client", return_value=MagicMock()), \
+         patch("execution.market_data.MarketDataManager") as mock_mdm_cls, \
+         patch("execution.portfolio.Portfolio") as mock_portfolio_cls:
 
-    # Simulate 'python main.py ingest'
-    monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
-
-    # Mock MarketDataManager to avoid DB initialization in __init__
-    with patch("core.utils.MarketDataManager") as mock_mdm_cls:
+        # Setup MarketDataManager mock
         mock_mdm = mock_mdm_cls.return_value
         mock_mdm.is_market_open = AsyncMock(return_value=True)
+        mock_mdm.get_quote = AsyncMock(return_value=None)
+        mock_mdm.get_quotes = AsyncMock(return_value={})
+
+        # Setup Portfolio mock
+        mock_portfolio = MagicMock()
+        mock_portfolio_cls.return_value = mock_portfolio
+        mock_portfolio.positions = {}
+        mock_portfolio.initialize = AsyncMock(return_value=None)
+        mock_portfolio.calculate_reg_t_metrics = MagicMock()
+        mock_portfolio.save_metrics = AsyncMock(return_value=None)
+        mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000 cash")
+
+        # Now it's safe to import main
+        from main import main
+
+        # Mock ingest_newsletters to return empty
+        monkeypatch.setattr("main.ingest_newsletters", AsyncMock(return_value=[]))
+        # Mock logger to verify it's called
+        mock_logger = MagicMock()
+        monkeypatch.setattr("main.logger", mock_logger)
+
+        # Simulate 'python main.py ingest'
+        monkeypatch.setattr(sys, "argv", ["main.py", "ingest"])
+
         main()
 
     # Verify warning was logged

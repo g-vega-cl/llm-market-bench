@@ -1,7 +1,15 @@
 """Shared pytest fixtures for main.py tests."""
 
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+
+# Set dummy environment variables BEFORE imports happen during test collection
+# This prevents get_supabase_client() from raising ValueError at import/init time
+if not os.getenv("SUPABASE_PROJECT_URL"):
+    os.environ["SUPABASE_PROJECT_URL"] = "https://mock.supabase.co"
+if not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
+    os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
 
 
 @pytest.fixture

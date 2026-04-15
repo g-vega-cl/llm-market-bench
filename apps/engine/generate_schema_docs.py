@@ -44,7 +44,7 @@ TABLE_DESCRIPTIONS = {
     "portfolio_performance": "Daily snapshots of portfolio metrics for equity curve visualization.",
     "newsletter_snapshots": "Stores raw content from ingested newsletters.",
     "memories": "Stores global market events for RAG retrieval.",
-    "decisions": "Stores reasoning and attribution for every LLM signal.",
+    "decisions": "Stores reasoning and attribution for every LLM signal. Valid status values: `CREATED`, `EXECUTED`, `VALIDATED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_PRICE_DEVIATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`, `ERROR_PROVIDER`.",
     "concept_metrics": "Tracks momentum and frequency of semantic concepts.",
     "market_data_cache": "Temporary storage to minimize external API calls.",
     "price_history": "Permanent record of every price fetch for backtesting and analysis."

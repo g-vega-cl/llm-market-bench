@@ -101,8 +101,8 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 The engine handles the daily pipeline:
 ```bash
 cd apps/engine
-python -m venv market
-source market/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python3 main.py ingest
 ```

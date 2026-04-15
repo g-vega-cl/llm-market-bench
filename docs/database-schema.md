@@ -102,7 +102,7 @@ Stores reasoning and attribution for every LLM signal.
 - `price` (NUMERIC): LLM predicted/observed price.
 - `reasoning` (TEXT): Full LLM justification.
 - `metadata` (JSONB): Detailed status and execution info (includes `strategy_reasoning`, `advance_planning_notes`).
-- `status` (TEXT): `CREATED`, `EXECUTED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, etc.
+- `status` (TEXT): `CREATED`, `EXECUTED`, `VALIDATED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_PRICE_DEVIATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`, `ERROR_PROVIDER`
 - `trade_id` (UUID): Link to `trades` table.
 - `embedding` (VECTOR(768)): Embedding of reasoning.
 - `model_provider`, `model_name` (TEXT): LLM attribution.

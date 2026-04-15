@@ -237,3 +237,43 @@ async def test_verify_trading_decision_sync_resilience():
     assert result.status == "APPROVED"
     assert result.confidence_score == 95
     assert result.verification_reasoning == "Handled sync response correctly."
+
+
+@pytest.mark.asyncio
+async def test_verify_trading_decision_exception_defaults_to_rejected():
+    """Test that verification exceptions default to REJECTED (safer default)."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="Some trade",
+        ticker="FAIL",
+        source_id="src_fail",
+        price=100.0
+    )
+
+    with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
+        mock_factory = MagicMock()
+        mock_client = MagicMock()
+
+        # Simulate an exception during the verification call
+        mock_instructor_client = MagicMock()
+        mock_completions = MagicMock()
+        mock_completions.create.side_effect = RuntimeError("API connection failed")
+        mock_instructor_client.completions = mock_completions
+        mock_client.chat = mock_instructor_client
+        mock_client.client = MagicMock()
+
+        mock_factory.return_value = mock_client
+        mock_factories.get.return_value = mock_factory
+
+        with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+            result = await verify_trading_decision(
+                decision=decision,
+                portfolio_context="Cash: $10,000",
+                aggregated_context="Historical context"
+            )
+
+    # Should default to REJECTED (safer) not APPROVED
+    assert result.status == "REJECTED_VERIFICATION"
+    assert "API connection failed" in result.verification_reasoning
+    assert "Defaulting to rejection" in result.verification_reasoning

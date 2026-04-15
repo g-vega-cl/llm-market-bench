@@ -200,10 +200,20 @@ async def verify_trading_decision(
         return final_resp
 
     except Exception as e:
-        logger.error(f"Verification failed for {decision.ticker} ({provider}): {e}")
+        logger.error(
+            f"Verification failed for {decision.ticker} ({provider}): {e}",
+            extra={
+                "ticker": decision.ticker,
+                "signal": decision.signal,
+                "model_name": model_name,
+                "provider": provider,
+                "error_type": type(e).__name__,
+                "source_id": getattr(decision, 'source_id', None),
+            }
+        )
         return VerificationResult(
-            status="APPROVED",
-            verification_reasoning=f"Verification failed due to error: {e}. Defaulting to approval.",
+            status="REJECTED_VERIFICATION",
+            verification_reasoning=f"Verification failed due to error: {e}. Defaulting to rejection.",
             confidence_score=0
         )
     finally:

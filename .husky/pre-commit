@@ -1,1 +1,1 @@
-cd apps/engine && source market/bin/activate && python3 -m pytest && cd ../.. && pnpm build:web
+cd apps/engine && source market/bin/activate && python3 -m pytest && cd ../.. && cd apps/web && pnpm test && cd ../.. && pnpm build:web

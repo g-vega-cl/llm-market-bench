@@ -7,6 +7,17 @@ from core.config import GEMINI_EMBEDDING_MODEL
 
 logger = logging.getLogger("engine")
 
+_client = None
+
+def get_client():
+    """Returns a cached Gemini client instance."""
+    global _client
+    if _client is None:
+        if not config.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not set in environment.")
+        _client = genai.Client(api_key=config.GEMINI_API_KEY)
+    return _client
+
 def get_embedding(text: str) -> list[float]:
     """Generates a vector embedding for the given text using Gemini.
 
@@ -35,7 +46,7 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         return []
 
     try:
-        client = genai.Client(api_key=config.GEMINI_API_KEY)
+        client = get_client()
         # Gemini's embed_content naturally supports lists of strings
         logger.info(f"Calling Gemini embeddings for {len(texts)} texts")
         response = client.models.embed_content(
@@ -51,4 +62,6 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         return [e.values for e in response.embeddings]
     except Exception as e:
         logger.error(f"Failed to get batch embeddings from Gemini: {e}")
-        raise
+        # Return empty instead of raising to allow pipeline to continue with other steps if possible, 
+        # though add_memory will fail gracefully.
+        return []

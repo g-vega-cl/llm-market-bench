@@ -20,13 +20,16 @@ We use Supabase's `pgvector` extension to store and search embeddings.
 We use Google's `gemini-embedding-001` model to generate 768-dimensional embeddings.
 - **Provider**: Google Gemini API.
 - **Module**: `apps/engine/memory/embeddings.py`.
+- **Robust Initialization**: The `get_client()` factory performs a pre-flight check for the `GEMINI_API_KEY` to prevent library-level initialization crashes.
+- **Caching**: The `genai.Client` is cached globally within the module to ensure high-performance reuse across batch calls.
 
 ### 3. Retrieval Logic
 The retrieval logic is encapsulated in `apps/engine/memory/store.py`.
 - **Function**: `retrieve_context_batch(queries, limit=3)`.
 - **Logic**:
     1.  **Batch Embedding**: Use Gemini's `embed_content` to batch-generate embeddings for all news chunks in a single API call.
-    2.  **Parallel Multi-Table Search**: For each embedding, call both the `match_memories` (Macro) and `match_decisions` (Trade Reasoning) RPCs on Supabase.
+    2.  **Graceful Failure**: If the Gemini API is unreachable or credentials are missing, the engine returns empty context and logs a clear error, allowing the pipeline to continue where possible rather than hard-crashing.
+    3.  **Parallel Multi-Table Search**: For each embedding, call both the `match_memories` (Macro) and `match_decisions` (Trade Reasoning) RPCs on Supabase.
     3.  **Labeling & Aggregation**: Context snippets are labeled with `[MARKET EVENT]` or `[PAST REASONING (HISTORICAL)]` and merged into a clear historical profile for the LLM.
 
 ### 4. Pipeline Integration

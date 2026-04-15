@@ -433,8 +433,8 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `SUPABASE_URL` | Supabase API URL | Web (Frontend), Engine |
 | **Engine** | `OPENAI_API_KEY` | OpenAI API Key (Model: `gpt-5.4-nano`) | Trading Analysis, Embeddings |
 |  | `ANTHROPIC_API_KEY` | Claude API Key (Model: `claude-haiku-4-5`) | Trading Analysis |
-|  | `GEMINI_API_KEY` | Google Gemini API Key (Model: `gemini-3.1-flash-lite-preview`) | Trading Analysis |
-|  | `DEEPSEEK_API_KEY` | DeepSeek API Key (Model: `deepseek-reasoner`) | Trading Analysis |
+|  | `GEMINI_API_KEY` | Google Gemini API Key | Trading Analysis, Embeddings |
+|  | `DEEPSEEK_API_KEY` | DeepSeek API Key | Trading Analysis |
 |  | `FMP_API_KEY` | Financial Modeling Prep API Key (Required) | Price Data & Validation |
 |  | `FINANCIAL_PROVIDER` | Primary market data provider (Default: `fmp`) | Selection of the single market data source |
 |  | `MARKET_DATA_CACHE_TTL_SECONDS` | Cache duration in seconds (Default: 2) | Price Fetching Optimization |

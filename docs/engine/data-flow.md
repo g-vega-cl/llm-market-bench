@@ -312,7 +312,7 @@ queries = [
 
 **File**: `apps/engine/memory/embeddings.py` → `get_embeddings_batch()`
 
-This is the KEY OPTIMIZATION: all 4 queries embedded in ONE API call, not 4 separate calls.
+This is the KEY OPTIMIZATION: all 4 queries embedded in ONE API call, not 4 separate calls. The **Gemini Client is cached** at the module level to avoid redundant instantiation, and a **pre-flight API key check** ensures the engine fails gracefully (logging an error instead of crashing) if credentials are missing.
 
 ```python
 # Gemini Embedding API Call #1 (SINGLE CALL for all 4 queries)

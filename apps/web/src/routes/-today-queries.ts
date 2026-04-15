@@ -1,11 +1,12 @@
 import { getSupabaseServerClient } from '~/lib/supabase'
-import type { 
+import type {
   NewsletterSnapshot,
   MarketDataCache,
   Decision,
   Trade,
   LLMReasoningLog,
-  Memory
+  Memory,
+  MarketFeeling
 } from '@llm-market-bench/database'
 
 export async function fetchTodayData() {
@@ -61,6 +62,12 @@ export async function fetchTodayData() {
     .or(`target_date.is.null,target_date.gte.${estDateStr}`)
     .order('created_at', { ascending: false })
 
+  const { data: marketFeeling } = await supabase
+    .from('market_feeling')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
   return {
     newsletters: (newsletters || []) as NewsletterSnapshot[],
     trades: (trades || []) as (Trade & { portfolios: { owner_id: string } })[],
@@ -68,6 +75,7 @@ export async function fetchTodayData() {
     logs: (logs || []) as LLMReasoningLog[],
     memories: (memories || []) as Memory[],
     priceUpdates: (priceUpdates || []) as MarketDataCache[],
-    futureEvents: (futureEvents || []) as Memory[]
+    futureEvents: (futureEvents || []) as Memory[],
+    marketFeeling: (marketFeeling?.[0] || null) as MarketFeeling | null
   }
 }

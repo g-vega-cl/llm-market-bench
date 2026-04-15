@@ -1162,6 +1162,11 @@ REINFORCEMENT & IMPACT PHASE (Bi-Weekly/Post-Run):
 ├─ Supabase DB: Retrieve mature events & 5-day old trades
 └─ Total: 1 Embedding call + N Reflection calls
 
+MARKET FEELING PHASE (Post-Execution):
+├─ MiniMax API: Generate LLM-driven sentiment (MiniMax-M2.7 model)
+├─ Supabase DB: Store result in market_feeling table
+└─ Total: 1 MiniMax API call + 1 DB write
+
 GRAND TOTAL ESTIMATE:
 • Gmail: 5 API calls
 • Gemini Embeddings: ~3 API calls
@@ -1183,10 +1188,11 @@ Time 8.2s:    Reg T Margin Check complete
 Time 8.5s:    Trade Settlement (DB Writes) complete
 Time 8.7s:    Attribution Locking & Memory Embedding complete
 Time 9.0s:    Daily Performance Snapshot & Portfolio Refresh complete
+Time 9.5s:    Market Feeling Analysis (MiniMax) complete
 Time 10.0s:   Post-Mortem Reinforcement complete (if triggered)
 Time 10.2s:   Pipeline complete
 ```
-Total Pipeline Time: ~10-12 seconds
+Total Pipeline Time: ~11-13 seconds
 
 ### Key Optimizations
 
@@ -1210,6 +1216,51 @@ Bi-weekly (Tuesdays & Fridays), the engine performs a retrospective audit of mar
 
 ---
 
+## Phase 10: Market Feeling (LLM-Driven Sentiment)
+
+**File**: `apps/engine/analysis/market_feeling.py`
+
+After the main pipeline execution (during 09:30, 12:30, 15:30 ET runs), the system generates an LLM-driven market sentiment using MiniMax MiniMax-M2.7.
+
+**Purpose**: Provides a nuanced "How I'm feeling and why" sentiment that considers:
+- Today's trades (buys/sells count and total value)
+- Lessons learned from past failures
+- Market events and consensus memories
+- Key decision reasoning from agents
+
+**Process**:
+1. **Data Gathering**: Fetches today's trades, LESSON_LEARNED memories, MARKET_EVENT memories, and decision reasoning from Supabase
+2. **Prompt Building**: Constructs a structured prompt with all gathered data
+3. **LLM Call**: Calls MiniMax MiniMax-M2.7 (`POST https://api.minimax.io/v1/text/chatcompletion_v2`) with `temperature=0.4` for consistent structured output
+4. **Response Parsing**: Extracts JSON from the response
+5. **Storage**: Upserts result to `market_feeling` table
+
+**Output Structure**:
+```json
+{
+  "sentiment_label": "Cautiously Optimistic",
+  "sentiment_emoji": "🤔",
+  "confidence_score": 75,
+  "why_explanation": "Markets are showing mixed signals with recent buys outweighing sells...",
+  "market_direction": "BULLISH",
+  "primary_concern": "Fed policy uncertainty",
+  "secondary_concern": "Tech sector volatility"
+}
+```
+
+**Frontend Display**: The "How I'm Feeling" card in `MarketStatusHero` component shows:
+- Sentiment label with emoji
+- Direction badge (BULLISH/BEARISH/NEUTRAL)
+- Confidence score bar
+- "Why" explanation text
+- Primary concern tag
+- Last analyzed timestamp
+- Stale warning if data is >4 hours old
+
+**Error Handling**: If MiniMax API fails, the pipeline continues without interruption. The frontend shows "Analyzing..." with a stale warning if no fresh data exists.
+
+---
+
 ## Files Referenced
 
 | File | Purpose |
@@ -1229,3 +1280,5 @@ Bi-weekly (Tuesdays & Fridays), the engine performs a retrospective audit of mar
 | `apps/engine/attribution/service.py` | Decision persistence + attribution |
 | `apps/engine/analysis/post_mortem.py` | Regret-driven reinforcement logic |
 | `apps/engine/analysis/cause_and_effect_analysis.py` | Market impact attribution logic |
+| `apps/engine/analysis/market_feeling.py` | LLM-driven market sentiment analysis |
+| `apps/engine/core/llm/minimax.py` | MiniMax MiniMax-M2.7 API client |

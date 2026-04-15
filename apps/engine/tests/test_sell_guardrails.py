@@ -17,6 +17,7 @@ def mock_dependencies():
          patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
          patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
          patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
+         patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling, \
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
          patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap, \
@@ -29,6 +30,7 @@ def mock_dependencies():
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
+        mock_market_feeling.return_value = None
         mock_overlap.return_value = None
         mock_validate.return_value = ValidationResult(
             status=ValidationStatus.PASSED,
@@ -53,7 +55,8 @@ def mock_dependencies():
             "analyze": mock_analyze,
             "validate_decision": mock_validate,
             "portfolio": mock_portfolio_instance,
-            "save": mock_save
+            "save": mock_save,
+            "market_feeling": mock_market_feeling
         }
 
 @pytest.mark.asyncio

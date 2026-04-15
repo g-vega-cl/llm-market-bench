@@ -4,5 +4,6 @@
   "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
   "GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
   "DEEPSEEK_MODEL": "deepseek-reasoner",
+  "MINIMAX_MODEL": "MiniMax-M2.7",
   "CONTRARIAN_AGENT_ID": "contrarian_agent"
 }

@@ -252,3 +252,23 @@ export type PortfolioPosition = {
 export type PositionWithReasoning = PositionPnl & { reasoning: string }
 
 export type TradeWithReasoning = Trade & { reasoning: string }
+
+export type MarketFeeling = {
+  id: string
+  created_at: string | null
+  updated_at: string | null
+  sentiment_label: string
+  sentiment_emoji: string | null
+  confidence_score: number | null
+  why_explanation: string | null
+  market_direction: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | null
+  primary_concern: string | null
+  secondary_concern: string | null
+  trades_summary: { buys: number; sells: number; total_value: number } | null
+  lessons_incorporated: number | null
+  memories_incorporated: number | null
+  model_used: string | null
+  processing_time_ms: number | null
+  input_tokens: number | null
+  output_tokens: number | null
+}

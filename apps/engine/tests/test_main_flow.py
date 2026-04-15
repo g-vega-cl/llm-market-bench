@@ -17,6 +17,7 @@ def mock_dependencies():
          patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
          patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
          patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
+         patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling, \
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
          patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap, \
@@ -31,6 +32,7 @@ def mock_dependencies():
         mock_consensus.return_value = []
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
+        mock_market_feeling.return_value = None
         mock_overlap.return_value = None
         mock_validate.return_value = ValidationResult(
             status=ValidationStatus.PASSED,
@@ -90,6 +92,7 @@ def mock_dependencies():
             "save": mock_save,
             "verify": mock_verify,
             "dust_cleanup": mock_dust,
+            "market_feeling": mock_market_feeling,
             "db": mock_get_client
         }
 

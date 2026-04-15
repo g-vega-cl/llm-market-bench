@@ -23,6 +23,7 @@ from ingest.government import run_government_pipeline
 from ingest.calendar import run_calendar_pipeline
 from memory.store import add_memory
 from analysis.post_analysis import perform_post_analysis
+from analysis.market_feeling import analyze_market_feeling
 from analysis.pca_utils import update_pca_coordinates
 from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
 from core.audit import run_audit
@@ -546,6 +547,14 @@ async def run_ingest(force: bool = False):
             decisions, macro_events, agg_ctx, uncrowded_ctx = await _stage_analysis_and_consensus(data, sb_client)
             await _stage_decision_processing(decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client)
             await _stage_snapshots_and_pca(sb_client)
+
+            # Market Feeling Analysis: Generate LLM-driven sentiment (after execution to include trades)
+            logger.info("Starting Market Feeling Analysis with MiniMax...")
+            market_feeling = await analyze_market_feeling()
+            if market_feeling:
+                logger.info(f"Market feeling: {market_feeling.get('sentiment_label')} {market_feeling.get('sentiment_emoji')}")
+            else:
+                logger.warning("Market feeling analysis did not produce a result.")
         finally:
             from execution.providers.factory import get_active_provider_class
             await get_active_provider_class().disconnect_all()

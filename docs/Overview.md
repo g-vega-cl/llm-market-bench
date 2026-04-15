@@ -353,6 +353,28 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
   - Workflow: `.github/workflows/audit.yml`
   - Frontend: `apps/web/src/routes/audits/`
 
+**28. Market Feeling (LLM-Driven Sentiment)** ✅
+
+* **Tech:** Python / MiniMax MiniMax-M2.7 / Supabase
+* **Logic:** *After the main pipeline execution (09:30, 12:30, 15:30 ET), the system calls MiniMax MiniMax-M2.7 with today's trading data (trades, LESSON_LEARNED memories, MARKET_EVENT memories, and decision reasoning) to generate a nuanced "How I'm feeling and why" market sentiment.*
+* **Output Fields:**
+  - `sentiment_label`: LLM-generated label (e.g., "Cautiously Optimistic", "Risk-Off", "Wait-and-See")
+  - `sentiment_emoji`: Single emoji
+  - `confidence_score`: 0-100 based on data availability
+  - `why_explanation`: 2-3 sentence reasoning
+  - `market_direction`: BULLISH / BEARISH / NEUTRAL
+  - `primary_concern`: Main risk or opportunity
+  - `secondary_concern`: Secondary consideration
+* **Display:** Shown prominently on the Today page ("How I'm Feeling" card) with confidence bar, direction badge, and "last analyzed" timestamp.
+* **Fallback:** If no fresh analysis exists (stale >4 hours), shows warning indicator and last update time.
+* **Retention:** 30-day history stored in `market_feeling` table.
+* **Files:**
+  - Engine: `apps/engine/analysis/market_feeling.py`
+  - MiniMax Client: `apps/engine/core/llm/minimax.py`
+  - Migration: `supabase/migrations/20260416000001_create_market_feeling.sql`
+  - Frontend: `apps/web/src/components/today/MarketStatusHero.tsx`
+  - Database Schema: [database-schema.md](./database-schema.md#8-market-feeling-llm-driven-sentiment)
+
 
 ## 9. Reasoning Rigor & Validation
 

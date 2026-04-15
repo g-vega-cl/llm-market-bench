@@ -32,6 +32,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY")
 
 # --- Model Selection ---
 # Loaded from the shared packages/config/models.json — the single source of truth.
@@ -45,6 +46,7 @@ ANTHROPIC_MODEL: str = _models["ANTHROPIC_MODEL"]
 GEMINI_MODEL: str = _models["GEMINI_MODEL"]
 GEMINI_EMBEDDING_MODEL: str = _models["GEMINI_EMBEDDING_MODEL"]
 DEEPSEEK_MODEL: str = _models["DEEPSEEK_MODEL"]
+MINIMAX_MODEL: str = _models["MINIMAX_MODEL"]
 CONTRARIAN_AGENT_ID: str = _models["CONTRARIAN_AGENT_ID"]
 ACTIVE_OWNER_IDS: list[str] = list(_models.values())
 

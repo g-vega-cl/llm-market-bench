@@ -4,6 +4,7 @@ from execution.market_data import MarketDataManager
 from core.llm import analysis
 from core.llm import clients
 from core.llm import events
+from core.llm import minimax
 from core.llm import prompts
 from core.llm import tools
 
@@ -19,6 +20,9 @@ get_deepseek_client = clients.get_deepseek_client
 get_gemini_client = clients.get_gemini_client
 _close_client = clients.close_client
 
+# MiniMax client
+MiniMaxClient = minimax.MiniMaxClient
+
 # Constants and definitions
 _CLIENT_FACTORIES = clients.CLIENT_FACTORIES
 STOCK_TOOL_DEFINITION_OPENAI = tools.STOCK_TOOL_DEFINITION_OPENAI
@@ -29,6 +33,7 @@ __all__ = [
     "analysis",
     "clients",
     "events",
+    "minimax",
     "prompts",
     "tools",
     "analyze_with_provider",
@@ -39,6 +44,7 @@ __all__ = [
     "get_deepseek_client",
     "get_gemini_client",
     "_close_client",
+    "MiniMaxClient",
     "_CLIENT_FACTORIES",
     "STOCK_TOOL_DEFINITION_OPENAI",
     "STOCK_TOOL_DEFINITION_ANTHROPIC",

@@ -164,5 +164,28 @@ Data fetching is handled by TanStack Start server functions located in `apps/web
 ### Styling
 All pages use **Tailwind CSS** and follow the project's **Zinc** color palette to maintain consistency with the rest of the application.
 
+## 8. Mobile Responsiveness (2026-04-15)
+
+The portfolio pages are optimized for mobile devices with the following improvements:
+
+### Portfolio Detail Page (`$portfolioId.tsx`)
+- **Padding**: Reduced from `px-6 md:px-12 py-12` to `px-4 sm:px-6 py-8 md:py-12` for smaller screens
+- **Header**: Font size scales from `text-2xl` on mobile to `text-4xl` on desktop
+- **Stats Card**: Padding and gap reduce on mobile (`p-3 md:p-4`, `gap-4 md:gap-8`)
+
+### Performance Chart
+- **Tooltip**: Width is responsive (`w-40 sm:w-48`) and uses `window.innerWidth` for boundary detection instead of hardcoded 600px
+- **Positioning**: Tooltip stays below chart line when near top edge (`tooltipData.y - 70 > 0 ? tooltipData.y - 70 : tooltipData.y + 20`)
+
+### Positions Table
+- **Minimum Width**: `min-w-[800px]` ensures horizontal scroll on small screens
+- **Responsive Padding**: Cell padding scales from `px-3 py-3 sm:px-6 py-4` for better mobile touch targets
+- **Shorter Headers**: "Qty" instead of "Quantity", "%" instead of "% of Portfolio"
+
+### Trades Table
+- **Minimum Width**: `min-w-[700px]` ensures horizontal scroll on small screens
+- **Responsive Padding**: Cell padding scales from `px-3 py-3 sm:px-6 py-4`
+- **Shorter Headers**: "Qty" instead of "Quantity", "Price" instead of "Total"
+
 ---
 [[back to Overview](../Overview.md)]

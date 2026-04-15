@@ -400,10 +400,10 @@ export function PerformanceChart({
         />
         {tooltipData && (
           <div
-            className="absolute bg-zinc-900 text-white px-3 py-2 rounded-lg shadow-lg pointer-events-none z-10 text-sm"
+            className="absolute bg-zinc-900 text-white px-3 py-2 rounded-lg shadow-lg pointer-events-none z-10 text-sm w-40 sm:w-48"
             style={{
-              left: Math.min(tooltipData.x + 10, 600),
-              top: Math.max(tooltipData.y - 80, 10),
+              left: Math.min(tooltipData.x + 10, window.innerWidth - 180),
+              top: tooltipData.y - 70 > 0 ? tooltipData.y - 70 : tooltipData.y + 20,
             }}
           >
             <div className="font-medium text-zinc-300 mb-1">{tooltipData.date}</div>

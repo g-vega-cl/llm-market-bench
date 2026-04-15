@@ -108,6 +108,28 @@ We maintain a strict **Zero Warning** policy for the test suite. To achieve this
 
 To ensure tests run reliably in CI/CD environments without requiring API keys or external service access:
 
+**Global Dummy Environment Variables**: We use a session-scoped `autouse` fixture in `conftest.py` to set dummy values for required environment variables (like `SUPABASE_PROJECT_URL`). This prevents `ValueError` when components like `get_supabase_client()` are initialized during test collection or execution in environments without a `.env` file.
+
+```python
+# In apps/engine/tests/conftest.py
+if not os.getenv("SUPABASE_PROJECT_URL"):
+    os.environ["SUPABASE_PROJECT_URL"] = "https://mock.supabase.co"
+if not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
+    os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
+```
+
+**fully_mocked_main Fixture**: For integration tests of the `main.py` pipeline, use the `fully_mocked_main` fixture. It provides a comprehensive set of mocks for all external services (DB, Market Data, LLMs) in a single, reusable setup.
+
+```python
+def test_main_ingestion_guardrail(fully_mocked_main, monkeypatch):
+    """Test that main.py stops if no newsletters are returned."""
+    from main import main
+    md = fully_mocked_main
+    md["ingest"].return_value = [] # Mock empty ingestion
+    # ...
+    main()
+```
+
 **Gemini Embeddings**: Use `@pytest.fixture(autouse=True)` to mock `get_embedding` in attribution tests:
 ```python
 @pytest.fixture(autouse=True)

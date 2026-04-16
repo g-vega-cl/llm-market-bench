@@ -377,6 +377,70 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
   - Database Schema: [database-schema.md](./database-schema.md#8-market-feeling-llm-driven-sentiment)
 
 
+## 29. Correlation Matrix & Uncorrelated Asset Discovery ✅
+
+* **Tech:** Python / FMP / Supabase / React
+* **Goal:** Identify uncorrelated asset pairs with positive 90-day momentum for portfolio diversification and strategy development.
+* **Strategy Background:** The "XLK/XLE" (Technology + Energy) strategy went viral as a simple approach that exploits low correlation between sectors. Both assets historically have positive long-term returns while providing diversification during market stress.
+
+### Ticker Universe (42 assets)
+
+| Category | Count | Examples |
+|----------|-------|----------|
+| US Sectors | 10 | XLK, XLE, XLF, XLV, XLY, XLI, XLB, XLU, XLRE, XLC |
+| US Broad | 4 | QQQ, VIG, IWM, SPY |
+| Intl Dev | 6 | EFA, EWJ, EWG, EWL, EWP, SCZ, BWX |
+| Emerging Markets | 5 | EEM, MCHI, EWZ, EIDO, EPI |
+| Commodities | 4 | GLD, SLV, PDBC, USO |
+| Bonds | 4 | TLT, IEF, LQD, EMB |
+| Intl Bonds | 2 | BNDX, IAGG |
+| Real Assets | 2 | VNQ, ICF |
+| Dollar | 1 | UUP |
+| Crypto | 2 | BTCUSD, ETHUSD |
+| Volatility | 2 | VIXY, VIXM |
+
+### Pipeline
+
+1. **Weekly Computation:** GitHub Actions triggers `correlation_matrix.py` every Sunday at 16:00 ET
+2. **Price Fetch:** Fetches 90 days of EOD price data for all 42 tickers
+3. **Returns Calculation:** Computes daily percentage returns for each ticker
+4. **Correlation Computation:** Calculates both Pearson (linear) and Spearman (rank-based) correlations
+5. **90d Returns:** Computes total return from start to end of the 90-day window
+6. **Storage:** Stores full 861-pair matrix to Supabase for dashboard access
+
+### Correlation Methods
+
+| Method | Use Case |
+|--------|---------|
+| **Pearson** | Standard linear correlation - best for normally distributed returns |
+| **Spearman** | Rank-based correlation - robust to outliers and non-linear relationships |
+
+### Database Schema
+
+- **Table:** `correlation_runs` - Metadata for each weekly computation
+- **Table:** `correlation_data` - Full 42×42 matrix stored as pairs
+
+### Agent Tool: `find_uncorrelated_assets`
+
+LLM agents can invoke `find_uncorrelated_assets(max_correlation=0.3, min_return=0.0, method="pearson")` to discover diversification opportunities. Returns sorted pairs with correlations and 90-day returns.
+
+### Frontend: `/market-overview`
+
+New public page displaying:
+- **How I'm Feeling** card (same as Today page)
+- **Correlation Heatmap** - Interactive 42×42 matrix with Pearson/Spearman toggle
+- **Uncorrelated Pairs Table** - Filterable by max correlation, min return, with sortable columns
+- **Sector Performance Grid** - 90-day returns by category
+
+### Files
+
+- Engine: `apps/engine/correlation_matrix.py`
+- Workflow: `.github/workflows/correlation.yml`
+- Migration: `supabase/migrations/20260420000001_create_correlation_tables.sql`
+- Frontend: `apps/web/src/routes/market-overview/`
+- Tests: `apps/engine/tests/test_correlation_matrix.py`
+
+
 ## 9. Reasoning Rigor & Validation
 
 To ensure high-fidelity decision-making and prevent "shallow" market analysis, the system enforces a strict reasoning framework across all agents.

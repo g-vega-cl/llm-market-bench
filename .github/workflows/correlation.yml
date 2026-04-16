@@ -1,0 +1,37 @@
+name: Correlation Matrix (Weekly)
+
+on:
+  schedule:
+    # Sundays at 16:00 ET = 21:00 UTC
+    - cron: "0 21 * * 0"
+  workflow_dispatch:
+
+jobs:
+  compute-correlations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run correlation matrix computation
+        run: |
+          python correlation_matrix.py
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}

@@ -92,6 +92,16 @@ export const queries = {
   },
 
   // --------------------------------------------------------------------------
+  // Market Overview
+  // --------------------------------------------------------------------------
+  marketOverview: <T,>(opts?: { fetchFn?: () => Promise<T> }) =>
+    queryOptions({
+      queryKey: queryKeys.marketOverview.data(),
+      queryFn: opts?.fetchFn,
+      staleTime: 1000 * 60 * 60, // 1 hour - correlation data changes weekly
+    }),
+
+  // --------------------------------------------------------------------------
   // Memories
   // --------------------------------------------------------------------------
   memories: {

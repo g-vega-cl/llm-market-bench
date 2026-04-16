@@ -48,4 +48,10 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_search_related_tickers_tool(args["theme"])
     elif name == "run_stock_screener":
         return await tools.execute_stock_screener_tool(**args)
+    elif name == "find_uncorrelated_assets":
+        return await tools.execute_find_uncorrelated_assets_tool(
+            max_correlation=args.get("max_correlation", 0.3),
+            min_return=args.get("min_return", 0.0),
+            method=args.get("method", "pearson")
+        )
     return "Unknown tool"

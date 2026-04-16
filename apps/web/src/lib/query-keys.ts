@@ -75,6 +75,12 @@ export const queryKeys = {
     list: (cursor?: string) => ['benchify', 'audits', 'list', cursor] as const,
   },
 
+  // Market Overview
+  marketOverview: {
+    all: ['benchify', 'marketOverview'] as const,
+    data: () => ['benchify', 'marketOverview', 'data'] as const,
+  },
+
   // Auth
   auth: {
     all: ['benchify', 'auth'] as const,

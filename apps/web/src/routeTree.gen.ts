@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
+import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
 import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
 import { Route as AuditsIndexRouteImport } from './routes/audits/index'
@@ -70,6 +71,11 @@ const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
 const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
   id: '/memories/',
   path: '/memories/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketOverviewIndexRoute = MarketOverviewIndexRouteImport.update({
+  id: '/market-overview/',
+  path: '/market-overview/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/audits/': typeof AuditsIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
+  '/market-overview/': typeof MarketOverviewIndexRoute
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/audits': typeof AuditsIndexRoute
   '/cause-and-effect': typeof CauseAndEffectIndexRoute
   '/concepts': typeof ConceptsIndexRoute
+  '/market-overview': typeof MarketOverviewIndexRoute
   '/memories': typeof MemoriesIndexRoute
   '/portfolios': typeof PortfoliosIndexRoute
   '/reasoning': typeof ReasoningIndexRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/audits/': typeof AuditsIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
+  '/market-overview/': typeof MarketOverviewIndexRoute
   '/memories/': typeof MemoriesIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/audits/'
     | '/cause-and-effect/'
     | '/concepts/'
+    | '/market-overview/'
     | '/memories/'
     | '/portfolios/'
     | '/reasoning/'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/audits'
     | '/cause-and-effect'
     | '/concepts'
+    | '/market-overview'
     | '/memories'
     | '/portfolios'
     | '/reasoning'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/audits/'
     | '/cause-and-effect/'
     | '/concepts/'
+    | '/market-overview/'
     | '/memories/'
     | '/portfolios/'
     | '/reasoning/'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   AuditsIndexRoute: typeof AuditsIndexRoute
   CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute
   ConceptsIndexRoute: typeof ConceptsIndexRoute
+  MarketOverviewIndexRoute: typeof MarketOverviewIndexRoute
   MemoriesIndexRoute: typeof MemoriesIndexRoute
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
   ReasoningIndexRoute: typeof ReasoningIndexRoute
@@ -317,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/memories'
       fullPath: '/memories/'
       preLoaderRoute: typeof MemoriesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market-overview/': {
+      id: '/market-overview/'
+      path: '/market-overview'
+      fullPath: '/market-overview/'
+      preLoaderRoute: typeof MarketOverviewIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/concepts/': {
@@ -422,6 +442,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditsIndexRoute: AuditsIndexRoute,
   CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,
   ConceptsIndexRoute: ConceptsIndexRoute,
+  MarketOverviewIndexRoute: MarketOverviewIndexRoute,
   MemoriesIndexRoute: MemoriesIndexRoute,
   PortfoliosIndexRoute: PortfoliosIndexRoute,
   ReasoningIndexRoute: ReasoningIndexRoute,

@@ -241,6 +241,17 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                                     <span className="text-[10px] text-electric-blue-400/50">• {marketFeeling.model_used}</span>
                                 )}
                             </div>
+                            <div className="mt-4 pt-3 border-t border-white/10">
+                                <a
+                                    href="/market-overview"
+                                    className="text-xs text-electric-blue-200 hover:text-white transition-colors flex items-center gap-1 underline underline-offset-2"
+                                >
+                                    View full market analysis
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>

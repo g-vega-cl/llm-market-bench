@@ -37,6 +37,90 @@ GEMINI_GOOGLE_SEARCH_TOOL = {
 # EXISTING TOOL DEFINITIONS
 # =============================================================================
 
+FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_OPENAI = {
+    "type": "function",
+    "function": {
+        "name": "find_uncorrelated_assets",
+        "description": (
+            "Find asset pairs with low correlation and positive 90-day momentum. "
+            "Useful for building diversified portfolios with uncorrelated assets. "
+            "Returns pairs sorted by correlation (lowest first) that have positive returns."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "max_correlation": {
+                    "type": "number",
+                    "description": "Maximum absolute correlation to include (0.0 to 1.0). Default 0.3. Lower values = more uncorrelated.",
+                },
+                "min_return": {
+                    "type": "number",
+                    "description": "Minimum 90-day return for both assets in percentage. Default 0.0.",
+                },
+                "method": {
+                    "type": "string",
+                    "enum": ["pearson", "spearman"],
+                    "description": "Correlation method: 'pearson' (linear) or 'spearman' (rank-based). Default 'pearson'.",
+                },
+            },
+        },
+    },
+}
+
+FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_ANTHROPIC = {
+    "name": "find_uncorrelated_assets",
+    "description": (
+        "Find asset pairs with low correlation and positive 90-day momentum. "
+        "Useful for building diversified portfolios with uncorrelated assets. "
+        "Returns pairs sorted by correlation (lowest first) that have positive returns."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "max_correlation": {
+                "type": "number",
+                "description": "Maximum absolute correlation to include (0.0 to 1.0). Default 0.3. Lower values = more uncorrelated.",
+            },
+            "min_return": {
+                "type": "number",
+                "description": "Minimum 90-day return for both assets in percentage. Default 0.0.",
+            },
+            "method": {
+                "type": "string",
+                "enum": ["pearson", "spearman"],
+                "description": "Correlation method: 'pearson' (linear) or 'spearman' (rank-based). Default 'pearson'.",
+            },
+        },
+    },
+}
+
+FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_GEMINI = {
+    "name": "find_uncorrelated_assets",
+    "description": (
+        "Find asset pairs with low correlation and positive 90-day momentum. "
+        "Useful for building diversified portfolios with uncorrelated assets. "
+        "Returns pairs sorted by correlation (lowest first) that have positive returns."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "max_correlation": {
+                "type": "number",
+                "description": "Maximum absolute correlation to include (0.0 to 1.0). Default 0.3. Lower values = more uncorrelated.",
+            },
+            "min_return": {
+                "type": "number",
+                "description": "Minimum 90-day return for both assets in percentage. Default 0.0.",
+            },
+            "method": {
+                "type": "string",
+                "enum": ["pearson", "spearman"],
+                "description": "Correlation method: 'pearson' (linear) or 'spearman' (rank-based). Default 'pearson'.",
+            },
+        },
+    },
+}
+
 SEARCH_RELATED_TICKERS_TOOL_DEFINITION_OPENAI = {
     "type": "function",
     "function": {
@@ -979,7 +1063,7 @@ async def execute_search_related_tickers_tool(theme: str) -> str:
     from core.llm.prompt_factory import PromptFactory
     from core.config import GEMINI_MODEL
     from core.models import TickerSuggestion
-    
+
     client = get_gemini_client()
     try:
         # Use centralized PromptFactory for ticker suggestions
@@ -987,7 +1071,7 @@ async def execute_search_related_tickers_tool(theme: str) -> str:
             provider="gemini",
             event_summary=theme
         )
-        
+
         resp = client.chat.completions.create(
             model=GEMINI_MODEL,
             response_model=TickerSuggestion,
@@ -996,13 +1080,96 @@ async def execute_search_related_tickers_tool(theme: str) -> str:
         import asyncio
         if asyncio.iscoroutine(resp):
             resp = await resp
-            
+
         return (
             f"Suggested Tickers for '{theme}': {', '.join(resp.tickers)}\n"
             f"Reasoning: {resp.reasoning}"
         )
     except Exception as e:
         return f"Error suggesting tickers for '{theme}': {str(e)}"
+
+
+async def execute_find_uncorrelated_assets_tool(
+    max_correlation: float = 0.3,
+    min_return: float = 0.0,
+    method: str = "pearson"
+) -> str:
+    """Find asset pairs with low correlation and positive 90-day momentum.
+
+    Args:
+        max_correlation: Maximum absolute correlation (0.0-1.0). Default 0.3.
+        min_return: Minimum 90-day return for both assets in %. Default 0.0.
+        method: 'pearson' or 'spearman'. Default 'pearson'.
+
+    Returns:
+        Formatted list of uncorrelated pairs with returns.
+    """
+    client = get_supabase_client()
+
+    try:
+        # Get latest correlation run
+        runs = client.table("correlation_runs").select("id").order("run_date", ascending=False).limit(1).execute()
+
+        if not runs.data:
+            return (
+                "No correlation data available yet. The correlation matrix runs weekly on Sundays. "
+                "Check back after the next scheduled run."
+            )
+
+        run_id = runs.data[0]["id"]
+
+        # Query correlation data
+        corr_field = "pearson_corr" if method == "pearson" else "spearman_corr"
+
+        results = client.table("correlation_data").select("*").eq("run_id", run_id).execute()
+
+        if not results.data:
+            return "No correlation data found for the latest run."
+
+        # Filter pairs
+        filtered = []
+        for row in results.data:
+            corr = row.get(corr_field)
+            if corr is None:
+                continue
+            if abs(corr) > max_correlation:
+                continue
+            ret_a = row.get("returns_a_90d") or 0
+            ret_b = row.get("returns_b_90d") or 0
+            if ret_a < min_return or ret_b < min_return:
+                continue
+            filtered.append({
+                **row,
+                "abs_corr": abs(corr),
+                "avg_return": (ret_a + ret_b) / 2,
+            })
+
+        # Sort by absolute correlation (lowest first)
+        filtered.sort(key=lambda x: x["abs_corr"])
+
+        if not filtered:
+            return (
+                f"No pairs found with correlation < {max_correlation} and returns >= {min_return}%. "
+                f"Try increasing max_correlation or decreasing min_return."
+            )
+
+        # Build output
+        output = f"UNCORRELATED ASSET PAIRS (sorted by {method} correlation, lowest first):\n\n"
+
+        for i, pair in enumerate(filtered[:20], 1):
+            output += (
+                f"{i}. {pair['ticker_a']}/{pair['ticker_b']}:\n"
+                f"   {method.capitalize()} Correlation: {pair[corr_field]:.4f} | "
+                f"90d Returns: {pair['returns_a_90d']:.2f}% / {pair['returns_b_90d']:.2f}%\n"
+            )
+
+        if len(filtered) > 20:
+            output += f"\n... and {len(filtered) - 20} more pairs. Reduce filters to see more."
+
+        return output
+
+    except Exception as e:
+        return f"Error finding uncorrelated assets: {str(e)}"
 
 
 # =============================================================================

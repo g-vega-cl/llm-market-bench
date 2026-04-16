@@ -197,6 +197,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Audits
           </Link>
+          <Link
+            to="/market-overview"
+            activeProps={{
+              className: "text-blue-600",
+            }}
+          >
+            Market Overview
+          </Link>
           <div className="ml-auto flex items-center gap-4">
             {user ? (
               <>

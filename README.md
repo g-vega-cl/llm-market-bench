@@ -205,6 +205,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 
 - [ ] **Paper trade audit** - maybe IBKR api?
 - [ ] **Recheck calendar events**
+- [ ] **Also check alternative plays function**
+- [ ] **Make sure reasoning page is optimized for mobile**
 
 ### 🔄 Under Consideration
 

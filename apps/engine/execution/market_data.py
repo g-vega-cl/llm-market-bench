@@ -13,6 +13,48 @@ from core.db import get_supabase_client
 from .providers.base import FinancialProvider, TickerData
 from .providers.factory import get_financial_provider
 
+
+def _validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]:
+    """Validate that cached price history rows represent true historical data.
+
+    Returns:
+        tuple: (is_valid, reason) - is_valid is True if cache should be used
+    """
+    if not rows:
+        return False, "no data"
+
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    distinct_dates = set()
+    for row in rows:
+        fetched_at = row.get("fetched_at", "")
+        if fetched_at:
+            date_part = fetched_at[:10]
+            distinct_dates.add(date_part)
+
+    distinct_count = len(distinct_dates)
+
+    if distinct_count == 0:
+        return False, "no valid dates"
+
+    if distinct_count == 1:
+        only_date = list(distinct_dates)[0]
+        if only_date == today:
+            return False, f"all data from today ({today})"
+        return True, f"single historical date ({only_date})"
+
+    if all(d == today for d in distinct_dates):
+        return False, f"all {distinct_count} rows from today"
+
+    min_required_dates = max(2, math.ceil(days_requested / 2))
+    if distinct_count < min_required_dates:
+        return False, f"only {distinct_count} distinct dates, need {min_required_dates}"
+
+    has_old_data = any(d != today for d in distinct_dates)
+    if not has_old_data:
+        return False, f"no historical data (all {distinct_count} dates are today)"
+
+    return True, f"valid cache with {distinct_count} distinct dates"
+
 class MarketDataManager:
     """Manages market data retrieval with a database-backed cache."""
 
@@ -413,14 +455,17 @@ class MarketDataManager:
                 .order("fetched_at", desc=True) \
                 .limit(days) \
                 .execute()
-            
-            # If we have enough data (at least 70% of requested days)
+
             if res.data and len(res.data) >= (days * 0.7):
-                logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples).")
-                return [{
-                    "price": float(row["price"]),
-                    "fetched_at": row["fetched_at"]
-                } for row in res.data]
+                is_valid, reason = _validate_date_coverage(res.data, days)
+                if is_valid:
+                    logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples, {reason}).")
+                    return [{
+                        "price": float(row["price"]),
+                        "fetched_at": row["fetched_at"]
+                    } for row in res.data]
+                else:
+                    logger.debug(f"Skipping local cache for {ticker}: {reason}. Fetching from provider.")
         except Exception as e:
             logger.warning(f"Error checking local price history for {ticker}: {e}")
 

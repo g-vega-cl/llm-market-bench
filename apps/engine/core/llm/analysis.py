@@ -17,6 +17,109 @@ from core.config import MIN_TRADE_VALUE
 logger = logging.getLogger("engine")
 
 
+def _repair_json_string(json_str: str) -> str:
+    """Attempt to repair a malformed JSON string by extracting valid JSON.
+
+    This handles cases where the LLM returns a JSON string inside another JSON,
+    or returns the JSON with extra text/quotes around it.
+
+    Args:
+        json_str: The potentially malformed JSON string.
+
+    Returns:
+        A cleaned JSON string that can be parsed.
+    """
+    if isinstance(json_str, str):
+        json_str = json_str.strip()
+
+        if json_str.startswith('"') and json_str.endswith('"'):
+            json_str = json_str[1:-1]
+
+        json_str = json_str.replace('\\"', '"').replace('\\n', '\n').replace('\\r', '\r')
+
+        # Always trim trailing text after JSON object/array
+        if json_str.startswith('{'):
+            end_idx = json_str.rfind('}')
+            if end_idx != -1:
+                json_str = json_str[:end_idx + 1]
+        elif json_str.startswith('['):
+            end_idx = json_str.rfind(']')
+            if end_idx != -1:
+                json_str = json_str[:end_idx + 1]
+        else:
+            # JSON doesn't start at beginning, find and extract it
+            start_idx = json_str.find('{')
+            if start_idx == -1:
+                start_idx = json_str.find('[')
+            if start_idx != -1:
+                json_str = json_str[start_idx:]
+                # Now trim trailing
+                if json_str.startswith('{'):
+                    end_idx = json_str.rfind('}')
+                    if end_idx != -1:
+                        json_str = json_str[:end_idx + 1]
+                elif json_str.startswith('['):
+                    end_idx = json_str.rfind(']')
+                    if end_idx != -1:
+                        json_str = json_str[:end_idx + 1]
+
+    return json_str
+
+
+def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsResponse | None:
+    """Attempt to parse data into a DecisionsResponse, trying various repair strategies.
+
+    Args:
+        data: Raw data from Instructor.
+        max_retries: Number of repair strategies to try.
+
+    Returns:
+        DecisionsResponse if parsing succeeds, None otherwise.
+    """
+    strategies = []
+
+    if isinstance(data, dict):
+        strategies.append(lambda d: DecisionsResponse(**d))
+
+        if "decisions" in data and isinstance(data["decisions"], str):
+            repaired = _repair_json_string(data["decisions"])
+            try:
+                data_copy = dict(data)
+                data_copy["decisions"] = json.loads(repaired)
+                strategies.append(lambda d: DecisionsResponse(**d))
+            except Exception:
+                pass
+
+        if "macro_events" in data and isinstance(data["macro_events"], str):
+            repaired = _repair_json_string(data["macro_events"])
+            try:
+                data_copy = dict(data)
+                data_copy["macro_events"] = json.loads(repaired)
+                strategies.append(lambda d: DecisionsResponse(**d))
+            except Exception:
+                pass
+
+    elif isinstance(data, str):
+        strategies.append(lambda d: DecisionsResponse.model_validate_json(d))
+
+        repaired = _repair_json_string(data)
+        strategies.append(lambda d: DecisionsResponse.model_validate_json(d))
+
+        try:
+            parsed = json.loads(repaired)
+            strategies.append(lambda d: DecisionsResponse.model_validate_json(d) if isinstance(d, dict) else DecisionsResponse(**d))
+        except Exception:
+            pass
+
+    for strategy in strategies[:max_retries]:
+        try:
+            return strategy(data)
+        except Exception:
+            continue
+
+    return None
+
+
 async def analyze_with_provider(
     provider: str,
     model_name: str,
@@ -137,18 +240,70 @@ async def analyze_with_provider(
             if messages[0]["role"] == "system":
                 final_args["system"] = messages[0]["content"]
                 final_args["messages"] = messages[1:]
-        resp_awaitable = client.chat.completions.create(**final_args)
-        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            wrapper = await resp_awaitable
-        else:
-            wrapper = resp_awaitable
+
+        # Instructor extraction with retry and JSON repair for validation errors
+        wrapper = None
+        last_error = None
+        for attempt in range(3):
+            try:
+                resp_awaitable = client.chat.completions.create(**final_args)
+                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                    wrapper = await resp_awaitable
+                else:
+                    wrapper = resp_awaitable
+                break
+            except Exception as e:
+                last_error = e
+                error_str = str(e).lower()
+                
+                # Check if it's a validation error that might be fixed with JSON repair
+                if "validation error" in error_str or "input should be a valid" in error_str or "list_type" in error_str:
+                    logger.warning(
+                        "[%s/%s] Instructor validation error (attempt %d/3): %s. Attempting JSON repair...",
+                        provider, model_name, attempt + 1, str(e)[:200]
+                    )
+                    
+                    # Add a user message requesting clean JSON output
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            "Your response must be a valid JSON object matching this schema exactly:\n"
+                            '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
+                            "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "
+                            "Return the raw JSON object directly with no additional text."
+                        )
+                    })
+                    final_args["messages"] = copy.deepcopy(messages)
+                else:
+                    # Non-validation error, re-raise
+                    raise
+
+        if wrapper is None:
+            logger.error(
+                "[%s/%s] All Instructor extraction attempts failed. Last error: %s",
+                provider, model_name, last_error
+            )
+            wrapper = [DecisionsResponse(decisions=[], macro_events=[])]
 
         # Aggregate all results from the list of response blocks
         final_resp = DecisionsResponse(decisions=[], macro_events=[])
         if wrapper:
             for r in ensure_list(wrapper):
-                final_resp.decisions.extend(r.decisions)
-                final_resp.macro_events.extend(r.macro_events)
+                # Try to parse each response with JSON repair if needed
+                parsed_r = _try_parse_decisions_response(r)
+                if parsed_r is not None:
+                    final_resp.decisions.extend(parsed_r.decisions)
+                    final_resp.macro_events.extend(parsed_r.macro_events)
+                else:
+                    # Fallback: try the original extension method
+                    final_resp.decisions.extend(r.decisions)
+                    final_resp.macro_events.extend(r.macro_events)
+
+        # Diagnostic logging for raw Instructor responses
+        logger.debug(
+            "[%s/%s] Instructor extraction complete: %d decisions, %d macro_events",
+            provider, model_name, len(final_resp.decisions), len(final_resp.macro_events)
+        )
 
         # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
         for decision in final_resp.decisions:

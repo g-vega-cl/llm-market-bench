@@ -316,6 +316,12 @@ To ensure the pipeline continues even if individual models fail:
 - **Defensive Pydantic Validation**:
   - The system uses default values for critical fields like `source_id` in macro events and supports common LLM hallucinations like `MEDIUM_TERM` duration.
   - **JSON List Robustness**: A `field_validator` automatically detects if the LLM returned a JSON-encoded string for the `decisions` or `macro_events` fields (a common behavior in Claude 3.5/4.5 tool use) and parses it into a Python list before validation.
+- **Retry Logic & JSON Repair**: Instructor extraction includes retry logic for Pydantic validation errors:
+  - Up to 3 attempts on validation errors (e.g., `claude-haiku-4-5` returning stringified JSON instead of arrays)
+  - Corrective prompts on retry requesting clean JSON output
+  - Helper functions (`_repair_json_string`, `_try_parse_decisions_response`) handle double-encoded JSON, extra quotes, and embedded JSON within longer text
+  - Falls back to empty response if all retries fail
+  - See [data-flow.md](./data-flow.md) for detailed JSON repair examples
 - **Decision Backfill (Resilience)**: If an LLM recommends a trade and provides a valid ticker but fails to extract a price into the JSON schema, the engine automatically backfills the current market price using the `MarketDataManager` before validation.
 - **Sync/Async Resilience**: The analysis and verification loops are designed to handle both synchronous and asynchronous response objects from different provider SDKs. For example, the verifier (in `verification.py`) uses a safety check (`hasattr(..., "__await__")`) to support Gemini's native client while remaining compatible with OpenAI/Anthropic's `awaitable` patterns. This same pattern is used in `post_analysis.py` where `instructor.from_genai()` with `GENAI_TOOLS` mode may return the result synchronously, requiring a check before awaiting.
 - **Unified Response Wrapping (`ensure_list`)**: To handle inconsistencies in how different LLMs (or different versions of Instructor) return structured data, the engine uses a unified `ensure_list` utility. This ensures that whether an LLM returns a single object or a list of objects (common in Gemini's multi-block tool emissions), the engine can process them uniformly without `AttributeError` or `TypeError`.

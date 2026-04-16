@@ -649,9 +649,33 @@ valid_decisions = [
 # It confirms that required tools (get_stock_quote for all, sell_X_percent for SELL) were actually executed via native function calling.
 # If an agent claims tool usage in text but it's not a formal tool call in history, the trade is rejected.
 
+# NEW: JSON Repair & Retry Logic (in analyze.py)
+# Instructor extraction includes retry logic for Pydantic validation errors:
+# - Up to 3 attempts on validation errors (e.g., stringified JSON instead of arrays)
+# - Adds corrective prompts on retry requesting clean JSON output
+# - Falls back to empty response if all retries fail
+# Helper functions (_repair_json_string, _try_parse_decisions_response) handle:
+# - Double-encoded JSON strings
+# - JSON wrapped in extra quotes or text
+# - Embedded JSON within longer text
+
 # NEW: Price Backfill Logic (in analyze.py)
 # If decision.price is missing/null, engine queries MarketDataManager to backfill real-time price.
 ```
+
+**Retry Logic Details**:
+- **Trigger**: Pydantic validation errors like `list_type` (LLM returns stringified JSON instead of array)
+- **Strategy**: On first failure, adds a user message with strict JSON format instructions and retries
+- **Fallback**: If all 3 attempts fail, returns `DecisionsResponse(decisions=[], macro_events=[])` instead of crashing
+- **Logging**: Diagnostic logs capture extraction success/failure for debugging
+
+**JSON Repair Examples**:
+| Problem | Example Input | Repaired Output |
+|---------|---------------|-----------------|
+| Double-encoded | `"{\"decisions\": []}"` | `{"decisions": []}` |
+| Extra quotes | `"{\"key\": \"value\"}"` | `{"key": "value"}` |
+| Leading text | `JSON: {"decisions": []}` | `{"decisions": []}` |
+| Trailing text | `{"decisions": []} is result` | `{"decisions": []}` |
 
 **Phase 3 Summary**:
 - **Active Reasoning**: Models verify data *before* committing to a decision.

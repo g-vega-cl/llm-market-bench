@@ -2,9 +2,11 @@
 
 import pytest
 from pydantic import ValidationError
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from analyze import analyze_chunks
-from core.models import DecisionObject
+from core.models import DecisionObject, DecisionsResponse, MacroEvent
+from core.llm.analysis import _repair_json_string, _try_parse_decisions_response
 
 
 class TestDecisionObject:
@@ -193,3 +195,234 @@ class TestAnalysisOrchestration:
 
         assert len(decisions) == 0
         assert len(events) == 0
+
+
+class TestRepairJsonString:
+    """Tests for the _repair_json_string helper function."""
+
+    def test_repair_json_string_double_encoded(self):
+        """Test that double-encoded JSON strings are repaired."""
+        double_encoded = '"{\\"decisions\\": [], \\"macro_events\\": []}"'
+        result = _repair_json_string(double_encoded)
+        assert result.startswith('{') or result.startswith('[')
+
+    def test_repair_json_string_with_extra_quotes(self):
+        """Test that JSON wrapped in extra quotes is repaired."""
+        quoted = '"{\\"key\\": \\"value\\"}"'
+        result = _repair_json_string(quoted)
+        assert result.startswith('{')
+        assert not result.startswith('""')
+
+    def test_repair_json_string_with_leading_text(self):
+        """Test that JSON with leading text is trimmed correctly."""
+        with_leading = 'Here is the JSON: {"key": "value"}'
+        result = _repair_json_string(with_leading)
+        assert result.startswith('{')
+
+    def test_repair_json_string_with_trailing_text(self):
+        """Test that JSON with trailing text is trimmed correctly."""
+        with_trailing = '{"key": "value"} is the result'
+        result = _repair_json_string(with_trailing)
+        assert result.endswith('}')
+
+    def test_repair_json_string_valid_json_unchanged(self):
+        """Test that valid JSON is not modified."""
+        valid = '{"decisions": [], "macro_events": []}'
+        result = _repair_json_string(valid)
+        assert result == valid
+
+    def test_repair_json_string_list_unchanged(self):
+        """Test that valid JSON lists are not modified."""
+        valid_list = '[{"ticker": "AAPL"}, {"ticker": "GOOGL"}]'
+        result = _repair_json_string(valid_list)
+        assert result == valid_list
+
+    def test_repair_json_string_none_input(self):
+        """Test that None input returns None."""
+        result = _repair_json_string(None)
+        assert result is None
+
+
+class TestTryParseDecisionsResponse:
+    """Tests for the _try_parse_decisions_response helper function."""
+
+    def test_try_parse_valid_dict(self):
+        """Test parsing a valid dictionary."""
+        data = {
+            "decisions": [
+                {
+                    "signal": "BUY",
+                    "confidence": 80,
+                    "reasoning": "Test reasoning",
+                    "ticker": "AAPL",
+                    "source_id": "test_1",
+                    "is_priced_in": False,
+                    "is_priced_in_reasoning": "",
+                    "profit_potential_reasoning": "",
+                    "strategy_reasoning": "",
+                    "advance_planning_notes": "",
+                }
+            ],
+            "macro_events": []
+        }
+        result = _try_parse_decisions_response(data)
+        assert result is not None
+        assert len(result.decisions) == 1
+        assert result.decisions[0].ticker == "AAPL"
+
+    def test_try_parse_stringified_decisions(self):
+        """Test parsing when decisions field is a stringified JSON."""
+        data = {
+            "decisions": '[{"ticker": "TSM", "signal": "HOLD", "confidence": 70, "reasoning": "Test", "source_id": "test_2", "is_priced_in": false, "is_priced_in_reasoning": "", "profit_potential_reasoning": "", "strategy_reasoning": "", "advance_planning_notes": ""}]',
+            "macro_events": []
+        }
+        result = _try_parse_decisions_response(data)
+        assert result is not None
+        assert len(result.decisions) == 1
+        assert result.decisions[0].ticker == "TSM"
+
+    def test_try_parse_valid_json_string(self):
+        """Test parsing a valid JSON string."""
+        data = '{"decisions": [], "macro_events": []}'
+        result = _try_parse_decisions_response(data)
+        assert result is not None
+        assert len(result.decisions) == 0
+        assert len(result.macro_events) == 0
+
+    def test_try_parse_invalid_data_returns_none(self):
+        """Test that invalid data returns None without raising."""
+        result = _try_parse_decisions_response("not json at all")
+        assert result is None
+
+    def test_try_parse_partial_repair(self):
+        """Test that partial repair of stringified fields works."""
+        data = {
+            "decisions": '[{"ticker": "META", "signal": "BUY", "confidence": 75, "reasoning": "Test", "source_id": "test_3", "is_priced_in": false, "is_priced_in_reasoning": "", "profit_potential_reasoning": "", "strategy_reasoning": "", "advance_planning_notes": ""}]',
+            "macro_events": "[]"
+        }
+        result = _try_parse_decisions_response(data)
+        assert result is not None
+        assert len(result.decisions) == 1
+        assert result.decisions[0].ticker == "META"
+
+    def test_try_parse_macro_events(self):
+        """Test parsing with macro events."""
+        data = {
+            "decisions": [],
+            "macro_events": [
+                {
+                    "event_name": "Test Event",
+                    "impact": "BULLISH",
+                    "catalyst_type": "EARNINGS",
+                    "is_ongoing": False,
+                    "is_future_catalyst": True,
+                    "historical_parallel": None,
+                    "is_government_incentive": False,
+                    "expiry_date": "2026-12-31",
+                    "importance_score": 7,
+                    "confidence": 80,
+                    "reasoning": "Test reasoning",
+                    "scenario_analysis": "Scenario A: Test",
+                    "source_id": "test_4",
+                    "model_provider": None,
+                    "model_name": None,
+                }
+            ]
+        }
+        result = _try_parse_decisions_response(data)
+        assert result is not None
+        assert len(result.macro_events) == 1
+        assert result.macro_events[0].event_name == "Test Event"
+
+
+@pytest.mark.asyncio
+class TestAnalyzeWithProviderRetryLogic:
+    """Tests for the retry logic in analyze_with_provider."""
+
+    async def test_retry_on_validation_error_succeeds(self, monkeypatch):
+        """Test that analyze_with_provider retries on validation error and succeeds."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        # Track call count to return different responses
+        call_count = 0
+
+        async def mock_create(**kwargs):
+            nonlocal call_count
+            call_count += 1
+
+            if call_count == 1:
+                # First call raises validation error (simulating stringified JSON issue)
+                from pydantic import ValidationError
+                raise ValidationError.from_exception_data(
+                    title="DecisionsResponse",
+                    line_errors=[
+                        {
+                            "type": "list_type",
+                            "loc": ("decisions",),
+                            "msg": "Input should be a valid array",
+                            "input": '[\n  {\n    "ticker": "T...'
+                        }
+                    ]
+                )
+            else:
+                # Second call succeeds
+                return DecisionsResponse(decisions=[], macro_events=[])
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create = mock_create
+
+        mock_factory = MagicMock(return_value=mock_client)
+
+        chunks = [{"source_id": "test_1", "content": "Test content"}]
+
+        with patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}), \
+             patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock):
+
+            from core.llm.analysis import analyze_with_provider
+
+            # Should not raise - should succeed on retry
+            result = await analyze_with_provider(
+                provider="anthropic",
+                model_name="claude-haiku-4-5",
+                chunks=chunks
+            )
+
+            assert call_count == 2  # First failed, second succeeded
+            assert result is not None
+            assert isinstance(result, DecisionsResponse)
+
+    async def test_all_retries_fail_returns_empty_response(self, monkeypatch):
+        """Test that all retries failing returns an empty response instead of raising."""
+        async def mock_create(**kwargs):
+            raise ValidationError.from_exception_data(
+                title="DecisionsResponse",
+                line_errors=[{
+                    "type": "list_type",
+                    "loc": ("decisions",),
+                    "msg": "Input should be a valid array",
+                    "input": "invalid"
+                }]
+            )
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create = mock_create
+
+        mock_factory = MagicMock(return_value=mock_client)
+
+        chunks = [{"source_id": "test_1", "content": "Test content"}]
+
+        with patch("core.llm.clients.CLIENT_FACTORIES", {"openai": mock_factory}), \
+             patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock):
+
+            from core.llm.analysis import analyze_with_provider
+
+            # Should return empty response instead of raising
+            result = await analyze_with_provider(
+                provider="openai",
+                model_name="gpt-4",
+                chunks=chunks
+            )
+
+            assert result is not None
+            assert len(result.decisions) == 0
+            assert len(result.macro_events) == 0

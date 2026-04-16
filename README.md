@@ -206,7 +206,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Paper trade audit** - maybe IBKR api?
 - [ ] **Recheck calendar events**
 - [ ] **Also check alternative plays function**
-- [ ] **Make sure reasoning page is optimized for mobile**
 
 ### 🔄 Under Consideration
 

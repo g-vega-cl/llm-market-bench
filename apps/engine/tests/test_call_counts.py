@@ -27,7 +27,7 @@ async def test_consolidated_call_counts():
     # Patch all provider clients and their underlying SDK classes
     with patch("core.llm.clients.AsyncOpenAI"), \
          patch("core.llm.clients.AsyncAnthropic"), \
-         patch("google.genai.Client", return_value=mock_gemini_client), \
+         patch("apps.engine.memory.embeddings.genai.Client", return_value=mock_gemini_client), \
          patch("instructor.from_openai") as mock_openai, \
          patch("instructor.from_anthropic") as mock_anthropic, \
          patch("instructor.from_genai") as mock_from_genai, \

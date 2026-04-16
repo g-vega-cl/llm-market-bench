@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from analyze import analyze_chunks
 from core.models import DecisionsResponse
+import memory.embeddings
 
 @pytest.mark.asyncio
 async def test_consolidated_call_counts():
@@ -25,15 +26,19 @@ async def test_consolidated_call_counts():
     mock_response = DecisionsResponse(decisions=[])
     
     # Patch all provider clients and their underlying SDK classes
-    with patch("core.llm.clients.AsyncOpenAI"), \
+    with patch("core.config.GEMINI_API_KEY", "fake-key"), \
+         patch("core.llm.clients.AsyncOpenAI"), \
          patch("core.llm.clients.AsyncAnthropic"), \
-         patch("apps.engine.memory.embeddings.genai.Client", return_value=mock_gemini_client), \
+         patch("google.genai.Client", return_value=mock_gemini_client), \
          patch("instructor.from_openai") as mock_openai, \
          patch("instructor.from_anthropic") as mock_anthropic, \
          patch("instructor.from_genai") as mock_from_genai, \
          patch("memory.store.get_supabase_client") as mock_sb, \
          patch("analyze.Portfolio") as mock_portfolio_class, \
          patch("analyze.MarketDataManager") as mock_market_data_class:
+        
+        # Reset the cached client so our mock gets used
+        memory.embeddings._client = None
 
         # Set up Instructor mocks to return the same mock response
         # The create() method needs to be an AsyncMock since it's awaited

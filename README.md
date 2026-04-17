@@ -203,10 +203,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 
-- [ ] **Paper trade audit** - maybe IBKR api?
+- [ ] **Paper trade audit** - maybe Alpaca?
 - [ ] **Recheck calendar events**
 - [ ] **Also check alternative plays function**
 - [ ] **Vertical vs horizontal codebase for LLMs**?
+- [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
 
 ### 🔄 Under Consideration
 

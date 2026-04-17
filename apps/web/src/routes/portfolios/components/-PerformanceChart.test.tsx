@@ -112,3 +112,51 @@ test('displays latest equity value in inline card', () => {
   expect(screen.getByText('$10,500.00')).toBeInTheDocument()
   expect(screen.getByText('2023-01-02')).toBeInTheDocument()
 })
+
+test('displays percentage change when benchmark is selected with showPercentage', () => {
+  const mockData = [
+    { date: '2023-01-01', total_equity: 10000 },
+    { date: '2023-01-02', total_equity: 10500 },
+  ]
+  const mockBenchmarkData = {
+    SPY: [
+      { date: '2023-01-01', price: 100 },
+      { date: '2023-01-02', price: 102 },
+    ],
+  }
+
+  render(
+    <PerformanceChart
+      data={mockData}
+      benchmarkData={mockBenchmarkData}
+      selectedBenchmark="SPY"
+      showPercentage={true}
+    />
+  )
+  expect(screen.getByText('+5.00%')).toBeInTheDocument()
+  expect(screen.getByText('2023-01-02')).toBeInTheDocument()
+})
+
+test('displays correct percentage and outperformance when benchmark is selected', () => {
+  const mockData = [
+    { date: '2023-01-01', total_equity: 10000 },
+    { date: '2023-01-02', total_equity: 11000 },
+  ]
+  const mockBenchmarkData = {
+    SPY: [
+      { date: '2023-01-01', price: 100 },
+      { date: '2023-01-02', price: 103 },
+    ],
+  }
+
+  render(
+    <PerformanceChart
+      data={mockData}
+      benchmarkData={mockBenchmarkData}
+      selectedBenchmark="SPY"
+      showPercentage={true}
+    />
+  )
+  expect(screen.getByText('+10.00%')).toBeInTheDocument()
+  expect(screen.getByText(/outperformance/i)).toBeInTheDocument()
+})

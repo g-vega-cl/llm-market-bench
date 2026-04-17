@@ -380,31 +380,34 @@ export function PerformanceChart({
 
   const getLatestWithBenchmark = () => {
     if (data.length === 0) return null
-    
+
     const latestDate = data[data.length - 1].date
     const equity = Number(data[data.length - 1].total_equity)
-    
+
     if (!selectedBenchmark || !benchmarkData?.[selectedBenchmark]) {
       return { date: latestDate, equity, x: 0, y: 0 }
     }
-    
+
     const benchmarkPoints = benchmarkData[selectedBenchmark]
-    const benchmarkPoint = benchmarkPoints.find(p => p.date === latestDate) 
+    const benchmarkPoint = benchmarkPoints.find(p => p.date === latestDate)
       || benchmarkPoints[benchmarkPoints.length - 1]
-    
+
+    let portfolioChange: number | undefined
+    let benchmarkChange: number | undefined
     let outperformance: number | undefined
+
     if (showPercentage && benchmarkPoint && data.length > 0) {
       const portfolioStart = Number(data[0].total_equity) || 1
       const benchmarkStart = benchmarkPoints[0]?.price || 1
-      const portfolioChange = ((equity - portfolioStart) / portfolioStart) * 100
-      const benchmarkChange = ((benchmarkPoint.price - benchmarkStart) / benchmarkStart) * 100
+      portfolioChange = ((equity - portfolioStart) / portfolioStart) * 100
+      benchmarkChange = ((benchmarkPoint.price - benchmarkStart) / benchmarkStart) * 100
       outperformance = portfolioChange - benchmarkChange
     }
-    
+
     return {
       date: latestDate,
-      equity,
-      benchmarkValue: benchmarkPoint?.price,
+      equity: portfolioChange ?? equity,
+      benchmarkValue: benchmarkChange ?? benchmarkPoint?.price,
       benchmarkTicker: selectedBenchmark,
       outperformance,
       x: 0,

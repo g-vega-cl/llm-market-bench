@@ -183,7 +183,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
 - [ ] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
 - [ ] **More context on what lead to certain memory**
-- [ ] **Find uncorrelated sectors** - Like energy X Tech https://g.co/gemini/share/68876564a362.
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [ ] **Set up Test driven development** - 

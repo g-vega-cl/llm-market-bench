@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from core.models import DecisionObject
 from execution.validation import ValidationResult, ValidationStatus
-from main import run_ingest
+from main import run_ingest, run_weekend_ingest
 
 @pytest.fixture
 def mock_dependencies():
@@ -272,3 +272,29 @@ async def test_run_ingest_calls_dust_cleanup_first(mock_dependencies):
     md["dust_cleanup"].assert_called_once()
     # Verify DB client was accessed (called multiple times during full pipeline)
     md["db"].assert_called()
+
+
+@pytest.mark.asyncio
+async def test_run_weekend_ingest_skips_analysis_and_trading():
+    """Test that weekend pipeline only runs ingestion and market feeling."""
+    with patch("main.ingest_newsletters") as mock_ingest, \
+         patch("main.get_supabase_client") as mock_get_client, \
+         patch("main.upsert_newsletter_snapshot") as mock_upsert, \
+         patch("main._stage_dust_cleanup", new_callable=AsyncMock) as mock_dust, \
+         patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze, \
+         patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling, \
+         patch("main.Portfolio") as MockPortfolio:
+
+        mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
+        mock_market_feeling.return_value = {"sentiment_label": "Weekend Recap", "sentiment_emoji": "📅"}
+
+        await run_weekend_ingest()
+
+        # Verify ingestion was called
+        mock_ingest.assert_called_once()
+        # Verify market feeling was called with weekend_mode=True
+        mock_market_feeling.assert_called_once_with(weekend_mode=True)
+        # Verify dust cleanup was NOT called (weekend mode skips it)
+        mock_dust.assert_not_called()
+        # Verify analyze_chunks was NOT called (weekend mode skips analysis)
+        mock_analyze.assert_not_called()

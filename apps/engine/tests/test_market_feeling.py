@@ -200,6 +200,37 @@ class TestBuildPrompt:
         assert "market_direction" in prompt
         assert "primary_concern" in prompt
 
+    def test_weekend_prompt_has_weekend_recap_label(self):
+        """Test that weekend prompt uses 'Weekend Recap' label."""
+        from analysis.market_feeling import build_prompt
+
+        data = {
+            "trades": [{"ticker": "AAPL", "signal": "BUY", "quantity": 10, "total_cost": 1500.00}],
+            "lessons": [{"content": "Test lesson"}],
+            "events": [{"content": "Test event"}],
+            "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}]
+        }
+
+        prompt = build_prompt(data, weekend_mode=True)
+
+        assert "Weekend Recap" in prompt or "weekend" in prompt.lower()
+        assert "this week" in prompt
+
+    def test_weekday_prompt_uses_today(self):
+        """Test that weekday (default) prompt uses 'today'."""
+        from analysis.market_feeling import build_prompt
+
+        data = {
+            "trades": [],
+            "lessons": [],
+            "events": [],
+            "decisions": []
+        }
+
+        prompt = build_prompt(data, weekend_mode=False)
+
+        assert "today" in prompt.lower()
+
 
 class TestIsMarketFeelingStale:
     """Tests for is_market_feeling_stale function."""

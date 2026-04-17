@@ -598,7 +598,9 @@ When a provider's model is upgraded (e.g., `gpt-4o-mini` → `gpt-5.4-nano`), th
 
 ### GitHub Actions Configuration
 
-The daily pipeline in `.github/workflows/ingest.yml` explicitly maps Secrets and Variables to the engine. Ensure the following are set in GitHub to avoid failures:
+The daily pipeline runs via `.github/workflows/ingest.yml` (weekdays, 09:30/12:30/15:30 ET). A separate weekend pipeline runs via `.github/workflows/weekend-ingest.yml` (Saturdays and Sundays at 18:00 ET) for newsletter ingestion and market feeling updates only — no trading occurs on weekends.
+
+Ensure the following are set in GitHub to avoid failures:
 
 #### Required Secrets
 - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
@@ -693,6 +695,13 @@ graph TD
 
         V --> CE[Cause & Effect Analysis]
         CE -->|Historical Impact| V
+    end
+
+    subgraph "Weekend Pipeline (Read-Only)"
+        WKCRON[Cron Schedule Sat/Sun 18:00 ET] --> WKINGEST[weekend-ingest.yml]
+        WKINGEST --> WKNEWS[Newsletter Ingestion]
+        WKINGEST --> WKMF[Market Feeling: Weekend Recap]
+        WKNEWS & WKMF --> WKDB[(Log to ingestion_logs)]
     end
 ```
 

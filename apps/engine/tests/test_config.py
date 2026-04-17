@@ -12,6 +12,7 @@ def test_constants():
     assert len(core.config.NEWSLETTER_SENDERS) > 0
     assert core.config.GMAIL_SCOPES == ["https://www.googleapis.com/auth/gmail.readonly"]
     assert core.config.COMMAND_INGEST == "ingest"
+    assert core.config.COMMAND_WEEKEND_INGEST == "weekend-ingest"
     assert core.config.NO_CONTENT_FOUND == "No content found"
 
 

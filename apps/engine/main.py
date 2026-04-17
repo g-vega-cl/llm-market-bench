@@ -14,7 +14,7 @@ from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
 from core.llm.verification import verify_trading_decision
 from attribution.service import save_decision
-from core.config import COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT, logger
+from core.config import COMMAND_INGEST, COMMAND_WEEKEND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT, logger
 from core.db import get_supabase_client, upsert_newsletter_snapshot
 from execution.validation import validate_decision, validate_semantic_overlap, ValidationStatus
 from execution.portfolio import Portfolio
@@ -573,6 +573,67 @@ async def run_ingest(force: bool = False):
         logger.removeHandler(handler)
 
 
+async def run_weekend_ingest():
+    """Weekend read-only pipeline: news ingestion + market feeling update."""
+    import io
+    import logging
+    from datetime import datetime, timezone
+
+    log_capture = io.StringIO()
+    handler = logging.StreamHandler(log_capture)
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
+    handler.setFormatter(formatter)
+    logger = logging.getLogger("engine")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+
+    now = datetime.now(timezone.utc)
+    run_id = now.strftime("%Y-%m-%d_%H-%M-%S")
+    run_date = now.date()
+
+    log_blob = ""
+    sb_client = None
+
+    try:
+        sb_client = get_supabase_client()
+
+        data, sb_client = await _stage_ingest_and_snapshot()
+        if not data:
+            log_blob = log_capture.getvalue()
+            if log_blob:
+                try:
+                    sb_client.table("ingestion_logs").insert({
+                        "run_id": run_id,
+                        "run_date": str(run_date),
+                        "run_number": 1,
+                        "log_blob": log_blob[:1000000]
+                    }).execute()
+                except Exception as e:
+                    logger.error(f"Failed to save ingestion log: {e}")
+            return
+
+        logger.info("Starting Weekend Market Feeling Analysis...")
+        market_feeling = await analyze_market_feeling(weekend_mode=True)
+        if market_feeling:
+            logger.info(f"Weekend market feeling: {market_feeling.get('sentiment_label')} {market_feeling.get('sentiment_emoji')}")
+        else:
+            logger.warning("Weekend market feeling analysis did not produce a result.")
+
+        log_blob = log_capture.getvalue()
+        try:
+            sb_client.table("ingestion_logs").insert({
+                "run_id": run_id,
+                "run_date": str(run_date),
+                "run_number": 1,
+                "log_blob": log_blob[:1000000]
+            }).execute()
+        except Exception as e:
+            logger.error(f"Failed to save ingestion log: {e}")
+    finally:
+        logger.removeHandler(handler)
+
+
 async def run_post_analysis():
     """Runs the post-analysis for historical trades."""
     try:
@@ -600,7 +661,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT],
+        choices=[COMMAND_INGEST, COMMAND_WEEKEND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT],
         help="Action to perform"
     )
 
@@ -614,6 +675,8 @@ def main():
 
     if args.command == COMMAND_INGEST:
         asyncio.run(run_ingest(force=args.force))
+    elif args.command == COMMAND_WEEKEND_INGEST:
+        asyncio.run(run_weekend_ingest())
     elif args.command == COMMAND_POST_ANALYSIS:
         asyncio.run(run_post_analysis())
     elif args.command == COMMAND_GOVERNMENT:

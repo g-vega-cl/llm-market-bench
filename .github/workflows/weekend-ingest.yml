@@ -1,0 +1,61 @@
+name: Weekend Ingestion
+
+on:
+  schedule:
+    # Sat 22:00 UTC = 6:00 PM ET, Sun 22:00 UTC = 6:00 PM ET
+    - cron: "0 22 * * 0,6"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: apps/engine
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run weekend ingestion pipeline
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MIMO_API_KEY: ${{ secrets.MIMO_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+
+          # Added for Newsletter Ingestion
+          GMAIL_CREDENTIALS_JSON: ${{ secrets.GMAIL_CREDENTIALS_JSON }}
+          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          IBKR_PROXY_URL: ${{ secrets.IBKR_PROXY_URL }}
+          IBKR_PROXY_TOKEN: ${{ secrets.IBKR_PROXY_TOKEN }}
+
+          # Optional Configuration
+          FINANCIAL_PROVIDER: ${{ vars.FINANCIAL_PROVIDER || secrets.FINANCIAL_PROVIDER }}
+          FALLBACK_FINANCIAL_PROVIDER: ${{ vars.FALLBACK_FINANCIAL_PROVIDER || secrets.FALLBACK_FINANCIAL_PROVIDER }}
+          SECOND_FALLBACK_FINANCIAL_PROVIDER: ${{ vars.SECOND_FALLBACK_FINANCIAL_PROVIDER || secrets.SECOND_FALLBACK_FINANCIAL_PROVIDER }}
+          MARKET_DATA_RETRIES: ${{ vars.MARKET_DATA_RETRIES || secrets.MARKET_DATA_RETRIES || 2}}
+          FINANCIAL_API_THROTTLE_SECONDS: ${{ vars.FINANCIAL_API_THROTTLE_SECONDS || secrets.FINANCIAL_API_THROTTLE_SECONDS || 2 }}
+
+        run: |
+          python main.py weekend-ingest

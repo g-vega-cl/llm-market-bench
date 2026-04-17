@@ -44,39 +44,79 @@ OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
   "secondary_concern": "string (secondary consideration)"
 }}"""
 
+WEEKEND_MARKET_FEELING_PROMPT = """You are an expert AI market analyst preparing a weekend market sentiment summary.
 
-async def gather_today_data(sb_client) -> dict[str, Any]:
-    """Gather today's data for market feeling analysis.
+CONTEXT:
+You have access to the following data from the past week:
+- Trades executed this week: {trades_summary}
+- Lessons learned from past failures: {lessons}
+- Market events and consensus: {events}
+- Key decision reasoning from the week: {reasoning}
+
+TASK:
+Provide a weekend recap sentiment assessment. This is a read-only analysis - no new trades will be executed until markets reopen.
+
+Think step-by-step:
+1. How did the week go overall in terms of trading outcomes?
+2. What lessons from past failures are most relevant going into next week?
+3. What market events should I be thinking about for next week?
+4. What are the key risks and opportunities heading into the new week?
+
+OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
+{{
+  "sentiment_label": "string (2-4 words, e.g., 'Weekend Recap', 'Cautiously Optimistic', 'Risk-Off', 'Wait-and-See', 'Defensive', 'Opportunistic', 'Uncertain')",
+  "sentiment_emoji": "string (single emoji that best represents the sentiment)",
+  "confidence_score": 0-100 (how confident are you in this assessment based on available data - higher if more trades/lessons available),
+  "why_explanation": "string (2-3 sentences explaining the reasoning behind this weekend recap - be specific about what happened this week)",
+  "market_direction": "BULLISH|BEARISH|NEUTRAL",
+  "primary_concern": "string (the most important risk or opportunity for next week - be specific)",
+  "secondary_concern": "string (secondary consideration for next week)"
+}}"""
+
+
+async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, Any]:
+    """Gather data for market feeling analysis.
 
     Args:
         sb_client: Supabase client.
+        weekend_mode: If True, fetches the past week's data instead of just today.
 
     Returns:
         Dict with trades, lessons, events, and reasoning.
     """
     now = datetime.now(timezone.utc)
     est_date_str = now.strftime("%Y-%m-%d")
-    start_of_day = f"{est_date_str}T00:00:00"
 
-    # 1. Fetch today's trades
+    if weekend_mode:
+        from datetime import timedelta
+        week_start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        start_date = f"{week_start}T00:00:00"
+        date_label = "this week"
+    else:
+        start_date = f"{est_date_str}T00:00:00"
+        date_label = "today"
+
+    # 1. Fetch trades
     trades_res = sb_client.table("trades").select(
         "id, ticker, signal, quantity, price, total_cost, executed_at, portfolios(owner_id)"
-    ).gte("executed_at", start_of_day).execute()
+    ).gte("executed_at", start_date).execute()
     trades = trades_res.data or []
 
-    # 2. Fetch today's memories (events, lessons, incentives)
-    memories_res = sb_client.table("memories").select("*").gte("created_at", start_of_day).execute()
+    # 2. Fetch memories (events, lessons, incentives)
+    memories_res = sb_client.table("memories").select("*").gte("created_at", start_date).execute()
     memories = memories_res.data or []
 
     # Categorize memories
     lessons = [m for m in memories if m.get("memory_type") == "LESSON_LEARNED"]
     events = [m for m in memories if m.get("memory_type") in ("MARKET_EVENT", "GOVERNMENT_INCENTIVE")]
 
-    # 3. Fetch today's decisions for reasoning context
+    # 3. Fetch decisions for reasoning context
     decisions_res = sb_client.table("decisions").select(
         "id, ticker, signal, confidence, reasoning, model_name, status"
-    ).gte("created_at", start_of_day).execute()
+    ).gte("created_at", start_date).execute()
     decisions = decisions_res.data or []
+
+    logger.info(f"Gathered {date_label} data: {len(trades)} trades, {len(lessons)} lessons, {len(events)} events, {len(decisions)} decisions")
 
     return {
         "trades": trades,
@@ -87,10 +127,11 @@ async def gather_today_data(sb_client) -> dict[str, Any]:
     }
 
 
-def build_trades_summary(trades: list[dict]) -> str:
+def build_trades_summary(trades: list[dict], weekend_mode: bool = False) -> str:
     """Build a human-readable summary of trades."""
+    date_label = "this week" if weekend_mode else "today"
     if not trades:
-        return "No trades executed today."
+        return f"No trades executed {date_label}."
 
     buys = [t for t in trades if t.get("signal", "").upper() == "BUY"]
     sells = [t for t in trades if t.get("signal", "").upper() == "SELL"]
@@ -125,23 +166,25 @@ def build_lessons_summary(lessons: list[dict]) -> str:
     return "\n".join(lesson_summaries) if lesson_summaries else "No lessons learned available."
 
 
-def build_events_summary(events: list[dict]) -> str:
+def build_events_summary(events: list[dict], weekend_mode: bool = False) -> str:
     """Build a summary of market events."""
+    date_label = "this week" if weekend_mode else "today"
     if not events:
-        return "No market events recorded today."
+        return f"No market events recorded {date_label}."
 
     event_summaries = []
     for event in events[:5]:  # Limit to 5 most recent
         content = event.get("content", "")[:200]
         event_summaries.append(f"- {content}")
 
-    return "\n".join(event_summaries) if event_summaries else "No market events recorded today."
+    return "\n".join(event_summaries) if event_summaries else f"No market events recorded {date_label}."
 
 
-def build_reasoning_summary(decisions: list[dict]) -> str:
+def build_reasoning_summary(decisions: list[dict], weekend_mode: bool = False) -> str:
     """Build a summary of key decision reasoning."""
+    date_label = "this week" if weekend_mode else "today"
     if not decisions:
-        return "No decisions made today."
+        return f"No decisions made {date_label}."
 
     reasoning_parts = []
     for decision in decisions[:10]:  # Limit to 10 most recent
@@ -154,17 +197,27 @@ def build_reasoning_summary(decisions: list[dict]) -> str:
             f"- {ticker}: {signal} (conf: {confidence}%) - {reasoning}..."
         )
 
-    return "\n".join(reasoning_parts) if reasoning_parts else "No decisions made today."
+    return "\n".join(reasoning_parts) if reasoning_parts else f"No decisions made {date_label}."
 
 
-def build_prompt(data: dict[str, Any]) -> str:
-    """Build the market feeling prompt with today's data."""
-    trades_summary = build_trades_summary(data["trades"])
+def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
+    """Build the market feeling prompt with today's (or week's) data.
+
+    Args:
+        data: Dict with trades, lessons, events, and decisions.
+        weekend_mode: If True, uses the weekend prompt variant.
+
+    Returns:
+        Formatted prompt string.
+    """
+    trades_summary = build_trades_summary(data["trades"], weekend_mode)
     lessons_summary = build_lessons_summary(data["lessons"])
-    events_summary = build_events_summary(data["events"])
-    reasoning_summary = build_reasoning_summary(data["decisions"])
+    events_summary = build_events_summary(data["events"], weekend_mode)
+    reasoning_summary = build_reasoning_summary(data["decisions"], weekend_mode)
 
-    return MARKET_FEELING_PROMPT.format(
+    template = WEEKEND_MARKET_FEELING_PROMPT if weekend_mode else MARKET_FEELING_PROMPT
+
+    return template.format(
         trades_summary=trades_summary,
         lessons=lessons_summary,
         events=events_summary,
@@ -172,32 +225,37 @@ def build_prompt(data: dict[str, Any]) -> str:
     )
 
 
-async def analyze_market_feeling() -> dict[str, Any] | None:
+async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] | None:
     """Generate market feeling sentiment using MiniMax.
 
     This function:
-    1. Gathers today's trading data
+    1. Gathers today's (or week's) trading data
     2. Calls MiniMax {model} to generate sentiment analysis
     3. Stores the result in the market_feeling table
     4. Returns the created record
 
+    Args:
+        weekend_mode: If True, gathers week's data and uses weekend prompt variant.
+
     Returns:
         The created market_feeling record, or None if failed.
     """.format(model=MINIMAX_MODEL)
-    logger.info(f"Starting market feeling analysis with MiniMax {MINIMAX_MODEL}...")
+    mode_label = "weekend" if weekend_mode else "daily"
+    logger.info(f"Starting {mode_label} market feeling analysis with MiniMax {MINIMAX_MODEL}...")
 
     sb_client = get_supabase_client()
 
     # 1. Gather data
-    data = await gather_today_data(sb_client)
+    data = await gather_today_data(sb_client, weekend_mode=weekend_mode)
 
     trades_count = len(data["trades"])
     lessons_count = len(data["lessons"])
     memories_count = len(data["events"])
     decisions_count = len(data["decisions"])
 
+    date_label = "week" if weekend_mode else "day"
     logger.info(
-        f"Market feeling data: {trades_count} trades, {lessons_count} lessons, "
+        f"Market feeling data ({date_label}): {trades_count} trades, {lessons_count} lessons, "
         f"{memories_count} events, {decisions_count} decisions"
     )
 
@@ -207,7 +265,7 @@ async def analyze_market_feeling() -> dict[str, Any] | None:
         return None
 
     # 3. Build prompt
-    prompt = build_prompt(data)
+    prompt = build_prompt(data, weekend_mode=weekend_mode)
 
     # 4. Call MiniMax
     if not MINIMAX_API_KEY:

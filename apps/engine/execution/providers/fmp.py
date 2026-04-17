@@ -3,6 +3,7 @@
 import asyncio
 import time
 import httpx
+from datetime import datetime, timedelta
 from typing import Optional, TypedDict
 from .base import FinancialProvider, TickerData
 from core.config import FMP_API_KEY, logger
@@ -117,11 +118,23 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
 
+        # Calculate calendar date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        from_str = start_date.strftime("%Y-%m-%d")
+        to_str = end_date.strftime("%Y-%m-%d")
+
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{self.BASE_URL}/historical-price-eod/full",
-                    params={"symbol": ticker, "timeseries": days, "apikey": self.api_key}
+                    params={
+                        "symbol": ticker,
+                        "from": from_str,
+                        "to": to_str,
+                        "apikey": self.api_key
+                    }
                 )
                 resp.raise_for_status()
                 data = resp.json()

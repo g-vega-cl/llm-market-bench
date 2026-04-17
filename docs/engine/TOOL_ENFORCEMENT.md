@@ -83,7 +83,7 @@ CORE_ANALYSIS_SYSTEM_PROMPT = """
 6. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.
 6. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. 
    - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. 
-   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.
+   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions. **IMPORTANT: Prefer selling meaningful percentages (10%+ of your position) or clearing the entire position. Avoid tiny 1-5% sells that create dust.**
 
 This is a HARD REQUIREMENT. No exceptions.
 """

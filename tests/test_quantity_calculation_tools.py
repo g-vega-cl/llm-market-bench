@@ -126,5 +126,32 @@ class TestQuantityCalculationTools(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Remaining Position: 0 shares", result)
             self.assertIn("To prevent 'dust' positions, this tool has mandated a 100% (FULL) sell", result)
 
+    async def test_sell_quantity_tiny_percentage_discouraged(self):
+        """Test that a tiny percentage sell (1-5%) is still allowed but discouraged."""
+        mock_supabase = MagicMock()
+        # Holding 1000 shares at $100 = $100k position.
+        mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+            {"quantity": 1000, "current_price": 100.0}
+        ]
+
+        mock_portfolio = MagicMock()
+        mock_portfolio.initialize = AsyncMock()
+        mock_portfolio.positions = {}
+        # $100k equity -> $10k floor.
+        mock_metrics = MagicMock()
+        mock_metrics.total_equity = 100000.0
+        mock_portfolio.calculate_reg_t_metrics.return_value = mock_metrics
+
+        with patch('core.llm.tools.get_supabase_client', return_value=mock_supabase), \
+             patch('execution.portfolio.Portfolio', return_value=mock_portfolio):
+
+            # Sell 5% (50 shares). Remaining 950 shares * $100 = $95k.
+            # This is well above floor, so tool allows it but should warn.
+            result = await execute_sell_quantity_tool("AAPL", owner_id="test_model", percentage=5)
+
+            self.assertIn("Recommended SELL Quantity: 50 shares", result)
+            self.assertIn("Remaining Position: 950 shares", result)
+            self.assertNotIn("mandated a 100% (FULL) sell", result)
+
 if __name__ == "__main__":
     unittest.main()

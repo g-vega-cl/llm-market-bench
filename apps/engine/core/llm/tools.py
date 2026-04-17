@@ -444,6 +444,8 @@ CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_OPENAI = {
             "Calculate how many shares to SELL based on a percentage of your current "
             "position (1-100%). If the remaining balance would fall below 10% of "
             "total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
+            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
+            " the entire position. Small sells create dust and are discouraged."
         ),
         "parameters": {
             "type": "object",
@@ -494,8 +496,10 @@ CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_ANTHROPIC = {
     "description": (
         "Calculate how many shares to SELL based on a percentage of your current "
         "position (1-100%). If the remaining balance would fall below 10% of "
-        "total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
-    ),
+"total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
+            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
+            " the entire position. Small sells create dust and are discouraged."
+        ),
     "input_schema": {
         "type": "object",
         "properties": {
@@ -632,8 +636,10 @@ CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_GEMINI = {
     "description": (
         "Calculate how many shares to SELL based on a percentage of your current "
         "position (1-100%). If the remaining balance would fall below 10% of "
-        "total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
-    ),
+"total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
+            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
+            " the entire position. Small sells create dust and are discouraged."
+        ),
     "parameters": {
         "type": "object",
         "properties": {

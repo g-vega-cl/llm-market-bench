@@ -184,7 +184,7 @@ SOPHISTICATED TRADING LOGIC:
      - Avoid over-concentration in a single sector or theme.
 15. **MANDATORY QUANTITY CALCULATION:** 
      - **For BUY:** You MUST execute `calculate_buy_quantity(ticker, percentage)` to determine the exact shares based on your Buying Power. The tool will ensure you meet the **10% Equity Floor**.
-     - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary.
+     - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary. **IMPORTANT: Prefer selling meaningful percentages (10%+ of your position) or clearing the entire position. Avoid tiny 1-5% sells that create dust.**
      - **ENFORCEMENT (HARD FAILURE):** Any `BUY` or `SELL` decision where the respective calculation tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count.
 
 16. **REASONING RIGOR: THE "5 WHYS":**

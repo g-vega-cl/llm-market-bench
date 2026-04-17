@@ -35,7 +35,7 @@ To ensure maximum feature coverage and performance, the system uses the official
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
 - **`calculate_buy_quantity(ticker, percentage)`**: Calculates exact shares to buy based on a percentage of available buying power. Automatically enforces the 10% minimum position size rule.
-- **`calculate_sell_quantity(ticker, percentage)`**: Calculates exact share quantity to sell based on a percentage (1-100%) of the current position. Automatically enforces the 10% minimum position rule — if the remaining balance would fall below 10% of total equity, it mandates a 100% (FULL) sell to avoid "dust" positions. **Using this tool natively via function calling is MANDATORY for any SELL decision.**
+- **`calculate_sell_quantity(ticker, percentage)`**: Calculates exact share quantity to sell based on a percentage (1-100%) of the current position. Automatically enforces the 10% minimum position rule — if the remaining balance would fall below 10% of total equity, it mandates a 100% (FULL) sell to avoid "dust" positions. **IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing the entire position. Small sells create dust and are discouraged.** Using this tool natively via function calling is MANDATORY for any SELL decision.
 
 **Note on Dust Cleanup:** The system AUTOMATICALLY sells any position below 10% of portfolio equity. No tool call is required - this happens automatically after trade execution and is recorded in the trade history.
 

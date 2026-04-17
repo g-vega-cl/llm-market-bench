@@ -37,11 +37,12 @@ The system tracks **42 tickers** across multiple asset classes:
 
 ## Methodology
 
-### Rolling Window: 90 Days
+### Rolling Window: 90 Calendar Days
 
 - Industry standard (used by Barra, RiskMetrics)
 - Long enough to filter noise
 - Short enough to capture regime changes
+- **Calculation:** Uses a 90-calendar-day window (Today minus 90 days) using `from` and `to` date parameters in the FMP API.
 
 ### Correlation Methods
 

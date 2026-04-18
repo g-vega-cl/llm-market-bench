@@ -4,8 +4,8 @@ import { fetchMarketOverviewData } from './-queries'
 import { queries } from '~/lib/queries'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { CorrelationHeatmap } from './components/CorrelationHeatmap'
-import { UncorrelatedPairs } from './components/UncorrelatedPairs'
+import { CorrelationHeatmap } from './components/-CorrelationHeatmap'
+import { UncorrelatedPairs } from './components/-UncorrelatedPairs'
 import type { MarketFeeling } from '@llm-market-bench/database'
 
 const getMarketOverview = createServerFn({ method: 'GET' }).handler(async () => {

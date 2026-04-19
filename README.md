@@ -207,6 +207,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Also check alternative plays function**
 - [ ] **Vertical vs horizontal codebase for LLMs**?
 - [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
+- [ ] **Compare the performance of the different LLMs in a single chart.**
 
 ### 🔄 Under Consideration
 

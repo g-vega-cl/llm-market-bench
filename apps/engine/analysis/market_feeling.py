@@ -20,6 +20,7 @@ MARKET_FEELING_PROMPT = """You are an expert AI market analyst observing the AI 
 CONTEXT:
 You have access to the following data from today's trading session:
 - Recent trades executed: {trades_summary}
+- Trade attempts (some rejected - shows agent conviction even when execution failed): {attempts_summary}
 - Lessons learned from past failures: {lessons}
 - Market events and consensus: {events}
 - Key decision reasoning: {reasoning}
@@ -29,9 +30,10 @@ Analyze this data holistically and provide a market sentiment assessment.
 
 Think step-by-step:
 1. What is the overall tone of recent trades?
-2. Are there any lessons that suggest caution or different positioning?
-3. What market events are driving current decisions?
-4. What risks or opportunities are top-of-mind?
+2. Are there rejected attempts that show strong agent conviction despite execution failure?
+3. Are there any lessons that suggest caution or different positioning?
+4. What market events are driving current decisions?
+5. What risks or opportunities are top-of-mind?
 
 OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
 {{
@@ -42,13 +44,14 @@ OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
   "market_direction": "BULLISH|BEARISH|NEUTRAL",
   "primary_concern": "string (the most important risk or opportunity currently - be specific)",
   "secondary_concern": "string (secondary consideration)"
-}}"""
+ }}"""
 
 WEEKEND_MARKET_FEELING_PROMPT = """You are an expert AI market analyst preparing a weekend market sentiment summary.
 
 CONTEXT:
 You have access to the following data from the past week:
 - Trades executed this week: {trades_summary}
+- Trade attempts (some rejected - shows agent conviction even when execution failed): {attempts_summary}
 - Lessons learned from past failures: {lessons}
 - Market events and consensus: {events}
 - Key decision reasoning from the week: {reasoning}
@@ -58,9 +61,10 @@ Provide a weekend recap sentiment assessment. This is a read-only analysis - no 
 
 Think step-by-step:
 1. How did the week go overall in terms of trading outcomes?
-2. What lessons from past failures are most relevant going into next week?
-3. What market events should I be thinking about for next week?
-4. What are the key risks and opportunities heading into the new week?
+2. Are there rejected attempts that show strong agent conviction despite execution failure?
+3. What lessons from past failures are most relevant going into next week?
+4. What market events should I be thinking about for next week?
+5. What are the key risks and opportunities heading into the new week?
 
 OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
 {{
@@ -71,7 +75,7 @@ OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
   "market_direction": "BULLISH|BEARISH|NEUTRAL",
   "primary_concern": "string (the most important risk or opportunity for next week - be specific)",
   "secondary_concern": "string (secondary consideration for next week)"
-}}"""
+ }}"""
 
 
 async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, Any]:
@@ -110,20 +114,32 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
     lessons = [m for m in memories if m.get("memory_type") == "LESSON_LEARNED"]
     events = [m for m in memories if m.get("memory_type") in ("MARKET_EVENT", "GOVERNMENT_INCENTIVE")]
 
-    # 3. Fetch decisions for reasoning context
+    # 3. Fetch decisions for reasoning context and separate executed vs rejected
     decisions_res = sb_client.table("decisions").select(
         "id, ticker, signal, confidence, reasoning, model_name, status"
     ).gte("created_at", start_date).execute()
     decisions = decisions_res.data or []
 
-    logger.info(f"Gathered {date_label} data: {len(trades)} trades, {len(lessons)} lessons, {len(events)} events, {len(decisions)} decisions")
+    # Separate executed trades (from decisions table) vs rejected attempts
+    executed_from_decisions = [d for d in decisions if d.get("status") == "EXECUTED"]
+    rejected_attempts = [d for d in decisions if d.get("status", "").startswith("REJECTED_")]
+
+    # Also include trades from the trades table (executed trades)
+    # Combine: trades from trades table + executed decisions = all executed activity
+    executed_trades = trades + executed_from_decisions
+
+    # Use all decisions for reasoning context (includes executed, rejected, and validated)
+    all_decisions = decisions
+
+    logger.info(f"Gathered {date_label} data: {len(executed_trades)} executed, {len(rejected_attempts)} rejected, {len(lessons)} lessons, {len(events)} events")
 
     return {
-        "trades": trades,
+        "trades": executed_trades,
         "memories": memories,
         "lessons": lessons,
         "events": events,
-        "decisions": decisions,
+        "decisions": all_decisions,
+        "rejected_attempts": rejected_attempts,
     }
 
 
@@ -151,6 +167,42 @@ def build_trades_summary(trades: list[dict], weekend_mode: bool = False) -> str:
         summary_parts.append(f"Sell orders: {', '.join(sell_tickers)}{'...' if len(sells) > 5 else ''}")
 
     return "; ".join(summary_parts)
+
+
+def build_attempts_summary(rejected_decisions: list[dict], weekend_mode: bool = False) -> str:
+    """Build a summary of rejected trade attempts (shows agent conviction).
+
+    These are decisions that were rejected for various reasons (margin, hallucination,
+    liquidity, etc.) but show agent intent/conviction.
+    """
+    date_label = "this week" if weekend_mode else "today"
+    if not rejected_decisions:
+        return f"No rejected trade attempts {date_label}."
+
+    rejected_buys = [d for d in rejected_decisions if d.get("signal", "").upper() == "BUY"]
+    rejected_sells = [d for d in rejected_decisions if d.get("signal", "").upper() == "SELL"]
+
+    # Group by rejection reason
+    by_reason = {}
+    for d in rejected_decisions:
+        reason = d.get("status", "UNKNOWN").replace("REJECTED_", "")
+        by_reason[reason] = by_reason.get(reason, 0) + 1
+
+    parts = []
+
+    if rejected_buys:
+        tickers = [d["ticker"] for d in rejected_buys[:3]]
+        parts.append(f"Rejected buys: {len(rejected_buys)} ({', '.join(tickers)}{'...' if len(rejected_buys) > 3 else ''})")
+
+    if rejected_sells:
+        tickers = [d["ticker"] for d in rejected_sells[:3]]
+        parts.append(f"Rejected sells: {len(rejected_sells)} ({', '.join(tickers)}{'...' if len(rejected_sells) > 3 else ''})")
+
+    if by_reason:
+        reasons = ", ".join([f"{r}={c}" for r, c in by_reason.items()])
+        parts.append(f"Reasons: {reasons}")
+
+    return "; ".join(parts) if parts else f"No rejected trade attempts {date_label}."
 
 
 def build_lessons_summary(lessons: list[dict]) -> str:
@@ -204,13 +256,14 @@ def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
     """Build the market feeling prompt with today's (or week's) data.
 
     Args:
-        data: Dict with trades, lessons, events, and decisions.
+        data: Dict with trades, lessons, events, decisions, and rejected_attempts.
         weekend_mode: If True, uses the weekend prompt variant.
 
     Returns:
         Formatted prompt string.
     """
     trades_summary = build_trades_summary(data["trades"], weekend_mode)
+    attempts_summary = build_attempts_summary(data.get("rejected_attempts", []), weekend_mode)
     lessons_summary = build_lessons_summary(data["lessons"])
     events_summary = build_events_summary(data["events"], weekend_mode)
     reasoning_summary = build_reasoning_summary(data["decisions"], weekend_mode)
@@ -219,6 +272,7 @@ def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
 
     return template.format(
         trades_summary=trades_summary,
+        attempts_summary=attempts_summary,
         lessons=lessons_summary,
         events=events_summary,
         reasoning=reasoning_summary,
@@ -310,6 +364,16 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
             "total_value": total_value,
         }
 
+        # 6b. Prepare rejected attempts summary for storage
+        rejected = data.get("rejected_attempts", [])
+        rejected_buys = [d for d in rejected if d.get("signal", "").upper() == "BUY"]
+        rejected_sells = [d for d in rejected if d.get("signal", "").upper() == "SELL"]
+
+        attempts_summary = {
+            "rejected_buys": len(rejected_buys),
+            "rejected_sells": len(rejected_sells),
+        }
+
         # 7. Store in market_feeling table (upsert - keep history, 30-day retention handled by cleanup)
         record = {
             "sentiment_label": result["sentiment_label"],
@@ -320,6 +384,7 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
             "primary_concern": result.get("primary_concern", ""),
             "secondary_concern": result.get("secondary_concern", ""),
             "trades_summary": trades_summary,
+            "attempts_summary": attempts_summary,
             "lessons_incorporated": lessons_count,
             "memories_incorporated": memories_count,
             "model_used": MINIMAX_MODEL,

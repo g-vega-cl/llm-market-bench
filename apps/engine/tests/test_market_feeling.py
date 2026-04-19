@@ -62,6 +62,72 @@ class TestBuildTradesSummary:
         assert "..." in result  # Should have ellipsis for truncated tickers
 
 
+class TestBuildAttemptsSummary:
+    """Tests for build_attempts_summary function (rejected trade attempts)."""
+
+    def test_empty_attempts(self):
+        """Test attempts summary with no rejected decisions."""
+        from analysis.market_feeling import build_attempts_summary
+
+        result = build_attempts_summary([])
+        assert "No rejected trade attempts today." in result
+
+    def test_single_rejected_buy(self):
+        """Test attempts summary with a single rejected BUY."""
+        from analysis.market_feeling import build_attempts_summary
+
+        rejected = [{"ticker": "AAPL", "signal": "BUY", "status": "REJECTED_MARGIN"}]
+        result = build_attempts_summary(rejected)
+        assert "Rejected buys: 1" in result
+        assert "AAPL" in result
+
+    def test_mixed_buys_and_sells(self):
+        """Test attempts summary with mixed rejected BUY and SELL."""
+        from analysis.market_feeling import build_attempts_summary
+
+        rejected = [
+            {"ticker": "AAPL", "signal": "BUY", "status": "REJECTED_MARGIN"},
+            {"ticker": "GOOGL", "signal": "BUY", "status": "REJECTED_HALLUCINATION"},
+            {"ticker": "TSLA", "signal": "SELL", "status": "REJECTED_LIQUIDITY"},
+        ]
+        result = build_attempts_summary(rejected)
+        assert "Rejected buys: 2" in result
+        assert "Rejected sells: 1" in result
+        assert "AAPL" in result
+        assert "TSLA" in result
+
+    def test_shows_rejection_reasons(self):
+        """Test that rejection reasons are included in summary."""
+        from analysis.market_feeling import build_attempts_summary
+
+        rejected = [
+            {"ticker": "AAPL", "signal": "BUY", "status": "REJECTED_MARGIN"},
+            {"ticker": "GOOGL", "signal": "BUY", "status": "REJECTED_MARGIN"},
+            {"ticker": "TSLA", "signal": "BUY", "status": "REJECTED_HALLUCINATION"},
+        ]
+        result = build_attempts_summary(rejected)
+        assert "MARGIN=2" in result
+        assert "HALLUCINATION=1" in result
+
+    def test_truncates_tickers_at_three(self):
+        """Test that ticker list is truncated at 3."""
+        from analysis.market_feeling import build_attempts_summary
+
+        rejected = [
+            {"ticker": f"STOCK{i}", "signal": "BUY", "status": "REJECTED_MARGIN"}
+            for i in range(5)
+        ]
+        result = build_attempts_summary(rejected)
+        assert "..." in result
+
+    def test_weekend_mode(self):
+        """Test that weekend mode uses correct date label."""
+        from analysis.market_feeling import build_attempts_summary
+
+        result = build_attempts_summary([], weekend_mode=True)
+        assert "this week" in result
+
+
 class TestBuildLessonsSummary:
     """Tests for build_lessons_summary function."""
 
@@ -166,6 +232,7 @@ class TestBuildPrompt:
 
         data = {
             "trades": [{"ticker": "AAPL", "signal": "BUY", "quantity": 10, "total_cost": 1500.00}],
+            "rejected_attempts": [{"ticker": "NVDA", "signal": "BUY", "status": "REJECTED_MARGIN"}],
             "lessons": [{"content": "Test lesson"}],
             "events": [{"content": "Test event"}],
             "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}]
@@ -174,9 +241,11 @@ class TestBuildPrompt:
         prompt = build_prompt(data)
 
         assert "AAPL" in prompt
+        assert "NVDA" in prompt
         assert "Test lesson" in prompt
         assert "Test event" in prompt
         assert "Test reasoning" in prompt
+        assert "Rejected buys: 1" in prompt
 
     def test_prompt_has_structure(self):
         """Test that prompt contains expected sections."""
@@ -184,6 +253,7 @@ class TestBuildPrompt:
 
         data = {
             "trades": [],
+            "rejected_attempts": [],
             "lessons": [],
             "events": [],
             "decisions": []
@@ -199,6 +269,7 @@ class TestBuildPrompt:
         assert "why_explanation" in prompt
         assert "market_direction" in prompt
         assert "primary_concern" in prompt
+        assert "agent conviction" in prompt
 
     def test_weekend_prompt_has_weekend_recap_label(self):
         """Test that weekend prompt uses 'Weekend Recap' label."""
@@ -206,6 +277,7 @@ class TestBuildPrompt:
 
         data = {
             "trades": [{"ticker": "AAPL", "signal": "BUY", "quantity": 10, "total_cost": 1500.00}],
+            "rejected_attempts": [],
             "lessons": [{"content": "Test lesson"}],
             "events": [{"content": "Test event"}],
             "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}]
@@ -222,6 +294,7 @@ class TestBuildPrompt:
 
         data = {
             "trades": [],
+            "rejected_attempts": [],
             "lessons": [],
             "events": [],
             "decisions": []

@@ -51,6 +51,12 @@ export const queries = {
         queryFn: opts.fetchFn,
         staleTime: 1000 * 60 * 5, // 5 minutes
       }),
+    comparison: <T,>(opts?: { benchmark?: string; fetchFn?: () => Promise<T> }) =>
+      queryOptions({
+        queryKey: queryKeys.portfolios.comparison(opts?.benchmark || 'SPY'),
+        queryFn: opts?.fetchFn,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      }),
   },
 
   // --------------------------------------------------------------------------

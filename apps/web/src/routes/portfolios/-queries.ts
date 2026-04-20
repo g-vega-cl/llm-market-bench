@@ -149,6 +149,118 @@ export interface BenchmarkDataPoint {
   price: number
 }
 
+export interface PortfolioPerformanceItem {
+  portfolioId: string
+  ownerId: string
+  performance: { date: string; value: number; totalEquity: number }[]
+}
+
+export async function fetchAllActivePortfolioPerformance(
+  maxDays: number = 90
+): Promise<{
+  portfolios: PortfolioPerformanceItem[]
+  startDate: string
+  endDate: string
+}> {
+  const supabase = getSupabaseServerClient()
+
+  const { data: portfolios, error: portfoliosError } = await supabase
+    .from('portfolios')
+    .select('*')
+    .order('total_equity', { ascending: false })
+
+  if (portfoliosError) throw portfoliosError
+
+  const activeIds = new Set(getActiveOwnerIds())
+  const activePortfolios = portfolios.filter(
+    p => activeIds.has(normalizeOwnerId(p.owner_id))
+  )
+
+  if (activePortfolios.length === 0) {
+    return { portfolios: [], startDate: '', endDate: '' }
+  }
+
+  const portfolioIds = activePortfolios.map(p => p.id)
+
+  const { data: allPerformance, error: perfError } = await supabase
+    .from('portfolio_performance')
+    .select('*')
+    .in('portfolio_id', portfolioIds)
+    .order('date', { ascending: true })
+
+  if (perfError) throw perfError
+
+  const portfolioPerformanceMap = new Map<string, { date: string; totalEquity: number }[]>()
+  for (const p of activePortfolios) {
+    portfolioPerformanceMap.set(p.id, [])
+  }
+
+  for (const row of allPerformance || []) {
+    const arr = portfolioPerformanceMap.get(row.portfolio_id)
+    if (arr) {
+      arr.push({ date: row.date, totalEquity: Number(row.total_equity) })
+    }
+  }
+
+  const now = new Date()
+  const ninetyDaysAgo = new Date(now.getTime() - maxDays * 24 * 60 * 60 * 1000)
+
+  let mostRecentStartDate = new Date(0)
+
+  for (const [, perf] of portfolioPerformanceMap) {
+    if (perf.length > 0) {
+      const firstDate = new Date(perf[0].date)
+      if (firstDate > mostRecentStartDate) {
+        mostRecentStartDate = firstDate
+      }
+    }
+  }
+
+  const effectiveStartDate = mostRecentStartDate > ninetyDaysAgo ? mostRecentStartDate : ninetyDaysAgo
+
+  const filteredPortfolios: PortfolioPerformanceItem[] = []
+
+  for (const portfolio of activePortfolios) {
+    const perf = portfolioPerformanceMap.get(portfolio.id) || []
+    const filtered = perf.filter(p => {
+      const d = new Date(p.date)
+      return d >= effectiveStartDate
+    })
+
+    if (filtered.length === 0) continue
+
+    const firstEquity = filtered[0].totalEquity
+
+    const normalized = filtered.map(p => ({
+      date: p.date,
+      value: firstEquity > 0 ? ((p.totalEquity - firstEquity) / firstEquity) * 100 : 0,
+      totalEquity: p.totalEquity
+    }))
+
+    filteredPortfolios.push({
+      portfolioId: portfolio.id,
+      ownerId: portfolio.owner_id,
+      performance: normalized
+    })
+  }
+
+  const sortedByDate = filteredPortfolios
+    .map(p => ({
+      ...p,
+      performance: [...p.performance].sort((a, b) => a.date.localeCompare(b.date))
+    }))
+
+  const endDate = sortedByDate.length > 0
+    ? sortedByDate[0].performance[sortedByDate[0].performance.length - 1].date
+    : ''
+
+  return {
+    portfolios: sortedByDate,
+    startDate: effectiveStartDate.toISOString().split('T')[0],
+    endDate
+  }
+}
+
 export async function fetchBenchmarkHistory(
   tickers: string[],
   startDate: string,

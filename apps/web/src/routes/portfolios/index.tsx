@@ -1,12 +1,23 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
-import { fetchPortfolios } from './-queries'
+import { fetchPortfolios, fetchAllActivePortfolioPerformance, fetchBenchmarkHistory } from './-queries'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { queries } from '~/lib/queries'
+import * as React from 'react'
+import { PortfolioComparisonChart } from './components/-PortfolioComparisonChart'
+import { BenchmarkSelector } from './components/-BenchmarkSelector'
 
 const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
   return fetchPortfolios()
 })
+
+const getComparisonData = createServerFn({ method: 'GET' })
+  .inputValidator((d: { benchmark: string; maxDays: number }) => d)
+  .handler(async ({ data }: { data: { benchmark: string; maxDays: number } }) => {
+    const { portfolios, startDate, endDate } = await fetchAllActivePortfolioPerformance(data.maxDays)
+    const benchmarkData = await fetchBenchmarkHistory([data.benchmark], startDate, endDate)
+    return { portfolios, startDate, endDate, benchmarkData }
+  })
 
 export const Route = createFileRoute('/portfolios/')({
   loader: async () => await getPortfolios(),
@@ -96,14 +107,39 @@ function PortfolioCard({ portfolio, deprecated = false }: { portfolio: Portfolio
 function PortfoliosPage() {
   const initialData = Route.useLoaderData()
   const getPortfoliosFn = useServerFn(getPortfolios)
+  const getComparisonDataFn = useServerFn(getComparisonData)
 
   const { data } = useSuspenseQuery({
     ...queries.portfolios.list({ fetchFn: () => getPortfoliosFn() }),
     initialData,
   })
 
+  const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY')
+  const [comparisonInitialData, setComparisonInitialData] = React.useState<{
+    portfolios: any[]
+    startDate: string
+    endDate: string
+    benchmarkData: Record<string, any>
+  } | undefined>(undefined)
+
+  React.useEffect(() => {
+    getComparisonDataFn({ data: { benchmark: selectedBenchmark, maxDays: 90 } })
+      .then(setComparisonInitialData)
+      .catch(console.error)
+  }, [selectedBenchmark])
+
+  const { data: comparisonData } = useSuspenseQuery({
+    ...queries.portfolios.comparison({
+      benchmark: selectedBenchmark,
+      fetchFn: () => getComparisonDataFn({ data: { benchmark: selectedBenchmark, maxDays: 90 } }),
+    }),
+    initialData: comparisonInitialData,
+  })
+
   const active = data?.filter((p) => p.is_active !== false) ?? []
   const deprecated = data?.filter((p) => p.is_active === false) ?? []
+
+  const hasComparison = comparisonData?.portfolios && comparisonData.portfolios.length > 0
 
   return (
     <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
@@ -125,6 +161,30 @@ function PortfoliosPage() {
             ))}
           </div>
         </section>
+
+        {/* Performance Comparison Chart */}
+        {hasComparison && (
+          <section className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-900 mb-1">Performance Comparison</h2>
+                <p className="text-sm text-zinc-500">
+                  Normalized percentage returns over the last 90 days
+                </p>
+              </div>
+              <BenchmarkSelector
+                selected={selectedBenchmark}
+                onChange={setSelectedBenchmark}
+              />
+            </div>
+            <PortfolioComparisonChart
+              key={selectedBenchmark}
+              data={comparisonData?.portfolios || []}
+              benchmarkData={comparisonData?.benchmarkData}
+              selectedBenchmark={selectedBenchmark}
+            />
+          </section>
+        )}
 
         {/* Deprecated / retired agents */}
         {deprecated.length > 0 && (

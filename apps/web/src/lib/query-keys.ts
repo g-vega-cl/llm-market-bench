@@ -48,6 +48,7 @@ export const queryKeys = {
       ['benchify', 'portfolios', 'detail', portfolioId, 'trades'] as const,
     performance: (portfolioId: string) =>
       ['benchify', 'portfolios', 'detail', portfolioId, 'performance'] as const,
+    comparison: (benchmark: string) => ['benchify', 'portfolios', 'comparison', benchmark] as const,
   },
 
   // Benchmarks

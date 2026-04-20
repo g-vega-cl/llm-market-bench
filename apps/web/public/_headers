@@ -1,0 +1,11 @@
+/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *
+
+https://us-assets.i.posthog.com/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *
+
+https://us.i.posthog.com/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *

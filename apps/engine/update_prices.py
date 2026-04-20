@@ -8,6 +8,10 @@ from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
 
 
+BENCHMARK_TICKERS = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH']
+BENCHMARK_HISTORY_DAYS = 90
+
+
 async def initialize_with_retry(owner: str) -> Portfolio:
     """Initialize a portfolio with retry logic for transient Supabase errors."""
     p = Portfolio(owner_id=owner)
@@ -125,6 +129,29 @@ async def update_prices():
             logger.error(f"Error updating portfolio {p.owner_id}: {e}")
 
     logger.info(f"Price update complete. Updated {updated_count} portfolios.")
+
+    # 5. Fetch and store benchmark ticker history
+    await fetch_benchmark_history(mdm)
+
+
+async def fetch_benchmark_history(mdm: MarketDataManager):
+    """Fetch 90-day history for benchmark tickers and store in price_history table."""
+    logger.info(f"Fetching {BENCHMARK_HISTORY_DAYS}-day history for {len(BENCHMARK_TICKERS)} benchmark tickers...")
+
+    success_count = 0
+    for ticker in BENCHMARK_TICKERS:
+        try:
+            history = await mdm.get_history(ticker, days=BENCHMARK_HISTORY_DAYS)
+            if history and len(history) >= 30:
+                logger.info(f"Stored {len(history)} price points for benchmark {ticker}")
+                success_count += 1
+            else:
+                logger.warning(f"Insufficient data for benchmark {ticker}: {len(history) if history else 0} points")
+        except Exception as e:
+            logger.error(f"Failed to fetch benchmark {ticker}: {e}")
+
+    logger.info(f"Benchmark history update complete. Updated {success_count}/{len(BENCHMARK_TICKERS)} tickers.")
+
 
 if __name__ == "__main__":
     asyncio.run(update_prices())

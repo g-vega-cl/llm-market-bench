@@ -198,7 +198,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
-- [x] **Run memories during the weekend.** (Automated via weekend-ingest workflow, Sat/Sun 18:00 ET)
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 

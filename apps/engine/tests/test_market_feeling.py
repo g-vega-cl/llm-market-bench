@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import sys
 import os
 
@@ -333,9 +333,7 @@ class TestIsMarketFeelingStale:
         """Test that old feeling (5 hours old) is stale."""
         from analysis.market_feeling import is_market_feeling_stale
 
-        old_time = datetime.now(timezone.utc).replace(
-            hour=(datetime.now(timezone.utc).hour - 5) % 24
-        )
+        old_time = datetime.now(timezone.utc) - timedelta(hours=5)
         old = {"created_at": old_time.isoformat()}
 
         assert is_market_feeling_stale(old, stale_threshold_hours=4) is True

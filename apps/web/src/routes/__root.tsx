@@ -53,28 +53,7 @@ export const Route = createRootRoute({
         description: `Benchify is a LLM Market Benchmarking platform`,
       }),
     ],
-    links: [
-      { rel: 'stylesheet', href: appCss },
-      {
-        rel: 'apple-touch-icon',
-        sizes: '180x180',
-        href: '/apple-touch-icon.png',
-      },
-      {
-        rel: 'icon',
-        type: 'image/png',
-        sizes: '32x32',
-        href: '/favicon-32x32.png',
-      },
-      {
-        rel: 'icon',
-        type: 'image/png',
-        sizes: '16x16',
-        href: '/favicon-16x16.png',
-      },
-      { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
-      { rel: 'icon', href: '/favicon.ico' },
-    ],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   errorComponent: (props) => {
     return (
@@ -109,7 +88,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <PostHogProvider
           apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
           options={{
-            api_host: '/ingest',
+            api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
             ui_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
             defaults: '2025-05-24',
             capture_exceptions: true,

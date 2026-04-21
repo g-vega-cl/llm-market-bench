@@ -219,7 +219,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Add design system code vertical.**
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
 - [ ] **Add past market events and their resolution? Like the resolution of the market events you showed before**
-
+- [ ] **Set up a 'global' agent hook/env for my projects?**
 ### 🔄 Under Consideration
 
 - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)

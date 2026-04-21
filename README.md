@@ -238,6 +238,7 @@ A living document of features and improvements in progress or planned for the pl
 *   [Trade Settlement Walkthrough](./docs/engine/trade-settlement-walkthrough.md)
 *   [Portfolio Management Walkthrough](./docs/engine/portfolio-management-walkthrough.md)
 *   [Tool Enforcement System](./docs/engine/TOOL_ENFORCEMENT.md)
+*   [Lessons Learned](./docs/lessons-learned.md)
 
 ### Web Documentation
 *   [Web Application Architecture](./docs/web/README.md)

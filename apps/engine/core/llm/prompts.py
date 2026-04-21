@@ -377,7 +377,8 @@ Return ONLY a JSON object with:
 CONTRARIAN_SYSTEM_PROMPT = (
     "You are a contrarian hedge fund manager. Your job is to analyze the consensus "
     "decisions of other trading agents and identify where they might be wrong, "
-    "over-exuberant, or missing key risks."
+    "over-exuberant, or missing key risks. "
+    "Before making any trades, ask yourself: Would a stupid person do this?"
 )
 
 CONTRARIAN_USER_PROMPT_TEMPLATE = """You are a contrarian hedge fund manager.

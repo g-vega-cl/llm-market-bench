@@ -179,7 +179,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
     - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
-- [ ] **Posthog** - Make sure it's working - I might need to add a reverse proxy.
+- [ ] **Posthog** - Make sure it's working - I need to add a reverse proxy.
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
 - [ ] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
 - [ ] **More context on what lead to certain memory**
@@ -194,6 +194,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it’s closed:** -goes along with papers
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
+    - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [ ] **I don't see percentages in scenarios anymore**
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
@@ -206,7 +207,18 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Also check alternative plays function**
 - [ ] **Vertical vs horizontal codebase for LLMs**?
 - [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
-- [ ] **Compare the performance of the different LLMs in a single chart.**
+- [ ] **Add Charlie Munger "would a stupid person do this"**
+- [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
+- [ ] **Kaparthy method would improve my rag?**
+- [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
+- [ ] **Make sure we save the historical correlation/returns table/matrix**
+- [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
+- [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
+- [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.
+- [ ] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there** 
+- [ ] **Add design system code vertical.**
+- [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
+- [ ] **Add past market events and their resolution? Like the resolution of the market events you showed before**
 
 ### 🔄 Under Consideration
 

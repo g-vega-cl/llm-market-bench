@@ -119,6 +119,77 @@ export type Database = {
         }
         Relationships: []
       }
+      correlation_data: {
+        Row: {
+          data_points: number | null
+          id: string
+          pearson_corr: number | null
+          returns_a_90d: number | null
+          returns_b_90d: number | null
+          run_id: string
+          spearman_corr: number | null
+          ticker_a: string
+          ticker_b: string
+        }
+        Insert: {
+          data_points?: number | null
+          id?: string
+          pearson_corr?: number | null
+          returns_a_90d?: number | null
+          returns_b_90d?: number | null
+          run_id: string
+          spearman_corr?: number | null
+          ticker_a: string
+          ticker_b: string
+        }
+        Update: {
+          data_points?: number | null
+          id?: string
+          pearson_corr?: number | null
+          returns_a_90d?: number | null
+          returns_b_90d?: number | null
+          run_id?: string
+          spearman_corr?: number | null
+          ticker_a?: string
+          ticker_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "correlation_data_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "correlation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      correlation_runs: {
+        Row: {
+          created_at: string | null
+          id: string
+          num_assets: number
+          run_date: string
+          tickers: Json
+          window_days: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          num_assets: number
+          run_date: string
+          tickers: Json
+          window_days?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          num_assets?: number
+          run_date?: string
+          tickers?: Json
+          window_days?: number
+        }
+        Relationships: []
+      }
       decisions: {
         Row: {
           confidence: number
@@ -259,6 +330,66 @@ export type Database = {
           market_cap?: number
           price?: number
           ticker?: string
+        }
+        Relationships: []
+      }
+      market_feeling: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          input_tokens: number | null
+          lessons_incorporated: number | null
+          market_direction: string | null
+          memories_incorporated: number | null
+          model_used: string | null
+          output_tokens: number | null
+          primary_concern: string | null
+          processing_time_ms: number | null
+          secondary_concern: string | null
+          sentiment_emoji: string | null
+          sentiment_label: string
+          trades_summary: Json | null
+          updated_at: string | null
+          why_explanation: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          input_tokens?: number | null
+          lessons_incorporated?: number | null
+          market_direction?: string | null
+          memories_incorporated?: number | null
+          model_used?: string | null
+          output_tokens?: number | null
+          primary_concern?: string | null
+          processing_time_ms?: number | null
+          secondary_concern?: string | null
+          sentiment_emoji?: string | null
+          sentiment_label: string
+          trades_summary?: Json | null
+          updated_at?: string | null
+          why_explanation?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          input_tokens?: number | null
+          lessons_incorporated?: number | null
+          market_direction?: string | null
+          memories_incorporated?: number | null
+          model_used?: string | null
+          output_tokens?: number | null
+          primary_concern?: string | null
+          processing_time_ms?: number | null
+          secondary_concern?: string | null
+          sentiment_emoji?: string | null
+          sentiment_label?: string
+          trades_summary?: Json | null
+          updated_at?: string | null
+          why_explanation?: string | null
         }
         Relationships: []
       }
@@ -558,6 +689,9 @@ export type Database = {
       }
       trades: {
         Row: {
+          alpaca_order_id: string | null
+          alpaca_status: string | null
+          alpaca_submitted_at: string | null
           decision_id: string | null
           executed_at: string | null
           id: string
@@ -566,11 +700,15 @@ export type Database = {
           quantity: number
           realized_pnl: number | null
           realized_pnl_pct: number | null
+          reasoning: string | null
           signal: string
           ticker: string
           total_cost: number
         }
         Insert: {
+          alpaca_order_id?: string | null
+          alpaca_status?: string | null
+          alpaca_submitted_at?: string | null
           decision_id?: string | null
           executed_at?: string | null
           id?: string
@@ -579,11 +717,15 @@ export type Database = {
           quantity: number
           realized_pnl?: number | null
           realized_pnl_pct?: number | null
+          reasoning?: string | null
           signal: string
           ticker: string
           total_cost: number
         }
         Update: {
+          alpaca_order_id?: string | null
+          alpaca_status?: string | null
+          alpaca_submitted_at?: string | null
           decision_id?: string | null
           executed_at?: string | null
           id?: string
@@ -592,6 +734,7 @@ export type Database = {
           quantity?: number
           realized_pnl?: number | null
           realized_pnl_pct?: number | null
+          reasoning?: string | null
           signal?: string
           ticker?: string
           total_cost?: number
@@ -633,6 +776,8 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_old_correlation_runs: { Args: never; Returns: undefined }
+      cleanup_old_market_feelings: { Args: never; Returns: undefined }
       exec_sql: {
         Args: { query: string }
         Returns: {

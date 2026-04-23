@@ -229,7 +229,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Add past market events and their resolution? Like the resolution of the market events you showed before**
 - [ ] **Set up a 'global' agent hook/env for my projects?**
 - [ ] **Frontend Alpaca Status Badge**: Display Alpaca paper-trading order status (PENDING / FILLED / ERROR) on each trade row in the dashboard `TradesTable` component. This makes the third-party audit trail visible to users.
-- [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too.
+- [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too. - Maybe add a button that adds suggestion.
 - [ ] **Add SMH to ETF list in benchify?**
 - [ ] **filter today feed, by rejected. Non rejected, lesson, memory, etc**
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...

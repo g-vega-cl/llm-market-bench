@@ -50,6 +50,10 @@ jobs:
           IBKR_PROXY_URL: ${{ secrets.IBKR_PROXY_URL }}
           IBKR_PROXY_TOKEN: ${{ secrets.IBKR_PROXY_TOKEN }}
 
+          # Alpaca Paper Trading (Third-Party Audit Mirror)
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+
           # Optional Configuration
           FINANCIAL_PROVIDER: ${{ vars.FINANCIAL_PROVIDER || secrets.FINANCIAL_PROVIDER }}
           FALLBACK_FINANCIAL_PROVIDER: ${{ vars.FALLBACK_FINANCIAL_PROVIDER || secrets.FALLBACK_FINANCIAL_PROVIDER }}

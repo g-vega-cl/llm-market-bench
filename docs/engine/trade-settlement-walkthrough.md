@@ -69,3 +69,31 @@ Before trade execution, the engine saves the decision with `status="VALIDATED"` 
 *   **Initial:** Cash $8,500. Positions: { AAPL: 10 }.
 *   **Execution:** Proceeds $1,000.
 *   **Final:** Cash $9,500. Positions: { AAPL: 5 shares }.
+
+---
+
+## 6. Third-Party Audit: Alpaca Paper Trading
+
+Every trade that survives the settlement sequence is **fire-and-forget mirrored** to Alpaca's paper trading API. This provides an external, immutable audit trail for public verification.
+
+### Design Principles
+- **Supabase remains the source of truth.** Alpaca is an audit mirror, not the ledger.
+- **Fire-and-forget.** The Alpaca submission is wrapped in `asyncio.create_task()` and does not block the main execution flow.
+- **Failure isolation.** If Alpaca is down, rejects the order, or throws an exception, the internal trade still succeeds. Only the `alpaca_status` column is updated to `ERROR`.
+- **Agent tagging.** Each order uses a `client_order_id` formatted as `{agent_id}__{ticker}__{signal}__{trade_id}`, allowing the Alpaca dashboard to be filtered by individual AI agents.
+
+### Order Parameters
+- **Type:** `DAY` limit order at the same price the engine used for settlement.
+- **Side:** `BUY` or `SELL` matching the engine signal.
+- **Quantity:** Same share count as the internal ledger entry.
+- **Time in Force:** `DAY` (expires at market close if unfilled).
+
+### Implementation
+- **File:** `apps/engine/execution/alpaca_broker.py`
+- **Hook:** `apps/engine/execution/portfolio.py` -> `execute_trade()` (Step 5, after metrics save)
+- **Toggle:** `ALPACA_ENABLED` is a hardcoded constant in `core/config.py` (`True` by default). Set to `False` to disable mirroring without code changes.
+
+### Verification
+After a trade executes, check:
+1. **Supabase** `trades` row: `alpaca_order_id`, `alpaca_status`, `alpaca_submitted_at` populated.
+2. **Alpaca Paper Dashboard:** [paper.alpaca.markets/orders](https://paper.alpaca.markets/orders) — filter by `client_order_id` containing the agent name.

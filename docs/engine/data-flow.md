@@ -959,6 +959,7 @@ If validation passes, the trade is settled into the `portfolios` table.
 2. **Ledger Update**: `INSERT` into `trades` table to record the execution.
 3. **Commit Portfolio**: **Only after steps 1 & 2 succeed**, update `cash_balance` and `sma` in the `portfolios` table.
 4. **Immediate Consistency**: Recalculate and persist complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table to ensure real-time dashboard accuracy.
+5. **Alpaca Paper Trading Mirror** (fire-and-forget): Spawns `AlpacaBroker.submit_limit_order()` as an async background task. Submits a `DAY` limit order to Alpaca's paper API with agent-tagged `client_order_id`. Supabase remains the source of truth; Alpaca provides a third-party audit layer. Failures are isolated — the internal trade succeeds regardless.
 
 ```sql
 UPDATE portfolios 
@@ -1210,6 +1211,7 @@ Time 7.5s:    Event Consensus & Momentum Analysis complete
 Time 8.0s:    Pre-Market Validation (Guardrails) complete
 Time 8.2s:    Reg T Margin Check complete
 Time 8.5s:    Trade Settlement (DB Writes) complete
+Time 8.6s:    Alpaca Paper Mirror (fire-and-forget) spawned
 Time 8.7s:    Attribution Locking & Memory Embedding complete
 Time 9.0s:    Daily Performance Snapshot & Portfolio Refresh complete
 Time 9.5s:    Market Feeling Analysis (MiniMax) complete
@@ -1225,6 +1227,7 @@ Total Pipeline Time: ~11-13 seconds
 3. **Cache-First Market Data**: Reduces financial API calls by >90%
 4. **Vector Indexing**: HNSW index on pgvector for millisecond retrieval
 5. **Attribution Traceability**: `source_id` links every dollar traded back to a specific sentence in a newsletter
+6. **Third-Party Audit**: Alpaca paper trading mirrors provide an external, immutable record of every executed trade
 
 ## Phase 9: Cause & Effect Analysis (Historical Audit)
 

@@ -136,6 +136,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Immediate Consistency:** *Recalculates and persists final Reg T metrics to the `portfolios` table immediately after every trade to ensure the dashboard remains accurate between scheduled snapshots.*
 *   **Rejection Logic**: Decisions that fail Validation, Reg T, **Ownership**, **Semantic Redundancy** (overtrading prevention), or **Hard Tool Enforcement** (e.g., selling without actually calling a calculation tool in the history) are NOT discarded. They are saved to `decisions` with a status (e.g., `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_PRICE_DEVIATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`, `ERROR_PROVIDER`) to preserve the full "Audit Trail" of AI intent.
     - **Agent-Specific Redundancy**: The semantic redundancy check is **agent-specific**. For example, if CLAUDE recently traded NKE on earnings news, only CLAUDE will be blocked from making a similar NKE trade. Other agents (HAIKU, OpenAI, Gemini, etc.) can still trade NKE independently, as they maintain separate portfolios and decision contexts.
+*   **Alpaca Paper Trading Mirror**: Every settled trade is fire-and-forget mirrored to Alpaca's paper API as a `DAY` limit order, tagged with agent metadata via `client_order_id`. Supabase remains the source of truth; Alpaca provides a third-party audit layer. See `docs/engine/trade-settlement-walkthrough.md` for details.
 *
 *   documentation: ./engine/trade-settlement-walkthrough.md
 
@@ -532,6 +533,10 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `IBKR_CLIENT_ID` | Client ID for IBKR connection (Default: `1`) | [LEGACY — not in active use] |
 |  | `IBKR_PROXY_URL` | URL of the IBKR Proxy server | [LEGACY — not in active use] |
 |  | `IBKR_PROXY_TOKEN` | Auth token for the IBKR Proxy | [LEGACY — not in active use] |
+|  | `ALPACA_API_KEY` | Alpaca Paper Trading API Key | Third-party trade audit mirror |
+|  | `ALPACA_SECRET_KEY` | Alpaca Paper Trading Secret Key | Third-party trade audit mirror |
+
+> **Note:** `ALPACA_ENABLED` and `ALPACA_PAPER_ENDPOINT` are hardcoded constants in `core/config.py`. They are NOT environment variables.
 
 For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 |  | `FINANCIAL_API_THROTTLE_SECONDS` | **INTERNAL CONSTANT** (0.2s). Formerly an environment variable, now hardcoded for high-performance parallel fetching. | Rate Limit Prevention |

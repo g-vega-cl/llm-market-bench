@@ -289,6 +289,10 @@ Visit [benchify.netlify.app](https://benchify.netlify.app) to explore:
 *   Concept Cluster Map: semantic relationships between market themes
 *   Historical memories and cause & effect analysis
 
+## 📝 TODO
+
+- [ ] **Frontend Alpaca Status Badge**: Display Alpaca paper-trading order status (PENDING / FILLED / ERROR) on each trade row in the dashboard `TradesTable` component. This makes the third-party audit trail visible to users.
+
 ## 🤝 Contributing
 
 This is a research and benchmarking platform. Key areas for contribution:

@@ -134,3 +134,10 @@ ANTHROPIC_WEB_SEARCH_VERSION = os.getenv("ANTHROPIC_WEB_SEARCH_VERSION", "web_se
 
 # Maximum web searches per request
 ANTHROPIC_MAX_WEB_SEARCHES = int(os.getenv("ANTHROPIC_MAX_WEB_SEARCHES", "3"))
+
+# --- Alpaca Paper Trading Configuration ---
+# Hardcoded constant — single source of truth for the audit layer.
+ALPACA_ENABLED = True
+ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
+ALPACA_PAPER_ENDPOINT = "https://paper-api.alpaca.markets"  # Hardcoded — not configurable

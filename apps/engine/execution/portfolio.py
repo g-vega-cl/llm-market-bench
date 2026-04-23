@@ -422,6 +422,20 @@ class Portfolio:
             self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 
+            # 5. Mirror to Alpaca for third-party audit (fire-and-forget)
+            from execution.alpaca_broker import AlpacaBroker
+            broker = AlpacaBroker()
+            asyncio.create_task(
+                broker.submit_limit_order(
+                    trade_id=trade_id,
+                    ticker=ticker,
+                    quantity=quantity,
+                    signal=signal,
+                    limit_price=price,
+                    agent_id=self.owner_id,
+                )
+            )
+
             return trade_id
 
         except Exception as e:

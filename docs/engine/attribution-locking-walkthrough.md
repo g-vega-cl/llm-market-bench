@@ -1,7 +1,7 @@
 # Step 13: Attribution Locking
 
 ## Goal
-To establish a verifiable, immutable link between an executed `Trade` and the AI `Decision` that caused it. This creates a machine-auditable "Audit Trail" from raw newsletter text -> reasoning -> decision -> execution.
+To establish a verifiable, immutable link between an executed `Trade` and the AI `Decision` that caused it. This creates a machine-auditable "Audit Trail" from raw newsletter text -> reasoning -> decision -> execution. Additionally, every executed trade is mirrored to **Alpaca Paper Trading** for third-party public auditability.
 
 ## The Problem
 In Step 12, we execute trades and generate a `TradeID`. However, the original `Decision` record (created in Step 7) is initially "floating" without knowledge of the trade outcome. Without linking them, we cannot confirm later why a specific trade happened.

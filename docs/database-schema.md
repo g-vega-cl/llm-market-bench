@@ -37,7 +37,7 @@ Tracks active holdings for each portfolio.
 - `last_updated_at` (TIMESTAMPTZ): Last position update.
 
 ### `trades`
-An immutable ledger of all executed trades.
+An immutable ledger of all executed trades. **Supabase is the source of truth.**
 - `id` (UUID): Primary key.
 - `portfolio_id` (UUID): FK to `portfolios`.
 - `ticker` (TEXT): Stock symbol.
@@ -49,6 +49,9 @@ An immutable ledger of all executed trades.
 - `decision_id` (UUID): Link to the triggering decision.
 - `realized_pnl` (NUMERIC): The profit or loss realized by this trade (for SELL signals).
 - `realized_pnl_pct` (NUMERIC): The profit or loss percentage realized by this trade.
+- `alpaca_order_id` (TEXT): Alpaca paper-trading order UUID for third-party audit.
+- `alpaca_status` (TEXT): Alpaca order status (`PENDING`, `FILLED`, `REJECTED`, `ERROR`).
+- `alpaca_submitted_at` (TIMESTAMPTZ): When the order was submitted to Alpaca.
 
 ### `portfolio_performance`
 Daily snapshots of portfolio metrics for equity curve visualization.

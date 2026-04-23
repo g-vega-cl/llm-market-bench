@@ -12,11 +12,11 @@ This project benchmarks the reasoning capabilities of leading LLMs against the r
 
 ### Why It Matters
 
-* **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
-* **The "Consensus" Effect:** Identifies where AI models agree or diverge on global risks.
-* **Research Audit Trail:** Provides a full "Thinking Process" trace for every LLM call, including intermediate tool steps, for behavioral research.
-* **Decision Attribution:** Provides a machine-auditable trail from raw news chunk to final trade execution.
-* **Memory Integrity:** Tests if LLMs can maintain a consistent world view using Vector RAG (Retrieval-Augmented Generation).
+- **Performance Benchmarking:** Real-world test of LLM reasoning vs. S&P 500.
+- **The "Consensus" Effect:** Identifies where AI models agree or diverge on global risks.
+- **Research Audit Trail:** Provides a full "Thinking Process" trace for every LLM call, including intermediate tool steps, for behavioral research.
+- **Decision Attribution:** Provides a machine-auditable trail from raw news chunk to final trade execution.
+- **Memory Integrity:** Tests if LLMs can maintain a consistent world view using Vector RAG (Retrieval-Augmented Generation).
 
 For a deep dive into the system design, see the **[Project Overview](./docs/Overview.md)** and the **[Database Schema](./docs/database-schema.md)**.
 
@@ -44,19 +44,21 @@ llm-market-bench/
 └── tests/                   # Engine & Web tests
 ```
 
-*   **`apps/engine`**: The Python pipeline (Ingestion, Analysis, Execution).
-*   **`apps/web`**: The TanStack Start dashboard (Frontend). [Read the Web Architecture Docs](./docs/web/README.md).
-*   **`supabase`**: SQL migrations and database configuration.
-*   **`docs`**: Technical documentation and walkthroughs.
+- **`apps/engine`**: The Python pipeline (Ingestion, Analysis, Execution).
+- **`apps/web`**: The TanStack Start dashboard (Frontend). [Read the Web Architecture Docs](./docs/web/README.md).
+- **`supabase`**: SQL migrations and database configuration.
+- **`docs`**: Technical documentation and walkthroughs.
 
 ## 🛠️ Getting Started
 
 ### Prerequisites
-*   Python 3.10+
-*   Node.js 20+ & `pnpm`
-*   Supabase Account
+
+- Python 3.10+
+- Node.js 20+ & `pnpm`
+- Supabase Account
 
 ### Workspace Setup
+
 ```bash
 pnpm install
 ```
@@ -66,6 +68,7 @@ pnpm install
 The project uses a scoped `.env` approach. Each service only has access to the variables it needs.
 
 **Engine (`apps/engine/.env`):**
+
 ```bash
 # Database
 DATABASE_URL=your_supabase_connection_string
@@ -89,6 +92,7 @@ ENABLE_GEMINI_WEB_SEARCH=true
 ```
 
 **Web (`apps/web/.env`):**
+
 ```bash
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -98,7 +102,9 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 > Model names are defined in `packages/config/models.json` — not environment variables.
 
 ### Engine Execution
+
 The engine handles the daily pipeline:
+
 ```bash
 cd apps/engine
 python -m venv .venv
@@ -108,7 +114,9 @@ python3 main.py ingest
 ```
 
 ### Web Development
+
 To run the dashboard locally:
+
 ```bash
 pnpm --filter web dev
 ```
@@ -116,15 +124,16 @@ pnpm --filter web dev
 ## 🧪 Testing
 
 We maintain a high stability gate for the core engine:
+
 ```bash
 ./apps/engine/market/bin/python3 -m pytest
 ```
 
 ## ⚙️ Automation
 
-*   **CI Testing**: Automatically runs on every push to `main`.
-*   **Daily Pipeline**: Triggered via GitHub Actions at 09:35, 12:35, and 15:35 ET (holiday-aware market hours check).
-*   **Midday Update**: Price updates every 30 minutes during market hours (approx. 14:00 - 21:00 UTC).
+- **CI Testing**: Automatically runs on every push to `main`.
+- **Daily Pipeline**: Triggered via GitHub Actions at 09:35, 12:35, and 15:35 ET (holiday-aware market hours check).
+- **Midday Update**: Price updates every 30 minutes during market hours (approx. 14:00 - 21:00 UTC).
 
 ## 📊 Key Features
 
@@ -143,23 +152,23 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 
 **Live URL**: [benchify.netlify.app](https://benchify.netlify.app)
 
-*   **TODAY Dashboard**: High-level narrative of daily events, AI consensus, and trade executions
-*   **Horizon Watch**: Future catalysts with multi-outcome scenario analysis and trading plans
-*   **Agent Portfolios**: Performance tracking for active and retired agents
-*   **Audit Trail**: Full LLM reasoning and tool call traces for every decision
-*   **Memories**: Explore the AI's long-term market perspective with "How to Profit" insights
-*   **Concept Cluster Map**: D3.js visualization of semantic relationships between market concepts
-*   **Reasoning Logs**: Research-grade audit trail with tabbed UI for LLM interactions
+- **TODAY Dashboard**: High-level narrative of daily events, AI consensus, and trade executions
+- **Horizon Watch**: Future catalysts with multi-outcome scenario analysis and trading plans
+- **Agent Portfolios**: Performance tracking for active and retired agents
+- **Audit Trail**: Full LLM reasoning and tool call traces for every decision
+- **Memories**: Explore the AI's long-term market perspective with "How to Profit" insights
+- **Concept Cluster Map**: D3.js visualization of semantic relationships between market concepts
+- **Reasoning Logs**: Research-grade audit trail with tabbed UI for LLM interactions
 
 ### Guardrails & Validation
 
-*   **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`, `run_stock_screener`) were actually called
-*   **Reasoning Rigor (5 Whys)**: Forced recursive causal analysis across all reasoning agents (Manager, Cause & Effect, Analysis) to identify root drivers and profit mechanisms
-*   **Catalyst Logic Synchronization**: Strict filtering of vague "future catalysts" (no themes/broad years) to prevent Horizon Watch dashboard pollution
-*   **Pre-Market Validation**: FMP-verified market hours, symbol existence, 5.0% limit order price deviation check, liquidity checks
-*   **Reg T Margin Validation**: Buying power checks with 10% of Total Equity minimum (absolute floor of $1,000 for BUY orders)
-*   **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
-*   **Semantic Redundancy**: Overtrading prevention via pgvector deduplication
+- **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`, `run_stock_screener`) were actually called
+- **Reasoning Rigor (5 Whys)**: Forced recursive causal analysis across all reasoning agents (Manager, Cause & Effect, Analysis) to identify root drivers and profit mechanisms
+- **Catalyst Logic Synchronization**: Strict filtering of vague "future catalysts" (no themes/broad years) to prevent Horizon Watch dashboard pollution
+- **Pre-Market Validation**: FMP-verified market hours, symbol existence, 5.0% limit order price deviation check, liquidity checks
+- **Reg T Margin Validation**: Buying power checks with 10% of Total Equity minimum (absolute floor of $1,000 for BUY orders)
+- **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
+- **Semantic Redundancy**: Overtrading prevention via pgvector deduplication
 
 ## 🗺️ Roadmap
 
@@ -174,10 +183,10 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Finance Papers RAG** - Add academic finance papers to memory system using Retrieval-Augmented Generation
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
-- [ ] **Review lessons learned and the learning loop** - 
-- [ ] **Revisit the concepts map** - 
+- [ ] **Review lessons learned and the learning loop** -
+- [ ] **Revisit the concepts map** -
 - [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
-    - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
+  - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Posthog** - Make sure it's working - I need to add a reverse proxy.
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
@@ -185,7 +194,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **More context on what lead to certain memory**
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
-- [ ] **Set up Test driven development** - 
+- [ ] **Set up Test driven development** -
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 - [ ] **Make sure CI/CD tests behave same as local tests**
@@ -194,15 +203,15 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it’s closed:** -goes along with papers
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
-    - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
+  - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [ ] **I don't see percentages in scenarios anymore**
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
-- [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?** 
-- [ ] **Audit that alpaca is working as intended** 
+- [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
+- [ ] **Audit that alpaca is working as intended**
 - [ ] **Recheck calendar events**
 - [ ] **Also check alternative plays function**
 - [ ] **Vertical vs horizontal codebase for LLMs**?
@@ -214,7 +223,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.
-- [ ] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there** 
+- [ ] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there**
 - [ ] **Add design system code vertical.**
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
 - [ ] **Add past market events and their resolution? Like the resolution of the market events you showed before**
@@ -223,88 +232,94 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too.
 - [ ] **Add SMH to ETF list in benchify?**
 - [ ] **filter today feed, by rejected. Non rejected, lesson, memory, etc**
-- [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.**
+- [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
 - [ ] **Maybe use moving averages for 90 day ETF move? To avoid daily volatility influencing the starting/ending points?**
-
-Allow it to make database fetches/etc...
 
 ### 🔄 Under Consideration
 
 - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
-
 
 ---
 
 ## 📄 Documentation
 
 ### Core Documentation
-*   [System Overview](./docs/Overview.md)
-*   [Database Schema](./docs/database-schema.md)
-*   [Type Generation from Supabase](./supabase/TYPE_GENERATION.md)
-*   [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
-*   [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)
-*   [Trade Settlement Walkthrough](./docs/engine/trade-settlement-walkthrough.md)
-*   [Portfolio Management Walkthrough](./docs/engine/portfolio-management-walkthrough.md)
-*   [Tool Enforcement System](./docs/engine/TOOL_ENFORCEMENT.md)
-*   [Lessons Learned](./docs/lessons-learned.md)
+
+- [System Overview](./docs/Overview.md)
+- [Database Schema](./docs/database-schema.md)
+- [Type Generation from Supabase](./supabase/TYPE_GENERATION.md)
+- [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
+- [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)
+- [Trade Settlement Walkthrough](./docs/engine/trade-settlement-walkthrough.md)
+- [Portfolio Management Walkthrough](./docs/engine/portfolio-management-walkthrough.md)
+- [Tool Enforcement System](./docs/engine/TOOL_ENFORCEMENT.md)
+- [Lessons Learned](./docs/lessons-learned.md)
 
 ### Web Documentation
-*   [Web Application Architecture](./docs/web/README.md)
-*   [TanStack Best Practices Guide](./docs/web/TANSTACK_BEST_PRACTICES.md)
-*   [Portfolios UI](./docs/web/portfolios-ui.md)
-*   [Frontend Testing](./docs/web/testing.md)
-*   [Deployment Guide](./docs/web/tanstack-start-deploy-official.md)
+
+- [Web Application Architecture](./docs/web/README.md)
+- [TanStack Best Practices Guide](./docs/web/TANSTACK_BEST_PRACTICES.md)
+- [Portfolios UI](./docs/web/portfolios-ui.md)
+- [Frontend Testing](./docs/web/testing.md)
+- [Deployment Guide](./docs/web/tanstack-start-deploy-official.md)
 
 ### Integration Guides
-*   [IBKR Proxy & Integration Guide](./docs/IBKR-Integration.md)
-*   [FMP API Documentation](./docs/library-docs/FMP/FMP-API-Documentation.md)
-*   [Authentication Walkthrough](./docs/engine/auth-walkthrough.md)
+
+- [IBKR Proxy & Integration Guide](./docs/IBKR-Integration.md)
+- [FMP API Documentation](./docs/library-docs/FMP/FMP-API-Documentation.md)
+- [Authentication Walkthrough](./docs/engine/auth-walkthrough.md)
 
 ### Utilities & Maintenance
-*   **Reset State**: `python apps/engine/reset_state.py`
-*   **Clear Database**: `python apps/engine/clear_db.py`
-*   **Economic Calendar**: `python apps/engine/main.py calendar`
-*   **Schema Docs**: `python apps/engine/generate_schema_docs.py`
-*   **Cleanup Catalysts**: `python apps/engine/cleanup_catalysts.py`
+
+- **Reset State**: `python apps/engine/reset_state.py`
+- **Clear Database**: `python apps/engine/clear_db.py`
+- **Economic Calendar**: `python apps/engine/main.py calendar`
+- **Schema Docs**: `python apps/engine/generate_schema_docs.py`
+- **Cleanup Catalysts**: `python apps/engine/cleanup_catalysts.py`
 
 ## 🏛️ Technology Stack
 
 ### Backend (Engine)
-*   **Language**: Python 3.10+
-*   **LLM Providers**: OpenAI, Anthropic, Google Gemini, DeepSeek
-*   **Database**: Supabase Postgres with pgvector
-*   **Market Data**: IBKR Proxy, FMP, YFinance
-*   **Embeddings**: Google Gemini (gemini-embedding-001)
+
+- **Language**: Python 3.10+
+- **LLM Providers**: OpenAI, Anthropic, Google Gemini, DeepSeek
+- **Database**: Supabase Postgres with pgvector
+- **Market Data**: IBKR Proxy, FMP, YFinance
+- **Embeddings**: Google Gemini (gemini-embedding-001)
 
 ### Frontend (Web)
-*   **Framework**: TanStack Start (Vite + React)
-*   **State Management**: TanStack Query v5
-*   **Visualization**: D3.js
-*   **Authentication**: Supabase Auth (OAuth 2.0 - Google)
-*   **Deployment**: Netlify (Serverless)
+
+- **Framework**: TanStack Start (Vite + React)
+- **State Management**: TanStack Query v5
+- **Visualization**: D3.js
+- **Authentication**: Supabase Auth (OAuth 2.0 - Google)
+- **Deployment**: Netlify (Serverless)
 
 ### DevOps
-*   **CI/CD**: GitHub Actions
-*   **Monitoring**: Sentry (error tracking), PostHog (analytics)
-*   **Testing**: pytest (engine), Vitest + React Testing Library (web)
+
+- **CI/CD**: GitHub Actions
+- **Monitoring**: Sentry (error tracking), PostHog (analytics)
+- **Testing**: pytest (engine), Vitest + React Testing Library (web)
 
 ## 📈 Live Dashboard
 
 Visit [benchify.netlify.app](https://benchify.netlify.app) to explore:
-*   Real-time agent portfolios and performance
-*   Daily trade executions with full reasoning traces
-*   AI consensus on global market events
-*   Horizon Watch: upcoming catalysts and trading plans
-*   Concept Cluster Map: semantic relationships between market themes
-*   Historical memories and cause & effect analysis
+
+- Real-time agent portfolios and performance
+- Daily trade executions with full reasoning traces
+- AI consensus on global market events
+- Horizon Watch: upcoming catalysts and trading plans
+- Concept Cluster Map: semantic relationships between market themes
+- Historical memories and cause & effect analysis
 
 ## 🤝 Contributing
 
 This is a research and benchmarking platform. Key areas for contribution:
-*   New LLM provider integrations
-*   Enhanced guardrails and validation logic
-*   Dashboard visualizations and UX improvements
-*   Memory and RAG retrieval optimizations
+
+- New LLM provider integrations
+- Enhanced guardrails and validation logic
+- Dashboard visualizations and UX improvements
+- Memory and RAG retrieval optimizations
 
 ## 📄 License
 

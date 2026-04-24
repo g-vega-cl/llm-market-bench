@@ -88,8 +88,28 @@ Correlation Matrices
 Supabase Storage
          │
          ▼
+Storage Verification
+         │
+         ▼
 /market-overview UI
 ```
+
+### Error Handling & Exit Codes
+
+The script uses strict failure semantics. Any critical failure causes `sys.exit(1)`, ensuring that GitHub Actions marks the workflow as failed (rather than silently succeeding):
+
+| Failure Condition | Exit Code | Logged Message |
+|---|---|---|
+| `FMP_API_KEY` missing | 1 | `"FMP_API_KEY not found in environment"` |
+| Supabase connection failure | 1 | `"Failed to connect to Supabase: {error}"` |
+| No valid tickers after FMP verification | 1 | `"No valid tickers found. Aborting."` |
+| Fewer than 2 tickers with sufficient price data | 1 | `"Need at least 2 tickers to compute correlations. Aborting."` |
+| Storage verification row-count mismatch | 1 | `"Storage verification failed: expected X, but found Y..."` |
+| Storage verification query throws | 1 | `"Storage verification query failed: {error}"` |
+
+### Storage Verification
+
+After inserting correlation records into `correlation_data`, the script queries back the exact row count for the generated `run_id` and asserts it equals the number of computed pairs. This catches silent insert failures, batch truncation, or schema mismatches that would otherwise leave the dashboard showing stale or incomplete data.
 
 ## Database Schema
 
@@ -192,6 +212,8 @@ Tests are located in `apps/engine/tests/test_correlation_matrix.py`:
 - **TestCompute90dReturns** - Total return calculation
 - **TestTickerVerification** - FMP API verification logic
 - **TestIntegration** - Full pipeline logic
+- **TestMainErrorHandling** - `sys.exit(1)` behavior for missing API keys, DB failures, and insufficient tickers
+- **TestStorageVerification** - Post-insert row-count verification and mismatch handling
 
 Run tests:
 ```bash

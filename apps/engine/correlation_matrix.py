@@ -11,6 +11,7 @@ Usage:
 
 import asyncio
 import json
+import sys
 import numpy as np
 from datetime import datetime, timezone
 from typing import Optional
@@ -320,7 +321,7 @@ async def main():
     # Check FMP API key
     if not FMP_API_KEY:
         logger.error("FMP_API_KEY not found in environment")
-        return
+        sys.exit(1)
 
     # Initialize Supabase client
     try:
@@ -328,7 +329,7 @@ async def main():
         logger.info("Connected to Supabase")
     except Exception as e:
         logger.error(f"Failed to connect to Supabase: {e}")
-        return
+        sys.exit(1)
 
     # First, verify tickers exist on FMP
     logger.info("Verifying tickers on FMP...")
@@ -356,7 +357,7 @@ async def main():
 
     if not valid_tickers:
         logger.error("No valid tickers found. Aborting.")
-        return
+        sys.exit(1)
 
     # Fetch historical data for valid tickers
     logger.info(f"\nFetching {WINDOW_DAYS} days of historical data for {len(valid_tickers)} tickers...")
@@ -366,7 +367,7 @@ async def main():
 
     if len(prices) < 2:
         logger.error("Need at least 2 tickers to compute correlations. Aborting.")
-        return
+        sys.exit(1)
 
     # Calculate returns
     logger.info("\nComputing daily returns...")
@@ -396,6 +397,27 @@ async def main():
         returns_90d,
         window_days=WINDOW_DAYS
     )
+
+    # Verify storage integrity
+    try:
+        stored_count_response = client.table("correlation_data").select("id", count="exact").eq("run_id", run_id).execute()
+        stored_count = stored_count_response.count
+        expected_count = len(pearson_corrs)
+
+        if stored_count is not None and stored_count != expected_count:
+            logger.error(
+                f"Storage verification failed: expected {expected_count} correlation records, "
+                f"but found {stored_count} in the database for run_id {run_id}."
+            )
+            sys.exit(1)
+
+        if stored_count is None:
+            logger.warning("Could not verify stored row count (count returned None). Proceeding anyway.")
+        else:
+            logger.info(f"Storage verification passed: {stored_count} correlation records persisted.")
+    except Exception as e:
+        logger.error(f"Storage verification query failed: {e}")
+        sys.exit(1)
 
     logger.info(f"\nCorrelation matrix computation complete!")
     logger.info(f"Run ID: {run_id}")

@@ -126,6 +126,8 @@ These metrics are calculated client-side in the `PositionsTable` component to pr
 ### Benchmark Data (price_history)
 Benchmark index prices are fetched from the existing `price_history` table using the `fetchBenchmarkHistory` function. This enables portfolio-to-benchmark comparison without storing separate benchmark snapshots.
 
+**Date Deduplication:** The `price_history` table stores timestamps, which can result in multiple price snapshots per calendar day. `fetchBenchmarkHistory` deduplicates by date string, keeping only the **last** (most recent) price for each day. This prevents duplicate x-values in the D3 chart, which would otherwise cause vertical line artifacts in the interpolated curve.
+
 ## 7. Implementation Details
 
 ### Benchmark Selector Component

@@ -286,10 +286,19 @@ export async function fetchBenchmarkHistory(
 
   data?.forEach(row => {
     if (result[row.ticker]) {
-      result[row.ticker].push({
-        date: row.fetched_at.split('T')[0],
-        price: Number(row.price)
-      })
+      const date = row.fetched_at.split('T')[0]
+      const existingIndex = result[row.ticker].findIndex(d => d.date === date)
+      if (existingIndex !== -1) {
+        result[row.ticker][existingIndex] = {
+          date,
+          price: Number(row.price)
+        }
+      } else {
+        result[row.ticker].push({
+          date,
+          price: Number(row.price)
+        })
+      }
     }
   })
 

@@ -4,6 +4,7 @@ This module handles the tracking of cash, positions, and purchasing power
 for each LLM agent, utilizing the database for persistence.
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta

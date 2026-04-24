@@ -399,15 +399,18 @@ class MarketDataManager:
             return None
 
     def _save_to_cache(self, data: TickerData):
-        """Internal helper to upsert data into the cache and record price history."""
+        """Internal helper to upsert data into the live price cache."""
         self._save_batch_to_cache([data])
 
     def _save_batch_to_cache(self, data_list: list[TickerData]):
-        """Internal helper to upsert multiple data points into the cache and record price history."""
+        """Internal helper to upsert multiple data points into the live price cache.
+
+        Note: EOD historical data is stored separately via get_history() to avoid
+        crowding out true historical records with high-frequency batch snapshots.
+        """
         try:
             now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
             cache_payloads = []
-            history_payloads = []
 
             for data in data_list:
                 if math.isnan(data.price) or math.isnan(data.market_cap):
@@ -421,15 +424,10 @@ class MarketDataManager:
                     "fetched_at": now_iso
                 }
                 cache_payloads.append(payload)
-                history_payloads.append(payload)
 
             if cache_payloads:
                 # Upsert into the cache
                 self.client.table("market_data_cache").upsert(cache_payloads).execute()
-
-            if history_payloads:
-                # Insert into history table
-                self.client.table("price_history").insert(history_payloads).execute()
 
         except Exception as e:
             tickers = [d.ticker for d in data_list]

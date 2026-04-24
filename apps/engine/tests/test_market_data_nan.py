@@ -49,7 +49,6 @@ async def test_save_to_cache_skips_nan(mock_supabase):
     
     manager._save_to_cache(valid_data)
     
-    # Verify that supabase client WAS called
-    assert mock_supabase.table.call_count >= 2
-    mock_supabase.table.assert_any_call("market_data_cache")
-    mock_supabase.table.assert_any_call("price_history")
+    # Verify that supabase client WAS called (only for market_data_cache now)
+    assert mock_supabase.table.call_count == 1
+    mock_supabase.table.assert_called_once_with("market_data_cache")

@@ -526,7 +526,8 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `DEEPSEEK_API_KEY` | DeepSeek API Key | Trading Analysis |
 |  | `FMP_API_KEY` | Financial Modeling Prep API Key (Required) | Price Data & Validation |
 |  | `FINANCIAL_PROVIDER` | Primary market data provider (Default: `fmp`) | Selection of the single market data source |
-|  | `MARKET_DATA_CACHE_TTL_SECONDS` | Cache duration in seconds (Default: 2) | Price Fetching Optimization |
+|  | `MARKET_DATA_CACHE_TTL_SECONDS` | **INTERNAL CONSTANT** (2s). Hardcoded in `core/config.py`. | Price Fetching Optimization |
+|  | `FINANCIAL_API_THROTTLE_SECONDS` | **INTERNAL CONSTANT** (0.2s). Hardcoded in `core/config.py` for high-performance parallel fetching. | Rate Limit Prevention |
 |  | `MARKET_DATA_RETRIES` | Number of attempts per provider (Default: 2) | Configurable retry logic |
 |  | `IBKR_HOST` | Host for IBKR Gateway/TWS (Default: `127.0.0.1`) | [LEGACY — not in active use] |
 |  | `IBKR_PORT` | Port for IBKR Gateway/TWS (Default: `7496`) | [LEGACY — not in active use] |
@@ -535,11 +536,6 @@ We use a **Scoped `.env**` approach. Each service only has access to the variabl
 |  | `IBKR_PROXY_TOKEN` | Auth token for the IBKR Proxy | [LEGACY — not in active use] |
 |  | `ALPACA_API_KEY` | Alpaca Paper Trading API Key | Third-party trade audit mirror |
 |  | `ALPACA_SECRET_KEY` | Alpaca Paper Trading Secret Key | Third-party trade audit mirror |
-
-> **Note:** `ALPACA_ENABLED` and `ALPACA_PAPER_ENDPOINT` are hardcoded constants in `core/config.py`. They are NOT environment variables.
-
-For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
-|  | `FINANCIAL_API_THROTTLE_SECONDS` | **INTERNAL CONSTANT** (0.2s). Formerly an environment variable, now hardcoded for high-performance parallel fetching. | Rate Limit Prevention |
 |  | `MIN_TRADE_VALUE` | Minimum purchase/sell value for LLM-driven trades (Default: 1000.0) | Trade Validation |
 |  | `MAX_PRICE_DEVIATION_PCT` | Maximum % difference between AI and market price (Default: 5.0) | Trade Validation |
 |  | `ENABLE_ANTHROPIC_WEB_SEARCH` | Enable Anthropic web search (Default: true) | Real-time news verification |
@@ -549,6 +545,10 @@ For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.m
 | **Agents** | (Automatic) | The system automatically processes post-mortems and contrarian signals. | Feedback Loop |
 | **Web** | `VITE_SUPABASE_URL` | Supabase API URL (Exposed to Browser) | Frontend Auth & Data Fetching |
 |  | `VITE_SUPABASE_ANON_KEY` | Supabase Anon Key (Exposed to Browser) | Frontend Auth & Data Fetching |
+
+> **Note:** `ALPACA_ENABLED` and `ALPACA_PAPER_ENDPOINT` are hardcoded constants in `core/config.py`. They are NOT environment variables.
+
+For detailed setup instructions, see [IBKR Integration Guide](IBKR-Integration.md).
 
 > [!TIP]
 > **Vite Prefixing:** Any environment variable used in the browser (client-side code) MUST be prefixed with `VITE_`. Vite automatically strips non-prefixed variables from the client bundle for security.

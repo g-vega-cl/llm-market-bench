@@ -74,7 +74,7 @@ The engine now uses a centralized `MarketDataManager` that handles all ticker qu
 - **Files**: `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/factory.py`.
 
 ### Anti-Rate Limiting (Throttling)
-To prevent hitting API rate limits, the engine implements configurable throttling via `FINANCIAL_API_THROTTLE_SECONDS`. 
+To prevent hitting API rate limits, the engine implements throttling via the `FINANCIAL_API_THROTTLE_SECONDS` constant. 
 
 ## Configuration
 The following environment variables and constants control the validation behavior:
@@ -86,8 +86,8 @@ The following environment variables and constants control the validation behavio
 | `MIN_TRADE_VALUE` | `1000.0` | Minimum purchase/sell value (waived for SELL via tools). |
 | `FINANCIAL_PROVIDER` | `"fmp"` | Primary data provider. |
 | `MARKET_DATA_RETRIES` | `2` | Number of attempts per provider. |
-| `MARKET_DATA_CACHE_TTL_SECONDS` | `2` | Price cache duration (2 seconds). |
-| `FINANCIAL_API_THROTTLE_SECONDS` | `2.0` | Delay between consecutive API calls (in seconds). |
+| `MARKET_DATA_CACHE_TTL_SECONDS` | `2` | **Hardcoded constant** in `core/config.py`. Price cache duration in seconds. |
+| `FINANCIAL_API_THROTTLE_SECONDS` | `0.2` | **Hardcoded constant** in `core/config.py`. Delay between consecutive API calls (in seconds). |
 
 ## Pipeline Integration
 Validation is now a **Three-Layer Process**:

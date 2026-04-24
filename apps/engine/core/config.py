@@ -108,7 +108,7 @@ MIN_MARKET_CAP_BILLIONS = 2.0
 MAX_PRICE_DEVIATION_PCT = 5.0
 MIN_TRADE_VALUE = 1000.0  # Minimum purchase/sell value for LLM-driven trades
 FINANCIAL_API_THROTTLE_SECONDS = 0.2
-MARKET_DATA_CACHE_TTL_SECONDS = int(os.getenv("MARKET_DATA_CACHE_TTL_SECONDS", 2))
+MARKET_DATA_CACHE_TTL_SECONDS = 2  # Hardcoded constant — 2 second cache TTL for market data
 MARKET_DATA_RETRIES = int(os.getenv("MARKET_DATA_RETRIES", 2))
 
 # --- IBKR Configuration ---

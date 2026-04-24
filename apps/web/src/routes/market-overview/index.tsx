@@ -241,7 +241,7 @@ function SectorPerformanceGrid({ correlationData, tickers }: { correlationData: 
 
     // Group tickers by category based on naming conventions
     const categories: Record<string, string[]> = {
-      'US Sectors': ['XLK', 'XLE', 'XLF', 'XLV', 'XLY', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC'],
+      'US Sectors': ['XLK', 'SMH', 'XLE', 'XLF', 'XLV', 'XLY', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC'],
       'US Broad': ['QQQ', 'VIG', 'IWM', 'SPY'],
       'Intl Dev': ['EFA', 'EWJ', 'EWG', 'EWL', 'EWP', 'IFAD', 'BWX'],
       'Emerging Markets': ['EEM', 'MCHI', 'EWZ', 'EIDO', 'EPI'],

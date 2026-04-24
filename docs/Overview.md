@@ -389,7 +389,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 | Category | Count | Examples |
 |----------|-------|----------|
-| US Sectors | 10 | XLK, XLE, XLF, XLV, XLY, XLI, XLB, XLU, XLRE, XLC |
+| US Sectors | 11 | XLK, SMH, XLE, XLF, XLV, XLY, XLI, XLB, XLU, XLRE, XLC |
 | US Broad | 4 | QQQ, VIG, IWM, SPY |
 | Intl Dev | 6 | EFA, EWJ, EWG, EWL, EWP, SCZ, BWX |
 | Emerging Markets | 5 | EEM, MCHI, EWZ, EIDO, EPI |
@@ -404,11 +404,11 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 ### Pipeline
 
 1. **Weekly Computation:** GitHub Actions triggers `correlation_matrix.py` every Sunday at 16:00 ET
-2. **Price Fetch:** Fetches 90 days of EOD price data for all 42 tickers
+2. **Price Fetch:** Fetches 90 days of EOD price data for all 43 tickers
 3. **Returns Calculation:** Computes daily percentage returns for each ticker
 4. **Correlation Computation:** Calculates both Pearson (linear) and Spearman (rank-based) correlations
 5. **90d Returns:** Computes total return from start to end of the 90-day window
-6. **Storage:** Stores full 861-pair matrix to Supabase for dashboard access
+6. **Storage:** Stores full 903-pair matrix to Supabase for dashboard access
 
 ### Correlation Methods
 

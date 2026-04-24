@@ -27,8 +27,8 @@ from execution.providers.fmp import FMPProvider
 # =============================================================================
 
 TICKER_UNIVERSE = [
-    # US Sectors (10)
-    "XLK", "XLE", "XLF", "XLV", "XLY", "XLI", "XLB", "XLU", "XLRE", "XLC",
+    # US Sectors (11)
+    "XLK", "SMH", "XLE", "XLF", "XLV", "XLY", "XLI", "XLB", "XLU", "XLRE", "XLC",
     # US Broad (4)
     "QQQ", "VIG", "IWM", "SPY",
     # International Developed (7)

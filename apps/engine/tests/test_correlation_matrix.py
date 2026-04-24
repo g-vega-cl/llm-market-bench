@@ -30,6 +30,7 @@ class TestTickerUniverse:
 
         # US Sectors
         assert "XLK" in tickers  # Technology
+        assert "SMH" in tickers  # Semiconductors (VanEck)
         assert "XLE" in tickers  # Energy
         assert "XLF" in tickers  # Financials
         assert "XLV" in tickers  # Healthcare

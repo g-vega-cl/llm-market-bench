@@ -36,6 +36,16 @@ function getImportanceLabel(score: number) {
     return 'Low'
 }
 
+function parseScenarioPercentages(analysis: string): { text: string; percentage: string | null }[] {
+    const lines = analysis.split('\n')
+    return lines.map(line => {
+        // Match patterns like "40%", "40 %", "(40%)", "high chance (80%)"
+        const match = line.match(/(\d{1,3})\s*%/)
+        const percentage = match ? match[1] + '%' : null
+        return { text: line, percentage }
+    })
+}
+
 export function FutureCatalysts({ events }: FutureCatalystsProps) {
     const [, forceUpdate] = React.useState({})
 
@@ -173,8 +183,19 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                 </h4>
                                             </div>
                                             <div className="bg-gradient-to-br from-cyber-yellow-50/50 via-amber-50/30 to-transparent dark:from-cyber-yellow-950/10 dark:via-amber-950/5 p-4 rounded-2xl border border-cyber-yellow-100 dark:border-cyber-yellow-900/30">
-                                                <div className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed whitespace-pre-wrap">
-                                                    {event.metadata.scenario_analysis}
+                                                <div className="space-y-1">
+                                                    {parseScenarioPercentages(event.metadata.scenario_analysis).map((line, i) => (
+                                                        <div key={i} className="flex items-start gap-2">
+                                                            {line.percentage && (
+                                                                <span className="inline-flex items-center px-1.5 py-0.5 bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-700 dark:text-cyber-yellow-300 text-[9px] font-black rounded border border-cyber-yellow-200 dark:border-cyber-yellow-800 tabular-nums mt-0.5">
+                                                                    {line.percentage}
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed">
+                                                                {line.text}
+                                                            </span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>

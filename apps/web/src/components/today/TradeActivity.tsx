@@ -24,7 +24,7 @@ function getAgentInfo(ownerId: string) {
     return { name: ownerId, color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
 }
 
-type FilterType = 'ALL' | 'BUY' | 'SELL' | 'REJECTED'
+type FilterType = 'ALL' | 'BUY' | 'SELL' | 'REJECTED' | 'EXECUTED'
 
 export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     const [expandedIdx, setExpandedIdx] = React.useState<number | null>(null)
@@ -59,6 +59,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
         if (filter === 'BUY') return activity.filter(item => item.type === 'TRADE' && item.signal === 'BUY')
         if (filter === 'SELL') return activity.filter(item => item.type === 'TRADE' && item.signal === 'SELL')
         if (filter === 'REJECTED') return activity.filter(item => item.type === 'REJECTION')
+        if (filter === 'EXECUTED') return activity.filter(item => item.type === 'TRADE')
         
         return activity
     }, [trades, decisions, rejections, filter])
@@ -106,6 +107,13 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                         color="bg-amber-500" 
                         isActive={filter === 'REJECTED'}
                         onClick={() => setFilter('REJECTED')}
+                    />
+                    <StatPill 
+                        label="Executed" 
+                        value={totalTrades} 
+                        color="bg-electric-blue-500" 
+                        isActive={filter === 'EXECUTED'}
+                        onClick={() => setFilter('EXECUTED')}
                     />
                 </div>
             </div>

@@ -204,7 +204,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **I don't see percentages in scenarios anymore**
+- [x] **I don't see percentages in scenarios anymore**
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
@@ -230,8 +230,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Set up a 'global' agent hook/env for my projects?**
 - [ ] **Frontend Alpaca Status Badge**: Display Alpaca paper-trading order status (PENDING / FILLED / ERROR) on each trade row in the dashboard `TradesTable` component. This makes the third-party audit trail visible to users.
 - [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too. - Maybe add a button that adds suggestion.
-- [ ] **Add SMH to ETF list in benchify?**
-- [ ] **filter today feed, by rejected. Non rejected, lesson, memory, etc**
+- [x] **Add SMH to ETF list in benchify?**
+- [x] **filter today feed, by rejected. Non rejected, lesson, memory, etc**
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
 - [ ] **Maybe use moving averages for 90 day ETF move? To avoid daily volatility influencing the starting/ending points?**
 

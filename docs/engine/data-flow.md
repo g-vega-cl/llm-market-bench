@@ -1073,19 +1073,20 @@ The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). T
 
 4. **Market Execution & Guardrails**
    - Full-width feed of trades and rejections
-   - **Activity Stats**: Pills showing Total, Buys, Sells, Rejected counts
-   - **Agent Attribution**: Each trade shows which AI executed it
-   - **Confidence Scores**: Badge display (High/Medium/Low)
-   - **Interactive Expansion**: Click to reveal full LLM reasoning
-   - **Detail Cards**: Quantity, Price, Total Value, Confidence
-   - Color-coded: Green for BUY, Red for SELL, Amber for REJECTED
+    - **Activity Stats**: Pills showing Total, Buys, Sells, Rejected, **Executed** counts
+    - **Agent Attribution**: Each trade shows which AI executed it
+    - **Confidence Scores**: Badge display (High/Medium/Low)
+    - **Interactive Expansion**: Click to reveal full LLM reasoning
+    - **Detail Cards**: Quantity, Price, Total Value, Confidence
+    - Color-coded: Green for BUY, Red for SELL, Amber for REJECTED, Blue for EXECUTED
+    - **Filter Support**: Click any stat pill to filter the feed (e.g., view only non-rejected "Executed" trades)
 
 5. **Horizon Watch: Pending Events**
    - **Timeline View**: Vertical timeline with connecting line and dots
    - **Live Countdown**: Days/Hours/Minutes until each event
    - **Importance Coding**: Color-coded by severity (Critical/High/Medium/Low)
-   - **Scenario Analysis**: Expandable trading plans for each outcome
-   - **Ticker Pills**: Related assets for trading ideas
+    - **Scenario Analysis**: Expandable trading plans for each outcome with **percentage badges** (e.g., `40%`, `70%`) extracted and highlighted from scenario text for quick probability scanning
+    - **Ticker Pills**: Related assets for trading ideas
    - **Smart Filtering**: Only shows future events (past events auto-hidden)
    - **Accurate Counter**: Badge shows count of visible (non-passed) events
 

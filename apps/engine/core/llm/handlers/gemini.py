@@ -39,6 +39,21 @@ def _generate_content_config_supports(field_name: str) -> bool:
         return False
 
 
+def _tool_config_supports(field_name: str) -> bool:
+    """Checks whether the local Gemini SDK supports a ToolConfig field."""
+    config_cls = types.ToolConfig
+
+    for attr_name in ("model_fields", "__annotations__", "__dataclass_fields__"):
+        fields = getattr(config_cls, attr_name, None)
+        if fields and field_name in fields:
+            return True
+
+    try:
+        return field_name in inspect.signature(config_cls).parameters
+    except (TypeError, ValueError):
+        return False
+
+
 def _build_gemini_tools(
     function_tools: list | None = None,
     enable_google_search: bool = False
@@ -174,7 +189,8 @@ async def run_tool_loop(
             # Enable server-side tool invocations when using built-in tools (google_search)
             # with function declarations - required by Gemini API
             if enable_google_search:
-                if _generate_content_config_supports("tool_config"):
+                # Check if ToolConfig supports include_server_side_tool_invocations
+                if _tool_config_supports("include_server_side_tool_invocations"):
                     config_kwargs["tool_config"] = types.ToolConfig(
                         include_server_side_tool_invocations=True
                     )

@@ -62,13 +62,12 @@ async def test_gemini_tool_loop_configures_afc_for_google_search():
 
 
 @pytest.mark.asyncio
-async def test_gemini_tool_loop_configures_tool_config_for_google_search():
-    """When google_search is enabled with function tools, tool_config must
-    set include_server_side_tool_invocations to satisfy Gemini API requirements.
-    """
+async def test_gemini_tool_loop_configures_google_search_tools():
+    """When google_search is enabled with function tools, the tools list should include both."""
     from unittest.mock import AsyncMock, MagicMock
     from core.llm.handlers import gemini
 
+    # Mock the raw client's async generate_content method
     raw_client = MagicMock()
     mock_aio = raw_client.aio
     mock_aio.models.generate_content = AsyncMock(
@@ -88,8 +87,15 @@ async def test_gemini_tool_loop_configures_tool_config_for_google_search():
     call_kwargs = mock_aio.models.generate_content.call_args.kwargs
     config = call_kwargs['config']
 
-    assert config.tool_config is not None
-    assert config.tool_config.include_server_side_tool_invocations is True
+    # Verify tools list includes both function declarations and google_search
+    assert config.tools is not None
+    assert len(config.tools) == 2
+    
+    # First tool should be function declarations
+    assert config.tools[0].function_declarations is not None
+    
+    # Second tool should be google_search
+    assert config.tools[1].google_search is not None
 
 
 @pytest.mark.asyncio

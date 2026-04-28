@@ -496,6 +496,21 @@ To manually trigger the fetching and analysis of global macro events:
 *   **Command:** `python main.py calendar`
 *   **Pipeline:** Fetches HTML -> BeautifulSoup Parsing -> DeepSeek Relevance Filtering -> Memory Insertion.
 
+### Database Backups
+
+The system runs an automated daily backup of the entire Postgres database via GitHub Actions. It compresses the dump with `gzip` and stores it as a workflow artifact with a **10-day retention**.
+
+*   **Schedule:** Daily at midnight ET (`0 5 * * * UTC`)
+*   **Workflow:** `.github/workflows/db-backup.yml`
+*   **Trigger:** Automatic (cron) or manual (`workflow_dispatch`)
+*   **Required Secrets:** `SUPABASE_PROJECT_URL` and `SUPABASE_PWD`
+*   **Estimated Size:** ~20-40 MB compressed per backup (fits comfortably within the 500 MB GitHub free tier)
+*   **Restore:** Download the artifact from the Actions run page, then run:
+    ```bash
+    gunzip ai-wall-street-backup-YYYY-MM-DD.sql.gz
+    psql <connection_string> < ai-wall-street-backup-YYYY-MM-DD.sql
+    ```
+
 ### Database Schema & Cleanup Utilities
 
 To ensure the `docs/database-schema.md` is always up to date with the actual Postgres schema:

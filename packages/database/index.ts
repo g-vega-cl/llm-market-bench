@@ -113,6 +113,9 @@ export type Trade = {
   decision_id: string | null
   realized_pnl: number | null
   realized_pnl_pct: number | null
+  alpaca_status: string | null
+  alpaca_order_id: string | null
+  alpaca_submitted_at: string | null
 }
 
 export type TradeInsert = {
@@ -127,6 +130,9 @@ export type TradeInsert = {
   decision_id?: string | null
   realized_pnl?: number | null
   realized_pnl_pct?: number | null
+  alpaca_status?: string | null
+  alpaca_order_id?: string | null
+  alpaca_submitted_at?: string | null
 }
 
 export type TradeUpdate = {
@@ -141,6 +147,9 @@ export type TradeUpdate = {
   decision_id?: string | null
   realized_pnl?: number | null
   realized_pnl_pct?: number | null
+  alpaca_status?: string | null
+  alpaca_order_id?: string | null
+  alpaca_submitted_at?: string | null
 }
 
 export type Portfolio = {

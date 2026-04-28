@@ -19,6 +19,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500">Date</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500">Ticker</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500">Signal</th>
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500">Alpaca</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Qty</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Price</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">Total</th>
@@ -53,6 +54,28 @@ export function TradesTable({ trades }: TradesTableProps) {
                                         {trade.signal}
                                     </span>
                                 </td>
+                                <td className="px-3 sm:px-6 py-3 sm:py-4 cursor-pointer">
+                                    {trade.alpaca_status ? (
+                                        <a
+                                            href="https://paper.alpaca.markets/orders"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`inline-block px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-tight border transition-opacity hover:opacity-80 ${
+                                                trade.alpaca_status === 'FILLED'
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                    : trade.alpaca_status === 'PENDING'
+                                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                                    : 'bg-rose-50 text-rose-700 border-rose-100'
+                                            }`}
+                                            title={trade.alpaca_order_id ? `Order ID: ${trade.alpaca_order_id}` : undefined}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {trade.alpaca_status}
+                                        </a>
+                                    ) : (
+                                        <span className="text-zinc-300">—</span>
+                                    )}
+                                </td>
                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">{trade.quantity}</td>
                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
                                     ${Number(trade.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -79,7 +102,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                             </tr>
                             {expandedId === trade.id && (
                                 <tr className="bg-zinc-50/30">
-                                    <td colSpan={7} className="px-4 sm:px-12 py-4 sm:py-6">
+                                    <td colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
                                         <div className="flex flex-col gap-4">
                                             <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 uppercase tracking-tight">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -98,7 +121,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                     ))}
                     {(!trades || trades.length === 0) && (
                         <tr>
-                            <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
+                            <td colSpan={8} className="px-6 py-12 text-center text-zinc-500">
                                 No recent trades found for this agent.
                             </td>
                         </tr>

@@ -15,7 +15,10 @@ const mockTrades: Trade[] = [
         decision_id: null,
         realized_pnl: null,
         realized_pnl_pct: null,
-        reasoning: 'Strong earnings report.'
+        reasoning: 'Strong earnings report.',
+        alpaca_status: 'FILLED',
+        alpaca_order_id: 'order-abc-123',
+        alpaca_submitted_at: new Date().toISOString(),
     },
     {
         id: 't2',
@@ -29,7 +32,10 @@ const mockTrades: Trade[] = [
         decision_id: null,
         realized_pnl: null,
         realized_pnl_pct: null,
-        reasoning: 'Technical breakdown below support.'
+        reasoning: 'Technical breakdown below support.',
+        alpaca_status: null,
+        alpaca_order_id: null,
+        alpaca_submitted_at: null,
     }
 ]
 
@@ -62,5 +68,16 @@ describe('TradesTable', () => {
 
         expect(buyBadge).toHaveClass('bg-emerald-50')
         expect(sellBadge).toHaveClass('bg-rose-50')
+    })
+
+    it('renders alpaca status badges with correct colors and links', () => {
+        render(<TradesTable trades={mockTrades} />)
+
+        expect(screen.getByText('FILLED')).toBeInTheDocument()
+        expect(screen.getByText('FILLED')).toHaveAttribute('href', 'https://paper.alpaca.markets/orders')
+        expect(screen.getByText('FILLED')).toHaveClass('bg-emerald-50')
+
+        const dashes = screen.getAllByText('—')
+        expect(dashes.length).toBeGreaterThanOrEqual(3)
     })
 })

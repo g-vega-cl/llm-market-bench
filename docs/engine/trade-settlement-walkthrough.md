@@ -109,3 +109,4 @@ BUY orders are unaffected — no position check is performed for buys.
 After a trade executes, check:
 1. **Supabase** `trades` row: `alpaca_order_id`, `alpaca_status`, `alpaca_submitted_at` populated.
 2. **Alpaca Paper Dashboard:** [paper.alpaca.markets/orders](https://paper.alpaca.markets/orders) — filter by `client_order_id` containing the agent name.
+3. **Dashboard Alpaca Badge:** The `TradesTable` component on each portfolio page renders a colored status badge (`FILLED` = green, `PENDING` = amber, errors = red) next to the Signal column. Clicking the badge opens the Alpaca paper dashboard in a new tab.

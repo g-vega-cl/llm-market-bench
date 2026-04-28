@@ -141,10 +141,20 @@ The system provides a single unified sell calculation tool for agents:
 **Note:** The system does NOT require a tool call for dust cleanup - it happens automatically.
 
 ## 5a. Portfolio Ownership Guardrails (SELL)
-To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks:
+To prevent agents from opening "hallucinated" short positions, the system enforces strict ownership checks at two layers:
+
+### Internal Ownership (Supabase — Source of Truth)
 1. **Pipeline Check:** Before execution, the engine verifies the ticker is in the model's `portfolio_positions`.
 2. **Execution Check:** If a model attempts to sell more than it owns (e.g. "Sell 20 shares" while holding 10), the trade is capped at the owned quantity (10 shares), and the position is closed.
 3. **Hard Tool Enforcement:** Unauthorized SELL attempts or sells where tool usage was hallucinated (self-reported but not found in history) are logged in the `decisions` table with status `REJECTED_OWNERSHIP`, `REJECTED_TOOL_USAGE`, or `REJECTED_MARGIN`.
+
+### External Ownership (Alpaca — Audit Mirror)
+Because the Alpaca mirror is **fire-and-forget**, its positions can drift from Supabase (e.g., an unfilled `DAY` order expires at close). Before mirroring any SELL to Alpaca, `AlpacaBroker.get_alpaca_position(ticker)` queries Alpaca's actual holdings:
+- **Zero shares** → The mirrored SELL is **skipped** and the trade is marked `SKIPPED_NO_POSITION`.
+- **Under-held** → The mirrored quantity is **capped** to Alpaca's real holding.
+- **Fully held** → Mirroring proceeds normally.
+
+This ensures the paper-trading account never opens a short position due to ledger drift.
 
 ## 6. Verification
 We verify this logic with standard scenarios and dedicated guardrail tests (see `apps/engine/tests/test_sell_guardrails.py`), ensuring the system correctly handles:

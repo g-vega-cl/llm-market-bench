@@ -12,6 +12,7 @@ from uuid import UUID
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import LimitOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.common.exceptions import APIError
 
 from core.config import ALPACA_ENABLED, ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER_ENDPOINT
 from core.db import get_supabase_client
@@ -41,6 +42,32 @@ class AlpacaBroker:
         )
         logger.info("[Alpaca] Broker initialized (paper endpoint).")
 
+    def get_alpaca_position(self, ticker: str) -> float:
+        """Query Alpaca for the current quantity held for a ticker.
+
+        Returns the quantity as a float (Alpaca may return fractional shares
+        for some account types). Returns 0.0 if no position exists or if the
+        client is not initialized.
+        """
+        if not self._client:
+            return 0.0
+
+        try:
+            position = self._client.get_open_position(ticker)
+            qty = float(position.qty) if position.qty else 0.0
+            logger.debug(f"[Alpaca] Position for {ticker}: {qty} shares")
+            return qty
+        except APIError as exc:
+            # Alpaca returns 404 when a position does not exist
+            if hasattr(exc, "status_code") and exc.status_code == 404:
+                logger.debug(f"[Alpaca] No position found for {ticker}")
+                return 0.0
+            logger.warning(f"[Alpaca] API error checking position for {ticker}: {exc}")
+            return 0.0
+        except Exception as exc:
+            logger.warning(f"[Alpaca] Unexpected error checking position for {ticker}: {exc}")
+            return 0.0
+
     async def submit_limit_order(
         self,
         trade_id: UUID,
@@ -54,12 +81,34 @@ class AlpacaBroker:
 
         Tags the order with agent metadata (client_order_id) for audit filtering.
         Updates the trades row asynchronously after submission attempt.
+
+        SELL orders are guarded against shorting: if Alpaca does not hold the
+        requested shares, the order is skipped or quantity-capped to the actual
+        Alpaca position size.
         """
         if not self._client:
             return
 
         side = OrderSide.BUY if signal.upper() == "BUY" else OrderSide.SELL
         client_order_id = f"{agent_id}__{ticker}__{signal}__{str(trade_id)}"
+
+        # Guardrail: prevent shorting in Alpaca on SELL orders
+        if side == OrderSide.SELL:
+            alpaca_qty = self.get_alpaca_position(ticker)
+            if alpaca_qty <= 0:
+                logger.warning(
+                    f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
+                    f"Alpaca holds {alpaca_qty} shares. No shorting allowed."
+                )
+                await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                return
+            if quantity > alpaca_qty:
+                logger.warning(
+                    f"[Alpaca] CAPPING SELL for {ticker}: "
+                    f"requested {quantity}, Alpaca holds {alpaca_qty}. "
+                    f"Submitting {alpaca_qty} instead."
+                )
+                quantity = int(alpaca_qty)
 
         order_request = LimitOrderRequest(
             symbol=ticker,

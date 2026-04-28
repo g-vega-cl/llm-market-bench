@@ -236,6 +236,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Make a DB backup.**
 - [ ] **Supabase push/migrate programmatically?** - Make sure your migration files match what you have and that you can migrate programmatically without breaking everything.
 - [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
+- [x] **Prevent shorting in alpaca** - When my agents have positions but it's not yet in alpaca, when they sell the position is shorted in alpaca don't do this.
 
 ### 🔄 Under Consideration
 

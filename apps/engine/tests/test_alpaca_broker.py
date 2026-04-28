@@ -4,6 +4,8 @@ Verifies:
 - AlpacaBroker initialization logic (enabled/disabled, missing keys)
 - submit_limit_order success path with mocked TradingClient
 - submit_limit_order failure handling (fire-and-forget isolation)
+- submit_limit_order SELL guardrails (skip when no position, cap when under-held)
+- get_alpaca_position returns correct quantities and handles 404 gracefully
 - _update_trade Supabase persistence with UUID serialization
 - Order parameter correctness (DAY limit, agent-tagged client_order_id)
 
@@ -196,6 +198,157 @@ class TestSubmitLimitOrder:
 
         request = mock_trading_client.submit_order.call_args[0][0]
         assert request.limit_price == 151.00
+
+
+# ---------------------------------------------------------------------------
+# SELL Guardrails — prevent shorting in Alpaca
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+class TestSellGuardrails:
+
+    async def test_sell_skipped_when_no_alpaca_position(self, mock_trading_client):
+        """SELL order is skipped entirely if Alpaca holds 0 shares."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(
+            broker, "get_alpaca_position", return_value=0.0
+        ) as mock_pos, \
+             patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update:
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="TSLA",
+                quantity=10,
+                signal="SELL",
+                limit_price=250.00,
+                agent_id="test",
+            )
+
+            mock_pos.assert_called_once_with("TSLA")
+            mock_trading_client.submit_order.assert_not_called()
+            mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
+
+    async def test_sell_quantity_capped_when_under_held(self, mock_trading_client):
+        """SELL quantity is reduced to actual Alpaca holdings when fewer shares held."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(
+            broker, "get_alpaca_position", return_value=7.0
+        ) as mock_pos:
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="TSLA",
+                quantity=10,
+                signal="SELL",
+                limit_price=250.00,
+                agent_id="test",
+            )
+
+            mock_pos.assert_called_once_with("TSLA")
+            request = mock_trading_client.submit_order.call_args[0][0]
+            assert request.qty == 7
+            assert request.side == OrderSide.SELL
+
+    async def test_sell_proceeds_normally_when_fully_held(self, mock_trading_client):
+        """SELL order is submitted unchanged when Alpaca holds >= requested quantity."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(
+            broker, "get_alpaca_position", return_value=15.0
+        ) as mock_pos:
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="TSLA",
+                quantity=10,
+                signal="SELL",
+                limit_price=250.00,
+                agent_id="test",
+            )
+
+            mock_pos.assert_called_once_with("TSLA")
+            request = mock_trading_client.submit_order.call_args[0][0]
+            assert request.qty == 10
+            assert request.side == OrderSide.SELL
+
+    async def test_buy_orders_not_checked_for_position(self, mock_trading_client):
+        """BUY orders bypass the position guardrail entirely."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(
+            broker, "get_alpaca_position", return_value=0.0
+        ) as mock_pos:
+            await broker.submit_limit_order(
+                trade_id=uuid4(),
+                ticker="AAPL",
+                quantity=5,
+                signal="BUY",
+                limit_price=150.00,
+                agent_id="test",
+            )
+
+            mock_pos.assert_not_called()
+            request = mock_trading_client.submit_order.call_args[0][0]
+            assert request.side == OrderSide.BUY
+
+
+# ---------------------------------------------------------------------------
+# Position Query (get_alpaca_position)
+# ---------------------------------------------------------------------------
+
+class TestGetAlpacaPosition:
+
+    def test_returns_quantity_for_existing_position(self):
+        """get_alpaca_position returns the quantity when a position exists."""
+        broker = AlpacaBroker()
+        mock_pos = MagicMock()
+        mock_pos.qty = "42"
+        mock_client = MagicMock()
+        mock_client.get_open_position.return_value = mock_pos
+        broker._client = mock_client
+
+        qty = broker.get_alpaca_position("AAPL")
+        assert qty == 42.0
+        mock_client.get_open_position.assert_called_once_with("AAPL")
+
+    def test_returns_zero_for_404_api_error(self):
+        """get_alpaca_position returns 0.0 when Alpaca raises a 404 APIError."""
+        from alpaca.common.exceptions import APIError
+        broker = AlpacaBroker()
+        mock_client = MagicMock()
+        # APIError reads status_code from http_error.response.status_code
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_http_error = MagicMock()
+        mock_http_error.response = mock_response
+        exc = APIError(error={"message": "position does not exist"}, http_error=mock_http_error)
+        mock_client.get_open_position.side_effect = exc
+        broker._client = mock_client
+
+        qty = broker.get_alpaca_position("AAPL")
+        assert qty == 0.0
+
+    def test_returns_zero_for_unexpected_exception(self):
+        """get_alpaca_position returns 0.0 on any unexpected exception."""
+        broker = AlpacaBroker()
+        mock_client = MagicMock()
+        mock_client.get_open_position.side_effect = RuntimeError("boom")
+        broker._client = mock_client
+
+        qty = broker.get_alpaca_position("AAPL")
+        assert qty == 0.0
+
+    def test_returns_zero_when_client_none(self):
+        """get_alpaca_position returns 0.0 when broker client is not initialized."""
+        broker = AlpacaBroker()
+        broker._client = None
+        assert broker.get_alpaca_position("AAPL") == 0.0
 
 
 # ---------------------------------------------------------------------------

@@ -961,6 +961,8 @@ If validation passes, the trade is settled into the `portfolios` table.
 4. **Immediate Consistency**: Recalculate and persist complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table to ensure real-time dashboard accuracy.
 5. **Alpaca Paper Trading Mirror** (fire-and-forget): Spawns `AlpacaBroker.submit_limit_order()` as an async background task. Submits a `DAY` limit order to Alpaca's paper API with agent-tagged `client_order_id`. Supabase remains the source of truth; Alpaca provides a third-party audit layer. Failures are isolated — the internal trade succeeds regardless.
 
+   **Shorting Guardrail:** For SELL orders, `AlpacaBroker` first queries Alpaca's actual position via `get_open_position(ticker)`. If Alpaca holds fewer shares than the Supabase ledger (or none at all), the mirrored SELL is either **skipped** (`SKIPPED_NO_POSITION`) or **quantity-capped** to Alpaca's real holding. This prevents accidental short positions in the paper account when the audit mirror has drifted from the internal ledger.
+
 ```sql
 UPDATE portfolios 
 SET cash_balance = cash_balance - 24210.00, 

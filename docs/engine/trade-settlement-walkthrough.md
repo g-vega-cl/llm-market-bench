@@ -93,6 +93,18 @@ Every trade that survives the settlement sequence is **fire-and-forget mirrored*
 - **Hook:** `apps/engine/execution/portfolio.py` -> `execute_trade()` (Step 5, after metrics save)
 - **Toggle:** `ALPACA_ENABLED` is a hardcoded constant in `core/config.py` (`True` by default). Set to `False` to disable mirroring without code changes.
 
+### Shorting Prevention (Alpaca Position Check)
+Because Alpaca is a fire-and-forget audit mirror, there is no guarantee its internal positions match Supabase. A BUY mirrored to Alpaca might never fill (e.g., a `DAY` limit order expires at market close), leaving Alpaca with zero shares while Supabase records a position. If the engine later mirrors a SELL for that ticker, Alpaca would open a **short position**.
+
+To prevent this, `AlpacaBroker.submit_limit_order()` performs a **pre-sell position check**:
+
+1. **Query Alpaca holdings** via `TradingClient.get_open_position(ticker)` before submitting any SELL.
+2. **Zero shares held** → The SELL is **skipped entirely**. The trade row is updated with `alpaca_status = "SKIPPED_NO_POSITION"` and a warning is logged. No order reaches Alpaca.
+3. **Under-held** (Alpaca holds fewer shares than the Supabase ledger) → The SELL **quantity is capped** to Alpaca's actual holding. The remainder is not sold on Alpaca (the internal Supabase position is still closed normally).
+4. **Fully held** (Alpaca holds >= requested shares) → The SELL proceeds normally.
+
+BUY orders are unaffected — no position check is performed for buys.
+
 ### Verification
 After a trade executes, check:
 1. **Supabase** `trades` row: `alpaca_order_id`, `alpaca_status`, `alpaca_submitted_at` populated.

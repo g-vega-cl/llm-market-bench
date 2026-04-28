@@ -22,7 +22,7 @@ function HowItWorks() {
                         <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">OpenAI gpt-5.4-nano</span>
                         <span className="px-3 py-1 text-sm rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude claude-haiku-4-5</span>
                         <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini gemini-3.1-flash-lite-preview</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek deepseek-reasoner</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek deepseek-v4-flash</span>
                     </div>
                     <p className="text-lg text-slate-500 mt-4">
                         Tripled trigger daily at <strong className="text-blue-300">09:30, 12:30, 15:30 ET</strong> during market hours
@@ -76,7 +76,7 @@ function HowItWorks() {
                                     <span className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 border border-green-500/30">OpenAI gpt-5.4-nano</span>
                                     <span className="px-2 py-1 text-xs rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude claude-haiku-4-5</span>
                                     <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini gemini-3.1-flash-lite-preview</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek deepseek-reasoner</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek deepseek-v4-flash</span>
                                 </div>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
                                     <li><strong className="text-purple-300">Asynchronous Chunk Batching</strong>: 20 chunks per LLM call to prevent token truncation</li>

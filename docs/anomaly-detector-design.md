@@ -126,7 +126,7 @@ apps/engine/anomaly_detector/
 ## 5. LLM Integration
 
 ### Provider: DeepSeek (cheapest option)
-- Model: `deepseek-reasoner` (thinking mode for complex analysis).
+- Model: `deepseek-v4-flash` (thinking mode for complex analysis).
 - Context window: 64K tokens.
 
 ### Token Management (The Two-Pass Strategy)

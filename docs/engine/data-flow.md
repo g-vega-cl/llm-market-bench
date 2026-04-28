@@ -800,7 +800,7 @@ CREATE TABLE decisions (
 │ news_newsletter3_c9e... │ NVDA   │ BUY    │ 92  │ AI trans..│ anthropic│ claude-haiku-4-5│
 │ news_newsletter4_d4a... │ BTC    │ SELL   │ 78  │ Crypto...  │ anthropic│ claude-haiku-4-5│
 │ news_newsletter4_d4a... │ BTC    │ SELL   │ 82  │ Crypto...  │ gemini   │ gemini-3-flash-preview       │
-│ news_newsletter2_b1d... │ QQQ    │ SELL   │ 71  │ Tech...    │ deepseek │ deepseek-reasoner    │
+│ news_newsletter2_b1d... │ QQQ    │ SELL   │ 71  │ Tech...    │ deepseek │ deepseek-v4-flash    │
 │ ...                     │ ...    │ ...    │ ... │ ...        │ ...      │ ...              │
 └─────────────────────────┴────────┴────────┴─────┴────────────┴──────────┴──────────────────┘
 

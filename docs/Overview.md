@@ -255,7 +255,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
         - **Phase 3: Verification** (4-Layer Enforcement System, Hard Tool Enforcement requiring native function calls, Ownership Pre-Validation, 50% Confidence Penalty, Strategic Reasoning Audit)
         - **Phase 4: Execution** (FMP-Verified Market Hours, 5.0% Price Banding, Reg T Margin Validation with $1,000 minimum, Atomic Settlement "Commit at End" pattern, Two-Phase Attribution Locking)
         - **Phase 5: Feedback** (Manager Agent with 5/14/30-day post-analysis, Contrarian Agent, Government Tracking monthly audit, Cause & Effect bi-weekly with semantic deduplication, pgvector RAG with Scenario Analysis)
-    *   **Models:** OpenAI (gpt-5.4-nano), Claude (claude-haiku-4-5), Gemini (gemini-3.1-flash-lite-preview), DeepSeek (deepseek-reasoner)
+    *   **Models:** OpenAI (gpt-5.4-nano), Claude (claude-haiku-4-5), Gemini (gemini-3.1-flash-lite-preview), DeepSeek (deepseek-v4-flash)
 
 **18a. TanStack Query Architecture** ✅
 *   **Tech:** **TanStack Query v5 + TanStack Start**
@@ -571,7 +571,7 @@ Model names are defined in the shared JSON configuration file at [`packages/conf
   "OPENAI_MODEL": "gpt-5.4-nano",
   "ANTHROPIC_MODEL": "claude-haiku-4-5",
   "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
-  "DEEPSEEK_MODEL": "deepseek-reasoner",
+  "DEEPSEEK_MODEL": "deepseek-v4-flash",
   "CONTRARIAN_AGENT_ID": "contrarian_agent"
 }
 ```

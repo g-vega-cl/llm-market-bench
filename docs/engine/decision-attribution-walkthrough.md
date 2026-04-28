@@ -49,5 +49,5 @@ Unit tests were implemented in `apps/engine/tests/test_attribution.py` to verify
 When running the `ingest` command, the engine now logs successful attribution:
 ```text
 [AAPL] BUY (Conf: 85%): Saved attribution for openai/gpt-5.4-nano
-[NVDA] HOLD (Conf: 92%): Saved attribution for deepseek/deepseek-reasoner
+[NVDA] HOLD (Conf: 92%): Saved attribution for deepseek/deepseek-v4-flash
 ```

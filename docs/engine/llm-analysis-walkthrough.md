@@ -25,12 +25,12 @@ To ensure maximum feature coverage and performance, the system uses the official
 | **OpenAI** | `openai` | `gpt-5.4-nano` |
 | **Anthropic** | `anthropic` | `claude-haiku-4-5` |
 | **Gemini** | `google-genai` | `gemini-3.1-flash-lite-preview` |
-| **DeepSeek** | `openai` (official) | `deepseek-reasoner` |
+| **DeepSeek** | `openai` (official) | `deepseek-v4-flash` |
 | **Contrarian Agent** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 | **Manager Agent** | `google-genai` | `gemini-3.1-flash-lite-preview` |
 
 ### **Active Tool Calling & Reasoning**
-- **`deepseek-reasoner`** specifically utilizes **Thinking Mode**, embedding true Chain-of-Thought (CoT) into their multi-turn tool calling loops for complex strategy formulation.
+- **`deepseek-v4-flash`** specifically utilizes **Thinking Mode**, embedding true Chain-of-Thought (CoT) into their multi-turn tool calling loops for complex strategy formulation.
 - **`get_stock_quote`**: Verifies ticker existence, real-time pricing, and liquidity.
 - **`get_price_history`**: Fetches recent historical prices to determine if news is "priced in".
 - **`get_position_pnl`**: Fetches current unrealized P&L and cost basis for existing positions.
@@ -102,7 +102,7 @@ Model names are defined in the shared JSON configuration file at [`packages/conf
   "OPENAI_MODEL": "gpt-5.4-nano",
   "ANTHROPIC_MODEL": "claude-haiku-4-5",
   "GEMINI_MODEL": "gemini-3.1-flash-lite-preview",
-  "DEEPSEEK_MODEL": "deepseek-reasoner",
+  "DEEPSEEK_MODEL": "deepseek-v4-flash",
   "CONTRARIAN_AGENT_ID": "contrarian_agent"
 }
 ```

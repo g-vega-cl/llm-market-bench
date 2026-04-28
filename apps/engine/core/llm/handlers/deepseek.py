@@ -36,8 +36,8 @@ async def run_tool_loop(
             "tools": override_tools or _build_tool_list(enable_web_search),
         }
 
-        # DeepSeek specific: Enable thinking mode
-        if "reasoner" in model_name:
+        # DeepSeek specific: Enable thinking mode (all v4 models support it)
+        if "deepseek" in model_name.lower():
             args["extra_body"] = {"thinking": {"type": "enabled"}}
 
             # DeepSeek requires reasoning_content to be present if tool_calls is present.

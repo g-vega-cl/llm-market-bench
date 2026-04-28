@@ -235,6 +235,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Maybe use moving averages for 90 day ETF move? To avoid daily volatility influencing the starting/ending points?**
 - [ ] **Make a DB backup.**
 - [ ] **Supabase push/migrate programmatically?** - Make sure your migration files match what you have and that you can migrate programmatically without breaking everything.
+- [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
 
 ### 🔄 Under Consideration
 

@@ -1,6 +1,7 @@
 import json
 import logging
 from openai import AsyncOpenAI
+from core.config import DEEPSEEK_MODEL
 
 logger = logging.getLogger("engine")
 
@@ -36,7 +37,7 @@ Return a JSON array of findings with keys: title, severity, suggestion. Return o
         )
 
         response = await client.chat.completions.create(
-            model="deepseek-reasoner",
+            model=DEEPSEEK_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )

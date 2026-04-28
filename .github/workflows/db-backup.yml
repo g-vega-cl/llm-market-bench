@@ -1,0 +1,56 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Backup database
+        run: |
+          set -e
+
+          PROJECT_URL="${{ secrets.SUPABASE_PROJECT_URL }}"
+          PASSWORD="${{ secrets.SUPABASE_PWD }}"
+
+          # Extract project ref from https://<ref>.supabase.co
+          PROJECT_REF=$(echo "$PROJECT_URL" | sed -E 's|https?://([^/]+)\.supabase\.co.*|\1|')
+          DB_HOST="db.${PROJECT_REF}.supabase.co"
+
+          TIMESTAMP=$(date +%Y-%m-%d)
+          DUMP_FILE="ai-wall-street-backup-${TIMESTAMP}.sql.gz"
+
+          # Supabase requires SSL for external connections
+          export PGPASSWORD="$PASSWORD"
+          pg_dump \
+            -h "$DB_HOST" \
+            -p 5432 \
+            -U postgres \
+            -d postgres \
+            --no-owner \
+            --clean \
+            --if-exists \
+            --sslmode=require \
+            | gzip > "$DUMP_FILE"
+
+          echo "Backup created: $(ls -lh "$DUMP_FILE")"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: ai-wall-street-backup-*.sql.gz
+          retention-days: 10
+          if-no-files-found: error

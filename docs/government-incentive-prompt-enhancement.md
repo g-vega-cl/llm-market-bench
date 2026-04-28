@@ -76,9 +76,9 @@ Only captures policies from economically powerful nations:
 
 ---
 
-#### 2. **Runtime Validation** (`core/llm/analysis.py`)
+#### 2. **Runtime Validation & Policy Lookup** (`core/llm/analysis.py`)
 
-Added post-analysis validation that:
+Added post-analysis validation that **rejects vague government events** instead of injecting generic fallbacks:
 
 1. **Scans news chunks** for government-related keywords:
    - "bill", "act", "congress", "parliament", "legislation"
@@ -87,53 +87,85 @@ Added post-analysis validation that:
    - "executive order", "defense production act"
    - "usda", "dod", "doe", "sec", "treasury", "federal"
 
-2. **Validates macro event generation**:
-   - If government content detected but NO macro events → Warning logged
-   - If government content detected but no `is_government_incentive=true` event → Warning logged
+2. **Detects vague government events** — any macro event with `is_government_incentive=true` whose `event_name` matches generic patterns like "Government Policy Update", "Ongoing Legislative Policy Developments", etc.
 
-3. **Provides audit trail** for prompt compliance monitoring
+3. **Attempts policy enrichment** via `core/llm/policy_lookup.py`:
+   - Calls Gemini with **Google Search** to identify the specific bill/act/regulation name, current status, and description from the chunk content.
+   - If found (confidence ≥ 50) → enriches the event: `"CHIPS and Science Act [passed Senate]"` with a detailed description.
+   - If not found → **removes the vague event entirely** (no generic placeholder).
+
+4. **Logs warnings** when government content is present but no specific macro event was identified or flagged.
+
+#### 3. **Consensus Gate** (`consensus.py`)
+
+Added a safety net in the consensus synthesis pipeline:
+- After LLM synthesis, checks if the synthesized event name is a vague government event (matching generic patterns).
+- If vague → **rejects and does NOT promote to memory**.
+- If specific → promotes normally.
+
+This ensures that no vague government event makes it into long-term memory, even if the analysis stage somehow misses it.
+
+#### 4. **Prompt Specificity Enforcement** (`core/llm/prompts.py`)
+
+Both the **analysis prompt** (`ANALYSIS_USER_PROMPT_TEMPLATE`) and the **synthesis prompt** (`SYNTHESIS_USER_PROMPT_TEMPLATE`) now include hard specificity requirements:
+
+- *"Government event names MUST include the specific bill, act, or regulation. Generic names like 'Government Policy Update' are INVALID and will be rejected."*
+- *"If raw inputs are too vague to name a specific policy, set 'name' to 'VAGUE_GOVERNMENT_EVENT' and the system will reject it."*
 
 ---
 
 ## Expected Impact
 
-### Before Enhancement
+### Before Enhancement (Fallback Injection)
 ```
 Newsletter: Farm Bill 2026
 ├── Decisions: DE BUY (2 models)
-├── Macro Events: [] ← EMPTY
-└── Memory: NOT CREATED ❌
+├── Macro Events: ["Government Policy Update" (vague)] ← INJECTED FALLBACK
+└── Memory: "Ongoing Legislative Policy Developments" ← MEANINGLESS
 ```
 
-### After Enhancement
+### After Enhancement (Specificity + Lookup)
 ```
 Newsletter: Farm Bill 2026
 ├── Decisions: DE BUY (all models)
-├── Macro Events: [
-│   "US Farm Bill 2026 Agri-Tech Push" (is_government_incentive=true)
-│   ]
-└── Memory: CREATED ✅ (via consensus protocol)
+├── Macro Events: ["US Farm Bill 2026 Agri-Tech Push" (specific)] ← MODEL OR LOOKUP
+└── Memory: "US Farm Bill 2026 [in committee]" ← ACTIONABLE
+```
+
+If the policy cannot be identified:
+```
+Newsletter: Vague policy mention
+├── Model returns: "Government Policy Update" (vague) 
+├── Policy Lookup: No specific policy found
+└── Result: Event REMOVED ← No worthless memory
 ```
 
 ---
 
 ## Testing Strategy
 
-### Next Pipeline Run
-Monitor logs for:
-1. ✅ Macro events generated with `is_government_incentive=true`
-2. ✅ No "GOVERNMENT INCENTIVE ENFORCEMENT" warnings
-3. ✅ Consensus protocol promotes government events to memory
-4. ✅ Dashboard shows new GOVERNMENT_INCENTIVE memories
+### Automated Tests
+```bash
+# Tool enforcement + government validation tests (11 tests)
+python -m pytest tests/test_tool_enforcement.py -v
 
-### Validation Queries
-```python
-# Check for government incentive memories
-client.table("memories").select("*").eq("memory_type", "GOVERNMENT_INCENTIVE").execute()
-
-# Check for enforcement warnings in logs
-grep "GOVERNMENT INCENTIVE ENFORCEMENT" logs/
+# Consensus gate + vague event rejection tests (27 tests)
+python -m pytest tests/test_consensus.py -v
 ```
+
+**Key test coverage**:
+- `test_validate_and_enrich_removes_vague_government_event` — Vague event removed when lookup fails
+- `test_validate_and_enrich_preserves_specific_event` — Specific event preserved unchanged
+- `test_validate_and_enrich_enriches_vague_event_on_lookup_success` — Policy lookup enriches vague event with name + status
+- `test_is_vague_government_event_true_for_generic_names` — Consensus helper flags 6 generic patterns
+- `test_process_consensus_rejects_vague_government_event` — Consensus pipeline rejects vague events
+- `test_process_consensus_accepts_specific_government_event` — Consensus pipeline accepts specific events
+
+### Monitoring
+During pipeline runs, watch logs for:
+1. ✅ "ENRICHED GOVERNMENT EVENT" — policy lookup identified a specific policy
+2. ⚠️ "REMOVING VAGUE GOVERNMENT EVENT" — vague event removed (no policy found)
+3. ⚠️ "Rejecting vague government event from consensus" — consensus gate caught a slip-through
 
 ---
 
@@ -141,10 +173,12 @@ grep "GOVERNMENT INCENTIVE ENFORCEMENT" logs/
 
 | File | Change | Purpose |
 |------|--------|---------|
-| `core/llm/prompts.py` | Added Government Incentives section | Guide LLMs to capture policy events |
-| `core/llm/prompts.py` | Added examples (GOOD/IGNORE) | Concrete guidance for LLMs |
-| `core/llm/prompts.py` | Added mandatory enforcement rule | Hard requirement for compliance |
-| `core/llm/analysis.py` | Added runtime validation | Audit trail for prompt compliance |
+| `core/llm/prompts.py` | Added Government Incentives section + specificity enforcement | Guide LLMs; reject generic names |
+| `core/llm/analysis.py` | Replaced `_ensure_government_incentive_events` with `_validate_and_enrich_government_events` | Reject vague events; enrich via policy lookup |
+| `core/llm/policy_lookup.py` | **NEW** — Gemini + Google Search policy identification | Find specific bill/act/regulation names |
+| `consensus.py` | Added `_is_vague_government_event` + rejection gate | Safety net: reject vague events before memory promotion |
+| `tests/test_tool_enforcement.py` | 11 tests (3 new: validate+enrich, 3 old removed) | Coverage for analysis-stage validation |
+| `tests/test_consensus.py` | 27 tests (17 new: gate + parametric helper tests) | Coverage for consensus-stage rejection |
 
 ---
 

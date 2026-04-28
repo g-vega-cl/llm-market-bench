@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 from core.config import GEMINI_MODEL
 from core.models import MacroEvent
-from consensus import process_consensus, _resolve_impact_tie
+from consensus import process_consensus, _resolve_impact_tie, _is_vague_government_event
 
 @pytest.fixture
 def sample_events():
@@ -233,3 +233,157 @@ def test_resolve_impact_tie_empty_dict():
 def test_resolve_impact_tie_single_impact():
     """Test that the single impact is returned when only one exists."""
     assert _resolve_impact_tie({"BEARISH": 5}) == "BEARISH"
+
+
+# --- Tests for vague government event rejection gate ---
+
+_VAGUE_GOV_NAMES = [
+    "Ongoing Legislative Policy Developments",
+    "Government Policy Update",
+    "Government Policy Structural Update",
+    "Policy Structural Update",
+    "Ongoing Policy Developments",
+    "VAGUE_GOVERNMENT_EVENT",
+]
+
+_SPECIFIC_GOV_NAMES = [
+    "US Farm Bill 2026 Agri-Tech Push",
+    "CHIPS Act Expansion",
+    "EU Green Hydrogen Act",
+    "Japan GX Transformation Bonds",
+    "Fed Rate Cut Cycle",
+]
+
+_NON_POLICY_NAMES = [
+    "AI Demand Surge",
+    "Earnings Season Begins",
+    "Oil Supply Disruption",
+    "Crypto Crash",
+]
+
+
+@pytest.mark.parametrize("name", _VAGUE_GOV_NAMES)
+def test_is_vague_government_event_true_for_generic_names(name):
+    assert _is_vague_government_event(name) is True, f"'{name}' should be vague"
+
+
+@pytest.mark.parametrize("name", _SPECIFIC_GOV_NAMES)
+def test_is_vague_government_event_false_for_specific_names(name):
+    assert _is_vague_government_event(name) is False, f"'{name}' should not be vague"
+
+
+@pytest.mark.parametrize("name", _NON_POLICY_NAMES)
+def test_is_vague_government_event_false_for_non_policy_events(name):
+    assert _is_vague_government_event(name) is False, f"'{name}' should not be flagged"
+
+
+@patch("consensus.DiscoveryService")
+@patch("consensus.synthesize_event")
+@patch("consensus.get_embeddings_batch")
+@patch("consensus.add_memory")
+@pytest.mark.asyncio
+async def test_process_consensus_rejects_vague_government_event(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery
+):
+    """When the synthesizer returns a vague government event name, the consensus
+    pipeline should reject it and NOT promote it to memory."""
+    mock_add_memory.return_value = "new-uuid"
+    mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
+    mock_synthesize.return_value = {
+        "name": "Ongoing Legislative Policy Developments",
+        "summary": "The market is monitoring ongoing legislative and government policy developments.",
+    }
+
+    events = [
+        MacroEvent(
+            event_name="Government Policy Update",
+            impact="NEUTRAL",
+            confidence=60,
+            reasoning="Policy changes may affect markets.",
+            source_id="source1",
+            model_provider="openai",
+            model_name="gpt-4",
+        ),
+        MacroEvent(
+            event_name="Government Policy Update",
+            impact="NEUTRAL",
+            confidence=55,
+            reasoning="Government legislation is pending.",
+            source_id="source1",
+            model_provider="anthropic",
+            model_name="claude-3",
+        ),
+        MacroEvent(
+            event_name="Government Policy Update",
+            impact="NEUTRAL",
+            confidence=50,
+            reasoning="Policy developments ongoing.",
+            source_id="source1",
+            model_provider="gemini",
+            model_name=GEMINI_MODEL,
+        ),
+    ]
+
+    mock_get_embeddings.return_value = [
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+    ]
+
+    consensus_events = await process_consensus(events, threshold=2)
+
+    assert len(consensus_events) == 0
+    mock_add_memory.assert_not_called()
+
+
+@patch("consensus.DiscoveryService")
+@patch("consensus.synthesize_event")
+@patch("consensus.get_embeddings_batch")
+@patch("consensus.add_memory")
+@pytest.mark.asyncio
+async def test_process_consensus_accepts_specific_government_event(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery
+):
+    """When the synthesizer returns a specific government event name, the pipeline
+    should accept and promote it to memory normally."""
+    mock_add_memory.return_value = "new-uuid"
+    mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
+    mock_synthesize.return_value = {
+        "name": "US Farm Bill 2026",
+        "summary": "Congress advances the Farm, Food and National Security Act with $50B for precision agriculture.",
+        "scenario_analysis": "Scenario A: Passage -> Trading Plan: Buy DE.\nScenario B: Stalled -> Trading Plan: Hold.",
+    }
+
+    events = [
+        MacroEvent(
+            event_name="US Farm Bill 2026",
+            impact="BULLISH",
+            confidence=85,
+            reasoning="Farm bill advancing through Congress.",
+            source_id="source1",
+            model_provider="openai",
+            model_name="gpt-4",
+            is_government_incentive=True,
+        ),
+        MacroEvent(
+            event_name="US Farm Bill 2026",
+            impact="BULLISH",
+            confidence=80,
+            reasoning="Ag subsidies boost expected.",
+            source_id="source1",
+            model_provider="anthropic",
+            model_name="claude-3",
+            is_government_incentive=True,
+        ),
+    ]
+
+    mock_get_embeddings.return_value = [
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+    ]
+
+    consensus_events = await process_consensus(events, threshold=2)
+
+    assert len(consensus_events) == 1
+    assert consensus_events[0]["event_name"] == "US Farm Bill 2026"
+    mock_add_memory.assert_called_once()

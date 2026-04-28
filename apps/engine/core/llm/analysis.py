@@ -10,6 +10,7 @@ from core.models import DecisionsResponse, MacroEvent
 from core.llm import clients
 from core.llm.prompt_factory import PromptFactory
 from core.llm import tools
+from core.llm.policy_lookup import lookup_policy, PolicyLookupResult
 from .utils import ensure_list
 from core.llm.logger import log_reasoning_trace
 from core.config import MIN_TRADE_VALUE
@@ -370,43 +371,9 @@ async def analyze_with_provider(
             validated_decisions.append(decision)
         final_resp.decisions = validated_decisions
 
-        # GOVERNMENT INCENTIVE ENFORCEMENT: Promote or synthesize government policy events
-        # so obvious policy/news signals are not dropped if the model misses the flag.
-        _ensure_government_incentive_events(final_resp, chunks, provider, model_name)
-
-        # GOVERNMENT INCENTIVE ENFORCEMENT: Check if news contains government policy content
-        # but no macro_events were generated
-        gov_keywords = [
-            "bill", "act", "congress", "parliament", "legislation", "subsidy", "grant",
-            "incentive", "budget", "funding", "appropriation", "tax credit", "policy",
-            "regulation", "directive", "executive order", "defense production act",
-            "government program", "federal", "treasury", "usda", "dod", "doe", "sec"
-        ]
-        
-        for chunk in chunks:
-            content_lower = chunk.get("content", "").lower()
-            has_gov_content = any(kw in content_lower for kw in gov_keywords)
-            
-            if has_gov_content and not final_resp.macro_events:
-                logger.warning(
-                    "[%s/%s] GOVERNMENT INCENTIVE ENFORCEMENT: News chunk '%s' contains "
-                    "government policy content but NO macro_events were generated. "
-                    "This may indicate a prompt compliance issue.",
-                    provider, model_name, chunk.get("source_id", "unknown")
-                )
-            elif has_gov_content:
-                # Check if any macro_event has is_government_incentive=true
-                has_gov_incentive_event = any(
-                    getattr(event, "is_government_incentive", False)
-                    for event in final_resp.macro_events
-                )
-                if not has_gov_incentive_event:
-                    logger.warning(
-                        "[%s/%s] GOVERNMENT INCENTIVE ENFORCEMENT: News chunk '%s' contains "
-                        "government policy content but no macro_event marked with "
-                        "is_government_incentive=true.",
-                        provider, model_name, chunk.get("source_id", "unknown")
-                    )
+        # POST-ANALYSIS GOVERNMENT EVENT VALIDATION
+        # Validate and enrich government events — reject vague ones that can't be disambiguated.
+        await _validate_and_enrich_government_events(final_resp, chunks, provider, model_name)
 
         # Log completion
         await log_reasoning_trace(
@@ -430,13 +397,18 @@ async def analyze_with_provider(
         await clients.close_client(client, provider)
 
 
-def _ensure_government_incentive_events(
+async def _validate_and_enrich_government_events(
     response: DecisionsResponse,
     chunks: list[dict],
     provider: str,
     model_name: str,
 ) -> None:
-    """Ensures policy-heavy snippets are represented by at least one flagged macro event."""
+    """Validates government events and enriches vague ones via web search lookup.
+
+    Replaces the old fallback enforcement. Instead of injecting generic
+    placeholders, this function either enriches vague events with specific
+    policy details or removes them entirely.
+    """
     gov_keywords = [
         "bill", "act", "congress", "parliament", "legislation", "subsidy", "grant",
         "incentive", "budget", "funding", "appropriation", "tax credit", "policy",
@@ -445,106 +417,108 @@ def _ensure_government_incentive_events(
         "appropriations", "tariff", "deregulation"
     ]
 
+    VAGUE_GOV_PATTERNS = [
+        "government policy update",
+        "government policy structural",
+        "legislative policy developments",
+        "ongoing legislative policy",
+        "ongoing policy",
+        "policy update",
+        "policy structural update",
+        "regulatory update",
+        "regulatory policy",
+    ]
+
     def chunk_has_gov_content(content: str) -> bool:
         content_lower = content.lower()
         return any(kw in content_lower for kw in gov_keywords)
 
-    def event_looks_like_gov_policy(event: MacroEvent) -> bool:
-        event_text = " ".join(
-            str(part or "")
-            for part in (
-                event.event_name,
-                event.reasoning,
-                event.scenario_analysis,
-                event.expiry_date,
-            )
-        ).lower()
-        return any(kw in event_text for kw in gov_keywords) or "government" in event_text or "policy" in event_text
-
-    def mark_event(event: MacroEvent) -> None:
-        if not event.is_government_incentive:
-            event.is_government_incentive = True
-            logger.info(
-                "[%s/%s] GOVERNMENT INCENTIVE ENFORCEMENT: Auto-marked macro event '%s' as government incentive.",
-                provider, model_name, event.event_name
-            )
-
-    fallback_scenarios = (
-        "Scenario A: Policy advances or expands -> Trading Plan: Favor direct beneficiaries, "
-        "sector ETFs, and suppliers tied to the incentive.\n"
-        "Scenario B: Policy stalls, dilutes, or faces legal delay -> Trading Plan: Trim exposure "
-        "to direct beneficiaries and shift to defensive hedges or broader indices."
-    )
+    def is_vague_government_event(event: MacroEvent) -> bool:
+        if not getattr(event, "is_government_incentive", False):
+            return False
+        name_lower = (event.event_name or "").lower()
+        for pattern in VAGUE_GOV_PATTERNS:
+            if pattern in name_lower:
+                return True
+        if name_lower in ("government policy update", "policy update"):
+            return True
+        return False
 
     gov_chunks = [chunk for chunk in chunks if chunk_has_gov_content(chunk.get("content", ""))]
     if not gov_chunks:
         return
 
-    if not response.macro_events:
-        for chunk in gov_chunks:
-            response.macro_events.append(
-                MacroEvent(
-                    event_name="Government Policy Update",
-                    impact="NEUTRAL",
-                    catalyst_type="REGULATORY",
-                    is_ongoing=False,
-                    is_future_catalyst=False,
-                    historical_parallel=None,
-                    is_government_incentive=True,
-                    expiry_date=None,
-                    importance_score=6,
-                    confidence=55,
-                    reasoning=(
-                        "Fallback macro event synthesized because the source chunk contains "
-                        "government policy content but the model returned no macro event."
-                    ),
-                    scenario_analysis=fallback_scenarios,
-                    source_id=chunk.get("source_id", "unknown"),
-                    model_provider=provider,
-                    model_name=model_name,
-                )
-            )
-        return
+    enriched_events = []
+    removed_vague = 0
 
-    for chunk in gov_chunks:
-        source_id = str(chunk.get("source_id", "unknown")).strip().lower()
-        related_events = [
-            event for event in response.macro_events
-            if str(getattr(event, "source_id", "unknown")).strip().lower() == source_id
-        ]
-
-        flagged_events = [event for event in related_events if getattr(event, "is_government_incentive", False)]
-        if flagged_events:
+    for event in response.macro_events:
+        if not is_vague_government_event(event):
+            enriched_events.append(event)
             continue
 
-        gov_related_events = [event for event in related_events if event_looks_like_gov_policy(event)]
-        target_event = gov_related_events[0] if gov_related_events else (related_events[0] if related_events else None)
+        logger.warning(
+            "[%s/%s] VAGUE GOVERNMENT EVENT DETECTED: '%s' for source '%s'. Attempting policy lookup.",
+            provider, model_name, event.event_name,
+            getattr(event, "source_id", "unknown")
+        )
 
-        if target_event is not None:
-            mark_event(target_event)
-        else:
-            response.macro_events.append(
-                MacroEvent(
-                    event_name="Government Policy Update",
-                    impact="NEUTRAL",
-                    catalyst_type="REGULATORY",
-                    is_ongoing=False,
-                    is_future_catalyst=False,
-                    historical_parallel=None,
-                    is_government_incentive=True,
-                    expiry_date=None,
-                    importance_score=6,
-                    confidence=55,
-                    reasoning=(
-                        "Fallback macro event synthesized because the source chunk contains "
-                        "government policy content but no matching macro event was returned."
-                    ),
-                    scenario_analysis=fallback_scenarios,
-                    source_id=chunk.get("source_id", "unknown"),
-                    model_provider=provider,
-                    model_name=model_name,
-                )
+        chunk = next(
+            (c for c in gov_chunks if str(c.get("source_id", "unknown")).lower() == str(getattr(event, "source_id", "unknown")).lower()),
+            gov_chunks[0]
+        )
+
+        lookup_result = await lookup_policy(
+            chunk_content=chunk.get("content", ""),
+            existing_event_name=event.event_name
+        )
+
+        if lookup_result is not None:
+            event.event_name = f"{lookup_result.policy_name} [{lookup_result.status}]"
+            event.reasoning = lookup_result.description
+            event.confidence = lookup_result.confidence
+            logger.info(
+                "[%s/%s] ENRICHED GOVERNMENT EVENT: '%s' -> '%s'",
+                provider, model_name, "Government Policy Update", event.event_name
             )
+            enriched_events.append(event)
+        else:
+            logger.warning(
+                "[%s/%s] REMOVING VAGUE GOVERNMENT EVENT: '%s' — policy lookup failed.",
+                provider, model_name, event.event_name
+            )
+            removed_vague += 1
+
+    response.macro_events = enriched_events
+
+    if removed_vague > 0:
+        logger.info(
+            "[%s/%s] Removed %d vague government event(s) with no identifiable policy.",
+            provider, model_name, removed_vague
+        )
+
+    for chunk in gov_chunks:
+        content_lower = chunk.get("content", "").lower()
+        has_gov_content = any(kw in content_lower for kw in gov_keywords)
+
+        if has_gov_content and not response.macro_events:
+            logger.warning(
+                "[%s/%s] GOVERNMENT POLICY CONTENT: News chunk '%s' contains "
+                "government policy content but no specific macro events were identified "
+                "by the model or policy lookup.",
+                provider, model_name, chunk.get("source_id", "unknown")
+            )
+        elif has_gov_content:
+            has_gov_incentive_event = any(
+                getattr(event, "is_government_incentive", False)
+                for event in response.macro_events
+            )
+            if not has_gov_incentive_event:
+                logger.warning(
+                    "[%s/%s] UNFLAGGED POLICY EVENT: News chunk '%s' contains "
+                    "government policy content but no macro_event marked with "
+                    "is_government_incentive=true.",
+                    provider, model_name, chunk.get("source_id", "unknown")
+                )
 
 
 def _scan_history_for_tools(messages: list, ticker: str) -> dict:

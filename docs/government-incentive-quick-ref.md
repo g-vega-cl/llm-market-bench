@@ -256,13 +256,17 @@ Reason: Local policy, not national
 
 ## 🚨 Enforcement Rules
 
-**HARD REQUIREMENT:**
-> If news contains government legislation/budget/subsidy/policy from approved countries → MUST generate macro_event with `is_government_incentive=true`
+**HARD REQUIREMENT (Specificity):**
+> Government event names MUST include the specific bill, act, or regulation. Generic names like "Government Policy Update", "Ongoing Legislative Policy Developments", or "Policy Structural Update" are INVALID and will be **removed by the system**.
 
-**Validation Warnings:**
-1. Government content detected + NO macro_events → ⚠️ Warning
-2. Government content detected + no `is_government_incentive=true` → ⚠️ Warning
-3. Macro event generated but missing metadata → ⚠️ Warning
+**Post-Analysis Validation:**
+1. Vague government event detected → attempt **Policy Lookup** (Gemini + Google Search)
+2. Lookup succeeds → event enriched with `"Policy Name [status]"` + description
+3. Lookup fails → event **removed** (no generic placeholder)
+
+**Consensus Gate:**
+1. Synthesis produces vague government event name → **rejected**, not promoted to memory
+2. Only specific, named policies enter long-term memory
 
 **Audit Trail:**
-All warnings logged to: `GOVERNMENT INCENTIVE ENFORCEMENT`
+Logs track: `ENRICHED GOVERNMENT EVENT` (success), `REMOVING VAGUE GOVERNMENT EVENT` (failed lookup), `Rejecting vague government event from consensus` (gate rejection)

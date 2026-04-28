@@ -69,11 +69,14 @@ After linking and resolution, the system applies two additional optimizations:
 - **Proactive Positioning**: If an event is flagged as a `is_future_catalyst` or contains a `future_date` (e.g., "Q3 2026", "next summer"), it is recorded in the `memories` table with a `target_date` field.
 - **Unified Storage**: These future catalysts are indexed by `target_date`, allowing agents to track the "chain" from prediction to realization without managing a secondary table.
 
-### 7. LLM Synthesis & Asset Discovery
+### 7. LLM Synthesis, Asset Discovery & Specificity Gate
 A final "Analyst Pass" (via Google Gemini) is performed to:
 - Create a professional, unified **Event Name** (max 5 words).
 - Write a 1-sentence **Summary** capturing the catalyst and market implication.
 - Consolidate reasoning from all contributing models.
+
+**Government Event Specificity Gate:**
+Before promotion, the synthesized event is checked against a list of generic government patterns (e.g., `"Ongoing Legislative Policy Developments"`, `"Government Policy Structural Update"`). If the name matches a vague pattern and lacks a specific bill, act, or regulation name, the event is **rejected** and not promoted to memory. Only events with specific, named policies enter long-term memory.
 
 **Asset Discovery Integration**:
 For every synthesized consensus event, the system invokes the **`DiscoveryService`**. This service uses the synthesized summary to:
@@ -107,6 +110,11 @@ You can verify the protocol is working by checking the engine logs:
 ```text
 INFO: Consensus reached on semantic event group: 'Fed Rate Hike' (3 models)
 INFO: Promoted synthesized consensus event: 'Fed Signals Tightening Bias'
+```
+
+**Government event rejection:**
+```text
+WARNING: Rejecting vague government event from consensus: 'Ongoing Legislative Policy Developments'. No specific bill, act, or regulation was identified.
 ```
 
 Unit tests are located in `apps/engine/tests/test_consensus.py`.

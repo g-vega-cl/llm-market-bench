@@ -286,12 +286,10 @@ SMA MANAGEMENT RULES:
    - "Political party campaign promise for tax cuts" (no funding or legislative path)
    - "Small country X announces minor tariff adjustment" (not market-moving nation)
 
-   **MANDATORY ENFORCEMENT:**
-   - If ANY news snippet mentions government legislation, budgets, subsidies, or policy changes from the approved countries above, you MUST generate at least ONE macro event with 'is_government_incentive' = true.
-   - Set 'is_government_incentive': true specifically for these events in your JSON output.
-   - This is a HARD REQUIREMENT. Do not skip this even if you're focused on trading decisions.
-   - Government policy changes are PRIMARY market drivers, not secondary considerations.
-   - CRITICAL: Even if you don't identify a trade, you MUST identify the government incentive if it exists in the news.
+    **SPECIFICITY ENFORCEMENT (HARD REQUIREMENT):**
+    - Government event names MUST include the specific bill, act, or regulation (e.g., "US Farm Bill 2026", "CHIPS Act", "EU Green Hydrogen Act").
+    - Generic names like "Government Policy Update", "Legislative Policy Developments", or "Policy Structural Update" are INVALID and will be rejected by the system.
+    - If you cannot identify the specific bill, act, or regulation name, DO NOT create a macro event for it. A vague event is worse than no event.
 
 You must provide a confidence score (0-100) and your reasoning for each trading signal and macro event.
 
@@ -324,6 +322,7 @@ SCENARIO ANALYSES:
 
 Your task:
 1. Create a professional, concise 'name' for this event (max 5 words).
+   **SPECIFICITY RULE:** If this event involves legislation, regulation, or government policy, the 'name' MUST include the specific bill, act, or regulation. Never use generic phrases like "Ongoing Legislative Policy Developments", "Government Policy Structural Update", or "Policy Update". If the raw inputs are too vague to name a specific policy, set 'name' to "VAGUE_GOVERNMENT_EVENT" and the system will reject it.
 2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.
 3. Synthesize the 'scenario_analysis': Provide a unified, structured view of potential resolutions. 
    **CRITICAL: This is the "How to Profit" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).

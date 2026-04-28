@@ -265,8 +265,10 @@ This ensures that the `messages` array used in `log_reasoning_trace` remains cle
 |------|---------|
 | `core/llm/prompt_factory.py` | **NEW**: Centralized factory for assembling all agent prompts and message lists. |
 | `core/llm/prompts.py` | Repository for static prompt templates; now strictly accessed via `PromptFactory`. |
-| `core/llm/analysis.py` | Integrated `PromptFactory` for unified analysis prompts; includes history scanning and penalties. |
+| `core/llm/analysis.py` | Integrated `PromptFactory` for unified analysis prompts; includes history scanning, ownership pre-validation, and government event specificity validation with policy lookup enrichment. |
 | `core/llm/verification.py` | Integrated `PromptFactory` for consistent verifier intelligence profiles. |
+| `core/llm/policy_lookup.py` | **NEW** — Gemini + Google Search policy identification for enriching vague government events. |
+| `consensus.py` | Added `_is_vague_government_event` rejection gate to prevent generic government events from entering memory. |
 | `core/models.py` | Added `price_source` field to `DecisionObject` |
 | `core/llm/handlers/deepseek.py` | Added `prepare_messages_for_instructor()`, `has_valid_content()` for thinking mode support |
 | `core/llm/handlers/anthropic.py` | Increased max_tokens from 8000 to 32000 |
@@ -381,7 +383,12 @@ python -m pytest tests/test_llm_tools.py tests/test_gemini_tools.py -v
 - `test_scan_history_anthropic_format`: Verifies Anthropic tool call detection
 - `test_scan_history_gemini_format`: Verifies Gemini tool call detection
 - `test_analyze_with_provider_hard_enforcement`: Verifies sell_tool_called flag updates
-- `test_analyze_with_provider_government_enforcement`: Verifies government incentive enforcement
+- `test_validate_and_enrich_removes_vague_government_event`: Verifies vague government events are removed when policy lookup fails
+- `test_validate_and_enrich_preserves_specific_event`: Verifies specific government events are preserved unchanged
+- `test_validate_and_enrich_enriches_vague_event_on_lookup_success`: Verifies vague events are enriched via policy lookup
+- `test_is_vague_government_event_true_for_generic_names`: Verifies consensus helper flags generic patterns
+- `test_process_consensus_rejects_vague_government_event`: Verifies consensus pipeline rejects vague events
+- `test_process_consensus_accepts_specific_government_event`: Verifies consensus pipeline accepts specific events
 
 ## Future Enhancements
 

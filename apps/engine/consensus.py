@@ -53,6 +53,39 @@ def _resolve_impact_tie(impact_weights: dict[str, float]) -> str:
     # Weighted Tie: if NEUTRAL is one of the top, prefer it; otherwise default to NEUTRAL
     return "NEUTRAL"
 
+
+_VAGUE_GOVERNMENT_PATTERNS = [
+    "government policy update",
+    "government policy structural",
+    "legislative policy developments",
+    "ongoing legislative policy",
+    "ongoing policy",
+    "policy update",
+    "policy structural update",
+    "regulatory update",
+    "regulatory policy",
+    "vague_government_event",
+]
+
+
+def _is_vague_government_event(name: str, summary: str = "") -> bool:
+    """Checks whether a synthesized event is a vague government event lacking specific policy identifiers."""
+    name_lower = (name or "").lower()
+    summary_lower = (summary or "").lower()
+
+    for pattern in _VAGUE_GOVERNMENT_PATTERNS:
+        if pattern in name_lower:
+            return True
+
+    if name_lower in ("government policy update", "policy update", "vague_government_event"):
+        return True
+
+    has_gov_indicator = any(kw in summary_lower for kw in ("government", "legislat", "regulat", "subsid", "bill", "act", "policy"))
+    if not has_gov_indicator:
+        return False
+
+    return False
+
 async def _get_event_embeddings(event_names: list[str]) -> list[Any]:
     """Fetch embeddings for a list of event names."""
     try:
@@ -133,7 +166,15 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
         reasonings=reasonings,
         scenarios=scenarios
     )
-    
+
+    # Reject vague government events — they lack actionable specificity
+    if _is_vague_government_event(synthesis["name"], synthesis.get("summary", "")):
+        logger.warning(
+            f"Rejecting vague government event from consensus: '{synthesis['name']}'. "
+            "No specific bill, act, or regulation was identified."
+        )
+        return None
+
     is_ongoing = synthesis.get("is_ongoing", ongoing_votes > (cumulative_weight / 2))
     is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
     historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)

@@ -2,7 +2,8 @@
 
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from core.llm.analysis import analyze_with_provider, _scan_history_for_tools, _ensure_government_incentive_events
+from core.llm.analysis import analyze_with_provider, _scan_history_for_tools, _validate_and_enrich_government_events
+from consensus import _is_vague_government_event
 from core.models import DecisionsResponse, DecisionObject, MacroEvent
 
 @pytest.fixture
@@ -116,33 +117,6 @@ def test_scan_history_robust_matching():
     assert res_messy["quote_found"] is True
 
 @pytest.mark.asyncio
-async def test_analyze_with_provider_government_enforcement(mock_clients, caplog):
-    """Verify that government incentive enforcement synthesizes a fallback macro event when government keywords are present but no macro_events are returned."""
-    mock_instructor = mock_clients["instructor"]
-    
-    # Return a response with gov content but NO macro events
-    mock_instructor.create.return_value = [DecisionsResponse(
-        decisions=[],
-        macro_events=[]
-    )]
-    
-    chunks = [{"source_id": "gov_1", "content": "The US Congress passed a new subsidy bill for AI."}]
-    
-    with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock), \
-         patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock):
-        result = await analyze_with_provider(
-            provider="openai",
-            model_name="gpt-4",
-            chunks=chunks
-        )
-    
-    # Verify a fallback macro event was synthesized (government enforcement in action)
-    assert len(result.macro_events) == 1
-    assert result.macro_events[0].is_government_incentive is True
-    assert result.macro_events[0].catalyst_type == "REGULATORY"
-    assert "government policy content" in result.macro_events[0].reasoning.lower()
-
-@pytest.mark.asyncio
 async def test_analyze_with_provider_hard_enforcement(mock_clients):
     """Verify that analyze_with_provider correctly updates sell_tool_called."""
     # Setup: Agent claims to have called sell tool but history is empty
@@ -178,8 +152,47 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
     assert resp.decisions[0].sell_tool_called is False # UPDATED BY HARD ENFORCEMENT
 
 
-def test_government_incentive_helper_marks_existing_macro_event():
-    """Verify that a policy-related macro event gets auto-flagged when the model misses it."""
+@pytest.mark.asyncio
+async def test_validate_and_enrich_removes_vague_government_event():
+    """When a vague government event exists and lookup fails, it should be removed."""
+    response = DecisionsResponse(
+        decisions=[],
+        macro_events=[
+            MacroEvent(
+                event_name="Government Policy Update",
+                impact="NEUTRAL",
+                catalyst_type="REGULATORY",
+                is_ongoing=False,
+                is_future_catalyst=False,
+                historical_parallel=None,
+                is_government_incentive=True,
+                expiry_date=None,
+                importance_score=6,
+                confidence=55,
+                reasoning="Fallback event.",
+                scenario_analysis=None,
+                source_id="gov_1",
+                model_provider="openai",
+                model_name="gpt-4",
+            )
+        ],
+    )
+
+    chunks = [{"source_id": "gov_1", "content": "The government is considering new budget allocations."}]
+
+    with patch("core.llm.analysis.lookup_policy", new_callable=AsyncMock) as mock_lookup:
+        mock_lookup.return_value = None  # Lookup fails
+
+        await _validate_and_enrich_government_events(
+            response, chunks, "openai", "gpt-4"
+        )
+
+    assert len(response.macro_events) == 0
+
+
+@pytest.mark.asyncio
+async def test_validate_and_enrich_preserves_specific_event():
+    """When a specific government event exists, it should be preserved unchanged."""
     response = DecisionsResponse(
         decisions=[],
         macro_events=[
@@ -190,7 +203,7 @@ def test_government_incentive_helper_marks_existing_macro_event():
                 is_ongoing=False,
                 is_future_catalyst=False,
                 historical_parallel=None,
-                is_government_incentive=False,
+                is_government_incentive=True,
                 expiry_date="2026-12-31",
                 importance_score=8,
                 confidence=88,
@@ -198,32 +211,93 @@ def test_government_incentive_helper_marks_existing_macro_event():
                 scenario_analysis="Scenario A: Passage -> Trading Plan: Buy DE.",
                 source_id="gov_1",
                 model_provider="openai",
-                model_name="gpt-4"
+                model_name="gpt-4",
             )
-        ]
+        ],
     )
 
-    _ensure_government_incentive_events(
-        response,
-        [{"source_id": "gov_1", "content": "The US Congress passed a new subsidy bill for AI."}],
-        "openai",
-        "gpt-4"
-    )
+    chunks = [{"source_id": "gov_1", "content": "Congress advanced new subsidy support for precision agriculture."}]
 
-    assert response.macro_events[0].is_government_incentive is True
-
-
-def test_government_incentive_helper_synthesizes_fallback_event():
-    """Verify that policy-heavy chunks still yield a flagged event if the model returns none."""
-    response = DecisionsResponse(decisions=[], macro_events=[])
-
-    _ensure_government_incentive_events(
-        response,
-        [{"source_id": "gov_2", "content": "The EU approved a new green hydrogen subsidy package."}],
-        "gemini",
-        "gemini-3.1-flash-lite-preview"
-    )
+    with patch("core.llm.analysis.lookup_policy", new_callable=AsyncMock) as mock_lookup:
+        await _validate_and_enrich_government_events(
+            response, chunks, "openai", "gpt-4"
+        )
+        mock_lookup.assert_not_called()
 
     assert len(response.macro_events) == 1
-    assert response.macro_events[0].is_government_incentive is True
-    assert response.macro_events[0].source_id == "gov_2"
+    assert response.macro_events[0].event_name == "US Farm Bill 2026 Agri-Tech Push"
+
+
+@pytest.mark.asyncio
+async def test_validate_and_enrich_enriches_vague_event_on_lookup_success():
+    """When a vague government event exists and lookup succeeds, it should be enriched."""
+    response = DecisionsResponse(
+        decisions=[],
+        macro_events=[
+            MacroEvent(
+                event_name="Government Policy Update",
+                impact="NEUTRAL",
+                catalyst_type="REGULATORY",
+                is_ongoing=False,
+                is_future_catalyst=False,
+                historical_parallel=None,
+                is_government_incentive=True,
+                expiry_date=None,
+                importance_score=6,
+                confidence=55,
+                reasoning="Fallback event.",
+                scenario_analysis=None,
+                source_id="gov_1",
+                model_provider="openai",
+                model_name="gpt-4",
+            )
+        ],
+    )
+
+    chunks = [{"source_id": "gov_1", "content": "The CHIPS Act is advancing through Congress."}]
+
+    from core.llm.policy_lookup import PolicyLookupResult
+
+    mock_result = PolicyLookupResult(
+        policy_name="CHIPS and Science Act",
+        status="passed Senate",
+        description="Provides $52B for domestic semiconductor manufacturing.",
+        confidence=85,
+    )
+
+    with patch("core.llm.analysis.lookup_policy", new_callable=AsyncMock) as mock_lookup:
+        mock_lookup.return_value = mock_result
+
+        await _validate_and_enrich_government_events(
+            response, chunks, "openai", "gpt-4"
+        )
+
+    assert len(response.macro_events) == 1
+    assert response.macro_events[0].event_name == "CHIPS and Science Act [passed Senate]"
+    assert response.macro_events[0].reasoning == "Provides $52B for domestic semiconductor manufacturing."
+    assert response.macro_events[0].confidence == 85
+
+
+def test_is_vague_government_event_true_for_generic_names():
+    """Consensus helper should flag generic government event names as vague."""
+    assert _is_vague_government_event("Ongoing Legislative Policy Developments") is True
+    assert _is_vague_government_event("Government Policy Update") is True
+    assert _is_vague_government_event("Government Policy Structural Update") is True
+    assert _is_vague_government_event("Policy Structural Update") is True
+    assert _is_vague_government_event("VAGUE_GOVERNMENT_EVENT") is True
+
+
+def test_is_vague_government_event_false_for_specific_names():
+    """Consensus helper should NOT flag specific government event names."""
+    assert _is_vague_government_event("US Farm Bill 2026 Agri-Tech Push") is False
+    assert _is_vague_government_event("CHIPS Act Expansion") is False
+    assert _is_vague_government_event("EU Green Hydrogen Act") is False
+    assert _is_vague_government_event("Japan GX Transformation Bonds") is False
+    assert _is_vague_government_event("Fed Rate Cut Cycle") is False  # Not government policy
+
+
+def test_is_vague_government_event_false_for_non_policy_events():
+    """Non-policy events should never be flagged as vague government."""
+    assert _is_vague_government_event("AI Demand Surge", "tech sector rallies") is False
+    assert _is_vague_government_event("Earnings Season Begins") is False
+    assert _is_vague_government_event("Oil Supply Disruption") is False

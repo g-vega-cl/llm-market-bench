@@ -407,7 +407,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 2. **Price Fetch:** Fetches 90 days of EOD price data for all 43 tickers
 3. **Returns Calculation:** Computes daily percentage returns for each ticker
 4. **Correlation Computation:** Calculates both Pearson (linear) and Spearman (rank-based) correlations
-5. **90d Returns:** Computes total return from start to end of the 90-day window
+5. **90d Returns:** Computes total return using 5-day SMA at both endpoints to reduce daily-volatility noise (falls back to raw endpoint when < 10 data points)
 6. **Storage:** Stores full 903-pair matrix to Supabase for dashboard access
 
 ### Correlation Methods

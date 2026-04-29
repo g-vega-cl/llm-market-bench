@@ -53,6 +53,7 @@ TICKER_UNIVERSE = [
 ]
 
 WINDOW_DAYS = 90
+SMA_WINDOW = 5  # days for smoothing endpoints in 90d return calc
 
 
 # =============================================================================
@@ -182,6 +183,10 @@ def compute_correlation_matrices(
 def compute_90d_returns(prices_dict: dict[str, list[float]]) -> dict[str, float]:
     """Compute 90-day total returns for each ticker.
 
+    Uses a {SMA_WINDOW}-day simple moving average at both endpoints to reduce
+    daily-volatility influence on the starting/ending prices. Falls back to the
+    raw endpoint method when fewer than {SMA_WINDOW * 2} price points are available.
+
     Args:
         prices_dict: Dictionary mapping ticker -> list of prices (oldest first).
 
@@ -189,11 +194,19 @@ def compute_90d_returns(prices_dict: dict[str, list[float]]) -> dict[str, float]
         Dictionary mapping ticker -> 90-day return as percentage.
     """
     returns = {}
+    min_for_sma = SMA_WINDOW * 2
     for ticker, prices in prices_dict.items():
-        if len(prices) >= 2:
-            # Total return from first to last price in the window
+        if len(prices) < 2:
+            continue
+
+        if len(prices) >= min_for_sma:
+            start_sma = sum(prices[:SMA_WINDOW]) / SMA_WINDOW
+            end_sma = sum(prices[-SMA_WINDOW:]) / SMA_WINDOW
+            total_return = ((end_sma / start_sma) - 1) * 100
+        else:
             total_return = ((prices[-1] / prices[0]) - 1) * 100
-            returns[ticker] = float(total_return)
+
+        returns[ticker] = float(total_return)
     return returns
 
 

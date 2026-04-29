@@ -60,7 +60,9 @@ The system tracks **42 tickers** across multiple asset classes:
 
 ### 90-Day Returns
 - Total return from start to end of window
-- Calculated as: `(P_end / P_start - 1) * 100`
+- Uses a 5-day simple moving average (SMA) at both endpoints to reduce daily-volatility influence on the starting/ending prices
+- Falls back to raw endpoint calculation (`P_end / P_start - 1`) when fewer than 10 price points are available
+- SMA formula: `(SMA(end, 5) / SMA(start, 5) - 1) * 100`
 
 ## Pipeline
 

@@ -227,10 +227,10 @@ class TestComputeCorrelationMatrices:
 
 
 class TestCompute90dReturns:
-    """Tests for 90-day returns calculation."""
+    """Tests for 90-day returns calculation with 5-day SMA smoothing."""
 
     def test_positive_return(self):
-        """Test positive 90-day return calculation."""
+        """Test positive 90-day return (falls back to endpoint since < 10 prices)."""
         prices = {
             "A": [100.0, 105.0, 110.0],  # 10% total return
         }
@@ -241,7 +241,7 @@ class TestCompute90dReturns:
         assert returns["A"] == pytest.approx(10.0, abs=0.1)
 
     def test_negative_return(self):
-        """Test negative 90-day return calculation."""
+        """Test negative 90-day return (falls back to endpoint since < 10 prices)."""
         prices = {
             "A": [100.0, 95.0, 90.0],  # -10% total return
         }
@@ -252,7 +252,7 @@ class TestCompute90dReturns:
         assert returns["A"] == pytest.approx(-10.0, abs=0.1)
 
     def test_zero_return(self):
-        """Test zero 90-day return calculation."""
+        """Test zero 90-day return (falls back to endpoint since < 10 prices)."""
         prices = {
             "A": [100.0, 100.0, 100.0],  # 0% total return
         }
@@ -263,7 +263,7 @@ class TestCompute90dReturns:
         assert returns["A"] == pytest.approx(0.0, abs=0.001)
 
     def test_multiple_tickers(self):
-        """Test 90-day returns for multiple tickers."""
+        """Test 90-day returns for multiple tickers (falls back to endpoint)."""
         prices = {
             "SPY": [400.0, 410.0, 420.0],  # +5%
             "QQQ": [300.0, 290.0, 280.0],  # -6.67%
@@ -278,7 +278,7 @@ class TestCompute90dReturns:
         assert returns["TLT"] == pytest.approx(-10.0, abs=0.1)
 
     def test_large_return(self):
-        """Test large 90-day return (like XLE recently)."""
+        """Test large 90-day return (falls back to endpoint)."""
         prices = {
             "XLE": [80.0, 100.0, 120.0, 150.0, 185.0],  # +131.25%
         }
@@ -286,6 +286,74 @@ class TestCompute90dReturns:
         returns = correlation_matrix.compute_90d_returns(prices)
 
         assert returns["XLE"] == pytest.approx(131.25, abs=0.1)
+
+    def test_sma_smoothing_applied(self):
+        """SMA path: 5-day averages at both ends reduce endpoint noise."""
+        # 5 prices at start: avg = (95+100+100+100+105)/5 = 100
+        # 5 prices at end:   avg = (190+195+200+195+200)/5 = 196
+        # SMA return = ((196/100)-1)*100 = 96%
+        # Raw endpoint return: ((200/95)-1)*100 = 110.5% (inflated by low start, high end)
+        prices = {
+            "TICK": [
+                95, 100, 100, 100, 105,   # start: outlier low on day 0
+                120, 130, 140, 150, 160,   # middle
+                190, 195, 200, 195, 200,   # end: outlier high on day 12
+            ],
+        }
+
+        returns = correlation_matrix.compute_90d_returns(prices)
+
+        assert "TICK" in returns
+        assert returns["TICK"] == pytest.approx(96.0, abs=0.1)
+
+    def test_sma_steady_trend(self):
+        """SMA path: steady linear uptrend — SMA and endpoint should be close."""
+        prices = {
+            "A": [100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120],
+        }
+        # start_sma = (100+102+104+106+108)/5 = 104
+        # end_sma = (112+114+116+118+120)/5 = 116
+        # SMA return = ((116/104)-1)*100 = 11.538...%
+
+        returns = correlation_matrix.compute_90d_returns(prices)
+
+        assert returns["A"] == pytest.approx(11.538, abs=0.01)
+
+    def test_sma_exactly_minimum(self):
+        """SMA path: exactly 10 prices — on the SMA threshold."""
+        prices = {
+            "A": [200, 202, 204, 206, 208, 210, 212, 214, 216, 218],
+        }
+        # start_sma = (200+202+204+206+208)/5 = 204
+        # end_sma = (210+212+214+216+218)/5 = 214
+        # return = ((214/204)-1)*100 = 4.902%
+
+        returns = correlation_matrix.compute_90d_returns(prices)
+
+        assert "A" in returns
+        assert returns["A"] == pytest.approx(4.902, abs=0.01)
+
+    def test_sma_fallback_boundary(self):
+        """Fallback boundary: 9 prices — one below SMA threshold of 10."""
+        prices = {
+            "A": [100, 101, 102, 103, 104, 105, 106, 107, 108],
+        }
+        # Falls back: ((108/100)-1)*100 = 8.0%
+
+        returns = correlation_matrix.compute_90d_returns(prices)
+
+        assert "A" in returns
+        assert returns["A"] == pytest.approx(8.0, abs=0.01)
+
+    def test_single_price_excluded(self):
+        """Single price should be excluded (no return calculable)."""
+        prices = {
+            "A": [100.0],
+        }
+
+        returns = correlation_matrix.compute_90d_returns(prices)
+
+        assert len(returns) == 0
 
 
 class TestTickerVerification:
@@ -377,7 +445,7 @@ class TestIntegration:
         assert abs(pearson_corrs[key]) < 0.5
 
     def test_90d_returns_calculation_realistic(self):
-        """Test 90-day returns with realistic price data."""
+        """Test 90-day returns with realistic price data (SMA path)."""
         # Simulate 90 days of prices
         np.random.seed(42)
         initial_price = 100.0
@@ -390,11 +458,13 @@ class TestIntegration:
         prices_dict = {"TEST": prices}
         returns = correlation_matrix.compute_90d_returns(prices_dict)
 
-        # Calculate expected return
-        expected_return = ((prices[-1] / prices[0]) - 1) * 100
+        # With 90 points SMA path is active: (SMA(end, 5) / SMA(start, 5) - 1) * 100
+        start_sma = sum(prices[:5]) / 5
+        end_sma = sum(prices[-5:]) / 5
+        expected_return = ((end_sma / start_sma) - 1) * 100
 
         assert "TEST" in returns
-        assert returns["TEST"] == pytest.approx(expected_return, abs=0.01)
+        assert returns["TEST"] == pytest.approx(expected_return, abs=0.0001)
 
 
 class TestMainErrorHandling:

@@ -1,0 +1,148 @@
+/**
+ * Design System Global Styles
+ *
+ * Import this file in your app's root to activate design-system tokens.
+ * (e.g., import '@llm-market-bench/ui-design-system/styles' or the raw CSS)
+ */
+
+/* External fonts (keep minimal) */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* Satoshi is a custom font. If not self-hosted, system-ui fallback is used. */
+
+/* ---------------------------------------------------------------------------
+   Tailwind v4 Theme inline tokens
+   --------------------------------------------------------------------------- */
+
+@theme inline {
+  /* Typography */
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Satoshi", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Semantic color tokens (mapped from theme/index.ts) */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-light: #dbeafe;
+  --color-accent-dark: #172554;
+
+  --color-success: #22c55e;
+  --color-success-light: #dcfce7;
+  --color-success-dark: #052e16;
+
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+  --color-danger-dark: #450a0a;
+
+  --color-info: #a855f7;
+  --color-info-light: #f3e8ff;
+  --color-info-dark: #3b0764;
+
+  --color-warning: #eab308;
+  --color-warning-light: #fef9c3;
+  --color-warning-dark: #422006;
+
+  --color-void-900: #0f172a;
+  --color-void-950: #020617;
+
+  --color-steel-400: #94a3b8;
+  --color-steel-500: #64748b;
+  --color-steel-600: #475569;
+
+  /* Legacy physical colors for backward compatibility until full migration */
+  --color-electric-blue-50: #eff6ff;
+  --color-electric-blue-100: #dbeafe;
+  --color-electric-blue-200: #bfdbfe;
+  --color-electric-blue-300: #93c5fd;
+  --color-electric-blue-400: #60a5fa;
+  --color-electric-blue-500: #3b82f6;
+  --color-electric-blue-600: #2563eb;
+  --color-electric-blue-700: #1d4ed8;
+  --color-electric-blue-800: #1e40af;
+  --color-electric-blue-900: #1e3a8a;
+  --color-electric-blue-950: #172554;
+
+  --color-neon-green-50: #f0fdf4;
+  --color-neon-green-100: #dcfce7;
+  --color-neon-green-200: #bbf7d0;
+  --color-neon-green-300: #86efac;
+  --color-neon-green-400: #4ade80;
+  --color-neon-green-500: #22c55e;
+  --color-neon-green-600: #16a34a;
+  --color-neon-green-700: #15803d;
+  --color-neon-green-800: #166534;
+  --color-neon-green-900: #14532d;
+  --color-neon-green-950: #052e16;
+
+  --color-alert-red-50: #fef2f2;
+  --color-alert-red-100: #fee2e2;
+  --color-alert-red-200: #fecaca;
+  --color-alert-red-300: #fca5a5;
+  --color-alert-red-400: #f87171;
+  --color-alert-red-500: #ef4444;
+  --color-alert-red-600: #dc2626;
+  --color-alert-red-700: #b91c1c;
+  --color-alert-red-800: #991b1b;
+  --color-alert-red-900: #7f1d1d;
+  --color-alert-red-950: #450a0a;
+
+  --color-deep-purple-50: #faf5ff;
+  --color-deep-purple-100: #f3e8ff;
+  --color-deep-purple-200: #e9d5ff;
+  --color-deep-purple-300: #d8b4fe;
+  --color-deep-purple-400: #c084fc;
+  --color-deep-purple-500: #a855f7;
+  --color-deep-purple-600: #9333ea;
+  --color-deep-purple-700: #7e22ce;
+  --color-deep-purple-800: #6b21a8;
+  --color-deep-purple-900: #581c87;
+  --color-deep-purple-950: #3b0764;
+
+  --color-cyber-yellow-50: #fefce8;
+  --color-cyber-yellow-100: #fef9c3;
+  --color-cyber-yellow-200: #fef08a;
+  --color-cyber-yellow-300: #fde047;
+  --color-cyber-yellow-400: #facc15;
+  --color-cyber-yellow-500: #eab308;
+  --color-cyber-yellow-600: #ca8a04;
+  --color-cyber-yellow-700: #a16207;
+  --color-cyber-yellow-800: #854d0e;
+  --color-cyber-yellow-900: #713f12;
+  --color-cyber-yellow-950: #422006;
+}
+
+/* ---------------------------------------------------------------------------
+   Base layer resets
+   --------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    color-scheme: light dark;
+    font-family: var(--font-body);
+  }
+
+  body {
+    font-family: var(--font-body);
+    @apply text-zinc-900 bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-100;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+
+  * {
+    @apply border-zinc-200 dark:border-zinc-800;
+  }
+}

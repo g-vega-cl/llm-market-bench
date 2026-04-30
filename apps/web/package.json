@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "@llm-market-bench/database": "workspace:*",
+    "@llm-market-bench/ui-design-system": "workspace:*",
     "@posthog/react": "^1.8.2",
     "@repo/config": "workspace:*",
     "@supabase/ssr": "^0.5.2",

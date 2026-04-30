@@ -20,6 +20,9 @@ importers:
       '@llm-market-bench/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@llm-market-bench/ui-design-system':
+        specifier: workspace:*
+        version: link:../../packages/ui-design-system
       '@posthog/react':
         specifier: ^1.8.2
         version: 1.8.2(@types/react@19.2.9)(posthog-js@1.364.1)(react@19.2.3)
@@ -112,6 +115,34 @@ importers:
   packages/config: {}
 
   packages/database: {}
+
+  packages/ui-design-system:
+    dependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.18
+        version: 4.1.18(vite@7.3.1(@types/node@25.0.10)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.1.18
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.9
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
 
 packages:
 

@@ -1,14 +1,53 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Satoshi:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/**
+ * App-specific styles for the LLM Market Bench web app.
+ *
+ * This file contains app-specific animations and utilities.
+ * Design system tokens are defined here via @theme inline because
+ * Tailwind v4 requires @theme to be in the main CSS entry when bundled
+ * with Vite. The canonical token definitions live in
+ * @llm-market-bench/ui-design-system/src/theme/globals.css for reference.
+ */
 
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@import "tailwindcss";
 
 @theme inline {
   /* Typography */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body: 'Satoshi', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Satoshi", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 
-  /* Primary Colors - Electric & Trust */
+  /* Semantic color tokens */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-light: #dbeafe;
+  --color-accent-dark: #172554;
+
+  --color-success: #22c55e;
+  --color-success-light: #dcfce7;
+  --color-success-dark: #052e16;
+
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+  --color-danger-dark: #450a0a;
+
+  --color-info: #a855f7;
+  --color-info-light: #f3e8ff;
+  --color-info-dark: #3b0764;
+
+  --color-warning: #eab308;
+  --color-warning-light: #fef9c3;
+  --color-warning-dark: #422006;
+
+  --color-void-900: #0f172a;
+  --color-void-950: #020617;
+
+  --color-steel-400: #94a3b8;
+  --color-steel-500: #64748b;
+  --color-steel-600: #475569;
+
+  /* Legacy physical colors for backward compatibility until full migration */
   --color-electric-blue-50: #eff6ff;
   --color-electric-blue-100: #dbeafe;
   --color-electric-blue-200: #bfdbfe;
@@ -21,7 +60,6 @@
   --color-electric-blue-900: #1e3a8a;
   --color-electric-blue-950: #172554;
 
-  /* Neon Green - Gains & Success */
   --color-neon-green-50: #f0fdf4;
   --color-neon-green-100: #dcfce7;
   --color-neon-green-200: #bbf7d0;
@@ -34,7 +72,6 @@
   --color-neon-green-900: #14532d;
   --color-neon-green-950: #052e16;
 
-  /* Alert Red - Losses & Warnings */
   --color-alert-red-50: #fef2f2;
   --color-alert-red-100: #fee2e2;
   --color-alert-red-200: #fecaca;
@@ -47,7 +84,6 @@
   --color-alert-red-900: #7f1d1d;
   --color-alert-red-950: #450a0a;
 
-  /* Deep Purple - AI & Cognition */
   --color-deep-purple-50: #faf5ff;
   --color-deep-purple-100: #f3e8ff;
   --color-deep-purple-200: #e9d5ff;
@@ -60,7 +96,6 @@
   --color-deep-purple-900: #581c87;
   --color-deep-purple-950: #3b0764;
 
-  /* Cyber Yellow - Attention & Catalysts */
   --color-cyber-yellow-50: #fefce8;
   --color-cyber-yellow-100: #fef9c3;
   --color-cyber-yellow-200: #fef08a;
@@ -72,55 +107,37 @@
   --color-cyber-yellow-800: #854d0e;
   --color-cyber-yellow-900: #713f12;
   --color-cyber-yellow-950: #422006;
-
-  /* Void - Deep Backgrounds */
-  --color-void-900: #0F172A;
-  --color-void-950: #020617;
-
-  /* Steel - Secondary Text */
-  --color-steel-400: #94a3b8;
-  --color-steel-500: #64748b;
-  --color-steel-600: #475569;
-}
-
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-zinc-200, currentcolor);
-  }
 }
 
 @layer base {
   html {
     color-scheme: light dark;
-  }
-
-  html {
     font-family: var(--font-body);
   }
 
   body {
     font-family: var(--font-body);
+    @apply text-zinc-900 bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-100;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
   }
 
-  code, kbd, samp, pre {
+  code,
+  kbd,
+  samp,
+  pre {
     font-family: var(--font-mono);
   }
 
   * {
     @apply border-zinc-200 dark:border-zinc-800;
-  }
-
-  html,
-  body {
-    @apply text-zinc-900 bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-100;
   }
 
   .using-mouse * {

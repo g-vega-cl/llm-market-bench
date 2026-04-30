@@ -11,6 +11,7 @@ import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary'
 import { NotFound } from '~/components/ui/NotFound'
+import { Button, Badge } from '@llm-market-bench/ui-design-system'
 import { QueryClientProviderWrapper } from '~/lib/query-client'
 import appCss from '../styles/app.css?url'
 import { seo } from '~/lib/seo'
@@ -76,8 +77,41 @@ function RootComponent() {
   )
 }
 
+function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
+  return (
+    <Link
+      to={to}
+      activeProps={{ className: 'text-accent' }}
+      activeOptions={{ exact }}
+      className="hover:text-accent-hover transition-colors relative"
+    >
+      {({ isActive }) => (
+        <>
+          {label}
+          {isActive && (
+            <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full" />
+          )}
+        </>
+      )}
+    </Link>
+  )
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useRouteContext()
+
+  const navItems = [
+    { to: '/', label: 'Today', exact: true },
+    { to: '/memories', label: 'Memories' },
+    { to: '/posts', label: 'Posts' },
+    { to: '/concepts', label: 'Concepts' },
+    { to: '/portfolios', label: 'Portfolios' },
+    { to: '/how-it-works', label: 'How it Works' },
+    { to: '/reasoning', label: 'Reasoning' },
+    { to: '/cause-and-effect', label: 'Cause & Effect' },
+    { to: '/audits', label: 'Audits' },
+    { to: '/market-overview', label: 'Market Overview' },
+  ]
 
   return (
     <html>
@@ -95,109 +129,35 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             debug: import.meta.env.DEV,
           }}
         >
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
-          <Link
-            to="/"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            activeOptions={{ exact: true }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            Today
-          </Link>
-          <Link
-            to="/memories"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            Memories
-          </Link>
-          <Link
-            to="/posts"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            Posts
-          </Link>
-          <Link
-            to="/concepts"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            Concepts
-          </Link>
-          <Link
-            to="/portfolios"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            Portfolios
-          </Link>
-          <Link
-            to="/how-it-works"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            How it Works
-          </Link>
-          <Link
-            to="/reasoning"
-            activeProps={{
-              className: 'text-blue-600',
-            }}
-            className="hover:text-blue-500 transition-colors"
-          >
-            Reasoning
-          </Link>
-<Link
-            to="/cause-and-effect"
-            activeProps={{
-              className: "text-blue-600",
-            }}
-          >
-            Cause & Effect
-          </Link>
-          <Link
-            to="/audits"
-            activeProps={{
-              className: "text-blue-600",
-            }}
-          >
-            Audits
-          </Link>
-          <Link
-            to="/market-overview"
-            activeProps={{
-              className: "text-blue-600",
-            }}
-          >
-            Market Overview
-          </Link>
-          <div className="ml-auto flex items-center gap-4">
-            {user ? (
-              <>
-                <span className="text-[10px] text-zinc-400 normal-case font-medium">{user.email}</span>
-                <Link to="/logout" className="hover:text-rose-500 transition-colors">Logout</Link>
-              </>
-            ) : (
-              <Link to="/login" className="hover:text-blue-500 transition-colors">Login</Link>
-            )}
-          </div>
-        </div>
-        {children}
-        <TanStackRouterDevtools position="bottom-right" />
-        <Scripts />
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
+            {navItems.map((item) => (
+              <NavLink key={item.to} to={item.to} label={item.label} exact={item.exact} />
+            ))}
+
+            <div className="ml-auto flex items-center gap-4">
+              {user ? (
+                <>
+                  <Badge variant="soft" size="sm" colorScheme="neutral" className="normal-case tracking-normal">
+                    {user.email}
+                  </Badge>
+                  <Link to="/logout">
+                    <Button variant="ghost" size="sm" colorScheme="danger" className="uppercase tracking-widest">
+                      Logout
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <Link to="/login">
+                  <Button variant="solid" size="sm" className="uppercase tracking-widest">
+                    Login
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </nav>
+          {children}
+          <TanStackRouterDevtools position="bottom-right" />
+          <Scripts />
         </PostHogProvider>
       </body>
     </html>

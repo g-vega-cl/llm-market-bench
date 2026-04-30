@@ -8,8 +8,8 @@ import argparse
 import asyncio
 from collections import defaultdict
 
-from analyze import analyze_chunks, analyze_chunks_streaming
-from consensus import process_consensus
+from analysis.analyze import analyze_chunks, analyze_chunks_streaming
+from analysis.consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
 from core.llm.verification import verify_trading_decision
@@ -62,7 +62,7 @@ async def _stage_dust_cleanup(sb_client):
     as it's a safety net for accumulated dust from any source.
     """
     from execution.market_data import MarketDataManager
-    from analyze import MODELS
+    from analysis.analyze import MODELS
     
     logger.info("Starting Pre-Analysis Dust Cleanup...")
     mdm = MarketDataManager()

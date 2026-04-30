@@ -1,5 +1,9 @@
 """Script to update market prices and recalculate portfolio metrics without LLM calls."""
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import asyncio
 import time
 from core.config import logger

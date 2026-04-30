@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 from core.config import GEMINI_MODEL
 from core.models import MacroEvent
-from consensus import process_consensus, _resolve_impact_tie, _is_vague_government_event
+from analysis.consensus import process_consensus, _resolve_impact_tie, _is_vague_government_event
 
 @pytest.fixture
 def sample_events():
@@ -48,10 +48,10 @@ def sample_events():
         )
     ]
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.synthesize_event")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
     # Mock return values
@@ -84,10 +84,10 @@ async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_emb
     kwargs = mock_add_memory.call_args.kwargs
     assert kwargs["target_date"] == "June 2026"
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.synthesize_event")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_with_date_note(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
     mock_add_memory.return_value = "new-uuid"
@@ -113,10 +113,10 @@ async def test_process_consensus_with_date_note(mock_add_memory, mock_get_embedd
     assert kwargs["target_date"] == "2026-02-21"
     assert kwargs["metadata"]["future_date_note"] == "tentative"
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.synthesize_event")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
     mock_add_memory.return_value = None # Simulate deduplication (returns None if skip)
@@ -140,9 +140,9 @@ async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddi
     assert len(consensus_events) == 0
     assert mock_add_memory.called
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddings, mock_discovery, sample_events):
     mock_add_memory.return_value = "new-id"
@@ -163,10 +163,10 @@ async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddin
     assert len(consensus_events) == 0
     assert not mock_add_memory.called
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.synthesize_event")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
     mock_add_memory.return_value = "new-id"
@@ -277,10 +277,10 @@ def test_is_vague_government_event_false_for_non_policy_events(name):
     assert _is_vague_government_event(name) is False, f"'{name}' should not be flagged"
 
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.synthesize_event")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_rejects_vague_government_event(
     mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery
@@ -336,10 +336,10 @@ async def test_process_consensus_rejects_vague_government_event(
     mock_add_memory.assert_not_called()
 
 
-@patch("consensus.DiscoveryService")
-@patch("consensus.synthesize_event")
-@patch("consensus.get_embeddings_batch")
-@patch("consensus.add_memory")
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
 async def test_process_consensus_accepts_specific_government_event(
     mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery

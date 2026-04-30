@@ -1,9 +1,9 @@
 """
-Tests for update_prices.py script, specifically the benchmark history fetching functionality.
+Tests for scripts.update_prices.py script, specifically the benchmark history fetching functionality.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from update_prices import (
+from scripts.update_prices import (
     BENCHMARK_TICKERS,
     BENCHMARK_HISTORY_DAYS,
     fetch_benchmark_history,
@@ -87,7 +87,7 @@ class TestFetchBenchmarkHistory:
             {"price": 448.50, "fetched_at": "2026-04-14"},
         ])
 
-        with patch('update_prices.logger') as mock_logger:
+        with patch('scripts.update_prices.logger') as mock_logger:
             await fetch_benchmark_history(mock_mdm)
             mock_logger.warning.assert_called()
 
@@ -99,7 +99,7 @@ class TestFetchBenchmarkHistory:
             {"price": 450.00, "fetched_at": "2026-04-15"},
         ] * 30)
 
-        with patch('update_prices.logger') as mock_logger:
+        with patch('scripts.update_prices.logger') as mock_logger:
             await fetch_benchmark_history(mock_mdm)
             mock_logger.info.assert_called()
 

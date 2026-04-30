@@ -25,7 +25,7 @@ class TestAnalyzeChunksStreaming:
     @pytest.fixture
     def mock_retrieve_context(self):
         """Mock the retrieve_context_batch function."""
-        with patch("analyze.retrieve_context_batch") as m:
+        with patch("analysis.analyze.retrieve_context_batch") as m:
             m.return_value = ["Mocked Context"]
             yield m
 
@@ -41,7 +41,7 @@ class TestAnalyzeChunksStreaming:
         self, mock_llm_analyze, mock_retrieve_context, mock_get_embeddings
     ):
         """Test that analyze_chunks yields results as each model completes, not all at once."""
-        from analyze import analyze_chunks_streaming
+        from analysis.analyze import analyze_chunks_streaming
 
         # Track call order
         call_times = []
@@ -65,8 +65,8 @@ class TestAnalyzeChunksStreaming:
 
         chunks = [{"source_id": "src_1", "content": "Test content"}]
 
-        with patch("analyze.Portfolio") as mock_portfolio_class, \
-             patch("analyze.MarketDataManager") as mock_market_data_class:
+        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+             patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
             
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
@@ -97,7 +97,7 @@ class TestAnalyzeChunksStreaming:
         self, mock_llm_analyze, mock_retrieve_context, mock_get_embeddings
     ):
         """Test that if one model fails, others still complete successfully."""
-        from analyze import analyze_chunks_streaming
+        from analysis.analyze import analyze_chunks_streaming
 
         call_count = 0
         
@@ -124,8 +124,8 @@ class TestAnalyzeChunksStreaming:
 
         chunks = [{"source_id": "src_1", "content": "Test content"}]
 
-        with patch("analyze.Portfolio") as mock_portfolio_class, \
-             patch("analyze.MarketDataManager") as mock_market_data_class:
+        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+             patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
             
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
@@ -204,7 +204,7 @@ class TestDecisionCallback:
     @pytest.mark.asyncio
     async def test_callback_invoked_for_each_model(self):
         """Test that callback is invoked as each model completes."""
-        from analyze import analyze_chunks_streaming
+        from analysis.analyze import analyze_chunks_streaming
         
         callback_invocations = []
         
@@ -226,7 +226,7 @@ class TestDecisionCallback:
             )
 
         with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm, \
-             patch("analyze.retrieve_context_batch") as mock_context, \
+             patch("analysis.analyze.retrieve_context_batch") as mock_context, \
              patch("memory.embeddings.get_embeddings_batch") as mock_emb:
             
             mock_llm.side_effect = mock_analyze
@@ -235,8 +235,8 @@ class TestDecisionCallback:
             
             chunks = [{"source_id": "src_1", "content": "Test"}]
             
-            with patch("analyze.Portfolio") as mock_portfolio_class, \
-                 patch("analyze.MarketDataManager") as mock_market_data_class:
+            with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+                 patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
                 
                 mock_portfolio = MagicMock()
                 mock_portfolio.positions = {}
@@ -307,7 +307,7 @@ class TestLoggingTiming:
         import logging
         caplog.set_level(logging.INFO)
         
-        from analyze import analyze_chunks_streaming
+        from analysis.analyze import analyze_chunks_streaming
         
         async def mock_analyze(*args, **kwargs):
             model_name = kwargs.get("model_name", "unknown")
@@ -323,9 +323,9 @@ class TestLoggingTiming:
             )
 
         with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm, \
-             patch("analyze.retrieve_context_batch") as mock_context, \
+             patch("analysis.analyze.retrieve_context_batch") as mock_context, \
              patch("memory.embeddings.get_embeddings_batch") as mock_emb, \
-             patch("analyze.logger") as mock_logger:
+             patch("analysis.analyze.logger") as mock_logger:
             
             mock_llm.side_effect = mock_analyze
             mock_context.return_value = ["context"]
@@ -333,8 +333,8 @@ class TestLoggingTiming:
             
             chunks = [{"source_id": "src_1", "content": "Test"}]
             
-            with patch("analyze.Portfolio") as mock_portfolio_class, \
-                 patch("analyze.MarketDataManager") as mock_market_data_class:
+            with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+                 patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
                 
                 mock_portfolio = MagicMock()
                 mock_portfolio.positions = {}

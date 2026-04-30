@@ -26,15 +26,15 @@ def mock_embedding():
 
 @pytest.fixture
 def mock_cosine():
-    # We patch 'consensus.cosine_similarity' because store.py imports it as 'from consensus ...'
+    # We patch 'analysis.consensus.cosine_similarity' because store.py imports it as 'from consensus ...'
     # and sys.path in the test makes 'consensus' a top-level module.
     # We accept either path to be safe, but 'consensus' is likely the active one.
     try:
-        target = "consensus.cosine_similarity"
+        target = "analysis.consensus.cosine_similarity"
         with patch(target) as mock:
             yield mock
     except ImportError:
-        target = "apps.engine.consensus.cosine_similarity"
+        target = "apps.engine.analysis.consensus.cosine_similarity"
         with patch(target) as mock:
             yield mock
 

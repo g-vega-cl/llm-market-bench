@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from analyze import analyze_chunks
+from analysis.analyze import analyze_chunks
 from core.models import DecisionObject, DecisionsResponse, MacroEvent
 from core.llm.analysis import _repair_json_string, _try_parse_decisions_response
 
@@ -110,8 +110,8 @@ class TestAnalysisOrchestration:
         chunks = [{"source_id": "chunk_1", "content": "Apple is doing great."}]
 
         # Mock Portfolio and MarketDataManager to avoid Supabase dependency
-        with patch("analyze.Portfolio") as mock_portfolio_class, \
-             patch("analyze.MarketDataManager") as mock_market_data_class, \
+        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+             patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
              patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
 
             mock_get_embeddings.return_value = [[0.1] * 768]
@@ -170,8 +170,8 @@ class TestAnalysisOrchestration:
         ]
 
         # Mock Portfolio and MarketDataManager to avoid Supabase dependency
-        with patch("analyze.Portfolio") as mock_portfolio_class, \
-             patch("analyze.MarketDataManager") as mock_market_data_class, \
+        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+             patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
              patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
 
             mock_get_embeddings.return_value = [[0.1] * 768]

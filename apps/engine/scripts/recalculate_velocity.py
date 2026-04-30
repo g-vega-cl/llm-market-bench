@@ -9,8 +9,8 @@ import logging
 from datetime import datetime, timezone
 import tqdm
 
-# Add the directory containing this script to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the engine root directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.db import get_supabase_client
 from analysis.momentum import calculate_velocity

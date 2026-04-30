@@ -12,6 +12,9 @@ Usage:
 import asyncio
 import json
 import sys
+import os
+# Add the engine root directory to path for sibling package imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from datetime import datetime, timezone
 from typing import Optional

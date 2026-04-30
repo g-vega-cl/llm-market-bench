@@ -30,7 +30,7 @@ jobs:
 
       - name: Run correlation matrix computation
         run: |
-          python correlation_matrix.py
+          python analysis/correlation_matrix.py
         env:
           SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

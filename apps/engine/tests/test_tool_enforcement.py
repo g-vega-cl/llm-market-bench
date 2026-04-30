@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from core.llm.analysis import analyze_with_provider, _scan_history_for_tools, _validate_and_enrich_government_events
-from consensus import _is_vague_government_event
+from analysis.consensus import _is_vague_government_event
 from core.models import DecisionsResponse, DecisionObject, MacroEvent
 
 @pytest.fixture

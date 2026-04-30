@@ -12,7 +12,7 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 
-import correlation_matrix
+import analysis.correlation_matrix as correlation_matrix
 
 
 class TestTickerUniverse:
@@ -482,7 +482,7 @@ class TestMainErrorHandling:
     async def test_main_exits_when_supabase_connection_fails(self):
         """Test that main() exits with code 1 when Supabase connection fails."""
         with patch.object(correlation_matrix, 'FMP_API_KEY', 'test-key'):
-            with patch('correlation_matrix.get_supabase_client', side_effect=Exception("Connection failed")):
+            with patch('analysis.correlation_matrix.get_supabase_client', side_effect=Exception("Connection failed")):
                 with pytest.raises(SystemExit) as exc_info:
                     await correlation_matrix.main()
                 assert exc_info.value.code == 1
@@ -492,13 +492,13 @@ class TestMainErrorHandling:
         """Test that main() exits with code 1 when no tickers pass verification."""
         with patch.object(correlation_matrix, 'FMP_API_KEY', 'test-key'):
             mock_client = MagicMock()
-            with patch('correlation_matrix.get_supabase_client', return_value=mock_client):
+            with patch('analysis.correlation_matrix.get_supabase_client', return_value=mock_client):
                 async def empty_history(ticker, days=5):
                     return []
 
                 mock_provider = MagicMock()
                 mock_provider.get_history = empty_history
-                with patch('correlation_matrix.FMPProvider', return_value=mock_provider):
+                with patch('analysis.correlation_matrix.FMPProvider', return_value=mock_provider):
                     with pytest.raises(SystemExit) as exc_info:
                         await correlation_matrix.main()
                     assert exc_info.value.code == 1
@@ -508,7 +508,7 @@ class TestMainErrorHandling:
         """Test that main() exits with code 1 when fewer than 2 tickers have sufficient data."""
         with patch.object(correlation_matrix, 'FMP_API_KEY', 'test-key'):
             mock_client = MagicMock()
-            with patch('correlation_matrix.get_supabase_client', return_value=mock_client):
+            with patch('analysis.correlation_matrix.get_supabase_client', return_value=mock_client):
                 # Mock provider to return valid history for one ticker only
                 async def mock_history(ticker, days=5):
                     if ticker == "XLK":
@@ -517,7 +517,7 @@ class TestMainErrorHandling:
 
                 mock_provider = MagicMock()
                 mock_provider.get_history = mock_history
-                with patch('correlation_matrix.FMPProvider', return_value=mock_provider):
+                with patch('analysis.correlation_matrix.FMPProvider', return_value=mock_provider):
                     with pytest.raises(SystemExit) as exc_info:
                         await correlation_matrix.main()
                     assert exc_info.value.code == 1
@@ -551,16 +551,16 @@ class TestStorageVerification:
         """Test that main() exits with code 1 when stored row count doesn't match expected."""
         with patch.object(correlation_matrix, 'FMP_API_KEY', 'test-key'):
             mock_client = MagicMock()
-            with patch('correlation_matrix.get_supabase_client', return_value=mock_client):
+            with patch('analysis.correlation_matrix.get_supabase_client', return_value=mock_client):
                 # Mock provider to return valid history for two tickers
                 async def mock_history(ticker, days=5):
                     return [{"price": 100.0 + i, "fetched_at": f"2026-04-{i+1:02d}"} for i in range(35)]
 
                 mock_provider = MagicMock()
                 mock_provider.get_history = mock_history
-                with patch('correlation_matrix.FMPProvider', return_value=mock_provider):
+                with patch('analysis.correlation_matrix.FMPProvider', return_value=mock_provider):
                     # Mock store_correlation_results to return a run_id
-                    with patch('correlation_matrix.store_correlation_results', return_value="test-run-id"):
+                    with patch('analysis.correlation_matrix.store_correlation_results', return_value="test-run-id"):
                         # Mock verification query to return mismatched count
                         mock_count_response = MagicMock()
                         mock_count_response.count = 0  # Mismatched: expected 1, got 0
@@ -576,14 +576,14 @@ class TestStorageVerification:
         with patch.object(correlation_matrix, 'FMP_API_KEY', 'test-key'):
             with patch.object(correlation_matrix, 'TICKER_UNIVERSE', ["XLK", "XLE"]):
                 mock_client = MagicMock()
-                with patch('correlation_matrix.get_supabase_client', return_value=mock_client):
+                with patch('analysis.correlation_matrix.get_supabase_client', return_value=mock_client):
                     async def mock_history(ticker, days=5):
                         return [{"price": 100.0 + i, "fetched_at": f"2026-04-{i+1:02d}"} for i in range(35)]
 
                     mock_provider = MagicMock()
                     mock_provider.get_history = mock_history
-                    with patch('correlation_matrix.FMPProvider', return_value=mock_provider):
-                        with patch('correlation_matrix.store_correlation_results', return_value="test-run-id"):
+                    with patch('analysis.correlation_matrix.FMPProvider', return_value=mock_provider):
+                        with patch('analysis.correlation_matrix.store_correlation_results', return_value="test-run-id"):
                             # Mock verification query to return matching count (1 pair for 2 tickers)
                             mock_count_response = MagicMock()
                             mock_count_response.count = 1

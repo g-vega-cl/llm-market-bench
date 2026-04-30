@@ -1,8 +1,10 @@
 
 import asyncio
 import logging
-from apps.engine.memory.store import add_memory
-from apps.engine.core.db import get_supabase_client
+import sys
+sys.path.insert(0, '..')
+from memory.store import add_memory
+from core.db import get_supabase_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

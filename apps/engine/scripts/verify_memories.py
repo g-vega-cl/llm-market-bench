@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import json
-from analyze import analyze_chunks
-from consensus import process_consensus
+import sys
+sys.path.insert(0, '..')
+from analysis.analyze import analyze_chunks
+from analysis.consensus import process_consensus
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

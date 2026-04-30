@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 """Script to manually trigger PCA update for concepts.
 
 Run this script to recalculate 2D coordinates for all market concepts.

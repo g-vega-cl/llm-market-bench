@@ -213,7 +213,7 @@ def find_similar_vector(
         if not recent_res.data:
             return None
             
-        from consensus import cosine_similarity
+        from analysis.consensus import cosine_similarity
         
         for row in recent_res.data:
             recent_vector = row.get("embedding")

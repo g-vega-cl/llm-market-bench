@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from core.models import DecisionObject
 #, DecisionsResponse  <-- Need to import if we mock
-from analyze import analyze_chunks
+from analysis.analyze import analyze_chunks
 
 @pytest.fixture
 def mock_llm_analyze():
@@ -15,7 +15,7 @@ def mock_llm_analyze():
 @pytest.fixture
 def mock_retrieve_context():
     """Mock the retrieve_context_batch function."""
-    with patch("analyze.retrieve_context_batch") as m:
+    with patch("analysis.analyze.retrieve_context_batch") as m:
         m.return_value = ["Mocked Context"]
         yield m
 
@@ -63,8 +63,8 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
     ]
     
     # Mock Portfolio and MarketDataManager to avoid Supabase dependency
-    with patch("analyze.Portfolio") as mock_portfolio_class, \
-         patch("analyze.MarketDataManager") as mock_market_data_class:
+    with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+         patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
         
         from unittest.mock import AsyncMock
         mock_portfolio = MagicMock()

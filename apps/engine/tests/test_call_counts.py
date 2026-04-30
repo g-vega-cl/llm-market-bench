@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from analyze import analyze_chunks
+from analysis.analyze import analyze_chunks
 from core.models import DecisionsResponse
 import memory.embeddings
 
@@ -34,8 +34,8 @@ async def test_consolidated_call_counts():
          patch("instructor.from_anthropic") as mock_anthropic, \
          patch("instructor.from_genai") as mock_from_genai, \
          patch("memory.store.get_supabase_client") as mock_sb, \
-         patch("analyze.Portfolio") as mock_portfolio_class, \
-         patch("analyze.MarketDataManager") as mock_market_data_class:
+         patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
+         patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
         
         # Reset the cached client so our mock gets used
         memory.embeddings._client = None

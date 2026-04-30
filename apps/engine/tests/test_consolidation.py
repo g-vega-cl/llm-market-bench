@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from core.models import DecisionObject
-from consensus import process_decision_consensus
+from analysis.consensus import process_decision_consensus
 
 @pytest.fixture
 def sample_decisions():
@@ -38,7 +38,7 @@ def sample_decisions():
         )
     ]
 
-@patch("consensus.synthesize_event")
+@patch("analysis.consensus.synthesize_event")
 @pytest.mark.asyncio
 async def test_process_decision_consensus_groups_correctly(mock_synthesize, sample_decisions):
     # Mock synthesis return
@@ -66,7 +66,7 @@ async def test_process_decision_consensus_groups_correctly(mock_synthesize, samp
     assert len(tsla["models_involved"]) == 1
     assert "openai_gpt-4" in tsla["models_involved"]
 
-@patch("consensus.synthesize_event")
+@patch("analysis.consensus.synthesize_event")
 @pytest.mark.asyncio
 async def test_process_decision_consensus_skips_hold(mock_synthesize):
     decisions = [

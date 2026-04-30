@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 """Utility to rank existing memories by importance using an LLM.
 
 This script iterates through all memories in the database that have a default

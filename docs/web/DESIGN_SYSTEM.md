@@ -381,20 +381,21 @@ apps/web/
 ├── src/
 │   ├── styles/
 │   │   └── app.css          # Main design system (CSS variables, utilities)
-│   ├── components/
-│   │   ├── today/           # Today page components
-│   │   │   ├── MarketStatusHero.tsx
-│   │   │   ├── AgentInsights.tsx
-│   │   │   ├── TradeActivity.tsx
-│   │   │   ├── FutureCatalysts.tsx
-│   │   │   └── NewsletterFeed.tsx
-│   │   └── ui/              # Reusable UI primitives
-│   └── routes/
-│       └── index.tsx        # Today page composition
-└── docs/
-    └── web/
-        ├── README.md        # Architecture overview
-        └── DESIGN_SYSTEM.md # This file
+│   ├── features/            # Feature slices with colocated components
+│   │   └── <feature>/
+│   │       └── components/  # Feature-specific UI (e.g., MarketStatusHero)
+│   ├── components/          # App-level UI (Header, Sidebar, layout)
+│   │   └── ui/              # Re-exports from packages/ui-design-system
+│   └── routes/              # Thin route shells → feature pages
+├── docs/
+│   └── web/
+│       ├── README.md        # Architecture overview
+│       └── DESIGN_SYSTEM.md # This file
+└── packages/ui-design-system/  # Shared UI primitives (monorepo package)
+    └── src/
+        ├── button.tsx
+        ├── card.tsx
+        └── index.ts
 ```
 
 ---

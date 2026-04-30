@@ -42,23 +42,39 @@ pnpm test:watch
 
 ## 5. Writing Tests
 
-We follow the **"Colocation"** principle defined in [README.md](./README.md). Tests should live next to the code they test. 
+We follow the **"Colocation"** principle defined in [README.md](./README.md). Tests should live next to the code they test.
 
 > [!IMPORTANT]
-> Files inside `src/routes` that are not actual routes (like tests, components, or utilities) **must** be prefixed with `-` to be ignored by the TanStack Router route tree generator (e.g., `-MyComponent.test.tsx`).
+> Tests inside feature slices use `*.test.tsx` alongside the component they test (e.g., `features/today/components/MarketStatusHero.test.tsx`). No `-` prefix is needed — `features/` is **not** a TanStack Router directory.
+>
+> The `-` prefix rule only applies to non-route files inside `src/routes/` (e.g., `-utils.ts`). Routes should no longer contain components or tests — those live in `features/`.
 
-### Pattern: Component Testing
-
-Use the `*.test.tsx` suffix for component tests. Use `-*.test.tsx` if the test is located within the `src/routes` directory.
+### Pattern: Feature-Colocated Component Testing
 
 ```tsx
+// features/today/components/MarketStatusHero.test.tsx
 import { render, screen } from '@testing-library/react'
-import { MyComponent } from './MyComponent'
+import { MarketStatusHero } from './MarketStatusHero'
 
-describe('MyComponent', () => {
-  it('renders correctly', () => {
-    render(<MyComponent />)
-    expect(screen.getByText(/hello/i)).toBeInTheDocument()
+describe('MarketStatusHero', () => {
+  it('shows market status indicator', () => {
+    render(<MarketStatusHero isOpen={true} />)
+    expect(screen.getByText(/market open/i)).toBeInTheDocument()
+  })
+})
+```
+
+### Pattern: Feature API Testing
+
+```tsx
+// features/portfolios/api/fetch-portfolios.test.ts
+import { describe, it, expect } from 'vitest'
+import { fetchPortfolios } from './fetch-portfolios'
+
+describe('fetchPortfolios', () => {
+  it('returns portfolio list', async () => {
+    const result = await fetchPortfolios()
+    expect(result.data).toBeDefined()
   })
 })
 ```

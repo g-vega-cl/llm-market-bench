@@ -186,6 +186,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                         className="group p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 card-lift animate-slide-up"
                         style={{ animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms` }}
                     >
+                        {(() => {
+                            const lessonAgent = getAgentInfo(m.metadata?.model_name)
+                            return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-amber-200 dark:border-amber-800 shadow-sm">
@@ -194,6 +197,14 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
                                     <span>📝</span> Post-Analysis
                                 </span>
+                                {lessonAgent.name !== 'Unknown' && (
+                                    <div
+                                        className={`w-7 h-7 rounded-full ${lessonAgent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900 shadow-md`}
+                                        title={`Trade by ${lessonAgent.name}`}
+                                    >
+                                        {lessonAgent.emoji}
+                                    </div>
+                                )}
                             </div>
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                 {new Date(m.created_at).toLocaleDateString('en-US', {
@@ -202,6 +213,8 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 })}
                             </span>
                         </div>
+                            )
+                        })()}
 
                         <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
                             "{m.content}"

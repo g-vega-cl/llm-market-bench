@@ -1122,10 +1122,10 @@ To enable self-correction, the engine periodically audits its own performance. T
 
 4. **LLM Reflection**: Call the Agent with:
    - "You bought X because of [Reasoning]. Current price is [Y]. Was this correct?"
-5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-analysis).
-6. **RAG Feed**: This lesson is embedded into the `memories` table (pgvector) with `type: "post_analysis"`.
+5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-analysis). The metadata stores `trade_id`, `analysis_window`, `price_change_pct`, and `model_name` (the agent that made the original trade) for frontend attribution.
+6. **RAG Feed**: This lesson is embedded into the `memories` table (pgvector) with `memory_type: "LESSON_LEARNED"`.
 
-**Result**: Future LLM decisions on the same ticker/sector will retrieve this lesson as RAG context, preventing the "same mistake twice."
+**Result**: Future LLM decisions on the same ticker/sector will retrieve this lesson as RAG context, preventing the "same mistake twice." The dashboard displays which agent made each trade on the post-analysis card.
 
 ---
 

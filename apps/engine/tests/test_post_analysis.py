@@ -112,9 +112,70 @@ def test_window_date_calculation():
     print("\nTest Passed: Window date calculations correct.")
 
 
+@pytest.mark.asyncio
+async def test_post_analysis_metadata_includes_model_name():
+    """Verify that model_name from decisions is included in memory metadata."""
+    from apps.engine.analysis.post_analysis import perform_post_analysis
+    
+    mock_sb = MagicMock()
+    mock_gemini_client = MagicMock()
+    mock_mdm = MagicMock()
+    mock_quote = MagicMock()
+    mock_quote.price = 185.0
+    
+    # Setup: trade has decisions with model_name, no existing memory (so it proceeds)
+    trade = {
+        "id": "trade-uuid-001",
+        "ticker": "AAPL",
+        "quantity": 10,
+        "price": 180.0,
+        "signal": "BUY",
+        "executed_at": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+        "decisions": [{
+            "reasoning": "Strong earnings momentum",
+            "model_name": "gemini-3.1-flash-lite-preview",
+            "metadata": {"strategy_reasoning": "Tech sector rotation"}
+        }]
+    }
+    
+    # Mock: return trade, no existing memory, successful LLM call
+    mock_sb.table.return_value.select.return_value.filter.return_value.filter.return_value.execute.return_value.data = [trade]
+    mock_sb.table.return_value.select.return_value.filter.return_value.filter.return_value.filter.return_value.execute.return_value.data = []
+    
+    # Mock LLM response
+    from apps.engine.analysis.post_analysis import PostAnalysisResult
+    mock_response = PostAnalysisResult(
+        lesson="Buying at resistance was premature",
+        is_regret=True,
+        sentiment_shift="Wait for pullback below 175"
+    )
+    mock_gemini_client.chat.completions.create.return_value = mock_response
+    
+    mock_mdm.get_quote = AsyncMock(return_value=mock_quote)
+    
+    with patch("apps.engine.analysis.post_analysis.get_supabase_client", return_value=mock_sb), \
+         patch("apps.engine.analysis.post_analysis.get_gemini_client", return_value=mock_gemini_client), \
+         patch("apps.engine.analysis.post_analysis.MarketDataManager", return_value=mock_mdm), \
+         patch("apps.engine.analysis.post_analysis.add_memory") as mock_add_memory:
+        
+        mock_add_memory.return_value = True
+        
+        await perform_post_analysis(windows=[5])
+        
+        # Verify add_memory was called with model_name in metadata
+        call_kwargs = mock_add_memory.call_args[1]
+        assert "metadata" in call_kwargs
+        assert call_kwargs["metadata"]["model_name"] == "gemini-3.1-flash-lite-preview"
+        assert call_kwargs["metadata"]["trade_id"] == "trade-uuid-001"
+        assert call_kwargs["metadata"]["analysis_window"] == "5"
+        
+        print("\nTest Passed: model_name included in post-analysis memory metadata.")
+
+
 if __name__ == "__main__":
     asyncio.run(test_post_analysis_skips_existing_memory())
     test_post_analysis_result_model()
     test_price_change_calculation_buy()
     test_price_change_calculation_sell()
     test_window_date_calculation()
+    asyncio.run(test_post_analysis_metadata_includes_model_name())

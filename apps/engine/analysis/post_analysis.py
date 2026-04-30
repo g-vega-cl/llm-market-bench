@@ -61,6 +61,7 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
             signal = trade["signal"]
             decision_data = trade.get("decisions", [{}])[0] if trade.get("decisions") else {}
             reasoning = decision_data.get("reasoning", "No reasoning found.")
+            model_name = decision_data.get("model_name", "Unknown")
             meta = decision_data.get("metadata", {})
             strategy_reasoning = meta.get("strategy_reasoning", "None")
             
@@ -128,7 +129,8 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
                     metadata={
                         "price_change_pct": price_change_pct,
                         "trade_id": str(trade["id"]),
-                        "analysis_window": str(days_back)
+                        "analysis_window": str(days_back),
+                        "model_name": model_name
                     },
                     check_similarity=True
                 )

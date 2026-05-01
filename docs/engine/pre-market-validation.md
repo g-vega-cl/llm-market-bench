@@ -38,7 +38,7 @@ LLMs, while powerful, can occasionally:
 
 ### 5. Guardrail E: Minimum Trade Value
 - **Logic**: Verifies that the total value of the trade (Price * Quantity) meets a minimum threshold. This prevents small, insignificant trades that don't move the needle for the portfolio (e.g., buying 1 share for $100).
-- **Limit**: **$1,000 USD** (1/10th of the default starting balance).
+- **Limit**: **max($1,000, 10% of Total Equity)** - the higher of the $1,000 floor or 10% of equity.
 - **Action**: Reject trades below the threshold (waived for SELL orders if a sell tool is used).
 
 ### 6. Guardrail F: SMA Floor (Margin Compliance)

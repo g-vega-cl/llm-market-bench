@@ -209,8 +209,9 @@ def validate_trade_compliance(
 
     # --- Dynamic Minimum Trade Value Guardrail (BUY only) ---
     if signal == "BUY":
-        # Rule: 10% of whichever is larger: Buying Power or Total Equity
-        dynamic_floor = 0.10 * max(portfolio_metrics.buying_power, portfolio_metrics.total_equity)
+        # Rule: 10% of Total Equity (not buying power) - per user request
+        # This ensures meaningful position sizing based on actual account equity
+        dynamic_floor = 0.10 * portfolio_metrics.total_equity
         # Ensure it doesn't drop below the global constant MIN_TRADE_VALUE ($1,000)
         final_floor = max(MIN_TRADE_VALUE, dynamic_floor)
 
@@ -219,7 +220,7 @@ def validate_trade_compliance(
                 passed=False,
                 reason=(
                     f"Trade value below dynamic minimum threshold of ${final_floor:,.2f} "
-                    f"(10% of Buying Power/Equity). Proposed cost: ${estimated_trade_cost:,.2f}. "
+                    f"(10% of Equity). Proposed cost: ${estimated_trade_cost:,.2f}. "
                     "Consider increasing quantity to meet the meaningful position size requirement."
                 )
             )

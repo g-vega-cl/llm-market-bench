@@ -55,7 +55,7 @@ Before trade execution, the engine saves the decision with `status="VALIDATED"` 
     -   This completes the **bidirectional attribution lock**: `Decision ↔ Trade`.
 ## 4. Quantity Calculation (Allocation %)
 - For **BUY** trades, the engine uses the `allocation_percentage` (1-100%) against available **Buying Power**.
-- **Dynamic Minimum:** If `Price * Qty < 10% of BP/Equity`, the engine attempts to "Bump" the allocation to meet the threshold if sufficient BP exists.
+- **Dynamic Minimum:** If `Price * Qty < 10% of Total Equity`, the engine attempts to "Bump" the allocation to meet the threshold if sufficient BP exists.
 - **SELL:** **Mandatory Tool Calculation.** LLMs must call a sell percentage tool to get the `quantity`. If a tool is used, the absolute $1,000 minimum trade floor is waived.
 - **Fallback:** If `allocation_percentage` is missing for BUYS, use **5%**. For SELLS, the trade is REJECTED if no tool was called.
 

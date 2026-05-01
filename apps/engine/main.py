@@ -293,7 +293,8 @@ async def _process_single_decision(
                         from core.config import MIN_TRADE_VALUE
 
                         alloc_pct = d.allocation_percentage or 5
-                        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * max(bp, total_equity))
+                        # Use equity only (not max of equity/buying power) for minimum trade size
+                        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
                         usd_to_spend = (alloc_pct / 100.0) * bp
 
                         if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:

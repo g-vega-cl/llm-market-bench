@@ -33,7 +33,7 @@ The validation logic strictly enforces the Buying Power limit.
 
 1.  **Buying Power (BUY):** `estimated_cost <= buying_power`.
 2.  **Portfolio Ownership (SELL):** `ticker in positions`.
-3.  **Dynamic Minimum Size:** `estimated_cost >= max($1,000, 10% of BP or Equity)` for BUYS. For SELLS, the $1,000 floor applies unless bypassed via a sell tool.
+3.  **Dynamic Minimum Size:** `estimated_cost >= max($1,000, 10% of Total Equity)` for BUYS. For SELLS, the $1,000 floor applies unless bypassed via a sell tool.
 4.  **SMA Floor:** `projected_sma >= 10% * Total Equity`.
 5.  **Account Not in Liquidation:** `available_funds >= 0`.
 

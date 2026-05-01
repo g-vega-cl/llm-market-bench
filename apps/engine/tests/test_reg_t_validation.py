@@ -252,7 +252,11 @@ def test_sma_floor_protection():
     assert res_violation.max_affordable_shares == 105
 
 def test_dynamic_buy_minimum_validation():
-    """Verify that BUY trades below 10% of max(BP, Equity) are rejected."""
+    """Verify that BUY trades below 10% of Equity are rejected.
+    
+    Note: Changed from max(BP, Equity) to Equity-only per user request.
+    With $10,000 equity, 10% = $1,000. The minimum is max($1,000, 10% of equity) = $1,000.
+    """
     # Setup: $10,000 Equity, $40,000 Buying Power
     cash = 10000.00
     metrics = calculate_reg_t_metrics(cash, {}, {})
@@ -260,19 +264,19 @@ def test_dynamic_buy_minimum_validation():
     assert metrics.total_equity == 10000.00
     assert metrics.buying_power == 40000.00
     
-    # 10% of max(40000, 10000) is $4,000.
+    # 10% of equity ($10,000) is $1,000.
+    # Minimum = max($1,000, $1,000) = $1,000
     
-    # CASE 1: FAIL - Trade below $4,000
-    res_fail = validate_trade_compliance(metrics, 3500.00, "AAPL", 150.00)
-    assert res_fail.passed is False
-    assert "below dynamic minimum threshold" in res_fail.reason
-    assert "$4,000.00" in res_fail.reason
-    
-    # CASE 2: PASS - Trade at or above $4,000
-    res_pass = validate_trade_compliance(metrics, 4000.00, "AAPL", 150.00)
+    # CASE 1: PASS - Trade above $1,000 (was FAIL with old logic: $3,500 < $4,000)
+    res_pass = validate_trade_compliance(metrics, 3500.00, "AAPL", 150.00)
     assert res_pass.passed is True
     
-    # CASE 3: FAIL - Even if above $1,000 MIN_TRADE_VALUE, it must hit the 10% floor
-    res_fail_mid = validate_trade_compliance(metrics, 2500.00, "AAPL", 150.00)
-    assert res_fail_mid.passed is False
-    assert "$4,000.00" in res_fail_mid.reason
+    # CASE 2: PASS - Trade at minimum $1,000
+    res_pass_min = validate_trade_compliance(metrics, 1000.00, "AAPL", 150.00)
+    assert res_pass_min.passed is True
+    
+    # CASE 3: FAIL - Trade below $1,000 (absolute floor)
+    res_fail = validate_trade_compliance(metrics, 500.00, "AAPL", 150.00)
+    assert res_fail.passed is False
+    assert "minimum threshold" in res_fail.reason
+    assert "$1,000.00" in res_fail.reason

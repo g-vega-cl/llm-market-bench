@@ -117,7 +117,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Persistence:** *Portfolios are stored in `portfolios` and `portfolio_positions` tables to maintain state across daily runs.*
 *   **Portfolio Context Injection**: LLMs receive their current Cash, Equity, and Buying Power in the prompt, along with real-time market prices for all holdings (fetched in parallel before analysis), allowing them to make **"Allocation %"** decisions for BUYS. For ALL trades (BUY or SELL), LLMs are now REQUIRED to use calculation tools (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine the exact share quantity.
 *
-*   **Minimum Trade Rule**: Every trade must be at least **10% of Total Equity or available Buying Power** (whichever is larger), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS the `calculate_sell_quantity` tool is used with a percentage, which allows for precision rebalancing and clearing "dust" positions.
+*   **Minimum Trade Rule**: Every BUY trade must be at least **10% of Total Equity** (not Buying Power), with an absolute floor of **$1,000 for BUY orders**. For **SELL orders**, the $1,000 floor is strictly enforced UNLESS the `calculate_sell_quantity` tool is used with a percentage, which allows for precision rebalancing and clearing "dust" positions.
 *
 *   **10% Minimum Position Rule (AUTOMATIC ENFORCEMENT)**: The system requires every position to be at least 10% of total portfolio equity. 
     - For BUYS: The `calculate_buy_quantity` tool automatically up-sizes the request to meet this floor.

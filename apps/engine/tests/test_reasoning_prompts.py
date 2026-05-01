@@ -8,6 +8,12 @@ def test_catalyst_logic_constraints():
     assert "If you cannot name the specific day or a very tight window" in SYNTHESIS_USER_PROMPT_TEMPLATE
     assert "it is NOT a future catalyst for Horizon Watch" in SYNTHESIS_USER_PROMPT_TEMPLATE
 
+def test_scenario_probabilities_required():
+    """Verify that the synthesis prompt requires probability percentages for each scenario."""
+    assert "XX% probability" in SYNTHESIS_USER_PROMPT_TEMPLATE or "probability" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower()
+    assert "each scenario" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower() or "probabilities" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower()
+    assert "sum to 100" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower() or "100%" in SYNTHESIS_USER_PROMPT_TEMPLATE
+
 def test_5_whys_integration():
     """Verify that the 5 Whys technique is mentioned in relevant prompts."""
     from apps.engine.core.llm.prompts import CORE_ANALYSIS_SYSTEM_PROMPT, MANAGER_USER_PROMPT_TEMPLATE, CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE, ANALYSIS_USER_PROMPT_TEMPLATE

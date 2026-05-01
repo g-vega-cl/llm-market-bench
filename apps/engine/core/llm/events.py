@@ -79,7 +79,7 @@ async def synthesize_event(
             is_ongoing: bool = False
             is_future_catalyst: bool = False
             historical_parallel: Optional[str] = None
-            scenario_analysis: Optional[str] = Field(None, description="Unified view of material resolutions. REQUIRED: At least two outcomes AND a 'Trading Plan' for each.")
+            scenario_analysis: Optional[str] = Field(None, description="Unified view of material resolutions. REQUIRED: At least two outcomes with estimated probability percentages summing to 100%, AND a 'Trading Plan' for each.")
             importance_score: int = 5
 
         resp_awaitable = client.chat.completions.create(

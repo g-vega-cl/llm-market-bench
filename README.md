@@ -204,7 +204,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [x] **I don't see percentages in scenarios anymore**
+- [ ] **I don't see percentages in scenarios anymore**
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**

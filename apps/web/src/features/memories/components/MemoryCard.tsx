@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { Memory } from './MemoriesList'
 import { Link } from '@tanstack/react-router'
+import { extractPercentage } from '~/lib/parse-scenario-percentages'
 
 interface MemoryCardProps {
   memory: Memory
@@ -141,9 +142,18 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                     const content = arr[i + 1] || '';
                     const [outcome, tradingPlan] = content.split(/Trading Plan.*?:/);
 
+                    const pct = extractPercentage(content) || extractPercentage(part);
+
                     return (
                       <div key={i} className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                        <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">{part.trim()}</div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{part.trim()}</span>
+                          {pct && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded tabular-nums">
+                              {pct}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm leading-relaxed mb-2">
                           {outcome.trim()}
                         </div>

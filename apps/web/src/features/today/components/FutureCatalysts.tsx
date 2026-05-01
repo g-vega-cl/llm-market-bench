@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages'
 
 interface FutureCatalystsProps {
     events: any[]
@@ -34,16 +35,6 @@ function getImportanceLabel(score: number) {
     if (score >= 8) return 'High'
     if (score >= 6) return 'Medium'
     return 'Low'
-}
-
-function parseScenarioPercentages(analysis: string): { text: string; percentage: string | null }[] {
-    const lines = analysis.split('\n')
-    return lines.map(line => {
-        // Match patterns like "40%", "40 %", "(40%)", "high chance (80%)"
-        const match = line.match(/(\d{1,3})\s*%/)
-        const percentage = match ? match[1] + '%' : null
-        return { text: line, percentage }
-    })
 }
 
 export function FutureCatalysts({ events }: FutureCatalystsProps) {

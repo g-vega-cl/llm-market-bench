@@ -327,9 +327,10 @@ Your task:
 3. Synthesize the 'scenario_analysis': Provide a unified, structured view of potential resolutions. 
    **CRITICAL: This is the "How to Profit" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).
    REQUIRED: Include at least TWO distinct outcomes and a 'Trading Plan' for each. 
+   Each scenario MUST include an estimated probability percentage (XX%) summing to 100%.
    Format:
-   Scenario A: [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
-   Scenario B: [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
+   Scenario A (XX% probability): [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
+   Scenario B (XX% probability): [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
    Focus on material catalysts that justify strategic trade planning.
 4. Extract any explicitly mentioned future date or timeframe.
    - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD) or null. 

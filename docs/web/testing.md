@@ -64,6 +64,39 @@ describe('MarketStatusHero', () => {
 })
 ```
 
+### Pattern: Test-Driven Development (TDD)
+
+We follow TDD for new features and UI changes. Write a failing test first, make it pass with the minimal implementation, then refactor.
+
+**Example:** Adding an LLM name label to Lesson Learned cards.
+
+1. **Write the failing test** (`AgentInsights.test.tsx`):
+
+```tsx
+it('renders agent name text for known Gemini model', () => {
+  render(<AgentInsights memories={[createLessonMemory('gemini-3.1-flash-lite-preview')]} />)
+  expect(screen.getByText('Gemini')).toBeInTheDocument()
+})
+```
+
+2. **Run the test — confirm it fails**:
+
+```bash
+pnpm vitest run src/features/today/components/AgentInsights.test.tsx
+```
+
+3. **Implement the minimal change** (`AgentInsights.tsx`):
+
+```tsx
+<span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+  {lessonAgent.name}
+</span>
+```
+
+4. **Run the test again — confirm it passes**, then run the full suite to prevent regressions.
+
+> See `features/today/components/AgentInsights.test.tsx` for the complete test file covering all known LLM agents, missing metadata, and edge cases.
+
 ### Pattern: Feature API Testing
 
 ```tsx

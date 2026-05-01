@@ -167,12 +167,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     <span>📝</span> Post-Analysis
                                 </span>
                                 {lessonAgent.name !== 'Unknown' && (
-                                    <div
-                                        className={`w-7 h-7 rounded-full ${lessonAgent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900 shadow-md`}
-                                        title={`Trade by ${lessonAgent.name}`}
-                                    >
-                                        {lessonAgent.emoji}
-                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                        {lessonAgent.name}
+                                    </span>
                                 )}
                             </div>
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">

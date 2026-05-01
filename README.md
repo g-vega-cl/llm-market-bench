@@ -194,7 +194,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **More context on what lead to certain memory**
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
-- [ ] **Set up Test driven development** -
+- [x] **Set up Test driven development** - First feature (AgentInsights LLM label) built with TDD (see `AgentInsights.test.tsx`)
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 - [ ] **Make sure CI/CD tests behave same as local tests**

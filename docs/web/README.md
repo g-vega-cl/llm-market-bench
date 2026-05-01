@@ -94,7 +94,7 @@ The root route (`/`) displays a comprehensive view of daily AI trading activity:
 - **Empty State:** Rotating witty messages with CTAs when no activity
 - **Interactive Cards:** Click-to-expand for detailed reasoning
 - **Live Indicators:** Market status, countdown timers, pulse animations
-- **Agent Attribution:** Color-coded avatars showing which AI made each decision
+- **Agent Attribution:** Text labels showing which LLM made each decision (e.g., "OpenAI", "Gemini", "Claude")
 
 ## 5. Project Structure
 
@@ -219,7 +219,7 @@ Frontend types are generated from the Supabase database schema for type safety. 
 *   Importing types from `@llm-market-bench/database`
 
 ### Testing
-We use Vitest and React Testing Library. Tests are **colocated** next to the code they test using the `*.test.tsx` suffix.
+We use Vitest and React Testing Library. Tests are **colocated** next to the code they test using the `*.test.tsx` suffix. We practice **TDD** — write a failing test first, then implement the minimal change to make it pass.
 *   Run tests: `pnpm test`
 *   Full guide: [testing.md](./testing.md)
 

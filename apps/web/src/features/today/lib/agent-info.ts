@@ -15,11 +15,16 @@ export const agentConfig: Record<string, { name: string; color: string; bgColor:
 
 export function getAgentInfo(ownerId: string | null | undefined) {
   if (!ownerId) return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
-  const normalized = ownerId.toLowerCase().replace(/_/g, '-').replace(/-/g, '-')
+  const normalized = ownerId.toLowerCase().trim()
+  // Exact match
+  const exact = agentConfig[normalized]
+  if (exact) return exact
+  // Fuzzy match: normalized string contains key or vice versa
   for (const [key, config] of Object.entries(agentConfig)) {
-    if (normalized.includes(key.replace(/-/g, '')) || key.includes(normalized.replace(/-/g, ''))) {
+    const keyLower = key.toLowerCase()
+    if (normalized.includes(keyLower) || keyLower.includes(normalized)) {
       return config
     }
   }
-  return { name: ownerId, color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
+  return { name: 'Unknown', color: 'text-zinc-500', bgColor: 'bg-zinc-500', emoji: '⚪' }
 }

@@ -234,6 +234,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Supabase push/migrate programmatically?** - Make sure your migration files match what you have and that you can migrate programmatically without breaking everything.
 - [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
 - [ ] manage prompt size with increasing memory/lessons learned database.
+- [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
+- [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
 
 ### 🔄 Under Consideration
 
@@ -267,7 +269,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [IBKR Proxy & Integration Guide](./docs/IBKR-Integration.md)
 - [FMP API Documentation](./docs/library-docs/FMP/FMP-API-Documentation.md)
-
 
 ### Utilities & Maintenance
 

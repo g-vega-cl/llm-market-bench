@@ -2,10 +2,10 @@
 
 This document describes the implementation of the Portfolios section in the AI Wall Street frontend.
 
-## 1. Overview
+## Overview
 The Portfolios section allows users to monitor the performance and holdings of each AI trading agent. It provides both a high-level summary of all agents and a detailed view for each individual agent.
 
-## 2. Pages
+## Pages
 
 ### Portfolios Summary (`/portfolios`)
 - **Route**: `apps/web/src/routes/portfolios/index.tsx`
@@ -38,7 +38,7 @@ The Portfolios section allows users to monitor the performance and holdings of e
         - **Interactive Rows**: Rows are clickable; clicking an entry expands to show the AI's reasoning.
     - **Recent Trades**: A historical ledger of the agent's executions. Like the positions table, trade rows expand to reveal the specific reasoning behind the BUY or SELL signal.
 
-## 3. Data Visualization: Equity Curve
+## Data Visualization: Equity Curve
 The performance chart is built using **D3.js** to ensure maximum flexibility and alignment with the project's "no new charting libraries" constraint.
 
 - **Component**: `apps/web/src/routes/portfolios/components/-PerformanceChart.tsx`
@@ -48,20 +48,20 @@ The performance chart is built using **D3.js** to ensure maximum flexibility and
     - Linear y-axis with formatted currency labels.
     - Gradient area fill under the equity line for better visual depth.
     - Automated gridlines and axes using D3 primitives.
-    - **Inline Data Display** (2026-04-15):
+    - **Inline Data Display**:
         - A card between the chart title and the chart displays the current/hovered data point.
         - Shows date, portfolio value (or % when benchmark selected), benchmark value, and outperformance.
         - Default state shows the latest data point.
         - Hovering updates the display with the hovered point's data.
         - No floating tooltip - all information is visible inline for better mobile experience.
         - Crosshair and dot marker still appear on hover for visual tracking.
-    - **Benchmark Comparison** (2026-04-14):
+    - **Benchmark Comparison**:
         - Multi-line support for overlaying benchmark index performance.
         - Portfolio line: solid sky-500 color with gradient area fill.
         - Benchmark line: dashed amber color for visual distinction.
         - Percentage normalization when benchmark is selected (both lines normalized to 0% at day 1).
         - Color-coded legend identifying portfolio vs benchmark.
-    - **Outperformance Display** (2026-04-14):
+    - **Outperformance Display**:
         - When benchmark is active, the inline display shows:
             - Portfolio return % (or $ value in absolute mode)
             - Benchmark return % (or $ value in absolute mode)
@@ -72,11 +72,11 @@ The performance chart is built using **D3.js** to ensure maximum flexibility and
         - React state manages hover data and inline display.
         - Crosshair and dot marker are updated via a separate `useEffect` hook for smooth animation.
     
-## 4. Sortable Positions Table
+## Sortable Positions Table
 The positions table includes client-side sorting functionality for better data exploration.
 
 - **Component**: `apps/web/src/routes/portfolios/components/-PositionsTable.tsx`
-- **Sortable Columns** (2026-04-02):
+- **Sortable Columns**:
     - **Invested**: Sort by total capital deployed in the position (`quantity × average_cost_basis`).
     - **% of Portfolio**: Sort by the position's weight relative to total invested cash.
     - **P/L (USD)**: Sort by unrealized profit/loss in dollars.
@@ -92,7 +92,7 @@ The positions table includes client-side sorting functionality for better data e
     - Sort calculations are performed client-side for instant response.
     - Total invested cash is recalculated on each render to ensure accurate portfolio percentages.
 
-## 5. Interactive Reasoning (Thinking Process)
+## Interactive Reasoning (Thinking Process)
 One of the core features of the Portfolio Detail page is the **Thinking Process** expansion. 
 
 - **Logic**: Each position or trade row in the table can be toggled to expand a detailed reasoning block.
@@ -104,7 +104,7 @@ One of the core features of the Portfolio Detail page is the **Thinking Process*
     3. **Fallback**: Match by the most recent relevant ticker signal.
 - **User Experience**: Provides transparency into *why* an agent made a specific trade, fulfilling the machine-auditable trail objective of the platform.
 
-## 6. Data Sources
+## Data Sources
 
 ### Portfolios Table
 The summary page and header information are fetched from the `portfolios` table, which contains the latest calculated Reg T metrics for each agent.
@@ -128,7 +128,7 @@ Benchmark index prices are fetched from the existing `price_history` table using
 
 **Date Deduplication:** The `price_history` table stores timestamps, which can result in multiple price snapshots per calendar day. `fetchBenchmarkHistory` deduplicates by date string, keeping only the **last** (most recent) price for each day. This prevents duplicate x-values in the D3 chart, which would otherwise cause vertical line artifacts in the interpolated curve.
 
-## 7. Implementation Details
+## Implementation Details
 
 ### Benchmark Selector Component
 - **File**: `apps/web/src/routes/portfolios/components/-BenchmarkSelector.tsx`
@@ -168,7 +168,7 @@ Data fetching is handled by TanStack Start server functions located in `apps/web
 ### Styling
 All pages use **Tailwind CSS** and follow the project's **Zinc** color palette to maintain consistency with the rest of the application.
 
-## 8. Mobile Responsiveness (2026-04-15)
+## Mobile Responsiveness
 
 The portfolio pages are optimized for mobile devices with the following improvements:
 

@@ -1,14 +1,10 @@
 # AI Wall Street: LLM Market Benchmarking Platform
 
-An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Three times a day during market hours (09:30, 12:30, 15:30 ET), they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
+An automated platform where six LLMs (**OpenAI, Claude, Gemini, DeepSeek, Contrarian Agent, Manager Agent**) compete in a virtual stock market. Multiple times daily during US market hours, they parse financial newsletters, debate major global events, analyze government incentives, and rebalance their portfolios.
 
-**New: Real-Time Web Search** - Agents now have access to live web search (Anthropic `web_search`, Gemini `google_search`) to verify breaking news, check corporate actions, and fact-check claims before trading. All searches include citations for audit trails.
+## Project Overview
 
-**New: Stock Screener Tool & Discovery Agent** - All LLMs can now invoke a `run_stock_screener` tool to find investable assets by sector, market cap, beta, volume, and dividend filters. A specialized `DiscoveryAgent` uses this tool to populate the "Investable Assets" section of the AI's memory with high-conviction, data-backed candidates.
-
-## 🚀 Project Overview
-
-This project benchmarks the reasoning capabilities of leading LLMs against the real-world performance of the S&P 500. It features a robust Python-based data engine and a modern React-based frontend.
+Benchmarks LLM reasoning against S&P 500 performance. Python data engine + React frontend.
 
 ### Why It Matters
 
@@ -20,7 +16,7 @@ This project benchmarks the reasoning capabilities of leading LLMs against the r
 
 For a deep dive into the system design, see the **[Project Overview](./docs/Overview.md)** and the **[Database Schema](./docs/database-schema.md)**.
 
-## 📂 Repository Structure
+## Repository Structure
 
 This is a monorepo managed with `pnpm`:
 
@@ -49,7 +45,7 @@ llm-market-bench/
 - **`supabase`**: SQL migrations and database configuration.
 - **`docs`**: Technical documentation and walkthroughs.
 
-## 🛠️ Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -121,23 +117,21 @@ To run the dashboard locally:
 pnpm --filter web dev
 ```
 
-## 🧪 Testing
-
-We maintain a high stability gate for the core engine:
+## Testing
 
 ```bash
-./apps/engine/market/bin/python3 -m pytest
+./apps/engine/venv/bin/python3 -m pytest
 ```
 
-## ⚙️ Automation
+## Automation
 
-- **CI Testing**: Automatically runs on every push to `main`.
-- **Daily Pipeline**: Triggered via GitHub Actions at 09:35, 12:35, and 15:35 ET (holiday-aware market hours check).
-- **Midday Update**: Price updates every 30 minutes during market hours (approx. 14:00 - 21:00 UTC).
+- **CI Testing**: Runs on every push to `main`. See `.github/workflows/ci.yml`.
+- **Daily Pipeline**: Cron-triggered during US market hours, with a holiday-aware market-hours check. Schedule: `.github/workflows/ingest.yml`.
+- **Price Updates**: Periodic during market hours. Schedule: `.github/workflows/update-prices.yml`.
 
-## 📊 Key Features
+## Key Features
 
-### The Daily Pipeline (22 Phases)
+### The Daily Pipeline (6 Phases)
 
 1. **Ingestion & Normalization**: Newsletter scraping, economic calendar fetch, data snapshotting
 2. **Consensus & Attribution**: Parallel LLM analysis with RAG context retrieval, decision attribution
@@ -165,16 +159,16 @@ For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/eng
 - **Hard Tool Enforcement**: Server-side verification that required tools (`get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity`, `run_stock_screener`) were actually called
 - **Reasoning Rigor (5 Whys)**: Forced recursive causal analysis across all reasoning agents (Manager, Cause & Effect, Analysis) to identify root drivers and profit mechanisms
 - **Catalyst Logic Synchronization**: Strict filtering of vague "future catalysts" (no themes/broad years) to prevent Horizon Watch dashboard pollution
-- **Pre-Market Validation**: FMP-verified market hours, symbol existence, 5.0% limit order price deviation check, liquidity checks
-- **Reg T Margin Validation**: Buying power checks with 10% of Total Equity minimum (absolute floor of $1,000 for BUY orders)
+- **Pre-Market Validation**: FMP-verified market hours, symbol existence, price-deviation banding, liquidity floor
+- **Reg T Margin Validation**: Buying power and minimum-trade-value checks (constants in `apps/engine/core/config.py`)
 - **Ownership Pre-Validation**: SELL signals for unheld tickers are rejected before execution
 - **Semantic Redundancy**: Overtrading prevention via pgvector deduplication
 
-## 🗺️ Roadmap
+## Roadmap
 
 A living document of features and improvements in progress or planned for the platform.
 
-### 🎯 Active Development
+### Active Development
 
 - [ ] **LLM Ranking Tool** - Build a screening system to evaluate and rank LLMs based on trading performance, reasoning quality, and consistency
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
@@ -194,7 +188,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **More context on what lead to certain memory**
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
-- [x] **Set up Test driven development** - First feature (AgentInsights LLM label) built with TDD (see `AgentInsights.test.tsx`)
 - [ ] **Find trading papers not just investing** - But low sell high?
 - [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 - [ ] **Make sure CI/CD tests behave same as local tests**
@@ -236,13 +229,13 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
 
-### 🔄 Under Consideration
+### Under Consideration
 
 - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 
 ---
 
-## 📄 Documentation
+## Documentation
 
 ### Core Documentation
 
@@ -250,9 +243,6 @@ A living document of features and improvements in progress or planned for the pl
 - [Database Schema](./docs/database-schema.md)
 - [Type Generation from Supabase](./supabase/TYPE_GENERATION.md)
 - [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
-
-- [Trade Settlement Walkthrough](./docs/engine/trade-settlement-walkthrough.md)
-- [Portfolio Management Walkthrough](./docs/engine/portfolio-management-walkthrough.md)
 - [Tool Enforcement System](./docs/engine/TOOL_ENFORCEMENT.md)
 - [Market Heuristics](./docs/engine/market-heuristics.md)
 
@@ -264,11 +254,6 @@ A living document of features and improvements in progress or planned for the pl
 - [Frontend Testing](./docs/web/testing.md)
 - [Deployment Guide](./docs/web/tanstack-start-deploy-official.md)
 
-### Integration Guides
-
-- [IBKR Proxy & Integration Guide](./docs/IBKR-Integration.md)
-- [FMP API Documentation](./docs/library-docs/FMP/FMP-API-Documentation.md)
-
 ### Utilities & Maintenance
 
 - **Reset State**: `python apps/engine/reset_state.py`
@@ -277,7 +262,7 @@ A living document of features and improvements in progress or planned for the pl
 - **Schema Docs**: `python apps/engine/generate_schema_docs.py`
 - **Cleanup Catalysts**: `python apps/engine/cleanup_catalysts.py`
 
-## 🏛️ Technology Stack
+## Technology Stack
 
 ### Backend (Engine)
 
@@ -301,7 +286,7 @@ A living document of features and improvements in progress or planned for the pl
 - **Monitoring**: Sentry (error tracking), PostHog (analytics)
 - **Testing**: pytest (engine), Vitest + React Testing Library (web)
 
-## 📈 Live Dashboard
+## Live Dashboard
 
 Visit [benchify.netlify.app](https://benchify.netlify.app) to explore:
 
@@ -312,7 +297,7 @@ Visit [benchify.netlify.app](https://benchify.netlify.app) to explore:
 - Concept Cluster Map: semantic relationships between market themes
 - Historical memories and cause & effect analysis
 
-## 🤝 Contributing
+## Contributing
 
 This is a research and benchmarking platform. Key areas for contribution:
 
@@ -321,6 +306,6 @@ This is a research and benchmarking platform. Key areas for contribution:
 - Dashboard visualizations and UX improvements
 - Memory and RAG retrieval optimizations
 
-## 📄 License
+## License
 
 See LICENSE file for details.

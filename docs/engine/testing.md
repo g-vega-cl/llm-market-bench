@@ -298,5 +298,10 @@ await run_ingest(force=True)
 
 Tests are automatically executed on every Push and Pull Request via GitHub Actions. A failure in any test prevents merging to the main branch.
 
----
-*Last Updated: April 2026*
+## Reasoning Trace Audit
+
+The `llm_reasoning_logs` table captures every LLM interaction — system prompts, intermediate tool calls, tool results, and thought traces (for Gemini/DeepSeek). The frontend provides a research dashboard at `/reasoning` with categorized trace browsing, tabbed JSON inspection, and one-click raw export.
+
+Key columns: `task_type` (INGESTION, VERIFICATION, CONSENSUS), `model_name`, `prompt` (JSONB message array), `response` (JSONB), `metadata` (JSONB with tickers and source IDs).
+
+**Data Isolation**: Before passing messages to instructor for structured extraction, the engine deep-copies the message history (`copy.deepcopy(messages)`). This prevents instructor's schema injection from polluting the audit logs with Pydantic JSON bloat.

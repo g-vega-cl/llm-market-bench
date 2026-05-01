@@ -1,1314 +1,387 @@
-# Data Flow: Newsletter Ingestion to Trading Decisions
+# Data Flow & Pipeline Reference
 
-This document provides a detailed step-by-step walkthrough of the complete data pipeline, from fetching newsletters via Gmail to generating LLM-based trading decisions and storing them with full attribution.
+Complete walkthrough of the daily pipeline, from newsletter ingestion to trade execution and feedback loops.
 
 ## Overview
 
-The pipeline has six main phases:
+The pipeline runs on a cron schedule during US market hours (see `.github/workflows/ingest.yml`). Six phases:
 
-1. **Ingestion**: Fetch newsletters from Gmail, identify macro catalysts from the Economic Calendar, clean them, and generate unique identifiers
-2. **Context Retrieval**: Embed queries and retrieve historical context from vector store
-3. **LLM Analysis**: Send enriched prompts to 4 LLM providers in parallel
-4. **Attribution & Consensus**: Save decisions with traceability, determine global market events, and invoke Alpha Discovery Agent to map events to investable assets
-5. **Validation & Execution**: Enforce guardrails and reconcile trades in the ledger
-6. **Reinforcement**: Perform post-analysis on past trades to improve future reasoning
-
----
-
-## Example: Processing 4 Newsletters
-
-### Input Data
-
-```
-Newsletter 1: "TSLA Rally Expected" (500 chars)
-Newsletter 2: "Fed Rate Hike Impact" (300 chars)
-Newsletter 3: "AI Boom Analysis" (450 chars)
-Newsletter 4: "Crypto Crash Warning" (250 chars)
-```
+1. **Ingestion** — Fetch newsletters, economic calendar, government data
+2. **Pre-Analysis** — Market hours check, dust cleanup, macro tracking
+3. **Analysis** — Parallel LLM analysis with tool-calling loops
+4. **Consensus** — Semantic grouping, event promotion, trend tracking
+5. **Execution** — Validation, Reg T checks, trade settlement, attribution
+6. **Feedback** — Post-mortem, contrarian analysis, cause & effect
 
 ---
 
-## Phase 1: Ingestion (Gmail → Supabase)
+## Phase 1: Ingestion
 
-### Step 1.1: Fetch Message List from Gmail
+### Newsletter Scraping
 
-**File**: `apps/engine/ingest/newsletter.py` → `ingest_newsletters()`
+**Files:** `apps/engine/ingest/newsletter.py`, `apps/engine/main.py`
 
-```python
-# Gmail API Call #1
-results = service.users().messages().list(
-    userId="me",
-    q="from:(newsletter1@example.com OR newsletter2@example.com OR ...)",
-    newer_than:1d,
-    maxResults=20
-).execute()
+1. **Gmail API**: Fetches unread emails from configured financial newsletter senders
+2. **Content Extraction**: Parses HTML via BeautifulSoup, decodes base64, normalizes text
+3. **Ad Removal**: Gemini Flash identifies and strips sponsored content, preserving financial analysis
+4. **Attribution Keys**: Each chunk gets a deterministic `source_id` (MD5 of date+sender+subject) and a SHA-256 `chunk_hash` for deduplication
+5. **Storage**: UPSERT into `newsletter_snapshots` table with idempotency via `chunk_hash`
+6. **Semantic Monitoring**: Logs warnings if a previously active sender yields 0 valid chunks while others succeed
 
-# Returns: 4 message IDs
-# [msg_id_001, msg_id_002, msg_id_003, msg_id_004]
+#### Worked Example: Gmail → hash → Supabase
+
+Concretely, what happens for a single ingestion run with 4 newsletters:
+
+```text
+1. service.users().messages().list(q="from:(sender1@... OR sender2@...) newer_than:1d",
+                                   maxResults=20)
+     → 1 API call, returns 4 message IDs
+2. For each ID: service.users().messages().get(id=..., format="full")
+     → 4 API calls, returns full payloads (headers + base64url body)
+3. extract_email_body() → decode_base64_url() → BeautifulSoup → clean_text()
+4. clean_newsletter_content() (Gemini Flash) strips ads
+5. generate_source_id(date, sender, subject)
+     → "news_<sender_slug>_<md5[:8]>"   e.g. "news_newsletter1_a7f92c4e"
+6. generate_chunk_hash(content)
+     → SHA-256 of cleaned content (full 64 hex chars)
+7. upsert_newsletter_snapshot() into newsletter_snapshots
+     (id, source_id, chunk_hash, sender, subject, content, date, ingested_at)
 ```
 
-**API Usage**: 1 Gmail API call to list all unread newsletters
+The `source_id` is deterministic: re-ingesting the same email produces the same ID, so an UPSERT keyed on it is idempotent. The `chunk_hash` covers the cleaned content body — if a sender re-sends the same article under a new subject, the hash changes and it's treated as a new chunk.
+
+### Economic Calendar
+
+**Files:** `apps/engine/ingest/calendar.py`, `.github/workflows/calendar.yml`
+
+Periodic cron fetches global macro catalysts from Trading Economics. High-importance events are stored as `CALENDAR_EVENT` memories with `is_future_catalyst=true` for Horizon Watch. Importance threshold and cadence: see `ingest/calendar.py` and the workflow YAML.
 
 ---
 
-### Step 1.2: Fetch and Process Each Message
+## Phase 2: Pre-Analysis Setup
 
-**File**: `apps/engine/ingest/newsletter.py` → `_process_message()`
+### Market Hours Check
 
-```
-For each of the 4 message IDs:
+**Files:** `apps/engine/execution/market_data.py`
 
-Gmail API Call #2 (msg_id_001):
-  service.users().messages().get(
-    userId="me",
-    id="msg_id_001",
-    format="full"
-  ).execute()
+Enforces trading only during US market hours (weekdays, holiday-aware) via the FMP market-status API. Uses class-level caching so the API is called once per pipeline run rather than per-validation. TTL constant: `execution/market_data.py`.
 
-  Returns: Full email payload including headers and body
+### Dust Cleanup
 
-Message 1 Structure:
-  ├─ From: newsletter1@example.com
-  ├─ Date: 2024-12-25T10:00:00Z
-  ├─ Subject: "TSLA Rally Expected"
-  └─ Content (base64url encoded):
-      <html>Tesla stock expected to rally...
-      ...with 500 character HTML content...</html>
+**Files:** `apps/engine/main.py`
 
-Processing Steps:
-  1. Extract headers (From, Date, Subject)
-  2. Parse email body with extract_email_body()
-  3. Decode base64url (decode_base64_url)
-  4. Parse HTML with BeautifulSoup
-  5. Clean text (remove non-ASCII, normalize whitespace)
-  6. **LLM De-advertisement**: Pass text to Gemini Flash to remove sponsored subsections.
+Before LLM analysis, the engine auto-sells any position too small to be meaningful relative to portfolio equity. This keeps LLMs from reasoning about negligible holdings. Threshold: see `main.py`.
 
-  Result: "Tesla stock expected to rally due to..."
-```
+### Global Macro Tracker
 
-**API Usage**: 4 Gmail API calls (one per message)
+**Files:** `apps/engine/core/macro_tracker.py`
 
-**Code Flow**:
-- `_process_message()` extracts headers, parses email body
-- `extract_email_body()` handles base64 decoding and HTML parsing
-- `clean_text()` normalizes the intermediate output
-- **Advertisement Removal**: `clean_newsletter_content()` (Gemini API) filters out non-financial commercial content.
-- **Semantic Monitoring**: `ingest_newsletters()` tracks the yield per configured sender. If a sender produces 0 vignettes while others succeed, a `SEMANTIC FRAGILITY ALERT` is logged.
+Fetches real-time quotes for a curated set of macro assets (broad equities, international, commodities, yields/indices). For each asset, calculates daily % change vs. its rolling standard deviation and flags `UNUSUAL` / `HIGHLY UNUSUAL` regime shifts when the move exceeds the σ threshold.
+
+The formatted snapshot is injected into every LLM prompt, giving agents "Risk-On/Risk-Off" awareness. Asset list, lookback window, and σ thresholds: `core/macro_tracker.py`.
+
+### Portfolio Initialization
+
+**Files:** `apps/engine/analyze.py`
+
+1. Initializes all agent portfolios and fetches current market prices for all unique holdings in parallel
+2. Aggregates historical context (government incentives, lessons learned) via parallel pgvector searches
+3. Enforces **calendar strategy context** (Turn of the Month, Payday Anomaly) based on current date
 
 ---
 
-### Step 1.3: Generate Unique Identifiers
+## Phase 3: Parallel LLM Analysis
 
-**File**: `apps/engine/ingest/newsletter.py` → `generate_source_id()`, `generate_chunk_hash()`
+### Batch Strategy
 
-For each newsletter, generate two identifiers:
+**Files:** `apps/engine/analyze.py`
 
-#### Source ID (Deterministic Hash)
+News chunks are split into batches to avoid output-token truncation and the "Lost in the Middle" phenomenon. Each batch still receives the full portfolio summary, historical context, and market data. All batches execute in parallel via `asyncio.gather`. Batch size: `BATCH_SIZE` in `analyze.py`.
 
-```python
-def generate_source_id(date_str, sender, subject):
-    """
-    Combines date, sender, and subject to create unique identifier.
-    Deterministic: same email always produces same source_id.
-    """
-    sender_clean = re.sub(r"[^a-zA-Z0-9]", "_",
-                          sender.split("<")[-1].split(">")[0])
-    combined = f"{date_str}_{sender}_{subject}"
-    h = hashlib.md5(combined.encode()).hexdigest()[:8]
-    return f"news_{sender_clean}_{h}"
+Trade-off: smaller batches give higher per-item precision but less cross-news context; larger batches risk JSON truncation when the structured output exceeds the model's output ceiling.
 
-# For Newsletter 1:
-# Input: date="2024-12-25T10:00:00Z",
-#        sender="newsletter1@example.com",
-#        subject="TSLA Rally Expected"
-# Output: source_id = "news_newsletter1_a7f92c4e"
-```
+### Provider SDKs
 
-#### Content Hash (SHA-256 Deduplication)
+| Provider | SDK |
+|----------|-----|
+| OpenAI | `openai` |
+| Anthropic | `anthropic` |
+| Gemini | `google-genai` |
+| DeepSeek | `openai` (official, OpenAI-compatible endpoint) |
+| Contrarian / Manager | `google-genai` |
 
-```python
-def generate_chunk_hash(content):
-    """
-    SHA-256 hash of content for deduplication.
-    Different content = different hash.
-    """
-    return hashlib.sha256(content.encode()).hexdigest()
+Active model names live in [`packages/config/models.json`](../../packages/config/models.json).
 
-# For Newsletter 1 content: "Tesla stock expected to rally..."
-# Output: chunk_hash = "2e4ff8b5a3c2d1e9f7a4b6c8d0e1f2a3..." (64 chars)
-```
+### Modular Handlers
 
-**Results for all 4 newsletters**:
+**Files:** `apps/engine/core/llm/handlers/`
 
-```
-Newsletter 1:
-├─ source_id: "news_newsletter1_a7f92c4e"
-├─ chunk_hash: "2e4ff8b..."
-├─ sender: "newsletter1@example.com"
-├─ subject: "TSLA Rally Expected"
-├─ date: "2024-12-25T10:00:00Z"
-├─ content: "Tesla stock expected to rally due to..."
-└─ ingested_at: "2024-12-26T08:30:00Z"
+Each provider uses a dedicated handler to manage tool-calling idiosyncrasies:
 
-Newsletter 2:
-├─ source_id: "news_newsletter2_b1d83f7a"
-├─ chunk_hash: "5a3c21d..."
-└─ ...
+- **`openai.py`** — Standard tool loop
+- **`anthropic.py`** — XML-like tool blocks, web search, whitespace filtering for empty text blocks
+- **`gemini.py`** — `List[Model]` handling for multiple function calls, Google Search grounding
+- **`deepseek.py`** — Thinking Mode with `reasoning_content` preservation across tool iterations, empty content fallbacks
 
-Newsletter 3:
-├─ source_id: "news_newsletter3_c9e17b3f"
-├─ chunk_hash: "7f8e91a..."
-└─ ...
+### Active Tools
 
-Newsletter 4:
-├─ source_id: "news_newsletter4_d4a2c85b"
-├─ chunk_hash: "3b6d45c..."
-└─ ...
-```
+LLMs can invoke these tools during analysis:
 
----
+| Tool | Purpose | Mandatory For |
+|------|---------|---------------|
+| `get_stock_quote` | Verify ticker existence, liquidity, current price | All trades |
+| `get_price_history` | Check if news is "priced in" | — |
+| `get_position_pnl` | Current unrealized P&L for existing positions | — |
+| `calculate_buy_quantity(ticker, %)` | Exact shares based on % of buying power | All BUYs |
+| `calculate_sell_quantity(ticker, %)` | Exact shares based on % of position | All SELLs |
+| `web_search` | Real-time news verification (Anthropic/Gemini) | — |
+| `run_stock_screener` | Find investable assets by sector, cap, beta | — |
+| `find_uncorrelated_assets` | Discover diversification pairs | — |
 
-### Step 1.4: Save to Supabase (newsletter_snapshots table)
+**Tool Enforcement**: The engine performs a mandatory server-side scan of conversation history to confirm that `get_stock_quote` (all trades), `calculate_buy_quantity` (BUYs), and `calculate_sell_quantity` (SELLs) were actually executed via native function calling. Hallucinated or text-only tool usage results in trade rejection with 50% confidence reduction. See [TOOL_ENFORCEMENT.md](./TOOL_ENFORCEMENT.md) for the full 4-layer system.
 
-**File**: `apps/engine/main.py` → `run_ingest()` (upsert loop)
+### Discovery Agent
 
-```python
-# Database Insert #1-4 (one per newsletter)
-for item in data:  # data contains 4 newsletter dicts
-    upsert_newsletter_snapshot(sb_client, item)
-```
+**Files:** `apps/engine/core/llm/discovery.py`
 
-**Database Schema**: `supabase/migrations/20231221000000_create_newsletters_table.sql`
+Before parallel analysis, a specialized `DiscoveryAgent` identifies relevant assets for each market theme:
 
-```sql
-CREATE TABLE newsletter_snapshots (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    source_id TEXT NOT NULL,           -- "news_newsletter1_a7f92c4e"
-    chunk_hash TEXT NOT NULL,          -- "2e4ff8b..."
-    sender TEXT,                       -- "newsletter1@example.com"
-    subject TEXT,                      -- "TSLA Rally Expected"
-    content TEXT,                      -- "Tesla stock expected..."
-    date TIMESTAMP,                    -- "2024-12-25T10:00:00Z"
-    ingested_at TIMESTAMP             -- "2024-12-26T08:30:00Z"
-);
-```
+1. **Mission Start**: Receives market theme + context
+2. **Step 1**: Invokes `run_stock_screener` to find candidates, filtered by exchange and a market-cap floor
+3. **Step 2** (optional): Uses web search to verify business models and thematic relevance
+4. **Step 3**: Synthesizes findings into structured JSON with ticker, name, and reason per asset
 
-**Result in Database**:
+Caps (max candidates, max final tickers, exchange filter, cap floor) live in `core/llm/discovery.py`.
 
-```
-newsletter_snapshots table after Phase 1:
-┌────────────────────────┬──────────────────┬────────────────────────┐
-│ source_id              │ content (first 50 chars) │ chunk_hash     │
-├────────────────────────┼──────────────────┼────────────────────────┤
-│ news_newsletter1_a7... │ Tesla stock exp... │ 2e4ff8b...             │
-│ news_newsletter2_b1... │ Fed rate hike ma... │ 5a3c21d...             │
-│ news_newsletter3_c9... │ AI boom creating...  │ 7f8e91a...             │
-│ news_newsletter4_d4... │ Crypto market cra...  │ 3b6d45c...             │
-└────────────────────────┴──────────────────┴────────────────────────┘
-```
+**Strategic Framework:**
+1. **Identify the Bottleneck** — Who owns the critical infrastructure everyone else needs?
+2. **Chain of Events** — If X happens, who are the secondary/tertiary beneficiaries?
+3. **Uncrowded Plays** — Mid-cap companies not yet priced in
 
-**Phase 1 Summary**:
-- 5 Gmail API calls (1 list + 4 get)
-- 4 database inserts
-- 4 unique source_ids generated
-- 4 unique chunk_hashes generated
+### Web Search
+
+**Files:** `apps/engine/core/llm/handlers/anthropic.py`, `gemini.py`
+
+Claude and Gemini agents can invoke native web search with automatic citation tracking. Anthropic's web search is a **server tool** — it executes on Anthropic's servers with no client-side tool_result handling.
+
+Toggles, tool versions, and per-request limits are configured via env vars (`ENABLE_*_WEB_SEARCH`, `ANTHROPIC_WEB_SEARCH_VERSION`, `ANTHROPIC_MAX_WEB_SEARCHES`) — see `apps/engine/.env.example` and [WEB_SEARCH.md](./WEB_SEARCH.md).
+
+Web search is disabled in the verification pipeline (focused validation only).
+
+### Structured Extraction
+
+After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engine includes:
+- Retry logic (up to 3 attempts with corrective prompting)
+- JSON repair (double-encoded strings, extra quotes, embedded JSON)
+- Price backfill (queries MarketDataManager if LLM price is missing)
+
+**Ownership Pre-Validation**: Before decisions reach the verification layer, SELL signals for unheld tickers are caught and converted to HOLD with `REJECTED_OWNERSHIP` reasoning.
 
 ---
 
-## Phase 1.5: Economic Calendar Ingestion (Trading Economics → Supabase)
+## Phase 4: Consensus & Synthesis
 
-**File**: `apps/engine/ingest/calendar.py` → `run_calendar_pipeline()`
+**Files:** `apps/engine/consensus.py`
 
-Twice a week (Sundays and Wednesdays), the engine fetches the global macro calendar to identify high-signal catalysts independently of news providers.
+### Event Consensus Protocol
 
-### Step 1.5.1: Fetch and Parse Calendar
-1. **Fetch**: Uses `curl -L` to pull the latest calendar HTML from Trading Economics.
-2. **Parse**: `CalendarPipeline.parse_events()` uses BeautifulSoup to extract structured event data.
-3. **Analyze**: High-importance events (Importance >= 8) are identified by DeepSeek and formatted as `MacroEvent` objects.
+1. **Semantic Grouping**: Gemini embeddings cluster events by cosine similarity across LLMs.
+2. **Weighted Consensus**: Events need a cumulative model weight above the promotion threshold. Impact (BULLISH/BEARISH) determined by weighted majority.
+3. **Temporal Deduplication**: New events are checked against the `memories` table within a recency window; near-duplicates are dropped.
+4. **Relationship Analysis**: Searches for ancestors and links via `parent_id` as REVERSAL, RESOLUTION, or UPDATE. REVERSALs and RESOLUTIONs auto-mark the ancestor as `RESOLVED` so stale narratives stop polluting future RAG retrievals.
+5. **LLM Synthesis**: Unifies naming, extracts `is_future_catalyst`, `future_date`, and `historical_parallel`.
+6. **Scenario Analysis**: Requires at least two distinct outcomes with a specific trading plan for each.
+7. **Alpha Discovery**: Promoted events trigger `DiscoveryService` → `DiscoveryAgent` to populate the "Investable Assets" section of event metadata.
 
-### Step 1.5.2: Store as Catalyst Memories
-1. **Deduplication**: Checks `memories` for existing events (Similarity > 0.90) to avoid duplicates.
-2. **Insertion**: Saves as `CALENDAR_EVENT` memories with `target_date` for Horizon Watch.
-3. **Catalyst Marking**: Explicitly sets `is_future_catalyst = true` and `event_time` (e.g., "10:00 AM") in metadata to ensure promotion to the dashboard's Horizon Watch section.
+Source for all thresholds (clustering, dedup, ancestor candidacy, model weights, recency window): `apps/engine/analysis/consensus.py`. The momentum-tracker concept-merge threshold lives in `apps/engine/core/config.py` (`MOMENTUM_SIMILARITY_THRESHOLD`).
 
----
+### Horizon Watch Filtering
 
-## Phase 1.6: Global Macro Tracking (Market Regime Detection)
+Only events with high importance, `is_future_catalyst = true`, and a future `target_date` appear on the dashboard. Vague timeframes ("later in 2026", broad shifts) are excluded. ISO 8601 dates enforced. Importance cutoff: `apps/engine/analysis/consensus.py`.
 
-**File**: `apps/engine/core/macro_tracker.py` → `get_global_macro_context()`
+### Trend & Momentum Analysis
 
-Immediately before the parallel analysis starts, the engine fetches a real-time snapshot of the global macro environment to give the LLMs "regime awareness."
+**Files:** `apps/engine/analysis/momentum.py`
 
-### Step 1.7.1: Multi-Category Asset Fetching
-The tracker fetches current quotes for 16 key assets across four categories:
-1. **Equities**: SPY, QQQ, DIA, IWM (US Indices)
-2. **International**: EWJ, EWY, VGK, MCHI, EEM (Japan, Korea, Europe, China, Emerging)
-3. **Commodities**: GLD, SLV, CPER, USO (Gold, Silver, Copper, Oil)
-4. **Yields & Indices**: IEF (10-Yr Treasury), UUP (Dollar), VIXY (Volatility)
+Tracks concept velocity using a hybrid formula: `Momentum = Intensity × Growth`
+- **Intensity**: log-scaled mention count (rewards sustained relevance)
+- **Growth**: short-window vs. long-window mention rate (rewards recent acceleration)
 
-### Step 1.7.2: Volatility & Regime Analysis
-For each ticker, the engine:
-1. Fetches **30 days of historical data**.
-2. Calculates the **daily percentage change** (current price vs. previous close).
-3. Computes the **historical standard deviation ($\sigma$)**.
-4. Assigns a **Regime Flag**:
-    - `Normal`: Change within $1.5\sigma$.
-    - `❗ UNUSUAL`: Change exceeds $1.5\sigma$.
-    - `⚠️ HIGHLY UNUSUAL (Regime Shift)`: Change exceeds $2.0\sigma$.
-
-**Output**: A formatted text block injected into the LLM prompt, e.g.:
-`US Dollar Index (DXY): 104.20 [+1.80% today] | ⚠️ HIGHLY UNUSUAL (Regime Shift) (30d stdev: 0.75%)`
+Semantically similar concepts are merged. Stale concepts decay via half-life. PCA reduces embedding vectors to 2D for the concept map. Window sizes, decay half-life, and merge threshold: `core/config.py`.
 
 ---
 
-## Phase 2: Filtering & Context Retrieval
+## Phase 5: Validation & Execution
 
-### Step 2.1: Filter Malformed Chunks & Initialize Portfolios
+### Pre-Market Validation
 
-**File**: `apps/engine/analyze.py` → `analyze_chunks()`
+**Files:** `apps/engine/execution/validation.py`, `apps/engine/execution/market_data.py`
 
-Before analysis, the engine performs the following setup:
-1. **Filtering**: Validates all chunks to ensure they possess both a `source_id` and `content`.
-2. **Portfolio Initialization**: Initializes the `Portfolio` for every model in the pipeline.
-3. **Parallel Price Fetching**: Collects all unique tickers held across these portfolios and fetches their current market prices in parallel via `MarketDataManager`.
-4. **Context Aggregation**: Aggregates historical context (including government incentives and lessons learned) via parallel vector searches using a single set of embeddings.
+| Guardrail | Logic |
+|-----------|-------|
+| Existence | Ticker found via FMP |
+| Price Banding | AI-suggested price within tolerance of current market price |
+| Liquidity | Market capitalization above floor |
+| Buying Power | Estimated trade cost fits within Reg T buying power |
+| Minimum Value | Trade cost above floor (waived for SELL via tool) |
+| SMA Floor | Projected SMA stays above safety threshold |
 
-```python
-valid_chunks = [
-    c for c in chunks 
-    if c.get("source_id") and c.get("content")
-]
-```
+Tunable thresholds (`MAX_PRICE_DEVIATION_PCT`, `MIN_TRADE_VALUE`, liquidity floor, SMA floor): `apps/engine/.env.example` and `apps/engine/core/config.py`. Market data uses a short-TTL cache to absorb redundant calls — TTL constant in `core/config.py`.
 
-### Step 2.2: Extract Query Texts
+### Reg T Margin Validation
 
-**File**: `apps/engine/analyze.py` → `analyze_chunks()` (Returns `decisions, events, aggregated_context`)
+**Files:** `apps/engine/execution/reg_t_validation.py`
 
-From the 4 stored newsletters, use the full content of each as queries for embedding:
+Validates trades against Regulation T margin rules (Initial Margin, Maintenance Margin, Buying Power, SMA). The 10% minimum position rule is automatically enforced by `calculate_buy_quantity` / `calculate_sell_quantity`.
 
-```python
-queries = [
-    chunk.get("content", "") for chunk in chunks
-    if chunk.get("content")
-]
+Full formulas, worked scenarios, and the SMA evolution rules: [account-buying-power-reg-t4-calculations.md](./account-buying-power-reg-t4-calculations.md).
 
-# Result:
-# [
-#   "Tesla stock expected to rally due to strong earnings momentum and positive sentiment across the sector. Multiple analysts predict continued upward movement through Q1 2025...",  # Query 1 (full content)
-#   "Fed rate hike may trigger market volatility affecting tech stocks and growth companies. Historical precedent shows 2-3 week correction periods following policy announcements...",         # Query 2 (full content)
-#   "AI boom creating unprecedented demand for semiconductor chips. NVIDIA reporting record order backlogs with 12-month lead times...",                              # Query 3 (full content)
-#   "Crypto market crash warning signs emerging. Technical indicators suggest potential 30-40% correction in major cryptocurrencies..."                                           # Query 4 (full content)
-# ]
-```
+### Trade Settlement
 
-**Why full content instead of truncated?**
-- More semantic information for embeddings
-- Better vector similarity matching with historical context
-- Improved RAG context retrieval quality
+**Files:** `apps/engine/execution/portfolio.py`
 
----
+Uses a **"Commit at the End"** atomic pattern:
 
-### Step 2.2: BATCH Embed All Queries (Single API Call)
+1. **Pre-Trade**: Save decision with `status="VALIDATED"` to obtain `decision_id` (required FK for trades table)
+2. **Position Update**: UPSERT into `portfolio_positions` (or DELETE if quantity = 0)
+3. **Ledger**: INSERT into `trades` table
+4. **Commit**: Only after steps 2-3 succeed, update `cash_balance` and `sma` in `portfolios`
+5. **Reg T Recalculation**: Immediately recalculate and persist all margin metrics for dashboard accuracy
 
-**File**: `apps/engine/memory/embeddings.py` → `get_embeddings_batch()`
+This prevents "Phantom Deductions" if the DB connection fails mid-operation.
 
-This is the KEY OPTIMIZATION: all 4 queries embedded in ONE API call, not 4 separate calls. The **Gemini Client is cached** at the module level to avoid redundant instantiation, and a **pre-flight API key check** ensures the engine fails gracefully (logging an error instead of crashing) if credentials are missing.
+**Cost Basis**: Uses weighted average method. New avg = (Old Total Cost + New Purchase Cost) / New Total Quantity. See [PNL-CALCULATIONS.md](./PNL-CALCULATIONS.md) for formulas.
 
-```python
-# Gemini Embedding API Call #1 (SINGLE CALL for all 4 queries)
-response = client.models.embed_content(
-    model="gemini-embedding-001",  # 768-dimensional embeddings
-    contents=[
-        "Tesla stock expected to rally due to strong earnings...",      # Query 1
-        "Fed rate hike may trigger market volatility...",              # Query 2
-        "AI boom creating unprecedented demand...",                     # Query 3
-        "Crypto market crash warning signs emerging..."                # Query 4
-    ]
-)
+**Alpaca Paper Mirror**: Every settled trade is fire-and-forget mirrored to Alpaca's paper API as a DAY limit order with agent-tagged `client_order_id`. Shorting guardrail prevents accidental short positions if the mirror has drifted from the internal ledger.
 
-# Returns: 4 embedding vectors, each with 768 dimensions
-embeddings = [
-    [0.234, -0.561, 0.891, ..., 0.123],    # Embedding 1 (768 floats)
-    [0.102, 0.445, -0.234, ..., 0.456],    # Embedding 2 (768 floats)
-    [-0.456, 0.789, 0.123, ..., -0.789],   # Embedding 3 (768 floats)
-    [0.678, -0.234, -0.456, ..., 0.234]    # Embedding 4 (768 floats)
-]
-```
+### Attribution Locking
 
-**Why batch embeddings?**
-- 1 API call instead of 4 → lower latency
-- Cost efficient → bulk discount
-- Still provides individual embeddings for each query
+**Files:** `apps/engine/attribution/service.py`, `apps/engine/main.py`
 
----
+Two-phase commit establishing bidirectional Decision ↔ Trade links:
 
-### Step 2.3: Query Vector Store (Retrieve Historical Context)
+1. **Phase 1** (pre-trade): Save decision → get `decision_id`
+2. **Trade Execution**: Insert trade with `decision_id` FK → get `trade_id`
+3. **Phase 2** (post-trade): Update decision with `status="EXECUTED"` and `trade_id`
 
-**File**: `apps/engine/memory/store.py` → `retrieve_context_batch()`
+Result: machine-auditable path: **News → Reasoning → Decision ↔ Trade**
 
-For each of the 4 embeddings, perform a vector similarity search:
+### Ledger & Performance
 
-**Database Schema**: `supabase/migrations/20231224000000_enable_pgvector_and_memories.sql`
+**Files:** `apps/engine/execution/portfolio.py`
 
-```sql
-CREATE TABLE memories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    content TEXT NOT NULL,
-    embedding VECTOR(768),        -- 768-dim Gemini embeddings
-    metadata JSONB,
-    created_at TIMESTAMPTZ
-);
+Daily performance snapshots recorded in `portfolio_performance` table with unique constraint on `(portfolio_id, date)` for idempotency. After snapshot, Reg T metrics are persisted back to `portfolios` table.
 
--- HNSW Index for fast similarity search
-CREATE INDEX memories_embedding_idx ON memories
-    USING hnsw (embedding vector_cosine_ops);
+### Rejection Preservation
 
--- RPC Function for vector similarity search
-CREATE FUNCTION match_memories(
-    query_embedding VECTOR(768),
-    match_threshold FLOAT,
-    match_count INT
-) RETURNS TABLE (id UUID, content TEXT, metadata JSONB, similarity FLOAT) AS ...
-```
+Rejected decisions are never discarded — they're saved to the `decisions` table with a status code so the audit trail is complete. The canonical enum (see `apps/engine/core/audit/checks.py` and `apps/engine/execution/validation.py`):
 
-**Supabase RPC Calls #1-4**:
+| Status | Trigger |
+|--------|---------|
+| `REJECTED_MARGIN` | Reg T validation failed: cost > buying power, SMA floor breach, or min trade value not met |
+| `REJECTED_OWNERSHIP` | SELL signal for a ticker not held in the portfolio |
+| `REJECTED_REDUNDANCY` | Per-agent semantic overlap with a recent trade (overtrading prevention) |
+| `REJECTED_TOOL_USAGE` | Required calculation tool (`calculate_buy/sell_quantity`) not actually invoked |
+| `REJECTED_VERIFICATION` | Skeptical Verifier agent rejected the trade |
+| `REJECTED_HALLUCINATION` | Tool-use claimed in text but no native function call in conversation history |
+| `REJECTED_PRICE_DEVIATION` | AI's price deviates more than 5% from current market price |
+| `REJECTED_LIQUIDITY` | Ticker market cap below the configured liquidity floor |
+| `REJECTED_MARKET_CLOSED` | Triggered outside US market hours or on a holiday |
+| `REJECTED_LIMIT_PRICE` | Limit order price judged unrealistic relative to market |
+| `ERROR_PROVIDER` | Provider-side error during execution (network, rate limit, malformed response) |
 
-```python
-# For Embedding 1
-response = client.rpc(
-    "match_memories",
-    {
-        "query_embedding": [0.234, -0.561, 0.891, ...],  # Embedding 1
-        "match_threshold": 0.5,                           # Min cosine similarity
-        "match_count": 3                                  # Return top 3
-    }
-).execute()
+Non-rejection terminal states: `CREATED`, `VALIDATED`, `EXECUTED`.
 
-# Returns: Top 3 similar memories with cosine similarity > 0.5
-response.data = [
-    {
-        "id": "uuid1",
-        "content": "Past Tesla analysis from 3 months ago demonstrated...",
-        "metadata": {"source": "Tesla earnings report"},
-        "similarity": 0.87
-    },
-    {
-        "id": "uuid2",
-        "content": "Bull market signal observation from previous quarter...",
-        "metadata": {"source": "Technical analysis"},
-        "similarity": 0.72
-    },
-    {
-        "id": "uuid3",
-        "content": "Tech rally momentum study showing positive indicators...",
-        "metadata": {"source": "Market analysis"},
-        "similarity": 0.65
-    }
-]
-
-# For Embedding 2
-response = client.rpc(...)
-# Returns: Top similar memories about Fed rate hikes
-# [
-#   {"content": "Previous rate hike aftermath data shows...", "similarity": 0.81},
-#   {"content": "Market volatility patterns during FOMC meetings...", "similarity": 0.68}
-# ]
-
-# For Embedding 3
-response = client.rpc(...)
-# Returns: Top similar memories about AI
-# [
-#   {"content": "AI infrastructure investments accelerating...", "similarity": 0.79}
-# ]
-
-# For Embedding 4
-response = client.rpc(...)
-# Returns: Top similar memories about Crypto
-# [
-#   {"content": "Crypto downturn predictions from technical analysis...", "similarity": 0.74}
-# ]
-```
+**Agent-Specific Redundancy**: Semantic overlap checks are per-agent. If Claude trades NKE on earnings, only Claude is blocked from repeating — other agents can independently act on the same opportunity.
 
 ---
 
-### Step 2.4: Aggregate Retrieved Context
+## Phase 6: Feedback Loops
 
-**File**: `apps/engine/analyze.py` → `analyze_chunks()` (Aggregates standard context + government incentives + lessons learned)
+### Manager Agent (Post-Analysis)
 
-Combine all retrieved context into a single string:
+**Files:** `apps/engine/analysis/post_analysis.py`, `.github/workflows/post-analysis.yml`
 
-```python
-context_results = [
-    "- Past Tesla analysis from 3 months ago demonstrated...\n- Bull market signal observation...\n- Tech rally momentum study...",
-    "- Previous rate hike aftermath data shows...\n- Market volatility patterns...",
-    "- AI infrastructure investments accelerating...",
-    "- Crypto downturn predictions from technical analysis..."
-]
+At configured intervals after trade execution (multi-tier — short, medium, long horizon):
 
-aggregated_context = "\n".join([c for c in context_results if c])
+1. Fetches the current market price for each traded ticker
+2. Sends original reasoning + actual outcome to the Manager Agent
+3. Generates `LESSON_LEARNED` memories stored in pgvector
+4. Future RAG retrievals include these lessons, preventing repeated mistakes
 
-# Result:
-aggregated_context = """
-- Past Tesla analysis from 3 months ago demonstrated...
-- Bull market signal observation...
-- Tech rally momentum study...
-- Previous rate hike aftermath data shows...
-- Market volatility patterns during FOMC meetings...
-- AI infrastructure investments accelerating...
-- Crypto downturn predictions from technical analysis...
-"""
-```
+Intervals: `analysis/post_analysis.py`. Workflow cadence: `post-analysis.yml`.
 
-**Phase 2 Summary**:
-- 1 Gemini Embedding API call (batch for all 4 queries)
-- 4 Supabase RPC calls (vector similarity search)
-- **Step 5.4: Calendar Context Injection**: For each model task, the engine calculates the **`current_day_info`** (Today's date, Day of Week, and proximity to month boundaries or holidays). This is injected into the prompt along with the **`CALENDAR_STRATEGY_KNOWLEDGE`** (Turn of the Month, Payday Anomaly, etc.) to enable seasonal anomaly reasoning. The engine also enforces a **Market Hours Guardrail** (09:30-16:00 ET, Mon-Fri) for all ingestion runs. The guardrail uses **FMP API with class-level caching (5-minute TTL)** to check market status only once per pipeline run, reducing redundant API calls while maintaining holiday awareness.
-- Aggregated historical context (Standard + Gov + Lessons) ready for LLM analysis.
-- Context labeled with **`[PAST REASONING (HISTORICAL)]`** to distinguish from current holdings.
+### Contrarian Agent
 
----
+**Files:** `apps/engine/analysis/contrarian.py`
 
-## Phase 3: LLM Analysis (Active Tool Loop)
+Runs after primary agents to identify crowded trades and missed risks. Executes contrarian trades in a dedicated portfolio. Uses dependency injection (optional parameters) for testability.
 
-### Step 3.0: Asynchronous Chunk Batching
-**File**: `apps/engine/analyze.py` → `analyze_chunks()`
+### Cause & Effect Analysis
 
-To ensure high reasoning quality and avoid output token limits (16k), the engine splits the `valid_chunks` into smaller batches:
-1.  **Batch Size**: 20 chunks per LLM call.
-2.  **Async Parallelism**: Each batch is dispatched as a separate `asyncio` task per provider.
-3.  **Result Aggregation**: The engine tracks `task_configs` to map the results of these parallel batches back to the correct model attribution.
+**Files:** `apps/engine/analysis/cause_and_effect_analysis.py`, `.github/workflows/cause-and-effect.yml`
 
-### Step 3.1: Build Enriched Prompt
+Periodic retrospective audit:
 
-**File**: `apps/engine/core/llm/`
+1. **Semantic Deduplication**: lookback against prior analyses to avoid re-auditing the same narrative
+2. **Dynamic Ticker Discovery**: Gemini identifies the most-affected companies/suppliers per event
+3. **Causal Attribution**: Compares original Scenario Analysis against actual price data
+4. **Storage**: Results in `cause_and_effect` table, creating a searchable playbook
 
-```python
-prompt = f"""You are a hedge fund trading algorithm.
-CRITICAL: Use the `get_stock_quote` tool for ANY ticker you intend to BUY or SELL.
-This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price.
-Use `calculate_sell_quantity(ticker, percentage)` to calculate exact share quantities for selling positions. (MANDATORY for all SELLs; hard-enforced by the engine).
+Cadence: workflow YAML. Lookback window and similarity threshold: `analysis/cause_and_effect_analysis.py`.
 
-WEB SEARCH CAPABILITY: You have access to real-time web search via the `web_search` tool.
-Use it to verify breaking news, check corporate actions (earnings, splits, M&A), confirm government policy announcements, and fact-check claims before trading.
-When you use web search, cite the sources in your reasoning.
+### Government Tracking
 
-=== ENHANCED PORTFOLIO CONTEXT (2026-03-24) ===
-The prompt now includes:
-1. **Source of Truth Portfolio Section**: Clearly marked as the ONLY authoritative list of holdings
-2. **Held Tickers Quick Reference**: Explicit list of tickers available for SELL (e.g., "You currently hold: NVDA, TSLA, AAPL")
-3. **Ownership Warnings**: Bold warnings that SELL signals for unheld tickers will be REJECTED
+**Files:** `apps/engine/ingest/government.py`
 
-### Historical Context:
-{aggregated_context}
+Periodic audit of government incentives and policies. Stores findings as `GOVERNMENT_INCENTIVE` memories with expiry dates. See [government-incentive-quick-ref.md](../reference/government-incentive-quick-ref.md). Cadence: workflow YAML.
 
-### News Batch:
----
-Source ID: news_newsletter1_a7f92c4e
-Content: Tesla stock expected to rally due to...
----
-...
-"""
-```
+### Market Feeling
 
-### **Pre-Analysis Portfolio Validation**
+**Files:** `apps/engine/analysis/market_feeling.py`, `apps/engine/core/llm/minimax.py`
 
-After LLM analysis completes but before decisions are returned, the engine performs ownership validation:
-
-```python
-# Extract held tickers from portfolio context
-held_tickers = _extract_held_tickers(portfolio_context)
-
-# Filter SELL decisions for unheld tickers
-for decision in decisions:
-    if decision.signal == "SELL" and decision.ticker not in held_tickers:
-        # Convert to HOLD with rejection reasoning (preserves audit trail)
-        decision.signal = "HOLD"
-        decision.reasoning = f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held"
-```
-
-**Impact**: Catches ownership hallucinations before they reach the verification layer, reducing rejected trades and preserving clean audit trails.
-
-### Step 3.2: Parallel Multi-Step Tool Execution
-
-**File**: `apps/engine/core/llm/handlers/`
-
-Each LLM provider is processed via a **dedicated handler** to manage provider-specific quirks:
-- **`openai.py`**: Standard tool loop for GPT-4o, gpt-5.4-nano.
-- **`deepseek.py`**: Preserves `reasoning_content` in assistants' messages when tool calls are present (required by DeepSeek) and enables thinking mode.
-- **`anthropic.py`**: Handles XML-like tool blocks and web search.
-- **`gemini.py`**: Manages native Google Search grounding.
-
-```mermaid
-sequenceDiagram
-    participant LLM as LLM Provider (gpt-4o/claude-3.5)
-    participant Core as Engine Core (llm.py)
-    participant MDM as MarketDataManager (Cache-First)
-    participant DB as Supabase (market_data_cache)
-    participant API as External API (configured provider)
-
-    Core->>LLM: 1. Send News Batch + Tools Definition
-    LLM-->>Core: 2. Tool Call: get_stock_quote(ticker='TSLA')
-    Core->>MDM: 3. Execute get_quote('TSLA')
-    MDM->>DB: 4. Check Cache (fresh within 2s?)
-    DB-->>MDM: 5. Cache Miss / Stale
-    MDM->>API: 6. Fetch from Provider
-    API-->>MDM: 7. Return Price/Market Cap
-    MDM->>DB: 8. Upsert Cache
-    MDM-->>Core: 9. Return Data
-    Core->>LLM: 10. Send Tool Result back to History
-    LLM-->>Core: 11. Final Decision (Verified & Structured)
-
-    Note over Core,MDM: Ticker Normalization: The engine automatically strips spaces and normalizes casing for tickers in tool calls to ensure robust matching.
-```
-
-### Step 3.2a: Web Search Tool Execution (Optional)
-
-**File**: `apps/engine/core/llm/handlers/anthropic.py`, `gemini.py`
-
-For **Anthropic Claude** and **Google Gemini**, agents can invoke native web search tools during the tool loop:
-
-```mermaid
-sequenceDiagram
-    participant LLM as LLM (Claude/Gemini)
-    participant Core as Engine Core
-    participant API as Provider API (Anthropic/Google)
-    participant Web as Real-Time Web
-
-    Core->>LLM: 1. Send Prompt + Web Search Tool Enabled
-    LLM-->>Core: 2. Decision: Search Needed
-    Core->>API: 3. Invoke web_search/google_search
-    API->>Web: 4. Execute Search Query
-    Web-->>API: 5. Return Search Results
-    API-->>Core: 6. Results with Citations (URL, Title, Snippet)
-    Core->>LLM: 7. Append Results to Context
-    LLM-->>Core: 8. Final Decision with Citations
-```
-
-**Provider-Specific Implementation:**
-
-| Provider | Tool Name | Response Format | Citations | Requirements |
-|----------|-----------|-----------------|-----------|--------------|
-| **Anthropic** | `web_search_20250305` | Server-side execution, results in response text | ✅ `cited_text`, `url`, `title` | Any Claude model (Haiku 4.5+) |
-| **Gemini** | `google_search` | `groundingMetadata` | ✅ `groundingChunks`, `groundingSupports` | Any Gemini 2.5+/3.x model |
-| **OpenAI** | `web_search` | `web_search_call` + annotations | ✅ `url_citation` | **Search-enabled model** (`gpt-5-search-api`, `gpt-4o-search-preview`) or Responses API |
-
-**Server Tool Behavior (Anthropic):**
-
-Anthropic's web search is a **server tool** - it executes entirely on Anthropic's servers. The handler:
-- Does **NOT** execute anything client-side
-- Does **NOT** send `tool_result` blocks back
-- Does **NOT** record `server_tool_use` in message history (internal to Anthropic)
-- Receives search results automatically incorporated into response text with citations
-
-See [WEB_SEARCH.md](./WEB_SEARCH.md) for detailed implementation.
-
-**Configuration:**
-```bash
-ENABLE_ANTHROPIC_WEB_SEARCH=true      # Enable for Claude
-ENABLE_GEMINI_WEB_SEARCH=true         # Enable for Gemini
-ANTHROPIC_WEB_SEARCH_VERSION="web_search_20250305"  # ZDR-compliant version
-ANTHROPIC_MAX_WEB_SEARCHES=3          # Limit searches per request
-```
-
-**Use Cases:**
-- Verifying breaking news mentioned in newsletters
-- Checking corporate actions (earnings dates, M&A announcements, stock splits)
-- Confirming government policy announcements (budget allocations, regulatory changes)
-- Fact-checking claims before executing trades
-
-**Cost Control:**
-- Web searches are **disabled by default** in the verification pipeline (focused validation)
-- `ANTHROPIC_MAX_WEB_SEARCHES` limits searches per request
-- Agents are prompted to use search strategically, not for every query
-
-### Step 3.3: Structured Extraction (Instructor)
-
-**File**: `apps/engine/core/llm/`
-
-After the tool loop finishes, the engine performs one final pass to ensure the output perfectly matches the Pydantic `DecisionsResponse` schema.
-
-```python
-valid_decisions = [
-    DecisionObject(
-        signal="BUY",
-        confidence=85,
-        reasoning="Verified price is reasonable ($240.50).",
-        ticker="TSLA",
-        catalyst_type="EARNINGS",
-        catalyst_duration="SHORT_TERM",
-        source_id="news_newsletter1_a7f92c4e",
-        price=240.50, # Automatically filled from Tool Result OR Backfilled by Engine
-        model_provider="openai",
-        model_name="gpt-4o"
-    ),
-    ...
-]
-
-# NEW: Hard Tool Enforcement (in analyze.py)
-# After the tool loop, the engine scans the actual conversation history.
-# It confirms that required tools (get_stock_quote for all, sell_X_percent for SELL) were actually executed via native function calling.
-# If an agent claims tool usage in text but it's not a formal tool call in history, the trade is rejected.
-
-# NEW: JSON Repair & Retry Logic (in analyze.py)
-# Instructor extraction includes retry logic for Pydantic validation errors:
-# - Up to 3 attempts on validation errors (e.g., stringified JSON instead of arrays)
-# - Adds corrective prompts on retry requesting clean JSON output
-# - Falls back to empty response if all retries fail
-# Helper functions (_repair_json_string, _try_parse_decisions_response) handle:
-# - Double-encoded JSON strings
-# - JSON wrapped in extra quotes or text
-# - Embedded JSON within longer text
-
-# NEW: Price Backfill Logic (in analyze.py)
-# If decision.price is missing/null, engine queries MarketDataManager to backfill real-time price.
-```
-
-**Retry Logic Details**:
-- **Trigger**: Pydantic validation errors like `list_type` (LLM returns stringified JSON instead of array)
-- **Strategy**: On first failure, adds a user message with strict JSON format instructions and retries
-- **Fallback**: If all 3 attempts fail, returns `DecisionsResponse(decisions=[], macro_events=[])` instead of crashing
-- **Logging**: Diagnostic logs capture extraction success/failure for debugging
-
-**JSON Repair Examples**:
-| Problem | Example Input | Repaired Output |
-|---------|---------------|-----------------|
-| Double-encoded | `"{\"decisions\": []}"` | `{"decisions": []}` |
-| Extra quotes | `"{\"key\": \"value\"}"` | `{"key": "value"}` |
-| Leading text | `JSON: {"decisions": []}` | `{"decisions": []}` |
-| Trailing text | `{"decisions": []} is result` | `{"decisions": []}` |
-
-**Phase 3 Summary**:
-- **Active Reasoning**: Models verify data *before* committing to a decision.
-- **Unified Tool Interface**: Handle OpenAI, Anthropic, and Gemini tool schemas in one loop.
-- **Cache Integration**: Real-time tools hit the `market_data_cache` first to keep the UI fast.
+After each pipeline run, MiniMax generates a "How I'm feeling and why" sentiment based on the day's trades, lessons learned, and market events. Displayed on the Today dashboard with confidence bar and direction badge. The UI shows a stale warning when the latest reading is older than the configured freshness window — see `analysis/market_feeling.py`.
 
 ---
 
-## Phase 3.5: Pre-Market Validation (Cache-First Core)
+## Phase 7: Long-Term Memory
 
-### Step 3.4: Verify Against Real-Market Data
+**Files:** `apps/engine/memory/store.py`, `apps/engine/memory/embeddings.py`
 
-**File**: `apps/engine/execution/market_data.py`
+Decoupled vector storage separates macro context from strategy context:
 
-This layer ensures that every ticker is liquid and real. It is utilized both as a **Tool** by LLMs and as a **Final Post-Gauntlet** by the engine.
+| Source | Content | Table | RAG Label |
+|--------|---------|-------|-----------|
+| Market Events | Macro catalysts, geopolitics | `memories` | `[MARKET EVENT]` |
+| Trade Reasoning | Specific stock justifications | `decisions` | `[PAST DECISION]` |
 
-#### Cache-First Logic:
-1.  **Check Persistence**: Query `market_data_cache` in Supabase.
-2.  **TTL Verification**: If `fetched_at` is older than 2 seconds (configurable), proceed to fetch.
-3.  **External Fetch**: Hit the configured provider via the `FinancialProvider` interface.
-4.  **NaN Filtering**: Explicitly reject `NaN` values for price and market cap using `math.isnan()`.
-5.  **Batch Upsert & Teardown**: The engine uses **Batch Upserts** to save historical price data to Supabase in a single call. Then, it invokes `disconnect_all()` via the provider class to release any persistent resources.
-
-#### The Three Guardrails:
-
-| Guardrail | Logic | Goal |
-| --- | --- | --- |
-| **A: Existence** | `if not data or not data.exists` | Reject non-existent/delisted tickers. |
-| **B: Price Banding** | `if abs(ai_price - market_price) / market_price > 0.01` | Reject hallucinated prices (>1% deviation). |
-| **C: Liquidity** | `if market_cap < 2_000_000_000` | Reject "Penny Stocks" (Market Cap < $2B). |
-| **D: Buying Power** | `if cost > buying_power` | Reject trades exceeding margin limits. |
-| E: Minimum Value | `Trade Cost > $1,000` | Mandatory for BUYS; waived for SELLS if a sell tool is used. |
-| **F: SMA Floor** | `if projected_sma < 10% equity` | Reject trades risking Reg T compliance. |
-
-**Validation Result**:
-```json
-{
-  "ticker": "TSLA",
-  "status": "PASSED",
-  "market_price": 240.50,
-  "market_cap": 750000000000.0,
-  "cached": true
-}
-```
-
-**Phase 3.5 Summary**:
-- **Efficiency**: Reduces external API calls by $>90%$ for repeated tickers.
-- **Safety**: Prevents portfolio contamination from illiquid or fake tickers.
-- **Persistence**: Centralized market data source for both Python Engine and Frontend.
+- **Embedding provider**: Google Gemini (model + dimensionality in `memory/embeddings.py`)
+- **Deduplication**: recency-windowed similarity check before insert (window + threshold in `memory/store.py`)
+- **Schema Robustness**: Automated JSON parsing, Pydantic `NaN→None` conversion, expanded catalyst type literals
 
 ---
 
-## Phase 4: Save Decisions with Attribution
-
-### Step 4.1: Save Each Decision
-
-**File**: `apps/engine/main.py` → `run_ingest()` (decision save loop)
-
-```python
-saved_decisions = 0
-for d in valid_decisions:  # Iterate through 10-15 decisions
-    try:
-        save_decision(sb_client, d)
-        saved_decisions += 1
-        logger.info(
-            f"[{d.ticker}] {d.signal} (Conf: {d.confidence}%): "
-            f"Saved attribution for {d.model_provider}/{d.model_name}"
-        )
-    except Exception as e:
-        logger.error(f"Failed to save decision for {d.ticker}: {e}")
-```
-
-**Attribution Service**: `apps/engine/attribution/service.py`
-
-```python
-def save_decision(client: Client, decision: DecisionObject) -> dict:
-    """Save decision with complete attribution trail."""
-    payload = {
-        "source_id": decision.source_id,          # Links back to newsletter
-        "ticker": decision.ticker,
-        "signal": decision.signal,
-        "confidence": decision.confidence,
-        "reasoning": decision.reasoning,          # LLM explanation
-        "model_provider": decision.model_provider,
-        "model_name": decision.model_name
-    }
-
-    # Database Insert #5-16 (one per decision)
-    client.table("decisions").insert(payload).execute()
-```
-
----
-
-### Step 4.2: Final State of Database
-
-**Database Schema**: Decisions table
-
-```sql
-CREATE TABLE decisions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    source_id TEXT NOT NULL,           -- Links to newsletter_snapshots
-    ticker TEXT NOT NULL,              -- "TSLA", "SPY", "NVDA", etc.
-    signal TEXT NOT NULL,              -- "BUY", "SELL", "HOLD"
-    confidence INTEGER,                -- 0-100
-    reasoning TEXT,                    -- Full LLM explanation
-    model_provider TEXT,               -- "openai", "anthropic", "gemini", "deepseek"
-    model_name TEXT,                   -- "gpt-5.4-nano", "claude-haiku-4-5", etc.
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-**Final decisions table contents**:
-
-```
-┌─────────────────────────┬────────┬────────┬─────┬────────────┬──────────┬──────────────────┐
-│ source_id               │ ticker │ signal │ conf│ reasoning  │ provider │ model_name       │
-├─────────────────────────┼────────┼────────┼─────┼────────────┼──────────┼──────────────────┤
-│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 85  │ Tesla...   │ openai   │ gpt-5.4-nano      │
-│ news_newsletter1_a7f... │ TSLA   │ BUY    │ 92  │ Tesla...   │ anthropic│ claude-haiku-4-5│
-│ news_newsletter2_b1d... │ SPY    │ HOLD   │ 60  │ Fed...     │ openai   │ gpt-5.4-nano      │
-│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 78  │ AI...      │ openai   │ gpt-5.4-nano      │
-│ news_newsletter3_c9e... │ NVDA   │ BUY    │ 92  │ AI trans..│ anthropic│ claude-haiku-4-5│
-│ news_newsletter4_d4a... │ BTC    │ SELL   │ 78  │ Crypto...  │ anthropic│ claude-haiku-4-5│
-│ news_newsletter4_d4a... │ BTC    │ SELL   │ 82  │ Crypto...  │ gemini   │ gemini-3-flash-preview       │
-│ news_newsletter2_b1d... │ QQQ    │ SELL   │ 71  │ Tech...    │ deepseek │ deepseek-v4-flash    │
-│ ...                     │ ...    │ ...    │ ... │ ...        │ ...      │ ...              │
-└─────────────────────────┴────────┴────────┴─────┴────────────┴──────────┴──────────────────┘
-
-Key Features:
-- source_id traces each decision back to original newsletter
-- Multiple decisions per ticker from different models (consensus)
-- Confidence scores enable filtering/weighting
-- Complete audit trail preserved
-```
-
-**Phase 4 Summary**:
-- 10-15 database inserts (one per decision)
-- All decisions linked to source via source_id
-- Complete attribution metadata preserved
-- Ready for portfolio management or reporting
-
----
-
-## Phase 5: Event Consensus (Consolidating the Global Timeline)
-
-### Step 5.1: Semantic Grouping & Deduplication
-
-**File**: `apps/engine/consensus.py`
-
-The LLMs also identify "Macro Events." Because different models use different words, we group them semantically rather than by strict strings.
-
-```python
-# Grouping Logic:
-# Model A: "Fed Rate Hike"
-# Model B: "Interest Rate Increase"
-# Result: Similarity 0.94 -> SAME GROUP
-```
-
-Before promoting, the engine also checks for temporal duplicates (Step 5.1a) against the `memories` table to prevent "Redundant RAG noise."
-
-### Step 5.2: Memory Chain & Relationship Analysis
-
-**File**: `apps/engine/consensus.py`
-
-For each consensus group, the engine checks for related past events.
-1.  **Ancestor Search**: Vector search (Similarity > 0.4).
-2.  **Relationship Analysis**: LLM categorizes as `REVERSAL`, `RESOLUTION`, or `UPDATE`.
-3.  **Auto-Resolution**: Mark ancestors as `RESOLVED` if reversed.
-4.  **Context Enrichment**: Enriches memory strings with `[ONGOING]` and `[Historical Parallel]` labels for better RAG retrieval.
-
-### Step 5.3: LLM Synthesis & Future Tracking
-
-**File**: `apps/engine/core/llm/`
-
-For events that reach consensus (2+ models), we perform a final synthesis pass to unify naming and extract critical flags:
-
-```json
-// Synthesized Output
-{
-  "name": "Fed Policy Tightening",
-  "summary": "Multiple models observe hawkish Fed signals...",
-  "is_ongoing": true,
-  "is_future_catalyst": true,
-  "historical_parallel": "Like the 1970s stagflation regime",
-  "future_date": "2026-07-31",
-  "future_date_note": "estimated"
-}
-```
-
-**Asset Discovery (How to Profit)**: Promoted consensus events automatically trigger the `DiscoveryService`. The engine maps the event's theme to sectors, industries, and keywords, then queries the Financial Modeling Prep (FMP) API to append specific, actionable investment assets (Stocks/ETFs) to the event's `scenario_analysis` metadata.
-
-**Future Tracking (Proactive Positioning)**: If an event contains a `future_date`, it is recorded in the `memories` table with a `target_date` field for consolidated context tracking.
-- **ISO 8601 Standardization**: The engine enforces `YYYY-MM-DD` format for all future dates. Vague timeframes (e.g., "by next summer") are mapped to the end of that period by the LLM. If ONLY a year is given, the date is set to `null` and the year is moved to the note.
-- **Tentative Notes**: A `future_date_note` (e.g., "tentative", "estimated") is extracted and stored if the date is not exact, providing better context for Horizon Watch filtering.
-- **Strict Catalyst Definition**: Events are ONLY marked as `is_future_catalyst = true` if they represent strictly pending, upcoming events with multiple possible resolutions. Ongoing structural shifts, sector rotations, and past investments are marked as `is_ongoing` to distinguish them from trade-leading catalysts.
-- **Importance Threshold**: Horizon Watch strictly filters for events with `importance_score >= 8` AND `is_future_catalyst = true`, ensuring focus remains on high-leverage triggers.
-
-
----
-
-## Phase 6: Trend & Concept Momentum Analysis
-
-### Step 6.1: Velocity Calculation
-
-**File**: `apps/engine/analysis/momentum.py`
-
-The engine tracks how fast a concept is accelerating in the global discourse.
-
-```python
-# Velocity Formula
-# Velocity = (Mentions in Last 24h) / (Avg Daily Mentions in Last 7 Days)
-```
-
-**Supabase RPC Call**: `match_memories_with_time`
-- Used twice: once for 24h window, once for 7-day window.
-
-### Step 6.2: Concept Merging & Decay
-
-**File**: `apps/engine/analysis/momentum.py`
-
-- **Merging**: New concepts are compared against existing ones in `concept_metrics`. If similarity > 0.75, they merge (increment count).
-- **Decay**: Halving the velocity of concepts not mentioned in the last 28 days (Half-Life).
-
-**Phase 6 Summary**:
-- Updates `concept_metrics` table.
-- Provides "Trending" signals for future dashboard use.
-
----
-
-## Phase 7: Pre-Market Validation (Guardrails)
-
-### Step 7.1: The Three Guardrails
-
-**File**: `apps/engine/execution/validation.py`
-
-Before any trade is executed, it must pass a strict validation layer. This runs *after* the LLM decides but *before* money moves.
-
-| Guardrail | Check | Purpose |
-| --- | --- | --- |
-| **A: Existence** | `market_data.exists` | Prevent hallucinated tickers (e.g., "ABCD"). |
-| **B: Price Banding** | `abs(ai_price - real_price) < 15%` | Prevent price hallucinations. |
-| **C: Liquidity** | `Market Cap > $2B` | Prevent trading penny stocks. |
-| **D: Buying Power** | `cost <= buying_power` | Ensure margin compliance. |
-| E: Minimum Value | `Trade Cost > $1,000` | Prevent insignificant BUYS; waived for SELLS via tools. |
-| **F: SMA Floor** | `Projected SMA > 10% Eq` | Safety margin for Reg T. |
-| **G: Historical Backfill** | `price_history` | Uses the last known stored price when live fetch fails. |
-
-```python
-# Validation Result
-{
-    "ticker": "TSLA",
-    "status": "PASSED",
-    "market_price": 242.10,
-    "market_cap": 755000000000
-}
-```
-
----
-
-## Phase 8: Trade Execution (Sequential)
-
-### Step 8.1: Pre-Execution Margin & Ownership Validation
-The system ensures the portfolio has sufficient **Buying Power** under Regulation T rules and enforces **Portfolio Ownership** for SELL signals.
-
-1. **Ownership Check:** If `Signal == SELL`, verify ticker is in `portfolio_positions`. Reject if not found (`REJECTED_OWNERSHIP`).
-2. **Hard Tool Enforcement:** If `Signal == SELL` and the engine's history scan confirms no sell calculation tool was executed via native function calling, reject (`REJECTED_TOOL_USAGE`).
-3. **Size Check (BUY):** Every purchase must be at least 10% of Total Equity (not Buying Power).
-4. **Buying Power Check (BUY only):** If `trade_cost > portfolio.buying_power`, reject (`REJECTED_MARGIN`).
-
-### Step 8.2: Quantity Calculation & Settlement
-The engine converts the LLM's `allocation_percentage` into a share count:
-- **BUY:** Uses `Allocation % * Buying Power`. Smart Bump applies to meet the **10% Minimum** threshold if feasible.
-- **Smart Bump:** If the resulting spend is < $1,000, the engine attempts to bump it to $1,000 if sufficient Buying Power exists.
-- **SELL:** Uses the exact quantity calculated and returned by the sell percentage tools. (MANDATORY).
-- **Fallback:** Defaults to 5% allocation for BUYS (then bumped to 10% minimum). SELLs without tool calculation are REJECTED.
-
-If validation passes, the trade is settled into the `portfolios` table.
-
-**Database Operations (Atomic "Commit at the End" Pattern)**:
-1. **Update Positions**: `UPSERT` into `portfolio_positions` (or `DELETE` if quantity is zero).
-2. **Ledger Update**: `INSERT` into `trades` table to record the execution.
-3. **Commit Portfolio**: **Only after steps 1 & 2 succeed**, update `cash_balance` and `sma` in the `portfolios` table.
-4. **Immediate Consistency**: Recalculate and persist complete Reg T metrics (Equity, BP, SMA) to the `portfolios` table to ensure real-time dashboard accuracy.
-5. **Alpaca Paper Trading Mirror** (fire-and-forget): Spawns `AlpacaBroker.submit_limit_order()` as an async background task. Submits a `DAY` limit order to Alpaca's paper API with agent-tagged `client_order_id`. Supabase remains the source of truth; Alpaca provides a third-party audit layer. Failures are isolated — the internal trade succeeds regardless.
-
-   **Shorting Guardrail:** For SELL orders, `AlpacaBroker` first queries Alpaca's actual position via `get_open_position(ticker)`. If Alpaca holds fewer shares than the Supabase ledger (or none at all), the mirrored SELL is either **skipped** (`SKIPPED_NO_POSITION`) or **quantity-capped** to Alpaca's real holding. This prevents accidental short positions in the paper account when the audit mirror has drifted from the internal ledger.
-
-```sql
-UPDATE portfolios 
-SET cash_balance = cash_balance - 24210.00, 
-    sma = sma - 13799.70 
-WHERE owner_id = 'gpt-4o';
-```
-
-### Step 8.3: Real-time P&L Tracking (Dynamic View)
-
-The system does not store P&L as a static column to avoid staleness. Instead, a SQL View calculates it on-the-fly.
-
-**SQL View**: `position_pnl`
-- **Calculation**: `(market_data_cache.price - portfolio_positions.average_cost_basis) * quantity`
-- **Accessibility**: Available to the frontend and analysis engine for real-time performance tracking.
-
----
-
-## Phase 9: Attribution Locking & Long-term Memory Embedding
-
-### Step 9.1: Attribution Locking (Linking Decision to Trade)
-
-**File**: `apps/engine/main.py` → `run_ingest()` (attribution locking), `apps/engine/attribution/service.py` → `save_decision()`
-
-After a trade is successfully executed and a `TradeID` is generated, the engine must "lock" the attribution. This is critical for the audit trail: it ensures that we can always trace an executed trade back to the specific newsletter sentence and LLM reasoning that caused it.
-
-**Process**:
-1. `portfolio.execute_trade()` returns a UUID `trade_id`.
-2. `save_decision()` is called again with the `trade_id` and status `EXECUTED`.
-3. The database performs an `UPSERT` on the decision record, populating the `trade_id` foreign key.
-
-```python
-# Link Decision -> Trade
-save_decision(
-    sb_client, 
-    d, 
-    status="EXECUTED", 
-    metadata=meta,
-    trade_id=str(trade_id)
-)
-```
-
-### Step 9.2: Long-term Memory Embedding (Reasoning)
-
-**File**: `apps/engine/main.py` → `run_ingest()` (memory embedding), `apps/engine/memory/store.py` → `add_memory()`
-
-The system vectorizes the *reasoning* behind the trade to create "Institutional Memory." This differs from News Ingestion (which embeds raw text) because it embeds the AI's *conclusions*.
-
-**Process**:
-1. Format reasoning: `DECISION REASONING: TSLA BUY | REASONING: Strong earnings...`
-2. Call Gemini `gemini-embedding-001` to generate the vector.
-3. Save to `memories` table with metadata linking to the `source_id` and `trade_id`.
-
-**Why this matters**: In future runs, Step 2.3 (Context Retrieval) will pull this reasoning back as "Historical Context," helping the AI maintain a consistent world view.
-
----
-
-## Phase 10: Performance Ledger & Equity Curve
-
-### Step 10.1: Daily Performance Snapshot
-
-**File**: `apps/engine/main.py` → `run_ingest()` (performance snapshot), `apps/engine/execution/portfolio.py` → `record_performance_snapshot()`
-
-Once all trades for the day are finished, the engine calculates the daily performance metrics for every AI agent to enable the frontend "Equity Curve" visualization.
-
-**Process**:
-1. Get a list of all portfolios (OpenAI, Claude, etc.).
-2. Collect all unique tickers held across all portfolios.
-3. Fetch current market prices for all tickers (using `MarketDataManager` cache).
-4. For each portfolio, calculate:
-   - **Net Liquidation Value (NLV)**: `Cash + (Sum of Position Quantity * Market Price)`
-   - **Daily P&L**: Change in NLV vs. Previous Day.
-5. Create an immutable row in the `performance_snapshots` table for today's date and model.
-6. **Final Update**: Persist the calculated Reg T metrics (Equity, Buying Power, Maintenance Margin, SMA) back to the main `portfolios` summary table to ensure it reflects the end-of-day state.
-
-```python
-# Record immutable snapshot
-await portfolio.record_performance_snapshot(price_map)
-```
-
-**Result**: We now have a point-in-time record of every model's net worth, enabling historical performance charts.
-
----
-
-## Phase 11: Real-time Monitoring (TODAY Dashboard)
-
-The pipeline results are immediately visible on the **TODAY Dashboard** (`/`). This view provides a clean, linear narrative of the day's activity with a modern, editorial-style design:
-
-### Dashboard Sections
-
-1. **Market Status Hero** (Full-width banner)
-   - Live market status indicator (Open/Closed with EST timezone awareness)
-   - AI Sentiment Gauge (Bullish/Bearish/Neutral based on trade flow)
-   - Real-time stats: Newsletters, Trades, Active Memories
-   - Visual design: Gradient background with animated dot pattern
-
-2. **AI Cognitive Synthesis**
-   - Grouped view of global consensus, government incentives, and lessons learned
-   - **Consensus Meter**: Visual progress bar showing agreement percentage
-   - **Agent Avatars**: Color-coded participation indicators (🟢 OpenAI, 🟠 Claude, 🔵 Gemini, 🟣 DeepSeek)
-   - **Importance Scores**: Badge display for each insight
-   - **Ticker Tags**: Related assets displayed as pills
-   - Each card features gradient backgrounds and hover lift animations
-
-3. **Daily Intelligence Briefing**
-   - Newsletter summaries in a 2-column grid
-   - Sender badges with gradient backgrounds
-   - Attachment indicators
-   - Character count and "Read More" links
-   - Hover effects with gradient border reveals
-
-4. **Market Execution & Guardrails**
-   - Full-width feed of trades and rejections
-    - **Activity Stats**: Pills showing Total, Buys, Sells, Rejected, **Executed** counts
-    - **Agent Attribution**: Each trade shows which AI executed it
-    - **Confidence Scores**: Badge display (High/Medium/Low)
-    - **Interactive Expansion**: Click to reveal full LLM reasoning
-    - **Detail Cards**: Quantity, Price, Total Value, Confidence
-    - Color-coded: Green for BUY, Red for SELL, Amber for REJECTED, Blue for EXECUTED
-    - **Filter Support**: Click any stat pill to filter the feed (e.g., view only non-rejected "Executed" trades)
-
-5. **Horizon Watch: Pending Events**
-   - **Timeline View**: Vertical timeline with connecting line and dots
-   - **Live Countdown**: Days/Hours/Minutes until each event
-   - **Importance Coding**: Color-coded by severity (Critical/High/Medium/Low)
-    - **Scenario Analysis**: Expandable trading plans for each outcome with **percentage badges** (e.g., `40%`, `70%`) extracted and highlighted from scenario text for quick probability scanning
-    - **Ticker Pills**: Related assets for trading ideas
-   - **Smart Filtering**: Only shows future events (past events auto-hidden)
-   - **Accurate Counter**: Badge shows count of visible (non-passed) events
-
-### Design Features
-
-- **Typography**: Space Grotesk (headlines), Satoshi (body), JetBrains Mono (data)
-- **Color System**: Electric Blue, Neon Green, Alert Red, Deep Purple, Cyber Yellow
-- **Motion**: Staggered reveals, card lift effects, live pulse indicators
-- **Empty State**: Rotating witty messages with CTAs when no activity
-
-### Technical Details
-
-- **Auto-Refresh**: Every 5 minutes during market hours
-- **Timezone-Safe**: All dates parsed to local midnight (America/New_York)
-- **Forward-Looking**: Horizon Watch strictly filters `is_future_catalyst = true` AND `target_date >= today`
-
----
-
-## Phase 12: Regret-Driven Reinforcement (Post-Analysis)
-
-### Step 11.1: Historical Performance Audit
-
-**File**: `apps/engine/analysis/post_analysis.py`, `apps/engine/main.py:run_post_analysis`
-
-To enable self-correction, the engine periodically audits its own performance. This closes the loop between "Theory" and "Profit".
-
-**Process**:
-1. **Query History**: Fetch all trades executed at 5, 14, and 30 day intervals.
-2. **Fetch Returns**: Get the current market price (from cache)
-3. **Analyze Outcome**: Compare the entry price and reasoning to the actual price action.
-
-4. **LLM Reflection**: Call the Agent with:
-   - "You bought X because of [Reasoning]. Current price is [Y]. Was this correct?"
-5. **Inject Memory**: The LLM generates a concise **Lesson Learned** (post-analysis). The metadata stores `trade_id`, `analysis_window`, `price_change_pct`, and `model_name` (the agent that made the original trade) for frontend attribution.
-6. **RAG Feed**: This lesson is embedded into the `memories` table (pgvector) with `memory_type: "LESSON_LEARNED"`.
-
-**Result**: Future LLM decisions on the same ticker/sector will retrieve this lesson as RAG context, preventing the "same mistake twice." The dashboard displays which agent made each trade on the post-analysis card.
-
----
-
-## Phase 13: Cause & Effect Analysis
-
-### Step 13.1: Market Impact Attribution
-
-**File**: `apps/engine/analysis/cause_and_effect_analysis.py`, `apps/engine/main.py:run_cause_and_effect`
-
-This phase bridges the gap between AI predictions and real-world outcomes by auditing past market events.
-
-**Process**:
-1. **Fetch Mature Events**: Retrieve `MARKET_EVENT` memories that are >24h old.
-2. **Dynamic Ticker Discovery**: Call Gemini to suggest relevant tickers, then clean/validate (strip punctuation, filter blacklist, regex validate `^[A-Z]{1,5}$`).
-3. **Retrieve Sector Performance**: Fetch historical prices for the S&P 500 (`SPY`), Nasdaq (`QQQ`), and any tickers mentioned in the event content.
-4. **Causal Logic**: The LLM compares the original "Scenario Analysis" (the "If X vs If Y" reasoning) to the actual price action to determine the **Actual Market Outcome**.
-5. **Institutional Learning**: The result is stored in the `cause_and_effect` table, creating an auditable history of how specific news types (e.g., Fed cuts) actually moved the needle.
-
-**Schedule**: Bi-Weekly (Tuesdays & Fridays at 20:00 UTC).
-
----
-
-## Complete Pipeline Summary
-
-### API Calls Summary
-
-```
-INGESTION PHASE:
-├─ Gmail API Call #1:  List all new newsletters
-├─ Gmail API Calls #2-5: Fetch 4 individual messages (one each)
-└─ Total: 5 Gmail API calls
-
-CONTEXT RETRIEVAL PHASE:
-├─ Gemini Embedding API Call #1: Batch embed 4 queries (KEY OPTIMIZATION)
-├─ Database RPC Calls #1-4: Vector similarity search (4 calls)
-└─ Total: 1 Gemini API call + 4 DB RPCs
-
-LLM ANALYSIS PHASE:
-├─ OpenAI API Call #1: Batch analyze all 4 newsletters
-├─ Claude API Call #2: Batch analyze all 4 newsletters
-├─ Gemini API Call #3: Batch analyze all 4 newsletters
-├─ DeepSeek API Call #4: Batch analyze all 4 newsletters
-└─ Total: 4 LLM API calls (parallel execution)
-
-MOMENTUM & CONSENSUS PHASE:
-├─ Gemini Embedding API: Embed new concepts for momentum tracking
-├─ Database RPCs: Historical frequency lookup
-└─ Total: Varies by number of concepts
-
-VALIDATION & EXECUTION PHASE:
-├─ Financial API (configured provider): Real-time price checks (Cached)
-├─ Supabase DB: Portfolio & Position updates
-└─ Total: 1-2 DB writes per trade
-
-SUMMARY & MEMORY PHASE:
-├─ Gemini Embedding API: Vectorize trade reasoning for Step 15
-├─ Supabase DB: Record daily performance snapshots for Step 14
-└─ Total: 1 Embedding call + 4 Snapshot writes
-
-REINFORCEMENT & IMPACT PHASE (Bi-Weekly/Post-Run):
-├─ Gemini Embedding API: Vectorize post-mortem lessons
-├─ Supabase DB: Retrieve mature events & 5-day old trades
-└─ Total: 1 Embedding call + N Reflection calls
-
-MARKET FEELING PHASE (Post-Execution):
-├─ MiniMax API: Generate LLM-driven sentiment (MiniMax-M2.7 model)
-├─ Supabase DB: Store result in market_feeling table
-└─ Total: 1 MiniMax API call + 1 DB write
-
-GRAND TOTAL ESTIMATE:
-• Gmail: 5 API calls
-• Gemini Embeddings: ~3 API calls
-• LLM Providers: 4-8 API calls (parallel)
-• Supabase: ~40 total database operations
-```
-
-### Execution Timeline
-
-```
-Time 0s:      Start (09:35 ET) - Gmail fetch
-Time 0.5s:    Ingestion & Snapshotting complete
-Time 1.0s:    Context Retrieval (Embeddings + RAG) complete
-Time 1.0s:    Start Parallel LLM Analysis
-Time 7.0s:    LLM Analysis complete (Decisions generated)
-Time 7.5s:    Event Consensus & Momentum Analysis complete
-Time 8.0s:    Pre-Market Validation (Guardrails) complete
-Time 8.2s:    Reg T Margin Check complete
-Time 8.5s:    Trade Settlement (DB Writes) complete
-Time 8.6s:    Alpaca Paper Mirror (fire-and-forget) spawned
-Time 8.7s:    Attribution Locking & Memory Embedding complete
-Time 9.0s:    Daily Performance Snapshot & Portfolio Refresh complete
-Time 9.5s:    Market Feeling Analysis (MiniMax) complete
-Time 10.0s:   Post-Mortem Reinforcement complete (if triggered)
-Time 10.2s:   Pipeline complete
-```
-Total Pipeline Time: ~11-13 seconds
-
-### Key Optimizations
-
-1. **Batch Embedding**: 1 Gemini API call for 4 queries instead of 4 calls
-2. **Parallel LLM Analysis**: 4 LLM providers called simultaneously
-3. **Cache-First Market Data**: Reduces financial API calls by >90%
-4. **Vector Indexing**: HNSW index on pgvector for millisecond retrieval
-5. **Attribution Traceability**: `source_id` links every dollar traded back to a specific sentence in a newsletter
-6. **Third-Party Audit**: Alpaca paper trading mirrors provide an external, immutable record of every executed trade
-
-## Phase 9: Cause & Effect Analysis (Historical Audit)
-
-**File**: `apps/engine/analysis/cause_and_effect_analysis.py`
-
-Bi-weekly (Tuesdays & Fridays), the engine performs a retrospective audit of market events to track predicted vs actual impact.
-
-1.  **Semantic Deduplication**: Before analysis, the engine checks the `cause_and_effect` table and `memories` table (via `find_similar_memory`) to ensure that identical narratives aren't being re-analyzed within a 7-day window.
-2.  **Dynamic Ticker Discovery**: The engine uses a lightweight LLM (Gemini Flash) to identify which stock tickers and sector ETFs would have been most impacted by the event (e.g., "Private Credit" -> JPM, OWL).
-3.  **Historical Comparison**: The LLM compares the original scenario analysis (how we thought the event would resolve) with actual market data provided by the `MarketDataManager` to formulate an audit record.
-
-**Documentation**: [cause-and-effect-analysis.md](./cause-and-effect-analysis.md)
-
----
-
-## Phase 10: Market Feeling (LLM-Driven Sentiment)
-
-**File**: `apps/engine/analysis/market_feeling.py`
-
-After the main pipeline execution (during 09:30, 12:30, 15:30 ET runs), the system generates an LLM-driven market sentiment using MiniMax MiniMax-M2.7.
-
-**Purpose**: Provides a nuanced "How I'm feeling and why" sentiment that considers:
-- Today's trades (buys/sells count and total value)
-- Lessons learned from past failures
-- Market events and consensus memories
-- Key decision reasoning from agents
-
-**Process**:
-1. **Data Gathering**: Fetches today's trades, LESSON_LEARNED memories, MARKET_EVENT memories, and decision reasoning from Supabase
-2. **Prompt Building**: Constructs a structured prompt with all gathered data
-3. **LLM Call**: Calls MiniMax MiniMax-M2.7 (`POST https://api.minimax.io/v1/text/chatcompletion_v2`) with `temperature=0.4` for consistent structured output
-4. **Response Parsing**: Extracts JSON from the response
-5. **Storage**: Upserts result to `market_feeling` table
-
-**Output Structure**:
-```json
-{
-  "sentiment_label": "Cautiously Optimistic",
-  "sentiment_emoji": "🤔",
-  "confidence_score": 75,
-  "why_explanation": "Markets are showing mixed signals with recent buys outweighing sells...",
-  "market_direction": "BULLISH",
-  "primary_concern": "Fed policy uncertainty",
-  "secondary_concern": "Tech sector volatility"
-}
-```
-
-**Frontend Display**: The "How I'm Feeling" card in `MarketStatusHero` component shows:
-- Sentiment label with emoji
-- Direction badge (BULLISH/BEARISH/NEUTRAL)
-- Confidence score bar
-- "Why" explanation text
-- Primary concern tag
-- Last analyzed timestamp
-- Stale warning if data is >4 hours old
-
-**Error Handling**: If MiniMax API fails, the pipeline continues without interruption. The frontend shows "Analyzing..." with a stale warning if no fresh data exists.
-
----
-
-## Files Referenced
+## Key Files Reference
 
 | File | Purpose |
 |------|---------|
-| `apps/engine/main.py` | Pipeline orchestration and entry point |
-| `apps/engine/ingest/newsletter.py` | Gmail fetching and text processing |
-| `apps/engine/analyze.py` | RAG context retrieval + LLM orchestration |
-| `apps/engine/core/llm/` | Multi-provider LLM clients |
-| `apps/engine/memory/store.py` | pgvector interaction and memory management |
-| `apps/engine/memory/embeddings.py` | Gemini batch embedding client |
-| `apps/engine/consensus.py` | Semantic grouping and event synthesis |
-| `apps/engine/analysis/momentum.py` | Trend velocity and decay logic |
-| `apps/engine/execution/market_data.py` | Cache-first financial data provider |
-| `apps/engine/execution/validation.py` | Existence, Pricing, and Liquidity guardrails |
-| `apps/engine/execution/portfolio.py` | Trade settlement and performance snapshots |
-| `apps/engine/execution/reg_t_validation.py` | Margin account buying power math |
-| `apps/engine/attribution/service.py` | Decision persistence + attribution |
-| `apps/engine/analysis/post_mortem.py` | Regret-driven reinforcement logic |
-| `apps/engine/analysis/cause_and_effect_analysis.py` | Market impact attribution logic |
-| `apps/engine/analysis/market_feeling.py` | LLM-driven market sentiment analysis |
-| `apps/engine/core/llm/minimax.py` | MiniMax MiniMax-M2.7 API client |
+| `apps/engine/main.py` | Pipeline entry point |
+| `apps/engine/ingest/newsletter.py` | Gmail fetching, text processing |
+| `apps/engine/ingest/calendar.py` | Economic calendar ingestion |
+| `apps/engine/ingest/government.py` | Government policy tracking |
+| `apps/engine/analyze.py` | RAG context + LLM orchestration |
+| `apps/engine/core/llm/` | Multi-provider LLM clients + handlers |
+| `apps/engine/core/macro_tracker.py` | Global macro regime detection |
+| `apps/engine/consensus.py` | Semantic grouping, event synthesis |
+| `apps/engine/analysis/momentum.py` | Trend velocity, decay logic |
+| `apps/engine/analysis/post_analysis.py` | Manager Agent post-mortem |
+| `apps/engine/analysis/contrarian.py` | Contrarian Agent execution |
+| `apps/engine/analysis/cause_and_effect_analysis.py` | Cause & effect audit |
+| `apps/engine/analysis/market_feeling.py` | LLM-driven market sentiment |
+| `apps/engine/execution/market_data.py` | Cache-first financial data |
+| `apps/engine/execution/validation.py` | Pre-market guardrails |
+| `apps/engine/execution/portfolio.py` | Trade settlement, snapshots |
+| `apps/engine/execution/reg_t_validation.py` | Reg T margin checks |
+| `apps/engine/attribution/service.py` | Decision persistence, attribution |
+| `apps/engine/memory/store.py` | pgvector interactions |
+| `apps/engine/memory/embeddings.py` | Batch embedding client |

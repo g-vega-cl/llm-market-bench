@@ -234,7 +234,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Supabase push/migrate programmatically?** - Make sure your migration files match what you have and that you can migrate programmatically without breaking everything.
 - [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
 - [ ] manage prompt size with increasing memory/lessons learned database.
-- [x] add agent that did the original trade to post-analysis card.
 
 ### 🔄 Under Consideration
 

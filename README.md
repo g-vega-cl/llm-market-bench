@@ -249,11 +249,11 @@ A living document of features and improvements in progress or planned for the pl
 - [Database Schema](./docs/database-schema.md)
 - [Type Generation from Supabase](./supabase/TYPE_GENERATION.md)
 - [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
-- [Decision Attribution Strategy](./docs/engine/decision-attribution-walkthrough.md)
+
 - [Trade Settlement Walkthrough](./docs/engine/trade-settlement-walkthrough.md)
 - [Portfolio Management Walkthrough](./docs/engine/portfolio-management-walkthrough.md)
 - [Tool Enforcement System](./docs/engine/TOOL_ENFORCEMENT.md)
-- [Lessons Learned](./docs/lessons-learned.md)
+- [Market Heuristics](./docs/engine/market-heuristics.md)
 
 ### Web Documentation
 
@@ -267,7 +267,7 @@ A living document of features and improvements in progress or planned for the pl
 
 - [IBKR Proxy & Integration Guide](./docs/IBKR-Integration.md)
 - [FMP API Documentation](./docs/library-docs/FMP/FMP-API-Documentation.md)
-- [Authentication Walkthrough](./docs/engine/auth-walkthrough.md)
+
 
 ### Utilities & Maintenance
 

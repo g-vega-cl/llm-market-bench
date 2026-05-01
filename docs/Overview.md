@@ -98,7 +98,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 
 ### Phase 5: Market Execution (Sequential)
 
-**12. Second-Step Verification** ✅
+**Second-Step Verification** ✅
 
 *   **Tech:** Python / Multi-Provider Tool Loop
 *   **Logic:** *Every BUY/SELL signal is intercepted by a dedicated verifier.*
@@ -109,7 +109,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Market Data Fallback & Robustness**: *Uses an enhanced `MarketDataManager` that automatically pulls historical prices from **FMP** (with YFinance fallback) if local data is missing for a new ticker. To optimize performance, the engine uses **Batch Upserts** when saving historical prices to Supabase, reducing network overhead significantly. For ETFs (like `BDRY`), the engine accurately evaluates liquidity by falling back to `totalAssets` or `netAssets` when `marketCap` is unavailable. The engine uses a **Singleton Connection Pattern** (with robust `finally` cleanup) for providers that require persistent connections, ensuring high-concurrency tool loops never result in port conflicts. It also implements a unified **`ensure_list`** wrapper to resiliently handle both single and multi-block LLM responses. The **Anthropic handler** (`handlers/anthropic.py`) filters whitespace-only text blocks before building the message history, preventing `400 Bad Request: text content blocks must be non-empty` errors. The **FMP provider** (`execution/providers/fmp.py`) correctly passes the ticker as a query parameter to the `historical-price-eod/full` endpoint and handles both flat-list and nested `"historical"` response shapes, resolving prior `404` errors for tickers like `SMCI` and `OIH`. Crucially, it integrates a **FMP-driven Market Status check** with **class-level caching (5-minute TTL)** to enforce trading only during active US market hours, including automatic holiday detection. This ensures the market status API is called only once per pipeline run, reducing redundant API calls by ~99%.*
 *   **Outcome**: *Approves, rejects, or shrinks the trade allocation based on price risk and strategic intent.*
 
-**13. Pre-Execution Margin Validation** ✅
+**Pre-Execution Margin Validation** ✅
 
 *   **Tech:** Python / Supabase / Reg T Logic
 *   **Logic:** *Before moving a decision to "Trade Settlement", the engine validates that the agent has sufficient Buying Power.*
@@ -126,7 +126,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *
 *   documentation: ./engine/portfolio-management-walkthrough.md
 
-**14. Trade Settlement & Ledgering** ✅
+**Trade Settlement & Ledgering** ✅
 
 *   **Tech:** Python / Portfolio Class
 *   **Logic:** *Execute `portfolio.execute_trade()` for valid decisions.*
@@ -140,11 +140,11 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *
 *   documentation: ./engine/trade-settlement-walkthrough.md
 
-**14a. Real-time P&L Tracking (SQL View)** ✅
+**Real-time P&L Tracking (SQL View)** ✅
 
 *   **Outcome:** Provides live Profit/Loss USD and % for all active positions.
 
-**15. Attribution Locking** ✅
+**Attribution Locking** ✅
 *   **Tech:** Supabase Postgres
 *   *Uses a **two-phase commit pattern** to establish bidirectional links between decisions and trades:*
     1.  *Pre-Trade: Save decision with `status="VALIDATED"` to obtain a `decision_id` (required foreign key for the `trades` table).*
@@ -153,15 +153,15 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   *We now have a machine-auditable path: **News -> Reasoning -> Decision ↔ Trade**.*
 *   documentation: ./engine/attribution-locking-walkthrough.md
 
-**16. Ledger & Equity Curve Update** ✅
+**Ledger & Equity Curve Update** ✅
 
 *   **Tech:** Supabase Postgres
 *   **Action:** *Calculate the new total Net Liquidation Value. Write an immutable row for today's performance.*
 *   **Update:** *Crucially, it also updates the main `portfolios` summary table with the final calculated Reg T metrics (Equity, Moving SMA, Maintenance Margin) following all executions.*
 *   **Idempotency:** *Enforce database constraints on `(portfolio_id, date)` to ensure performance is never double-counted.*
-*   documentation: [step-14-ledger-equity-curve.md](./engine/step-14-ledger-equity-curve.md)
+*   documentation: [ledger-equity-curve.md](./engine/ledger-equity-curve.md)
 
-**16a. Price Update Utility (Non-LLM)** ✅
+**Price Update Utility (Non-LLM)** ✅
 
 *   **Tech:** Python / `update_prices.py`
 *   **Goal:** Refresh market prices and recalculate portfolio metrics without invoking the expensive LLM analysis loop.
@@ -171,7 +171,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Benchmark History:** Additionally fetches and stores 90-day historical price data for benchmark tickers (SPY, QQQ, GLD, VGK, EWJ, EEM, IWM, DIA, URTH) to support the portfolio comparison feature. Uses `upsert` with `on_conflict` to prevent duplicate entries. Deduplication ensures no over-fetching after initial population.
 *   File: `apps/engine/update_prices.py`
 
-**17. Long-term Memory Embedding** ✅
+**Long-term Memory Embedding** ✅
 
 *   **Tech:** **Supabase pgvector (Google Gemini gemini-embedding-001)**
 *   **Decoupled RAG:** *The engine separates **Macro Context** (events in `memories`) from **Strategy Context** (trade reasonings in `decisions`).*
@@ -180,7 +180,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Retrieval:** *The engine performs a parallel search across both tables to provide the LLM with a unified view of the market environment and its own past logic.*
 *   **Schema Robustness:** *Includes automated JSON string parsing, Pydantic field validation to convert `NaN` values to `None`, and expanded `catalyst_type` literals to handle model "Semantic Fragility" during high-volume tool loops.*
 *   **Deduplication:** *Enforces a 24-hour lookback window to prevent semantic duplicates of the same event from being stored (Similarity > 0.90).*
-*   documentation: [step-15-long-term-memory-embedding.md](./engine/step-15-long-term-memory-embedding.md)
+*   documentation: [long-term-memory-embedding.md](./engine/long-term-memory-embedding.md)
 
 ### Phase 4: Frontend & Feedback
 
@@ -272,7 +272,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Query Key Structure:** Type-safe cache management using centralized `queryOptions` via the `queries` factory.
 *   **Named Parameters Pattern:** All query methods use named parameters for explicit, type-safe API usage (e.g., `queries.reasoning.list({ cursor, fetchFn })`).
 
-*   **Documentation:** [TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md), [Reasoning Page Optimization](./web/reasoning-page-optimization.md)
+*   **Documentation:** [TanStack Best Practices Guide](./web/TANSTACK_BEST_PRACTICES.md)
 
 **18b. Testing Infrastructure** ✅
 *   **Tech:** **Vitest + React Testing Library**
@@ -295,7 +295,7 @@ For a detailed step-by-step walkthrough, see **[data-flow.md](./engine/data-flow
 *   **Goal:** Enable secure, one-click login for users using their Google accounts, integrated with the project's RLS policies.
 *   **Action:** Uses `signInWithOAuth` on the client side to handle the redirect flow and session management.
 *   **Implementation Best Practice:** Uses a dual-client approach (Server Client for SSR/Server Functions and Browser Client for OAuth redirects) to maintain session consistency.
-*   documentation: [auth-walkthrough.md](./engine/auth-walkthrough.md)
+
 
 **20. Community Interaction**
 *   **Tech:** **Supabase Auth**
@@ -770,3 +770,71 @@ cd apps/web
 pnpm run build
 npx netlify deploy --prod --site 5d3df086-5934-4ea4-9758-36fe189e9af3
 ```
+
+---
+
+## Documentation Index
+
+### Core Architecture
+*   [Overview](./Overview.md) — This index
+*   [Database Schema](./database-schema.md) — Full Supabase schema reference
+*   [README](../README.md) — Project intro, setup, and quick links
+
+### Engine — Pipeline & Walkthroughs
+*   [Data Flow & Pipeline](./engine/data-flow.md) — End-to-end walkthrough of the daily pipeline
+*   [LLM Analysis Walkthrough](./engine/llm-analysis-walkthrough.md) — PromptFactory & provider handlers
+*   [Newsletter Ingestion](./engine/newsletter-ingestion-walkthrough.md) — Gmail scraping & ad removal
+*   [Asynchronous Chunk Batching](./engine/BatchingStrategy.md) — Processing news in batches of 20
+*   [Attribution Locking](./engine/attribution-locking-walkthrough.md) — Two-phase Decision ↔ Trade linking
+*   [Portfolio Management](./engine/portfolio-management-walkthrough.md) — Position tracking & allocation rules
+*   [Trade Settlement](./engine/trade-settlement-walkthrough.md) — Atomic updates & Alpaca mirror
+*   [Pre-Market Validation](./engine/pre-market-validation.md) — Hallucination guardrails (ticker, price, liquidity)
+*   [Ledger & Equity Curve](./engine/ledger-equity-curve.md) — Daily performance snapshots
+*   [Long-term Memory Embedding](./engine/long-term-memory-embedding.md) — Decoupled RAG architecture
+
+### Engine — Analysis & Consensus
+*   [Event Consensus Protocol](./engine/event-consensus-walkthrough.md) — Semantic grouping & timeline promotion
+*   [Trend & Momentum Analysis](./engine/trend-momentum-analysis.md) — Concept velocity & PCA coordinates
+*   [Cause & Effect Analysis](./engine/cause-and-effect-analysis.md) — Bi-weekly retrospective audit
+*   [Global Macro Tracker](./engine/GLOBAL_MACRO_TRACKER.md) — 16 key assets & regime detection
+*   [Asset Discovery (DiscoveryAgent)](./engine/ASSET-DISCOVERY.md) — Stock screener tool-calling loop
+
+### Engine — Tools & Enforcement
+*   [Hard Tool Enforcement](./engine/TOOL_ENFORCEMENT.md) — 4-layer verification system
+*   [Web Search Integration](./engine/WEB_SEARCH.md) — Anthropic, Gemini & OpenAI native search
+*   [Correlation Matrix & Uncorrelated Assets](./engine/CORRELATION_MATRIX.md) — Pearson/Spearman weekly computation
+*   [Agent-Specific Semantic Overlap](./engine/agent-specific-semantic-overlap.md) — Per-agent redundancy prevention
+*   [Regret-Driven Reinforcement](./engine/regret-driven-reinforcement-walkthrough.md) — Post-mortem learning loop
+
+### Engine — Financial Calculations
+*   [P&L Calculation Methodology](./engine/PNL-CALCULATIONS.md) — Weighted-average cost basis
+*   [Account Buying Power (Reg T)](./engine/account-buying-power-reg-t4-calculations.md) — Margin formulas
+
+### Engine — Testing & Audits
+*   [Testing Guide](./engine/testing.md) — pytest, dependency injection, integration tests
+*   [Reasoning Trace Audit](./engine/reasoning-trace-audit.md) — Full LLM interaction logs
+
+### Engine — Reference
+*   [Market Heuristics](./engine/market-heuristics.md) — Trading principles, analysis patterns, event types, and long-term signals
+
+### Web (Frontend)
+*   [Web Application Architecture](./web/README.md) — TanStack Start overview & structure
+*   [TanStack Best Practices](./web/TANSTACK_BEST_PRACTICES.md) — Query options, caching, pagination
+*   [Design System](./web/DESIGN_SYSTEM.md) — Visual language & component patterns
+*   [Frontend Testing](./web/testing.md) — Vitest + React Testing Library
+*   [Portfolios UI](./web/portfolios-ui.md) — Active & retired agent portfolios
+*   [Netlify Deployment](./web/tanstack-start-deploy-official.md) — Serverless hosting guide
+
+### Library Docs & Integrations
+*   [FMP API Documentation](./library-docs/FMP/FMP-API-Documentation.md) — 28 API categories reference
+*   [Claude: Web Fetch](./library-docs/CLAUDE/web-fetch.md) — Content retrieval reference
+*   [Claude: Web Search](./library-docs/CLAUDE/web-search.md) — Real-time search reference
+*   [Gemini: Grounding](./library-docs/GEMINI/grounding.md) — Google Search grounding reference
+*   [OpenAI: Web Search](./library-docs/OPENAI/web-search.md) — Responses API search reference
+*   [IBKR Reference](./library-docs/IBKR/IBKR-README.md) — Interactive Brokers integration
+*   [IBKR Proxy & Integration Guide](./IBKR-Integration.md) — Setup & connection guide
+*   [Type Generation from Supabase](../supabase/TYPE_GENERATION.md) — Database type generation
+
+### Other Reference
+*   [Government Incentive Quick Reference](./government-incentive-quick-ref.md) — Countries, agencies, and policies to track
+*   [Anomaly Detector Design](./anomaly-detector-design.md) — Automated codebase auditor

@@ -228,6 +228,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] manage prompt size with increasing memory/lessons learned database.
 - [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
+- [ ] - Move to openrouter?
+- [ ] - Retry server errors?
 
 ### Under Consideration
 

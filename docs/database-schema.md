@@ -88,7 +88,7 @@ Stores global market events for RAG retrieval.
 - `embedding` (VECTOR(768)): Google Gemini embedding.
 - `metadata` (JSONB): Source and context metadata. 
   - **Required for Future Catalysts:** `scenario_analysis` must contain at least two outcomes and associated Trading Plans.
-- `memory_type` (TEXT): `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `CALENDAR_EVENT`.
+- `memory_type` (TEXT): `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `UNCROWDED_TRADE`, `CALENDAR_EVENT`.
 - `status` (TEXT): `ACTIVE`, `RESOLVED`, `SUPERSEDED`.
 - `target_date` (TEXT): For proactive catalyst tracking (ISO 8601). Vague timeframes are excluded from Horizon Watch (see `Overview.md`).
 - `importance_score` (INT): Unified score (1-10); Horizon Watch visibility requires score >= 8.

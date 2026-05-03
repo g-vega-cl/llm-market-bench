@@ -24,9 +24,9 @@ class TestAnalyzeChunksStreaming:
 
     @pytest.fixture
     def mock_retrieve_context(self):
-        """Mock the retrieve_context_batch function."""
-        with patch("analysis.analyze.retrieve_context_batch") as m:
-            m.return_value = ["Mocked Context"]
+        """Mock the retrieve_top_memories function."""
+        with patch("analysis.analyze.retrieve_top_memories") as m:
+            m.return_value = "[MARKET EVENT] Mocked Context"
             yield m
 
     @pytest.fixture
@@ -226,12 +226,10 @@ class TestDecisionCallback:
             )
 
         with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm, \
-             patch("analysis.analyze.retrieve_context_batch") as mock_context, \
-             patch("memory.embeddings.get_embeddings_batch") as mock_emb:
+             patch("analysis.analyze.retrieve_top_memories") as mock_context:
             
             mock_llm.side_effect = mock_analyze
-            mock_context.return_value = ["context"]
-            mock_emb.return_value = [[0.1] * 768]
+            mock_context.return_value = "[MARKET EVENT] context"
             
             chunks = [{"source_id": "src_1", "content": "Test"}]
             
@@ -323,13 +321,11 @@ class TestLoggingTiming:
             )
 
         with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm, \
-             patch("analysis.analyze.retrieve_context_batch") as mock_context, \
-             patch("memory.embeddings.get_embeddings_batch") as mock_emb, \
+             patch("analysis.analyze.retrieve_top_memories") as mock_context, \
              patch("analysis.analyze.logger") as mock_logger:
             
             mock_llm.side_effect = mock_analyze
-            mock_context.return_value = ["context"]
-            mock_emb.return_value = [[0.1] * 768]
+            mock_context.return_value = "[MARKET EVENT] context"
             
             chunks = [{"source_id": "src_1", "content": "Test"}]
             

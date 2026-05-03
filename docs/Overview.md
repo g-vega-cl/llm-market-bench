@@ -34,15 +34,16 @@ graph TD
 
     subgraph "Phase 2 — Reasoning & Consensus"
         SNAP --> GMT[Global Macro Tracker]
-        GMT --> RAG{RAG Retrieval}
-        RAG <-->|memories + decisions| V[(Supabase pgvector)]
-        GMT --> D1[OpenAI] & D2[Claude] & D3[Gemini] & D4[DeepSeek]
+        GMT --> LITE[Light Context: Top-5 events + trending]
+        LITE --> D1[OpenAI] & D2[Claude] & D3[Gemini] & D4[DeepSeek]
         D1 & D2 & D3 & D4 --> ATTR[Decision Attribution]
         ATTR --> DB[(decisions)]
         ATTR --> CP{Event Consensus}
         CP -->|Semantic Grouping| SYN[LLM Synthesis]
         SYN --> TM[Trend & Momentum]
-        SYN --> VER[Skeptical Verifier]
+        ATTR --> VER[Skeptical Verifier]
+        VER -->|Targeted per-trade RAG| V[(Supabase pgvector)]
+        V -->|Pruned context| VER
     end
 
     subgraph "Phase 3 — Execution"
@@ -80,6 +81,7 @@ graph TD
 
 ### Analysis
 - Parallel LLM analysis via PromptFactory with modular provider handlers
+- **Tiered context injection**: Analysis agents receive light context (top-5 high-importance events + trending concepts, ~500 tokens). The Skeptical Verifier receives targeted per-trade RAG context (up to 2k tokens, ranked by importance × similarity).
 - Batch strategy (20 chunks per call) to avoid output truncation
 - Active tool loop: `get_stock_quote`, `calculate_buy/sell_quantity`, `web_search`, `run_stock_screener`
 - DiscoveryAgent identifies investable assets via stock screener tool-calling

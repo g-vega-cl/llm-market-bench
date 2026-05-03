@@ -82,11 +82,14 @@ The formatted snapshot is injected into every LLM prompt, giving agents "Risk-On
 
 ### Portfolio Initialization
 
-**Files:** `apps/engine/analyze.py`
+**Files:** `apps/engine/analyze.py`, `apps/engine/memory/store.py`
 
 1. Initializes all agent portfolios and fetches current market prices for all unique holdings in parallel
-2. Aggregates historical context (government incentives, lessons learned) via parallel pgvector searches
-3. Enforces **calendar strategy context** (Turn of the Month, Payday Anomaly) based on current date
+2. Retrieves a **lightweight historical context** via `retrieve_top_memories(5)` — a simple SQL query for the top-5 highest-importance active memories. No embedding calls, no pgvector search in the analysis hot path.
+3. Appends top trending concepts (`get_top_trending_concepts`) for broad market awareness
+4. Enforces **calendar strategy context** (Turn of the Month, Payday Anomaly) based on current date
+
+**Context budget**: Analysis agents receive ~500-700 tokens of historical + trending context. The previous design used 4 parallel pgvector searches per news chunk (up to thousands of tokens). The deeper per-trade memory check is deferred to the verifier phase (see Phase 5).
 
 ---
 
@@ -353,11 +356,23 @@ Decoupled vector storage separates macro context from strategy context:
 | Source | Content | Table | RAG Label |
 |--------|---------|-------|-----------|
 | Market Events | Macro catalysts, geopolitics | `memories` | `[MARKET EVENT]` |
-| Trade Reasoning | Specific stock justifications | `decisions` | `[PAST DECISION]` |
+| Government Incentives | Policy bills, subsidies | `memories` | `[GOVERNMENT INCENTIVE]` |
+| Lessons Learned | Post-mortem outcomes | `memories` | `[LESSON_LEARNED]` |
+| Uncrowded Trades | Secondary effect plays | `memories` | `[UNCROWDED TRADE]` |
+| Trade Reasoning | Specific stock justifications | `decisions` | `[PAST REASONING]` |
 
 - **Embedding provider**: Google Gemini (model + dimensionality in `memory/embeddings.py`)
 - **Deduplication**: recency-windowed similarity check before insert (window + threshold in `memory/store.py`)
 - **Schema Robustness**: Automated JSON parsing, Pydantic `NaN→None` conversion, expanded catalyst type literals
+
+### Context Retrieval Functions
+
+| Function | Path | Description |
+|----------|------|-------------|
+| `retrieve_top_memories(limit, min_importance)` | Analysis hot path | SQL query for highest-importance active memories. No embedding call. |
+| `retrieve_for_decision(ticker, reasoning)` | Verifier path | Targeted semantic search for memories + past decisions relevant to a specific proposed trade. |
+| `prune_context(items, max_tokens)` | Both paths | Ranks items by importance × similarity, caps at token budget, sentence-boundary truncates long entries. |
+| `retrieve_context_batch(queries)` | Contrarian, legacy | Batch pgvector search. Still used by the contrarian agent and non-time-critical paths. |
 
 ---
 
@@ -369,7 +384,8 @@ Decoupled vector storage separates macro context from strategy context:
 | `apps/engine/ingest/newsletter.py` | Gmail fetching, text processing |
 | `apps/engine/ingest/calendar.py` | Economic calendar ingestion |
 | `apps/engine/ingest/government.py` | Government policy tracking |
-| `apps/engine/analyze.py` | RAG context + LLM orchestration |
+| `apps/engine/analyze.py` | Tiered context assembly + LLM orchestration |
+| `apps/engine/core/llm/verification.py` | Skeptical Verifier with targeted per-trade RAG |
 | `apps/engine/core/llm/` | Multi-provider LLM clients + handlers |
 | `apps/engine/core/macro_tracker.py` | Global macro regime detection |
 | `apps/engine/consensus.py` | Semantic grouping, event synthesis |

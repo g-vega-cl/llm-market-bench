@@ -34,7 +34,7 @@ async def test_individual_task_failure_does_not_halt_pipeline():
     chunks = [{"source_id": "chunk_1", "content": "test"}]
 
     with patch("core.llm.analyze_with_provider", side_effect=mock_analyze), \
-         patch("analysis.analyze.retrieve_context_batch", return_value=[""]), \
+         patch("analysis.analyze.retrieve_top_memories", return_value=""), \
          patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
          patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
          patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:

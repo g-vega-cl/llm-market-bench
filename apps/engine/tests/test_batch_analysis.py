@@ -14,9 +14,9 @@ def mock_llm_analyze():
 
 @pytest.fixture
 def mock_retrieve_context():
-    """Mock the retrieve_context_batch function."""
-    with patch("analysis.analyze.retrieve_context_batch") as m:
-        m.return_value = ["Mocked Context"]
+    """Mock the retrieve_top_memories function."""
+    with patch("analysis.analyze.retrieve_top_memories") as m:
+        m.return_value = "Mocked Context"
         yield m
 
 @pytest.fixture

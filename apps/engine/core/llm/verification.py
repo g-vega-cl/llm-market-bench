@@ -12,6 +12,7 @@ from core.llm.prompt_factory import PromptFactory
 from .utils import ensure_list
 from core.llm.handlers import base
 from core.llm.logger import log_reasoning_trace
+from memory.store import retrieve_for_decision
 
 logger = logging.getLogger("engine")
 
@@ -68,6 +69,17 @@ async def verify_trading_decision(
     client = factory()
     
     try:
+        targeted_context = retrieve_for_decision(
+            ticker=decision.ticker,
+            reasoning=decision.reasoning,
+        )
+        full_context = aggregated_context
+        if targeted_context:
+            if full_context:
+                full_context += "\n\n=== TARGETED TRADE MEMORY CHECK ===\n" + targeted_context
+            else:
+                full_context = "=== TRADE MEMORY CHECK ===\n" + targeted_context
+
         # 1. Prepare Prompt
         messages = PromptFactory.build_verifier_messages(
             provider=provider,
@@ -80,9 +92,9 @@ async def verify_trading_decision(
             price=decision.price or "unknown",
             limit_price=getattr(decision, "limit_price", "None"),
             portfolio_context=portfolio_context,
-            context=aggregated_context,
+            context=full_context,
             contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available.",
-            uncrowded_context=uncrowded_context if uncrowded_context else "No specific secondary effects noted."
+            uncrowded_context="No specific secondary effects noted."
         )
 
         # 2. Select Verifier Tools based on Provider

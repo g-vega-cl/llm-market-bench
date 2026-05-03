@@ -19,7 +19,7 @@ from core.db import get_supabase_client
 from core.models import DecisionObject, MacroEvent
 from execution.portfolio import Portfolio
 from execution.market_data import MarketDataManager
-from memory.store import retrieve_context_batch, get_top_trending_concepts
+from memory.store import retrieve_top_memories, get_top_trending_concepts
 
 logger = logging.getLogger("engine")
 
@@ -95,27 +95,15 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     queries = [chunk["content"] for chunk in valid_chunks]
     
     if queries:
-        # 1. Generate embeddings once
-        from memory.embeddings import get_embeddings_batch
-        embeddings = get_embeddings_batch(queries)
-
-        # 2. We retrieve standard context AND specifically look for government incentives & lessons
-        # using the same embeddings to save API calls
-        context_results = retrieve_context_batch(queries, embeddings=embeddings)
-
-        # Explicitly fetch recent government incentives to ensure they are present
-        gov_context = retrieve_context_batch(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"], embeddings=embeddings)
-        lesson_context = retrieve_context_batch(queries, limit=2, memory_types=["LESSON_LEARNED"], embeddings=embeddings)
-        uncrowded_context_list = retrieve_context_batch(queries, limit=2, memory_types=["UNCROWDED_TRADE"], embeddings=embeddings)
-
-        all_contexts = context_results + gov_context + lesson_context + uncrowded_context_list
-        aggregated_context = "\n".join(list(set([c for c in all_contexts if c])))
-        uncrowded_context = "\n".join(list(set([c for c in uncrowded_context_list if c]))) or ""
-        
-        # Add Top Trending Concepts for global awareness
+        historical_context = retrieve_top_memories(limit=5)
         trending_concepts = get_top_trending_concepts(limit=5)
+        aggregated_context = historical_context
         if trending_concepts:
-            aggregated_context += f"\n\n{trending_concepts}"
+            if aggregated_context:
+                aggregated_context += f"\n\n{trending_concepts}"
+            else:
+                aggregated_context = trending_concepts
+        uncrowded_context = ""
     else:
         aggregated_context = ""
         uncrowded_context = ""
@@ -337,21 +325,15 @@ async def analyze_chunks_streaming(chunks: list[dict]):
     queries = [chunk["content"] for chunk in valid_chunks]
     
     if queries:
-        from memory.embeddings import get_embeddings_batch
-        embeddings = get_embeddings_batch(queries)
-        
-        context_results = retrieve_context_batch(queries, embeddings=embeddings)
-        gov_context = retrieve_context_batch(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"], embeddings=embeddings)
-        lesson_context = retrieve_context_batch(queries, limit=2, memory_types=["LESSON_LEARNED"], embeddings=embeddings)
-        uncrowded_context_list = retrieve_context_batch(queries, limit=2, memory_types=["UNCROWDED_TRADE"], embeddings=embeddings)
-
-        all_contexts = context_results + gov_context + lesson_context + uncrowded_context_list
-        aggregated_context = "\n".join(list(set([c for c in all_contexts if c])))
-        uncrowded_context = "\n".join(list(set([c for c in uncrowded_context_list if c]))) or ""
-        
+        historical_context = retrieve_top_memories(limit=5)
         trending_concepts = get_top_trending_concepts(limit=5)
+        aggregated_context = historical_context
         if trending_concepts:
-            aggregated_context += f"\n\n{trending_concepts}"
+            if aggregated_context:
+                aggregated_context += f"\n\n{trending_concepts}"
+            else:
+                aggregated_context = trending_concepts
+        uncrowded_context = ""
     else:
         aggregated_context = ""
         uncrowded_context = ""

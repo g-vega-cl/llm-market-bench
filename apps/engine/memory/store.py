@@ -1,6 +1,7 @@
 """Supabase pgvector store logic."""
 
 import logging
+import re
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 from supabase import Client
@@ -8,6 +9,169 @@ from core.db import get_supabase_client
 from .embeddings import get_embedding, get_embeddings_batch
 
 logger = logging.getLogger("engine")
+
+MAX_RAG_TOKENS = 2000
+
+def _estimate_tokens(text: str) -> int:
+    return len(text) // 4
+
+def prune_context(items: list[dict], max_tokens: int = MAX_RAG_TOKENS) -> str:
+    """Rank items by importance × similarity, cap at token budget, sentence-boundary truncate.
+
+    Args:
+        items: List of dicts with 'content', 'importance_score' (optional), 'similarity' (optional).
+        max_tokens: Maximum token budget for the formatted output.
+
+    Returns:
+        A formatted string with ranked, pruned context.
+    """
+    if not items:
+        return ""
+
+    scored = []
+    for item in items:
+        importance = item.get("importance_score", 5)
+        similarity = item.get("similarity", 0.5)
+        content = item.get("content", "")
+        signal_type = item.get("label", "")
+        ticker = item.get("ticker", "")
+        scored.append((importance * similarity, content, signal_type, ticker))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    lines = []
+    tokens_used = 0
+    for score, content, signal_type, ticker in scored:
+        if not content:
+            continue
+        if signal_type == "[LESSON_LEARNED]":
+            first_sentence = re.split(r'(?<=[.!?])\s+', content)[0]
+            content = first_sentence
+
+        if ticker:
+            tag = f"[{signal_type}] {ticker}: {content}" if signal_type else f"[PAST REASONING] {ticker}: {content}"
+        else:
+            imp = int(score) if score > 0 else 5
+            tag = f"[{signal_type}] (Importance: {imp}/10) {content}" if signal_type else f"[MEMORY] {content}"
+
+        line_tokens = _estimate_tokens(tag)
+        if tokens_used + line_tokens > max_tokens:
+            continue
+        lines.append(tag)
+        tokens_used += line_tokens
+
+    return "\n".join(lines)
+
+def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
+    """Fetches the highest-importance active memories without embedding search.
+
+    Returns a formatted string suitable for injection into analysis prompts.
+    """
+    try:
+        client = get_supabase_client()
+        response = client.table("memories").select(
+            "content, importance_score, memory_type"
+        ).eq("status", "ACTIVE").gte("importance_score", min_importance).order(
+            "importance_score", desc=True
+        ).limit(limit).execute()
+
+        if not response.data:
+            return ""
+
+        items = []
+        for row in response.data:
+            mt = row.get("memory_type", "MARKET_EVENT")
+            label_map = {
+                "MARKET_EVENT": "MARKET EVENT",
+                "GOVERNMENT_INCENTIVE": "GOVERNMENT INCENTIVE",
+                "LESSON_LEARNED": "LESSON LEARNED",
+                "UNCROWDED_TRADE": "UNCROWDED TRADE",
+            }
+            label = label_map.get(mt, "MARKET EVENT")
+            items.append({
+                "content": f"- [{label}] {row['content']}",
+                "importance_score": row.get("importance_score", 5),
+            })
+
+        return "\n".join(item["content"] for item in items)
+    except Exception as e:
+        logger.error(f"Error in retrieve_top_memories: {e}")
+        return ""
+
+def retrieve_for_decision(ticker: str, reasoning: str, max_tokens: int = MAX_RAG_TOKENS) -> str:
+    """Targeted semantic search for memories relevant to a specific proposed trade.
+
+    Searches both memories and past decisions tables, ranks by importance × similarity,
+    and prunes to the token budget.
+
+    Args:
+        ticker: The ticker symbol being traded.
+        reasoning: The agent's reasoning for the trade.
+        max_tokens: Token budget for the output.
+
+    Returns:
+        A formatted, pruned context string.
+    """
+    try:
+        query = f"{ticker} {reasoning}"
+        embedding = get_embedding(query)
+        if not embedding:
+            return ""
+
+        client = get_supabase_client()
+
+        mem_response = client.rpc(
+            "match_memories",
+            {
+                "query_embedding": embedding,
+                "match_threshold": 0.4,
+                "match_count": 5,
+                "filter_memory_types": None
+            }
+        ).execute()
+
+        dec_response = client.rpc(
+            "match_decisions",
+            {
+                "query_embedding": embedding,
+                "match_threshold": 0.4,
+                "match_count": 3,
+            }
+        ).execute()
+
+        items = []
+        if mem_response.data:
+            for row in mem_response.data:
+                mt = row.get("memory_type", "MARKET_EVENT")
+                label_map = {
+                    "MARKET_EVENT": "MARKET EVENT",
+                    "GOVERNMENT_INCENTIVE": "GOVERNMENT INCENTIVE",
+                    "LESSON_LEARNED": "LESSON_LEARNED",
+                    "UNCROWDED_TRADE": "UNCROWDED TRADE",
+                }
+                label = label_map.get(mt, "MARKET EVENT")
+                items.append({
+                    "content": row.get("content", ""),
+                    "importance_score": row.get("importance_score", 5),
+                    "similarity": row.get("similarity", 0.5),
+                    "label": label,
+                    "ticker": ticker,
+                })
+
+        if dec_response.data:
+            for row in dec_response.data:
+                items.append({
+                    "content": row.get("reasoning", ""),
+                    "importance_score": 5,
+                    "similarity": row.get("similarity", 0.5),
+                    "label": "PAST REASONING",
+                    "ticker": row.get("ticker", ticker),
+                })
+
+        return prune_context(items, max_tokens)
+    except Exception as e:
+        logger.error(f"Error in retrieve_for_decision: {e}")
+        return ""
 
 def retrieve_context(query_text: str, limit: int = 3) -> str:
     """Retrieves relevant past events/reasoning for a single text snippet."""

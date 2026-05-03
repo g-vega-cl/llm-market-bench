@@ -172,47 +172,26 @@ async def verify_trading_decision(
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
 
-        # Retry logic for empty/None verification responses
-        max_verification_retries = 2
-        final_resp = None
+        # Single call — accept whatever Instructor returns
+        resp_awaitable = client.chat.completions.create(**create_args)
 
-        for attempt in range(max_verification_retries):
-            resp_awaitable = client.chat.completions.create(**create_args)
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            wrapper = await resp_awaitable
+        else:
+            wrapper = resp_awaitable
 
-            if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                wrapper = await resp_awaitable
-            else:
-                wrapper = resp_awaitable
+        # Select the last verification result if multiple were returned
+        wrapped_results = ensure_list(wrapper)
+        resp = wrapped_results[-1] if wrapped_results else None
 
-            # Select the last verification result if multiple were returned
-            wrapped_results = ensure_list(wrapper)
-            resp = wrapped_results[-1] if wrapped_results else None
-
-            # Check if response is valid (not empty/failed)
-            if resp is not None and resp.status != "REJECTED_VERIFICATION":
-                final_resp = resp
-                break
-            elif resp is not None and "No verification returned" in resp.verification_reasoning:
-                # First attempt returned empty - retry with simplified prompt
-                if attempt < max_verification_retries - 1:
-                    logger.info(f"[{provider}/{model_name}] Empty verification response on attempt {attempt + 1}, retrying...")
-                    # Add a simplified retry message to encourage structured output
-                    create_args["messages"] = copy.deepcopy(instructor_messages) + [{
-                        "role": "user",
-                        "content": "Please provide a structured verification response. Output ONLY JSON with fields: status (APPROVED or REJECTED_VERIFICATION), verification_reasoning, confidence_score (0-100)."
-                    }]
-                    continue
-            else:
-                final_resp = resp
-                break
-
-        # If all retries exhausted or never got valid response
-        if final_resp is None:
+        if resp is None:
             final_resp = VerificationResult(
                 status="REJECTED_VERIFICATION",
-                verification_reasoning="No verification returned after max retries",
+                verification_reasoning="No verification returned",
                 confidence_score=0
             )
+        else:
+            final_resp = resp
         
         # Log completion
         await log_reasoning_trace(

@@ -223,7 +223,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Set up a 'global' agent hook/env for my projects?**
 - [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too. - Maybe add a button that adds suggestion.
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
-- [ ] **Supabase push/migrate programmatically?** - Make sure your migration files match what you have and that you can migrate programmatically without breaking everything.
+- [x] **Supabase push/migrate programmatically?** - Resolved: remote DB is source of truth. Use `npx supabase db push --linked` for new migrations. See `AGENTS.md`.
 - [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
 - [ ] manage prompt size with increasing memory/lessons learned database.
 - [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades

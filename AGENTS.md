@@ -16,6 +16,7 @@
 - Model names:   `packages/config/models.json`
 - Env vars:      `apps/engine/.env.example`
 - DB schema:     `supabase/migrations/`
+- DB source of truth is the remote Supabase project (applied via `supabase db push --linked`)
 
 ## Docs
 - Architecture index: `docs/Overview.md`

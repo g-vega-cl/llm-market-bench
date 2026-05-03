@@ -51,12 +51,12 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
 
 function EmptyState({ hasFutureEvents, futureEvents }: { hasFutureEvents: boolean; futureEvents: any[] }) {
   const jokes = [
-    { emoji: '🤖', title: 'AI is observing. Markets are sleeping.', subtitle: 'First trade incoming at 09:35 ET.' },
+    { emoji: '🤖', title: 'AI is observing. Markets are sleeping.', subtitle: 'First trade incoming during market hours.' },
     { emoji: '📊', title: 'The algorithms are sharpening their models.', subtitle: 'Quiet before the storm.' },
     { emoji: '🧠', title: 'Neural networks are dreaming of electric sheep.', subtitle: 'And alpha signals.' },
-    { emoji: '⚡', title: 'Charging the neural nets.', subtitle: 'Back at 09:35 ET with market-moving insights.' },
+    { emoji: '⚡', title: 'Charging the neural nets.', subtitle: 'Back during market hours with insights.' },
     { emoji: '🔮', title: 'Crystal ball is warming up.', subtitle: 'Predictions loading...' },
-    { emoji: '💤', title: 'Agents are in power-saving mode.', subtitle: 'Wake up call at 09:35 ET.' },
+    { emoji: '💤', title: 'Agents are in power-saving mode.', subtitle: 'Wake up call during market hours.' },
   ]
 
   const randomJoke = jokes[Math.floor(Math.random() * jokes.length)]

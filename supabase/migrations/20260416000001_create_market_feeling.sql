@@ -1,6 +1,6 @@
 -- Create market_feeling table for LLM-driven market sentiment
 -- This table stores the AI's "How I'm feeling and why" analysis
--- Refreshed 3x daily during pipeline runs (09:30, 12:30, 15:30 ET)
+-- Refreshed multiple times daily during market hours
 
 CREATE TABLE market_feeling (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

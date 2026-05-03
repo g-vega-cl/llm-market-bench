@@ -213,7 +213,7 @@ Stores pipeline stdout/stderr blobs for log analysis and debugging.
 - `id` (UUID): Primary key.
 - `run_id` (TEXT): Unique run identifier (e.g., `2026-04-09_15-30-45`).
 - `run_date` (DATE): Date of ingestion.
-- `run_number` (INT): 1 (09:30), 2 (12:30), or 3 (15:30).
+- `run_number` (INT): 1 (first run), 2 (second run), or 3 (third run) during the trading day.
 - `log_blob` (TEXT): Full stdout/stderr capture.
 - `created_at` (TIMESTAMPTZ): Entry timestamp.
 
@@ -234,7 +234,7 @@ Calculates real-time P&L for all active positions by joining `portfolio_position
 
 ### `market_feeling`
 Stores the LLM-generated "How I'm feeling and why" market sentiment analysis.
-Refreshed 3x daily during pipeline runs (09:30, 12:30, 15:30 ET).
+Refreshed multiple times daily during market hours.
 
 **Purpose**: Provides a nuanced, LLM-driven market sentiment that considers trades, lessons learned, and market events - displayed prominently on the Today page.
 

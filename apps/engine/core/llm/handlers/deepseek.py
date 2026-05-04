@@ -2,7 +2,6 @@
 
 import json
 import logging
-from core.llm import tools
 from core.llm.handlers import base
 from core.llm.handlers.openai import _build_tool_list
 
@@ -33,7 +32,7 @@ async def run_tool_loop(
         args: typing.Dict[str, typing.Any] = {
             "model": model_name,
             "messages": messages,
-            "tools": override_tools or _build_tool_list(enable_web_search),
+            "tools": override_tools if override_tools is not None else _build_tool_list(enable_web_search),
         }
 
         # DeepSeek specific: Enable thinking mode (all v4 models support it)

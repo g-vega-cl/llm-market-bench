@@ -7,14 +7,14 @@ from core.llm.handlers import base
 
 logger = logging.getLogger("engine")
 
-# Default function tools for OpenAI
+# Default function tools for OpenAI (canonical format is OpenAI-native).
 DEFAULT_OPENAI_TOOLS = [
-    tools.STOCK_TOOL_DEFINITION_OPENAI,
-    tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
-    tools.POSITION_PNL_TOOL_DEFINITION_OPENAI,
-    tools.CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_OPENAI,
-    tools.CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_OPENAI,
-    tools.FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_OPENAI,
+    tools.STOCK_TOOL,
+    tools.PRICE_HISTORY_TOOL,
+    tools.POSITION_PNL_TOOL,
+    tools.CALCULATE_BUY_QUANTITY_TOOL,
+    tools.CALCULATE_SELL_QUANTITY_TOOL,
+    tools.FIND_UNCORRELATED_ASSETS_TOOL,
 ]
 
 # OpenAI web search tool (native tool, not a function)
@@ -69,7 +69,7 @@ async def run_tool_loop(
         args: typing.Dict[str, typing.Any] = {
             "model": model_name,
             "messages": messages,
-            "tools": override_tools or _build_tool_list(enable_web_search),
+            "tools": override_tools if override_tools is not None else _build_tool_list(enable_web_search),
         }
 
         try:

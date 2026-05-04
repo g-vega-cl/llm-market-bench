@@ -10,18 +10,18 @@ from core.llm.handlers import base
 
 logger = logging.getLogger("engine")
 
-# Default function tools for Gemini
+# Default function tools for Gemini (translated from canonical OpenAI format).
 DEFAULT_GEMINI_TOOLS = [
-    tools.STOCK_TOOL_DEFINITION_GEMINI,
-    tools.PRICE_HISTORY_TOOL_DEFINITION_GEMINI,
-    tools.POSITION_PNL_TOOL_DEFINITION_GEMINI,
-    tools.CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_GEMINI,
-    tools.CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_GEMINI,
-    tools.FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_GEMINI,
+    tools.to_gemini(t)
+    for t in (
+        tools.STOCK_TOOL,
+        tools.PRICE_HISTORY_TOOL,
+        tools.POSITION_PNL_TOOL,
+        tools.CALCULATE_BUY_QUANTITY_TOOL,
+        tools.CALCULATE_SELL_QUANTITY_TOOL,
+        tools.FIND_UNCORRELATED_ASSETS_TOOL,
+    )
 ]
-
-# Gemini Google Search grounding tool
-GEMINI_GOOGLE_SEARCH_TOOL = tools.GEMINI_GOOGLE_SEARCH_TOOL
 
 
 def _generate_content_config_supports(field_name: str) -> bool:
@@ -85,10 +85,14 @@ async def run_tool_loop(
         model_name: The model identifier.
         messages: The message history (modified in-place).
         max_tool_steps: Maximum iterations.
-        override_tools: Optional list of function tools to override defaults.
+        override_tools: Optional list of canonical (OpenAI-format) tool defs
+            to override defaults. Translated to Gemini format internally.
         enable_google_search: Whether to enable Google Search grounding.
     """
-    tool_defs = override_tools or DEFAULT_GEMINI_TOOLS
+    if override_tools is not None:
+        tool_defs = [tools.to_gemini(t) for t in override_tools]
+    else:
+        tool_defs = DEFAULT_GEMINI_TOOLS
 
     for _ in range(max_tool_steps):
         # Convert OpenAI-style messages or pass native Content

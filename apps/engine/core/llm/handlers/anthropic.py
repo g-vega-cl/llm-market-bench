@@ -11,21 +11,31 @@ from core.config import (
 
 logger = logging.getLogger("engine")
 
-# Default tools for Anthropic (function tools)
+# Default tools for Anthropic (translated from canonical OpenAI format).
 DEFAULT_ANTHROPIC_TOOLS = [
-    tools.STOCK_TOOL_DEFINITION_ANTHROPIC,
-    tools.PRICE_HISTORY_TOOL_DEFINITION_ANTHROPIC,
-    tools.POSITION_PNL_TOOL_DEFINITION_ANTHROPIC,
-    tools.CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_ANTHROPIC,
-    tools.CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_ANTHROPIC,
-    tools.FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_ANTHROPIC,
+    tools.to_anthropic(t)
+    for t in (
+        tools.STOCK_TOOL,
+        tools.PRICE_HISTORY_TOOL,
+        tools.POSITION_PNL_TOOL,
+        tools.CALCULATE_BUY_QUANTITY_TOOL,
+        tools.CALCULATE_SELL_QUANTITY_TOOL,
+        tools.FIND_UNCORRELATED_ASSETS_TOOL,
+    )
 ]
+
+# Anthropic web search tool with dynamic filtering (Opus 4.6 / Sonnet 4.6+).
+# Not ZDR eligible by default.
+WEB_SEARCH_TOOL_DYNAMIC_ANTHROPIC = {
+    "type": "web_search_20260209",
+    "name": "web_search",
+}
 
 
 def _get_web_search_tool():
     """Gets the web search tool definition based on config."""
     if ANTHROPIC_WEB_SEARCH_VERSION == "web_search_20260209":
-        return tools.WEB_SEARCH_TOOL_DYNAMIC_ANTHROPIC
+        return WEB_SEARCH_TOOL_DYNAMIC_ANTHROPIC
     return {
         "type": "web_search_20250305",
         "name": "web_search",
@@ -33,16 +43,23 @@ def _get_web_search_tool():
     }
 
 
-def _build_tool_list(enable_web_search: bool = False) -> list:
+def _build_tool_list(enable_web_search: bool = False, override_tools: list | None = None) -> list:
     """Builds the tool list for Anthropic API.
-    
+
+    Translates canonical (OpenAI-format) tool defs from ``override_tools``
+    if provided; otherwise uses ``DEFAULT_ANTHROPIC_TOOLS`` (already translated).
+
     Args:
-        enable_web_search: Whether to include web search tool.
-        
+        enable_web_search: Whether to include the Anthropic web search tool.
+        override_tools: Optional list of canonical tool defs to use instead of defaults.
+
     Returns:
-        List of tool definitions.
+        List of Anthropic-format tool definitions.
     """
-    base_tools = DEFAULT_ANTHROPIC_TOOLS.copy()
+    if override_tools is not None:
+        base_tools = [tools.to_anthropic(t) for t in override_tools]
+    else:
+        base_tools = DEFAULT_ANTHROPIC_TOOLS.copy()
     if enable_web_search and ENABLE_ANTHROPIC_WEB_SEARCH:
         base_tools.append(_get_web_search_tool())
     return base_tools
@@ -78,7 +95,7 @@ async def run_tool_loop(
             "model": model_name,
             "messages": current_messages,
             "max_tokens": 32000,  # Increased from 8000 to handle long tool execution loops
-            "tools": override_tools or _build_tool_list(enable_web_search),
+            "tools": _build_tool_list(enable_web_search, override_tools=override_tools),
         }
         if system_prompt:
             args["system"] = system_prompt

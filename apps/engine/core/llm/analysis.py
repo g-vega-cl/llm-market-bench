@@ -9,7 +9,6 @@ from typing import List
 from core.models import DecisionsResponse, MacroEvent
 from core.llm import clients
 from core.llm.prompt_factory import PromptFactory
-from core.llm import tools
 from core.llm.policy_lookup import lookup_policy, PolicyLookupResult
 from .utils import ensure_list
 from core.llm.logger import log_reasoning_trace

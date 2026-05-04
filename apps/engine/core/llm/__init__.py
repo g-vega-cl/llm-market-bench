@@ -25,8 +25,6 @@ MiniMaxClient = minimax.MiniMaxClient
 
 # Constants and definitions
 _CLIENT_FACTORIES = clients.CLIENT_FACTORIES
-STOCK_TOOL_DEFINITION_OPENAI = tools.STOCK_TOOL_DEFINITION_OPENAI
-STOCK_TOOL_DEFINITION_ANTHROPIC = tools.STOCK_TOOL_DEFINITION_ANTHROPIC
 execute_stock_tool = tools.execute_stock_tool
 
 __all__ = [
@@ -46,8 +44,6 @@ __all__ = [
     "_close_client",
     "MiniMaxClient",
     "_CLIENT_FACTORIES",
-    "STOCK_TOOL_DEFINITION_OPENAI",
-    "STOCK_TOOL_DEFINITION_ANTHROPIC",
     "execute_stock_tool",
     "MarketDataManager",
 ]

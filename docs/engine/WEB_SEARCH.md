@@ -34,7 +34,7 @@ The `PromptFactory` dynamically manages web search instructions:
 
 ## Key Files
 
-- `core/llm/handlers/anthropic.py` — Server tool handling, `enable_web_search` parameter
-- `core/llm/handlers/gemini.py` — Google Search grounding integration
+- `core/llm/handlers/anthropic.py` — Server tool handling, `enable_web_search` parameter, Anthropic web search tool definitions
+- `core/llm/handlers/gemini.py` — Google Search grounding integration (built inline via `types.Tool(google_search={})`)
 - `core/llm/prompt_factory.py` — Dynamic prompt assembly
-- `core/llm/tools.py` — Web search tool definitions
+- `core/llm/tools.py` — Canonical function-tool definitions (non-web-search) and `to_anthropic` / `to_gemini` adapters

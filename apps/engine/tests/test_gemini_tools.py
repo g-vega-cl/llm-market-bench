@@ -45,7 +45,7 @@ async def test_gemini_tool_loop_configures_afc_for_google_search():
         raw_client=raw_client,
         model_name="gemini-1.5-flash",
         messages=messages,
-        override_tools=[{"name": "foo", "parameters": {}}],
+        override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
         enable_google_search=True,
     )
 
@@ -81,7 +81,7 @@ async def test_gemini_tool_loop_configures_tool_config_for_google_search():
         raw_client=raw_client,
         model_name="gemini-1.5-flash",
         messages=messages,
-        override_tools=[{"name": "foo", "parameters": {}}],
+        override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
         enable_google_search=True,
     )
 

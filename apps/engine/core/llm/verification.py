@@ -97,43 +97,25 @@ async def verify_trading_decision(
             uncrowded_context="No specific secondary effects noted."
         )
 
-        # 2. Select Verifier Tools based on Provider
+        # 2. Run the verifier tool loop with the unified verifier toolset.
+        # Handlers translate canonical defs to provider-specific formats internally.
+        verifier_tools = [
+            tools.STOCK_TOOL,
+            tools.PRICE_HISTORY_TOOL,
+            tools.VOLATILITY_METRICS_TOOL,
+            tools.SECTOR_ALTERNATIVES_TOOL,
+        ]
+
         if provider == "openai":
-            verifier_tools = [
-                tools.STOCK_TOOL_DEFINITION_OPENAI,
-                tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
-                tools.VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI,
-                tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI,
-            ]
             from .handlers.openai import run_tool_loop
             await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
         elif provider == "deepseek":
-            verifier_tools = [
-                tools.STOCK_TOOL_DEFINITION_OPENAI,
-                tools.PRICE_HISTORY_TOOL_DEFINITION_OPENAI,
-                tools.VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI,
-                tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI,
-            ]
             from .handlers.deepseek import run_tool_loop
             await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
-            
         elif provider == "anthropic":
-            verifier_tools = [
-                tools.STOCK_TOOL_DEFINITION_ANTHROPIC,
-                tools.PRICE_HISTORY_TOOL_DEFINITION_ANTHROPIC,
-                tools.VOLATILITY_METRICS_TOOL_DEFINITION_ANTHROPIC,
-                tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_ANTHROPIC,
-            ]
             from core.llm.handlers.anthropic import run_tool_loop
             await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
-            
         elif provider == "gemini":
-            verifier_tools = [
-                tools.STOCK_TOOL_DEFINITION_GEMINI,
-                tools.PRICE_HISTORY_TOOL_DEFINITION_GEMINI,
-                tools.VOLATILITY_METRICS_TOOL_DEFINITION_GEMINI,
-                tools.SECTOR_ALTERNATIVES_TOOL_DEFINITION_GEMINI,
-            ]
             from core.llm.handlers.gemini import run_tool_loop
             await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
 

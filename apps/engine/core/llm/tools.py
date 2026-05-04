@@ -1,43 +1,306 @@
-"""Tool definitions and execution logic for LLMs."""
+"""Tool definitions and execution logic for LLMs.
 
-import httpx
+Tool definitions are stored in a single canonical format (OpenAI Chat Completions
+function-tool schema). Handlers translate to provider-specific formats via
+``to_anthropic`` / ``to_gemini`` at the boundary.
+"""
+
 from typing import Optional
 from execution.market_data import MarketDataManager
 from core.db import get_supabase_client
 
+
 # =============================================================================
-# WEB SEARCH TOOL DEFINITIONS
+# FORMAT ADAPTERS
 # =============================================================================
 
-# OpenAI does not support native web search as a function tool.
-# Web search is enabled via the 'web_search' tool in the tools array,
-# not as a function call. See handlers/openai.py for implementation.
+def _validate_canonical_tool(tool_def: dict) -> dict:
+    """Validates a canonical tool definition and extracts its ``function`` dict."""
+    fn = tool_def.get("function")
+    if fn is None:
+        raise KeyError(
+            f"Tool definition missing 'function' key "
+            f"(expected canonical OpenAI format): {list(tool_def.keys())!r}"
+        )
+    if not isinstance(fn, dict):
+        raise TypeError(
+            f"'function' must be a dict, got {type(fn).__name__}: {fn!r}"
+        )
+    missing = [k for k in ("name", "description", "parameters") if k not in fn]
+    if missing:
+        raise KeyError(
+            f"'function' dict missing required keys {missing}: {list(fn.keys())!r}"
+        )
+    return fn
 
-# Anthropic Web Search Tool (basic version - ZDR eligible)
-WEB_SEARCH_TOOL_DEFINITION_ANTHROPIC = {
-    "type": "web_search_20250305",
-    "name": "web_search",
-    "max_uses": 3,  # Limit searches per request
+
+def _strip_numeric_constraints(properties: dict) -> dict:
+    """Strip ``minimum``/``maximum`` from JSON Schema property definitions.
+
+    Gemini's API may enforce these at the API layer, but Python executors
+    already validate ranges internally. Removing them avoids rejecting
+    calls that would be valid before this code was unified.
+    """
+    return {
+        name: {k: v for k, v in schema.items() if k not in ("minimum", "maximum")}
+        for name, schema in properties.items()
+    }
+
+
+def to_anthropic(tool_def: dict) -> dict:
+    """Translate a canonical (OpenAI-format) tool def to Anthropic format.
+
+    Anthropic drops the ``{"type": "function", "function": {...}}`` wrapper
+    and renames ``parameters`` to ``input_schema``.
+    """
+    fn = _validate_canonical_tool(tool_def)
+    return {
+        "name": fn["name"],
+        "description": fn["description"],
+        "input_schema": fn["parameters"],
+    }
+
+
+def to_gemini(tool_def: dict) -> dict:
+    """Translate a canonical (OpenAI-format) tool def to Gemini format.
+
+    Gemini drops the ``{"type": "function", "function": {...}}`` wrapper
+    but keeps the ``parameters`` field name. Numeric constraints
+    (``minimum``, ``maximum``) are stripped since Python executors
+    handle validation and Gemini may reject constrained calls.
+    """
+    fn = _validate_canonical_tool(tool_def)
+    parameters = fn["parameters"]
+    if isinstance(parameters, dict) and "properties" in parameters:
+        parameters = {
+            **parameters,
+            "properties": _strip_numeric_constraints(parameters["properties"]),
+        }
+    return {
+        "name": fn["name"],
+        "description": fn["description"],
+        "parameters": parameters,
+    }
+
+
+# =============================================================================
+# CANONICAL TOOL DEFINITIONS (OpenAI Chat Completions function-tool format)
+# =============================================================================
+
+STOCK_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_stock_quote",
+        "description": (
+            "Get real-time price and market cap for a stock ticker to verify "
+            "its existence and liquidity."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
 }
 
-# Anthropic Web Search Tool with dynamic filtering (Opus 4.6 / Sonnet 4.6 only)
-# Not ZDR eligible by default
-WEB_SEARCH_TOOL_DYNAMIC_ANTHROPIC = {
-    "type": "web_search_20260209",
-    "name": "web_search",
+PRICE_HISTORY_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_price_history",
+        "description": "Get historical price data for a stock ticker to see if news is priced in.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days of history to retrieve (default 7).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
 }
 
-# Gemini Google Search Tool
-GEMINI_GOOGLE_SEARCH_TOOL = {
-    "name": "google_search",
-    "googleSearch": {},
+POSITION_PNL_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_position_pnl",
+        "description": "Get current unrealized P&L and cost basis for a stock you already own.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
 }
 
-# =============================================================================
-# EXISTING TOOL DEFINITIONS
-# =============================================================================
+VOLATILITY_METRICS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_volatility_metrics",
+        "description": (
+            "Calculate price volatility metrics and volume context to assess if a "
+            "stock is over-extended or has unusual trading activity."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days of history to retrieve (default 14).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
 
-FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_OPENAI = {
+SECTOR_ALTERNATIVES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_sector_alternatives",
+        "description": "Identify correlated stocks or competitors in the same sector to find less crowded plays.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+CALCULATE_BUY_QUANTITY_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "calculate_buy_quantity",
+        "description": (
+            "Calculate how many shares to BUY based on a percentage of your available "
+            "buying power (1-100%). This tool automatically enforces the mandatory "
+            "10% total equity minimum position size."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                },
+                "percentage": {
+                    "type": "integer",
+                    "description": "Percentage of available buying power to allocate (1-100).",
+                    "minimum": 1,
+                    "maximum": 100,
+                },
+            },
+            "required": ["ticker", "percentage"],
+        },
+    },
+}
+
+CALCULATE_SELL_QUANTITY_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "calculate_sell_quantity",
+        "description": (
+            "Calculate how many shares to SELL based on a percentage of your current "
+            "position (1-100%). If the remaining balance would fall below 10% of "
+            "total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
+            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
+            " the entire position. Small sells create dust and are discouraged."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol.",
+                },
+                "percentage": {
+                    "type": "integer",
+                    "description": "Percentage of current position to sell (1-100).",
+                    "minimum": 1,
+                    "maximum": 100,
+                },
+            },
+            "required": ["ticker", "percentage"],
+        },
+    },
+}
+
+RUN_STOCK_SCREENER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "run_stock_screener",
+        "description": (
+            "Screen for stocks using various financial filters. Use this to identify "
+            "investable assets when you have a market theme but no specific tickers."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
+                "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
+                "price_more_than": {"type": "number", "description": "Minimum stock price."},
+                "price_lower_than": {"type": "number", "description": "Maximum stock price."},
+                "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
+                "beta_lower_than": {"type": "number", "description": "Maximum beta."},
+                "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
+                "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
+                "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
+                "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
+                "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services')."},
+                "industry": {"type": "string", "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors')."},
+                "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage."},
+                "limit": {"type": "integer", "description": "Maximum number of results (default 10, max 15)."},
+            },
+        },
+    },
+}
+
+SEARCH_RELATED_TICKERS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_related_tickers",
+        "description": (
+            "Given a market theme or event, identify relevant stock tickers or ETFs "
+            "that would be most impacted."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "theme": {
+                    "type": "string",
+                    "description": "The market theme, concept, or event (e.g., 'Private Credit', 'AI demand surge').",
+                },
+            },
+            "required": ["theme"],
+        },
+    },
+}
+
+FIND_UNCORRELATED_ASSETS_TOOL = {
     "type": "function",
     "function": {
         "name": "find_uncorrelated_assets",
@@ -67,623 +330,10 @@ FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_OPENAI = {
     },
 }
 
-FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "find_uncorrelated_assets",
-    "description": (
-        "Find asset pairs with low correlation and positive 90-day momentum. "
-        "Useful for building diversified portfolios with uncorrelated assets. "
-        "Returns pairs sorted by correlation (lowest first) that have positive returns."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "max_correlation": {
-                "type": "number",
-                "description": "Maximum absolute correlation to include (0.0 to 1.0). Default 0.3. Lower values = more uncorrelated.",
-            },
-            "min_return": {
-                "type": "number",
-                "description": "Minimum 90-day return for both assets in percentage. Default 0.0.",
-            },
-            "method": {
-                "type": "string",
-                "enum": ["pearson", "spearman"],
-                "description": "Correlation method: 'pearson' (linear) or 'spearman' (rank-based). Default 'pearson'.",
-            },
-        },
-    },
-}
-
-FIND_UNCORRELATED_ASSETS_TOOL_DEFINITION_GEMINI = {
-    "name": "find_uncorrelated_assets",
-    "description": (
-        "Find asset pairs with low correlation and positive 90-day momentum. "
-        "Useful for building diversified portfolios with uncorrelated assets. "
-        "Returns pairs sorted by correlation (lowest first) that have positive returns."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "max_correlation": {
-                "type": "number",
-                "description": "Maximum absolute correlation to include (0.0 to 1.0). Default 0.3. Lower values = more uncorrelated.",
-            },
-            "min_return": {
-                "type": "number",
-                "description": "Minimum 90-day return for both assets in percentage. Default 0.0.",
-            },
-            "method": {
-                "type": "string",
-                "enum": ["pearson", "spearman"],
-                "description": "Correlation method: 'pearson' (linear) or 'spearman' (rank-based). Default 'pearson'.",
-            },
-        },
-    },
-}
-
-SEARCH_RELATED_TICKERS_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "search_related_tickers",
-        "description": (
-            "Given a market theme or event, identify relevant stock tickers or ETFs "
-            "that would be most impacted."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "theme": {
-                    "type": "string",
-                    "description": "The market theme, concept, or event (e.g., 'Private Credit', 'AI demand surge').",
-                }
-            },
-            "required": ["theme"],
-        },
-    },
-}
-
-STOCK_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "get_stock_quote",
-        "description": (
-            "Get real-time price and market cap for a stock ticker to verify "
-            "its existence and liquidity."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
-                }
-            },
-            "required": ["ticker"],
-        },
-    },
-}
-
-SEARCH_RELATED_TICKERS_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "search_related_tickers",
-    "description": (
-        "Given a market theme or event, identify relevant stock tickers or ETFs "
-        "that would be most impacted."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "theme": {
-                "type": "string",
-                "description": "The market theme, concept, or event (e.g., 'Private Credit', 'AI demand surge').",
-            }
-        },
-        "required": ["theme"],
-    },
-}
-
-STOCK_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "get_stock_quote",
-    "description": (
-        "Get real-time price and market cap for a stock ticker to verify "
-        "its existence and liquidity."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-PRICE_HISTORY_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "get_price_history",
-        "description": "Get historical price data for a stock ticker to see if news is priced in.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                },
-                "days": {
-                    "type": "integer",
-                    "description": "Number of days of history to retrieve (default 7).",
-                }
-            },
-            "required": ["ticker"],
-        },
-    },
-}
-
-PRICE_HISTORY_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "get_price_history",
-    "description": "Get historical price data for a stock ticker to see if news is priced in.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "days": {
-                "type": "integer",
-                "description": "Number of days of history to retrieve (default 7).",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-POSITION_PNL_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "get_position_pnl",
-        "description": "Get current unrealized P&L and cost basis for a stock you already own.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                }
-            },
-            "required": ["ticker"],
-        },
-    },
-}
-
-POSITION_PNL_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "get_position_pnl",
-    "description": "Get current unrealized P&L and cost basis for a stock you already own.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-VOLATILITY_METRICS_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "get_volatility_metrics",
-        "description": "Calculate price volatility metrics and volume context to assess if a stock is over-extended or has unusual trading activity.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                },
-                "days": {
-                    "type": "integer",
-                    "description": "Number of days of history to retrieve (default 14).",
-                }
-            },
-            "required": ["ticker"],
-        },
-    },
-}
-
-VOLATILITY_METRICS_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "get_volatility_metrics",
-    "description": "Calculate price volatility metrics and volume context to assess if a stock is over-extended or has unusual trading activity.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "days": {
-                "type": "integer",
-                "description": "Number of days of history to retrieve (default 14).",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-SECTOR_ALTERNATIVES_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "get_sector_alternatives",
-        "description": "Identify correlated stocks or competitors in the same sector to find less crowded plays.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                }
-            },
-            "required": ["ticker"],
-        },
-    },
-}
-
-SECTOR_ALTERNATIVES_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "get_sector_alternatives",
-    "description": "Identify correlated stocks or competitors in the same sector to find less crowded plays.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "run_stock_screener",
-        "description": (
-            "Screen for stocks using various financial filters. Use this to identify "
-            "investable assets when you have a market theme but no specific tickers."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
-                "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
-                "price_more_than": {"type": "number", "description": "Minimum stock price."},
-                "price_lower_than": {"type": "number", "description": "Maximum stock price."},
-                "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
-                "beta_lower_than": {"type": "number", "description": "Maximum beta."},
-                "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
-                "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
-                "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
-                "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
-                "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services')."},
-                "industry": {"type": "string", "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors')."},
-                "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage."},
-                "limit": {"type": "integer", "description": "Maximum number of results (default 10, max 15)."}
-            }
-        },
-    },
-}
-
-RUN_STOCK_SCREENER_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "run_stock_screener",
-    "description": (
-        "Screen for stocks using various financial filters. Use this to identify "
-        "investable assets when you have a market theme but no specific tickers."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
-            "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
-            "price_more_than": {"type": "number", "description": "Minimum stock price."},
-            "price_lower_than": {"type": "number", "description": "Maximum stock price."},
-            "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
-            "beta_lower_than": {"type": "number", "description": "Maximum beta."},
-            "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
-            "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
-            "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
-            "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
-            "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services')."},
-            "industry": {"type": "string", "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors')."},
-            "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage."},
-            "limit": {"type": "integer", "description": "Maximum number of results (default 10, max 15)."}
-        }
-    },
-}
 
 # =============================================================================
-# CONSOLIDATED QUANTITY CALCULATION TOOLS
+# TOOL EXECUTION
 # =============================================================================
-
-CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "calculate_buy_quantity",
-        "description": (
-            "Calculate how many shares to BUY based on a percentage of your available "
-            "buying power (1-100%). This tool automatically enforces the mandatory "
-            "10% total equity minimum position size."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                },
-                "percentage": {
-                    "type": "integer",
-                    "description": "Percentage of available buying power to allocate (1-100).",
-                    "minimum": 1,
-                    "maximum": 100
-                }
-            },
-            "required": ["ticker", "percentage"],
-        },
-    },
-}
-
-CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "calculate_sell_quantity",
-        "description": (
-            "Calculate how many shares to SELL based on a percentage of your current "
-            "position (1-100%). If the remaining balance would fall below 10% of "
-            "total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
-            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
-            " the entire position. Small sells create dust and are discouraged."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "ticker": {
-                    "type": "string",
-                    "description": "The stock ticker symbol.",
-                },
-                "percentage": {
-                    "type": "integer",
-                    "description": "Percentage of current position to sell (1-100).",
-                    "minimum": 1,
-                    "maximum": 100
-                }
-            },
-            "required": ["ticker", "percentage"],
-        },
-    },
-}
-
-CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "calculate_buy_quantity",
-    "description": (
-        "Calculate how many shares to BUY based on a percentage of your available "
-        "buying power (1-100%). This tool automatically enforces the mandatory "
-        "10% total equity minimum position size."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "percentage": {
-                "type": "integer",
-                "description": "Percentage of available buying power to allocate (1-100).",
-                "minimum": 1,
-                "maximum": 100
-            }
-        },
-        "required": ["ticker", "percentage"],
-    },
-}
-
-CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_ANTHROPIC = {
-    "name": "calculate_sell_quantity",
-    "description": (
-        "Calculate how many shares to SELL based on a percentage of your current "
-        "position (1-100%). If the remaining balance would fall below 10% of "
-"total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
-            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
-            " the entire position. Small sells create dust and are discouraged."
-        ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "percentage": {
-                "type": "integer",
-                "description": "Percentage of current position to sell (1-100).",
-                "minimum": 1,
-                "maximum": 100
-            }
-        },
-        "required": ["ticker", "percentage"],
-    },
-}
-
-# =============================================================================
-# GEMINI TOOL DEFINITIONS (for core market data tools)
-# =============================================================================
-
-STOCK_TOOL_DEFINITION_GEMINI = {
-    "name": "get_stock_quote",
-    "description": (
-        "Get real-time price and market cap for a stock ticker to verify "
-        "its existence and liquidity."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-PRICE_HISTORY_TOOL_DEFINITION_GEMINI = {
-    "name": "get_price_history",
-    "description": "Get historical price data for a stock ticker to see if news is priced in.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "days": {
-                "type": "integer",
-                "description": "Number of days of history to retrieve (default 7).",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-POSITION_PNL_TOOL_DEFINITION_GEMINI = {
-    "name": "get_position_pnl",
-    "description": "Get current unrealized P&L and cost basis for a stock you already own.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-VOLATILITY_METRICS_TOOL_DEFINITION_GEMINI = {
-    "name": "get_volatility_metrics",
-    "description": "Calculate price volatility metrics and volume context to assess if a stock is over-extended or has unusual trading activity.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "days": {
-                "type": "integer",
-                "description": "Number of days of history to retrieve (default 14).",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-SECTOR_ALTERNATIVES_TOOL_DEFINITION_GEMINI = {
-    "name": "get_sector_alternatives",
-    "description": "Identify correlated stocks or competitors in the same sector to find less crowded plays.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            }
-        },
-        "required": ["ticker"],
-    },
-}
-
-CALCULATE_BUY_QUANTITY_TOOL_DEFINITION_GEMINI = {
-    "name": "calculate_buy_quantity",
-    "description": (
-        "Calculate how many shares to BUY based on a percentage of your available "
-        "buying power (1-100%). This tool automatically enforces the mandatory "
-        "10% total equity minimum position size."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "percentage": {
-                "type": "integer",
-                "description": "Percentage of available buying power to allocate (1-100).",
-            }
-        },
-        "required": ["ticker", "percentage"],
-    },
-}
-
-CALCULATE_SELL_QUANTITY_TOOL_DEFINITION_GEMINI = {
-    "name": "calculate_sell_quantity",
-    "description": (
-        "Calculate how many shares to SELL based on a percentage of your current "
-        "position (1-100%). If the remaining balance would fall below 10% of "
-"total equity, it will recommend a 100% (FULL) sell to avoid dust positions."
-            " IMPORTANT: Avoid selling tiny amounts (e.g., 1-5% of position) unless clearing"
-            " the entire position. Small sells create dust and are discouraged."
-        ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "ticker": {
-                "type": "string",
-                "description": "The stock ticker symbol.",
-            },
-            "percentage": {
-                "type": "integer",
-                "description": "Percentage of current position to sell (1-100).",
-            }
-        },
-        "required": ["ticker", "percentage"],
-    },
-}
-
-RUN_STOCK_SCREENER_TOOL_DEFINITION_GEMINI = {
-    "name": "run_stock_screener",
-    "description": (
-        "Screen for stocks using various financial filters. Use this to identify "
-        "investable assets when you have a market theme but no specific tickers."
-    ),
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
-            "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
-            "price_more_than": {"type": "number", "description": "Minimum stock price."},
-            "price_lower_than": {"type": "number", "description": "Maximum stock price."},
-            "beta_more_than": {"type": "number", "description": "Minimum beta (volatility relative to market)."},
-            "beta_lower_than": {"type": "number", "description": "Maximum beta."},
-            "volume_more_than": {"type": "number", "description": "Minimum average daily volume."},
-            "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
-            "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
-            "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
-            "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare')."},
-            "industry": {"type": "string", "description": "Filter by specific industry."},
-            "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ')."},
-            "limit": {"type": "integer", "description": "Maximum number of results (max 15)."}
-        }
-    },
-}
-
-
 
 async def execute_stock_tool(ticker: str) -> str:
     """Executes the stock tool and returns a stringified result for the LLM.
@@ -714,14 +364,14 @@ async def execute_price_history_tool(ticker: str, days: int = 7) -> str:
     manager = MarketDataManager()
     try:
         data = await manager.get_history(ticker, days)
-        
+
         if not data:
             return f"No historical price data found for {ticker}."
-        
+
         history_str = f"Historical Price Data for {ticker} (Recent first):\n"
         for entry in data:
             history_str += f"- {entry['fetched_at']}: ${entry['price']:.2f}\n"
-        
+
         return history_str
     except Exception as e:
         return f"Error fetching price history for {ticker}: {str(e)}"
@@ -737,10 +387,10 @@ async def execute_position_pnl_tool(ticker: str, owner_id: str) -> str:
             .eq("ticker", ticker) \
             .eq("owner_id", owner_id) \
             .execute()
-        
+
         if not res.data:
             return f"You do not currently own a position in {ticker}."
-        
+
         pos = res.data[0]
         return (
             f"Position for {ticker}:\n"
@@ -752,24 +402,25 @@ async def execute_position_pnl_tool(ticker: str, owner_id: str) -> str:
     except Exception as e:
         return f"Error fetching position P&L for {ticker}: {str(e)}"
 
+
 async def execute_volatility_metrics_tool(ticker: str, days: int = 14) -> str:
     """Calculates volatility metrics and volume context for a ticker."""
     manager = MarketDataManager()
     try:
         data = await manager.get_history(ticker, days)
-        
+
         if not data or len(data) < 2:
             return f"Insufficient historical data for {ticker} to calculate volatility."
-        
+
         curr = data[0]["price"]
         prices = [p["price"] for p in data]
-        
+
         import statistics
         avg = statistics.mean(prices)
         stdev = statistics.stdev(prices)
         p_min = min(prices)
         p_max = max(prices)
-        
+
         return (
             f"Volatility Metrics for {ticker} (last {len(prices)} samples):\n"
             f"- Current Price: ${curr:.2f}\n"
@@ -792,18 +443,18 @@ def compute_volume_context(history: list[dict]) -> str:
     volumes = [h["volume"] for h in history if h.get("volume")]
     if not volumes or len(volumes) < 5:
         return "insufficient volume data"
-    
+
     latest_volume = volumes[0]
     lookback = volumes[:20] if len(volumes) >= 20 else volumes
     avg_volume = sum(lookback) / len(lookback)
     lookback_days = min(20, len(volumes))
-    
+
     ratio = latest_volume / avg_volume if avg_volume > 0 else 0
-    
+
     sorted_vols = sorted(volumes)
     below_count = sum(1 for v in sorted_vols if v < latest_volume)
     percentile = (below_count / len(sorted_vols)) * 100
-    
+
     return f"{ratio:.1f}x above {lookback_days}-day average ({percentile:.0f}th percentile)"
 
 
@@ -866,60 +517,53 @@ async def execute_stock_screener_tool(
                 f"Market Cap: ${item.get('marketCap', 0) / 1e9:.2f}B, "
                 f"Volume Context: {item.get('volume_context')}\n"
             )
-        
+
         return output
     except Exception as e:
         return f"Error executing stock screener: {str(e)}"
 
+
 from memory.embeddings import get_embedding
 
-# ... (rest of imports)
 
 async def execute_sector_alternatives_tool(ticker: str) -> str:
     """Identifies sector alternatives for a ticker using vector search on past decisions."""
     client = get_supabase_client()
     try:
         ticker = ticker.upper()
-        
-        # 1. Generate an embedding for the sector context
-        # We frame the query to find decisions about similar companies/sectors
+
         query_text = f"Market analysis and trading decision for {ticker} stock in this sector"
         embedding = get_embedding(query_text)
-        
+
         if not embedding:
              return f"Could not generate embedding for {ticker} to find alternatives."
 
-        # 2. Find conceptually similar past decisions
-        # This helps us find tickers that appear in similar decision contexts (sectors)
         res = client.rpc(
             "match_decisions",
             {
                 "query_embedding": embedding,
-                "match_threshold": 0.5, # Moderate threshold to capture sector peers
+                "match_threshold": 0.5,
                 "match_count": 10,
             }
         ).execute()
-        
-        # 3. Extract unique tickers, excluding the target ticker
+
         related_tickers = set()
         if res.data:
             for item in res.data:
                 t = item.get("ticker")
                 if t and t != ticker:
                     related_tickers.add(t)
-        
-        # 4. Fallback if vector search yields nothing (e.g. cold start or only self-matches)
+
         if not related_tickers:
-             # Try simple text search in memories as fallback
             mem_res = client.table("memories") \
                 .select("content") \
                 .ilike("content", f"%{ticker}%") \
                 .limit(5) \
                 .execute()
-            
+
             if mem_res.data:
                  return f"No direct competitors found in decision history, but {ticker} appears in recent market events. Consider searching for standard competitors manually."
-            
+
             return f"No alternative plays found for {ticker}."
 
         alts = list(related_tickers)[:5]
@@ -927,38 +571,35 @@ async def execute_sector_alternatives_tool(ticker: str) -> str:
     except Exception as e:
         return f"Error finding alternatives for {ticker}: {str(e)}"
 
+
 async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int) -> str:
     """Calculates buy quantity with 10% equity floor enforcement."""
     from execution.portfolio import Portfolio
-    
+
     ticker = ticker.upper()
     portfolio = Portfolio(owner_id)
     await portfolio.initialize()
-    
+
     manager = MarketDataManager()
     try:
         quote = await manager.get_quote(ticker)
         if not quote or not quote.exists:
              return f"Error: Ticker '{ticker}' not found."
-        
+
         price = quote.price
-        
-        # 1. Fetch current prices for all held positions to get accurate equity
+
         current_prices = {t: p.average_cost_basis for t, p in portfolio.positions.items()}
         current_prices[ticker] = price
-        
+
         metrics = portfolio.calculate_reg_t_metrics(current_prices)
-        
-        # 2. Calculate Floor (10% of total equity)
+
         equity_floor_usd = metrics.total_equity * 0.10
-        
-        # 3. Calculate target value based on requested percentage of buying power
+
         target_value_usd = metrics.buying_power * (percentage / 100.0)
-        
-        # 4. Enforce Floor: Every trade must be >= Floor
+
         final_target_usd = target_value_usd
         compliance_note = ""
-        
+
         if target_value_usd < equity_floor_usd:
             final_target_usd = equity_floor_usd
             compliance_note = (
@@ -966,19 +607,18 @@ async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int)
                 f"10% Total Equity Floor (${equity_floor_usd:,.2f}). This tool has automatically "
                 f"upsized your request to meet the minimum required position size."
             )
-            
-        # 5. Cap at available Buying Power
+
         if final_target_usd > metrics.buying_power:
              final_target_usd = metrics.buying_power
              compliance_note += f"\nWARNING: Insufficient Buying Power to meet the preferred allocation. Capped at ${metrics.buying_power:,.2f}."
 
         quantity = int(final_target_usd / price)
-        
+
         if quantity == 0 and final_target_usd > 0:
-             quantity = 1 # Buy at least 1 share if we have any BP
+             quantity = 1
 
         actual_cost = quantity * price
-        
+
         status = "COMPLIANT ✅" if actual_cost >= equity_floor_usd else "INSUFFICIENT FUNDS ❌"
 
         return (
@@ -999,39 +639,36 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
     """Calculates sell quantity with 10% equity 'dust' check."""
     from execution.portfolio import Portfolio
     client = get_supabase_client()
-    
+
     ticker = ticker.upper()
     portfolio = Portfolio(owner_id)
     await portfolio.initialize()
-    
+
     manager = MarketDataManager()
-    
+
     try:
         res = client.table("position_pnl") \
             .select("*") \
             .eq("ticker", ticker) \
             .eq("owner_id", owner_id) \
             .execute()
-        
+
         if not res.data:
             return f"Error: You do not currently own a position in {ticker}."
-            
+
         pos_data = res.data[0]
         total_shares = int(pos_data['quantity'])
         price = float(pos_data['current_price'])
-        
-        # Fetch equity context
+
         current_prices = {t: p.average_cost_basis for t, p in portfolio.positions.items()}
         current_prices[ticker] = price
         metrics = portfolio.calculate_reg_t_metrics(current_prices)
         equity_floor_usd = metrics.total_equity * 0.10
-        
-        # 1. Calculate requested sell
+
         sell_shares = int(total_shares * (percentage / 100.0))
         remaining_shares = total_shares - sell_shares
         remaining_value = remaining_shares * price
-        
-        # 2. Enforce Dust Rule: If remaining value < 10% equity, sell ALL
+
         compliance_note = ""
         if remaining_shares > 0 and remaining_value < equity_floor_usd:
              sell_shares = total_shares
@@ -1041,13 +678,12 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
                  f"which is below your 10% Equity Floor (${equity_floor_usd:,.2f}). "
                  f"To prevent 'dust' positions, this tool has mandated a 100% (FULL) sell."
              )
-        
-        # Ensure we sell at least 1 share if percentage > 0
+
         if sell_shares == 0 and percentage > 0:
              sell_shares = 1
-        
+
         sell_shares = min(sell_shares, total_shares)
-        
+
         return (
             f"SELL CALCULATION COMPLETE for {ticker}:\n"
             f"- Current Holdings: {total_shares} shares\n"
@@ -1061,18 +697,15 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
         return f"Error calculating sell quantity for {ticker}: {str(e)}"
 
 
-# Remove old sell helpers
-
-
 async def execute_search_related_tickers_tool(theme: str) -> str:
     """Uses LLM to search for tickers related to a theme."""
     from core.llm.prompt_factory import PromptFactory
+    from core.llm.clients import get_gemini_client
     from core.config import GEMINI_MODEL
     from core.models import TickerSuggestion
 
     client = get_gemini_client()
     try:
-        # Use centralized PromptFactory for ticker suggestions
         messages = PromptFactory.build_ticker_suggestion_messages(
             provider="gemini",
             event_summary=theme
@@ -1113,7 +746,6 @@ async def execute_find_uncorrelated_assets_tool(
     client = get_supabase_client()
 
     try:
-        # Get latest correlation run
         runs = client.table("correlation_runs").select("id").order("run_date", ascending=False).limit(1).execute()
 
         if not runs.data:
@@ -1124,7 +756,6 @@ async def execute_find_uncorrelated_assets_tool(
 
         run_id = runs.data[0]["id"]
 
-        # Query correlation data
         corr_field = "pearson_corr" if method == "pearson" else "spearman_corr"
 
         results = client.table("correlation_data").select("*").eq("run_id", run_id).execute()
@@ -1132,7 +763,6 @@ async def execute_find_uncorrelated_assets_tool(
         if not results.data:
             return "No correlation data found for the latest run."
 
-        # Filter pairs
         filtered = []
         for row in results.data:
             corr = row.get(corr_field)
@@ -1150,7 +780,6 @@ async def execute_find_uncorrelated_assets_tool(
                 "avg_return": (ret_a + ret_b) / 2,
             })
 
-        # Sort by absolute correlation (lowest first)
         filtered.sort(key=lambda x: x["abs_corr"])
 
         if not filtered:
@@ -1159,7 +788,6 @@ async def execute_find_uncorrelated_assets_tool(
                 f"Try increasing max_correlation or decreasing min_return."
             )
 
-        # Build output
         output = f"UNCORRELATED ASSET PAIRS (sorted by {method} correlation, lowest first):\n\n"
 
         for i, pair in enumerate(filtered[:20], 1):
@@ -1176,24 +804,3 @@ async def execute_find_uncorrelated_assets_tool(
 
     except Exception as e:
         return f"Error finding uncorrelated assets: {str(e)}"
-
-
-# =============================================================================
-# WEB SEARCH EXECUTION
-# =============================================================================
-
-async def execute_web_search_tool(query: str) -> str:
-    """Executes a web search and returns formatted results.
-    
-    This is a fallback implementation for providers that don't have native
-    web search tool support. For Anthropic and Gemini, use their native
-    web search tools instead.
-    
-    Args:
-        query: The search query string.
-        
-    Returns:
-        Formatted search results or error message.
-    """
-    # This function is a fallback - native providers use their own search
-    return "Web search is handled natively by your provider. Use the web_search tool directly."

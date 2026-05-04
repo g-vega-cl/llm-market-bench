@@ -31,19 +31,9 @@ class DiscoveryAgent:
         self.model_name = model_name
         self.provider = get_provider_from_model(model_name)
         self.client = clients.CLIENT_FACTORIES[self.provider]()
-        
-        if self.provider == "gemini":
-            self.discovery_tools = [
-                tools.RUN_STOCK_SCREENER_TOOL_DEFINITION_GEMINI,
-            ]
-        elif self.provider == "anthropic":
-            self.discovery_tools = [
-                tools.RUN_STOCK_SCREENER_TOOL_DEFINITION_ANTHROPIC,
-            ]
-        else:
-            self.discovery_tools = [
-                tools.RUN_STOCK_SCREENER_TOOL_DEFINITION_OPENAI,
-            ]
+
+        # Handlers translate canonical defs to provider-specific format internally.
+        self.discovery_tools = [tools.RUN_STOCK_SCREENER_TOOL]
 
     async def discover_assets(self, theme: str, context: Optional[str] = None) -> List[dict]:
         """Executes a single-call tool-calling mission to find ~5 assets for a given theme.

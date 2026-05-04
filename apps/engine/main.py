@@ -82,9 +82,8 @@ async def _stage_dust_cleanup(sb_client):
             logger.info(f"[{model}] Checking {len(portfolio.positions)} positions for dust...")
             
             # Get current prices for all positions
-            price_tasks = [mdm.get_quote(ticker) for ticker in portfolio.positions.keys()]
-            quotes = await asyncio.gather(*price_tasks)
-            price_map = {q.ticker: q.price for q in quotes if q}
+            quotes = await mdm.get_quotes(list(portfolio.positions.keys()))
+            price_map = {ticker: data.price for ticker, data in quotes.items()}
             
             # Calculate threshold for logging
             if portfolio.metrics:

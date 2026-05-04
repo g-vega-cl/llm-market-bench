@@ -68,10 +68,10 @@ class MarketDataManager:
     _screener_cache: dict = {}
 
     def __init__(self, cache_ttl_seconds: Optional[int] = None):
-        from core.config import FINANCIAL_PROVIDER, MARKET_DATA_CACHE_TTL_SECONDS
+        import core.config as cfg
         self.client = get_supabase_client()
-        self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else MARKET_DATA_CACHE_TTL_SECONDS
-        self.providers = [get_financial_provider(FINANCIAL_PROVIDER)]
+        self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else cfg.MARKET_DATA_CACHE_TTL_SECONDS
+        self.providers = [get_financial_provider(cfg.FINANCIAL_PROVIDER)]
 
     @property
     def provider(self):

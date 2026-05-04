@@ -229,7 +229,7 @@ Semantically similar concepts are merged. Stale concepts decay via half-life. PC
 | Minimum Value | Trade cost above floor (waived for SELL via tool) |
 | SMA Floor | Projected SMA stays above safety threshold |
 
-Tunable thresholds (`MAX_PRICE_DEVIATION_PCT`, `MIN_TRADE_VALUE`, liquidity floor, SMA floor): `apps/engine/.env.example` and `apps/engine/core/config.py`. Market data uses a short-TTL cache to absorb redundant calls — TTL constant in `core/config.py`.
+Tunable thresholds (`MAX_PRICE_DEVIATION_PCT`, `MIN_TRADE_VALUE`, liquidity floor, SMA floor): `apps/engine/.env.example` and `apps/engine/core/config.py`. Market data uses a 5-minute cache (configurable via `MARKET_DATA_CACHE_TTL_SECONDS` env var or `apps/engine/core/config.py`) to absorb redundant calls across pipeline stages.
 
 ### Reg T Margin Validation
 

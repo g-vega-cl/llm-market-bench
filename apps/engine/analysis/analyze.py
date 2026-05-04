@@ -127,11 +127,8 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     price_map = {}
     if all_tickers:
         logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
-        price_tasks = [market_data.get_quote(ticker) for ticker in all_tickers]
-        quotes = await asyncio.gather(*price_tasks)
-        for quote in quotes:
-            if quote:
-                price_map[quote.ticker] = quote.price
+        quotes = await market_data.get_quotes(list(all_tickers))
+        price_map = {ticker: data.price for ticker, data in quotes.items()}
     
     tasks = []
     task_configs = [] # NEW: Keep track of which model is associated with each task
@@ -355,11 +352,8 @@ async def analyze_chunks_streaming(chunks: list[dict]):
     price_map = {}
     if all_tickers:
         logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
-        price_tasks = [market_data.get_quote(ticker) for ticker in all_tickers]
-        quotes = await asyncio.gather(*price_tasks)
-        for quote in quotes:
-            if quote:
-                price_map[quote.ticker] = quote.price
+        quotes = await market_data.get_quotes(list(all_tickers))
+        price_map = {ticker: data.price for ticker, data in quotes.items()}
     
     tasks = []
     task_configs = []

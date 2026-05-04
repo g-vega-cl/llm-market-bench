@@ -267,6 +267,10 @@ Two-phase commit establishing bidirectional Decision ↔ Trade links:
 2. **Trade Execution**: Insert trade with `decision_id` FK → get `trade_id`
 3. **Phase 2** (post-trade): Update decision with `status="EXECUTED"` and `trade_id`
 
+**Guards against silent data loss:**
+- `save_decision()` raises `RuntimeError` when Supabase upsert returns no data (instead of returning `{}` and silently losing the decision ID)
+- `_process_single_decision()` validates the pre-save returned a truthy `decision_id` before calling `execute_trade` — if absent, the trade is aborted and the decision never reaches EXECUTED status
+
 Result: machine-auditable path: **News → Reasoning → Decision ↔ Trade**
 
 ### Ledger & Performance

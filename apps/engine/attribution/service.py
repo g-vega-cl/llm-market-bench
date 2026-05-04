@@ -65,8 +65,9 @@ def save_decision(
         ).execute()
 
         if not response.data:
-            logger.warning(f"Decision for {decision.ticker} saved but no data returned.")
-            return {}
+            msg = f"Decision for {decision.ticker} saved but no data returned (status={status})."
+            logger.error(msg)
+            raise RuntimeError(msg)
 
         return response.data[0]
     except Exception as e:

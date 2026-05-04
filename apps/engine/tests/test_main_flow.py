@@ -275,6 +275,39 @@ async def test_run_ingest_calls_dust_cleanup_first(mock_dependencies):
 
 
 @pytest.mark.asyncio
+async def test_run_ingest_aborts_when_presave_returns_no_id(mock_dependencies):
+    """Test that trade is aborted when pre-save returns no decision ID."""
+    md = mock_dependencies
+
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="Growth",
+        ticker="GOOGL",
+        source_id="src1",
+        price=150.0
+    )
+    md["analyze"].return_value = ([decision], [], "Mocked context", "")
+
+    md["validate"].return_value = ValidationResult(
+        status=ValidationStatus.PASSED,
+        market_price=155.0,
+        ticker="GOOGL"
+    )
+
+    # Simulate pre-save returning a dict without id (edge case)
+    md["save"].side_effect = [
+        {"no_id": True},  # pre-save returns no decision_id
+        {"id": "fallback-id"}  # Wouldn't be reached
+    ]
+
+    await run_ingest(force=True)
+
+    md["portfolio"].execute_trade.assert_not_called()
+    assert md["save"].call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_run_weekend_ingest_skips_analysis_and_trading():
     """Test that weekend pipeline only runs ingestion and market feeling."""
     with patch("main.ingest_newsletters") as mock_ingest, \

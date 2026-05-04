@@ -98,3 +98,21 @@ def test_save_decision_error(mock_supabase):
 
     with pytest.raises(Exception, match="DB Error"):
         save_decision(mock_supabase, decision)
+
+
+def test_save_decision_raises_on_empty_response(mock_supabase):
+    """Test that RuntimeError is raised when upsert returns empty data."""
+    mock_supabase.table().upsert().execute.return_value.data = []
+
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=85,
+        reasoning="Empty response test",
+        ticker="MSFT",
+        source_id="news_empty",
+        model_provider="openai",
+        model_name="gpt-4o"
+    )
+
+    with pytest.raises(RuntimeError, match="no data returned"):
+        save_decision(mock_supabase, decision)

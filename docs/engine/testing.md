@@ -71,8 +71,8 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 
 | Test File | Coverage |
 |-----------|----------|
-| `test_attribution.py` | Decision persistence, UPSERT idempotency, trade linking |
-| `test_main_flow.py` | End-to-end pipeline orchestration |
+| `test_attribution.py` | Decision persistence, UPSERT idempotency, trade linking, empty upsert response raises error |
+| `test_main_flow.py` | End-to-end pipeline orchestration, pre-save guard aborts trade on missing decision_id |
 
 ### 6. Resilience & Core
 

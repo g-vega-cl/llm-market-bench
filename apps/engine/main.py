@@ -337,6 +337,9 @@ async def _process_single_decision(
                     # We pre-save to get the ID for the trade link
                     decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
                     decision_id = decision_row.get("id")
+                    if not decision_id:
+                        logger.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
+                        return False
 
                     trade_id = await portfolio.execute_trade(d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map)
 

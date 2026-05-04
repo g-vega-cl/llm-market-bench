@@ -230,6 +230,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
 - [ ] - Move to openrouter?
 - [ ] - Retry server errors?
+- [ ] - Benchify: focus on making good tool-calling, stock researching agents. Rather than an info dump.
 
 ### Under Consideration
 

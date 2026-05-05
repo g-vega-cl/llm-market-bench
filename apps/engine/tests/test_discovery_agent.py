@@ -116,7 +116,7 @@ class TestDiscoveryAgentSingleCall:
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_no_text(self, mock_provider):
-        """Verify empty list returned when no text content in response."""
+        """Verify empty list returned when no text content in response, even after forced completion."""
         agent = DiscoveryAgent(model_name="anthropic/claude-haiku")
         
         mock_run_tool_loop = AsyncMock()
@@ -128,9 +128,37 @@ class TestDiscoveryAgentSingleCall:
         mock_run_tool_loop.side_effect = capture_messages
         agent.client = MagicMock()
         
-        result = await agent.discover_assets("AI infrastructure")
+        with patch.object(agent, "_force_text_completion", new_callable=AsyncMock) as mock_force:
+            result = await agent.discover_assets("AI infrastructure")
         
         assert result == []
+        mock_force.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_forced_completion_saves_the_result(self, mock_provider):
+        """Verify forced text completion can extract results when tool loop produces no text."""
+        agent = DiscoveryAgent(model_name="openai/gpt-4o-mini")
+        
+        mock_run_tool_loop = AsyncMock()
+        mock_provider["openai"].run_tool_loop = mock_run_tool_loop
+        
+        async def capture_messages(raw_client, model_name, messages, **kwargs):
+            messages.append({"role": "tool", "content": "Some tool result"})
+        
+        mock_run_tool_loop.side_effect = capture_messages
+        agent.client = MagicMock()
+        
+        with patch.object(agent, "_force_text_completion", new_callable=AsyncMock) as mock_force:
+            async def force_side_effect(messages):
+                messages.append({"role": "assistant", "content": SIMPLE_JSON_RESULT})
+            mock_force.side_effect = force_side_effect
+            
+            result = await agent.discover_assets("AI infrastructure")
+        
+        assert len(result) == 2
+        assert result[0]["ticker"] == "AAPL"
+        assert result[1]["ticker"] == "MSFT"
+        mock_force.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_invalid_json(self, mock_provider):
@@ -265,6 +293,36 @@ class TestExtractFinalText:
         result = agent._extract_final_text([msg])
         
         assert result == "Final answer with parts"
+
+    def test_handles_anthropic_list_content(self):
+        """Verify handling of Anthropic messages where content is a list of text blocks."""
+        agent = DiscoveryAgent(model_name="gemini/gemini-2.0-flash")
+        
+        messages = [
+            {"role": "user", "content": "Theme: AI"},
+            {"role": "assistant", "content": [
+                {"type": "tool_use", "name": "screener", "input": {}},
+                {"type": "text", "text": "Here are my findings"},
+            ]},
+        ]
+        
+        result = agent._extract_final_text(messages)
+        assert result == "Here are my findings"
+
+    def test_handles_anthropic_mixed_blocks(self):
+        """Verify Anthropic blocks with multiple text parts are joined."""
+        agent = DiscoveryAgent(model_name="gemini/gemini-2.0-flash")
+        
+        messages = [
+            {"role": "assistant", "content": [
+                {"type": "text", "text": "Part one"},
+                {"type": "tool_use", "name": "screener", "input": {}},
+                {"type": "text", "text": "Part two"},
+            ]},
+        ]
+        
+        result = agent._extract_final_text(messages)
+        assert result == "Part one Part two"
 
     def test_returns_empty_on_no_content(self):
         """Verify empty string returned when no valid content found."""

@@ -205,3 +205,41 @@ async def test_get_history_pure_historical_cache_works():
 
     mock_provider.get_history.assert_not_called()
     assert len(history) == 5
+
+
+@pytest.mark.asyncio
+async def test_get_history_rejects_single_date_cache():
+    """Cache with only 1 distinct historical date should trigger a re-fetch.
+
+    This was the bug: a single-date cache (e.g., all rows from 2026-04-24)
+    was incorrectly accepted as valid, freezing price history forever.
+    """
+    mock_supabase = MagicMock()
+    mock_res = MagicMock()
+    mock_res.data = [
+        {"price": 172.50, "fetched_at": "2026-04-24T16:00:00+00:00"},
+        {"price": 172.00, "fetched_at": "2026-04-24T15:00:00+00:00"},
+        {"price": 171.50, "fetched_at": "2026-04-24T14:00:00+00:00"},
+        {"price": 171.00, "fetched_at": "2026-04-24T13:00:00+00:00"},
+        {"price": 170.50, "fetched_at": "2026-04-24T12:00:00+00:00"},
+        {"price": 169.90, "fetched_at": "2026-04-24T11:00:00+00:00"},
+        {"price": 169.10, "fetched_at": "2026-04-24T10:00:00+00:00"},
+    ]
+
+    mock_query = mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit
+    mock_query.return_value.execute.return_value = mock_res
+
+    mock_provider = AsyncMock()
+    mock_provider.get_history.return_value = [
+        {"price": 175.00, "fetched_at": "2026-05-04"},
+        {"price": 174.50, "fetched_at": "2026-05-03"},
+        {"price": 173.00, "fetched_at": "2026-05-02"},
+    ]
+
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
+        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+            manager = MarketDataManager()
+            history = await manager.get_history("MSFT", days=7)
+
+    mock_provider.get_history.assert_called_once_with("MSFT", 7)
+    assert len(history) == 3

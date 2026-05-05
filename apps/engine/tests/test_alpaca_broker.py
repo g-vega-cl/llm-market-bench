@@ -208,13 +208,14 @@ class TestSubmitLimitOrder:
 class TestSellGuardrails:
 
     async def test_sell_skipped_when_no_alpaca_position(self, mock_trading_client):
-        """SELL order is skipped entirely if Alpaca holds 0 shares."""
+        """SELL order is skipped when Alpaca holds 0 shares and Supabase also shows 0."""
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
         with patch.object(
             broker, "get_alpaca_position", return_value=0.0
         ) as mock_pos, \
+             patch.object(broker, "_get_supabase_position", return_value=0) as mock_sup, \
              patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update:
             trade_id = uuid4()
             await broker.submit_limit_order(
@@ -227,8 +228,36 @@ class TestSellGuardrails:
             )
 
             mock_pos.assert_called_once_with("TSLA")
+            mock_sup.assert_called_once_with("TSLA", "test")
             mock_trading_client.submit_order.assert_not_called()
             mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
+
+    async def test_sell_proceeds_when_supabase_has_position_but_alpaca_does_not(
+        self, mock_trading_client
+    ):
+        """SELL order proceeds when Alpaca shows 0 but Supabase ledger shows the position."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(
+            broker, "get_alpaca_position", return_value=0.0
+        ) as mock_pos, \
+             patch.object(broker, "_get_supabase_position", return_value=15) as mock_sup:
+            trade_id = uuid4()
+            await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="JPM",
+                quantity=5,
+                signal="SELL",
+                limit_price=200.00,
+                agent_id="contrarian_agent",
+            )
+
+            mock_pos.assert_called_once_with("JPM")
+            mock_sup.assert_called_once_with("JPM", "contrarian_agent")
+            request = mock_trading_client.submit_order.call_args[0][0]
+            assert request.qty == 5
+            assert request.side == OrderSide.SELL
 
     async def test_sell_quantity_capped_when_under_held(self, mock_trading_client):
         """SELL quantity is reduced to actual Alpaca holdings when fewer shares held."""
@@ -349,6 +378,109 @@ class TestGetAlpacaPosition:
         broker = AlpacaBroker()
         broker._client = None
         assert broker.get_alpaca_position("AAPL") == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Supabase Position Lookup (_get_supabase_position)
+# ---------------------------------------------------------------------------
+
+class TestGetSupabasePosition:
+
+    def test_returns_quantity_when_position_exists(self):
+        """_get_supabase_position returns the quantity from Supabase ledger."""
+        broker = AlpacaBroker()
+
+        mock_positions = MagicMock()
+        mock_positions.data = [{"quantity": 15}]
+
+        mock_portfolio = MagicMock()
+        mock_portfolio.data = [{"id": "pf-123"}]
+
+        # Chainable builder mock: .select/.eq/.eq all return self, .execute returns response
+        def make_builder(execute_response):
+            b = MagicMock()
+            b.select.return_value = b
+            b.eq.return_value = b
+            b.execute.return_value = execute_response
+            return b
+
+        portfolios_builder = make_builder(mock_portfolio)
+        positions_builder = make_builder(mock_positions)
+
+        def table_side_effect(name):
+            if name == "portfolios":
+                return portfolios_builder
+            if name == "portfolio_positions":
+                return positions_builder
+            return MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.table.side_effect = table_side_effect
+
+        with patch("execution.alpaca_broker.get_supabase_client", return_value=mock_client):
+            qty = broker._get_supabase_position("JPM", "contrarian_agent")
+            assert qty == 15
+
+    def test_returns_zero_when_no_portfolio_found(self):
+        """Returns 0 when the agent has no portfolio entry."""
+        broker = AlpacaBroker()
+
+        mock_portfolio = MagicMock()
+        mock_portfolio.data = []
+
+        b = MagicMock()
+        b.select.return_value = b
+        b.eq.return_value = b
+        b.execute.return_value = mock_portfolio
+
+        mock_client = MagicMock()
+        mock_client.table.return_value = b
+
+        with patch("execution.alpaca_broker.get_supabase_client", return_value=mock_client):
+            qty = broker._get_supabase_position("JPM", "unknown_agent")
+            assert qty == 0
+
+    def test_returns_zero_when_no_position_for_ticker(self):
+        """Returns 0 when portfolio exists but ticker is not held."""
+        broker = AlpacaBroker()
+
+        mock_positions = MagicMock()
+        mock_positions.data = []
+
+        mock_portfolio = MagicMock()
+        mock_portfolio.data = [{"id": "pf-123"}]
+
+        def make_builder(execute_response):
+            b = MagicMock()
+            b.select.return_value = b
+            b.eq.return_value = b
+            b.execute.return_value = execute_response
+            return b
+
+        def table_side_effect(name):
+            if name == "portfolios":
+                return make_builder(mock_portfolio)
+            if name == "portfolio_positions":
+                return make_builder(mock_positions)
+            return MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.table.side_effect = table_side_effect
+
+        with patch("execution.alpaca_broker.get_supabase_client", return_value=mock_client):
+            qty = broker._get_supabase_position("UNKNOWN", "test_agent")
+            assert qty == 0
+
+    def test_returns_zero_on_supabase_error(self):
+        """Returns 0 and logs warning when Supabase query fails."""
+        broker = AlpacaBroker()
+
+        mock_client = MagicMock()
+        mock_client.table.side_effect = RuntimeError("connection timeout")
+
+        with patch("execution.alpaca_broker.get_supabase_client", return_value=mock_client):
+            qty = broker._get_supabase_position("JPM", "test_agent")
+            assert qty == 0
 
 
 # ---------------------------------------------------------------------------

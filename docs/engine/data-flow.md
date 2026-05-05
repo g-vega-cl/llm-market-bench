@@ -66,6 +66,12 @@ Periodic cron fetches global macro catalysts from Trading Economics. High-import
 
 Enforces trading only during US market hours (weekdays, holiday-aware) via the FMP market-status API. Uses class-level caching so the API is called once per pipeline run rather than per-validation. TTL constant: `execution/market_data.py`.
 
+### Price History Caching
+
+**Files:** `apps/engine/execution/market_data.py`
+
+`get_history()` uses a persistent cache in the `price_history` table with date-coverage validation. To avoid serving stale single-date snapshots, the validator requires at least `ceil(days_requested / 2)` distinct dates across the cached entries. A cache with only one historical date (e.g., all rows from `2026-04-24`) will fail validation and trigger a re-fetch from the provider (FMP), ensuring the history stays fresh as new trading days accumulate. The benchmark tickers (SPY, QQQ, GLD, etc.) are backfilled hourly by `update_prices.py`; portfolio-specific tickers are backfilled on-demand when LLMs call the `get_price_history` tool.
+
 ### Dust Cleanup
 
 **Files:** `apps/engine/main.py`
@@ -145,7 +151,7 @@ LLMs can invoke these tools during analysis:
 
 ### Discovery Agent
 
-**Files:** `apps/engine/core/llm/discovery.py`
+**Files:** `apps/engine/analysis/discovery_agent.py`, `apps/engine/analysis/discovery_service.py`
 
 Before parallel analysis, a specialized `DiscoveryAgent` identifies relevant assets for each market theme:
 
@@ -154,7 +160,9 @@ Before parallel analysis, a specialized `DiscoveryAgent` identifies relevant ass
 3. **Step 2** (optional): Uses web search to verify business models and thematic relevance
 4. **Step 3**: Synthesizes findings into structured JSON with ticker, name, and reason per asset
 
-Caps (max candidates, max final tickers, exchange filter, cap floor) live in `core/llm/discovery.py`.
+Caps (max candidates, max final tickers, exchange filter, cap floor) live in `analysis/discovery_agent.py`.
+
+**Resilience**: If the tool-calling loop produces only tool invocations without a final text response (e.g., the model exhausts tool steps before summarizing), the agent automatically appends a "summarize your picks" prompt and forces a text-only completion to extract results. Provider-specific message formats (OpenAI dicts, Anthropic content-block lists, Gemini `Content` objects) are handled transparently in `_extract_final_text()`.
 
 **Strategic Framework:**
 1. **Identify the Bottleneck** — Who owns the critical infrastructure everyone else needs?
@@ -184,7 +192,7 @@ After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engi
 
 ## Phase 4: Consensus & Synthesis
 
-**Files:** `apps/engine/consensus.py`
+**Files:** `apps/engine/analysis/consensus.py`
 
 ### Event Consensus Protocol
 
@@ -255,7 +263,7 @@ This prevents "Phantom Deductions" if the DB connection fails mid-operation.
 
 **Cost Basis**: Uses weighted average method. New avg = (Old Total Cost + New Purchase Cost) / New Total Quantity. See [PNL-CALCULATIONS.md](./PNL-CALCULATIONS.md) for formulas.
 
-**Alpaca Paper Mirror**: Every settled trade is fire-and-forget mirrored to Alpaca's paper API as a DAY limit order with agent-tagged `client_order_id`. Limit price is computed server-side (`exec_price * 1.005` for BUY, `* 0.995` for SELL) to ensure fill. Shorting guardrail prevents accidental short positions if the mirror has drifted from the internal ledger.
+**Alpaca Paper Mirror**: Every settled trade is fire-and-forget mirrored to Alpaca's paper API as a DAY limit order with agent-tagged `client_order_id`. Limit price is computed server-side (`exec_price * 1.005` for BUY, `* 0.995` for SELL) to ensure fill. The SELL shorting guardrail first checks Alpaca's current position; if Alpaca shows 0 shares, it falls back to the Supabase `portfolio_positions` ledger via `_get_supabase_position()`. If the ledger confirms the position exists, the SELL proceeds — only skips when both sources agree the ticker is not held.
 
 ### Attribution Locking
 
@@ -391,7 +399,7 @@ Decoupled vector storage separates macro context from strategy context:
 | `apps/engine/core/llm/verification.py` | Skeptical Verifier with targeted per-trade RAG |
 | `apps/engine/core/llm/` | Multi-provider LLM clients + handlers |
 | `apps/engine/core/macro_tracker.py` | Global macro regime detection |
-| `apps/engine/consensus.py` | Semantic grouping, event synthesis |
+| `apps/engine/analysis/consensus.py` | Semantic grouping, event synthesis |
 | `apps/engine/analysis/momentum.py` | Trend velocity, decay logic |
 | `apps/engine/analysis/post_analysis.py` | Manager Agent post-mortem |
 | `apps/engine/analysis/contrarian.py` | Contrarian Agent execution |

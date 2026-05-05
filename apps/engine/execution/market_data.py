@@ -36,12 +36,6 @@ def _validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]
     if distinct_count == 0:
         return False, "no valid dates"
 
-    if distinct_count == 1:
-        only_date = list(distinct_dates)[0]
-        if only_date == today:
-            return False, f"all data from today ({today})"
-        return True, f"single historical date ({only_date})"
-
     if all(d == today for d in distinct_dates):
         return False, f"all {distinct_count} rows from today"
 

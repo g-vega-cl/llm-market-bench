@@ -50,7 +50,7 @@ An immutable ledger of all executed trades. **Supabase is the source of truth.**
 - `realized_pnl` (NUMERIC): The profit or loss realized by this trade (for SELL signals).
 - `realized_pnl_pct` (NUMERIC): The profit or loss percentage realized by this trade.
 - `alpaca_order_id` (TEXT): Alpaca paper-trading order UUID for third-party audit.
-- `alpaca_status` (TEXT): Alpaca order status (`PENDING`, `FILLED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`). `SKIPPED_NO_POSITION` means the SELL was not mirrored to Alpaca because Alpaca held zero shares of the ticker, preventing an accidental short.
+- `alpaca_status` (TEXT): Alpaca order status (`PENDING`, `FILLED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`). `SKIPPED_NO_POSITION` means the SELL was not mirrored to Alpaca because both Alpaca and the Supabase `portfolio_positions` ledger showed zero shares of the ticker, preventing an accidental short. Before skipping, Alpaca consults Supabase as fallback — if the ledger shows the position, the SELL proceeds.
 - `alpaca_submitted_at` (TIMESTAMPTZ): When the order was submitted to Alpaca.
 
 ### `portfolio_performance`

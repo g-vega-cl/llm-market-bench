@@ -96,13 +96,21 @@ class AlpacaBroker:
         if side == OrderSide.SELL:
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty <= 0:
-                logger.warning(
-                    f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
-                    f"Alpaca holds {alpaca_qty} shares. No shorting allowed."
-                )
-                await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                return
-            if quantity > alpaca_qty:
+                supabase_qty = self._get_supabase_position(ticker, agent_id)
+                if supabase_qty > 0:
+                    logger.info(
+                        f"[Alpaca] Supabase shows {supabase_qty} {ticker} shares, "
+                        f"overriding Alpaca position (0 shares)."
+                    )
+                    quantity = min(quantity, supabase_qty)
+                else:
+                    logger.warning(
+                        f"[Alpaca] SKIPPED SELL {quantity} {ticker}: "
+                        f"Alpaca holds {alpaca_qty} shares. No shorting allowed."
+                    )
+                    await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
+                    return
+            elif quantity > alpaca_qty:
                 logger.warning(
                     f"[Alpaca] CAPPING SELL for {ticker}: "
                     f"requested {quantity}, Alpaca holds {alpaca_qty}. "
@@ -147,3 +155,38 @@ class AlpacaBroker:
             supabase.table("trades").update(payload).eq("id", str(trade_id)).execute()
         except Exception as exc:
             logger.error(f"[Alpaca] Failed to update trade {trade_id} status: {exc}")
+
+    def _get_supabase_position(self, ticker: str, agent_id: str) -> int:
+        """Check Supabase portfolio_positions for a ticker held by an agent.
+
+        Used as a fallback source of truth when Alpaca shows 0 shares for a SELL.
+        Matches the agent_id to a portfolio via the portfolios table, then looks up
+        the position quantity for the given ticker.
+        """
+        try:
+            supabase = get_supabase_client()
+            portfolio_res = (
+                supabase.table("portfolios")
+                .select("id")
+                .eq("owner_id", agent_id)
+                .execute()
+            )
+            if not portfolio_res.data:
+                logger.debug(f"[Alpaca] No portfolio found for agent '{agent_id}'")
+                return 0
+            portfolio_id = portfolio_res.data[0]["id"]
+            pos_res = (
+                supabase.table("portfolio_positions")
+                .select("quantity")
+                .eq("portfolio_id", portfolio_id)
+                .eq("ticker", ticker)
+                .execute()
+            )
+            if pos_res.data:
+                qty = int(pos_res.data[0]["quantity"])
+                logger.debug(f"[Alpaca] Supabase position for {ticker} (agent {agent_id}): {qty}")
+                return qty
+            return 0
+        except Exception as exc:
+            logger.warning(f"[Alpaca] Failed to query Supabase position for {ticker}: {exc}")
+            return 0

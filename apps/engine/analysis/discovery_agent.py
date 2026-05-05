@@ -83,6 +83,11 @@ class DiscoveryAgent:
         final_text = self._extract_final_text(messages)
         
         if not final_text:
+            messages.append({"role": "user", "content": "Please output your top 5 stock picks as a JSON array now."})
+            await self._force_text_completion(messages)
+            final_text = self._extract_final_text(messages)
+        
+        if not final_text:
             logger.warning("DiscoveryAgent: No text content in final response")
             return []
         
@@ -102,6 +107,11 @@ class DiscoveryAgent:
                 if msg.get("role") not in {"assistant", "model"}:
                     continue
                 content = msg.get("content", "")
+                if isinstance(content, list):
+                    content = " ".join(
+                        block.get("text", "") for block in content
+                        if isinstance(block, dict) and block.get("type") == "text"
+                    )
             elif getattr(msg, "role", None) in {"assistant", "model"}:
                 content = " ".join(
                     part.text for part in getattr(msg, "parts", []) if getattr(part, "text", None)
@@ -111,6 +121,67 @@ class DiscoveryAgent:
             if content and isinstance(content, str) and content.strip():
                 return content
         return ""
+
+    async def _force_text_completion(self, messages: list) -> None:
+        """Force a text-only completion when tool loop produced no assistant text."""
+        try:
+            if self.provider in ("openai", "deepseek"):
+                resp = await self.client.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                )
+                if resp.choices and resp.choices[0].message:
+                    messages.append(resp.choices[0].message.model_dump())
+            elif self.provider == "gemini":
+                from google import genai as google_genai
+                contents = []
+                system_instruction = None
+                for m in messages:
+                    if isinstance(m, google_genai.types.Content):
+                        contents.append(m)
+                    elif isinstance(m, dict) and m.get("role") == "system":
+                        system_instruction = m.get("content")
+                    elif isinstance(m, dict):
+                        role = "model" if m.get("role") in ("assistant", "model") else "user"
+                        parts = [{"text": m.get("content", "") or ""}]
+                        contents.append({"role": role, "parts": parts})
+                config = {}
+                if system_instruction:
+                    config["system_instruction"] = system_instruction
+                resp = await self.client.client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=config,
+                )
+                if resp.candidates and resp.candidates[0].content:
+                    messages.append(resp.candidates[0].content)
+            elif self.provider == "anthropic":
+                system = ""
+                anthropic_msgs = []
+                for m in messages:
+                    if isinstance(m, dict):
+                        if m.get("role") == "system":
+                            system = m.get("content", "")
+                        elif m.get("role") in ("assistant", "user"):
+                            content = m.get("content", "")
+                            if isinstance(content, list):
+                                text = " ".join(
+                                    b.get("text", "") for b in content
+                                    if isinstance(b, dict) and b.get("type") == "text"
+                                )
+                                anthropic_msgs.append({"role": m["role"], "content": text})
+                            elif isinstance(content, str):
+                                anthropic_msgs.append({"role": m["role"], "content": content})
+                resp = await self.client.client.messages.create(
+                    model=self.model_name,
+                    system=system,
+                    messages=anthropic_msgs,
+                    max_tokens=4096,
+                )
+                text_blocks = [b.text for b in resp.content if b.type == "text"]
+                messages.append({"role": "assistant", "content": "\n".join(text_blocks)})
+        except Exception as e:
+            logger.warning(f"DiscoveryAgent: forced text completion failed: {e}")
 
     def _parse_json_response(self, text: str) -> List[dict]:
         """Extract and parse JSON from the response text."""

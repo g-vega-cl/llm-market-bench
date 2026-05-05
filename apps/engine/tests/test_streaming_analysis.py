@@ -173,6 +173,8 @@ class TestEarlyContrarianStart:
 
         mock_market_data = MagicMock()
         mock_market_data.get_quote = AsyncMock(return_value=None)
+        mock_market_data.get_quotes = AsyncMock(return_value={})
+        mock_market_data.is_market_open = AsyncMock(return_value=True)
 
         mock_gemini_client = MagicMock()
         mock_response = MagicMock()

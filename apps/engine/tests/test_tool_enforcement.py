@@ -26,7 +26,7 @@ def mock_clients():
         }
 
 def test_scan_history_openai_format():
-    """Verify scanning OpenAI-style message history."""
+    """Verify scanning OpenAI-style message history for quantity tools."""
     messages = [
         {"role": "user", "content": "Sell AAPL"},
         {
@@ -37,7 +37,7 @@ def test_scan_history_openai_format():
                     "id": "call_1"
                 },
                 {
-                    "function": {"name": "get_stock_quote", "arguments": '{"ticker": "AAPL"}'},
+                    "function": {"name": "calculate_buy_quantity", "arguments": '{"ticker": "AAPL", "percentage": 20}'},
                     "id": "call_2"
                 }
             ]
@@ -45,28 +45,29 @@ def test_scan_history_openai_format():
     ]
     
     res = _scan_history_for_tools(messages, "AAPL")
-    assert res["quote_found"] is True
     assert res["sell_tool_found"] is True
+    assert res["buy_tool_found"] is True
     
     res_msft = _scan_history_for_tools(messages, "MSFT")
-    assert res_msft["quote_found"] is False
+    assert res_msft["sell_tool_found"] is False
+    assert res_msft["buy_tool_found"] is False
 
 def test_scan_history_anthropic_format():
-    """Verify scanning Anthropic-style message history."""
+    """Verify scanning Anthropic-style message history for quantity tools."""
     messages = [
         {"role": "user", "content": "Sell TSLA"},
         {
             "role": "assistant",
             "content": [
                 {"type": "text", "text": "Let me check..."},
-                {"type": "tool_use", "name": "get_stock_quote", "input": {"ticker": "TSLA"}, "id": "u1"}
+                {"type": "tool_use", "name": "calculate_sell_quantity", "input": {"ticker": "TSLA", "percentage": 100}, "id": "u1"}
             ]
         }
     ]
     
     res = _scan_history_for_tools(messages, "TSLA")
-    assert res["quote_found"] is True
-    assert res["sell_tool_found"] is False # Sell tool missing
+    assert res["sell_tool_found"] is True
+    assert res["buy_tool_found"] is False
 
 def test_scan_history_gemini_format():
     """Verify scanning Gemini-style native content history."""
@@ -85,13 +86,13 @@ def test_scan_history_gemini_format():
             
     messages = [
         MockContent([
-            MockPart("get_stock_quote", {"ticker": "GOOG"}),
+            MockPart("calculate_buy_quantity", {"ticker": "GOOG", "percentage": 50}),
             MockPart("calculate_sell_quantity", {"ticker": "GOOG", "percentage": 100})
         ])
     ]
     
     res = _scan_history_for_tools(messages, "GOOG")
-    assert res["quote_found"] is True
+    assert res["buy_tool_found"] is True
     assert res["sell_tool_found"] is True
 
 def test_scan_history_robust_matching():
@@ -101,28 +102,24 @@ def test_scan_history_robust_matching():
             "role": "assistant",
             "tool_calls": [
                 {
-                    "function": {"name": "get_stock_quote", "arguments": '{"ticker": "  aapl  "}'},
+                    "function": {"name": "calculate_buy_quantity", "arguments": '{"ticker": "  aapl  ", "percentage": 10}'},
                     "id": "c1"
                 }
             ]
         }
     ]
     
-    # Matching with clean ticker
     res = _scan_history_for_tools(messages, "AAPL")
-    assert res["quote_found"] is True
+    assert res["buy_tool_found"] is True
     
-    # Matching with messy ticker
     res_messy = _scan_history_for_tools(messages, " aapl ")
-    assert res_messy["quote_found"] is True
+    assert res_messy["buy_tool_found"] is True
 
 @pytest.mark.asyncio
 async def test_analyze_with_provider_hard_enforcement(mock_clients):
     """Verify that analyze_with_provider correctly updates sell_tool_called."""
-    # Setup: Agent claims to have called sell tool but history is empty
     mock_instructor = mock_clients["instructor"]
     
-    # DecisionsResponse returned by Instructor
     mock_instructor.create.return_value = [DecisionsResponse(
         decisions=[
             DecisionObject(
@@ -131,14 +128,13 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
                 confidence=90,
                 reasoning="Test",
                 source_id="s1",
-                sell_tool_called=True, # AGENT CLAIMS TRUE
+                sell_tool_called=True,
                 quantity=10
             )
         ],
         macro_events=[]
     )]
     
-    # Mock handlers to not add any tools to messages
     with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock), \
          patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock):
         resp = await analyze_with_provider(
@@ -147,9 +143,8 @@ async def test_analyze_with_provider_hard_enforcement(mock_clients):
             chunks=[{"source_id": "s1", "content": "..."}]
         )
         
-    # Verify that the final decision has sell_tool_called=False because history was empty
     assert resp.decisions[0].ticker == "AAPL"
-    assert resp.decisions[0].sell_tool_called is False # UPDATED BY HARD ENFORCEMENT
+    assert resp.decisions[0].sell_tool_called is False
 
 
 @pytest.mark.asyncio
@@ -181,7 +176,7 @@ async def test_validate_and_enrich_removes_vague_government_event():
     chunks = [{"source_id": "gov_1", "content": "The government is considering new budget allocations."}]
 
     with patch("core.llm.analysis.lookup_policy", new_callable=AsyncMock) as mock_lookup:
-        mock_lookup.return_value = None  # Lookup fails
+        mock_lookup.return_value = None
 
         await _validate_and_enrich_government_events(
             response, chunks, "openai", "gpt-4"
@@ -293,7 +288,7 @@ def test_is_vague_government_event_false_for_specific_names():
     assert _is_vague_government_event("CHIPS Act Expansion") is False
     assert _is_vague_government_event("EU Green Hydrogen Act") is False
     assert _is_vague_government_event("Japan GX Transformation Bonds") is False
-    assert _is_vague_government_event("Fed Rate Cut Cycle") is False  # Not government policy
+    assert _is_vague_government_event("Fed Rate Cut Cycle") is False
 
 
 def test_is_vague_government_event_false_for_non_policy_events():

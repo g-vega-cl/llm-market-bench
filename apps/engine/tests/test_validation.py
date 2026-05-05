@@ -1,4 +1,4 @@
-"""Unit tests for the Pre-Market Validation logic."""
+"""Unit tests for the Pre-Market Validation logic (Approach 3: no AI price)."""
 
 import pytest
 from unittest.mock import AsyncMock, patch
@@ -8,7 +8,7 @@ from execution.providers.base import TickerData
 
 @pytest.mark.asyncio
 async def test_validate_decision_pass():
-    """Test that a valid ticker with correct price and liquidity passes."""
+    """Test that a valid ticker with liquidity passes."""
     mock_data = TickerData(
         ticker="AAPL",
         price=150.0,
@@ -21,8 +21,7 @@ async def test_validate_decision_pass():
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
         mock_manager.is_market_open = AsyncMock(return_value=True)
         
-        # AI suggests $150.5 (within 1% of $150.0)
-        result = await validate_decision("AAPL", 150.5)
+        result = await validate_decision("AAPL")
         
         assert result.status == ValidationStatus.PASSED
         assert result.ticker == "AAPL"
@@ -36,32 +35,10 @@ async def test_validate_decision_hallucination():
         mock_manager.get_quote = AsyncMock(return_value=None)
         mock_manager.is_market_open = AsyncMock(return_value=True)
         
-        result = await validate_decision("FAKE", 100.0)
+        result = await validate_decision("FAKE")
         
         assert result.status == ValidationStatus.REJECTED_HALLUCINATION
         assert "not found" in result.reason.lower()
-
-
-@pytest.mark.asyncio
-async def test_validate_decision_price_deviation():
-    """Test that high price deviation is rejected."""
-    mock_data = TickerData(
-        ticker="TSLA",
-        price=200.0,
-        market_cap=600_000_000_000.0,
-        exists=True
-    )
-    
-    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
-        mock_manager = mock_manager_cls.return_value
-        mock_manager.get_quote = AsyncMock(return_value=mock_data)
-        mock_manager.is_market_open = AsyncMock(return_value=True)
-        
-        # AI suggests $50 (deviation > 15%)
-        result = await validate_decision("TSLA", 50.0)
-        
-        assert result.status == ValidationStatus.REJECTED_PRICE_DEVIATION
-        assert "Price deviation too high" in result.reason
 
 
 @pytest.mark.asyncio
@@ -79,30 +56,7 @@ async def test_validate_decision_liquidity():
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
         mock_manager.is_market_open = AsyncMock(return_value=True)
         
-        result = await validate_decision("PENY", 1.0)
+        result = await validate_decision("PENY")
         
         assert result.status == ValidationStatus.REJECTED_LIQUIDITY
         assert "Insufficient liquidity" in result.reason
-
-
-@pytest.mark.asyncio
-async def test_validate_decision_no_ai_price():
-    """Test that validating without an AI price skips banding but checks liquidity."""
-    mock_data = TickerData(
-        ticker="MSFT",
-        price=400.0,
-        market_cap=3_000_000_000_000.0,
-        exists=True
-    )
-    
-    with patch("execution.validation.MarketDataManager") as mock_manager_cls:
-        mock_manager = mock_manager_cls.return_value
-        mock_manager.get_quote = AsyncMock(return_value=mock_data)
-        mock_manager.is_market_open = AsyncMock(return_value=True)
-        
-        # ai_price is None
-        result = await validate_decision("MSFT", None)
-        
-        assert result.status == ValidationStatus.PASSED
-        assert result.ticker == "MSFT"
-        assert result.market_price == 400.0

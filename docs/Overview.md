@@ -81,9 +81,10 @@ graph TD
 
 ### Analysis
 - Parallel LLM analysis via PromptFactory with modular provider handlers
+- **Pre-Injected Market Data**: System pre-fetches current prices for relevant tickers (portfolio holdings + `$SYMB` in chunks + major indices) and injects them as VERIFIED MARKET DATA directly into prompts. LLMs never produce price fields — eliminating price hallucination at the source.
 - **Tiered context injection**: Analysis agents receive light context (top-5 high-importance events + trending concepts, ~500 tokens). The Skeptical Verifier receives targeted per-trade RAG context (up to 2k tokens, ranked by importance × similarity).
 - Batch strategy (20 chunks per call) to avoid output truncation
-- Active tool loop: `get_stock_quote`, `calculate_buy/sell_quantity`, `web_search`, `run_stock_screener`
+- Active tool loop: `get_stock_quote` (optional fallback), `calculate_buy/sell_quantity`, `web_search`, `run_stock_screener`
 - DiscoveryAgent identifies investable assets via stock screener tool-calling
 - Global Macro Tracker provides regime awareness (σ-based "Risk-On / Risk-Off" detection)
 
@@ -93,7 +94,7 @@ graph TD
 - Trend analysis (momentum scoring, PCA visualization)
 
 ### Validation & Execution
-- Pre-market validation (ticker existence, price-deviation banding, liquidity floor)
+- Pre-market validation (ticker existence, liquidity floor)
 - 4-layer tool enforcement system (see [TOOL_ENFORCEMENT.md](./engine/TOOL_ENFORCEMENT.md))
 - Reg T margin validation (see [account-buying-power-reg-t4-calculations.md](./engine/account-buying-power-reg-t4-calculations.md))
 - Atomic "Commit at the End" settlement pattern

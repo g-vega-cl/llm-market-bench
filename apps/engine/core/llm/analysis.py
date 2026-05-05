@@ -4,6 +4,7 @@ import asyncio
 import copy
 import json
 import logging
+import re
 from typing import List
 
 from core.models import DecisionsResponse, MacroEvent
@@ -15,6 +16,20 @@ from core.llm.logger import log_reasoning_trace
 from core.config import MIN_TRADE_VALUE
 
 logger = logging.getLogger("engine")
+
+# Common words that look like tickers but aren't (for $SYMB extraction)
+_TICKER_FALSE_POSITIVES = frozenset({
+    "THE", "AND", "CEO", "CFO", "ETF", "IPO", "FOR", "ARE", "NEW",
+    "YEAR", "MARKET", "STOCK", "TRADE", "FUND", "DOWN", "OVER", "FROM",
+    "THAT", "THIS", "WITH", "WILL", "HAVE", "MORE", "LESS", "WHEN",
+    "THAN", "ALSO", "INTO", "JUST", "LIKE", "SOME", "MUCH", "SUCH",
+    "ONLY", "VERY", "MAKE", "HUGE", "BULL", "BEAR", "SELL", "BUY",
+    "HOLD", "CALL", "PUT", "NOTE", "HERE", "MUST", "NEED", "WELL",
+    "HIGH", "LOW", "LONG", "SHORT", "BIG", "SEE", "USE", "US",
+    "TOP", "OUT", "END",
+})
+
+_MAJOR_INDICES = frozenset({"SPY", "QQQ", "DIA", "IWM"})
 
 
 def _repair_json_string(json_str: str) -> str:
@@ -341,19 +356,6 @@ async def analyze_with_provider(
                             provider, model_name, decision.ticker
                         )
 
-                # Check get_stock_quote enforcement with confidence scoring
-                if not results["quote_found"]:
-                     logger.warning(
-                        "[%s/%s] HARD ENFORCEMENT: Agent recommended trade for %s without 'get_stock_quote' verification. Decision may be invalid.",
-                        provider, model_name, decision.ticker
-                    )
-                     # Add confidence penalty - flag as low confidence
-                     decision.confidence = int(getattr(decision, 'confidence', 50) * 0.5)  # Reduce by 50%
-                     logger.info(
-                        "[%s/%s] CONFIDENCE PENALTY: Reduced confidence score for %s due to missing tool call.",
-                        provider, model_name, decision.ticker
-                    )
-
         # PRE-ANALYSIS PORTFOLIO VALIDATION: Filter out SELL decisions for tickers not held
         # This catches hallucinations before they reach the verification layer
         held_tickers = _extract_held_tickers(portfolio_context)
@@ -527,18 +529,16 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
 
     Returns:
         dict: {
-            "quote_found": bool,
             "buy_tool_found": bool,
             "sell_tool_found": bool
         }
     """
     ticker = ticker.strip().upper()
-    quote_found = False
     buy_tool_found = False
     sell_tool_found = False
 
     def _record_call(name, args):
-        nonlocal quote_found, buy_tool_found, sell_tool_found
+        nonlocal buy_tool_found, sell_tool_found
 
         if not name:
             return
@@ -556,10 +556,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
         if call_ticker != ticker:
             return
 
-        if name == "get_stock_quote":
-            quote_found = True
-            logger.debug("Confirmed 'get_stock_quote' call for %s in history.", ticker)
-        elif name == "calculate_buy_quantity":
+        if name == "calculate_buy_quantity":
             buy_tool_found = True
             logger.debug("Confirmed 'calculate_buy_quantity' call for %s in history.", ticker)
         elif name == "calculate_sell_quantity":
@@ -642,7 +639,6 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
             _record_call(name, args)
 
     return {
-        "quote_found": quote_found, 
         "buy_tool_found": buy_tool_found,
         "sell_tool_found": sell_tool_found
     }
@@ -676,3 +672,32 @@ def _extract_held_tickers(portfolio_context: str) -> List[str]:
                 held_tickers.append(ticker)
     
     return held_tickers
+
+
+_DOLLAR_TICKER_PATTERN = re.compile(r'\$([A-Z]{1,5})\b')
+
+
+def _extract_tickers_from_chunks(chunks: list[dict], portfolio_tickers: list[str]) -> frozenset[str]:
+    """Extract ticker candidates from newsletter chunks for pre-fetching market data.
+    
+    Scans chunks for $SYMB patterns (reliable in financial text) and unions with
+    portfolio tickers plus major market indices.
+    
+    Args:
+        chunks: List of dicts with 'content' keys containing newsletter text.
+        portfolio_tickers: List of tickers currently held in portfolio.
+        
+    Returns:
+        Frozen set of uppercase ticker symbols.
+    """
+    tickers: set[str] = set(t.strip().upper() for t in portfolio_tickers)
+    tickers.update(_MAJOR_INDICES)
+
+    for chunk in chunks:
+        content = chunk.get("content", "")
+        for match in _DOLLAR_TICKER_PATTERN.finditer(content):
+            ticker = match.group(1)
+            if ticker not in _TICKER_FALSE_POSITIVES:
+                tickers.add(ticker)
+
+    return frozenset(tickers)

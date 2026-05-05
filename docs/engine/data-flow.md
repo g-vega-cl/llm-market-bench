@@ -132,7 +132,7 @@ LLMs can invoke these tools during analysis:
 
 | Tool | Purpose | Mandatory For |
 |------|---------|---------------|
-| `get_stock_quote` | Verify ticker existence, liquidity, current price | All trades |
+| `get_stock_quote` | Verify ticker existence, liquidity, current price (optional fallback — most prices are pre-injected) | — |
 | `get_price_history` | Check if news is "priced in" | — |
 | `get_position_pnl` | Current unrealized P&L for existing positions | — |
 | `calculate_buy_quantity(ticker, %)` | Exact shares based on % of buying power | All BUYs |
@@ -141,7 +141,7 @@ LLMs can invoke these tools during analysis:
 | `run_stock_screener` | Find investable assets by sector, cap, beta | — |
 | `find_uncorrelated_assets` | Discover diversification pairs | — |
 
-**Tool Enforcement**: The engine performs a mandatory server-side scan of conversation history to confirm that `get_stock_quote` (all trades), `calculate_buy_quantity` (BUYs), and `calculate_sell_quantity` (SELLs) were actually executed via native function calling. Hallucinated or text-only tool usage results in trade rejection with 50% confidence reduction. See [TOOL_ENFORCEMENT.md](./TOOL_ENFORCEMENT.md) for the full 4-layer system.
+**Tool Enforcement**: The engine performs a mandatory server-side scan of conversation history to confirm that `calculate_buy_quantity` (BUYs) and `calculate_sell_quantity` (SELLs) were actually executed via native function calling. `get_stock_quote` is no longer mandatory — prices are pre-injected into the prompt as VERIFIED MARKET DATA (see [TOOL_ENFORCEMENT.md](./TOOL_ENFORCEMENT.md)). Text-only claims of tool usage result in trade rejection.
 
 ### Discovery Agent
 
@@ -176,7 +176,7 @@ Web search is disabled in the verification pipeline (focused validation only).
 After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engine includes:
 - Retry logic (up to 3 attempts with corrective prompting)
 - JSON repair (double-encoded strings, extra quotes, embedded JSON)
-- Price backfill (queries MarketDataManager if LLM price is missing)
+- Price backfill (sets `injected_market_price` for tickers not pre-fetched, used for staleness check)
 
 **Ownership Pre-Validation**: Before decisions reach the verification layer, SELL signals for unheld tickers are caught and converted to HOLD with `REJECTED_OWNERSHIP` reasoning.
 
@@ -223,8 +223,8 @@ Semantically similar concepts are merged. Stale concepts decay via half-life. PC
 | Guardrail | Logic |
 |-----------|-------|
 | Existence | Ticker found via FMP |
-| Price Banding | AI-suggested price within tolerance of current market price |
 | Liquidity | Market capitalization above floor |
+| Staleness | JIT price vs prompt-injected price drift ≤ 2% |
 | Buying Power | Estimated trade cost fits within Reg T buying power |
 | Minimum Value | Trade cost above floor (waived for SELL via tool) |
 | SMA Floor | Projected SMA stays above safety threshold |
@@ -255,7 +255,7 @@ This prevents "Phantom Deductions" if the DB connection fails mid-operation.
 
 **Cost Basis**: Uses weighted average method. New avg = (Old Total Cost + New Purchase Cost) / New Total Quantity. See [PNL-CALCULATIONS.md](./PNL-CALCULATIONS.md) for formulas.
 
-**Alpaca Paper Mirror**: Every settled trade is fire-and-forget mirrored to Alpaca's paper API as a DAY limit order with agent-tagged `client_order_id`. Shorting guardrail prevents accidental short positions if the mirror has drifted from the internal ledger.
+**Alpaca Paper Mirror**: Every settled trade is fire-and-forget mirrored to Alpaca's paper API as a DAY limit order with agent-tagged `client_order_id`. Limit price is computed server-side (`exec_price * 1.005` for BUY, `* 0.995` for SELL) to ensure fill. Shorting guardrail prevents accidental short positions if the mirror has drifted from the internal ledger.
 
 ### Attribution Locking
 
@@ -290,11 +290,10 @@ Rejected decisions are never discarded — they're saved to the `decisions` tabl
 | `REJECTED_REDUNDANCY` | Per-agent semantic overlap with a recent trade (overtrading prevention) |
 | `REJECTED_TOOL_USAGE` | Required calculation tool (`calculate_buy/sell_quantity`) not actually invoked |
 | `REJECTED_VERIFICATION` | Skeptical Verifier agent rejected the trade |
-| `REJECTED_HALLUCINATION` | Tool-use claimed in text but no native function call in conversation history |
-| `REJECTED_PRICE_DEVIATION` | AI's price deviates more than 5% from current market price |
+| `REJECTED_HALLUCINATION` | Tool-use claimed in text but no native function call in conversation history, or unknown ticker |
 | `REJECTED_LIQUIDITY` | Ticker market cap below the configured liquidity floor |
 | `REJECTED_MARKET_CLOSED` | Triggered outside US market hours or on a holiday |
-| `REJECTED_LIMIT_PRICE` | Limit order price judged unrealistic relative to market |
+| `REJECTED_STALE_QUOTE` | Market price moved >2% from the price injected into the prompt at analysis time |
 | `ERROR_PROVIDER` | Provider-side error during execution (network, rate limit, malformed response) |
 
 Non-rejection terminal states: `CREATED`, `VALIDATED`, `EXECUTED`.

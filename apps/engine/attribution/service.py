@@ -46,13 +46,14 @@ def save_decision(
         "reasoning": decision.reasoning,
         "model_provider": decision.model_provider,
         "model_name": decision.model_name,
-        "price": getattr(decision, "price", None),
-        "limit_price": getattr(decision, "limit_price", None),
+        "price": None,
+        "limit_price": None,
         "status": status,
         "metadata": {
             **(metadata or {}),
             "strategy_reasoning": getattr(decision, "strategy_reasoning", None),
-            "advance_planning_notes": getattr(decision, "advance_planning_notes", None)
+            "advance_planning_notes": getattr(decision, "advance_planning_notes", None),
+            "injected_market_price": getattr(decision, "injected_market_price", None),
         },
         "trade_id": trade_id,
         "embedding": get_embedding(decision.reasoning) if decision.reasoning else None

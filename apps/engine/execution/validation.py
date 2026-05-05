@@ -1,12 +1,12 @@
 """Main validation service for pre-market trade logic."""
 
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Optional
+
 from pydantic import BaseModel
 
 from core.config import (
     MIN_MARKET_CAP_BILLIONS,
-    MAX_PRICE_DEVIATION_PCT,
     logger
 )
 from .market_data import MarketDataManager
@@ -15,11 +15,10 @@ from .market_data import MarketDataManager
 class ValidationStatus(Enum):
     PASSED = "PASSED"
     REJECTED_HALLUCINATION = "REJECTED_HALLUCINATION"
-    REJECTED_PRICE_DEVIATION = "REJECTED_PRICE_DEVIATION"
     REJECTED_LIQUIDITY = "REJECTED_LIQUIDITY"
     REJECTED_REDUNDANCY = "REJECTED_REDUNDANCY"
     REJECTED_MARKET_CLOSED = "REJECTED_MARKET_CLOSED"
-    REJECTED_LIMIT_PRICE = "REJECTED_LIMIT_PRICE"
+    REJECTED_STALE_QUOTE = "REJECTED_STALE_QUOTE"
     ERROR_PROVIDER = "ERROR_PROVIDER"
 
 
@@ -32,11 +31,10 @@ class ValidationResult(BaseModel):
     market_cap: Optional[float] = None
 
 
-async def validate_decision(ticker: str, ai_price: Optional[float]) -> ValidationResult:
+async def validate_decision(ticker: str) -> ValidationResult:
     """Validate a single trade decision against market guardrails.
     
     Guardrail A: Ticker Existence
-    Guardrail B: Price Banding (Skipped if ai_price is None or 0)
     Guardrail C: Liquidity
     """
     # Defensive check: Reject "N/A" or obviously invalid tickers early
@@ -83,22 +81,6 @@ async def validate_decision(ticker: str, ai_price: Optional[float]) -> Validatio
             status=ValidationStatus.REJECTED_HALLUCINATION,
             reason=f"Ticker '{ticker}' not found in market data cache or providers."
         )
-
-    # Guardrail B: Price Banding
-    # Reject if deviation is > MAX_PRICE_DEVIATION_PCT
-    # ONLY if ai_price is provided and > 0.
-    if ai_price and ai_price > 0:
-        price_diff = abs(ai_price - data.price)
-        deviation_pct = (price_diff / data.price) * 100 if data.price > 0 else 0
-        
-        if deviation_pct > MAX_PRICE_DEVIATION_PCT:
-            return ValidationResult(
-                ticker=ticker,
-                status=ValidationStatus.REJECTED_PRICE_DEVIATION,
-                reason=f"Price deviation too high: {deviation_pct:.1f}% (AI: ${ai_price}, Market: ${data.price})",
-                market_price=data.price,
-                market_cap=data.market_cap
-            )
 
     # Guardrail C: Liquidity (Market Cap)
     # Special Case: Some providers (like IBKR Proxy) don't return market cap for ETFs, 

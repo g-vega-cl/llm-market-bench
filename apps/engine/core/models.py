@@ -58,10 +58,6 @@ class DecisionObject(BaseModel):
         None,
         description="Specific model name that generated the decision"
     )
-    price: float | None = Field(
-        None,
-        description="The stock price mentioned or inferred from the news"
-    )
     allocation_percentage: int | None = Field(
         None,
         ge=0,
@@ -101,13 +97,9 @@ class DecisionObject(BaseModel):
         ge=0,
         description="The exact quantity of shares to trade (mandatory if sell_tool_called is true)"
     )
-    price_source: str = Field(
+    injected_market_price: float | None = Field(
         None,
-        description="REQUIRED: Must state 'get_stock_quote tool call' if price was verified via tool, or 'hallucinated' if not. Trades without tool verification will be rejected."
-    )
-    limit_price: float | None = Field(
-        None,
-        description="The limit price for the order. If set, the trade will only execute at this price or better."
+        description="Market price injected into the prompt for this ticker (set by the system, not the LLM)"
     )
     original_index: int | None = Field(
         None,
@@ -119,15 +111,6 @@ class DecisionObject(BaseModel):
     def upper_case_ticker(cls, v: str) -> str:
         """Normalize ticker symbols to uppercase."""
         return v.upper()
-
-    @field_validator("price")
-    @classmethod
-    def validate_price(cls, v: float | None) -> float | None:
-        """Handle NaN values in price."""
-        import math
-        if v is not None and (isinstance(v, float) and math.isnan(v)):
-            return None
-        return v
 
 
 class MacroEvent(BaseModel):

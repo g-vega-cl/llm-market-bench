@@ -28,7 +28,7 @@ def mock_deps():
         mock_consensus.return_value = []
         mock_contrarian.return_value = ([], [])
         mock_overlap.return_value = None
-        mock_validate.side_effect = lambda t, p: ValidationResult(
+        mock_validate.side_effect = lambda t: ValidationResult(
             status=ValidationStatus.PASSED,
             market_price=100.0,
             ticker=t
@@ -63,8 +63,8 @@ async def test_conviction_priority_double_buy(mock_deps):
     md = mock_deps
 
     # Decisions (First has original_index=0)
-    d1 = DecisionObject(signal="BUY", ticker="H_CONV", confidence=80, reasoning="R1", source_id="s1", model_name="agent-a", price=100.0, original_index=0)
-    d2 = DecisionObject(signal="BUY", ticker="L_CONV", confidence=80, reasoning="R2", source_id="s2", model_name="agent-a", price=100.0, original_index=1)
+    d1 = DecisionObject(signal="BUY", ticker="H_CONV", confidence=80, reasoning="R1", source_id="s1", model_name="agent-a", original_index=0)
+    d2 = DecisionObject(signal="BUY", ticker="L_CONV", confidence=80, reasoning="R2", source_id="s2", model_name="agent-a", original_index=1)
 
     state = {"bp": 1500.0}
     from execution.reg_t_validation import RegTMetrics, ValidationResult as ComplianceResult
@@ -114,9 +114,9 @@ async def test_order_stability_shuffled_tickers(mock_deps):
     """
     md = mock_deps
 
-    d1 = DecisionObject(signal="BUY", ticker="A", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=100.0, original_index=0)
-    d2 = DecisionObject(signal="BUY", ticker="B", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", price=100.0, original_index=1)
-    d3 = DecisionObject(signal="BUY", ticker="C", confidence=80, reasoning="R3", source_id="s3", model_name="agent-1", price=100.0, original_index=2)
+    d1 = DecisionObject(signal="BUY", ticker="A", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", original_index=0)
+    d2 = DecisionObject(signal="BUY", ticker="B", confidence=80, reasoning="R2", source_id="s2", model_name="agent-1", original_index=1)
+    d3 = DecisionObject(signal="BUY", ticker="C", confidence=80, reasoning="R3", source_id="s3", model_name="agent-1", original_index=2)
 
     all_runs_sequence = []
 
@@ -164,8 +164,8 @@ async def test_concurrent_buy_sell_same_ticker(mock_deps):
     Scenario: BUY AAPL + SELL AAPL same agent in one batch.
     """
     md = mock_deps
-    d_buy = DecisionObject(signal="BUY", ticker="AAPL", confidence=80, reasoning="Add", source_id="s1", model_name="agent-1", price=100.0, original_index=0)
-    d_sell = DecisionObject(signal="SELL", ticker="AAPL", confidence=80, reasoning="Trim", source_id="s2", model_name="agent-1", price=100.0, sell_tool_called=True, quantity=5, original_index=1)
+    d_buy = DecisionObject(signal="BUY", ticker="AAPL", confidence=80, reasoning="Add", source_id="s1", model_name="agent-1", original_index=0)
+    d_sell = DecisionObject(signal="SELL", ticker="AAPL", confidence=80, reasoning="Trim", source_id="s2", model_name="agent-1", sell_tool_called=True, quantity=5, original_index=1)
 
     state = {"positions": {}}
     execution_order = []
@@ -197,8 +197,8 @@ async def test_concurrent_buy_sell_same_ticker(mock_deps):
 async def test_parallel_provider_isolation(mock_deps):
     """Verify no holdings bleed across providers during parallel processing."""
     md = mock_deps
-    d1 = DecisionObject(signal="BUY", ticker="AAPL", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", price=100.0, original_index=0)
-    d2 = DecisionObject(signal="BUY", ticker="GOOGL", confidence=80, reasoning="R2", source_id="s2", model_name="agent-2", price=100.0, original_index=0)
+    d1 = DecisionObject(signal="BUY", ticker="AAPL", confidence=80, reasoning="R1", source_id="s1", model_name="agent-1", original_index=0)
+    d2 = DecisionObject(signal="BUY", ticker="GOOGL", confidence=80, reasoning="R2", source_id="s2", model_name="agent-2", original_index=0)
 
     portfolios = {}
     def portfolio_factory(owner_id):

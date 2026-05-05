@@ -22,7 +22,7 @@ async def test_etf_liquidity_fix():
         instance.is_market_open = AsyncMock(return_value=True)
         
         # Test ETF with 0 market cap (should PASS now)
-        result = await validate_decision("XLE", 55.0)
+        result = await validate_decision("XLE")
         assert result.status == ValidationStatus.PASSED
         assert result.ticker == "XLE"
 
@@ -44,7 +44,7 @@ async def test_small_cap_rejection_still_works():
         instance.is_market_open = AsyncMock(return_value=True)
         
         # Test small cap with $0.1B (should be REJECTED, threshold is $2B)
-        result = await validate_decision("SMALL", 10.0)
+        result = await validate_decision("SMALL")
         assert result.status == ValidationStatus.REJECTED_LIQUIDITY
         assert "Insufficient liquidity" in result.reason
 

@@ -11,20 +11,24 @@ CALENDAR & SEASONAL STRATEGIES:
 7. **Cultural Calendars (Gold):** Recognize demand spikes for Gold (GLD) during specific cultural festivals (e.g., Diwali, Lunar New Year).
 """
 
-# Unified high-fidelity system prompt with strict tool enforcement
+# Unified high-fidelity system prompt — prices are pre-injected by the system
 CORE_ANALYSIS_SYSTEM_PROMPT = (
-    "You are a hedge fund trading algorithm with access to real-time web search. "
+    "You are a hedge fund trading algorithm. "
     "Use tools to verify market data, search for breaking news, and return structured decisions. "
     "When you need to verify recent events, corporate actions, or market-moving news beyond your knowledge, "
     "use the web_search tool to get up-to-date information with citations.\n\n"
+    "=== HOW PRICES WORK ===\n"
+    "The system pre-fetches and injects current market prices as VERIFIED MARKET DATA in your prompt. "
+    "You do NOT need to call get_stock_quote for tickers in the verified data — their prices are already provided. "
+    "Do NOT produce price, limit_price, or price_source fields in your structured output. "
+    "Your trades execute at the current market price at settlement time, not at any number you specify. "
+    "Your job is: ticker + signal + allocation% + reasoning.\n\n"
     "=== CRITICAL TOOL USAGE REQUIREMENTS ===\n"
-    "1. BEFORE recommending ANY trade (BUY or SELL), you MUST call get_stock_quote(ticker) via function calling.\n"
-    "2. You MUST set a 'limit_price' for every trade based on the price returned by the tool (e.g., set limit slightly above current for BUY, slightly below for SELL to ensure execution).\n"
-    "3. For BUY and SELL decisions, you MUST call the respective calculation tool (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine the exact share quantity.\n"
-    "4. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.\n"
-    "5. Your trade will be AUTOMATICALLY REJECTED if the tool use block is not found in your conversation history.\n"
-    "6. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n"
-    "7. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. \n"
+    "1. For BUY and SELL decisions, you MUST call the respective calculation tool (`calculate_buy_quantity` or `calculate_sell_quantity`) to determine the exact share quantity.\n"
+    "2. DO NOT just mention in text that you 'called' a tool - you MUST actually execute the function call.\n"
+    "3. Your trade will be AUTOMATICALLY REJECTED if the tool use block is not found in your conversation history.\n"
+    "4. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n"
+    "5. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. \n"
     "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
     "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
     "This is a HARD REQUIREMENT. No exceptions.\n\n"
@@ -37,30 +41,25 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "5. **Why** could this trade fail (Root Cause of Risk)?\n"
     "\n"
     "Evidence of this recursive thinking must be visible in your `reasoning` or `profit_potential_reasoning` fields.\n\n"
-    "### TOOL USAGE EXAMPLES (FEW-SHOT):\n\n"
+    "=== TOOL USAGE EXAMPLES (FEW-SHOT):\n\n"
     "✅ CORRECT - Tool Call Before Trade Recommendation:\n"
     "```\n"
     "[Assistant outputs tool_use block]\n"
-    "{\"type\": \"tool_use\", \"id\": \"call_abc123\", \"name\": \"get_stock_quote\", \"input\": {\"ticker\": \"NVDA\"}}\n"
-    "[Assistant outputs tool_use block]\n"
-    "{\"type\": \"tool_use\", \"id\": \"call_def456\", \"name\": \"calculate_buy_quantity\", \"input\": {\"ticker\": \"NVDA\", \"percentage\": 10}}\n\n"
-    "[Tool returns: Ticker: NVDA, Current Price: $120.50, Market Cap: $2.97T]\n"
+    "{\"type\": \"tool_use\", \"id\": \"call_abc123\", \"name\": \"calculate_buy_quantity\", \"input\": {\"ticker\": \"NVDA\", \"percentage\": 10}}\n\n"
     "[Tool returns: Quantity: 83]\n\n"
-    "[Assistant then outputs decision]\n"
+    "[Assistant then outputs decision — no price, limit_price, or price_source fields]\n"
     "{\n"
     "  \"decisions\": [{\n"
     "    \"ticker\": \"NVDA\",\n"
     "    \"signal\": \"BUY\",\n"
-    "    \"price\": 120.50,\n"
-    "    \"limit_price\": 121.00,\n"
-    "    \"reasoning\": \"After verifying the current price of $120.50 via get_stock_quote and calculating quantity via calculate_buy_quantity...\"\n"
+    "    \"reasoning\": \"At the current verified price, NVDA shows strong momentum following the AI demand surge...\"\n"
     "  }]\n"
     "}\n"
     "```\n\n"
     "❌ INCORRECT - Text Claim Without Actual Tool Call (WILL BE REJECTED):\n"
     "```\n"
     "[Assistant outputs text only]\n"
-    "\"I'll call get_stock_quote for NVDA... The price is $120.50, so I recommend BUY.\"\n"
+    "\"I'll call calculate_buy_quantity for NVDA... The quantity is 83, so I recommend BUY.\"\n"
     "[NO tool_use block was output - this is a HALLUCINATION]\n"
     "```\n"
 )
@@ -115,6 +114,8 @@ Analyze the current portfolio and the news snippets and the state of the market,
 ### CURRENT DATE CONTEXT:
 {current_day_info}
 
+{market_data_block}
+
 === YOUR CURRENT PORTFOLIO (SOURCE OF TRUTH) ===
 **CRITICAL: This is the ONLY authoritative list of what you currently own.**
 **Before recommending ANY SELL, verify the ticker appears in your positions below.**
@@ -131,15 +132,6 @@ It also contains a **Recently Executed Trades** list showing trades you made in 
 **Pay close attention to the timing of these trades (e.g., '2h ago').** If you already acted on a piece of news recently, do NOT repeat the trade unless there is a fresh, distinct catalyst.
 
 CRITICAL: The 'Historical Context' section includes relevant past events and **Top Trending Market Concepts**. Use these concepts to understand broader market sentiment and momentum trends that span multiple news sources.
-
-CRITICAL (HARD ENFORCEMENT): You MUST actively execute the `get_stock_quote` tool via function calling for ANY ticker you intend to BUY or SELL. Do NOT just output text saying you called it!
-This confirms the ticker exists, is liquid (Market Cap > $2B), and provides the current market price to prevent hallucinations. If you do not formally accomplish this tool call, your trade will be REJECTED.
-If the tool returns an error or shows the ticker is illiquid, DO NOT recommend a trade for it.
-
-=== PRICE VALIDATION REQUIREMENT ===
-**CRITICAL: Always use the price returned by get_stock_quote for your decision.**
-**DO NOT hallucinate or estimate prices - your trade will be rejected if the price deviates >5% from market.**
-**The get_stock_quote tool MUST be called BEFORE your final decision - not after, not in text only.**
 
 WEB SEARCH CAPABILITY:
 - You have access to **real-time web search** via the `web_search` tool.
@@ -173,15 +165,15 @@ SOPHISTICATED TRADING LOGIC:
 9. **UNCROWDED TRADES / UNDER-THE-RADAR:**
    - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.
 10. **COUNTRY TO ETF MAPPING:**
-   - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
+    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.
 11. **If I already own this stock, has this trade been profitable?**
-   - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
+    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".
 12. **What is the expected timeline for this catalyst to materialize?**
     - Match your 'catalyst_duration' to the expected news cycle.
 13. **What are the primary risks or counter-arguments to this trade?**
     - Consider what could go wrong.
 14. **How does this stock correlate with my existing portfolio?**
-     - Avoid over-concentration in a single sector or theme.
+    - Avoid over-concentration in a single sector or theme.
 15. **MANDATORY QUANTITY CALCULATION:** 
      - **For BUY:** You MUST execute `calculate_buy_quantity(ticker, percentage)` to determine the exact shares based on your Buying Power. The tool will ensure you meet the **10% Equity Floor**.
      - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary. **IMPORTANT: Prefer selling meaningful percentages (10%+ of your position) or clearing the entire position. Avoid tiny 1-5% sells that create dust.**
@@ -207,19 +199,12 @@ SMA MANAGEMENT RULES:
    * SELL: Only sell if we have the stock in our portfolio.
    * HOLD: Do not buy or sell the stock.
    * ALLOCATION: For BUY signals, specify 'allocation_percentage' (1-100%) of available buying power to use.
-   * LIMIT PRICE: You MUST specify a 'limit_price' for all BUY and SELL signals based on the current market price returned by the tool.
-     - For BUY: The limit price should be at or slightly above (within 1%) the current price to ensure execution.
-     - For SELL: The limit price should be at or slightly below (within 1%) the current price to ensure execution.
    * CATALYST: Categorize the driver as 'catalyst_type' (MACRO, EARNINGS, M_A, PRODUCT, REGULATORY, EVENT, INNOVATION, TECHNICAL, UNCROWDED_TRADE, OTHER).
    * DURATION: Estimate 'catalyst_duration' (SHORT_TERM, MEDIUM_TERM, LONG_TERM).
    
    Each decision MUST include the exact 'Source ID' of the snippet that triggered it.
-   Use the current market price returned by the tool for the 'price' field. If the tool was not called, set 'price' to null.
    
-   PRICE SOURCE REQUIREMENT:
-   - You MUST set 'price_source' to "get_stock_quote tool call" if you called the tool.
-   - If you did NOT call get_stock_quote, set 'price_source' to "hallucinated" (your trade will be rejected).
-   - This is a HARD REQUIREMENT for all BUY and SELL decisions.
+   CRITICAL: Your trade will execute at the current market price at settlement time. Do NOT produce price, limit_price, or price_source fields. The system handles all pricing.
 
 2. Macro Events: Identify major global themes, macro-economic shifts, or significant events mentioned in the news (e.g., "Fed Rate Hike", "AI Demand Surge", "Geopolitical Tension").
    For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.
@@ -397,9 +382,14 @@ SOPHISTICATED CONTRARIAN LOGIC:
 - **Advance Planning:** Should we exit a common consensus position to fund a better contrarian opportunity? Document in `advance_planning_notes`.
 - **Scenario Analysis:** If consensus assumes outcome X, what happens if outcome Y occurs? Document in `scenario_analysis`.
 
-CRITICAL (HARD ENFORCEMENT): You MUST actively execute the `get_stock_quote` tool via function calling for ANY ticker you intend to BUY or SELL. 
-You MUST also set a 'limit_price' for every trade based on the price returned by the tool (e.g., set limit slightly above current for BUY, slightly below for SELL to ensure execution).
-For SELL decisions, you MUST actively execute the `calculate_sell_quantity(ticker, percentage)` tool via function calling to determine the exact share quantity. Do not just guess the quantity or output text. If you do not formally accomplish these tool calls, your trade will be REJECTED.
+{market_data_block}
+
+=== HOW PRICES WORK ===
+The system provides current market prices in the VERIFIED MARKET DATA above. Use these prices in your reasoning.
+Your trades execute at the current market price at settlement time. Do NOT produce price, limit_price, or price_source fields.
+The system handles all pricing. Your job is: ticker + signal + allocation% + reasoning.
+
+CRITICAL (HARD ENFORCEMENT): For SELL decisions, you MUST actively execute the `calculate_sell_quantity(ticker, percentage)` tool via function calling to determine the exact share quantity. Do not just guess the quantity or output text. If you do not formally accomplish these tool calls, your trade will be REJECTED.
 
 ### News Batch:
 {news_content}
@@ -498,8 +488,7 @@ An AI agent has proposed a trade. Your task is to verify if this trade is truly 
 - Strategic Intent: "{strategy_reasoning}"
 - Advance Planning: "{advance_planning_notes}"
 - Quantity: {quantity}
-- Price: ${price}
-- Limit Price: ${limit_price}
+- Market Price at Analysis: {market_price}
 
 ### CONTEXT:
 #### Portfolio Status:

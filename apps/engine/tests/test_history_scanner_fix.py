@@ -40,8 +40,8 @@ def test_history_scanner_with_objects():
     results = _scan_history_for_tools(history, "AAPL")
     
     print(f"Results: {results}")
-    assert results["quote_found"] is True
     assert results["sell_tool_found"] is True
+    assert results["buy_tool_found"] is False
     print("Test Passed!")
 
 if __name__ == "__main__":

@@ -81,6 +81,12 @@ async def verify_trading_decision(
                 full_context = "=== TRADE MEMORY CHECK ===\n" + targeted_context
 
         # 1. Prepare Prompt
+        # Fetch current market price for context (not LLM-produced)
+        from execution.market_data import MarketDataManager
+        mdm = MarketDataManager()
+        quote = await mdm.get_quote(decision.ticker)
+        market_price = f"${quote.price:.2f}" if quote and quote.exists else "unknown"
+
         messages = PromptFactory.build_verifier_messages(
             provider=provider,
             ticker=decision.ticker,
@@ -89,8 +95,7 @@ async def verify_trading_decision(
             strategy_reasoning=getattr(decision, "strategy_reasoning", "None"),
             advance_planning_notes=getattr(decision, "advance_planning_notes", "None"),
             quantity=getattr(decision, "quantity", 0) or 1,
-            price=decision.price or "unknown",
-            limit_price=getattr(decision, "limit_price", "None"),
+            market_price=market_price,
             portfolio_context=portfolio_context,
             context=full_context,
             contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available.",

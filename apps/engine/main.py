@@ -133,7 +133,7 @@ async def _process_single_decision(
         try:
             # --- Pre-Market Validation ---
             d.ticker = d.ticker.upper()
-            validation = await validate_decision(d.ticker, getattr(d, "price", None))
+            validation = await validate_decision(d.ticker)
             
             if validation.status != ValidationStatus.PASSED:
                 logger.warning(f"[{d.ticker}] REJECTED (Market Guardrails): {validation.reason}")
@@ -172,30 +172,12 @@ async def _process_single_decision(
                                 counters["rejected"] += 1
                             return False
 
-                    exec_price = validation.market_price or d.price
+                    exec_price = validation.market_price
                     if not exec_price or exec_price <= 0:
                         logger.error(f"[{d.ticker}] No valid price.")
                         async with counters["lock"]:
                             counters["rejected"] += 1
                         return False
-
-                    # --- Limit Price Check ---
-                    limit_price = getattr(d, "limit_price", None)
-                    if limit_price:
-                        if d.signal.upper() == "BUY" and exec_price > limit_price:
-                            reason = f"Limit price not met: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                            logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
-                            save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                            async with counters["lock"]:
-                                counters["rejected"] += 1
-                            return False
-                        elif d.signal.upper() == "SELL" and exec_price < limit_price:
-                            reason = f"Limit price not met: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                            logger.warning(f"[{d.ticker}] REJECTED (Limit Price): {reason}")
-                            save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                            async with counters["lock"]:
-                                counters["rejected"] += 1
-                            return False
                     
                     # Fetch market data for verification
                     from execution.market_data import MarketDataManager
@@ -259,20 +241,15 @@ async def _process_single_decision(
                         if final_quote.price != exec_price:
                             logger.info(f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}")
                             exec_price = final_quote.price
-                            
-                        # Re-verify limit price with the absolute latest market data
-                        if limit_price:
-                            if d.signal.upper() == "BUY" and exec_price > limit_price:
-                                reason = f"Limit price exceeded after JIT refresh: Market (${exec_price:.2f}) > Limit (${limit_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price JIT): {reason}")
-                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
-                                async with counters["lock"]:
-                                    counters["rejected"] += 1
-                                return False
-                            elif d.signal.upper() == "SELL" and exec_price < limit_price:
-                                reason = f"Limit price not met after JIT refresh: Market (${exec_price:.2f}) < Limit (${limit_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Limit Price JIT): {reason}")
-                                save_decision(sb_client, d, status=ValidationStatus.REJECTED_LIMIT_PRICE.value, metadata={"reason": reason})
+
+                        # Staleness check: compare JIT price against the price injected into the prompt
+                        injected_price = getattr(d, "injected_market_price", None)
+                        if injected_price and injected_price > 0:
+                            drift = abs(exec_price - injected_price) / injected_price
+                            if drift > 0.02:
+                                reason = f"Stale quote: market moved {drift:.1%} since analysis (analysis: ${injected_price:.2f}, current: ${exec_price:.2f})"
+                                logger.warning(f"[{d.ticker}] REJECTED (Stale Quote): {reason}")
+                                save_decision(sb_client, d, status="REJECTED_STALE_QUOTE", metadata={"reason": reason})
                                 async with counters["lock"]:
                                     counters["rejected"] += 1
                                 return False

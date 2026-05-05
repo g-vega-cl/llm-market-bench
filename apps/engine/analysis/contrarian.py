@@ -78,6 +78,19 @@ async def run_contrarian_analysis(
         for chunk in chunks
     ])
 
+    # Pre-fetch market data for contrarian analysis
+    from core.llm.analysis import _extract_tickers_from_chunks
+    portfolio_tickers = list(portfolio.positions.keys())
+    tickers_to_fetch = _extract_tickers_from_chunks(chunks, portfolio_tickers)
+    quotes = await market_data.get_quotes(list(tickers_to_fetch))
+    mkt_lines = ["=== VERIFIED MARKET DATA (fetched for contrarian analysis) ==="]
+    for t in sorted(tickers_to_fetch):
+        q = quotes.get(t)
+        if q and q.exists:
+            mkt_lines.append(f"  {t:<6} ${q.price:.2f}  Market Cap: ${q.market_cap / 1e9:.2f}B  Status: VALID")
+    mkt_lines.append("GROUND RULES: Trades execute at market price at settlement. Do NOT produce price fields.")
+    market_data_block = "\n".join(mkt_lines)
+
     decisions_context = ""
     for d in other_decisions:
         decisions_context += (
@@ -101,7 +114,8 @@ async def run_contrarian_analysis(
             news_content=news_content,
             decisions_context=decisions_context,
             context=context,
-            portfolio_context=portfolio_ctx
+            portfolio_context=portfolio_ctx,
+            market_data_block=market_data_block
         )
 
         # Use List[DecisionsResponse] to handle Gemini emitting multiple tool call blocks

@@ -231,6 +231,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Move to openrouter?
 - [ ] - Retry server errors?
 - [ ] - Benchify: focus on making good tool-calling, stock researching agents. Rather than an info dump.
+- [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
 
 ### Under Consideration
 

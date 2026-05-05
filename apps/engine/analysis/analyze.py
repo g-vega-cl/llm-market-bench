@@ -242,15 +242,15 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                     # are generated in order, this number remains unique and stable per model.
                     decision.original_index = (i * 1000) + j
 
-                    # Backfill price if missing but ticker is present
-                    if decision.ticker and (decision.price is None or decision.price <= 0):
+                    # Backfill injected_market_price if missing but ticker is present
+                    if decision.ticker and (getattr(decision, "injected_market_price", None) is None):
                         try:
                             logger.info(f"[{config['model']}] Price missing for {decision.ticker}. Backfilling from market data...")
                             mdm = MarketDataManager()
                             quote = await mdm.get_quote(decision.ticker)
                             if quote and quote.exists:
-                                decision.price = quote.price
-                                logger.info(f"[{config['model']}] Backfilled {decision.ticker} price: ${decision.price:.2f}")
+                                decision.injected_market_price = quote.price
+                                logger.info(f"[{config['model']}] Backfilled {decision.ticker} price: ${decision.injected_market_price:.2f}")
                         except Exception as bp_err:
                             logger.warning(f"Failed to backfill price for {decision.ticker}: {bp_err}")
 

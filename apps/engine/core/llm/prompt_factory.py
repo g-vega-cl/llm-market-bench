@@ -89,9 +89,11 @@ class PromptFactory:
         cls,
         provider: str,
         enable_web_search: bool = False,
+        market_data_block: str = "",
         **kwargs
     ) -> list[Dict[str, Any]]:
         """Builds messages for the primary analysis loop."""
+        kwargs["market_data_block"] = market_data_block
         return cls._build_messages(
             provider,
             prompts.CORE_ANALYSIS_SYSTEM_PROMPT,
@@ -118,9 +120,11 @@ class PromptFactory:
     def build_contrarian_messages(
         cls,
         provider: str,
+        market_data_block: str = "",
         **kwargs
     ) -> list[Dict[str, Any]]:
         """Builds messages for the contrarian agent."""
+        kwargs["market_data_block"] = market_data_block
         return cls._build_messages(
             provider,
             prompts.CONTRARIAN_SYSTEM_PROMPT,

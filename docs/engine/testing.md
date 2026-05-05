@@ -34,7 +34,7 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 | `test_batch_analysis.py` | Validates all chunks are analyzed in a single LLM call per provider |
 | `test_discovery_agent.py` | Unit tests for DiscoveryAgent single-call JSON parsing, max 5 asset limiting, and validation |
 | `test_discovery_quality.py` | Integration tests for DiscoveryService and agent delegation |
-| `test_llm_tools.py` | Tool calling interface for `get_stock_quote` across providers |
+| `test_llm_tools.py` | Tool calling interface for `get_stock_quote`, `calculate_buy/sell_quantity` across providers |
 | `test_call_counts.py` | Verifies API call efficiency and batching |
 | `test_post_analysis.py` | Post-analysis model validation, existing memory skipping, price change calculation |
 
@@ -63,7 +63,8 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 
 | Test File | Coverage |
 |-----------|----------|
-| `test_validation.py` | Existence, price banding, and liquidity guardrails |
+| `test_validation.py` | Existence and liquidity guardrails (price deviation removed per Approach 3) |
+| `test_pre_injected_prices.py` | Pre-fetch market data extraction, prompt rewrites, staleness check, DecisionObject field changes |
 | `test_market_data.py` | Cache-first architecture, TTL expiration, last-known-price backfill |
 | `test_yfinance_provider.py` | yfinance provider integration and error handling |
 

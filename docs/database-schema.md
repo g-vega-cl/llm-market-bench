@@ -102,10 +102,10 @@ Stores reasoning and attribution for every LLM signal.
 - `id` (UUID): Primary key.
 - `source_id` (TEXT): Link to originating newsletter.
 - `ticker`, `signal`, `confidence` (TEXT/INT): Trade intent.
-- `price` (NUMERIC): LLM predicted/observed price.
+- `price` (NUMERIC): Deprecated (always null post-Approach 3). Use `metadata->>'injected_market_price'` for the system-injected price at analysis time.
 - `reasoning` (TEXT): Full LLM justification.
-- `metadata` (JSONB): Detailed status and execution info (includes `strategy_reasoning`, `advance_planning_notes`).
-- `status` (TEXT): `CREATED`, `EXECUTED`, `VALIDATED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_PRICE_DEVIATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`, `ERROR_PROVIDER`
+- `metadata` (JSONB): Detailed status and execution info (includes `strategy_reasoning`, `advance_planning_notes`, `injected_market_price`).
+- `status` (TEXT): `CREATED`, `EXECUTED`, `VALIDATED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_STALE_QUOTE`, `ERROR_PROVIDER`. Deprecated (historical only): `REJECTED_PRICE_DEVIATION`, `REJECTED_LIMIT_PRICE`.
 - `trade_id` (UUID): Link to `trades` table.
 - `embedding` (VECTOR(768)): Embedding of reasoning.
 - `model_provider`, `model_name` (TEXT): LLM attribution.

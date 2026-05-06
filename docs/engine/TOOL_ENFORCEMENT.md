@@ -79,7 +79,7 @@ SELL signals for unheld tickers are caught before reaching the verification laye
 
 ## Provider-Specific Fixes
 
-**DeepSeek (Thinking Mode):** Empty content with reasoning_content only → auto-retry with JSON prompt appended. Handler clears reasoning_content from non-tool-call messages.
+**DeepSeek (Thinking Mode):** Empty content with reasoning_content only → auto-retry with JSON prompt appended. Handler clears reasoning_content from non-tool-call messages. Applied in both the analysis pipeline (`core/llm/analysis.py`) and the verification pipeline (`core/llm/verification.py`) — detection, cleaning, and recovery are identical in both paths.
 
 **Claude:** `max_tokens` raised from the SDK default to prevent mid-tool-call truncation. Current value: `core/llm/handlers/anthropic.py`.
 

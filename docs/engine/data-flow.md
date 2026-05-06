@@ -182,8 +182,16 @@ Web search is disabled in the verification pipeline (focused validation only).
 ### Structured Extraction
 
 After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engine includes:
-- Retry logic (with corrective prompting — see `analyze.py`)
+
+**Analysis pipeline** (`core/llm/analysis.py`):
+- 3-attempt retry loop for Instructor extraction with corrective prompting on validation errors or empty/None results
 - JSON repair (double-encoded strings, extra quotes, embedded JSON)
+- DeepSeek thinking-mode handling: `prepare_messages_for_instructor()` strips `reasoning_content` from non-tool-call messages; `has_valid_content()` detects empty content and triggers a recovery prompt
+
+**Verification pipeline** (`core/llm/verification.py`):
+- Same 3-attempt retry loop as analysis, with separate repair prompts for validation errors vs. empty/None responses
+- Non-validation errors (rate limits, auth) are re-raised immediately — not retried
+- DeepSeek thinking-mode handling: identical cleaning and empty-content recovery as the analysis pipeline
 - Price backfill (sets `injected_market_price` for tickers not pre-fetched, used for staleness check)
 
 **Ownership Pre-Validation**: Before decisions reach the verification layer, SELL signals for unheld tickers are caught and converted to HOLD with `REJECTED_OWNERSHIP` reasoning.

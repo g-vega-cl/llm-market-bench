@@ -66,6 +66,8 @@ The engine tests are located in `apps/engine/tests/` and cover the following are
 | `test_validation.py` | Existence and liquidity guardrails (price deviation removed per Approach 3) |
 | `test_pre_injected_prices.py` | Pre-fetch market data extraction, prompt rewrites, staleness check, DecisionObject field changes |
 | `test_market_data.py` | Cache-first architecture, TTL expiration, last-known-price backfill |
+| `test_verification.py` | Skeptical Verifier approve/reject/anthropic/gemini flows. Retry logic (validation errors, empty results, all-retries-fail). DeepSeek thinking-mode handling (empty content recovery, multi-empty retry across 3 attempts, cascading validation errors, non-retryable error isolation). |
+| `test_verification_retry.py` | Verification acceptance of legit REJECTED results (no retry), valid responses (single call), and None response fallback (3 retries exhausted → REJECTED). |
 | `test_yfinance_provider.py` | yfinance provider integration and error handling |
 
 ### 5. Attribution & Pipeline

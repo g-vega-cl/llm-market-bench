@@ -53,11 +53,11 @@ async def test_verification_accepts_rejected_as_is():
                 aggregated_context="Historical context"
             )
 
-    # Accepted as-is, no retry
+    # Valid Rejected result is accepted immediately — no retry
     assert result.status == "REJECTED_VERIFICATION"
     assert result.verification_reasoning == "No verification returned"
     assert result.confidence_score == 0
-    # Only one call made (no retry)
+    # Only one call made (valid result, no retry needed)
     assert mock_completions.create.call_count == 1
 
 
@@ -155,7 +155,7 @@ async def test_verification_none_response_fallback():
 
     assert result.status == "REJECTED_VERIFICATION"
     assert result.confidence_score == 0
-    assert mock_completions.create.call_count == 1
+    assert mock_completions.create.call_count == 3
 
 
 if __name__ == "__main__":

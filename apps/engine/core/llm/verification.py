@@ -2,15 +2,13 @@
 
 import asyncio
 import copy
-import json
 import logging
-from typing import Any, List, Optional
+from typing import List
 
 from core.models import DecisionObject, VerificationResult
 from core.llm import clients, tools
 from core.llm.prompt_factory import PromptFactory
 from .utils import ensure_list
-from core.llm.handlers import base
 from core.llm.logger import log_reasoning_trace
 from memory.store import retrieve_for_decision
 
@@ -49,7 +47,7 @@ async def verify_trading_decision(
     model_name = decision.model_name or "gpt-4o"
     
     # --- Specialized Agent Model Mapping ---
-    from core.config import GEMINI_MODEL, ANTHROPIC_MODEL, OPENAI_MODEL, DEEPSEEK_MODEL
+    from core.config import GEMINI_MODEL, ANTHROPIC_MODEL, DEEPSEEK_MODEL
     AGENT_MODEL_MAPPING = {
         "contrarian_agent": GEMINI_MODEL,
         "post_mortem_agent": ANTHROPIC_MODEL,
@@ -124,6 +122,28 @@ async def verify_trading_decision(
             from core.llm.handlers.gemini import run_tool_loop
             await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
 
+        # DeepSeek-specific: Prepare messages for Instructor extraction
+        # DeepSeek with thinking mode may return empty content with reasoning_content.
+        # We must strip reasoning_content from non-tool-call messages so Instructor
+        # can process them, and detect empty content to issue a recovery prompt.
+        if provider == "deepseek":
+            from .handlers import deepseek as deepseek_handler
+            messages = deepseek_handler.prepare_messages_for_instructor(messages)
+
+            if not deepseek_handler.has_valid_content(messages):
+                logger.info(
+                    "[%s/%s] DeepSeek returned empty verification content. Requesting JSON output.",
+                    provider, model_name
+                )
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "Your previous output was empty or only contains reasoning. "
+                        "To complete this task, you MUST now output ONLY a valid JSON object matching the schema. "
+                        "No more reasoning, no explanations. Just the raw JSON object."
+                    )
+                })
+
         # 3. Final Extraction using Instructor for structured VerificationResult
         instructor_messages = []
         for m in messages:
@@ -171,13 +191,75 @@ async def verify_trading_decision(
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
 
-        # Single call — accept whatever Instructor returns
-        resp_awaitable = client.chat.completions.create(**create_args)
+        # Retry loop for Instructor extraction — handles both validation errors
+        # and empty/None responses by injecting repair prompts.
+        wrapper = None
+        last_error = None
+        for attempt in range(3):
+            try:
+                resp_awaitable = client.chat.completions.create(**create_args)
+                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                    wrapper = await resp_awaitable
+                else:
+                    wrapper = resp_awaitable
 
-        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            wrapper = await resp_awaitable
-        else:
-            wrapper = resp_awaitable
+                # Check if we got a non-empty result
+                if wrapper is not None:
+                    wrapped_check = ensure_list(wrapper)
+                    if wrapped_check:
+                        break
+
+                # Empty/None result — add repair message and retry
+                attempt_num = attempt + 1
+                logger.warning(
+                    "[%s/%s] Verification Instructor empty response (attempt %d/3). Requesting structured output.",
+                    provider, model_name, attempt_num
+                )
+                instructor_messages.append({
+                    "role": "user",
+                    "content": (
+                        "Your response was empty or incomplete. You MUST output a valid JSON array of verification results. "
+                        "Example: [{\"status\": \"REJECTED_VERIFICATION\", \"verification_reasoning\": \"Reason\", \"confidence_score\": 0}]"
+                    )
+                })
+                create_args["messages"] = copy.deepcopy(instructor_messages)
+            except Exception as e:
+                last_error = e
+                error_str = str(e).lower()
+                attempt_num = attempt + 1
+
+                if "validation error" in error_str or "input should be a valid" in error_str or "list_type" in error_str:
+                    logger.warning(
+                        "[%s/%s] Verification Instructor validation error (attempt %d/3): %s. Attempting JSON repair...",
+                        provider, model_name, attempt_num, str(e)[:200]
+                    )
+                    instructor_messages.append({
+                        "role": "user",
+                        "content": (
+                            "Your response must be a valid JSON array matching the schema exactly. "
+                            "Return raw JSON with no additional text."
+                        )
+                    })
+                    create_args["messages"] = copy.deepcopy(instructor_messages)
+                else:
+                    # Non-validation error — log and re-raise to outer handler
+                    logger.error(
+                        "[%s/%s] Verification Instructor non-retryable error on attempt %d/3: %s",
+                        provider, model_name, attempt_num, str(e)
+                    )
+                    raise
+
+        # After retry loop: handle case where all attempts failed
+        if wrapper is None:
+            logger.error(
+                "[%s/%s] All %d verification extraction attempts failed. Last: %s",
+                provider, model_name, 3, last_error or "empty response after retries"
+            )
+        elif not ensure_list(wrapper):
+            logger.error(
+                "[%s/%s] Verification extraction returned empty list after %d attempts.",
+                provider, model_name, 3
+            )
 
         # Select the last verification result if multiple were returned
         wrapped_results = ensure_list(wrapper)
@@ -188,6 +270,10 @@ async def verify_trading_decision(
                 status="REJECTED_VERIFICATION",
                 verification_reasoning="No verification returned",
                 confidence_score=0
+            )
+            logger.info(
+                "[%s/%s] Verification defaulted to REJECTED (no valid result after retries).",
+                provider, model_name
             )
         else:
             final_resp = resp

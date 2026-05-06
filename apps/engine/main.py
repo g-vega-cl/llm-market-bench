@@ -476,11 +476,12 @@ async def run_ingest(force: bool = False):
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
+    from zoneinfo import ZoneInfo
     now = datetime.now(timezone.utc)
     run_id = now.strftime("%Y-%m-%d_%H-%M-%S")
     run_date = now.date()
-    current_hour = now.hour
-    run_number = 1 if current_hour < 12 else (2 if current_hour < 15 else 3)
+    current_hour_et = datetime.now(ZoneInfo("America/New_York")).hour
+    run_number = 1 if current_hour_et < 10 else (2 if current_hour_et < 13 else 3)
 
     log_blob = ""
     sb_client = None

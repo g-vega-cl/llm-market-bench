@@ -31,7 +31,7 @@ Instead of requiring the LLM to call `get_stock_quote` and transcribe a price in
 
 ### Staleness safeguard
 
-After JIT price refresh at execution time, the system compares the current market price to the price that was injected into the prompt. If drift exceeds 2%, the trade is rejected as `REJECTED_STALE_QUOTE` — the LLM was reasoning with an outdated reference price.
+After JIT price refresh at execution time, the system compares the current market price to the price that was injected into the prompt. If drift exceeds the configured threshold (see `core/config.py`), the trade is rejected as `REJECTED_STALE_QUOTE` — the LLM was reasoning with an outdated reference price.
 
 ### Implementation
 

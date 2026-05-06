@@ -13,7 +13,7 @@ The Portfolios section allows users to monitor the performance and holdings of e
 - **Active vs Retired Classification**:
   - Portfolios are classified based on their `owner_id` field
   - **Active**: `owner_id` matches a model name in the current `packages/config/models.json` configuration
-  - **Retired**: `owner_id` does not match any current model (e.g., outdated models like `gemini-3-flash-preview`, `mimo-v2-pro`)
+  - **Retired**: `owner_id` does not match any current model (e.g., outdated models no longer in `models.json`)
   - Owner ID normalization handles formatting variations (spaces, dashes, underscores, case) for robust matching
 - **Key Metrics** (for each portfolio card):
     - Total Equity (Net Liquidation Value)
@@ -133,16 +133,7 @@ Benchmark index prices are fetched from the existing `price_history` table using
 ### Benchmark Selector Component
 - **File**: `apps/web/src/routes/portfolios/components/-BenchmarkSelector.tsx`
 - **Purpose**: Dropdown component for selecting a benchmark index to compare against portfolio performance.
-- **Available Benchmarks**:
-  - S&P 500 (SPY) - US Large Cap
-  - Nasdaq 100 (QQQ) - US Tech
-  - Total World (URTH) - Global Equity
-  - Gold (GLD) - Commodities
-  - Euro Stoxx (VGK) - Europe
-  - Japan Nikkei (EWJ) - Japan
-  - Emerging Markets (EEM) - EM Equity
-  - Russell 2000 (IWM) - US Small Cap
-  - Dow Jones (DIA) - US Blue Chip
+- **Available Benchmarks**: A curated list of benchmark indexes (S&P 500, Nasdaq, World, Gold, etc.) defined in the benchmark component source.
 - **Integration**: Works with TanStack Query to fetch benchmark data on selection change.
 - **Tests**: `apps/web/src/routes/portfolios/components/-BenchmarkSelector.test.tsx`
 

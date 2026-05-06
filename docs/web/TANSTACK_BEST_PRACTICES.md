@@ -23,20 +23,11 @@ Hybrid pattern: server loaders for fast initial page load (SEO) + `useSuspenseQu
 
 ## Route Configurations
 
-| Route | Pattern | staleTime |
-|-------|---------|-----------|
-| `/` (Today) | Hybrid | 2 min |
-| `/memories` | Infinite scroll | 5 min |
-| `/reasoning` | Infinite scroll | 5 min |
-| `/concepts` | Static | 10 min |
-| `/portfolios` | Hybrid | 5 min |
-| `/market-overview` | Hybrid | 5 min |
-
-Today page auto-refreshes every 5 minutes during market hours.
+staleTime values are configured per route in `src/lib/queries.ts`. The Today page auto-refreshes on a configurable interval during market hours.
 
 ## Cursor-Based Pagination
 
-Used for large datasets (>100 items). Fetches `pageSize + 1` to determine if more data exists:
+Used for large datasets (above the configured cursor pagination threshold). Fetches `pageSize + 1` to determine if more data exists:
 
 ```typescript
 // Returns { data, nextCursor, hasMore }

@@ -1,15 +1,15 @@
 # Web Application Architecture
 
-The frontend is a **TanStack Start** app (React 19 + Vite) with TanStack Query for data fetching, Tailwind CSS 4 for styling, and Supabase for auth/data.
+The frontend is a **TanStack Start** app (React + Vite) with TanStack Query for data fetching, Tailwind CSS for styling, and Supabase for auth/data.
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| Framework | TanStack Start (React 19 + Vite) |
+| Framework | TanStack Start (React + Vite) |
 | Routing | TanStack Router (file-based) |
-| Styling | Tailwind CSS 4 |
-| Data Fetching | TanStack Query v5 |
+| Styling | Tailwind CSS |
+| Data Fetching | TanStack Query |
 | Backend | Supabase (Auth, Postgres) |
 | Testing | Vitest + React Testing Library |
 

@@ -1,5 +1,7 @@
 # Web Search Configuration
 
+Active provider list: see [`packages/config/models.json`](../../packages/config/models.json). This document describes the web search architecture per provider pattern.
+
 ## Environment Variables
 
 | Variable | Purpose |

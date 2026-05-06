@@ -1,6 +1,6 @@
 # Reg T Margin Account Calculations
 
-Reference for **IBKR Reg T Margin Account** calculations. All scenarios assume an initial deposit of **$10,000 USD**.
+Reference for **Reg T Margin Account** calculations. All scenarios assume an initial deposit of **$10,000 USD**.
 
 ## Core Formulas
 
@@ -20,7 +20,7 @@ Reference for **IBKR Reg T Margin Account** calculations. All scenarios assume a
 
 - SMA does **not** decrease from market price drops — only from withdrawals or new purchases
 - Market gains increase SMA at end of day if `(ELV - 57% MVS) > current SMA`
-- End-of-day SMA must be ≥ 0 or IBKR liquidates positions
+- End-of-day SMA must be ≥ 0 or the broker liquidates positions
 - **Internal guardrail**: Projected SMA must remain ≥ 10% of total equity or trade is rejected
 
 ## System Guardrails

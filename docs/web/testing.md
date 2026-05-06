@@ -73,9 +73,9 @@ We follow TDD for new features and UI changes. Write a failing test first, make 
 1. **Write the failing test** (`AgentInsights.test.tsx`):
 
 ```tsx
-it('renders agent name text for known Gemini model', () => {
-  render(<AgentInsights memories={[createLessonMemory('gemini-3.1-flash-lite-preview')]} />)
-  expect(screen.getByText('Gemini')).toBeInTheDocument()
+it('renders agent name text for known model', () => {
+  render(<AgentInsights memories={[createLessonMemory('example-model-preview')]} />)
+  expect(screen.getByText('ExampleProvider')).toBeInTheDocument()
 })
 ```
 

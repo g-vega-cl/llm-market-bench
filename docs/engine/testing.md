@@ -100,7 +100,7 @@ These are manual verification scripts for specific features:
 We maintain a strict **Zero Warning** policy for the test suite. To achieve this, we have implemented:
 
 - **SDK Migration**: Migrated from the deprecated `google-generativeai` to the modern `google-genai` package to eliminate `FutureWarning` noise.
-- **Transitive Dependency Fixes**: Pinned `pydantic<2.12.0` to resolve deprecation warnings triggered by third-party libraries (like `pyiceberg`).
+- **Transitive Dependency Fixes**: Pinned dependency versions (see `requirements.txt`) to resolve deprecation warnings triggered by third-party libraries.
 - **Signature Synchronization**: All core analysis tests (`test_analysis_logic.py`, `test_batch_analysis.py`, etc.) are synchronized with the 3-tuple return signature of `analyze_chunks` to ensure pipeline stability.
 
 ## Best Practices

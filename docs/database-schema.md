@@ -17,7 +17,7 @@ The database manages four primary domains:
 ### `portfolios`
 Stores the current financial state for each AI model.
 - `id` (UUID): Primary key.
-- `owner_id` (TEXT): Unique model identifier (e.g., `gpt-5.4-nano`, `claude-haiku-4-5`).
+- `owner_id` (TEXT): Unique model identifier (e.g., model name from `models.json`).
 - `cash_balance` (NUMERIC): Available cash for trading.
 - `total_equity` (NUMERIC): Net Liquidation Value (Cash + Market Value).
 - `buying_power` (NUMERIC): Intraday leverage limit (Reg T).
@@ -49,8 +49,8 @@ An immutable ledger of all executed trades. **Supabase is the source of truth.**
 - `decision_id` (UUID): Link to the triggering decision.
 - `realized_pnl` (NUMERIC): The profit or loss realized by this trade (for SELL signals).
 - `realized_pnl_pct` (NUMERIC): The profit or loss percentage realized by this trade.
-- `alpaca_order_id` (TEXT): Alpaca paper-trading order UUID for third-party audit.
-- `alpaca_status` (TEXT): Alpaca order status (`PENDING`, `FILLED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`). `SKIPPED_NO_POSITION` means the SELL was not mirrored to Alpaca because both Alpaca and the Supabase `portfolio_positions` ledger showed zero shares of the ticker, preventing an accidental short. Before skipping, Alpaca consults Supabase as fallback — if the ledger shows the position, the SELL proceeds.
+- `alpaca_order_id` (TEXT): Broker paper-trading order UUID for third-party audit.
+- `alpaca_status` (TEXT): Broker order status (`PENDING`, `FILLED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`). `SKIPPED_NO_POSITION` means the SELL was not mirrored to the broker because both the broker and the Supabase `portfolio_positions` ledger showed zero shares of the ticker, preventing an accidental short. Before skipping, the broker mirror consults Supabase as fallback — if the ledger shows the position, the SELL proceeds.
 - `alpaca_submitted_at` (TIMESTAMPTZ): When the order was submitted to Alpaca.
 
 ### `portfolio_performance`
@@ -85,7 +85,7 @@ Stores raw content from ingested newsletters.
 Stores global market events for RAG retrieval.
 - `id` (UUID): Primary key.
 - `content` (TEXT): Synthesized event description.
-- `embedding` (VECTOR(768)): Google Gemini embedding.
+- `embedding` (VECTOR): The embedding provider's vector (dimensionality depends on model — see `memory/embeddings.py`).
 - `metadata` (JSONB): Source and context metadata. 
   - **Required for Future Catalysts:** `scenario_analysis` must contain at least two outcomes and associated Trading Plans.
 - `memory_type` (TEXT): `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `UNCROWDED_TRADE`, `CALENDAR_EVENT`.
@@ -107,7 +107,7 @@ Stores reasoning and attribution for every LLM signal.
 - `metadata` (JSONB): Detailed status and execution info (includes `strategy_reasoning`, `advance_planning_notes`, `injected_market_price`).
 - `status` (TEXT): `CREATED`, `EXECUTED`, `VALIDATED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_STALE_QUOTE`, `ERROR_PROVIDER`. Deprecated (historical only): `REJECTED_PRICE_DEVIATION`, `REJECTED_LIMIT_PRICE`.
 - `trade_id` (UUID): Link to `trades` table.
-- `embedding` (VECTOR(768)): Embedding of reasoning.
+- `embedding` (VECTOR): Embedding of reasoning (dimensionality: see `memory/embeddings.py`).
 - `model_provider`, `model_name` (TEXT): LLM attribution.
 - `created_at` (TIMESTAMPTZ): Entry timestamp.
 
@@ -140,7 +140,7 @@ The `decisions` and `llm_reasoning_logs` tables have **Row Level Security** enab
 Tracks momentum and frequency of semantic concepts.
 - `id` (UUID): Primary key.
 - `concept_name` (TEXT): e.g., "AI Infrastructure".
-- `concept_vector` (VECTOR(768)): Semantic centroid.
+- `concept_vector` (VECTOR): Semantic centroid (dimensionality: see `memory/embeddings.py`).
 - `mention_count` (INT): 90-day frequency.
 - `velocity_score` (FLOAT): Momentum metric.
 - `pca_x`, `pca_y` (FLOAT): 2D coordinates for map.
@@ -155,7 +155,7 @@ Tracks momentum and frequency of semantic concepts.
 Temporary storage to minimize external API calls.
 - `ticker` (TEXT)
 - `price`, `market_cap` (NUMERIC)
-- `fetched_at` (TIMESTAMPTZ): 4-hour TTL enforced in logic.
+- `fetched_at` (TIMESTAMPTZ): TTL enforced in application logic (see `core/config.py`).
 
 ### `price_history`
 Permanent record of every price fetch for backtesting and analysis.
@@ -250,7 +250,7 @@ Refreshed multiple times daily during market hours.
 - `trades_summary` (JSONB): `{buys: N, sells: N, total_value: number}`.
 - `lessons_incorporated` (INT): Count of LESSON_LEARNED memories factored in.
 - `memories_incorporated` (INT): Count of MARKET_EVENT memories factored in.
-- `model_used` (TEXT): The LLM model used (default: "MiniMax-M2.7").
+- `model_used` (TEXT): The LLM model used (see `analysis/market_feeling.py` for the current default).
 - `processing_time_ms` (INT): API processing time.
 - `input_tokens`, `output_tokens` (INT): Token usage for cost tracking.
 - `created_at`, `updated_at` (TIMESTAMPTZ): Timestamps.
@@ -268,5 +268,5 @@ Refreshed multiple times daily during market hours.
 **Related Files**:
 - Migration: `supabase/migrations/20260416000001_create_market_feeling.sql`
 - Analyzer: `apps/engine/analysis/market_feeling.py`
-- MiniMax Client: `apps/engine/core/llm/minimax.py`
+- Client: `apps/engine/core/llm/minimax.py`
 - Frontend Component: `apps/web/src/components/today/MarketStatusHero.tsx`

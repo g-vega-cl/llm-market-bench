@@ -9,7 +9,7 @@ The app is deployed serverlessly on Netlify.
 ```bash
 cd apps/web
 pnpm run build
-npx netlify deploy --prod --site 5d3df086-5934-4ea4-9758-36fe189e9af3
+npx netlify deploy --prod
 ```
 
 One-time setup (link project):

@@ -15,8 +15,8 @@ Tracks ETFs across US sectors, US broad market, international developed/emerging
 
 ## Pipeline
 
-Weekly cron (Sundays 16:00 ET) via GitHub Actions runs `correlation_matrix.py`:
-1. Fetch 90 days of EOD prices for the ticker universe from FMP
+Weekly cron (schedule: see `.github/workflows/correlation.yml`) runs `correlation_matrix.py`:
+1. Fetch 90 days of EOD prices for the ticker universe from the market data provider
 2. Compute daily returns, then Pearson + Spearman correlation
 3. Store the full pairwise matrix to Supabase (`correlation_runs` + `correlation_data` tables)
 4. Post-insert row-count verification ensures storage integrity

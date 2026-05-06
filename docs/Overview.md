@@ -1,6 +1,6 @@
 # Project Overview
 
-Automated platform where four LLMs (**OpenAI, Claude, Gemini, DeepSeek**) compete in a virtual stock market. Multiple times daily during market hours, they parse financial newsletters, debate events, and rebalance portfolios — with meta-agents (Contrarian, Manager) reviewing consensus afterward.
+Automated platform where multiple LLMs compete in a virtual stock market. Multiple times daily during market hours, they parse financial newsletters, debate events, and rebalance portfolios — with meta-agents reviewing consensus afterward.
 
 ## Repo Map
 
@@ -26,7 +26,7 @@ Cron-triggered by GitHub Actions during US market hours — see `.github/workflo
 graph TD
     subgraph "Phase 1 — Ingestion"
         CRON[Cron — market hours] --> INGEST[ingest.yml]
-        INGEST --> A[Gmail Newsletters]
+        INGEST --> A[Newsletters]
         INGEST --> CAL[Economic Calendar]
         INGEST --> GOV[Government Tracking]
         A & CAL & GOV --> SNAP[Snapshot + Chunk Hashes]
@@ -35,7 +35,7 @@ graph TD
     subgraph "Phase 2 — Reasoning & Consensus"
         SNAP --> GMT[Global Macro Tracker]
         GMT --> LITE[Light Context: Top-5 events + trending]
-        LITE --> D1[OpenAI] & D2[Claude] & D3[Gemini] & D4[DeepSeek]
+        LITE --> D1[LLM 1] & D2[LLM 2] & D3[LLM 3] & D4[LLM 4]
         D1 & D2 & D3 & D4 --> ATTR[Decision Attribution]
         ATTR --> DB[(decisions)]
         ATTR --> CP{Event Consensus}
@@ -75,15 +75,15 @@ graph TD
 ```
 
 ### Ingestion
-- Gmail newsletter scraping → ad removal via Gemini Flash
-- Economic calendar from Trading Economics (bi-weekly)
-- Government policy tracking (monthly)
+- Newsletter scraping → ad removal via a lightweight model
+- Economic calendar fetch (source and cadence: see `ingest/calendar.py`)
+- Government policy tracking (cadence: see `ingest/government.py`)
 
 ### Analysis
 - Parallel LLM analysis via PromptFactory with modular provider handlers
 - **Pre-Injected Market Data**: System pre-fetches current prices for relevant tickers (portfolio holdings + `$SYMB` in chunks + major indices) and injects them as VERIFIED MARKET DATA directly into prompts. LLMs never produce price fields — eliminating price hallucination at the source.
-- **Tiered context injection**: Analysis agents receive light context (top-5 high-importance events + trending concepts, ~500 tokens). The Skeptical Verifier receives targeted per-trade RAG context (up to 2k tokens, ranked by importance × similarity).
-- Batch strategy (20 chunks per call) to avoid output truncation
+- **Tiered context injection**: Analysis agents receive light context (high-importance events + trending concepts). The Skeptical Verifier receives targeted per-trade RAG context (ranked by importance × similarity).
+- Batch strategy (size: see `BATCH_SIZE` in `analyze.py`) to avoid output truncation
 - Active tool loop: `get_stock_quote` (optional fallback), `calculate_buy/sell_quantity`, `web_search`, `run_stock_screener`
 - DiscoveryAgent identifies investable assets via stock screener tool-calling
 - Global Macro Tracker provides regime awareness (σ-based "Risk-On / Risk-Off" detection)
@@ -104,19 +104,19 @@ graph TD
 - Manager Agent: multi-horizon post-mortem → `LESSON_LEARNED` memories
 - Contrarian Agent: identifies crowded trades
 - Cause & Effect: periodic audit of predicted vs actual impact
-- Market Feeling: MiniMax-driven daily sentiment
+- Market Feeling: LLM-driven daily sentiment
 
 ### Frontend
 TanStack Start + TanStack Query dashboard at [benchify.netlify.app](https://benchify.netlify.app). See [web/README.md](./web/README.md).
 
 ## Deployment
 
-Deployed as a serverless TanStack Start app on Netlify (project `benchify`, site ID `5d3df086-5934-4ea4-9758-36fe189e9af3`).
+Deployed as a serverless TanStack Start app on Netlify (project `benchify`).
 
 ```bash
 cd apps/web
 pnpm run build
-npx netlify deploy --prod --site 5d3df086-5934-4ea4-9758-36fe189e9af3
+npx netlify deploy --prod
 ```
 
 See [web/tanstack-start-deploy-official.md](./web/tanstack-start-deploy-official.md) for full deployment notes.
@@ -133,18 +133,7 @@ Each workflow lists its own required secrets and schedule — read the YAML rath
 
 When a provider's model is upgraded, the old portfolio row in the `portfolios` table is **not** automatically removed — it becomes an inactive historical record. Historical performance (trades, ledger snapshots) is preserved for auditability; no new decisions are written to these `owner_id`s.
 
-Known retired `owner_id`s (DB keys, kept for reference since they no longer appear in any active config):
-
-| `owner_id` | Provider |
-|---|---|
-| `gpt-4o-mini` | OpenAI |
-| `gpt-4o` | OpenAI |
-| `gpt-5-mini` | OpenAI |
-| `claude-3-5-haiku-20241022` | Anthropic |
-| `gemini-2.0-flash` | Google |
-| `gemini-2.5-flash-preview-04-17` | Google |
-
-The active set lives in [`packages/config/models.json`](../packages/config/models.json); the frontend filters retired portfolios by checking each `owner_id` against that file.
+The active set lives in [`packages/config/models.json`](../packages/config/models.json); the frontend filters retired portfolios by checking each `owner_id` against that file. Retired `owner_id`s remain in the database as historical records.
 
 ## Documentation Index
 

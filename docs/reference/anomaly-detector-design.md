@@ -65,7 +65,7 @@ apps/engine/anomaly_detector/
 ├── config.py                 # Agent configuration (Market Hours awareness, API quotas)
 ├── core/
 │   ├── __init__.py
-│   ├── llm_client.py         # DeepSeek API client (reuses project .env keys)
+│   ├── llm_client.py         # LLM API client (configured via models.json)
 │   ├── file_loader.py        # Loads files with smart chunking and stub generation
 │   ├── dependency_graph.py   # Builds import dependency graph to group files
 │   └── prompt_templates.py   # System prompts for different scan types
@@ -125,9 +125,9 @@ apps/engine/anomaly_detector/
 
 ## 5. LLM Integration
 
-### Provider: DeepSeek (cheapest option)
-- Model: `deepseek-v4-flash` (thinking mode for complex analysis).
-- Context window: 64K tokens.
+### Provider: configured via `packages/config/models.json`
+- Model: see `packages/config/models.json`
+- Context window: depends on model (see provider docs)
 
 ### Token Management (The Two-Pass Strategy)
 To avoid context exhaustion in large projects:
@@ -145,13 +145,8 @@ python -m anomaly_detector --scan code --validate  # Run scan + reproduction tes
 ```
 
 ### Scheduled (GitHub Actions)
-- **Trigger**: Runs on a dedicated workflow (`.github/workflows/anomaly_scan.yml`) on weekday off-market hours:
-  ```yaml
-  on:
-    schedule:
-      - cron: '0 3 * * 1-5'  # 03:00 UTC (22:00 ET), weekdays only
-  ```
-- **Quota Guard**: Reuses the project's `DEEPSEEK_API_KEY` secret. Add to GitHub → Settings → Secrets.
+- **Trigger**: Runs on a dedicated workflow (`.github/workflows/anomaly_scan.yml`) on weekday off-market hours (schedule defined in the workflow YAML).
+- **Quota Guard**: Reuses the project's LLM API keys.
 
 ---
 
@@ -165,7 +160,7 @@ python -m anomaly_detector --scan code --validate  # Run scan + reproduction tes
     2.  Navigate to page and `wait_for_selector()` on a known anchor element (e.g., the Market Status Hero banner). Using `wait_until="networkidle"` is avoided because TanStack Query's background refetching prevents the page from ever reaching a true network-idle state.
     3.  Check browser console for JavaScript errors or failed network requests (4xx/5xx).
     4.  Extract the **Rendered DOM** and compare against documentation-defined UI components.
-    5.  Check for **Stale Data** only during market hours (09:30–16:00 ET, via the FMP market status API): flag if the "Last Updated" timestamp is more than 2 hours old. Suppress this check outside market hours, as overnight data staleness is expected.
+    5.  Check for **Stale Data** only during market hours: flag if the "Last Updated" timestamp is older than the configured freshness window.
 
 ---
 

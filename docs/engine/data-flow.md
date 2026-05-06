@@ -23,7 +23,7 @@ The pipeline runs on a cron schedule during US market hours (see `.github/workfl
 
 1. **Gmail API**: Fetches unread emails from configured financial newsletter senders
 2. **Content Extraction**: Parses HTML via BeautifulSoup, decodes base64, normalizes text
-3. **Ad Removal**: Gemini Flash identifies and strips sponsored content, preserving financial analysis
+3. **Ad Removal**: A lightweight model identifies and strips sponsored content, preserving financial analysis
 4. **Attribution Keys**: Each chunk gets a deterministic `source_id` (MD5 of date+sender+subject) and a SHA-256 `chunk_hash` for deduplication
 5. **Storage**: UPSERT into `newsletter_snapshots` table with idempotency via `chunk_hash`
 6. **Semantic Monitoring**: Logs warnings if a previously active sender yields 0 valid chunks while others succeed
@@ -34,10 +34,10 @@ Concretely, what happens for a single ingestion run with 4 newsletters:
 
 ```text
 1. service.users().messages().list(q="from:(sender1@... OR sender2@...) newer_than:1d",
-                                   maxResults=20)
-     → 1 API call, returns 4 message IDs
+                                   maxResults=N)   # see ingest/newsletter.py
+     → 1 API call, returns message IDs
 2. For each ID: service.users().messages().get(id=..., format="full")
-     → 4 API calls, returns full payloads (headers + base64url body)
+     → N API calls (one per message), returns full payloads
 3. extract_email_body() → decode_base64_url() → BeautifulSoup → clean_text()
 4. clean_newsletter_content() (Gemini Flash) strips ads
 5. generate_source_id(date, sender, subject)
@@ -54,7 +54,7 @@ The `source_id` is deterministic: re-ingesting the same email produces the same 
 
 **Files:** `apps/engine/ingest/calendar.py`, `.github/workflows/calendar.yml`
 
-Periodic cron fetches global macro catalysts from Trading Economics. High-importance events are stored as `CALENDAR_EVENT` memories with `is_future_catalyst=true` for Horizon Watch. Importance threshold and cadence: see `ingest/calendar.py` and the workflow YAML.
+Periodic cron fetches global macro catalysts (source and cadence: see `ingest/calendar.py` and the workflow YAML). High-importance events are stored as `CALENDAR_EVENT` memories with `is_future_catalyst=true` for Horizon Watch.
 
 ---
 
@@ -70,7 +70,7 @@ Enforces trading only during US market hours (weekdays, holiday-aware) via the F
 
 **Files:** `apps/engine/execution/market_data.py`
 
-`get_history()` uses a persistent cache in the `price_history` table with date-coverage validation. To avoid serving stale single-date snapshots, the validator requires at least `ceil(days_requested / 2)` distinct dates across the cached entries. A cache with only one historical date (e.g., all rows from `2026-04-24`) will fail validation and trigger a re-fetch from the provider (FMP), ensuring the history stays fresh as new trading days accumulate. The benchmark tickers (SPY, QQQ, GLD, etc.) are backfilled hourly by `update_prices.py`; portfolio-specific tickers are backfilled on-demand when LLMs call the `get_price_history` tool.
+`get_history()` uses a persistent cache in the `price_history` table with date-coverage validation. To avoid serving stale single-date snapshots, the validator requires at least `ceil(days_requested / 2)` distinct dates across the cached entries. A cache with only one historical date (e.g., all rows from `2026-04-24`) will fail validation and trigger a re-fetch from the provider (FMP), ensuring the history stays fresh as new trading days accumulate. The benchmark tickers (defined in `analysis/correlation_matrix.py`) are backfilled hourly by `update_prices.py`; portfolio-specific tickers are backfilled on-demand when LLMs call the `get_price_history` tool.
 
 ### Dust Cleanup
 
@@ -95,7 +95,7 @@ The formatted snapshot is injected into every LLM prompt, giving agents "Risk-On
 3. Appends top trending concepts (`get_top_trending_concepts`) for broad market awareness
 4. Enforces **calendar strategy context** (Turn of the Month, Payday Anomaly) based on current date
 
-**Context budget**: Analysis agents receive ~500-700 tokens of historical + trending context. The previous design used 4 parallel pgvector searches per news chunk (up to thousands of tokens). The deeper per-trade memory check is deferred to the verifier phase (see Phase 5).
+**Context budget**: Analysis agents receive a lightweight context snapshot drawn from top-importance memories and trending concepts. The previous design used parallel pgvector searches per news chunk. The deeper per-trade memory check is deferred to the verifier phase (see Phase 5).
 
 ---
 
@@ -182,7 +182,7 @@ Web search is disabled in the verification pipeline (focused validation only).
 ### Structured Extraction
 
 After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engine includes:
-- Retry logic (up to 3 attempts with corrective prompting)
+- Retry logic (with corrective prompting — see `analyze.py`)
 - JSON repair (double-encoded strings, extra quotes, embedded JSON)
 - Price backfill (sets `injected_market_price` for tickers not pre-fetched, used for staleness check)
 
@@ -196,7 +196,7 @@ After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engi
 
 ### Event Consensus Protocol
 
-1. **Semantic Grouping**: Gemini embeddings cluster events by cosine similarity across LLMs.
+1. **Semantic Grouping**: Embeddings cluster events by cosine similarity across LLMs.
 2. **Weighted Consensus**: Events need a cumulative model weight above the promotion threshold. Impact (BULLISH/BEARISH) determined by weighted majority.
 3. **Temporal Deduplication**: New events are checked against the `memories` table within a recency window; near-duplicates are dropped.
 4. **Relationship Analysis**: Searches for ancestors and links via `parent_id` as REVERSAL, RESOLUTION, or UPDATE. REVERSALs and RESOLUTIONs auto-mark the ancestor as `RESOLVED` so stale narratives stop polluting future RAG retrievals.
@@ -237,7 +237,7 @@ Semantically similar concepts are merged. Stale concepts decay via half-life. PC
 | Minimum Value | Trade cost above floor (waived for SELL via tool) |
 | SMA Floor | Projected SMA stays above safety threshold |
 
-Tunable thresholds (`MAX_PRICE_DEVIATION_PCT`, `MIN_TRADE_VALUE`, liquidity floor, SMA floor): `apps/engine/.env.example` and `apps/engine/core/config.py`. Market data uses a 5-minute cache (configurable via `MARKET_DATA_CACHE_TTL_SECONDS` env var or `apps/engine/core/config.py`) to absorb redundant calls across pipeline stages.
+Tunable thresholds (`MAX_PRICE_DEVIATION_PCT`, `MIN_TRADE_VALUE`, liquidity floor, SMA floor): `apps/engine/.env.example` and `apps/engine/core/config.py`. Market data uses a configurable cache (see `MARKET_DATA_CACHE_TTL_SECONDS` env var or `apps/engine/core/config.py`) to absorb redundant calls across pipeline stages.
 
 ### Reg T Margin Validation
 
@@ -354,7 +354,7 @@ Periodic audit of government incentives and policies. Stores findings as `GOVERN
 
 **Files:** `apps/engine/analysis/market_feeling.py`, `apps/engine/core/llm/minimax.py`
 
-After each pipeline run, MiniMax generates a "How I'm feeling and why" sentiment based on the day's trades, lessons learned, and market events. Displayed on the Today dashboard with confidence bar and direction badge. The UI shows a stale warning when the latest reading is older than the configured freshness window — see `analysis/market_feeling.py`.
+After each pipeline run, an LLM generates a "How I'm feeling and why" sentiment based on the day's trades, lessons learned, and market events. Displayed on the Today dashboard with confidence bar and direction badge. The UI shows a stale warning when the latest reading is older than the configured freshness window — see `analysis/market_feeling.py`.
 
 ---
 
@@ -372,7 +372,7 @@ Decoupled vector storage separates macro context from strategy context:
 | Uncrowded Trades | Secondary effect plays | `memories` | `[UNCROWDED TRADE]` |
 | Trade Reasoning | Specific stock justifications | `decisions` | `[PAST REASONING]` |
 
-- **Embedding provider**: Google Gemini (model + dimensionality in `memory/embeddings.py`)
+- **Embedding provider** (model + dimensionality in `memory/embeddings.py`)
 - **Deduplication**: recency-windowed similarity check before insert (window + threshold in `memory/store.py`)
 - **Schema Robustness**: Automated JSON parsing, Pydantic `NaN→None` conversion, expanded catalyst type literals
 

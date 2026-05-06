@@ -14,13 +14,14 @@ from memory.store import retrieve_for_decision
 
 logger = logging.getLogger("engine")
 
+
 async def verify_trading_decision(
     decision: DecisionObject,
     portfolio_context: str,
     aggregated_context: str,
     contrarian_context: str = "",
     uncrowded_context: str = "",
-    max_tool_steps: int = 5
+    max_tool_steps: int = 5,
 ) -> VerificationResult:
     """Performs a skeptical second reasoning step on a proposed trade.
 
@@ -39,48 +40,55 @@ async def verify_trading_decision(
         return VerificationResult(
             status="APPROVED",
             verification_reasoning="HOLD decisions do not require second-step verification.",
-            confidence_score=100
+            confidence_score=100,
         )
 
     # Use the same provider and model as the original decision
-    provider = decision.model_provider or "openai" # Default to openai if not set
+    provider = decision.model_provider or "openai"  # Default to openai if not set
     model_name = decision.model_name or "gpt-4o"
-    
+
     # --- Specialized Agent Model Mapping ---
     from core.config import GEMINI_MODEL, ANTHROPIC_MODEL, DEEPSEEK_MODEL
+
     AGENT_MODEL_MAPPING = {
         "contrarian_agent": GEMINI_MODEL,
         "post_mortem_agent": ANTHROPIC_MODEL,
         "deepseek_reasoner": DEEPSEEK_MODEL,
     }
-    
+
     if model_name in AGENT_MODEL_MAPPING:
         model_name = AGENT_MODEL_MAPPING[model_name]
 
     factory = clients.CLIENT_FACTORIES.get(provider)
     if not factory:
-        logger.error(f"Provider {provider} not found for verification. Falling back to openai.")
+        logger.error(
+            f"Provider {provider} not found for verification. Falling back to openai."
+        )
         provider = "openai"
         model_name = "gpt-4o"
         factory = clients.CLIENT_FACTORIES.get(provider)
 
     client = factory()
-    
+
     try:
         targeted_context = retrieve_for_decision(
             ticker=decision.ticker,
             reasoning=decision.reasoning,
+            model_name=decision.model_name,
         )
         full_context = aggregated_context
         if targeted_context:
             if full_context:
-                full_context += "\n\n=== TARGETED TRADE MEMORY CHECK ===\n" + targeted_context
+                full_context += (
+                    "\n\n=== TARGETED TRADE MEMORY CHECK ===\n" + targeted_context
+                )
             else:
                 full_context = "=== TRADE MEMORY CHECK ===\n" + targeted_context
 
         # 1. Prepare Prompt
         # Fetch current market price for context (not LLM-produced)
         from execution.market_data import MarketDataManager
+
         mdm = MarketDataManager()
         quote = await mdm.get_quote(decision.ticker)
         market_price = f"${quote.price:.2f}" if quote and quote.exists else "unknown"
@@ -96,8 +104,10 @@ async def verify_trading_decision(
             market_price=market_price,
             portfolio_context=portfolio_context,
             context=full_context,
-            contrarian_context=contrarian_context if contrarian_context else "No specific contrarian context available.",
-            uncrowded_context="No specific secondary effects noted."
+            contrarian_context=contrarian_context
+            if contrarian_context
+            else "No specific contrarian context available.",
+            uncrowded_context="No specific secondary effects noted.",
         )
 
         # 2. Run the verifier tool loop with the unified verifier toolset.
@@ -111,16 +121,40 @@ async def verify_trading_decision(
 
         if provider == "openai":
             from .handlers.openai import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
+
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                provider,
+                max_tool_steps,
+                verifier_tools,
+                enable_web_search=False,
+            )
         elif provider == "deepseek":
             from .handlers.deepseek import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, provider, max_tool_steps, verifier_tools, enable_web_search=False)
+
+            await run_tool_loop(
+                client.client,
+                model_name,
+                messages,
+                provider,
+                max_tool_steps,
+                verifier_tools,
+                enable_web_search=False,
+            )
         elif provider == "anthropic":
             from core.llm.handlers.anthropic import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
+
+            await run_tool_loop(
+                client.client, model_name, messages, max_tool_steps, verifier_tools
+            )
         elif provider == "gemini":
             from core.llm.handlers.gemini import run_tool_loop
-            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
+
+            await run_tool_loop(
+                client.client, model_name, messages, max_tool_steps, verifier_tools
+            )
 
         # DeepSeek-specific: Prepare messages for Instructor extraction
         # DeepSeek with thinking mode may return empty content with reasoning_content.
@@ -128,21 +162,25 @@ async def verify_trading_decision(
         # can process them, and detect empty content to issue a recovery prompt.
         if provider == "deepseek":
             from .handlers import deepseek as deepseek_handler
+
             messages = deepseek_handler.prepare_messages_for_instructor(messages)
 
             if not deepseek_handler.has_valid_content(messages):
                 logger.info(
                     "[%s/%s] DeepSeek returned empty verification content. Requesting JSON output.",
-                    provider, model_name
+                    provider,
+                    model_name,
                 )
-                messages.append({
-                    "role": "user",
-                    "content": (
-                        "Your previous output was empty or only contains reasoning. "
-                        "To complete this task, you MUST now output ONLY a valid JSON object matching the schema. "
-                        "No more reasoning, no explanations. Just the raw JSON object."
-                    )
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous output was empty or only contains reasoning. "
+                            "To complete this task, you MUST now output ONLY a valid JSON object matching the schema. "
+                            "No more reasoning, no explanations. Just the raw JSON object."
+                        ),
+                    }
+                )
 
         # 3. Final Extraction using Instructor for structured VerificationResult
         instructor_messages = []
@@ -162,9 +200,15 @@ async def verify_trading_decision(
                         if isinstance(part, dict) and "text" in part:
                             flat_content += part["text"]
                         elif isinstance(part, dict) and "input" in part:
-                             flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
-                        elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
-                             flat_content += f"\n[Tool Result: {part['content']}]"
+                            flat_content += (
+                                f"\n[Tool Call: {part['name']}({part['input']})]"
+                            )
+                        elif (
+                            isinstance(part, dict)
+                            and "content" in part
+                            and "tool_use_id" in part
+                        ):
+                            flat_content += f"\n[Tool Result: {part['content']}]"
                     content = flat_content
                 instructor_messages.append({"role": m["role"], "content": str(content)})
             elif hasattr(m, "role"):
@@ -176,17 +220,21 @@ async def verify_trading_decision(
                     elif getattr(part, "function_call", None):
                         content_text += f"\n[Tool Call: {part.function_call.name}({part.function_call.args})]"
                     elif getattr(part, "function_response", None):
-                         content_text += f"\n[Tool Result: {part.function_response.response}]"
-                
+                        content_text += (
+                            f"\n[Tool Result: {part.function_response.response}]"
+                        )
+
                 role = "model" if m.role == "model" else "user"
                 instructor_messages.append({"role": role, "content": content_text})
 
         # Anthropic calls via instructor require max_tokens
         create_args = {
             "model": model_name,
-            "response_model": List[VerificationResult], # Use List to handle Gemini multi-block tool calls
+            "response_model": List[
+                VerificationResult
+            ],  # Use List to handle Gemini multi-block tool calls
             "messages": copy.deepcopy(instructor_messages),
-            "max_retries": 2
+            "max_retries": 2,
         }
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
@@ -198,7 +246,9 @@ async def verify_trading_decision(
         for attempt in range(3):
             try:
                 resp_awaitable = client.chat.completions.create(**create_args)
-                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(
+                    resp_awaitable
+                ):
                     wrapper = await resp_awaitable
                 else:
                     wrapper = resp_awaitable
@@ -213,39 +263,55 @@ async def verify_trading_decision(
                 attempt_num = attempt + 1
                 logger.warning(
                     "[%s/%s] Verification Instructor empty response (attempt %d/3). Requesting structured output.",
-                    provider, model_name, attempt_num
+                    provider,
+                    model_name,
+                    attempt_num,
                 )
-                instructor_messages.append({
-                    "role": "user",
-                    "content": (
-                        "Your response was empty or incomplete. You MUST output a valid JSON array of verification results. "
-                        "Example: [{\"status\": \"REJECTED_VERIFICATION\", \"verification_reasoning\": \"Reason\", \"confidence_score\": 0}]"
-                    )
-                })
+                instructor_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your response was empty or incomplete. You MUST output a valid JSON array of verification results. "
+                            'Example: [{"status": "REJECTED_VERIFICATION", "verification_reasoning": "Reason", "confidence_score": 0}]'
+                        ),
+                    }
+                )
                 create_args["messages"] = copy.deepcopy(instructor_messages)
             except Exception as e:
                 last_error = e
                 error_str = str(e).lower()
                 attempt_num = attempt + 1
 
-                if "validation error" in error_str or "input should be a valid" in error_str or "list_type" in error_str:
+                if (
+                    "validation error" in error_str
+                    or "input should be a valid" in error_str
+                    or "list_type" in error_str
+                ):
                     logger.warning(
                         "[%s/%s] Verification Instructor validation error (attempt %d/3): %s. Attempting JSON repair...",
-                        provider, model_name, attempt_num, str(e)[:200]
+                        provider,
+                        model_name,
+                        attempt_num,
+                        str(e)[:200],
                     )
-                    instructor_messages.append({
-                        "role": "user",
-                        "content": (
-                            "Your response must be a valid JSON array matching the schema exactly. "
-                            "Return raw JSON with no additional text."
-                        )
-                    })
+                    instructor_messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Your response must be a valid JSON array matching the schema exactly. "
+                                "Return raw JSON with no additional text."
+                            ),
+                        }
+                    )
                     create_args["messages"] = copy.deepcopy(instructor_messages)
                 else:
                     # Non-validation error — log and re-raise to outer handler
                     logger.error(
                         "[%s/%s] Verification Instructor non-retryable error on attempt %d/3: %s",
-                        provider, model_name, attempt_num, str(e)
+                        provider,
+                        model_name,
+                        attempt_num,
+                        str(e),
                     )
                     raise
 
@@ -253,12 +319,17 @@ async def verify_trading_decision(
         if wrapper is None:
             logger.error(
                 "[%s/%s] All %d verification extraction attempts failed. Last: %s",
-                provider, model_name, 3, last_error or "empty response after retries"
+                provider,
+                model_name,
+                3,
+                last_error or "empty response after retries",
             )
         elif not ensure_list(wrapper):
             logger.error(
                 "[%s/%s] Verification extraction returned empty list after %d attempts.",
-                provider, model_name, 3
+                provider,
+                model_name,
+                3,
             )
 
         # Select the last verification result if multiple were returned
@@ -269,15 +340,16 @@ async def verify_trading_decision(
             final_resp = VerificationResult(
                 status="REJECTED_VERIFICATION",
                 verification_reasoning="No verification returned",
-                confidence_score=0
+                confidence_score=0,
             )
             logger.info(
                 "[%s/%s] Verification defaulted to REJECTED (no valid result after retries).",
-                provider, model_name
+                provider,
+                model_name,
             )
         else:
             final_resp = resp
-        
+
         # Log completion
         await log_reasoning_trace(
             task_type="VERIFICATION",
@@ -288,8 +360,8 @@ async def verify_trading_decision(
             metadata={
                 "ticker": decision.ticker,
                 "signal": decision.signal,
-                "source_id": decision.source_id
-            }
+                "source_id": decision.source_id,
+            },
         )
 
         return final_resp
@@ -303,13 +375,13 @@ async def verify_trading_decision(
                 "model_name": model_name,
                 "provider": provider,
                 "error_type": type(e).__name__,
-                "source_id": getattr(decision, 'source_id', None),
-            }
+                "source_id": getattr(decision, "source_id", None),
+            },
         )
         return VerificationResult(
             status="REJECTED_VERIFICATION",
             verification_reasoning=f"Verification failed due to error: {e}. Defaulting to rejection.",
-            confidence_score=0
+            confidence_score=0,
         )
     finally:
         await clients.close_client(client, provider)

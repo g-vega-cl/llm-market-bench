@@ -82,7 +82,7 @@ graph TD
 ### Analysis
 - Parallel LLM analysis via PromptFactory with modular provider handlers
 - **Pre-Injected Market Data**: System pre-fetches current prices for relevant tickers (portfolio holdings + `$SYMB` in chunks + major indices) and injects them as VERIFIED MARKET DATA directly into prompts. LLMs never produce price fields — eliminating price hallucination at the source.
-- **Tiered context injection**: Analysis agents receive light context (high-importance events + trending concepts). The Skeptical Verifier receives targeted per-trade RAG context (ranked by importance × similarity).
+- **Tiered context injection**: Analysis agents receive light context (high-importance events + trending concepts). The Skeptical Verifier receives targeted per-trade RAG context (ranked by importance × similarity, scoped to the same agent's past decisions to avoid cross-contamination). All RAG output is HTML-sanitized before prompt injection.
 - Batch strategy (size: see `BATCH_SIZE` in `analyze.py`) to avoid output truncation
 - Active tool loop: `get_stock_quote` (optional fallback), `calculate_buy/sell_quantity`, `web_search`, `run_stock_screener`
 - DiscoveryAgent identifies investable assets via stock screener tool-calling

@@ -12,8 +12,18 @@ logger = logging.getLogger("engine")
 
 MAX_RAG_TOKENS = 2000
 
+
+def strip_html(text: str | None) -> str:
+    if not text:
+        return text
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
 def _estimate_tokens(text: str) -> int:
     return len(text) // 4
+
 
 def prune_context(items: list[dict], max_tokens: int = MAX_RAG_TOKENS) -> str:
     """Rank items by importance × similarity, cap at token budget, sentence-boundary truncate.
@@ -32,7 +42,7 @@ def prune_context(items: list[dict], max_tokens: int = MAX_RAG_TOKENS) -> str:
     for item in items:
         importance = item.get("importance_score", 5)
         similarity = item.get("similarity", 0.5)
-        content = item.get("content", "")
+        content = strip_html(item.get("content", ""))
         signal_type = item.get("label", "")
         ticker = item.get("ticker", "")
         scored.append((importance * similarity, content, signal_type, ticker))
@@ -45,14 +55,22 @@ def prune_context(items: list[dict], max_tokens: int = MAX_RAG_TOKENS) -> str:
         if not content:
             continue
         if signal_type == "[LESSON_LEARNED]":
-            first_sentence = re.split(r'(?<=[.!?])\s+', content)[0]
+            first_sentence = re.split(r"(?<=[.!?])\s+", content)[0]
             content = first_sentence
 
         if ticker:
-            tag = f"[{signal_type}] {ticker}: {content}" if signal_type else f"[PAST REASONING] {ticker}: {content}"
+            tag = (
+                f"[{signal_type}] {ticker}: {content}"
+                if signal_type
+                else f"[PAST REASONING] {ticker}: {content}"
+            )
         else:
             imp = int(score) if score > 0 else 5
-            tag = f"[{signal_type}] (Importance: {imp}/10) {content}" if signal_type else f"[MEMORY] {content}"
+            tag = (
+                f"[{signal_type}] (Importance: {imp}/10) {content}"
+                if signal_type
+                else f"[MEMORY] {content}"
+            )
 
         line_tokens = _estimate_tokens(tag)
         if tokens_used + line_tokens > max_tokens:
@@ -62,6 +80,7 @@ def prune_context(items: list[dict], max_tokens: int = MAX_RAG_TOKENS) -> str:
 
     return "\n".join(lines)
 
+
 def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
     """Fetches the highest-importance active memories without embedding search.
 
@@ -69,11 +88,15 @@ def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
     """
     try:
         client = get_supabase_client()
-        response = client.table("memories").select(
-            "content, importance_score, memory_type"
-        ).eq("status", "ACTIVE").gte("importance_score", min_importance).order(
-            "importance_score", desc=True
-        ).limit(limit).execute()
+        response = (
+            client.table("memories")
+            .select("content, importance_score, memory_type")
+            .eq("status", "ACTIVE")
+            .gte("importance_score", min_importance)
+            .order("importance_score", desc=True)
+            .limit(limit)
+            .execute()
+        )
 
         if not response.data:
             return ""
@@ -88,17 +111,25 @@ def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
                 "UNCROWDED_TRADE": "UNCROWDED TRADE",
             }
             label = label_map.get(mt, "MARKET EVENT")
-            items.append({
-                "content": f"- [{label}] {row['content']}",
-                "importance_score": row.get("importance_score", 5),
-            })
+            items.append(
+                {
+                    "content": f"- [{label}] {row['content']}",
+                    "importance_score": row.get("importance_score", 5),
+                }
+            )
 
         return "\n".join(item["content"] for item in items)
     except Exception as e:
         logger.error(f"Error in retrieve_top_memories: {e}")
         return ""
 
-def retrieve_for_decision(ticker: str, reasoning: str, max_tokens: int = MAX_RAG_TOKENS) -> str:
+
+def retrieve_for_decision(
+    ticker: str,
+    reasoning: str,
+    max_tokens: int = MAX_RAG_TOKENS,
+    model_name: str | None = None,
+) -> str:
     """Targeted semantic search for memories relevant to a specific proposed trade.
 
     Searches both memories and past decisions tables, ranks by importance × similarity,
@@ -108,6 +139,7 @@ def retrieve_for_decision(ticker: str, reasoning: str, max_tokens: int = MAX_RAG
         ticker: The ticker symbol being traded.
         reasoning: The agent's reasoning for the trade.
         max_tokens: Token budget for the output.
+        model_name: If set, filters past decisions to only those from this model.
 
     Returns:
         A formatted, pruned context string.
@@ -126,8 +158,8 @@ def retrieve_for_decision(ticker: str, reasoning: str, max_tokens: int = MAX_RAG
                 "query_embedding": embedding,
                 "match_threshold": 0.4,
                 "match_count": 5,
-                "filter_memory_types": None
-            }
+                "filter_memory_types": None,
+            },
         ).execute()
 
         dec_response = client.rpc(
@@ -136,7 +168,8 @@ def retrieve_for_decision(ticker: str, reasoning: str, max_tokens: int = MAX_RAG
                 "query_embedding": embedding,
                 "match_threshold": 0.4,
                 "match_count": 3,
-            }
+                "filter_model_name": model_name,
+            },
         ).execute()
 
         items = []
@@ -150,35 +183,46 @@ def retrieve_for_decision(ticker: str, reasoning: str, max_tokens: int = MAX_RAG
                     "UNCROWDED_TRADE": "UNCROWDED TRADE",
                 }
                 label = label_map.get(mt, "MARKET EVENT")
-                items.append({
-                    "content": row.get("content", ""),
-                    "importance_score": row.get("importance_score", 5),
-                    "similarity": row.get("similarity", 0.5),
-                    "label": label,
-                    "ticker": ticker,
-                })
+                items.append(
+                    {
+                        "content": row.get("content", ""),
+                        "importance_score": row.get("importance_score", 5),
+                        "similarity": row.get("similarity", 0.5),
+                        "label": label,
+                        "ticker": ticker,
+                    }
+                )
 
         if dec_response.data:
             for row in dec_response.data:
-                items.append({
-                    "content": row.get("reasoning", ""),
-                    "importance_score": 5,
-                    "similarity": row.get("similarity", 0.5),
-                    "label": "PAST REASONING",
-                    "ticker": row.get("ticker", ticker),
-                })
+                items.append(
+                    {
+                        "content": row.get("reasoning", ""),
+                        "importance_score": 5,
+                        "similarity": row.get("similarity", 0.5),
+                        "label": "PAST REASONING",
+                        "ticker": row.get("ticker", ticker),
+                    }
+                )
 
         return prune_context(items, max_tokens)
     except Exception as e:
         logger.error(f"Error in retrieve_for_decision: {e}")
         return ""
 
+
 def retrieve_context(query_text: str, limit: int = 3) -> str:
     """Retrieves relevant past events/reasoning for a single text snippet."""
     results = retrieve_context_batch([query_text], limit=limit)
     return results[0] if results else ""
 
-def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: list[str] = None, embeddings: list[list[float]] = None) -> list[str]:
+
+def retrieve_context_batch(
+    queries: list[str],
+    limit: int = 3,
+    memory_types: list[str] = None,
+    embeddings: list[list[float]] = None,
+) -> list[str]:
     """Retrieves relevant past events/reasoning for multiple snippets in fewer calls.
 
     Args:
@@ -214,8 +258,8 @@ def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: lis
                     "query_embedding": embedding,
                     "match_threshold": 0.5,
                     "match_count": limit,
-                    "filter_memory_types": memory_types
-                }
+                    "filter_memory_types": memory_types,
+                },
             ).execute()
 
             mem_data = mem_response.data or []
@@ -227,19 +271,21 @@ def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: lis
                     "query_embedding": embedding,
                     "match_threshold": 0.5,
                     "match_count": limit,
-                }
+                },
             ).execute()
 
             context_parts = []
-            
+
             # Process Memories
             if mem_data:
                 for item in mem_data:
                     content = item.get("content", "")
                     importance = item.get("importance_score", 5)
                     if content:
-                        context_parts.append(f"- [MARKET EVENT] (Importance: {importance}/10) {content}")
-            
+                        context_parts.append(
+                            f"- [MARKET EVENT] (Importance: {importance}/10) {content}"
+                        )
+
             # Process Decisions
             if dec_response.data:
                 for item in dec_response.data:
@@ -247,21 +293,26 @@ def retrieve_context_batch(queries: list[str], limit: int = 3, memory_types: lis
                     signal = item.get("signal", "UNKNOWN")
                     reasoning = item.get("reasoning", "")
                     if reasoning:
-                        context_parts.append(f"- [PAST REASONING (HISTORICAL)] {ticker} {signal}: {reasoning}")
-            
+                        context_parts.append(
+                            f"- [PAST REASONING (HISTORICAL)] {ticker} {signal}: {reasoning}"
+                        )
+
             if not context_parts:
                 results.append("")
             else:
                 # Limit to total limit per query (e.g. top 3 combined)
                 # For now, let's keep all from both but maybe truncate if too long
-                results.append("\n".join(context_parts[:limit*2]))
+                results.append("\n".join(context_parts[: limit * 2]))
 
         return results
     except Exception as e:
         logger.error(f"Error in retrieve_context_batch: {e}")
         return ["" for _ in queries]
 
-def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float = 0.5) -> list[dict]:
+
+def find_potential_ancestors(
+    query_text: str, limit: int = 5, threshold: float = 0.5
+) -> list[dict]:
     """Finds candidate memories that could be ancestors of a new event.
 
     Args:
@@ -284,8 +335,8 @@ def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float =
                 "query_embedding": embedding,
                 "match_threshold": threshold,
                 "match_count": limit,
-                "filter_memory_types": None
-            }
+                "filter_memory_types": None,
+            },
         ).execute()
 
         return response.data or []
@@ -293,7 +344,13 @@ def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float =
         logger.error(f"Error finding potential ancestors: {e}")
         return []
 
-def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, embedding: list[float] = None) -> Optional[str]:
+
+def find_similar_memory(
+    content: str,
+    threshold: float = 0.90,
+    hours: int = 24,
+    embedding: list[float] = None,
+) -> Optional[str]:
     """Checks if a semantically similar memory exists within the last N hours.
 
     Returns:
@@ -305,9 +362,10 @@ def find_similar_memory(content: str, threshold: float = 0.90, hours: int = 24, 
         threshold=threshold,
         hours=hours,
         embedding=embedding,
-        status_filter="ACTIVE"
+        status_filter="ACTIVE",
     )
     return row.get("id") if row else None
+
 
 def find_similar_decision(
     ticker: str,
@@ -315,7 +373,7 @@ def find_similar_decision(
     threshold: float = 0.90,
     hours: int = 24,
     embedding: list[float] = None,
-    model_name: Optional[str] = None
+    model_name: Optional[str] = None,
 ) -> Optional[dict]:
     """Checks if a semantically similar trade decision exists for this ticker within the last N hours.
 
@@ -337,8 +395,9 @@ def find_similar_decision(
         hours=hours,
         embedding=embedding,
         ticker_filter=ticker,
-        model_name_filter=model_name
+        model_name_filter=model_name,
     )
+
 
 def find_similar_vector(
     table_name: str,
@@ -348,7 +407,7 @@ def find_similar_vector(
     embedding: list[float] = None,
     status_filter: Optional[str] = None,
     ticker_filter: Optional[str] = None,
-    model_name_filter: Optional[str] = None
+    model_name_filter: Optional[str] = None,
 ) -> Optional[Any]:
     """Generic semantic similarity check across tables with embeddings."""
     try:
@@ -361,9 +420,7 @@ def find_similar_vector(
         client = get_supabase_client()
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
-        query = client.table(table_name).select("*").filter(
-            "created_at", "gte", cutoff
-        )
+        query = client.table(table_name).select("*").filter("created_at", "gte", cutoff)
 
         if status_filter:
             query = query.filter("status", "eq", status_filter)
@@ -373,29 +430,33 @@ def find_similar_vector(
             query = query.filter("model_name", "eq", model_name_filter)
 
         recent_res = query.execute()
-        
+
         if not recent_res.data:
             return None
-            
+
         from analysis.consensus import cosine_similarity
-        
+
         for row in recent_res.data:
             recent_vector = row.get("embedding")
             if recent_vector:
                 if isinstance(recent_vector, str):
                     import json
+
                     recent_vector = json.loads(recent_vector)
-                
+
                 sim = cosine_similarity(embedding, recent_vector)
-                
+
                 if sim >= threshold:
-                    logger.info(f"Similar {table_name} found (ID: {row['id']}, Sim: {sim:.2f})")
+                    logger.info(
+                        f"Similar {table_name} found (ID: {row['id']}, Sim: {sim:.2f})"
+                    )
                     return row
 
         return None
     except Exception as e:
         logger.error(f"Error checking similar vectors in {table_name}: {e}")
         return None
+
 
 def update_memory_status(memory_id: str, status: str) -> bool:
     """Updates the status of an existing memory.
@@ -409,14 +470,17 @@ def update_memory_status(memory_id: str, status: str) -> bool:
     """
     try:
         client = get_supabase_client()
-        client.table("memories").update({"status": status}).eq("id", memory_id).execute()
+        client.table("memories").update({"status": status}).eq(
+            "id", memory_id
+        ).execute()
         return True
     except Exception as e:
         logger.error(f"Error updating memory status: {e}")
         return False
 
+
 def add_memory(
-    content: str, 
+    content: str,
     metadata: Optional[dict[str, Any]] = None,
     parent_id: Optional[str] = None,
     status: str = "ACTIVE",
@@ -426,7 +490,7 @@ def add_memory(
     check_similarity: bool = False,
     similarity_threshold: float = 0.90,
     lookback_hours: int = 24,
-    importance_score: int = 5
+    importance_score: int = 5,
 ) -> str | None:
     """Adds a new text chunk to the memory store.
 
@@ -450,9 +514,13 @@ def add_memory(
             return None
 
         if check_similarity:
-            similar_id = find_similar_memory(content, similarity_threshold, lookback_hours, embedding=embedding)
+            similar_id = find_similar_memory(
+                content, similarity_threshold, lookback_hours, embedding=embedding
+            )
             if similar_id:
-                logger.warning(f"Skipping memory insertion: Semantic duplicate of {similar_id}")
+                logger.warning(
+                    f"Skipping memory insertion: Semantic duplicate of {similar_id}"
+                )
                 return None
 
         client = get_supabase_client()
@@ -465,9 +533,9 @@ def add_memory(
             "relationship_type": relationship_type,
             "target_date": target_date,
             "memory_type": memory_type,
-            "importance_score": importance_score
+            "importance_score": importance_score,
         }
-        
+
         response = client.table("memories").insert(payload).execute()
         if response.data:
             return response.data[0]["id"]
@@ -475,13 +543,16 @@ def add_memory(
     except Exception as e:
         error_str = str(e).lower()
         # Check for various unique constraint violation patterns
-        is_duplicate = any(pattern in error_str for pattern in [
-            "unique_content",           # Named constraint
-            "unique constraint",        # Generic PostgreSQL
-            "duplicate key",            # PostgreSQL error
-            "violates unique",          # PostgreSQL violation message
-            "23505",                    # PostgreSQL unique violation code
-        ])
+        is_duplicate = any(
+            pattern in error_str
+            for pattern in [
+                "unique_content",  # Named constraint
+                "unique constraint",  # Generic PostgreSQL
+                "duplicate key",  # PostgreSQL error
+                "violates unique",  # PostgreSQL violation message
+                "23505",  # PostgreSQL unique violation code
+            ]
+        )
 
         if is_duplicate:
             logger.info(f"Memory already exists (idempotent): {content[:50]}...")
@@ -492,6 +563,7 @@ def add_memory(
 
         logger.error(f"Error adding memory: {e}")
         return None
+
 
 def decay_memories(sb_client: Client, decay_days: int = None):
     """Apply time-based decay to relevance scores of memories not updated recently.
@@ -505,14 +577,20 @@ def decay_memories(sb_client: Client, decay_days: int = None):
             Defaults to MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS from config.
     """
     from core import config
+
     decay_days = decay_days or config.MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS
     cutoff = (datetime.now(timezone.utc) - timedelta(days=decay_days)).isoformat()
 
     try:
         # Fetch active memories with relevance > threshold
-        response = sb_client.table("memories").select(
-            "id", "relevance_score", "created_at"
-        ).eq("status", "ACTIVE").lt("created_at", cutoff).gt("relevance_score", config.MEMORIES_DECAY_THRESHOLD).execute()
+        response = (
+            sb_client.table("memories")
+            .select("id", "relevance_score", "created_at")
+            .eq("status", "ACTIVE")
+            .lt("created_at", cutoff)
+            .gt("relevance_score", config.MEMORIES_DECAY_THRESHOLD)
+            .execute()
+        )
 
         if not response.data:
             logger.info("No stale memories to decay.")
@@ -521,14 +599,15 @@ def decay_memories(sb_client: Client, decay_days: int = None):
         decay_count = 0
         for memory in response.data:
             new_relevance = memory["relevance_score"] * 0.5
-            sb_client.table("memories").update({
-                "relevance_score": new_relevance
-            }).eq("id", memory["id"]).execute()
+            sb_client.table("memories").update({"relevance_score": new_relevance}).eq(
+                "id", memory["id"]
+            ).execute()
             decay_count += 1
 
         logger.info(f"Decayed relevance for {decay_count} stale memories.")
     except Exception as e:
         logger.error(f"Error decaying stale memories: {e}")
+
 
 def get_top_trending_concepts(limit: int = 5) -> str:
     """Fetches the highest velocity concepts from the concept map.
@@ -542,9 +621,13 @@ def get_top_trending_concepts(limit: int = 5) -> str:
     try:
         client = get_supabase_client()
         # Fetch concepts ordered by velocity_score descending
-        response = client.table("concept_metrics").select(
-            "concept_name, velocity_score, mention_count"
-        ).order("velocity_score", desc=True).limit(limit).execute()
+        response = (
+            client.table("concept_metrics")
+            .select("concept_name, velocity_score, mention_count")
+            .order("velocity_score", desc=True)
+            .limit(limit)
+            .execute()
+        )
 
         if not response.data:
             return ""
@@ -555,7 +638,7 @@ def get_top_trending_concepts(limit: int = 5) -> str:
             vel = row.get("velocity_score", 0.0)
             count = row.get("mention_count", 0)
             lines.append(f"- {name} (Velocity: {vel:.2f}, Mentions: {count})")
-        
+
         return "\n".join(lines)
     except Exception as e:
         logger.error(f"Error fetching trending concepts: {e}")

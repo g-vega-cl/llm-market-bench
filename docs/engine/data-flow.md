@@ -193,6 +193,8 @@ After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engi
 - Non-validation errors (rate limits, auth) are re-raised immediately — not retried
 - DeepSeek thinking-mode handling: identical cleaning and empty-content recovery as the analysis pipeline
 - Price backfill (sets `injected_market_price` for tickers not pre-fetched, used for staleness check)
+- **Per-agent RAG scoping**: `retrieve_for_decision()` filters past decisions by `model_name` so the verifier only sees the current agent's own trade reasoning. Shared memories (market events, lessons learned) remain cross-agent — they're retrieved from `match_memories` which has no model filter.
+- **Content sanitization**: All RAG output is stripped of HTML tags in `prune_context()` before prompt injection, preventing UI markup from leaking into LLM context.
 
 **Ownership Pre-Validation**: Before decisions reach the verification layer, SELL signals for unheld tickers are caught and converted to HOLD with `REJECTED_OWNERSHIP` reasoning.
 
@@ -389,8 +391,8 @@ Decoupled vector storage separates macro context from strategy context:
 | Function | Path | Description |
 |----------|------|-------------|
 | `retrieve_top_memories(limit, min_importance)` | Analysis hot path | SQL query for highest-importance active memories. No embedding call. |
-| `retrieve_for_decision(ticker, reasoning)` | Verifier path | Targeted semantic search for memories + past decisions relevant to a specific proposed trade. |
-| `prune_context(items, max_tokens)` | Both paths | Ranks items by importance × similarity, caps at token budget, sentence-boundary truncates long entries. |
+| `retrieve_for_decision(ticker, reasoning, model_name=None)` | Verifier path | Targeted semantic search for memories (all agents) + past decisions (scoped to `model_name` if provided). |
+| `prune_context(items, max_tokens)` | Both paths | Ranks items by importance × similarity, caps at token budget, strips HTML tags from content, sentence-boundary truncates long entries. |
 | `retrieve_context_batch(queries)` | Contrarian, legacy | Batch pgvector search. Still used by the contrarian agent and non-time-critical paths. |
 
 ---

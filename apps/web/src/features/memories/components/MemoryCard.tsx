@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Card, Badge } from '@llm-market-bench/ui-design-system'
 import type { Memory } from './MemoriesList'
 import { Link } from '@tanstack/react-router'
 import { extractPercentage } from '~/lib/parse-scenario-percentages'
@@ -13,9 +14,11 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
   const [selectedAsset, setSelectedAsset] = React.useState<any | null>(null)
 
   return (
-    <div
+    <Card
+      variant="default"
+      padding="md"
       id={memory.id}
-      className="group w-full border border-zinc-200 dark:border-zinc-800 rounded-md p-5 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+      className="group w-full hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
     >
       {/* Header */}
       <div className="flex flex-wrap items-start gap-3 mb-4">
@@ -33,19 +36,15 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
           </span>
           
           {memory.status && memory.status !== 'ACTIVE' && (
-            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wide ${
-              memory.status === 'RESOLVED' 
-                ? 'bg-zinc-800 dark:bg-zinc-700 text-white' 
-                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-            }`}>
+            <Badge variant={memory.status === 'RESOLVED' ? 'solid' : 'soft'} colorScheme={memory.status === 'RESOLVED' ? 'neutral' : 'warning'} size="sm">
               {memory.status}
-            </span>
+            </Badge>
           )}
           
           {memory.parent_id && (
-            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wide bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300">
+            <Badge variant="soft" colorScheme="info" size="sm">
               {memory.relationship_type || 'Related'}
-            </span>
+            </Badge>
           )}
         </div>
         
@@ -71,37 +70,27 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
       {memory.metadata && Object.keys(memory.metadata).length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {memory.metadata.ticker && (
-            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300">
+            <Badge variant="soft" colorScheme="info" size="sm">
               ${memory.metadata.ticker}
-            </span>
+            </Badge>
           )}
           
           {memory.metadata.impact && (
-            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-              memory.metadata.impact === 'BULLISH' 
-                ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' 
-                : memory.metadata.impact === 'BEARISH' 
-                  ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300' 
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
-            }`}>
+            <Badge variant="soft" colorScheme={memory.metadata.impact === 'BULLISH' ? 'success' : memory.metadata.impact === 'BEARISH' ? 'danger' : 'neutral'} size="sm">
               {memory.metadata.impact}
-            </span>
+            </Badge>
           )}
           
           {memory.metadata.model_name && (
-            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            <Badge variant="soft" colorScheme="neutral" size="sm">
               {memory.metadata.model_name}
-            </span>
+            </Badge>
           )}
           
           {memory.metadata.is_regret !== undefined && (
-            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-              memory.metadata.is_regret 
-                ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300' 
-                : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
-            }`}>
+            <Badge variant="soft" colorScheme={memory.metadata.is_regret ? 'warning' : 'success'} size="sm">
               {memory.metadata.is_regret ? 'Regret' : 'Success'}
-            </span>
+            </Badge>
           )}
         </div>
       )}
@@ -308,6 +297,6 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { SectionHeading, Card } from '@llm-market-bench/ui-design-system'
 
 interface NewsletterFeedProps {
     newsletters: any[]
@@ -10,10 +11,7 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
     return (
         <section className="space-y-8 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
-                    <span className="w-3 h-10 bg-gradient-to-b from-electric-blue-500 to-blue-600 rounded-full shadow-lg" />
-                    <span className="text-gradient text-gradient-electric">Daily Intelligence Briefing</span>
-                </h2>
+                <SectionHeading gradient="electric">Daily Intelligence Briefing</SectionHeading>
 
                 <div className="flex items-center gap-2 px-4 py-2 bg-electric-blue-50 dark:bg-electric-blue-950/20 border border-electric-blue-200 dark:border-electric-blue-900/30 rounded-xl shadow-md">
                     <span className="text-[10px] font-black text-electric-blue-600 dark:text-electric-blue-400 uppercase tracking-widest">

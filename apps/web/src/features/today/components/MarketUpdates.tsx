@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { SectionHeading } from '@llm-market-bench/ui-design-system'
 
 interface MarketUpdatesProps {
     priceUpdates: any[]
@@ -22,10 +23,7 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
     return (
         <section className="space-y-8 animate-slide-up">
             <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
-                    <span className="w-3 h-10 bg-gradient-to-b from-amber-500 to-orange-600 rounded-full" />
-                    <span className="text-gradient text-gradient-catalyst">Live Market Pulse</span>
-                </h2>
+                <SectionHeading gradient="catalyst">Live Market Pulse</SectionHeading>
 
                 <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl">
                     <div className="live-dot" />

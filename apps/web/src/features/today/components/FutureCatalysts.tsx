@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages'
+import { SectionHeading, Badge } from '@llm-market-bench/ui-design-system'
 
 interface FutureCatalystsProps {
     events: any[]
@@ -69,10 +70,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
     return (
         <section className="space-y-8 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
-                    <span className="w-3 h-10 bg-gradient-to-b from-cyber-yellow-500 to-amber-600 rounded-full shadow-lg" />
-                    <span className="text-gradient text-gradient-catalyst">Horizon Watch: Pending Events</span>
-                </h2>
+                <SectionHeading gradient="catalyst">Horizon Watch: Pending Events</SectionHeading>
 
                 <div className="flex items-center gap-2 px-4 py-2 bg-cyber-yellow-50 dark:bg-cyber-yellow-950/20 border border-cyber-yellow-200 dark:border-cyber-yellow-900/30 rounded-xl shadow-md">
                     <span className="text-[10px] font-black text-cyber-yellow-600 dark:text-cyber-yellow-400 uppercase tracking-widest">
@@ -126,15 +124,18 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                         {dateNote}
                                                     </span>
                                                 )}
-                                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border shadow-sm ${
-                                                    importanceScore >= 9
-                                                        ? 'bg-alert-red-50 dark:bg-alert-red-950/20 text-alert-red-600 dark:text-alert-red-400 border-alert-red-200 dark:border-alert-red-900/30'
-                                                        : importanceScore >= 8
-                                                        ? 'bg-cyber-yellow-50 dark:bg-cyber-yellow-950/20 text-cyber-yellow-600 dark:text-cyber-yellow-400 border-cyber-yellow-200 dark:border-cyber-yellow-900/30'
-                                                        : 'bg-electric-blue-50 dark:bg-electric-blue-950/20 text-electric-blue-600 dark:text-electric-blue-400 border-electric-blue-200 dark:border-electric-blue-900/30'
-                                                }`}>
+                                                <Badge
+                                                    severity={
+                                                        importanceScore >= 9 ? 'critical' :
+                                                        importanceScore >= 8 ? 'high' :
+                                                        'medium'
+                                                    }
+                                                    variant="soft"
+                                                    radius="lg"
+                                                    size="sm"
+                                                >
                                                     {getImportanceLabel(importanceScore)}
-                                                </span>
+                                                </Badge>
                                             </div>
 
                                             {/* Event Time if available */}

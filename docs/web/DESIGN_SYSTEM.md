@@ -38,9 +38,39 @@ ai:         linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)   → Cognitive in
 
 ## Component Patterns
 
+### Primitives
+
+**Button** — Props: `variant` (solid/outline/ghost/soft/glass), `size` (sm/md/lg), `colorScheme` (accent/success/danger/info/warning/neutral), `rounded` (xl/full), `gradient` (boolean), `isLoading`, `leftIcon`, `rightIcon`.
+
+**Card** — Composable: `Card`, `CardHeader`, `CardBody`, `CardFooter`. Props: `variant` (default/elevated/outlined/ghost/glass), `padding` (none/sm/md/lg), `gradient` (electric/success/alert/catalyst/ai), `accentBorder` (none/left/top), `accentBorderColor` (accent/success/danger/info/warning).
+
+**Badge** — Props: `variant` (solid/soft/outline/dot), `size` (sm/md), `colorScheme` (accent/success/danger/info/warning/neutral), `severity` (critical/high/medium/low), `radius` (full/lg/md).
+
 **Cards**: Rounded-3xl with border, subtle shadow, hover lift (`translateY(-4px)`, `0.3s cubic-bezier`).
 
 **Badges**: Colored pills with `text-[9px] font-black uppercase tracking-widest`. Importance levels: Critical (red), High (yellow), Medium (blue).
+
+### Patterns
+
+**SectionHeading** — Section title with gradient decorator bar and gradient text. Props: `gradient` (electric/success/catalyst/ai/alert), `children`, `className`.
+
+**ConfidenceBar** — Labelled progress bar (0-100%). Props: `label`, `value`, `colorScheme` (accent/success/danger/info/warning), `textStyle` (default/hero), `className`. `textStyle="hero"` switches to white/translucent palette for dark gradient backgrounds.
+
+**StatPill** — Pill-shaped filter button with colored dot, label, and count. Props: `label`, `value`, `colorScheme` (accent/success/danger/info/warning/neutral), `isActive`, `onClick`, `className`.
+
+**MetricTile** — Small stat card with icon, label, and value. Props: `icon`, `label`, `value`, `className`.
+
+**EmptyState** — Empty state with emoji, title, subtitle, action buttons.
+
+### Color-Coded Elements
+
+Components that map a `colorScheme` prop to a specific color (e.g., `ConfidenceBar` fill, `StatPill` dot) use **inline `style={{ backgroundColor }}`** with values from `semanticTokens` exported by the design system, rather than Tailwind `bg-*` classes. This avoids Tailwind v4 class-generation issues when color tokens are defined in `@theme inline`.
+
+### Layouts
+
+**PageLayout** — Standard page wrapper with padding and max-width. Props: `maxWidth`, `withPadding`.
+
+**HeroBackground** — Gradient hero banner with dot-pattern overlay and animated blur orbs. Props: `gradient` (electric/success/alert/catalyst/ai).
 
 **Agent Pills**: Color-coded with emoji (🟢 OpenAI, 🟠 Claude, 🔵 Gemini, 🟣 DeepSeek).
 

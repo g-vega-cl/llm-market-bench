@@ -49,11 +49,26 @@ export type { LoadingBoundaryProps } from "./patterns/LoadingBoundary"
 export { ErrorCard } from "./patterns/ErrorCard"
 export type { ErrorCardProps } from "./patterns/ErrorCard"
 
+export { SectionHeading } from "./patterns/SectionHeading"
+export type { SectionHeadingProps } from "./patterns/SectionHeading"
+
+export { ConfidenceBar } from "./patterns/ConfidenceBar"
+export type { ConfidenceBarProps } from "./patterns/ConfidenceBar"
+
+export { StatPill } from "./patterns/StatPill"
+export type { StatPillProps } from "./patterns/StatPill"
+
+export { MetricTile } from "./patterns/MetricTile"
+export type { MetricTileProps } from "./patterns/MetricTile"
+
 // ---------------------------------------------------------------------------
 // Layouts
 // ---------------------------------------------------------------------------
 export { PageLayout } from "./layouts/PageLayout"
 export type { PageLayoutProps } from "./layouts/PageLayout"
+
+export { HeroBackground } from "./layouts/HeroBackground"
+export type { HeroBackgroundProps } from "./layouts/HeroBackground"
 
 // ---------------------------------------------------------------------------
 // Utilities

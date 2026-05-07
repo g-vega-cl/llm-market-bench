@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Badge } from '@llm-market-bench/ui-design-system'
 
 export function DataCard({ item }: { item: any }) {
   if (typeof item !== 'object' || item === null) {
@@ -25,13 +26,9 @@ export function DataCard({ item }: { item: any }) {
             </h6>
             <div className="text-[12px] md:text-[13px] font-bold text-gray-900 dark:text-gray-100 break-words">
               {typeof v === 'boolean' ? (
-                <span
-                  className={`px-1.5 md:px-2 py-0.5 rounded-md text-[9px] md:text-[10px] ${
-                    v ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'
-                  }`}
-                >
+                <Badge variant="soft" colorScheme={v ? 'success' : 'danger'} size="sm">
                   {v ? 'YES' : 'NO'}
-                </span>
+                </Badge>
               ) : (
                 String(v)
               )}

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { CorrelationData } from '../api/fetch-market-overview'
+import { Button, Card } from '@llm-market-bench/ui-design-system'
 
 interface HoveredCell {
   ticker_a: string
@@ -72,31 +73,29 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-zinc-500">Method:</span>
-            <button
+            <Button
+              rounded="full"
+              size="sm"
+              variant={method === 'pearson' ? "solid" : "soft"}
+              colorScheme={method === 'pearson' ? "accent" : "neutral"}
               onClick={() => setMethod('pearson')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                method === 'pearson'
-                  ? 'bg-electric-blue-500 text-white'
-                  : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-              }`}
             >
               Pearson
-            </button>
-            <button
+            </Button>
+            <Button
+              rounded="full"
+              size="sm"
+              variant={method === 'spearman' ? "solid" : "soft"}
+              colorScheme={method === 'spearman' ? "accent" : "neutral"}
               onClick={() => setMethod('spearman')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                method === 'spearman'
-                  ? 'bg-electric-blue-500 text-white'
-                  : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-              }`}
             >
               Spearman
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 overflow-x-auto">
+      <Card variant="default" padding="md" className="overflow-x-auto">
         {showSimplified ? (
           <SimplifiedMatrix
             matrix={matrix}
@@ -129,7 +128,7 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
             <span className="text-xs text-zinc-500">+1.0 (Perfect)</span>
           </div>
         </div>
-      </div>
+      </Card>
 
       {hoveredCell && (
         <div className="mt-4 p-4 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">

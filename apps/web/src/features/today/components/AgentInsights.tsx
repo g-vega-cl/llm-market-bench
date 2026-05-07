@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { getAgentInfo } from '../lib/agent-info'
+import { SectionHeading, ConfidenceBar, Badge, Card } from '@llm-market-bench/ui-design-system'
 interface AgentInsightsProps {
     memories: any[]
 }
@@ -15,10 +16,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
     return (
         <section className="space-y-8 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-4 text-display">
-                    <span className="w-3 h-10 bg-gradient-to-b from-deep-purple-500 to-electric-blue-500 rounded-full shadow-lg" />
-                    <span className="text-gradient text-gradient-electric">AI Cognitive Synthesis</span>
-                </h2>
+                <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
                 {/* Consensus Meter */}
                 {consensus.length > 0 && (
                     <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-md">
@@ -50,9 +48,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             {/* Agent Participation */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="px-3 py-1 bg-deep-purple-100 dark:bg-deep-purple-900/30 text-deep-purple-600 dark:text-deep-purple-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-deep-purple-200 dark:border-deep-purple-800 shadow-sm">
-                                        Market Consensus
-                                    </span>
+                                    <Badge severity="medium" variant="soft" radius="lg" size="sm">Market Consensus</Badge>
                                     {agents.length > 0 && (
                                         <div className="flex items-center gap-1 flex-wrap">
                                             {agents.slice(0, 4).map((agent, i) => (
@@ -122,9 +118,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-200 dark:border-emerald-800 shadow-sm">
-                                    Government Incentive
-                                </span>
+                                <Badge colorScheme="success" variant="soft" radius="lg" size="sm">Government Incentive</Badge>
                                 <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
                                     <span>💰</span> Policy Alert
                                 </span>
@@ -160,9 +154,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-amber-200 dark:border-amber-800 shadow-sm">
-                                    Lesson Learned
-                                </span>
+                                <Badge severity="high" variant="soft" radius="lg" size="sm">Lesson Learned</Badge>
                                 <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
                                     <span>📝</span> Post-Analysis
                                 </span>

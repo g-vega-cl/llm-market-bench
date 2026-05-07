@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { CorrelationData } from '../api/fetch-market-overview'
+import { Button, Card } from '@llm-market-bench/ui-design-system'
 
 interface UncorrelatedPairsProps {
   correlationData: CorrelationData[]
@@ -56,7 +57,7 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
         </h2>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+      <Card variant="default" padding="none" className="overflow-hidden">
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-3">
@@ -89,50 +90,46 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
 
             <div className="flex items-center gap-2">
               <span className="text-sm text-zinc-500">Method:</span>
-              <button
+              <Button
+                rounded="full"
+                size="sm"
+                variant={method === 'pearson' ? "solid" : "soft"}
+                colorScheme={method === 'pearson' ? "accent" : "neutral"}
                 onClick={() => setMethod('pearson')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                  method === 'pearson'
-                    ? 'bg-electric-blue-500 text-white'
-                    : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-                }`}
               >
                 Pearson
-              </button>
-              <button
+              </Button>
+              <Button
+                rounded="full"
+                size="sm"
+                variant={method === 'spearman' ? "solid" : "soft"}
+                colorScheme={method === 'spearman' ? "accent" : "neutral"}
                 onClick={() => setMethod('spearman')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                  method === 'spearman'
-                    ? 'bg-electric-blue-500 text-white'
-                    : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-                }`}
               >
                 Spearman
-              </button>
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="text-sm text-zinc-500">Sort by:</span>
-              <button
+              <Button
+                rounded="full"
+                size="sm"
+                variant={sortBy === 'correlation' ? "solid" : "soft"}
+                colorScheme={sortBy === 'correlation' ? "accent" : "neutral"}
                 onClick={() => setSortBy('correlation')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                  sortBy === 'correlation'
-                    ? 'bg-electric-blue-500 text-white'
-                    : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-                }`}
               >
                 Lowest Correlation
-              </button>
-              <button
+              </Button>
+              <Button
+                rounded="full"
+                size="sm"
+                variant={sortBy === 'return' ? "solid" : "soft"}
+                colorScheme={sortBy === 'return' ? "accent" : "neutral"}
                 onClick={() => setSortBy('return')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                  sortBy === 'return'
-                    ? 'bg-electric-blue-500 text-white'
-                    : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-                }`}
               >
                 Highest Return
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -200,7 +197,7 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
             Showing top 50 of {filteredPairs.length} pairs
           </div>
         )}
-      </div>
+      </Card>
 
       <div className="mt-6 p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl">
         <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2">💡 Strategy Note</h3>

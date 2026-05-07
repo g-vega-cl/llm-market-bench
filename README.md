@@ -36,7 +36,9 @@ llm-market-bench/
 ├── supabase/                # SQL Migrations & RLS
 ├── docs/                    # Technical Walkthroughs
 ├── packages/
-│   └── config/              # Shared configuration (models.json)
+│   ├── config/              # Shared configuration (models.json)
+│   ├── database/            # Generated Supabase types
+│   └── ui-design-system/    # Shared UI primitives + theme tokens
 └── tests/                   # Engine & Web tests
 ```
 
@@ -180,6 +182,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 ### Web Documentation
 
 - [Web Application Architecture](./docs/web/README.md)
+- [Design System](./docs/web/DESIGN_SYSTEM.md) — Typography, colors, and component patterns
 - [TanStack Best Practices Guide](./docs/web/TANSTACK_BEST_PRACTICES.md)
 - [Portfolios UI](./docs/web/portfolios-ui.md)
 - [Frontend Testing](./docs/web/testing.md)
@@ -206,6 +209,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 ### Frontend (Web)
 
 - **Framework**: TanStack Start (Vite + React)
+- **Styling**: Tailwind CSS v4 + homegrown design system (`@llm-market-bench/ui-design-system`)
 - **State Management**: TanStack Query v5
 - **Visualization**: D3.js
 - **Authentication**: Supabase Auth (OAuth 2.0 - Google)

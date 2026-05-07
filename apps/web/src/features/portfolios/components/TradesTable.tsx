@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useState } from 'react'
 import type { TradeWithReasoning } from '@llm-market-bench/database'
+import { Badge } from '@llm-market-bench/ui-design-system'
 
 export type Trade = TradeWithReasoning
 
@@ -47,12 +48,14 @@ export function TradesTable({ trades }: TradesTableProps) {
                                     </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-3 sm:py-4 cursor-pointer">
-                                    <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-tight ${trade.signal.toUpperCase() === 'BUY'
-                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                            : 'bg-rose-50 text-rose-700 border border-rose-100'
-                                        }`}>
+                                    <Badge
+                                        variant="soft"
+                                        colorScheme={trade.signal.toUpperCase() === 'BUY' ? 'success' : 'danger'}
+                                        radius="md"
+                                        size="sm"
+                                    >
                                         {trade.signal}
-                                    </span>
+                                    </Badge>
                                 </td>
                                 <td className="px-3 sm:px-6 py-3 sm:py-4 cursor-pointer">
                                     {trade.alpaca_status ? (
@@ -60,17 +63,22 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             href="https://paper.alpaca.markets/orders"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`inline-block px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-tight border transition-opacity hover:opacity-80 ${
-                                                trade.alpaca_status === 'FILLED'
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                    : trade.alpaca_status === 'PENDING'
-                                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
-                                                    : 'bg-rose-50 text-rose-700 border-rose-100'
-                                            }`}
+                                            className="inline-block transition-opacity hover:opacity-80"
                                             title={trade.alpaca_order_id ? `Order ID: ${trade.alpaca_order_id}` : undefined}
                                             onClick={(e) => e.stopPropagation()}
                                         >
-                                            {trade.alpaca_status}
+                                            <Badge
+                                                variant="soft"
+                                                colorScheme={
+                                                    trade.alpaca_status === 'FILLED' ? 'success' :
+                                                    trade.alpaca_status === 'PENDING' ? 'warning' :
+                                                    'danger'
+                                                }
+                                                radius="md"
+                                                size="sm"
+                                            >
+                                                {trade.alpaca_status}
+                                            </Badge>
                                         </a>
                                     ) : (
                                         <span className="text-zinc-300">—</span>

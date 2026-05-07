@@ -50,8 +50,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.
 - [ ] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there**
-- [ ] **Add design system code vertical.**
-  - [ ] The design system must work nicely with the "select this and tell me more LLM chat". I could easily let people use their own open router keys and models and store it on localStorage.
+- [x] **Add design system code vertical.** — Implemented in `packages/ui-design-system/`. See [DESIGN_SYSTEM.md](./docs/web/DESIGN_SYSTEM.md).
+  - [x] The design system primitives (Button, Card, Badge) and patterns (SectionHeading, ConfidenceBar, StatPill, etc.) are now used across all feature pages.
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
 - [ ] **Add past market events and their resolution? Like the resolution of the market events you showed before**
 - [ ] **Set up a 'global' agent hook/env for my projects?**
@@ -67,6 +67,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: focus on making good tool-calling, stock researching agents. Rather than an info dump.
 - [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
 - [ ] - Set up a linter for web app
+- [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./docs/web/DESIGN_SYSTEM.md).
 
 ## Under Consideration
 

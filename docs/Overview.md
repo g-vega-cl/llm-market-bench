@@ -11,7 +11,8 @@ llm-market-bench/
 │   └── web/                 # TanStack Start dashboard (React + TypeScript)
 ├── packages/
 │   ├── config/              # Shared config (models.json)
-│   └── database/            # Generated Supabase types
+│   ├── database/            # Generated Supabase types
+│   └── ui-design-system/    # Shared UI primitives + theme tokens
 ├── supabase/                # SQL migrations, RLS, type generation
 └── docs/                    # Documentation (this directory)
 ```

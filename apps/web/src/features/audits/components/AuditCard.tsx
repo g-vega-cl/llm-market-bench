@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Badge, Card } from '@llm-market-bench/ui-design-system'
 
 interface AuditCardProps {
   audit: {
@@ -12,11 +13,14 @@ interface AuditCardProps {
   }
 }
 
-const severityColors: Record<string, string> = {
-  CRITICAL: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-  HIGH: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  MEDIUM: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  LOW: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+function getSeverity(severity: string): "critical" | "high" | "medium" | "low" {
+  const map: Record<string, "critical" | "high" | "medium" | "low"> = {
+    CRITICAL: 'critical',
+    HIGH: 'high',
+    MEDIUM: 'medium',
+    LOW: 'low',
+  }
+  return map[severity] ?? 'medium'
 }
 
 const typeLabels: Record<string, string> = {
@@ -31,13 +35,13 @@ export function AuditCard({ audit }: AuditCardProps) {
   const [expanded, setExpanded] = React.useState(false)
 
   return (
-    <div className="border border-zinc-700 rounded-lg p-6 bg-zinc-900/50">
+    <Card variant="default" padding="md" className="border-zinc-700 bg-zinc-900/50">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <span className={`px-2 py-1 text-xs font-semibold rounded border ${severityColors[audit.severity]}`}>
+            <Badge severity={getSeverity(audit.severity)} variant="outline" size="sm">
               {audit.severity}
-            </span>
+            </Badge>
             <span className="text-xs text-zinc-500 uppercase tracking-wider">
               {typeLabels[audit.audit_type] || audit.audit_type}
             </span>
@@ -71,6 +75,6 @@ export function AuditCard({ audit }: AuditCardProps) {
           )}
         </div>
       )}
-    </div>
+    </Card>
   )
 }

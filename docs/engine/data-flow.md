@@ -187,6 +187,7 @@ After the tool loop, Instructor + Pydantic enforces strict JSON schema. The engi
 - 3-attempt retry loop for Instructor extraction with corrective prompting on validation errors or empty/None results
 - JSON repair (double-encoded strings, extra quotes, embedded JSON)
 - DeepSeek thinking-mode handling: `prepare_messages_for_instructor()` strips `reasoning_content` from non-tool-call messages; `has_valid_content()` detects empty content and triggers a recovery prompt
+- Anthropic content block flattening: nested content lists (`[{"type": "text", "text": "..."}, {"type": "tool_use", ...}]`) are flattened to plain strings before Instructor extraction, matching the same pattern used in the verification pipeline
 
 **Verification pipeline** (`core/llm/verification.py`):
 - Same 3-attempt retry loop as analysis, with separate repair prompts for validation errors vs. empty/None responses
@@ -339,7 +340,7 @@ Intervals: `analysis/post_analysis.py`. Workflow cadence: `post-analysis.yml`.
 
 **Files:** `apps/engine/analysis/contrarian.py`
 
-Runs after primary agents to identify crowded trades and missed risks. Executes contrarian trades in a dedicated portfolio. Uses dependency injection (optional parameters) for testability.
+Runs after primary agents to identify crowded trades and missed risks. Executes contrarian trades in a dedicated portfolio. Uses dependency injection (optional parameters) for testability. Fetches fresh market prices (`force_refresh=True`) rather than relying on cached data to ensure contrarian analysis uses the latest prices.
 
 ### Cause & Effect Analysis
 

@@ -198,6 +198,9 @@ class TestEarlyContrarianStart:
 
         assert isinstance(result_decisions, list)
         assert isinstance(result_events, list)
+        # Verify force_refresh is passed to market data fetches
+        for call in mock_market_data.get_quotes.await_args_list:
+            assert call.kwargs.get("force_refresh") is True
 
 
 class TestDecisionCallback:

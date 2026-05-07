@@ -159,9 +159,9 @@ class MarketDataManager:
         """
         if not ticker or not isinstance(ticker, str):
             return None
-            
-        ticker = ticker.upper()
-        
+
+        ticker = ticker.strip().upper()
+
         # 1. Check Cache (unless force_refresh is True)
         if not force_refresh:
             cached_data = self._get_from_cache(ticker)
@@ -264,7 +264,7 @@ class MarketDataManager:
         if not tickers:
             return {}
 
-        tickers = [t.upper() for t in tickers]
+        tickers = [t.strip().upper() for t in tickers]
         results = {}
         missing_tickers = list(tickers)
 
@@ -412,7 +412,7 @@ class MarketDataManager:
                     continue
 
                 payload = {
-                    "ticker": data.ticker,
+                    "ticker": data.ticker.strip(),
                     "price": data.price,
                     "market_cap": data.market_cap,
                     "fetched_at": now_iso
@@ -437,7 +437,7 @@ class MarketDataManager:
         Returns:
             List of dicts with 'price' and 'fetched_at'.
         """
-        ticker = ticker.upper()
+        ticker = ticker.strip().upper()
         
         # 1. Check local DB
         try:

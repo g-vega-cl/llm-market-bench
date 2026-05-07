@@ -426,3 +426,96 @@ class TestAnalyzeWithProviderRetryLogic:
             assert result is not None
             assert len(result.decisions) == 0
             assert len(result.macro_events) == 0
+
+
+class TestAnthropicMessageFlattening:
+    """Tests for Anthropic message content flattening in analyze_with_provider."""
+
+    async def _run_flattening(self, messages_in):
+        """Helper: run analyze_with_provider's flattening on messages by
+        tracing what gets passed to the mocked LLM client."""
+        from core.llm.analysis import analyze_with_provider
+        captured = {}
+
+        async def mock_create(**kwargs):
+            captured["messages"] = kwargs.get("messages", [])
+            captured["system"] = kwargs.get("system")
+            return DecisionsResponse(decisions=[], macro_events=[])
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create = mock_create
+        mock_factory = MagicMock(return_value=mock_client)
+        chunks = [{"source_id": "test_1", "content": "test"}]
+
+        with patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}), \
+             patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock), \
+             patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages_in):
+
+            result = await analyze_with_provider(
+                provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks
+            )
+            return captured.get("messages", [])
+
+    @pytest.mark.asyncio
+    async def test_flattens_nested_text_blocks(self):
+        """Nested text content blocks are flattened to plain strings."""
+        messages = [
+            {"role": "system", "content": "You are a helpful trading assistant."},
+            {"role": "user", "content": [{"type": "text", "text": "Analyze this market data."}]},
+        ]
+        flat = await self._run_flattening(messages)
+        for msg in flat:
+            assert isinstance(msg["content"], str)
+
+    @pytest.mark.asyncio
+    async def test_flattens_tool_calls(self):
+        """Tool call blocks are rendered as [Tool Call: ...] strings."""
+        messages = [
+            {"role": "system", "content": "system prompt"},
+            {"role": "assistant", "content": [
+                {"type": "text", "text": "Let me check that."},
+                {"name": "web_search", "input": {"query": "NVDA price"}, "type": "tool_use", "id": "abc123"},
+            ]},
+        ]
+        flat = await self._run_flattening(messages)
+        assert "[Tool Call: web_search({'query': 'NVDA price'})]" in flat[-1]["content"]
+
+    @pytest.mark.asyncio
+    async def test_preserves_system_message(self):
+        """System message is extracted to the 'system' kwarg (Anthropic convention)."""
+        messages = [
+            {"role": "system", "content": "You are a helpful trading assistant."},
+            {"role": "user", "content": "plain text"},
+        ]
+        captured = {}
+        async def mock_create(**kwargs):
+            captured["system"] = kwargs.get("system")
+            captured["messages"] = kwargs.get("messages", [])
+            return DecisionsResponse(decisions=[], macro_events=[])
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create = mock_create
+        mock_factory = MagicMock(return_value=mock_client)
+        chunks = [{"source_id": "test_1", "content": "test"}]
+
+        with patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}), \
+             patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock), \
+             patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages):
+
+            from core.llm.analysis import analyze_with_provider
+            await analyze_with_provider(
+                provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks
+            )
+        assert captured["system"] == "You are a helpful trading assistant."
+        # System removed from messages list; only user message remains
+        roles = [m["role"] for m in captured["messages"]]
+        assert "system" not in roles
+
+    @pytest.mark.asyncio
+    async def test_plain_string_content_unchanged(self):
+        """Messages with plain string content pass through unchanged."""
+        messages = [
+            {"role": "user", "content": "Analyze NVDA."},
+        ]
+        flat = await self._run_flattening(messages)
+        assert flat[0]["content"] == "Analyze NVDA."

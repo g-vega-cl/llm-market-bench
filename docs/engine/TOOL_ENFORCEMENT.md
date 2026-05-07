@@ -81,7 +81,7 @@ SELL signals for unheld tickers are caught before reaching the verification laye
 
 **DeepSeek (Thinking Mode):** Empty content with reasoning_content only → auto-retry with JSON prompt appended. Handler clears reasoning_content from non-tool-call messages. Applied in both the analysis pipeline (`core/llm/analysis.py`) and the verification pipeline (`core/llm/verification.py`) — detection, cleaning, and recovery are identical in both paths.
 
-**Claude:** `max_tokens` raised from the SDK default to prevent mid-tool-call truncation. Current value: `core/llm/handlers/anthropic.py`.
+**Claude:** `max_tokens` raised from the SDK default to prevent mid-tool-call truncation. Current value: `core/llm/handlers/anthropic.py`. Messages flattened from nested content blocks to plain strings before Instructor extraction (`core/llm/analysis.py`, matching `core/llm/verification.py`).
 
 **Gemini:** Multiple function calls in single response → `List[Model]` pattern in contrarian analysis, `Mode.GENAI_TOOLS` for instructor.
 

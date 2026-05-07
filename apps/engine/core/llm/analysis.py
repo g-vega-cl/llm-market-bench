@@ -243,6 +243,25 @@ async def analyze_with_provider(
                     )
                 })
 
+        # Anthropic-specific: flatten nested content blocks for Instructor compatibility
+        if provider == "anthropic":
+            flattened = []
+            for m in messages:
+                if isinstance(m, dict):
+                    content = m.get("content", "")
+                    if isinstance(content, list):
+                        flat_content = ""
+                        for part in content:
+                            if isinstance(part, dict) and "text" in part:
+                                flat_content += part["text"]
+                            elif isinstance(part, dict) and "input" in part:
+                                flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                            elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
+                                flat_content += f"\n[Tool Result: {part['content']}]"
+                        content = flat_content
+                    flattened.append({"role": m["role"], "content": str(content)})
+            messages = flattened
+
         final_args = {
             "model": model_name,
             "response_model": DecisionsResponse if provider != "gemini" else List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
@@ -282,6 +301,8 @@ async def analyze_with_provider(
                     messages.append({
                         "role": "user",
                         "content": (
+                            "Your last response failed schema validation. Error details:\n"
+                            f"{str(e)[:500]}\n\n"
                             "Your response must be a valid JSON object matching this schema exactly:\n"
                             '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
                             "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "

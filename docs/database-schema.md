@@ -176,7 +176,16 @@ SELECT * FROM match_memories(
 ```
 
 ### `match_decisions`
-Retrieves past agent reasoning for consistent RAG retrieval.
+Retrieves past agent reasoning for consistent RAG retrieval. The latest version accepts a `filter_model_name` parameter to scope results to a single agent, preventing cross-contamination during verification.
+
+```sql
+SELECT * FROM match_decisions(
+  query_embedding := [0.12, ...],
+  match_threshold := 0.5,
+  match_count := 5,
+  filter_model_name := 'claude-haiku-4-5'
+);
+```
 
 ### `exec_sql`
 Executes arbitrary read queries for audit checks. Used internally by the audit system.

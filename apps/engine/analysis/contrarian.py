@@ -56,7 +56,7 @@ async def run_contrarian_analysis(
     if portfolio.positions:
         logger.info(f"Fetching current prices for {len(portfolio.positions)} contrarian portfolio tickers in parallel...")
         tickers = list(portfolio.positions.keys())
-        quotes = await market_data.get_quotes(tickers)
+        quotes = await market_data.get_quotes(tickers, force_refresh=True)
         current_prices = {ticker: data.price for ticker, data in quotes.items()}
 
     portfolio.calculate_reg_t_metrics(current_prices)
@@ -82,7 +82,7 @@ async def run_contrarian_analysis(
     from core.llm.analysis import _extract_tickers_from_chunks
     portfolio_tickers = list(portfolio.positions.keys())
     tickers_to_fetch = _extract_tickers_from_chunks(chunks, portfolio_tickers)
-    quotes = await market_data.get_quotes(list(tickers_to_fetch))
+    quotes = await market_data.get_quotes(list(tickers_to_fetch), force_refresh=True)
     mkt_lines = ["=== VERIFIED MARKET DATA (fetched for contrarian analysis) ==="]
     for t in sorted(tickers_to_fetch):
         q = quotes.get(t)

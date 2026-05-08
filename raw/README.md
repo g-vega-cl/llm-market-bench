@@ -17,5 +17,6 @@ reads from here but never modifies anything.
 ## Tips
 
 - **Obsidian Web Clipper** converts web articles to markdown
+- `raw/docs/` contains frozen snapshots of the original project documentation — these are reference material, not living docs. The canonical knowledge lives in `wiki/`.
 - Files here are never modified — the wiki layer is the synthesis
 - Prefer ingesting one source at a time — stay involved in what gets extracted

@@ -4,6 +4,8 @@
 
 **"Bloomberg Terminal Meets Wired Magazine"** — data-dense but readable, motion with purpose, distinctive typography.
 
+**Simplicity over complexity.** We prefer the dumb approach that works over the smart approach that breaks. For dynamically-colored elements (ConfidenceBar fill, StatPill dot), the component maps a `colorScheme` prop directly to a physical color class name (`bg-neon-green-500`, `bg-alert-red-500`) that is proven to exist in the build output. No token abstraction layer, no code generation, no CSS variable tricks — just class names that work.
+
 ## Typography
 
 | Usage | Font | Source |
@@ -61,10 +63,6 @@ ai:         linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)   → Cognitive in
 **MetricTile** — Small stat card with icon, label, and value. Props: `icon`, `label`, `value`, `className`.
 
 **EmptyState** — Empty state with emoji, title, subtitle, action buttons.
-
-### Color-Coded Elements
-
-Components that map a `colorScheme` prop to a specific color (e.g., `ConfidenceBar` fill, `StatPill` dot) use **inline `style={{ backgroundColor }}`** with values from `semanticTokens` exported by the design system, rather than Tailwind `bg-*` classes. This avoids Tailwind v4 class-generation issues when color tokens are defined in `@theme inline`.
 
 ### Layouts
 

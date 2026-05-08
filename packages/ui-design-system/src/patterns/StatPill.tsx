@@ -1,13 +1,5 @@
 import * as React from "react"
 import { cn } from "../lib/cn"
-import { semanticTokens } from "../theme"
-
-/**
- * StatPill pattern.
- *
- * A pill-shaped filter button with a colored dot indicator, label, and count.
- * Used for activity/stats filtering (e.g., BUY/SELL/REJECTED toggles).
- */
 
 export interface StatPillProps {
   label: string
@@ -18,13 +10,13 @@ export interface StatPillProps {
   className?: string
 }
 
-const dotColorValues: Record<string, string> = {
-  accent: semanticTokens.color.accent,
-  success: semanticTokens.color.success,
-  danger: semanticTokens.color.danger,
-  info: semanticTokens.color.info,
-  warning: semanticTokens.color.warning,
-  neutral: "#9ca3af",
+const dotBg: Record<string, string> = {
+  accent: "bg-accent",
+  success: "bg-neon-green-500",
+  danger: "bg-alert-red-500",
+  info: "bg-deep-purple-500",
+  warning: "bg-amber-500",
+  neutral: "bg-zinc-400",
 }
 
 export function StatPill({
@@ -35,7 +27,7 @@ export function StatPill({
   onClick,
   className,
 }: StatPillProps) {
-  const dotColor = dotColorValues[colorScheme] ?? dotColorValues.neutral
+  const dotColorClass = dotBg[colorScheme] ?? dotBg.neutral
 
   return (
     <button
@@ -48,7 +40,7 @@ export function StatPill({
         className
       )}
     >
-      <div className="w-2 h-2 rounded-full shadow-lg" style={{ backgroundColor: dotColor }} />
+      <div className={cn("w-2 h-2 rounded-full shadow-lg", dotColorClass)} />
       <span
         className={cn(
           "text-[10px] font-black uppercase tracking-wider",

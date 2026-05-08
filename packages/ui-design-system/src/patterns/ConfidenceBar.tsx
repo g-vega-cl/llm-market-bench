@@ -1,16 +1,5 @@
 import * as React from "react"
 import { cn } from "../lib/cn"
-import { semanticTokens } from "../theme"
-
-/**
- * ConfidenceBar pattern.
- *
- * A labelled progress bar showing a percentage value.
- * Used across features to display confidence scores, consensus strength, etc.
- *
- * textStyle: "default" for normal page backgrounds (zinc palette),
- *            "hero" for dark gradient hero sections (white/translucent palette).
- */
 
 export interface ConfidenceBarProps {
   label: string
@@ -20,17 +9,17 @@ export interface ConfidenceBarProps {
   className?: string
 }
 
-const barColorValues: Record<string, string> = {
-  accent: semanticTokens.color.accent,
-  success: semanticTokens.color.success,
-  danger: semanticTokens.color.danger,
-  info: semanticTokens.color.info,
-  warning: semanticTokens.color.warning,
+const barBg: Record<string, string> = {
+  accent: "bg-accent",
+  success: "bg-neon-green-500",
+  danger: "bg-alert-red-500",
+  info: "bg-deep-purple-500",
+  warning: "bg-amber-500",
 }
 
 export function ConfidenceBar({ label, value, colorScheme = "accent", textStyle = "default", className }: ConfidenceBarProps) {
   const clampedValue = Math.max(0, Math.min(100, value))
-  const barColor = barColorValues[colorScheme] ?? barColorValues.accent
+  const barColorClass = barBg[colorScheme] ?? barBg.accent
   const isHero = textStyle === "hero"
 
   return (
@@ -46,8 +35,8 @@ export function ConfidenceBar({ label, value, colorScheme = "accent", textStyle 
         isHero ? "bg-white/10" : "bg-zinc-100 dark:bg-zinc-800"
       )}>
         <div
-          className="h-full rounded-full transition-all duration-1000 shadow-lg"
-          style={{ width: `${clampedValue}%`, backgroundColor: barColor }}
+          className={cn("h-full rounded-full transition-all duration-1000 shadow-lg", barColorClass)}
+          style={{ width: `${clampedValue}%` }}
         />
       </div>
       <span className={cn(

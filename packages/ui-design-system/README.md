@@ -34,8 +34,6 @@ Shared UI design system for the LLM Market Bench monorepo. Homegrown component l
 | `LoadingBoundary` | Suspense wrapper with loading skeleton |
 | `ErrorCard` | Error display card with retry |
 
-Color-coded elements (ConfidenceBar fill, StatPill dot) use inline `style={{ backgroundColor }}` with values from `semanticTokens` rather than Tailwind `bg-*` classes.
-
 ### Layouts
 
 | Component | Purpose |
@@ -43,18 +41,16 @@ Color-coded elements (ConfidenceBar fill, StatPill dot) use inline `style={{ bac
 | `PageLayout` | Standard page wrapper with padding and max-width |
 | `HeroBackground` | Gradient hero banner with dot-pattern overlay and animated blur orbs |
 
-### Theme
-
-| Export | Purpose |
-|--------|---------|
-| `semanticTokens` | Design tokens (colors, fonts, spacing, radii) |
-| `rawColors` | Raw color palettes with shade scales |
-
 ### Utilities
 
 | Export | Purpose |
 |--------|---------|
 | `cn` | `clsx`-based className utility |
+
+## Principles
+
+- **Simplicity over abstraction.** A small inline hex map in a component beats a shared token system that fights the build tool.
+- **Use what works.** If `bg-neon-green-500` is provably in the built CSS, use it — no generators, safelists, or duplicate token systems needed.
 
 ## Usage
 
@@ -62,13 +58,11 @@ Color-coded elements (ConfidenceBar fill, StatPill dot) use inline `style={{ bac
 import { Button, Card, Badge, SectionHeading, cn } from "@llm-market-bench/ui-design-system"
 ```
 
-Components accept a `className` prop for overrides. All design tokens are exposed as Tailwind v4 `@theme inline` variables in `apps/web/src/styles/app.css`.
+Components accept a `className` prop for overrides.
 
 ## Key Files
 
 - `src/index.ts` — Public API barrel file
-- `src/theme/index.ts` — Design tokens (canonical source)
-- `src/theme/globals.css` — Tailwind v4 @theme reference
 - `src/primitives/` — Low-level UI atoms
 - `src/patterns/` — Composed UI patterns
 - `src/layouts/` — Layout components

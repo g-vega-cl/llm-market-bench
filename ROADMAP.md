@@ -68,6 +68,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
 - [ ] - Set up a linter for web app
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./docs/web/DESIGN_SYSTEM.md).
+- [ ] - check if this repo would help: https://github.com/anthropics/financial-services
+- [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
 
 ## Under Consideration
 

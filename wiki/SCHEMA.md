@@ -35,7 +35,7 @@ diagrams, and cross-references. Keep it dense but readable.
 
 ## Related
 
-- [[entity/engine]] — reference to another wiki page
+- [[entities/engine]] — reference to another wiki page
 ```
 
 ### Frontmatter Fields

@@ -104,7 +104,6 @@ def lint() -> list[str]:
 
         # 3. Orphan check (no incoming links)
         incoming = graph[rel][1]
-        name_only = rel
         if rel not in SCAFFOLD_FILES and not incoming:
             issues.append(f"[orphan] {rel}: no incoming links from any wiki page")
 

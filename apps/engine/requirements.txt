@@ -14,6 +14,8 @@ jsonref
 pyiceberg>=0.10.0
 numpy
 httpx
+pyyaml
+requests
 yfinance
 scikit-learn
 ib-async

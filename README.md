@@ -170,6 +170,8 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 
 ## Documentation
 
+> **Persistent Wiki**: Synthesized knowledge, entity/concept maps, and source summaries are maintained in the `wiki/` directory (LLM-written, human-curated). See [AGENTS.md](AGENTS.md) for search and ingest workflows.
+
 ### Core Documentation
 
 - [System Overview](./docs/Overview.md)

@@ -431,12 +431,16 @@ async def _validate_and_enrich_government_events(
     placeholders, this function either enriches vague events with specific
     policy details or removes them entirely.
     """
+    # Keywords that unambiguously indicate government legislative/subsidy content.
+    # Avoids common financial vocabulary: "federal" (Federal Reserve), "policy" (monetary policy),
+    # "tariff" (trade war talk), "budget" (consumer/corporate budgets), "funding" (VC funding),
+    # "grant" (stock grants), "bill" (T-bills), "act" (verb), "regulation" (general environment),
+    # "treasury" (Treasury bonds), "sec" (substring noise), "incentive" (compensation).
     gov_keywords = [
-        "bill", "act", "congress", "parliament", "legislation", "subsidy", "grant",
-        "incentive", "budget", "funding", "appropriation", "tax credit", "policy",
-        "regulation", "directive", "executive order", "defense production act",
-        "government program", "federal", "treasury", "usda", "dod", "doe", "sec",
-        "appropriations", "tariff", "deregulation"
+        "congress", "parliament", "legislation", "subsidy",
+        "tax credit", "executive order", "defense production act",
+        "government program", "usda", "dod", "doe",
+        "appropriations", "deregulation", "directive",
     ]
 
     VAGUE_GOV_PATTERNS = [
@@ -451,9 +455,13 @@ async def _validate_and_enrich_government_events(
         "regulatory policy",
     ]
 
-    def chunk_has_gov_content(content: str) -> bool:
+    def _get_gov_matches(content: str) -> list[str]:
+        """Return which keywords matched (for diagnostics)."""
         content_lower = content.lower()
-        return any(kw in content_lower for kw in gov_keywords)
+        return [kw for kw in gov_keywords if kw in content_lower]
+
+    def chunk_has_gov_content(content: str) -> bool:
+        return any(kw in content.lower() for kw in gov_keywords)
 
     def is_vague_government_event(event: MacroEvent) -> bool:
         if not getattr(event, "is_government_incentive", False):
@@ -469,6 +477,13 @@ async def _validate_and_enrich_government_events(
     gov_chunks = [chunk for chunk in chunks if chunk_has_gov_content(chunk.get("content", ""))]
     if not gov_chunks:
         return
+
+    for chunk in gov_chunks:
+        matching_kws = _get_gov_matches(chunk.get("content", ""))
+        logger.info(
+            "[%s/%s] GOV-DETECT: '%s' matched keywords: %s",
+            provider, model_name, chunk.get("source_id", "unknown"), matching_kws
+        )
 
     enriched_events = []
     removed_vague = 0

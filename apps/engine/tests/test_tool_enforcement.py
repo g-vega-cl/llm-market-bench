@@ -173,7 +173,7 @@ async def test_validate_and_enrich_removes_vague_government_event():
         ],
     )
 
-    chunks = [{"source_id": "gov_1", "content": "The government is considering new budget allocations."}]
+    chunks = [{"source_id": "gov_1", "content": "The government is considering new subsidy allocations."}]
 
     with patch("core.llm.analysis.lookup_policy", new_callable=AsyncMock) as mock_lookup:
         mock_lookup.return_value = None

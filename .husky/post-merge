@@ -1,0 +1,5 @@
+# Re-index QMD if wiki/ was updated by the merge
+if [ -d "wiki" ] && git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep -q '^wiki/'; then
+  echo "[wiki] Wiki changed by merge — re-indexing QMD..."
+  qmd update && qmd embed
+fi

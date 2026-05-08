@@ -21,3 +21,76 @@
 ## Docs
 - Architecture index: `docs/Overview.md`
 - Pipeline walkthrough: `docs/engine/data-flow.md`
+
+## Wiki
+
+The project maintains a persistent wiki at `wiki/` — a structured, interlinked
+collection of markdown files. The LLM writes and maintains it; the human reads
+and curates sources.
+
+### Directory Layout
+
+```
+wiki/
+  index.md       # Content catalog by category
+  log.md         # Append-only chronological record
+  SCHEMA.md      # Page formats, naming, linking conventions
+  overview.md    # High-level synthesis
+  entities/      # Entity pages — one per major component
+  concepts/      # Concept pages — one per key idea
+  sources/       # Source summaries — one per ingested document
+raw/             # Immutable source documents (LLM reads, never writes)
+```
+
+### Page Format
+
+Every wiki page uses YAML frontmatter:
+```yaml
+---
+tags: [tag1, tag2]
+category: entity|concept|source|synthesis
+---
+```
+Cross-references use `[[entities/page-name]]` style. Naming is kebab-case.
+
+### Operations
+
+**Ingest**: Read a source from `raw/` (or a web URL), discuss key takeaways
+with the user, write/update the source summary page, update entity/concept
+pages affected by the new information, update `index.md`, append to `log.md`.
+
+**Query**: When answering questions, search the wiki first (using QMD below).
+Synthesize answers with citations. Good answers should be filed back as new
+wiki pages so knowledge compounds.
+
+If QMD is unavailable or returns no results, fall back to navigating
+`wiki/index.md` directly and reading relevant pages by path. Use
+`wiki/index.md` as the table of contents — it lists every page with a
+one-line summary.
+
+**Lint**: Periodically health-check the wiki for contradictions between pages,
+stale claims superseded by newer sources, orphan pages with no inbound links,
+concepts mentioned but lacking their own page, and data gaps to investigate.
+
+### QMD Search
+
+QMD indexes the wiki for fast search:
+```sh
+qmd query "question"              # hybrid + reranking (best)
+qmd search "keywords"             # fast BM25 keyword
+qmd vsearch "semantic query"      # vector similarity
+qmd get "entities/engine"         # get full document
+qmd multi-get "concepts/*.md"     # batch retrieve by glob
+```
+
+After wiki changes:
+```sh
+qmd update                         # re-scan
+qmd embed                          # regenerate embeddings
+```
+
+### Conventions
+- Never delete content — strike through or mark superseded
+- Sources get summary pages; link back to raw/ for details
+- Log every action in `log.md` with `## [YYYY-MM-DD] action | Title`
+- Answers that add value get filed back as wiki pages

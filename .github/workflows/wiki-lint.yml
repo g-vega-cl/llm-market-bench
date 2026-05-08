@@ -1,0 +1,84 @@
+name: Wiki Lint
+
+on:
+  schedule:
+    # Saturday 15:00 UTC = 10:00 AM ET (off-market)
+    - cron: "0 15 * * 6"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "OpenRouter model for LLM lint"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run structural lint
+        run: |
+          echo "--- Structural Wiki Lint ---"
+          python apps/engine/wiki_lint.py
+        continue-on-error: false
+
+      - name: Run LLM lint
+        id: llm_lint
+        run: |
+          MODEL="${{ inputs.model || 'deepseek/deepseek-v4-flash' }}"
+          echo "Using model: $MODEL"
+          python apps/engine/wiki_lint_llm.py --model "$MODEL" > /tmp/findings.json
+          FINDINGS_COUNT=$(python -c "import json; d=json.load(open('/tmp/findings.json')); print(len(d.get('findings', [])))")
+          echo "findings_count=$FINDINGS_COUNT" >> $GITHUB_OUTPUT
+          cat /tmp/findings.json
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+      - name: Create issue from findings
+        if: steps.llm_lint.outputs.findings_count != '0'
+        run: |
+          python -c "
+          import json
+          data = json.load(open('/tmp/findings.json'))
+          findings = data.get('findings', [])
+          summary = data.get('summary', '')
+
+          body = f'## Wiki Lint Report\n\n**Summary**: {summary}\n\n'
+          for i, f in enumerate(findings):
+              sev = f.get('severity', 'low').upper()
+              emoji = {'HIGH': '🔴', 'MEDIUM': '🟡', 'LOW': '🟢'}.get(sev, '⚪')
+              pages = ', '.join(f.get('pages', []))
+              body += f\"\"\"### {i+1}. {emoji} [{sev}] {f.get('type', 'unknown')}
+
+          **Pages**: {pages}
+
+          {f.get('description', '')}
+
+          **Suggestion**: {f.get('suggestion', 'No suggestion')}
+
+          ---
+
+          \"\"\"
+          with open('/tmp/issue-body.md', 'w') as fh:
+              fh.write(body)
+          "
+          
+          gh issue create \
+            --title "Wiki Lint — $(date +%Y-%m-%d)" \
+            --body-file /tmp/issue-body.md \
+            --label "wiki-lint"
+        env:
+          GH_TOKEN: ${{ github.token }}

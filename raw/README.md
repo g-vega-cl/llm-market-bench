@@ -10,8 +10,7 @@ reads from here but never modifies anything.
 3. The agent will:
    - Read the source
    - Discuss key takeaways with you
-   - Write a summary page in `wiki/sources/`
-   - Update relevant entity/concept pages across the wiki
+   - Write/update a relevant wiki page (entity, concept, or overview)
    - Update `wiki/index.md`
    - Append to `wiki/log.md`
 

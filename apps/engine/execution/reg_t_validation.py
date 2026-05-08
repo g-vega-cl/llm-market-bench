@@ -2,7 +2,7 @@
 
 This module implements the logic for calculating account equity, margin requirements,
 and buying power for a Reg-T margin account. It supports leverage scenarios as
-defined in 'docs/account-buying-power-reg-t4-calculations.md'.
+defined in 'raw/docs/engine/account-buying-power-reg-t4-calculations.md'.
 """
 
 from dataclasses import dataclass

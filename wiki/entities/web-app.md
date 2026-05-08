@@ -53,12 +53,7 @@ Vitest + React Testing Library with colocated `*.test.tsx` files. Feature-coloca
 
 ## Related
 
-- [[entities/engine]]
-- [[entities/database]]
-- [[concepts/consensus]]
-- [[sources/web-architecture-source]]
-- [[sources/web-design-system-source]]
-- [[sources/web-tanstack-best-practices-source]]
-- [[sources/web-portfolios-ui-source]]
-- [[sources/web-deployment-source]]
-- [[sources/web-testing-source]]
+- [[entities/engine]] — Python data engine
+- [[entities/database]] — Supabase schema
+- [[concepts/consensus]] — AI consensus system
+- Original design docs: [ARCHITECTURE](../../raw/docs/web/README.md), [DESIGN_SYSTEM](../../raw/docs/web/DESIGN_SYSTEM.md), [TANSTACK_BEST_PRACTICES](../../raw/docs/web/TANSTACK_BEST_PRACTICES.md), [PORTFOLIOS_UI](../../raw/docs/web/portfolios-ui.md), [DEPLOYMENT](../../raw/docs/web/tanstack-start-deploy-official.md), [TESTING](../../raw/docs/web/testing.md)

@@ -14,7 +14,7 @@ Benchmarks LLM reasoning against S&P 500 performance. Python data engine + React
 - **Decision Attribution:** Provides a machine-auditable trail from raw news chunk to final trade execution.
 - **Memory Integrity:** Tests if LLMs can maintain a consistent world view using Vector RAG (Retrieval-Augmented Generation).
 
-For a deep dive into the system design, see the **[Project Overview](./docs/Overview.md)** and the **[Database Schema](./docs/database-schema.md)**.
+For a deep dive into the system design, see the **[Wiki Overview](./wiki/overview.md)** and the **[Database Schema](./wiki/entities/database.md)**.
 
 ## Repository Structure
 
@@ -34,7 +34,7 @@ llm-market-bench/
 │       ├── main.py          # Pipeline entry point
 │       └── update_prices.py # Utility
 ├── supabase/                # SQL Migrations & RLS
-├── docs/                    # Technical Walkthroughs
+├── raw/                     # Immutable source documents & snapshots
 ├── packages/
 │   ├── config/              # Shared configuration (models.json)
 │   ├── database/            # Generated Supabase types
@@ -43,9 +43,9 @@ llm-market-bench/
 ```
 
 - **`apps/engine`**: The Python data engine.
-- **`apps/web`**: The TanStack Start dashboard. [Read the Web Architecture Docs](./docs/web/README.md).
+- **`apps/web`**: The TanStack Start dashboard. [Read the Web Architecture](./wiki/entities/web-app.md).
 - **`supabase`**: SQL migrations and database configuration.
-- **`docs`**: Technical documentation and walkthroughs.
+- **`raw`**: Immutable design documents and reference material.
 
 ## Getting Started
 
@@ -142,7 +142,7 @@ pnpm --filter web dev
 5. **Specialized Agents**: Contrarian trades, government tracking, cause & effect analysis
 6. **Discovery Agent**: Converts market themes into a high-conviction "Investable Assets" list using `run_stock_screener` and web search in a tool-calling reasoning loop
 
-For a detailed step-by-step walkthrough, see **[Data Flow & Pipeline](./docs/engine/data-flow.md)**.
+For a detailed step-by-step walkthrough, see **[Pipeline & Data Flow](./wiki/entities/pipeline.md)**.
 
 ### Interactive Dashboard
 
@@ -170,25 +170,36 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 
 ## Documentation
 
-> **Persistent Wiki**: Synthesized knowledge, entity/concept maps, and source summaries are maintained in the `wiki/` directory (LLM-written, human-curated). See [AGENTS.md](AGENTS.md) for search and ingest workflows.
+> **Persistent Wiki**: Synthesized knowledge, entity/concept maps, and cross-references are maintained in the `wiki/` directory (LLM-written, human-curated). See [AGENTS.md](AGENTS.md) for search and ingest workflows. Original design documents are preserved in `raw/docs/`.
 
-### Core Documentation
+### Architecture & Concepts
 
-- [System Overview](./docs/Overview.md)
-- [Database Schema](./docs/database-schema.md)
-- [Type Generation from Supabase](./supabase/TYPE_GENERATION.md)
-- [Data Flow & Pipeline Walkthrough](./docs/engine/data-flow.md)
-- [Tool Enforcement System](./docs/engine/TOOL_ENFORCEMENT.md)
-- [Market Heuristics](./docs/engine/market-heuristics.md)
+- [System Overview](./wiki/overview.md)
+- [Engine Architecture](./wiki/entities/engine.md) — Pipeline, analysis, execution
+- [Web Application](./wiki/entities/web-app.md) — TanStack Start dashboard
+- [Database & Schema](./wiki/entities/database.md) — Supabase PostgreSQL, pgvector, RLS
+- [Pipeline & Data Flow](./wiki/entities/pipeline.md) — All 6 phases
+- [Consensus & Reasoning](./wiki/concepts/consensus.md) — Semantic grouping, voting
+- [Execution & Guardrails](./wiki/concepts/execution.md) — Pre-market validation, Reg T
+- [Tool Enforcement](./wiki/concepts/tool-enforcement.md) — 4-layer hallucination prevention
+- [RAG Strategy](./wiki/concepts/rag-strategy.md) — Tiered context injection
+- [Memory & Feedback](./wiki/concepts/memory-feedback.md) — Post-mortem, contrarian analysis
+- [Ingestion Pipeline](./wiki/concepts/ingestion.md) — Newsletters, calendar, government data
 
-### Web Documentation
+### Technical Reference Docs
 
-- [Web Application Architecture](./docs/web/README.md)
-- [Design System](./docs/web/DESIGN_SYSTEM.md) — Typography, colors, and component patterns
-- [TanStack Best Practices Guide](./docs/web/TANSTACK_BEST_PRACTICES.md)
-- [Portfolios UI](./docs/web/portfolios-ui.md)
-- [Frontend Testing](./docs/web/testing.md)
-- [Deployment Guide](./docs/web/tanstack-start-deploy-official.md)
+- [Market Heuristics](./raw/docs/engine/market-heuristics.md)
+- [P&L Calculations](./raw/docs/engine/PNL-CALCULATIONS.md)
+- [Correlation Matrix](./raw/docs/engine/CORRELATION_MATRIX.md)
+- [Reg T Calculations](./raw/docs/engine/account-buying-power-reg-t4-calculations.md)
+- [Web Search Config](./raw/docs/engine/WEB_SEARCH.md)
+- [Design System](./raw/docs/web/DESIGN_SYSTEM.md) — Typography, colors, component patterns
+- [TanStack Best Practices](./raw/docs/web/TANSTACK_BEST_PRACTICES.md)
+- [Portfolios UI](./raw/docs/web/portfolios-ui.md)
+- [Deployment Guide](./raw/docs/web/tanstack-start-deploy-official.md)
+- [Anomaly Detector](./raw/docs/reference/anomaly-detector-design.md)
+- [Government Incentives](./raw/docs/reference/government-incentive-quick-ref.md)
+- [Type Generation](./supabase/TYPE_GENERATION.md) — Supabase type gen guide
 
 ### Utilities & Maintenance
 

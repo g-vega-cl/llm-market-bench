@@ -6,7 +6,7 @@ from execution.reg_t_validation import (
     RegTMetrics
 )
 
-# Reference: docs/account-buying-power-reg-t4-calculations.md
+# Reference: raw/docs/engine/account-buying-power-reg-t4-calculations.md
 
 def test_scenario_1_near_full_cash_no_leverage():
     """Scenario 1: Near-Full Cash Allocation (No Leverage).

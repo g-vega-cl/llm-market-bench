@@ -10,7 +10,7 @@ def test_reg_t_scenario_1_no_leverage():
     """
     Scenario 1: Basic Cash-Backed Purchase
     Cash: 10,000. Buy $9,950.24 stock.
-    Expected (from docs/account-buying-power-reg-t4-calculations.md):
+    Expected (from raw/docs/engine/account-buying-power-reg-t4-calculations.md):
     - Equity: 10,000
     - Maint Margin (25%): 2,487.56
     - Excess Liquidity: 7,512.44
@@ -36,7 +36,7 @@ def test_reg_t_scenario_2_leveraged_profitable():
     """
     Scenario 2: Leveraged Position (Profitable)
     Cash: -2000. Stock Value: 12437.80.
-    Expected (from docs/account-buying-power-reg-t4-calculations.md):
+    Expected (from raw/docs/engine/account-buying-power-reg-t4-calculations.md):
     - Equity: 10,437.80
     - Maint Margin: 3,109.45
     - Excess: 7,328.35
@@ -62,7 +62,7 @@ def test_reg_t_scenario_3_leveraged_loss():
     """
     Scenario 3: Leveraged Position (Unrealized Loss)
     Cash: -3000. Stock Value: 12437.80.
-    Expected (from docs/account-buying-power-reg-t4-calculations.md):
+    Expected (from raw/docs/engine/account-buying-power-reg-t4-calculations.md):
     - Equity: 9,437.80
     - Maint Margin: 3,109.45
     - Excess: 6,328.35

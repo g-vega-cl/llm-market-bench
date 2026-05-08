@@ -40,3 +40,22 @@ Re-indexed QMD (33 files, ~35 chunks).
 - Fixed AGENTS.md: `[[entity/page-name]]` → `[[entities/page-name]]`, added QMD fallback strategy
 - Added `raw/README.md` — self-documenting ingest instructions for the raw/ directory
 - Updated `wiki/SCHEMA.md` — documented automated lint tools (structural + LLM)
+
+## [2026-05-08] consolidate | Single source of truth — archive docs/, delete wiki/sources/
+
+Moved all 19 `docs/` files into `raw/docs/` as immutable frozen snapshots. Deleted
+all 18 `wiki/sources/*.md` pages — they were mirrors of mutable internal docs, not
+true Karpathy-style source summaries of external material.
+
+- `docs/` → `raw/docs/` (preserved directory structure: engine/, web/, reference/)
+- `wiki/sources/` — deleted (18 pages removed, going from 33 → 15 wiki pages)
+- `wiki/index.md` — rebuilt without sources section (now: 4 entities, 7 concepts)
+- `wiki/SCHEMA.md` — removed source-summary rules and naming conventions
+- `wiki/entities/web-app.md` — replaced broken `[[sources/...]]` links with `raw/docs/web/` refs
+- `README.md` — rewrote Documentation section: wiki/ is primary, raw/docs/ is reference
+- `AGENTS.md` — removed stale `## Docs` links, updated directory layout (no sources/)
+- `ROADMAP.md` — updated `docs/web/DESIGN_SYSTEM.md` → `raw/docs/web/DESIGN_SYSTEM.md`
+- Python code references (`reg_t_validation.py`, `test_reg_t_validation.py`, `test_portfolio.py`) — updated `docs/` → `raw/docs/engine/` paths
+
+The wiki is now the single canonical knowledge layer. `raw/docs/` preserves the
+originals as auditable snapshots.

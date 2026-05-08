@@ -19,8 +19,8 @@
 - DB source of truth is the remote Supabase project (applied via `supabase db push --linked`)
 
 ## Docs
-- Architecture index: `docs/Overview.md`
-- Pipeline walkthrough: `docs/engine/data-flow.md`
+- Original design documents preserved in `raw/docs/`
+- Canonical synthesized knowledge in `wiki/`
 
 ## Wiki
 
@@ -38,7 +38,6 @@ wiki/
   overview.md    # High-level synthesis
   entities/      # Entity pages — one per major component
   concepts/      # Concept pages — one per key idea
-  sources/       # Source summaries — one per ingested document
 raw/             # Immutable source documents (LLM reads, never writes)
 ```
 
@@ -90,7 +89,7 @@ qmd embed                          # regenerate embeddings
 ```
 
 ### Conventions
-- Never delete content — strike through or mark superseded
-- Sources get summary pages; link back to raw/ for details
+- Never delete content from wiki — strike through or mark superseded
 - Log every action in `log.md` with `## [YYYY-MM-DD] action | Title`
 - Answers that add value get filed back as wiki pages
+- New knowledge comes from `raw/` ingest or direct wiki editing

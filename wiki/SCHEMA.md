@@ -12,7 +12,6 @@ wiki/
   overview.md       # High-level synthesis of the project
   entities/         # Entity pages — one per major component (engine, database, pipeline, etc.)
   concepts/         # Concept pages — one per key idea (consensus, tool enforcement, RAG, etc.)
-  sources/          # Source summary pages — one per ingested document
 ```
 
 ## Page Format
@@ -56,13 +55,11 @@ these when reading. The human sees them as clickable links in Obsidian.
 
 - **Entity pages**: `kebab-case.md` — named after the component they describe
 - **Concept pages**: `kebab-case.md` — named after the concept
-- **Source pages**: `<document-slug>-source.md` — mirrors the original filename
 
 ### Link Format
 
 - `[[entities/engine]]` links to `wiki/entities/engine.md`
 - `[[concepts/consensus]]` links to `wiki/concepts/consensus.md`
-- `[[sources/data-flow]]` links to `wiki/sources/data-flow.md`
 
 ### Orphan Detection
 
@@ -90,10 +87,9 @@ qmd embed                          # regenerate embeddings
 ## Maintenance Rules
 
 1. **Never delete** — strike through deprecated content or mark it superseded
-2. **Sources are summaries** — link back details to the actual source in `raw/`
-3. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`
-4. **Answers become pages** — good query answers get filed back into the wiki
-5. **Lint weekly** — check for contradictions, orphans, stale claims, gaps
+2. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`
+3. **Answers become pages** — good query answers get filed back into the wiki
+4. **Lint weekly** — check for contradictions, orphans, stale claims, gaps
 
 ## Automated Lint
 

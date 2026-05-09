@@ -59,3 +59,23 @@ true Karpathy-style source summaries of external material.
 
 The wiki is now the single canonical knowledge layer. `raw/docs/` preserves the
 originals as auditable snapshots.
+
+## [2026-05-15] audit | "Proper Setup" Audit & Karpathy Method Compliance
+
+Performed a deep audit of the wiki against Andrej Karpathy's LLM Wiki pattern.
+Restored the "Sources" layer for better provenance and established an "Interactions"
+layer for compounding knowledge.
+
+- **Sources Layer**: Created 19 synthesized summaries in `wiki/sources/` for all
+  immutable docs in `raw/docs/`. These capture "why it matters" and key takeaways
+  to provide a provenance trail without duplicating content.
+- **Interactions Layer**: Created `wiki/interactions/` and added the first entry
+  [[interactions/wiki-proper-setup-audit]] documenting the requirements for a
+  "properly set up" Karpathy wiki.
+- **Scaffold Updates**: Rebuilt [[index]] with Sources and Interactions sections.
+  Updated [[SCHEMA]] with new categories and conventions.
+- **Quality Audit**: Fixed environment to support `wiki_lint.py` (added `pyyaml`).
+  Executed structural lint, fixed 1 broken link in interactions. Wiki is 100%
+  clean (35 pages).
+- **Compounding Knowledge**: Promoted this audit session to the wiki to ensure
+  setup principles are preserved for future LLM sessions.

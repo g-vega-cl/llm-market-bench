@@ -12,6 +12,8 @@ wiki/
   overview.md       # High-level synthesis of the project
   entities/         # Entity pages — one per major component (engine, database, pipeline, etc.)
   concepts/         # Concept pages — one per key idea (consensus, tool enforcement, RAG, etc.)
+  sources/          # Source summaries — synthesized takeaways from raw/ documents
+  interactions/     # Promoted Q&A — significant discussions and answers
 ```
 
 ## Page Format
@@ -21,7 +23,7 @@ Every wiki page follows this structure:
 ```markdown
 ---
 tags: [tag1, tag2]
-category: entity|concept|source|synthesis
+category: entity|concept|source|synthesis|interaction
 ---
 
 # Page Title
@@ -43,7 +45,7 @@ diagrams, and cross-references. Keep it dense but readable.
 | Field | Required | Description |
 |-------|----------|-------------|
 | `tags` | Yes | Categorization tags |
-| `category` | Yes | One of: `entity`, `concept`, `source`, `synthesis` |
+| `category` | Yes | One of: `entity`, `concept`, `source`, `synthesis`, `interaction` |
 | `related` | No | List of related wiki page paths |
 
 ## Cross-References

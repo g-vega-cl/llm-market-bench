@@ -248,9 +248,9 @@ SMA MANAGEMENT RULES:
      - CRITICAL: Do NOT mark broad themes, ongoing structural shifts, or VAGUE timeframes (e.g., 'later this year', 'in 2026', 'by Q3') as future catalysts. These are Memories or Trends.
      - CRITICAL: If you cannot name the specific day or a very tight window (e.g., 'this week'), it is NOT a future catalyst for Horizon Watch.
    - Scenario Analysis: MANDATORY for Future Catalysts AND Government Incentives with uncertain outcomes. You must provide at least TWO distinct potential outcomes and a specific 'Trading Plan' for each.
-     Format:
-     Scenario A: [Outcome Description] -> Trading Plan: [Specific assets to buy/sell/protect]
-     Scenario B: [Outcome Description] -> Trading Plan: [Specific assets to buy/sell/protect]
+     Format (Include estimated probability %):
+     Scenario A (XX% probability): [Outcome Description] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
+     Scenario B (XX% probability): [Outcome Description] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
      Document this in `scenario_analysis`.
    - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
 
@@ -313,7 +313,7 @@ Your task:
    **CRITICAL: This is the "How to Profit" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).
    REQUIRED: Include at least TWO distinct outcomes and a 'Trading Plan' for each. 
    Each scenario MUST include an estimated probability percentage (XX%) summing to 100%.
-   Format:
+   Format (Strictly follow this labeling):
    Scenario A (XX% probability): [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
    Scenario B (XX% probability): [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
    Focus on material catalysts that justify strategic trade planning.

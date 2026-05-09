@@ -124,10 +124,10 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
               <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
                 {memory.metadata.scenario_analysis
                   .split('**Investable Assets (via FMP):**')[0]
-                  .split(/(Scenario [A-Z]:)/)
+                  .split(/(Scenario [A-Z][^:]*:)/)
                   .filter(Boolean)
                   .map((part: string, i: number, arr: string[]) => {
-                  if (part.match(/Scenario [A-Z]:/)) {
+                  if (part.match(/Scenario [A-Z][^:]*:/)) {
                     const content = arr[i + 1] || '';
                     const [outcome, tradingPlan] = content.split(/Trading Plan.*?:/);
 
@@ -136,7 +136,9 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                     return (
                       <div key={i} className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{part.trim()}</span>
+                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                            {part.replace(/\s*\([^)]*%\s*probability\)/i, '').trim()}
+                          </span>
                           {pct && (
                             <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded tabular-nums">
                               {pct}
@@ -144,7 +146,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                           )}
                         </div>
                         <div className="text-sm leading-relaxed mb-2">
-                          {outcome.trim()}
+                          {outcome.replace(/\s*->\s*$/, '').trim()}
                         </div>
                         {tradingPlan && (
                           <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">

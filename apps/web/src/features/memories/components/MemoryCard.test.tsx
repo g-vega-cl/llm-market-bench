@@ -73,6 +73,21 @@ describe('MemoryCard scenario percentage badges', () => {
     expect(screen.getByText('65%')).toBeInTheDocument()
   })
 
+  it('renders percentage badge for new format "Scenario A (XX% probability):"', () => {
+    const memory = makeMemory({
+      scenario_analysis:
+        'Scenario A (85% probability): Massive rally -> Trading Plan (How to Profit): Long call options.',
+    })
+
+    render(<MemoryCard memory={memory} />)
+
+    fireEvent.click(screen.getByText('Show Analysis'))
+
+    expect(screen.getByText('85%')).toBeInTheDocument()
+    // The "Scenario A" text should be present without the probability suffix
+    expect(screen.getByText('Scenario A:')).toBeInTheDocument()
+  })
+
   it('does not show analysis section when no scenario_analysis', () => {
     const memory = makeMemory()
     memory.metadata!.scenario_analysis = undefined

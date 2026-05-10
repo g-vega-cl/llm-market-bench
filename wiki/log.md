@@ -1,5 +1,24 @@
 # Wiki Log
 
+## [2026-05-10] feature | Auto-Research Prompt Improver
+
+Implemented a Karpathy-style autonomous prompt improvement loop:
+- Created `apps/engine/autoresearch/` package: `program.md`, `metrics.py`,
+  `decision_quality.py`, `evaluator.py`, `researcher.py`, `prompt_store.py`,
+  `validator.py`, `window.py`, `runner.py`
+- Added `prompt_experiments` DB table for versioned prompt storage with JSONB
+  metrics and research output
+- Only Gemini Flash Lite and DeepSeek Flash receive auto-researched prompts;
+  OpenAI and Claude use hardcoded baseline as control group
+- Only `CORE_ANALYSIS_SYSTEM_PROMPT` is modified — verifier, contrarian,
+  and all other prompts are never touched
+- Safety: prompt validator checks required tokens and forbidden phrases before
+  activation; >90% rejection rate triggers auto-revert
+- Weekly cron: Sunday 6 PM ET via `.github/workflows/autoresearch.yml`
+- 22 tests covering metric math, decision quality, prompt store, validator,
+  window helper, evaluator, query syntax, and migration
+- Wiki: added [[entities/autoresearch]] and [[concepts/auto-research-prompt-improver]]
+
 ## [2026-05-08] init | Bootstrap Karpathy Wiki
 
 Created the initial wiki structure for the LLM Market Bench project:

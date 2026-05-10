@@ -1,0 +1,39 @@
+name: Auto-Research
+
+on:
+  schedule:
+    # Sunday 10 PM UTC = 6 PM ET
+    - cron: '0 22 * * SUN'
+  workflow_dispatch:
+
+jobs:
+  auto-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd apps/engine
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Run auto-research cycle
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          cd apps/engine
+          ./venv/bin/python3 main.py autoresearch

@@ -90,13 +90,29 @@ class PromptFactory:
         provider: str,
         enable_web_search: bool = False,
         market_data_block: str = "",
+        owner_id: str = None,
         **kwargs
     ) -> list[Dict[str, Any]]:
-        """Builds messages for the primary analysis loop."""
+        """Builds messages for the primary analysis loop.
+
+        If owner_id is in the experiment group, loads the active prompt
+        variant from the database. Otherwise, uses the hardcoded baseline
+        prompt from prompts.py.
+        """
+        from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
+
+        if owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
+            from autoresearch.prompt_store import get_active_prompt
+
+            active = get_active_prompt()
+            system_prompt = active if active else prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+        else:
+            system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+
         kwargs["market_data_block"] = market_data_block
         return cls._build_messages(
             provider,
-            prompts.CORE_ANALYSIS_SYSTEM_PROMPT,
+            system_prompt,
             prompts.ANALYSIS_USER_PROMPT_TEMPLATE,
             enable_web_search=enable_web_search,
             **kwargs

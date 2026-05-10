@@ -43,7 +43,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Also check alternative plays function**
 - [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
 - [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
-- [ ] **Kaparthy method would improve my rag?**
+- [x] **Karpathy method for prompt improvement.** — Implemented `apps/engine/autoresearch/`: weekly autonomous meta-researcher LLM evaluates live trading performance across 4 dimensions (Wall Street metrics, decision quality, structural analysis, local minima escape) and iteratively improves the prompt. Gemini + DeepSeek agents are the experiment group; OpenAI + Claude serve as control. See [[entities/autoresearch]] and [[concepts/auto-research-prompt-improver]].
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
 - [ ] **Make sure we save the historical correlation/returns table/matrix**
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**

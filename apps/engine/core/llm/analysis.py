@@ -195,6 +195,7 @@ async def analyze_with_provider(
 
         messages = PromptFactory.build_analysis_messages(
             provider=provider,
+            owner_id=model_name,
             portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
             context=context if context else "No relevant historical context found.",
             news_content=news_content,

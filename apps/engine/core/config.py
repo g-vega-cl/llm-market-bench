@@ -88,6 +88,7 @@ COMMAND_GOVERNMENT = "government"
 COMMAND_CALENDAR = "calendar"
 COMMAND_CAUSE_AND_EFFECT = "analyze-impact"
 COMMAND_AUDIT = "audit"
+COMMAND_AUTORESEARCH = "autoresearch"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"
@@ -134,6 +135,15 @@ ANTHROPIC_WEB_SEARCH_VERSION = os.getenv("ANTHROPIC_WEB_SEARCH_VERSION", "web_se
 
 # Maximum web searches per request
 ANTHROPIC_MAX_WEB_SEARCHES = int(os.getenv("ANTHROPIC_MAX_WEB_SEARCHES", "3"))
+
+# --- Auto-Research Configuration ---
+# Model used for the weekly meta-evaluation (prompt improvement).
+# Defaults to DeepSeek; override via AUTORESEARCH_MODEL env var.
+AUTORESEARCH_MODEL = os.getenv("AUTORESEARCH_MODEL", DEEPSEEK_MODEL)
+
+# Which agent portfolios receive auto-researched prompts (experiment group).
+# The remaining agents use the hardcoded baseline prompt (control group).
+AUTORESEARCH_EXPERIMENT_OWNER_IDS = frozenset([GEMINI_MODEL, DEEPSEEK_MODEL])
 
 # --- Alpaca Paper Trading Configuration ---
 # Hardcoded constant — single source of truth for the audit layer.

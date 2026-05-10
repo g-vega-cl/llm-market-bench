@@ -47,3 +47,5 @@ decisions (prevents cross-contamination in verification).
 - [[entities/pipeline]]
 - [[entities/database]]
 - [[concepts/rag-strategy]]
+- [[concepts/auto-research-prompt-improver]]
+- [[entities/autoresearch]]

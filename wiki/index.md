@@ -10,6 +10,7 @@
 - [[entities/web-app]] — TanStack Start dashboard (React + TypeScript)
 - [[entities/database]] — Supabase PostgreSQL schema (pgvector, RLS)
 - [[entities/pipeline]] — Full daily pipeline from ingestion to feedback
+- [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop
 
 ## Concepts
 
@@ -18,6 +19,7 @@
 - [[concepts/consensus]] — Semantic grouping, weighted voting, event promotion
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
 - [[concepts/memory-feedback]] — Post-mortem, contrarian analysis, cause & effect
+- [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM
 - [[concepts/tool-enforcement]] — 4-layer hallucination prevention system
 - [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG
 

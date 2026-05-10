@@ -30,7 +30,8 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 3. **Analysis** — parallel LLM analysis with tool-calling loops
 4. **Consensus** — semantic grouping, event promotion, trend tracking
 5. **Execution** — validation, Reg T checks, trade settlement, attribution
-6. **Feedback** — post-mortem, contrarian analysis, cause & effect
+6. **Feedback** — post-mortem, contrarian analysis, cause & effect, and
+   weekly auto-research prompt improvement
 
 See [[entities/pipeline]] for the full walkthrough.
 
@@ -43,6 +44,10 @@ See [[entities/pipeline]] for the full walkthrough.
 - **Atomic settlement**: "Commit at the End" pattern prevents phantom deductions
 - **4-layer tool enforcement**: Server-side conversation scanning confirms
   quantity tools were actually called via native function calling
+
+- **Auto-research loop**: A meta-researcher LLM evaluates weekly live trading
+  performance and iteratively improves the trading prompt, following Karpathy's
+  autonomous research pattern
 
 ## Related
 

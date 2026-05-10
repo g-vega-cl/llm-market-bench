@@ -18,6 +18,7 @@ executing trades, and running feedback loops.
 - **Execution** (`execution/`) — validation, Reg T checks, portfolio management
 - **Memory** (`memory/`) — pgvector embeddings, RAG retrieval, deduplication
 - **Attribution** (`attribution/`) — decision persistence and trade linking
+- **Auto-Research** (`autoresearch/`) — weekly autonomous prompt improvement via meta-researcher LLM
 
 ## Design Principles
 
@@ -34,3 +35,6 @@ executing trades, and running feedback loops.
 - [[concepts/reasoning]]
 - [[concepts/execution]]
 - [[concepts/tool-enforcement]]
+- [[concepts/memory-feedback]]
+- [[concepts/auto-research-prompt-improver]]
+- [[entities/autoresearch]]

@@ -88,6 +88,19 @@ qmd update                         # re-scan
 qmd embed                          # regenerate embeddings
 ```
 
+### Setup
+
+```sh
+# Install QMD (requires Node.js >= 22)
+npm install -g @tobilu/qmd
+
+# Add wiki as a collection
+qmd collection add wiki/ --name wiki
+
+# Generate embeddings for semantic search
+qmd embed
+```
+
 ### Conventions
 - Never delete content from wiki — strike through or mark superseded
 - Log every action in `log.md` with `## [YYYY-MM-DD] action | Title`

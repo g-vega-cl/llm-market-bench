@@ -6,6 +6,7 @@
 - Build web:     `cd apps/web && pnpm run build`
 - Typecheck web: `cd apps/web && pnpm run typecheck`
 - Test web:      `cd apps/web && pnpm test`
+- Auto-wiki dry: `./apps/engine/venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
 
 ## Principles
 - Code is truth. Docs are hints. When they conflict, trust the code.

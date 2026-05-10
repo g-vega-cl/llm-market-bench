@@ -98,3 +98,7 @@ layer for compounding knowledge.
   clean (35 pages).
 - **Compounding Knowledge**: Promoted this audit session to the wiki to ensure
   setup principles are preserved for future LLM sessions.
+
+## [2026-05-10] feature | Auto-wiki documentation generation
+
+Added `apps/engine/auto_wiki.py` — a script that reads staged git diffs, sends them to an LLM (OpenRouter with ollama fallback), and automatically creates/updates wiki pages, log entries, and index entries. Integrated into the pre-commit hook via `scripts/auto-wiki.sh`, which runs non-blocking and only triggers on code changes (skips wiki/raw/docs-only commits). The script supports dry-run mode, keychain-based API key resolution, and configurable models.

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/auto-wiki]] — Auto-wiki documentation generator (pre-commit LLM integration)
 - [[entities/engine]] — Python data engine (pipeline, analysis, execution)
 - [[entities/web-app]] — TanStack Start dashboard (React + TypeScript)
 - [[entities/database]] — Supabase PostgreSQL schema (pgvector, RLS)

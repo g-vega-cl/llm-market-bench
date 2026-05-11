@@ -146,7 +146,8 @@ async def test_analyze_with_provider_gemini_tool_loop():
     )
     
     with patch("core.llm.tools.MarketDataManager") as mock_manager_cls, \
-         patch("core.llm.analysis.clients.CLIENT_FACTORIES") as mock_factories:
+         patch("core.llm.analysis.clients.CLIENT_FACTORIES") as mock_factories, \
+         patch("autoresearch.prompt_store.get_active_prompt", AsyncMock(return_value="FAKE_ACTIVE_PROMPT")):
         
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=MagicMock(ticker="AAPL", price=150.0, market_cap=2.5e12, exists=True))

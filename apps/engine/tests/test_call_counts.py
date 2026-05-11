@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from analysis.analyze import analyze_chunks
 from core.models import DecisionsResponse
 import memory.embeddings
@@ -26,11 +26,12 @@ async def test_consolidated_call_counts():
          patch("instructor.from_genai") as mock_from_genai, \
          patch("memory.store.get_supabase_client") as mock_sb, \
          patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-         patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
+         patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
+         patch("analysis.analyze.get_supabase_client") as mock_analyze_sb, \
+         patch("autoresearch.prompt_store.get_active_prompt", AsyncMock(return_value="FAKE_PROMPT")):
 
         memory.embeddings._client = None
 
-        from unittest.mock import AsyncMock
 
         mock_wrapped_openai = MagicMock()
         mock_wrapped_anthropic = MagicMock()
@@ -67,11 +68,12 @@ async def test_consolidated_call_counts():
         mock_chain.gte.return_value = mock_chain
         mock_chain.eq.return_value = mock_chain
         mock_chain.select.return_value = mock_chain
+        mock_chain.in_.return_value = mock_chain
         mock_chain.table.return_value = mock_chain
         mock_sb.return_value = mock_chain
+        mock_analyze_sb.return_value = mock_chain
         mock_sb.return_value.rpc.return_value.execute.return_value.data = []
 
-        from unittest.mock import AsyncMock
         mock_portfolio = MagicMock()
         mock_portfolio.positions = {}
         mock_portfolio.initialize = AsyncMock(return_value=None)

@@ -336,3 +336,11 @@ Files changed:
 
 Test suite: 590 passed, 2 skipped, 1 warning. 17 new tests added across 7 test
 classes.
+
+## [2026-05-11] fix | save_variant atomicity: insert before demotion
+
+Reordered operations in `save_variant` to insert the new prompt variant BEFORE demoting the previous active variant. Previously, the demotion (UPDATE) ran first, which could leave no active variant if the subsequent INSERT failed. Now the INSERT happens first, and the demotion uses `neq()` to avoid demoting the just-inserted row. This ensures atomicity and prevents data loss. Added `TestSaveVariantAtomicity` in `test_autoresearch.py` to enforce the insert-before-demotion order.
+
+## [2026-05-11] refactor | Convert autoresearch DB calls to async client
+
+Converted all synchronous Supabase client calls in the autoresearch module to use the async client (`get_async_supabase_client`). Affected files: `metrics.py`, `decision_quality.py`, `evaluator.py`, `runner.py`. Internal helper functions (`_daily_returns`, `_spy_returns`, `_realized_pnl`, `_fetch_decisions`, `_fetch_trades`, `_compute_vixy_trend`, `_get_market_regime_summary`, `_check_safety`) were made async. Tests updated to use `_AsyncQueryRecorder` and `pytest.mark.asyncio`. Added `TestResearcherRetry` for `run_research` retry-loop coverage. Added `TestStagnationEdgeCases` for floor-level stagnation detection. Added `AUTORESEARCH_RESULT` summary log lines in `runner.py` for grep-ability. Renamed `_count_tokens` to `_count_words` in `validator.py` and fixed wiki tiktoken reference.

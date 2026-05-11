@@ -68,9 +68,6 @@ async def save_variant(
     parent_tag: str | None = None,
 ) -> str:
     sb_client = await get_async_supabase_client()
-    await sb_client.table("prompt_experiments").update({"status": "kept"}).eq(
-        "status", "active"
-    ).eq("prompt_name", prompt_name).execute()
 
     now = datetime.now(timezone.utc)
     tag = f"v{now.strftime('%Y%m%d-%H%M%S')}"
@@ -89,7 +86,15 @@ async def save_variant(
         "research_output": research_output,
     }
 
+    # INSERT first — if this fails, nothing is lost.
     await sb_client.table("prompt_experiments").insert(insert_data).execute()
+
+    # NOW demote the previous active variants.
+    # neq() ensures we don't demote the row we just inserted.
+    await sb_client.table("prompt_experiments").update({"status": "kept"}).eq(
+        "status", "active"
+    ).eq("prompt_name", prompt_name).neq("variant_tag", tag).execute()
+
     clear_active_prompt_cache()
     logger.info("Saved prompt variant %s (type=%s)", tag, experiment_type)
     return tag

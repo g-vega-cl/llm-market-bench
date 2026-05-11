@@ -10,7 +10,7 @@ import logging
 from datetime import date
 from math import sqrt
 
-from core.db import get_supabase_client
+from core.db import get_async_supabase_client
 
 logger = logging.getLogger("engine")
 
@@ -18,7 +18,7 @@ TRADING_DAYS_PER_YEAR = 252
 RISK_FREE_RATE = 0.05
 
 
-def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[float]:
+async def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[float]:
     """Extract daily equity returns for experiment agents in the given week.
 
     Joins portfolio_performance with portfolios to filter by owner_id.
@@ -33,7 +33,7 @@ def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date, week
         .order("date")
         .execute()
     )
-    rows = res.data or []
+    rows = (await res).data or []
     if len(rows) < 2:
         return []
 
@@ -54,7 +54,7 @@ def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date, week
     return returns
 
 
-def _spy_returns(sb_client, week_start: date, week_end: date) -> list[float]:
+async def _spy_returns(sb_client, week_start: date, week_end: date) -> list[float]:
     """Extract daily SPY returns for Information Ratio benchmark."""
     res = (
         sb_client.table("price_history")
@@ -65,7 +65,7 @@ def _spy_returns(sb_client, week_start: date, week_end: date) -> list[float]:
         .order("fetched_at")
         .execute()
     )
-    rows = res.data or []
+    rows = (await res).data or []
     if len(rows) < 2:
         return []
     returns = []
@@ -77,7 +77,7 @@ def _spy_returns(sb_client, week_start: date, week_end: date) -> list[float]:
     return returns
 
 
-def _realized_pnl(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> tuple[float, float]:
+async def _realized_pnl(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> tuple[float, float]:
     """Compute gross profit and gross loss from realized SELL trades."""
     owner_list = list(owner_ids)
     res = (
@@ -91,7 +91,7 @@ def _realized_pnl(sb_client, owner_ids: frozenset | set, week_start: date, week_
     )
     gross_profit = 0.0
     gross_loss = 0.0
-    for row in (res.data or []):
+    for row in ((await res).data or []):
         pnl = float(row.get("realized_pnl") or 0)
         if pnl > 0:
             gross_profit += pnl
@@ -100,7 +100,7 @@ def _realized_pnl(sb_client, owner_ids: frozenset | set, week_start: date, week_
     return gross_profit, gross_loss
 
 
-def compute_wall_street_metrics(
+async def compute_wall_street_metrics(
     owner_ids: frozenset | set,
     week_start: date,
     week_end: date,
@@ -110,10 +110,10 @@ def compute_wall_street_metrics(
     Returns a dict with keys: sharpe, sortino, max_drawdown, profit_factor,
     info_ratio, and their raw (unnormalized) values for the report.
     """
-    sb_client = get_supabase_client()
-    returns = _daily_returns(sb_client, owner_ids, week_start, week_end)
-    spy_returns = _spy_returns(sb_client, week_start, week_end)
-    gross_profit, gross_loss = _realized_pnl(sb_client, owner_ids, week_start, week_end)
+    sb_client = await get_async_supabase_client()
+    returns = await _daily_returns(sb_client, owner_ids, week_start, week_end)
+    spy_returns = await _spy_returns(sb_client, week_start, week_end)
+    gross_profit, gross_loss = await _realized_pnl(sb_client, owner_ids, week_start, week_end)
 
     metrics = {
         "sharpe": 0.0,

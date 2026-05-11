@@ -11,6 +11,7 @@ Covers the fixes from the post-review TDD pass:
 - query layer uses .in_() (not raw `filter(... "in", repr(...))`)
 """
 
+import asyncio
 import sys
 import time
 from datetime import date
@@ -65,6 +66,48 @@ class _QueryRecorder:
 
 def _make_client(data=None, single_data=None) -> tuple[MagicMock, _QueryRecorder]:
     recorder = _QueryRecorder(data=data, single_data=single_data)
+    client = MagicMock()
+    client.table.return_value = recorder
+    return client, recorder
+
+
+class _AsyncQueryRecorder:
+    """Chainable mock for async supabase-py query builder.
+
+    Every chained method returns self, except execute() which returns an
+    awaitable resolving to a MagicMock with the configured .data payload.
+    """
+
+    def __init__(self, data=None, single_data=None):
+        self.calls: list[tuple[str, tuple, dict]] = []
+        self._data = data or []
+        self._single_data = single_data
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+
+        def method(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+            if name == "execute":
+                async def _exec():
+                    r = MagicMock()
+                    r.data = self._data if self._single_data is None else self._single_data
+                    return r
+                return _exec()
+            return self
+
+        return method
+
+    def call_names(self) -> list[str]:
+        return [c[0] for c in self.calls]
+
+
+def _make_async_client(data=None, single_data=None) -> tuple[MagicMock, _AsyncQueryRecorder]:
+    recorder = _AsyncQueryRecorder(data=data, single_data=single_data)
     client = MagicMock()
     client.table.return_value = recorder
     return client, recorder
@@ -143,17 +186,17 @@ class TestDecisionQuality:
              "portfolios": {"owner_id": "m1"}},
         ]
 
-        def fake_get_client():
-            calls_made: dict[str, _QueryRecorder] = {}
+        async def fake_get_client():
+            calls_made = {}
             client = MagicMock()
 
             def table(name):
                 if name == "decisions":
-                    rec = _QueryRecorder(data=decisions)
+                    rec = _AsyncQueryRecorder(data=decisions)
                 elif name == "trades":
-                    rec = _QueryRecorder(data=trades)
+                    rec = _AsyncQueryRecorder(data=trades)
                 else:
-                    rec = _QueryRecorder(data=[])
+                    rec = _AsyncQueryRecorder(data=[])
                 calls_made[name] = rec
                 return rec
 
@@ -161,9 +204,10 @@ class TestDecisionQuality:
             client._calls_made = calls_made
             return client
 
-        monkeypatch.setattr("autoresearch.decision_quality.get_supabase_client", fake_get_client)
+        monkeypatch.setattr("autoresearch.decision_quality.get_async_supabase_client", fake_get_client)
 
-    def test_concordance_uses_realized_pnl_direction(self):
+    @pytest.mark.asyncio
+    async def test_concordance_uses_realized_pnl_direction(self):
         """Concordance = fraction of BUY decisions whose follow-on SELL realized profit.
 
         Old behaviour just searched the reasoning text for the ticker — a tautology.
@@ -171,22 +215,24 @@ class TestDecisionQuality:
         """
         from autoresearch.decision_quality import compute_decision_quality
 
-        result = compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
+        result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
         # AAPL BUY became a winning SELL; MSFT BUY became a losing SELL -> 1/2 = 0.5
         assert result["concordance"] == pytest.approx(0.5, abs=0.01)
 
-    def test_conviction_calibration_correlates_pnl_with_confidence(self):
+    @pytest.mark.asyncio
+    async def test_conviction_calibration_correlates_pnl_with_confidence(self):
         """Calibration is 1.0 when higher-confidence trades realize higher avg pnl."""
         from autoresearch.decision_quality import compute_decision_quality
 
-        result = compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
+        result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
         # AAPL SELL conf=85 won +100; MSFT SELL conf=20 lost -50.
         # Higher confidence -> higher pnl, so calibration should be >= 0.7.
         assert result["conviction_calibration"] >= 0.7
 
-    def test_rejection_rate(self):
+    @pytest.mark.asyncio
+    async def test_rejection_rate(self):
         from autoresearch.decision_quality import compute_decision_quality
-        result = compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
+        result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
         # 1 rejection out of 5 = 0.2
         assert result["rejection_rate"] == pytest.approx(0.2, abs=0.01)
 
@@ -402,16 +448,20 @@ class TestEvaluator:
         composite dict, so the runner does not parse markdown."""
         from autoresearch import evaluator
 
-        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", lambda *a, **k: {
-            "sharpe": 1.0, "sortino": 1.0, "max_drawdown": 0.10,
-            "profit_factor": 2.0, "info_ratio": 1.0, "num_trading_days": 5,
-            "total_return_pct": 5.0,
-        })
-        monkeypatch.setattr(evaluator, "compute_decision_quality", lambda *a, **k: {
-            "concordance": 0.7, "conviction_calibration": 0.8, "regime_awareness": 0.5,
-            "mistake_patterns": [], "rejection_rate": 0.2, "total_decisions": 5,
-            "total_trades": 2, "sample_wins": [], "sample_losses": [], "sample_rejections": [],
-        })
+        async def _fake_ws_metrics(*a, **k):
+            return {
+                "sharpe": 1.0, "sortino": 1.0, "max_drawdown": 0.10,
+                "profit_factor": 2.0, "info_ratio": 1.0, "num_trading_days": 5,
+                "total_return_pct": 5.0,
+            }
+        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+        async def _fake_dq(*a, **k):
+            return {
+                "concordance": 0.7, "conviction_calibration": 0.8, "regime_awareness": 0.5,
+                "mistake_patterns": [], "rejection_rate": 0.2, "total_decisions": 5,
+                "total_trades": 2, "sample_wins": [], "sample_losses": [], "sample_rejections": [],
+            }
+        monkeypatch.setattr(evaluator, "compute_decision_quality", _fake_dq)
 
         async def fake_get_active_prompt(): return "ACTIVE_PROMPT"
         async def fake_get_previous_variants(**kw): return []
@@ -422,7 +472,8 @@ class TestEvaluator:
         monkeypatch.setattr(evaluator, "get_baseline_metrics", fake_get_baseline_metrics)
 
         client, _ = _make_client(data=[])
-        monkeypatch.setattr(evaluator, "get_supabase_client", lambda: client)
+        async def _fake_async_sb_ev(): return client
+        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_async_sb_ev)
 
         result = await evaluator.evaluate_week()
         assert isinstance(result, tuple), "evaluate_week must return (report, metrics)"
@@ -437,9 +488,10 @@ class TestEvaluator:
         from autoresearch import evaluator
 
         client, recorder = _make_client(data=[])
-        monkeypatch.setattr(evaluator, "get_supabase_client", lambda: client)
+        async def _fake_async_sb_mr(): return client
+        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_async_sb_mr)
 
-        evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10))
+        asyncio.run(evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10)))
 
         select_args = [c[1][0] for c in recorder.calls if c[0] == "select"]
         for sa in select_args:
@@ -466,12 +518,13 @@ class TestQuerySyntax:
     def test_metrics_uses_in_method(self, monkeypatch):
         from autoresearch import metrics
 
-        client, recorder = _make_client(data=[])
-        monkeypatch.setattr(metrics, "get_supabase_client", lambda: client)
+        client, recorder = _make_async_client(data=[])
+        async def _fake_m(): return client
+        monkeypatch.setattr(metrics, "get_async_supabase_client", _fake_m)
 
-        metrics.compute_wall_street_metrics(
+        asyncio.run(metrics.compute_wall_street_metrics(
             frozenset({"m1", "m2"}), date(2026, 5, 1), date(2026, 5, 7)
-        )
+        ))
 
         names = recorder.call_names()
         # Must not use the raw filter("in", repr(...)) pattern anywhere.
@@ -485,12 +538,13 @@ class TestQuerySyntax:
     def test_decision_quality_uses_in_method(self, monkeypatch):
         from autoresearch import decision_quality
 
-        client, recorder = _make_client(data=[])
-        monkeypatch.setattr(decision_quality, "get_supabase_client", lambda: client)
+        client, recorder = _make_async_client(data=[])
+        async def _fake_d(): return client
+        monkeypatch.setattr(decision_quality, "get_async_supabase_client", _fake_d)
 
-        decision_quality.compute_decision_quality(
+        asyncio.run(decision_quality.compute_decision_quality(
             frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
-        )
+        ))
         for call in recorder.calls:
             if call[0] == "filter" and len(call[1]) >= 2:
                 assert call[1][1] != "in"
@@ -501,12 +555,13 @@ class TestQuerySyntax:
         with the real column names so it does not fail at runtime."""
         from autoresearch import metrics
 
-        client, recorder = _make_client(data=[])
-        monkeypatch.setattr(metrics, "get_supabase_client", lambda: client)
+        client, recorder = _make_async_client(data=[])
+        async def _fake_m(): return client
+        monkeypatch.setattr(metrics, "get_async_supabase_client", _fake_m)
 
-        metrics.compute_wall_street_metrics(
+        asyncio.run(metrics.compute_wall_street_metrics(
             frozenset({"m1", "m2"}), date(2026, 5, 1), date(2026, 5, 7)
-        )
+        ))
 
         select_args = [c[1][0] for c in recorder.calls if c[0] == "select"]
         ph_selects = [a for a in select_args if "price" in a and "fetched_at" in a]
@@ -595,7 +650,8 @@ class TestRegimeAwarenessInComposite:
 class TestRegimeAwarenessComputation:
     """regime_awareness must be computed from actual VIXY data + trade decisions."""
 
-    def test_regime_awareness_computed_in_decision_quality(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_regime_awareness_computed_in_decision_quality(self, monkeypatch):
         from autoresearch import decision_quality
 
         # decisions: 8 BUYs, 2 SELLs (mostly aggressive buying)
@@ -618,27 +674,27 @@ class TestRegimeAwarenessComputation:
 
         calls_made: dict[str, _QueryRecorder] = {}
 
-        def fake_get_client():
+        async def fake_get_client():
             client = MagicMock()
 
             def table(name):
                 if name == "decisions":
-                    rec = _QueryRecorder(data=decisions)
+                    rec = _AsyncQueryRecorder(data=decisions)
                 elif name == "trades":
-                    rec = _QueryRecorder(data=trades)
+                    rec = _AsyncQueryRecorder(data=trades)
                 elif name == "price_history":
-                    rec = _QueryRecorder(data=vixy_data)
+                    rec = _AsyncQueryRecorder(data=vixy_data)
                 else:
-                    rec = _QueryRecorder(data=[])
+                    rec = _AsyncQueryRecorder(data=[])
                 calls_made[name] = rec
                 return rec
 
             client.table.side_effect = table
             return client
 
-        monkeypatch.setattr(decision_quality, "get_supabase_client", fake_get_client)
+        monkeypatch.setattr(decision_quality, "get_async_supabase_client", fake_get_client)
 
-        result = decision_quality.compute_decision_quality(
+        result = await decision_quality.compute_decision_quality(
             frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
         )
         # VIXY spiked + aggressive buying → regime_awareness < 0.5
@@ -646,7 +702,8 @@ class TestRegimeAwarenessComputation:
             f"High fear + aggressive buying must yield low regime_awareness, got {result['regime_awareness']}"
         )
 
-    def test_regime_awareness_high_when_defensive_in_volatility(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_regime_awareness_high_when_defensive_in_volatility(self, monkeypatch):
         from autoresearch import decision_quality
 
         # decisions: 2 BUYs, 8 SELLs (defensive positioning)
@@ -667,26 +724,26 @@ class TestRegimeAwarenessComputation:
             {"price": 22.0, "fetched_at": "2026-05-02"},
         ]
 
-        def fake_get_client():
+        async def fake_get_client():
             client = MagicMock()
 
             def table(name):
                 if name == "decisions":
-                    rec = _QueryRecorder(data=decisions)
+                    rec = _AsyncQueryRecorder(data=decisions)
                 elif name == "trades":
-                    rec = _QueryRecorder(data=[])
+                    rec = _AsyncQueryRecorder(data=[])
                 elif name == "price_history":
-                    rec = _QueryRecorder(data=vixy_data)
+                    rec = _AsyncQueryRecorder(data=vixy_data)
                 else:
-                    rec = _QueryRecorder(data=[])
+                    rec = _AsyncQueryRecorder(data=[])
                 return rec
 
             client.table.side_effect = table
             return client
 
-        monkeypatch.setattr(decision_quality, "get_supabase_client", fake_get_client)
+        monkeypatch.setattr(decision_quality, "get_async_supabase_client", fake_get_client)
 
-        result = decision_quality.compute_decision_quality(
+        result = await decision_quality.compute_decision_quality(
             frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
         )
         assert result["regime_awareness"] > 0.5, (
@@ -740,7 +797,8 @@ class TestRunnerWindowDuplication:
 
         monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
         monkeypatch.setattr(runner, "run_research", fake_research)
-        monkeypatch.setattr(runner, "_check_safety", lambda ws, we: (False, ""))
+        async def _fake_check_safety(ws, we): return (False, "")
+        monkeypatch.setattr(runner, "_check_safety", _fake_check_safety)
         monkeypatch.setattr(runner, "validate_prompt",
                             lambda p: (True, "", []))
         monkeypatch.setattr(runner, "save_variant",
@@ -772,16 +830,18 @@ class TestSafetyCheckUsesTrades:
 
         query_log = []
 
-        class TrackedRecorder(_QueryRecorder):
+        class TrackedRecorder(_AsyncQueryRecorder):
             def __getattr__(self, name):
                 if name.startswith("_"):
                     raise AttributeError(name)
                 def method(*args, **kwargs):
                     query_log.append(name)
                     if name == "execute":
-                        result = MagicMock()
-                        result.data = self._data
-                        return result
+                        async def _exec():
+                            r = MagicMock()
+                            r.data = self._data
+                            return r
+                        return _exec()
                     return self
                 return method
 
@@ -797,9 +857,10 @@ class TestSafetyCheckUsesTrades:
             return recorder
 
         client.table.side_effect = table
-        monkeypatch.setattr(runner, "get_supabase_client", lambda: client)
+        async def _fake_async_sb_safety(): return client
+        monkeypatch.setattr(runner, "get_async_supabase_client", _fake_async_sb_safety)
 
-        is_crash, reason = runner._check_safety(date(2026, 5, 1), date(2026, 5, 7))
+        is_crash, reason = asyncio.run(runner._check_safety(date(2026, 5, 1), date(2026, 5, 7)))
         assert "table:trades" in query_log, (
             f"_check_safety must query trades table; got table calls: {[q for q in query_log if q.startswith('table:')]}"
         )
@@ -956,3 +1017,183 @@ class TestCompositeEdgeCases:
         assert s["composite"] < 0.3, (
             f"Worst-case inputs should yield low score; got {s['composite']}"
         )
+
+
+# ==============================================================================
+# PLAN HARDENING TESTS — TDD: write RED tests first, then implement.
+# ==============================================================================
+
+
+# ---------------------------------------------------------------------------
+# Helpers — async variant of _QueryRecorder for async supabase client tests.
+# ---------------------------------------------------------------------------
+
+
+class _AsyncQueryRecorder:
+    """Chainable mock for async supabase-py query builder.
+
+    Every chained method returns self, except execute() which returns an
+    awaitable resolving to a MagicMock with the configured .data payload.
+    """
+
+    def __init__(self, data=None, single_data=None):
+        self.calls: list[tuple[str, tuple, dict]] = []
+        self._data = data or []
+        self._single_data = single_data
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+
+        def method(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+            if name == "execute":
+                async def _exec():
+                    r = MagicMock()
+                    r.data = self._data if self._single_data is None else self._single_data
+                    return r
+                return _exec()
+            return self
+
+        return method
+
+    def call_names(self) -> list[str]:
+        return [c[0] for c in self.calls]
+
+
+def _make_async_client(data=None, single_data=None) -> tuple[MagicMock, _AsyncQueryRecorder]:
+    recorder = _AsyncQueryRecorder(data=data, single_data=single_data)
+    client = MagicMock()
+    client.table.return_value = recorder
+    return client, recorder
+
+
+# ---------------------------------------------------------------------------
+# Test A: save_variant atomicity — insert before demotion.
+# ---------------------------------------------------------------------------
+
+
+class TestSaveVariantAtomicity:
+    """save_variant must insert BEFORE demoting the old active prompt."""
+
+    @pytest.mark.asyncio
+    async def test_insert_before_demotion(self, monkeypatch):
+        """INSERT must happen before UPDATE (demotion) in save_variant."""
+        from autoresearch import prompt_store
+
+        op_order: list[str] = []
+
+        class OrderTracker(_AsyncQueryRecorder):
+            def __getattr__(self, name):
+                if name.startswith("_"):
+                    raise AttributeError(name)
+                def method(*args, **kwargs):
+                    if name in ("update", "insert"):
+                        op_order.append(name)
+                    if name == "execute":
+                        async def _exec():
+                            r = MagicMock()
+                            r.data = self._single_data if self._single_data is not None else []
+                            return r
+                        return _exec()
+                    return self
+                return method
+
+        client = MagicMock()
+        recorder = OrderTracker(single_data={"variant_tag": "v-old"})
+        client.table.return_value = recorder
+
+        async def fake_async_client():
+            return client
+
+        monkeypatch.setattr(prompt_store, "get_async_supabase_client", fake_async_client)
+        prompt_store.clear_active_prompt_cache()
+
+        await prompt_store.save_variant(
+            prompt_content="NEW_PROMPT",
+            prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT",
+            week_start="2026-05-04",
+            week_end="2026-05-10",
+            metrics={"composite": 0.5},
+            change_description="test atomicity",
+            experiment_type="incremental",
+        )
+
+        insert_idx = next((i for i, op in enumerate(op_order) if op == "insert"), None)
+        update_idx = next((i for i, op in enumerate(op_order) if op == "update"), None)
+
+        assert insert_idx is not None, "Expected an 'insert' operation"
+        assert update_idx is not None, "Expected an 'update' operation"
+        assert insert_idx < update_idx, (
+            f"INSERT must happen BEFORE UPDATE (demotion). "
+            f"Got insert at {insert_idx}, update at {update_idx}. "
+            f"Full order: {op_order}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test B: run_research retry loop — validation errors vs non-retryable.
+# ---------------------------------------------------------------------------
+
+
+class TestResearcherRetry:
+    """run_research must retry on validation errors and bail on non-retryable."""
+
+    @pytest.mark.asyncio
+    async def test_retries_on_validation_error(self, monkeypatch):
+        from autoresearch import researcher
+
+        call_count = {"n": 0}
+
+        async def fake_create(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                raise Exception("validation error: input should be a valid")
+            wrapper = MagicMock()
+            return wrapper
+
+        fake_client = MagicMock()
+        fake_client.chat.completions.create = fake_create
+
+        monkeypatch.setattr(researcher, "get_deepseek_client", lambda: fake_client)
+
+        result = await researcher.run_research("# Test Report")
+        assert result is not None, "Should return result on 3rd retry"
+        assert call_count["n"] == 3, f"Expected 3 attempts, got {call_count['n']}"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_non_retryable_error(self, monkeypatch):
+        from autoresearch import researcher
+
+        async def fake_create(**kwargs):
+            raise Exception("rate limit exceeded — fatal, not validation")
+
+        fake_client = MagicMock()
+        fake_client.chat.completions.create = fake_create
+
+        monkeypatch.setattr(researcher, "get_deepseek_client", lambda: fake_client)
+
+        result = await researcher.run_research("# Test Report")
+        assert result is None, "Non-retryable errors must return None"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_after_all_retries_exhausted(self, monkeypatch):
+        from autoresearch import researcher
+
+        call_count = {"n": 0}
+
+        async def fake_create(**kwargs):
+            call_count["n"] += 1
+            raise Exception("validation error: bad schema — every time")
+
+        fake_client = MagicMock()
+        fake_client.chat.completions.create = fake_create
+
+        monkeypatch.setattr(researcher, "get_deepseek_client", lambda: fake_client)
+
+        result = await researcher.run_research("# Test Report")
+        assert result is None, "Must return None after all retries fail"
+        assert call_count["n"] == 3, f"Expected 3 attempts, got {call_count['n']}"

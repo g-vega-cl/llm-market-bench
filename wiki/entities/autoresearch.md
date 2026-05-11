@@ -87,8 +87,7 @@ both groups and presents them side-by-side in the research report.
   are normal (LLMs hallucinate often) and are handled by the verifier, not
   treated as crashes.
 - **Prompt validation**: two-tier. Hard invariants (forbidden phrases like
-  "bypass guardrails", empty/oversized prompts, >1500 tokens via tiktoken
-  `o200k_base` encoding) block activation. Soft invariants (tool usage,
+  "bypass guardrails", empty/oversized prompts, >1000 words) block activation. Soft invariants (tool usage,
   5 Whys) emit warnings but let the researcher experiment — the control
   portfolios benchmark the impact.
 - **Verifier unchanged**: only `CORE_ANALYSIS_SYSTEM_PROMPT` is modified;

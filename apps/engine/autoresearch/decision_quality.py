@@ -12,12 +12,12 @@ import logging
 from collections import Counter
 from datetime import date, timedelta
 
-from core.db import get_supabase_client
+from core.db import get_async_supabase_client
 
 logger = logging.getLogger("engine")
 
 
-def _fetch_decisions(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[dict]:
+async def _fetch_decisions(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[dict]:
     owner_list = list(owner_ids)
     res = (
         sb_client.table("decisions")
@@ -28,10 +28,10 @@ def _fetch_decisions(sb_client, owner_ids: frozenset | set, week_start: date, we
         .order("created_at")
         .execute()
     )
-    return res.data or []
+    return (await res).data or []
 
 
-def _fetch_trades(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[dict]:
+async def _fetch_trades(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[dict]:
     owner_list = list(owner_ids)
     res = (
         sb_client.table("trades")
@@ -42,10 +42,10 @@ def _fetch_trades(sb_client, owner_ids: frozenset | set, week_start: date, week_
         .order("executed_at")
         .execute()
     )
-    return res.data or []
+    return (await res).data or []
 
 
-def _compute_vixy_trend(sb_client, week_start: date, week_end: date) -> float:
+async def _compute_vixy_trend(sb_client, week_start: date, week_end: date) -> float:
     """Compute VIXY trend: 1.0 if VIXY went up (fear), 0.0 if down (calm).
 
     Compares week's average VIXY to the price just before the week started.
@@ -68,8 +68,8 @@ def _compute_vixy_trend(sb_client, week_start: date, week_end: date) -> float:
         .order("fetched_at")
         .execute()
     )
-    pre_rows = pre_res.data or []
-    week_rows = week_res.data or []
+    pre_rows = (await pre_res).data or []
+    week_rows = (await week_res).data or []
     if not pre_rows or not week_rows:
         return 0.5
 
@@ -168,7 +168,7 @@ def _compute_conviction_calibration(decisions: list[dict], trades: list[dict]) -
     return 0.3
 
 
-def compute_decision_quality(
+async def compute_decision_quality(
     owner_ids: frozenset | set,
     week_start: date,
     week_end: date,
@@ -178,11 +178,11 @@ def compute_decision_quality(
     Returns a dict with: concordance, mistake_patterns, conviction_calibration,
     rejection_rate, regime_awareness, and raw sample data for the LLM report.
     """
-    sb_client = get_supabase_client()
-    decisions = _fetch_decisions(sb_client, owner_ids, week_start, week_end)
-    trades = _fetch_trades(sb_client, owner_ids, week_start, week_end)
+    sb_client = await get_async_supabase_client()
+    decisions = await _fetch_decisions(sb_client, owner_ids, week_start, week_end)
+    trades = await _fetch_trades(sb_client, owner_ids, week_start, week_end)
 
-    vixy_trend = _compute_vixy_trend(sb_client, week_start, week_end)
+    vixy_trend = await _compute_vixy_trend(sb_client, week_start, week_end)
     regime_awareness = _compute_regime_awareness(decisions, vixy_trend)
 
     result = {

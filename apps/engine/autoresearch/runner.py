@@ -14,7 +14,7 @@ import logging
 from datetime import date
 
 from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
-from core.db import get_supabase_client
+from core.db import get_async_supabase_client
 
 from .evaluator import evaluate_week
 from .researcher import run_research
@@ -27,7 +27,7 @@ logger = logging.getLogger("engine")
 SAFETY_MIN_TRADES = 2
 
 
-def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
+async def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     """Check if the current active prompt caused a crash.
 
     A "crash" is: fewer than SAFETY_MIN_TRADES executed trades across all
@@ -36,10 +36,10 @@ def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
 
     Returns (is_crash, reason).
     """
-    sb_client = get_supabase_client()
+    sb_client = await get_async_supabase_client()
     owner_list = list(AUTORESEARCH_EXPERIMENT_OWNER_IDS)
 
-    trade_res = (
+    trade_res = await (
         sb_client.table("trades")
         .select("id, portfolios!inner(owner_id)")
         .in_("portfolios.owner_id", owner_list)
@@ -67,9 +67,10 @@ async def run():
     logger.info("Evaluating week %s to %s", week_start, week_end)
 
     # Check if the current prompt caused a crash
-    is_crash, crash_reason = _check_safety(week_start, week_end)
+    is_crash, crash_reason = await _check_safety(week_start, week_end)
     if is_crash:
         logger.warning("SAFETY: %s. Reverting to previous prompt.", crash_reason)
+        logger.warning("AUTORESEARCH_RESULT: SKIPPED_CRASH | reason=%s", crash_reason)
         reverted = await revert_to_previous()
         if reverted:
             logger.info("Reverted to %s. Skipping auto-research this week.", reverted)
@@ -83,6 +84,7 @@ async def run():
         report, composite = await evaluate_week(week_start, week_end)
     except Exception as e:
         logger.error("Failed to evaluate week: %s", e)
+        logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
         return
 
     # Run the auto-research LLM
@@ -95,6 +97,7 @@ async def run():
 
     if result is None:
         logger.error("Auto-research returned no result. Skipping prompt update.")
+        logger.error("AUTORESEARCH_RESULT: FAILED_RESEARCH | reason=empty_response")
         return
 
     logger.info(
@@ -110,6 +113,7 @@ async def run():
 
     if not is_valid:
         logger.error("Researcher proposal failed safety validation: %s. Skipping activation.", reason)
+        logger.error("AUTORESEARCH_RESULT: FAILED_VALIDATION | reason=%s", reason)
         return
 
     # Save and activate the new variant
@@ -127,7 +131,10 @@ async def run():
         logger.info("New active prompt variant: %s", tag)
     except Exception as e:
         logger.error("Failed to save variant: %s", e)
+        logger.error("AUTORESEARCH_RESULT: FAILED_SAVE | error=%s", e)
         return
 
     logger.info("=== Auto-Research Cycle Complete ===")
     logger.info("Next week's prompt: %s (%s)", tag, result.experiment_type)
+    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | composite=%.4f",
+                tag, result.experiment_type, composite["composite"])

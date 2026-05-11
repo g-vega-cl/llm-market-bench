@@ -37,10 +37,9 @@ _SOFT_INVARIANTS = (
 )
 
 
-def _count_tokens(text: str) -> int:
-    """Estimate token count from word count (English: ~1.3 tokens per word).
-
-    No external library needed — conservative enough for prompt sizing."""
+def _count_words(text: str) -> int:
+    """Count words via split(). Conservative cap: 1000 words.
+    English text averages ~1.3 tokens/word, so 1000 words ≈ 1300 tokens."""
     return len(text.split())
 
 
@@ -57,9 +56,9 @@ def validate_prompt(prompt: str) -> tuple[bool, str, list[str]]:
     if not prompt or not prompt.strip():
         return False, "Prompt is empty", warnings
 
-    token_count = _count_tokens(prompt)
-    if token_count > MAX_WORDS:
-        return False, f"Prompt exceeds maximum length ({token_count} words > {MAX_WORDS})", warnings
+    word_count = _count_words(prompt)
+    if word_count > MAX_WORDS:
+        return False, f"Prompt exceeds maximum length ({word_count} words > {MAX_WORDS})", warnings
 
     for pattern in _HARD_INVARIANTS:
         match = pattern.search(prompt)

@@ -10,7 +10,7 @@ import logging
 from datetime import date, timedelta
 
 from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL, ANTHROPIC_MODEL
-from core.db import get_supabase_client
+from core.db import get_async_supabase_client
 
 from .metrics import compute_wall_street_metrics, compute_composite_score
 from .decision_quality import compute_decision_quality
@@ -22,17 +22,17 @@ logger = logging.getLogger("engine")
 CONTROL_OWNER_IDS = frozenset([OPENAI_MODEL, ANTHROPIC_MODEL])
 
 
-def _get_market_regime_summary(week_start: date, week_end: date) -> str:
+async def _get_market_regime_summary(week_start: date, week_end: date) -> str:
     """Brief market-regime summary from available data.
 
     VIXY is the volatility ETF tracked in `price_history` (see
     `core.macro_tracker`). The legacy index ticker "VIX" is never stored.
     """
     summary_parts = []
-    sb_client = get_supabase_client()
+    sb_client = await get_async_supabase_client()
 
     try:
-        vix_res = (
+        vix_res = await (
             sb_client.table("price_history")
             .select("price")
             .eq("ticker", "VIXY")
@@ -51,7 +51,7 @@ def _get_market_regime_summary(week_start: date, week_end: date) -> str:
         logger.debug("VIXY regime lookup failed: %s", e)
 
     try:
-        spy_res = (
+        spy_res = await (
             sb_client.table("price_history")
             .select("price")
             .eq("ticker", "SPY")
@@ -95,6 +95,12 @@ def _check_stagnation(previous_variants: list[dict]) -> tuple[bool, str]:
 
     if len(metrics_list) >= 2:
         avg = sum(metrics_list) / len(metrics_list)
+        # Floor check: if average composite is below 0.05, we're stuck at the floor
+        if avg < 0.05:
+            return True, (
+                f"STAGNATION: average composite score ({avg:.3f}) is at floor (< 0.05). "
+                "A RADICAL variant is strongly recommended."
+            )
         if avg > 0:
             pct_range = (max(metrics_list) - min(metrics_list)) / avg
             if pct_range < 0.05:
@@ -201,9 +207,9 @@ async def evaluate_week(
     if not current_prompt:
         current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 
-    exp_metrics = compute_wall_street_metrics(AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end)
-    ctrl_metrics = compute_wall_street_metrics(CONTROL_OWNER_IDS, week_start, week_end)
-    dq = compute_decision_quality(AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end)
+    exp_metrics = await compute_wall_street_metrics(AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end)
+    ctrl_metrics = await compute_wall_street_metrics(CONTROL_OWNER_IDS, week_start, week_end)
+    dq = await compute_decision_quality(AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end)
     composite = compute_composite_score(
         exp_metrics,
         concordance=dq["concordance"],
@@ -213,7 +219,7 @@ async def evaluate_week(
     previous = await get_previous_variants(limit=5)
     _, stagnation_msg = _check_stagnation(previous)
 
-    regime = _get_market_regime_summary(week_start, week_end)
+    regime = await _get_market_regime_summary(week_start, week_end)
 
     baseline_metrics = await get_baseline_metrics()
     baseline_text = ""

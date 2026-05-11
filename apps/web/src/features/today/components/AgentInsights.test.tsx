@@ -1,3 +1,4 @@
+import { MODELS } from '~/config/models'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { AgentInsights } from './AgentInsights'
@@ -18,7 +19,7 @@ describe('AgentInsights', () => {
   })
 
   it('renders agent name text for known Gemini model', () => {
-    render(<AgentInsights memories={[createLessonMemory('gemini-3.1-flash-lite-preview')]} />)
+    render(<AgentInsights memories={[createLessonMemory(MODELS.GEMINI)]} />)
     expect(screen.getByText('Gemini')).toBeInTheDocument()
   })
 

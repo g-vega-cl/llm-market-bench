@@ -102,3 +102,23 @@ layer for compounding knowledge.
 ## [2026-05-10] feature | Auto-wiki documentation generation
 
 Added `apps/engine/auto_wiki.py` — a script that reads staged git diffs, sends them to an LLM (OpenRouter with ollama fallback), and automatically creates/updates wiki pages, log entries, and index entries. Integrated into the pre-commit hook via `scripts/auto-wiki.sh`, which runs non-blocking and only triggers on code changes (skips wiki/raw/docs-only commits). The script supports dry-run mode, keychain-based API key resolution, and configurable models.
+
+## [2026-05-11] refactor | Centralized model name constants
+
+Extracted hardcoded model name strings into shared constants across the codebase:
+- Created `apps/web/src/config/models.ts` with `MODELS` object for all LLM identifiers
+- Updated `agent-info.ts`, `AgentInsights.test.tsx`, and `how-it-works.tsx` to use the new constants
+- Updated `test_post_analysis.py` to use `GEMINI_MODEL` from config
+- Renamed Gemini model from `gemini-3.1-flash-lite-preview` to `gemini-3.1-flash-lite` in `packages/config/models.json`
+
+This eliminates magic strings and ensures model names are consistent across engine and web layers.
+
+## [2026-05-11] refactor | Centralized model name constants
+
+Extracted hardcoded model name strings into shared constants across the codebase:
+- Created `apps/web/src/config/models.ts` with `MODELS` object for all LLM identifiers
+- Updated `agent-info.ts`, `AgentInsights.test.tsx`, and `how-it-works.tsx` to use the new constants
+- Updated `test_post_analysis.py` to use `GEMINI_MODEL` from config
+- Renamed Gemini model from `gemini-3.1-flash-lite-preview` to `gemini-3.1-flash-lite` in `packages/config/models.json`
+
+This eliminates magic strings and ensures model names are consistent across engine and web layers.

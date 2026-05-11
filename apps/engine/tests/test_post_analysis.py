@@ -7,6 +7,8 @@ import sys
 import os
 from datetime import datetime, timezone, timedelta
 
+from core.config import GEMINI_MODEL
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
@@ -133,7 +135,7 @@ async def test_post_analysis_metadata_includes_model_name():
         "executed_at": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
         "decisions": [{
             "reasoning": "Strong earnings momentum",
-            "model_name": "gemini-3.1-flash-lite-preview",
+            "model_name": GEMINI_MODEL,
             "metadata": {"strategy_reasoning": "Tech sector rotation"}
         }]
     }
@@ -165,7 +167,7 @@ async def test_post_analysis_metadata_includes_model_name():
         # Verify add_memory was called with model_name in metadata
         call_kwargs = mock_add_memory.call_args[1]
         assert "metadata" in call_kwargs
-        assert call_kwargs["metadata"]["model_name"] == "gemini-3.1-flash-lite-preview"
+        assert call_kwargs["metadata"]["model_name"] == GEMINI_MODEL
         assert call_kwargs["metadata"]["trade_id"] == "trade-uuid-001"
         assert call_kwargs["metadata"]["analysis_window"] == "5"
         

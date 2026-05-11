@@ -1,3 +1,4 @@
+import { MODELS } from '~/config/models'
 import { createFileRoute } from '@tanstack/react-router'
 import { ThoughtProcessFlow } from '../components/ThoughtProcessFlow'
 
@@ -19,11 +20,11 @@ function HowItWorks() {
                         and execute trades — with specialized agents for verification, contrarian positioning, and post-analysis.
                     </p>
                     <div className="flex gap-2 justify-center mt-4 flex-wrap">
-                        <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">OpenAI gpt-5.4-nano</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude claude-haiku-4-5</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini gemini-3.1-flash-lite-preview</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek deepseek-v4-flash</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">MiniMax MiniMax-M2.7</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">OpenAI {MODELS.OPENAI}</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude {MODELS.ANTHROPIC}</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini {MODELS.GEMINI}</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek {MODELS.DEEPSEEK}</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">MiniMax {MODELS.MINIMAX}</span>
                     </div>
                     <p className="text-lg text-slate-500 mt-4">
                         Tripled trigger multiple times daily during US market hours
@@ -102,10 +103,10 @@ function HowItWorks() {
                                     Four LLMs analyze data in parallel using the <strong className="text-purple-300">PromptFactory</strong> for semantically identical instructions. Each receives the Global Macro Snapshot for Risk-On/Risk-Off awareness.
                                 </p>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 border border-green-500/30">OpenAI gpt-5.4-nano</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude claude-haiku-4-5</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini gemini-3.1-flash-lite-preview</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek deepseek-v4-flash</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 border border-green-500/30">OpenAI {MODELS.OPENAI}</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude {MODELS.ANTHROPIC}</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini {MODELS.GEMINI}</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek {MODELS.DEEPSEEK}</span>
                                 </div>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
                                     <li><strong className="text-purple-300">Asynchronous Chunk Batching</strong>: 20 chunks per LLM call to prevent token truncation</li>

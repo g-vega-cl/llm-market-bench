@@ -1,5 +1,60 @@
 # Wiki Log
 
+## [2026-05-11] fix | Auto-research code audit — 7 fixes from deep code review
+
+Comprehensive TDD-driven fixes from a detailed codebase interview (the "grill me"
+session). All 7 issues identified, tested, and resolved:
+
+1. **`_close_client` removed from `researcher.py`** — the `finally` block that
+   closed the singleton httpx client violated the wiki's own async-client contract.
+   GitHub Actions kills the process anyway; in local runs the singleton must stay
+   alive.
+
+2. **`regime_awareness` wired into composite score** — was accepted as a
+   parameter but silently discarded (dead code). Now computed from actual VIXY
+   price data: compares pre-week VIXY to in-week average, scores how well the
+   agent's BUY/SELL ratio matched the volatility regime. Gets 0.10 weight.
+   Weights rebalanced: Sharpe 0.15, Sortino 0.15, Drawdown 0.15, Profit 0.15,
+   Info 0.10, Concordance 0.10, Conviction 0.10, Regime 0.10.
+
+3. **Double `get_week_window()` eliminated** — runner now computes the window
+   once and passes it to `evaluate_week()`. Evaluator accepts optional params
+   with fallback. Prevents midnight drift in window boundaries.
+
+4. **`_check_safety` now queries `trades` table** — previously counted
+   `status="EXECUTED"` in `decisions` table, which could differ from actual
+   settled trades. Now joins through `portfolios!inner(owner_id)` to count
+   real trades.
+
+5. **Bootstrap fixed and tested** — removed `sys.path.append(os.path.join(
+   os.getcwd(), "apps", "engine"))` CWD-dependent hack. Now uses proper relative
+   imports. Added idempotency test.
+
+6. **Validator uses word-count cap** — conservative 1000-word limit
+   (roughly ~1300 tokens for English prose). No external tokenizer dependency.
+   `program.md` constraint updated to match.
+
+7. **Composite score edge cases** — now returns `"warnings"` list:
+   `NO_TRADING_DATA` when `num_trading_days == 0`, `NO_BENCHMARK` when
+   `info_ratio == 0` (missing SPY data). Tests for worst-case inputs,
+   no-data scenarios, and function boundary values.
+
+Files changed:
+- `apps/engine/autoresearch/researcher.py`
+- `apps/engine/autoresearch/metrics.py`
+- `apps/engine/autoresearch/decision_quality.py`
+- `apps/engine/autoresearch/evaluator.py`
+- `apps/engine/autoresearch/runner.py`
+- `apps/engine/autoresearch/validator.py`
+- `apps/engine/autoresearch/bootstrap.py`
+- `apps/engine/autoresearch/program.md`
+- `apps/engine/tests/test_autoresearch.py`
+- `wiki/entities/autoresearch.md`
+- `wiki/concepts/auto-research-prompt-improver.md`
+
+Test suite: 590 passed, 2 skipped, 1 warning. 17 new tests added across 7 test
+classes.
+
 ## [2026-05-11] refactor | Two-tier prompt validator + simplified safety checker
 
 Changed auto-research validator from single-tier to two-tier:
@@ -226,3 +281,58 @@ Added regression tests in `test_autoresearch.py`:
 
 Updated wiki pages to list `price_history` as a data source for metrics and
 market regime context.
+
+## [2026-05-11] fix | Auto-research code audit — 7 fixes from deep code review
+
+Comprehensive TDD-driven fixes from a detailed codebase interview (the "grill me"
+session). All 7 issues identified, tested, and resolved:
+
+1. **`_close_client` removed from `researcher.py`** — the `finally` block that
+   closed the singleton httpx client violated the wiki's own async-client contract.
+   GitHub Actions kills the process anyway; in local runs the singleton must stay
+   alive.
+
+2. **`regime_awareness` wired into composite score** — was accepted as a
+   parameter but silently discarded (dead code). Now computed from actual VIXY
+   price data: compares pre-week VIXY to in-week average, scores how well the
+   agent's BUY/SELL ratio matched the volatility regime. Gets 0.10 weight.
+   Weights rebalanced: Sharpe 0.15, Sortino 0.15, Drawdown 0.15, Profit 0.15,
+   Info 0.10, Concordance 0.10, Conviction 0.10, Regime 0.10.
+
+3. **Double `get_week_window()` eliminated** — runner now computes the window
+   once and passes it to `evaluate_week()`. Evaluator accepts optional params
+   with fallback. Prevents midnight drift in window boundaries.
+
+4. **`_check_safety` now queries `trades` table** — previously counted
+   `status="EXECUTED"` in `decisions` table, which could differ from actual
+   settled trades. Now joins through `portfolios!inner(owner_id)` to count
+   real trades.
+
+5. **Bootstrap fixed and tested** — removed `sys.path.append(os.path.join(
+   os.getcwd(), "apps", "engine"))` CWD-dependent hack. Now uses proper relative
+   imports. Added idempotency test.
+
+6. **Validator uses word-count cap** — conservative 1000-word limit
+   (roughly ~1300 tokens for English prose). No external tokenizer dependency.
+   `program.md` constraint updated to match.
+
+7. **Composite score edge cases** — now returns `"warnings"` list:
+   `NO_TRADING_DATA` when `num_trading_days == 0`, `NO_BENCHMARK` when
+   `info_ratio == 0` (missing SPY data). Tests for worst-case inputs,
+   no-data scenarios, and function boundary values.
+
+Files changed:
+- `apps/engine/autoresearch/researcher.py`
+- `apps/engine/autoresearch/metrics.py`
+- `apps/engine/autoresearch/decision_quality.py`
+- `apps/engine/autoresearch/evaluator.py`
+- `apps/engine/autoresearch/runner.py`
+- `apps/engine/autoresearch/validator.py`
+- `apps/engine/autoresearch/bootstrap.py`
+- `apps/engine/autoresearch/program.md`
+- `apps/engine/tests/test_autoresearch.py`
+- `wiki/entities/autoresearch.md`
+- `wiki/concepts/auto-research-prompt-improver.md`
+
+Test suite: 590 passed, 2 skipped, 1 warning. 17 new tests added across 7 test
+classes.

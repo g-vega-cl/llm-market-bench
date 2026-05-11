@@ -37,11 +37,20 @@ Computed from `portfolio_performance`, `price_history`, and `trades` tables, not
 - **Maximum Drawdown** — worst peak-to-trough loss
 - **Profit Factor** — gross profit / gross loss from realized SELL trades
 
+When benchmark data is unavailable (e.g., missing SPY price history), the
+composite score includes `NO_BENCHMARK` and `NO_TRADING_DATA` warning flags
+so the researcher LLM knows which metrics are unreliable.
+
 ### 2. Decision Quality (Tied to Realized PnL)
 - **Signal Concordance** — fraction of BUY decisions that led to profitable
   SELL closes within the evaluation window (not keyword-based)
 - **Conviction Calibration** — correlation between the agent's confidence
   score and the actual realized PnL (bucketed: low ≤33, med 34–66, high ≥67)
+- **Regime Awareness** — measures whether the agent's BUY/SELL ratio matched
+  the VIXY volatility regime. VIXY up (fear) + selling = high awareness.
+  VIXY down (calm) + buying = high awareness. Formula: 1.0 - abs(VIXY trend
+  - sell ratio). Computed from actual `price_history` VIXY data, not
+  keyword-based.
 - **Mistake Patterns** — top-3 rejection reason clusters (e.g.,
   REJECTED_TOOL_USAGE: 14x, REJECTED_VERIFICATION: 8x)
 
@@ -75,13 +84,18 @@ The verification layer (`verification.py`) never changes — it always runs
 the baseline verifier prompt. This means even a catastrophic auto-research
 failure produces rejected trades, not executed bad trades. Additionally:
 - **Two-tier validation**: Hard invariants (forbidden phrases like "bypass
-  guardrails", empty/oversized prompts) block activation. Soft invariants
-  (tool usage, 5 Whys) emit warnings but let the researcher experiment.
+  guardrails", empty/oversized prompts, >1000 words) block
+  activation. Soft invariants (tool usage, 5 Whys) emit warnings but let
+  the researcher experiment.
 - The control portfolios (OpenAI + Claude on baseline) provide a permanent
   benchmark — if an experimental prompt degrades performance, it's visible
   in the side-by-side metrics each week.
-- <2 executed trades triggers auto-revert at the start of the next cycle.
-  High rejection rates are expected and handled by the verifier.
+- <2 actual executed trades (queried from the `trades` table, not decisions)
+  triggers auto-revert at the start of the next cycle. High rejection rates
+  are expected and handled by the verifier.
+- The singleton HTTP client is never closed by the auto-research code —
+  in GitHub Actions the process dies on exit; in local runs the singleton
+  must stay alive for subsequent callers.
 
 ## Related
 

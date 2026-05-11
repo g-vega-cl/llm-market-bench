@@ -8,7 +8,7 @@ category: entity
 The auto-research module at `apps/engine/autoresearch/` implements a
 Karpathy-style autonomous prompt improvement loop. Every Sunday evening,
 it evaluates the past week's live trading performance for the experiment
-agents (Gemini Flasg Lite and DeepSeek Flash), calls a meta-researcher
+agents (Gemini Flash Lite and DeepSeek Flash), calls a meta-researcher
 LLM (DeepSeek v4 Pro) to propose prompt improvements, and activates the
 best variant for the coming week.
 
@@ -20,29 +20,38 @@ The module is organized into a clean pipeline:
   auto-research LLM, defining evaluation dimensions, constraints, and the
   local minima escape policy
 - **`window.py`** — shared Mon–Sun week-boundary calculator used by both
-  the evaluator and runner to avoid calendar drift
+  the evaluator and runner to avoid calendar drift. Runner computes the
+  window once and passes it to the evaluator, eliminating the previous
+  double-computation.
 - **`metrics.py`** — computes Wall Street metrics (Sharpe, Sortino, Info
   Ratio, Max Drawdown, Profit Factor) from `portfolio_performance`,
   `price_history` (SPY benchmark for Information Ratio), and `trades`
-  tables; normalizes to 0–1 via `compute_composite_score()`
+  tables; normalizes to 0–1 via `compute_composite_score()`. Warns when
+  benchmark data is missing (e.g., "NO_TRADING_DATA", "NO_BENCHMARK").
 - **`decision_quality.py`** — scores signal concordance (did BUYs lead to
-  profitable SELLs?) and conviction calibration (do higher-confidence trades
-  earn more?), tied to realized PnL outcomes
+  profitable SELLs?), conviction calibration (do higher-confidence trades
+  earn more?), and **regime awareness** (did the agent sell when VIXY
+  spiked and buy when markets calmed?). All tied to realized PnL and
+  actual VIXY price data.
 - **`evaluator.py`** — gathers all data (portfolio performance, decision
   quality, price history for VIXY/SPY market regime), computes metrics,
-  formats the structured markdown report fed to the auto-research LLM
+  formats the structured markdown report fed to the auto-research LLM.
+  Accepts optional `week_start`/`week_end` params from the runner.
 - **`researcher.py`** — calls DeepSeek v4 Pro via Instructor, receives
-  a `PromptResearchResult` (new prompt text, reasoning, confidence)
+  a `PromptResearchResult` (new prompt text, reasoning, confidence).
+  Does NOT close the HTTP client (the singleton is process-scoped —
+  closing it kills the next caller).
 - **`prompt_store.py`** — DB CRUD for `prompt_experiments` table plus an
   in-process cache (60s TTL) for hot-path `get_active_prompt()` calls
 - **`validator.py`** — post-LLM safety check with two tiers: **hard
   invariants** (forbidden phrases like "bypass guardrails", empty/oversized
-  prompts) that block activation, and **soft invariants** (tool
-  requirements, 5 Whys technique) that emit warnings but allow activation.
-  The control portfolios and `<2 trades` safety checker provide the real
-  guardrails.
+  prompts, >1000 words) that block activation, and **soft
+  invariants** (tool requirements, 5 Whys technique) that emit warnings but
+  allow activation. The control portfolios and `<2 trades` safety checker
+  provide the real guardrails.
 - **`runner.py`** — top-level orchestrator: safety check → evaluate →
-  research → validate → save → activate
+  research → validate → save → activate. Computes the week window once and
+  passes it to `evaluate_week()` to prevent midnight drift.
 
 ## How It Integrates
 
@@ -72,14 +81,16 @@ both groups and presents them side-by-side in the research report.
 
 ## Safety Mechanisms
 
-- **Crash detection**: <2 executed trades in the evaluation week → auto-revert
+- **Crash detection**: <2 actual trades (queried from `trades` table joining
+  through `portfolios!inner(owner_id)`) in the evaluation week → auto-revert
   to previous variant before the next research cycle. High rejection rates
   are normal (LLMs hallucinate often) and are handled by the verifier, not
   treated as crashes.
 - **Prompt validation**: two-tier. Hard invariants (forbidden phrases like
-  "bypass guardrails", empty/oversized prompts) block activation. Soft
-  invariants (tool usage, 5 Whys) emit warnings but let the researcher
-  experiment — the control portfolios benchmark the impact.
+  "bypass guardrails", empty/oversized prompts, >1500 tokens via tiktoken
+  `o200k_base` encoding) block activation. Soft invariants (tool usage,
+  5 Whys) emit warnings but let the researcher experiment — the control
+  portfolios benchmark the impact.
 - **Verifier unchanged**: only `CORE_ANALYSIS_SYSTEM_PROMPT` is modified;
   the verifier, contrarian, and all other prompts are never touched
 - **Lazy activation**: bad prompts can't reach production overnight — the
@@ -106,15 +117,17 @@ Per Karpathy's design:
 ## Async-client contract (read before editing `prompt_store.py`)
 
 `core/db.get_async_supabase_client()` is `async def` and caches the
-client as a process-wide singleton. Two rules follow:
+client as a process-wide singleton. Three rules follow:
 
 - Always `await` it: `sb_client = await get_async_supabase_client()`.
   Forgetting the `await` leaves `sb_client` as a coroutine, and the
   first attribute access (e.g. `sb_client.table(...)`) raises
   `AttributeError: 'coroutine' object has no attribute …`.
-- Never close the underlying http client (`sb_client.auth.http_client.aclose()`).
-  Closing it inside a `finally` block kills the singleton's httpx
-  transport, so the next caller in the same process gets a dead client.
+- Never close the underlying http client. Closing it kills the
+  singleton's httpx transport, so the next caller in the same process
+  gets a dead client. This is why `researcher.py` does NOT call
+  `_close_client()` — in GitHub Actions the process dies on exit anyway,
+  and in local runs the singleton must stay alive.
 
 Unit tests must mock the dependency with an `async def` stub
 (`async def fake_client(): return client`) — a sync `lambda: client`

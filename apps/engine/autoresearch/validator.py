@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import re
 
-MAX_WORDS = 3000
+MAX_WORDS = 1000  # Conservative: ~1300 tokens for typical English (1.3 tok/word)
+
 
 # Hard invariants — block activation.
 # Only things that would actually break the trading loop.
@@ -36,6 +37,13 @@ _SOFT_INVARIANTS = (
 )
 
 
+def _count_tokens(text: str) -> int:
+    """Estimate token count from word count (English: ~1.3 tokens per word).
+
+    No external library needed — conservative enough for prompt sizing."""
+    return len(text.split())
+
+
 def validate_prompt(prompt: str) -> tuple[bool, str, list[str]]:
     """Validate a researcher-proposed prompt.
 
@@ -49,9 +57,9 @@ def validate_prompt(prompt: str) -> tuple[bool, str, list[str]]:
     if not prompt or not prompt.strip():
         return False, "Prompt is empty", warnings
 
-    word_count = len(prompt.split())
-    if word_count > MAX_WORDS:
-        return False, f"Prompt exceeds maximum length ({word_count} words > {MAX_WORDS})", warnings
+    token_count = _count_tokens(prompt)
+    if token_count > MAX_WORDS:
+        return False, f"Prompt exceeds maximum length ({token_count} words > {MAX_WORDS})", warnings
 
     for pattern in _HARD_INVARIANTS:
         match = pattern.search(prompt)

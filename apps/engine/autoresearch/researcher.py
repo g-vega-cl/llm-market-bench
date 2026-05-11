@@ -13,7 +13,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from core.config import AUTORESEARCH_MODEL
-from core.llm import get_deepseek_client, _close_client
+from core.llm import get_deepseek_client
 
 logger = logging.getLogger("engine")
 
@@ -133,5 +133,3 @@ async def run_research(report: str) -> PromptResearchResult | None:
     except Exception as e:
         logger.error("Auto-research failed: %s", e)
         return None
-    finally:
-        await _close_client(client, provider)

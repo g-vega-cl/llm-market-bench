@@ -102,6 +102,7 @@ class TestCompositeScore:
             {"sharpe": 5, "sortino": 5, "max_drawdown": 0, "profit_factor": 3, "info_ratio": 5},
             concordance=1.0,
             conviction=1.0,
+            regime_awareness=1.0,
         )
         assert s["composite"] == pytest.approx(1.0, abs=0.01)
 
@@ -534,4 +535,424 @@ class TestMigration:
         sql = path.read_text()
         assert "research_output JSONB" in sql, (
             "research_output must be JSONB (a Python dict is written into this column)"
+        )
+
+
+# ==============================================================================
+# NEW TESTS — TDD: write RED tests first, then implement.
+# ==============================================================================
+
+
+# ---------------------------------------------------------------------------
+# Test 1: regime_awareness wired into composite score + computed from VIXY.
+# ---------------------------------------------------------------------------
+
+
+class TestRegimeAwarenessInComposite:
+    """regime_awareness must be a weighted component of composite_score."""
+
+    def test_composite_includes_regime_awareness_weight(self):
+        from autoresearch.metrics import compute_composite_score
+
+        base_metrics = {
+            "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
+            "profit_factor": 0, "info_ratio": 0,
+        }
+        # regime_awareness=1.0 should raise composite vs 0.0
+        s_high = compute_composite_score(base_metrics, concordance=0.5,
+                                         conviction=0.5, regime_awareness=1.0)
+        s_low = compute_composite_score(base_metrics, concordance=0.5,
+                                        conviction=0.5, regime_awareness=0.0)
+        assert s_high["composite"] > s_low["composite"], (
+            f"regime_awareness must affect composite: high={s_high['composite']}, low={s_low['composite']}"
+        )
+
+    def test_all_weights_sum_to_one_with_regime(self):
+        from autoresearch.metrics import compute_composite_score
+
+        s = compute_composite_score(
+            {"sharpe": 5, "sortino": 5, "max_drawdown": 0,
+             "profit_factor": 3, "info_ratio": 5},
+            concordance=1.0, conviction=1.0, regime_awareness=1.0,
+        )
+        assert s["composite"] == pytest.approx(1.0, abs=0.01), (
+            f"Full-score inputs + regime_awareness=1 must yield composite ~1.0, got {s['composite']}"
+        )
+
+    def test_regime_awareness_in_output_dict(self):
+        from autoresearch.metrics import compute_composite_score
+
+        s = compute_composite_score(
+            {"sharpe": 1, "sortino": 1, "max_drawdown": 0.1,
+             "profit_factor": 2, "info_ratio": 1},
+            concordance=0.7, conviction=0.8, regime_awareness=0.6,
+        )
+        assert "regime_awareness" in s, (
+            f"composite dict must include regime_awareness key; got {list(s.keys())}"
+        )
+
+
+class TestRegimeAwarenessComputation:
+    """regime_awareness must be computed from actual VIXY data + trade decisions."""
+
+    def test_regime_awareness_computed_in_decision_quality(self, monkeypatch):
+        from autoresearch import decision_quality
+
+        # decisions: 8 BUYs, 2 SELLs (mostly aggressive buying)
+        decisions = [
+            {"ticker": f"T{i}", "signal": "BUY", "confidence": 80, "reasoning": "x",
+             "status": "EXECUTED", "model_name": "m1"}
+            for i in range(8)
+        ] + [
+            {"ticker": f"S{i}", "signal": "SELL", "confidence": 50, "reasoning": "x",
+             "status": "EXECUTED", "model_name": "m1"}
+            for i in range(2)
+        ]
+        trades = []
+
+        # VIXY went UP 10% (fear spiked) — agent kept buying aggressively → LOW awareness
+        vixy_data = [
+            {"price": 20.0, "fetched_at": "2026-05-01"},
+            {"price": 22.0, "fetched_at": "2026-05-02"},
+        ]
+
+        calls_made: dict[str, _QueryRecorder] = {}
+
+        def fake_get_client():
+            client = MagicMock()
+
+            def table(name):
+                if name == "decisions":
+                    rec = _QueryRecorder(data=decisions)
+                elif name == "trades":
+                    rec = _QueryRecorder(data=trades)
+                elif name == "price_history":
+                    rec = _QueryRecorder(data=vixy_data)
+                else:
+                    rec = _QueryRecorder(data=[])
+                calls_made[name] = rec
+                return rec
+
+            client.table.side_effect = table
+            return client
+
+        monkeypatch.setattr(decision_quality, "get_supabase_client", fake_get_client)
+
+        result = decision_quality.compute_decision_quality(
+            frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
+        )
+        # VIXY spiked + aggressive buying → regime_awareness < 0.5
+        assert result["regime_awareness"] < 0.5, (
+            f"High fear + aggressive buying must yield low regime_awareness, got {result['regime_awareness']}"
+        )
+
+    def test_regime_awareness_high_when_defensive_in_volatility(self, monkeypatch):
+        from autoresearch import decision_quality
+
+        # decisions: 2 BUYs, 8 SELLs (defensive positioning)
+        decisions = [
+            {"ticker": f"T{i}", "signal": "BUY", "confidence": 30, "reasoning": "x",
+             "status": "EXECUTED", "model_name": "m1"}
+            for i in range(2)
+        ] + [
+            {"ticker": f"S{i}", "signal": "SELL", "confidence": 80, "reasoning": "x",
+             "status": "EXECUTED", "model_name": "m1"}
+            for i in range(8)
+        ]
+        trades = []
+
+        # VIXY went UP 10% (fear spiked) — agent sold heavily → HIGH awareness
+        vixy_data = [
+            {"price": 20.0, "fetched_at": "2026-05-01"},
+            {"price": 22.0, "fetched_at": "2026-05-02"},
+        ]
+
+        def fake_get_client():
+            client = MagicMock()
+
+            def table(name):
+                if name == "decisions":
+                    rec = _QueryRecorder(data=decisions)
+                elif name == "trades":
+                    rec = _QueryRecorder(data=[])
+                elif name == "price_history":
+                    rec = _QueryRecorder(data=vixy_data)
+                else:
+                    rec = _QueryRecorder(data=[])
+                return rec
+
+            client.table.side_effect = table
+            return client
+
+        monkeypatch.setattr(decision_quality, "get_supabase_client", fake_get_client)
+
+        result = decision_quality.compute_decision_quality(
+            frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
+        )
+        assert result["regime_awareness"] > 0.5, (
+            f"High fear + defensive selling must yield high regime_awareness, got {result['regime_awareness']}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 2: _close_client must NOT be called from researcher.py
+# ---------------------------------------------------------------------------
+
+
+class TestResearcherDoesNotCloseClient:
+    """researcher.py must not call _close_client — the wiki forbids it."""
+
+    def test_researcher_does_not_import_close_client(self):
+        """Verify researcher.py does not import _close_client."""
+        import ast
+        path = ENGINE_DIR / "autoresearch" / "researcher.py"
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.module == "core.llm":
+                    for alias in node.names:
+                        assert alias.name != "_close_client", (
+                            "researcher.py must not import _close_client. "
+                            "The wiki forbids closing the singleton httpx client."
+                        )
+
+
+# ---------------------------------------------------------------------------
+# Test 3: runner must not duplicate get_week_window — evaluator owns it.
+# ---------------------------------------------------------------------------
+
+
+class TestRunnerWindowDuplication:
+    """runner.py must get the week window from evaluator, not compute it twice."""
+
+    def test_runner_passes_window_to_evaluator(self, monkeypatch):
+        """Runner must call evaluate_week with its pre-computed window."""
+        from autoresearch import runner
+
+        evaluate_calls = []
+
+        async def fake_evaluate(week_start, week_end):
+            evaluate_calls.append((week_start, week_end))
+            return "# report", {"composite": 0.5}
+
+        async def fake_research(report):
+            return None
+
+        monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
+        monkeypatch.setattr(runner, "run_research", fake_research)
+        monkeypatch.setattr(runner, "_check_safety", lambda ws, we: (False, ""))
+        monkeypatch.setattr(runner, "validate_prompt",
+                            lambda p: (True, "", []))
+        monkeypatch.setattr(runner, "save_variant",
+                            lambda **kw: "v-test")
+        monkeypatch.setattr(runner, "revert_to_previous",
+                            lambda **kw: "v-prev")
+
+        import asyncio
+        asyncio.run(runner.run())
+
+        assert len(evaluate_calls) == 1, (
+            f"evaluate_week must be called once, was called {len(evaluate_calls)} times"
+        )
+        ws, we = evaluate_calls[0]
+        assert isinstance(ws, date), f"week_start must be a date, got {type(ws)}"
+        assert isinstance(we, date), f"week_end must be a date, got {type(we)}"
+
+
+# ---------------------------------------------------------------------------
+# Test 4: _check_safety queries trades table, not just decisions.
+# ---------------------------------------------------------------------------
+
+
+class TestSafetyCheckUsesTrades:
+    """_check_safety must count executed trades from the trades table."""
+
+    def test_check_safety_queries_trades_table(self, monkeypatch):
+        from autoresearch import runner
+
+        query_log = []
+
+        class TrackedRecorder(_QueryRecorder):
+            def __getattr__(self, name):
+                if name.startswith("_"):
+                    raise AttributeError(name)
+                def method(*args, **kwargs):
+                    query_log.append(name)
+                    if name == "execute":
+                        result = MagicMock()
+                        result.data = self._data
+                        return result
+                    return self
+                return method
+
+        client = MagicMock()
+        recorder = TrackedRecorder(data=[
+            {"signal": "SELL", "realized_pnl": 100.0},
+            {"signal": "SELL", "realized_pnl": -50.0},
+            {"signal": "BUY", "realized_pnl": None},
+        ])
+
+        def table(name):
+            query_log.append(f"table:{name}")
+            return recorder
+
+        client.table.side_effect = table
+        monkeypatch.setattr(runner, "get_supabase_client", lambda: client)
+
+        is_crash, reason = runner._check_safety(date(2026, 5, 1), date(2026, 5, 7))
+        assert "table:trades" in query_log, (
+            f"_check_safety must query trades table; got table calls: {[q for q in query_log if q.startswith('table:')]}"
+        )
+        assert not is_crash, f"3 executed trades >= min; must not crash. Reason: {reason}"
+
+
+# ---------------------------------------------------------------------------
+# Test 5: Bootstrap tests + no CWD-dependent path hack.
+# ---------------------------------------------------------------------------
+
+
+class TestBootstrap:
+    """Bootstrap must work without fragile sys.path hacks."""
+
+    def test_bootstrap_does_not_use_sys_path_hack(self):
+        """bootstrap.py must not manipulate sys.path with CWD-relative paths."""
+        import ast
+        path = ENGINE_DIR / "autoresearch" / "bootstrap.py"
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                # Check for sys.path.append or sys.path.insert
+                if isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Attribute):
+                        if (node.func.value.attr == "path" and
+                                node.func.value.value.id == "sys"):  # type: ignore[union-attr]
+                            # Must not contain getcwd() or "apps"
+                            code = ast.unparse(node)
+                            assert "getcwd" not in code and "apps" not in code, (
+                                f"bootstrap.py must not use CWD-dependent paths: {code}"
+                            )
+
+    @pytest.mark.asyncio
+    async def test_bootstrap_idempotent(self, monkeypatch):
+        """Bootstrap must be idempotent — second call is a no-op."""
+        from autoresearch import bootstrap
+
+        save_calls = []
+
+        async def fake_get_active():
+            # First call: no active prompt → must bootstrap
+            # After bootstrap: active prompt exists → skip
+            return "EXISTING_PROMPT" if save_calls else None
+
+        async def fake_save_variant(**kw):
+            save_calls.append(kw)
+            return "v-bootstrap"
+
+        monkeypatch.setattr(bootstrap, "get_active_prompt", fake_get_active)
+        monkeypatch.setattr(bootstrap, "save_variant", fake_save_variant)
+
+        await bootstrap.bootstrap()
+        assert len(save_calls) == 1, (
+            f"First bootstrap with no active prompt must save; got {len(save_calls)} calls"
+        )
+
+        # Second call: already active → must not save again
+        await bootstrap.bootstrap()
+        assert len(save_calls) == 1, (
+            f"Second bootstrap must be idempotent (no double-save); got {len(save_calls)} calls"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 6: Word-count-based size validation (conservative cap: 1000 words ~1300 tokens).
+# ---------------------------------------------------------------------------
+
+
+class TestWordCountValidator:
+    """Validator must cap prompt size by word count (no external tokenizer dependency)."""
+
+    def test_rejects_oversized_prompt(self):
+        from autoresearch.validator import validate_prompt
+        # "The quick brown fox jumps over the lazy dog." has 9 words → * 150 = 1350 words > 1000 cap
+        long_text = "The quick brown fox jumps over the lazy dog. " * 150
+        ok, reason, _ = validate_prompt(long_text)
+        assert not ok, f"Prompt with >1000 words must be rejected; reason: {reason}"
+
+    def test_accepts_reasonable_prompt(self):
+        from autoresearch.validator import validate_prompt
+        short = (
+            "You are a trading agent. Apply the 5 Whys technique. "
+            "For BUY: call calculate_buy_quantity. For SELL: call calculate_sell_quantity."
+        )
+        ok, reason, _ = validate_prompt(short)
+        assert ok, f"Short valid prompt must pass: {reason}"
+
+    def test_reason_mentions_words(self):
+        from autoresearch.validator import validate_prompt
+        long_text = "word " * 1500
+        ok, reason, _ = validate_prompt(long_text)
+        if not ok:
+            assert "words" in reason.lower(), (
+                f"Rejection reason must mention words; got: {reason}"
+            )
+
+    def test_exactly_at_cap_passes(self):
+        from autoresearch.validator import validate_prompt
+        # 1000 words exactly — must pass
+        text = "a " * 1000
+        ok, reason, _ = validate_prompt(text)
+        assert ok, f"Prompt at exact cap (1000 words) must pass: {reason}"
+
+
+# ---------------------------------------------------------------------------
+# Test 7: Composite score edge cases — missing benchmark, NaN, zero days.
+# ---------------------------------------------------------------------------
+
+
+class TestCompositeEdgeCases:
+    """Composite score must handle edge cases gracefully with clear flags."""
+
+    def test_missing_spy_benchmark_is_flagged(self):
+        from autoresearch.metrics import compute_composite_score
+
+        # info_ratio=0 means no benchmark available → flag
+        s = compute_composite_score(
+            {"sharpe": 1, "sortino": 1, "max_drawdown": 0.1,
+             "profit_factor": 2, "info_ratio": 0,
+             "num_trading_days": 5, "total_return_pct": 3.0},
+            concordance=0.7, conviction=0.8, regime_awareness=0.5,
+        )
+        assert "warnings" in s, (
+            "Composite dict must include 'warnings' key for edge case flags"
+        )
+
+    def test_no_data_produces_clear_signal(self):
+        from autoresearch.metrics import compute_composite_score
+
+        s = compute_composite_score(
+            {"sharpe": 0, "sortino": 0, "max_drawdown": 0,
+             "profit_factor": 0, "info_ratio": 0,
+             "num_trading_days": 0, "total_return_pct": 0},
+            concordance=0.5, conviction=0.5, regime_awareness=0.5,
+        )
+        assert s["composite"] >= 0, "Composite must not be negative"
+        assert "warnings" in s, "No-data scenario must produce warnings"
+        assert len(s["warnings"]) > 0, (
+            f"No-data must have at least 1 warning; got {s['warnings']}"
+        )
+
+    def test_negative_sharpe_normalizes_to_zero(self):
+        from autoresearch.metrics import compute_composite_score
+
+        s = compute_composite_score(
+            {"sharpe": -5, "sortino": -5, "max_drawdown": 0.5,
+             "profit_factor": 0, "info_ratio": -5},
+            concordance=0, conviction=0, regime_awareness=0,
+        )
+        assert s["composite"] >= 0, (
+            f"Worst-case inputs must not go below 0; got {s['composite']}"
+        )
+        # Should be close to 0 but not negative
+        assert s["composite"] < 0.3, (
+            f"Worst-case inputs should yield low score; got {s['composite']}"
         )

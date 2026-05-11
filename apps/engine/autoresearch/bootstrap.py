@@ -1,20 +1,17 @@
 """Bootstrap utility for auto-research.
 
 Initializes the prompt_experiments table with a baseline variant.
+Run via: python -m autoresearch.bootstrap  (from apps/engine/ with venv active)
 """
 
 import asyncio
 import logging
-import sys
-import os
 from datetime import datetime, timezone, timedelta
-
-# Add apps/engine to path
-sys.path.append(os.path.join(os.getcwd(), "apps", "engine"))
 
 from autoresearch.prompt_store import save_variant, get_active_prompt
 from core.llm.prompts import CORE_ANALYSIS_SYSTEM_PROMPT
 from core.config import logger
+
 
 async def bootstrap():
     """Insert the initial baseline prompt into the database."""
@@ -26,7 +23,6 @@ async def bootstrap():
 
     logger.info("No active prompt found. Bootstrapping with baseline...")
 
-    # We use a dummy week window for the baseline
     now = datetime.now(timezone.utc)
     week_start = (now - timedelta(days=7)).date().isoformat()
     week_end = now.date().isoformat()
@@ -42,6 +38,7 @@ async def bootstrap():
     )
 
     logger.info("Successfully bootstrapped with variant: %s", tag)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

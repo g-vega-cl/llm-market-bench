@@ -26,7 +26,7 @@ You modify ONE thing: the CORE_ANALYSIS_SYSTEM_PROMPT — the system prompt that
 - Do NOT remove critical sections: tool usage requirements, the 5 Whys technique, SMA management rules, price handling rules
 - The prompt must include instruction for the LLM to use the `calculate_buy_quantity` and `calculate_sell_quantity` tools for all BUY/SELL decisions
 - The LLM must NOT output price fields (prices are system-provided)
-- Keep the prompt under 3000 words
+- Keep the prompt under 1000 words
 
 ## How to Improve the Prompt
 Consider these dimensions when proposing changes:

@@ -177,15 +177,22 @@ def _format_previous_variants(variants: list[dict]) -> str:
     return "\n".join(lines)
 
 
-async def evaluate_week() -> tuple[str, dict]:
+async def evaluate_week(
+    week_start: date | None = None,
+    week_end: date | None = None,
+) -> tuple[str, dict]:
     """Gather all data for the past week and format the evaluation report.
+
+    If week_start/week_end are not provided, they are computed from the
+    most recent complete Mon-Sun window (via get_week_window).
 
     Returns:
         (report_markdown, composite_metrics) — the markdown report ready for
         the auto-research LLM, plus the structured composite dict the runner
         persists alongside the new variant.
     """
-    week_start, week_end = get_week_window()
+    if week_start is None or week_end is None:
+        week_start, week_end = get_week_window()
 
     logger.info("Evaluating week %s to %s", week_start, week_end)
 
@@ -201,6 +208,7 @@ async def evaluate_week() -> tuple[str, dict]:
         exp_metrics,
         concordance=dq["concordance"],
         conviction=dq["conviction_calibration"],
+        regime_awareness=dq["regime_awareness"],
     )
     previous = await get_previous_variants(limit=5)
     _, stagnation_msg = _check_stagnation(previous)

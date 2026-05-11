@@ -31,29 +31,27 @@ def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     """Check if the current active prompt caused a crash.
 
     A "crash" is: fewer than SAFETY_MIN_TRADES executed trades across all
-    experiment agents over the evaluation week. High rejection rates are
-    normal (LLMs hallucinate often) and are handled by the verifier, not
-    treated as crashes.
+    experiment agents over the evaluation week. We query the trades table
+    (not decisions) because a decision marked EXECUTED may fail at settlement.
 
     Returns (is_crash, reason).
     """
     sb_client = get_supabase_client()
     owner_list = list(AUTORESEARCH_EXPERIMENT_OWNER_IDS)
 
-    decision_res = (
-        sb_client.table("decisions")
-        .select("status")
-        .in_("model_name", owner_list)
-        .gte("created_at", week_start.isoformat())
-        .lte("created_at", f"{week_end.isoformat()}T23:59:59")
+    trade_res = (
+        sb_client.table("trades")
+        .select("id, portfolios!inner(owner_id)")
+        .in_("portfolios.owner_id", owner_list)
+        .gte("executed_at", week_start.isoformat())
+        .lte("executed_at", f"{week_end.isoformat()}T23:59:59")
         .execute()
     )
-    decisions = decision_res.data or []
+    trades = trade_res.data or []
+    executed_count = len(trades)
 
-    if decisions:
-        executed = sum(1 for d in decisions if d.get("status") == "EXECUTED")
-        if executed < SAFETY_MIN_TRADES:
-            return True, f"Only {executed} executed trades (minimum is {SAFETY_MIN_TRADES})"
+    if executed_count < SAFETY_MIN_TRADES:
+        return True, f"Only {executed_count} executed trades (minimum is {SAFETY_MIN_TRADES})"
 
     return False, ""
 
@@ -79,10 +77,10 @@ async def run():
             logger.warning("No previous variant to revert to. Keeping current prompt.")
         return
 
-    # Evaluate the week
+    # Evaluate the week — evaluator computes its own window, we pass ours to keep them in sync
     logger.info("Gathering performance data...")
     try:
-        report, composite = await evaluate_week()
+        report, composite = await evaluate_week(week_start, week_end)
     except Exception as e:
         logger.error("Failed to evaluate week: %s", e)
         return

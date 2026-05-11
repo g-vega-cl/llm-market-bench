@@ -10,7 +10,7 @@ monotonicity) had no relationship to trading outcomes and have been replaced.
 
 import logging
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 
 from core.db import get_supabase_client
 
@@ -43,6 +43,64 @@ def _fetch_trades(sb_client, owner_ids: frozenset | set, week_start: date, week_
         .execute()
     )
     return res.data or []
+
+
+def _compute_vixy_trend(sb_client, week_start: date, week_end: date) -> float:
+    """Compute VIXY trend: 1.0 if VIXY went up (fear), 0.0 if down (calm).
+
+    Compares week's average VIXY to the price just before the week started.
+    Returns 0.5 (neutral) if VIXY data is unavailable or flat within 2%."""
+    pre_res = (
+        sb_client.table("price_history")
+        .select("price")
+        .eq("ticker", "VIXY")
+        .lt("fetched_at", week_start.isoformat())
+        .order("fetched_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    week_res = (
+        sb_client.table("price_history")
+        .select("price")
+        .eq("ticker", "VIXY")
+        .gte("fetched_at", week_start.isoformat())
+        .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
+        .order("fetched_at")
+        .execute()
+    )
+    pre_rows = pre_res.data or []
+    week_rows = week_res.data or []
+    if not pre_rows or not week_rows:
+        return 0.5
+
+    pre_vixy = float(pre_rows[0].get("price") or 0)
+    week_avg = sum(float(r.get("price") or 0) for r in week_rows) / len(week_rows)
+    if pre_vixy <= 0 or week_avg <= 0:
+        return 0.5
+
+    change_pct = (week_avg - pre_vixy) / pre_vixy
+    if change_pct > 0.02:
+        return 1.0  # Fear — VIXY rose
+    elif change_pct < -0.02:
+        return 0.0  # Calm — VIXY fell
+    return 0.5  # Flat
+
+
+def _compute_regime_awareness(decisions: list[dict], vixy_trend: float) -> float:
+    """Score 0-1: how well agent's BUY/SELL mix matches VIXY regime.
+
+    VIXY up (fear, trend 1.0): agent should SELL more → high sell_ratio is good.
+    VIXY down (calm, trend 0.0): agent should BUY more → low sell_ratio is good.
+
+    Formula: 1.0 - abs(vixy_trend - sell_ratio)"""
+    buys = [d for d in decisions if (d.get("signal") or "").upper() == "BUY"]
+    sells = [d for d in decisions if (d.get("signal") or "").upper() == "SELL"]
+    total = len(buys) + len(sells)
+    if total == 0:
+        return 0.5
+
+    sell_ratio = len(sells) / total
+    return round(1.0 - abs(vixy_trend - sell_ratio), 4)
 
 
 def _compute_concordance(decisions: list[dict], trades: list[dict]) -> float:
@@ -118,16 +176,19 @@ def compute_decision_quality(
     """Compute decision quality metrics for the given agents and week.
 
     Returns a dict with: concordance, mistake_patterns, conviction_calibration,
-    rejection_rate, and raw sample data for the LLM report.
+    rejection_rate, regime_awareness, and raw sample data for the LLM report.
     """
     sb_client = get_supabase_client()
     decisions = _fetch_decisions(sb_client, owner_ids, week_start, week_end)
     trades = _fetch_trades(sb_client, owner_ids, week_start, week_end)
 
+    vixy_trend = _compute_vixy_trend(sb_client, week_start, week_end)
+    regime_awareness = _compute_regime_awareness(decisions, vixy_trend)
+
     result = {
         "concordance": 0.0,
         "conviction_calibration": 0.0,
-        "regime_awareness": 0.0,
+        "regime_awareness": regime_awareness,
         "mistake_patterns": [],
         "rejection_rate": 0.0,
         "total_decisions": len(decisions),

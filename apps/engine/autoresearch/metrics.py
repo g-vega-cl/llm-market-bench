@@ -221,14 +221,21 @@ def compute_composite_score(
     s_info = _normalize_info_ratio(wall_street.get("info_ratio", 0))
 
     composite = (
-        0.20 * s_sharpe
-        + 0.20 * s_sortino
+        0.15 * s_sharpe
+        + 0.15 * s_sortino
         + 0.15 * s_drawdown
         + 0.15 * s_profit
         + 0.10 * s_info
         + 0.10 * concordance
         + 0.10 * conviction
+        + 0.10 * regime_awareness
     )
+
+    warnings = []
+    if wall_street.get("num_trading_days", 0) == 0:
+        warnings.append("NO_TRADING_DATA: no daily returns for this week (composite may be unreliable)")
+    if wall_street.get("info_ratio", 0) == 0:
+        warnings.append("NO_BENCHMARK: SPY benchmark data unavailable (Information Ratio excluded)")
 
     return {
         "composite": round(composite, 4),
@@ -239,4 +246,6 @@ def compute_composite_score(
         "info_ratio_normalized": round(s_info, 4),
         "concordance": round(concordance, 4),
         "conviction_calibration": round(conviction, 4),
+        "regime_awareness": round(regime_awareness, 4),
+        "warnings": warnings,
     }

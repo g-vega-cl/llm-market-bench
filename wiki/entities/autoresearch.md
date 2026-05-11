@@ -94,6 +94,23 @@ Per Karpathy's design:
 `experiment_type` (incremental/radical/baseline), `parent_tag`,
 `change_description`, `research_output` (JSONB), `created_at`.
 
+## Async-client contract (read before editing `prompt_store.py`)
+
+`core/db.get_async_supabase_client()` is `async def` and caches the
+client as a process-wide singleton. Two rules follow:
+
+- Always `await` it: `sb_client = await get_async_supabase_client()`.
+  Forgetting the `await` leaves `sb_client` as a coroutine, and the
+  first attribute access (e.g. `sb_client.table(...)`) raises
+  `AttributeError: 'coroutine' object has no attribute …`.
+- Never close the underlying http client (`sb_client.auth.http_client.aclose()`).
+  Closing it inside a `finally` block kills the singleton's httpx
+  transport, so the next caller in the same process gets a dead client.
+
+Unit tests must mock the dependency with an `async def` stub
+(`async def fake_client(): return client`) — a sync `lambda: client`
+masks production `await` semantics and lets the regression through CI.
+
 ## Related
 
 - [[concepts/auto-research-prompt-improver]]

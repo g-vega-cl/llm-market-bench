@@ -1,6 +1,28 @@
 # Wiki Log
 
-## [2026-05-10] feature | Auto-Research Prompt Improver
+## [2026-05-11] fix | Auto-research crash after singleton refactor
+
+Restored auto-research after the [2025-04-10] singleton refactor of
+`core/db.py` left `apps/engine/autoresearch/prompt_store.py` calling
+`get_async_supabase_client()` without `await`. Every call site passed a
+coroutine where the supabase client was expected; the visible failure
+was `'coroutine' object has no attribute 'auth'` from a `finally` block
+that tried to close `sb_client.auth.http_client`. The same code path
+also broke `core/llm/prompt_factory.py` on the trading hot path for
+experiment agents.
+
+- Added `await` to all 5 `get_async_supabase_client()` call sites in
+  `prompt_store.py` and deleted the `try`/`finally` blocks that closed
+  the http client — closing the singleton's transport would break the
+  next caller.
+- Updated the three `monkeypatch` stubs in `tests/test_autoresearch.py`
+  to be `async def` so production `await` semantics are exercised in
+  unit tests (the sync `lambda: client` was the reason CI stayed green
+  while production failed).
+- Removed unused `asyncio` import from the test file.
+- 22 autoresearch tests pass.
+
+
 
 Implemented a Karpathy-style autonomous prompt improvement loop:
 - Created `apps/engine/autoresearch/` package: `program.md`, `metrics.py`,

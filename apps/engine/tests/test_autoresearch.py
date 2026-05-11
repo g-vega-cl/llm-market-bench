@@ -11,7 +11,6 @@ Covers the fixes from the post-review TDD pass:
 - query layer uses .in_() (not raw `filter(... "in", repr(...))`)
 """
 
-import asyncio
 import sys
 import time
 from datetime import date
@@ -222,10 +221,11 @@ class TestPromptStore:
 
         client = MagicMock()
         client.table.return_value = Scoped(single_data={"variant_tag": "v123"})
-        client.auth.http_client.aclose = MagicMock(return_value=asyncio.Future())
-        client.auth.http_client.aclose.return_value.set_result(None)
 
-        monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", lambda: client)
+        async def fake_client():
+            return client
+
+        monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", fake_client)
 
         await prompt_store.revert_to_previous(prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT")
 
@@ -242,7 +242,7 @@ class TestPromptStore:
 
         call_count = {"n": 0}
 
-        def fake_client():
+        async def fake_client():
             call_count["n"] += 1
             client = MagicMock()
 
@@ -259,8 +259,6 @@ class TestPromptStore:
                     return method
 
             client.table.return_value = AsyncQuery(single_data={"prompt_content": "PROMPT_TEXT"})
-            client.auth.http_client.aclose = MagicMock(return_value=asyncio.Future())
-            client.auth.http_client.aclose.return_value.set_result(None)
             return client
 
         monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", fake_client)
@@ -278,7 +276,7 @@ class TestPromptStore:
 
         call_count = {"n": 0}
 
-        def fake_client():
+        async def fake_client():
             call_count["n"] += 1
             client = MagicMock()
 
@@ -295,8 +293,6 @@ class TestPromptStore:
                     return method
 
             client.table.return_value = AsyncQuery()
-            client.auth.http_client.aclose = MagicMock(return_value=asyncio.Future())
-            client.auth.http_client.aclose.return_value.set_result(None)
             return client
 
         monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", fake_client)

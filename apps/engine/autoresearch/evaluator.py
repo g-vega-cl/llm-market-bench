@@ -188,7 +188,7 @@ async def evaluate_week() -> tuple[str, dict]:
 
     logger.info("Evaluating week %s to %s", week_start, week_end)
 
-    current_prompt = get_active_prompt()
+    current_prompt = await get_active_prompt()
     from core.llm import prompts
     if not current_prompt:
         current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
@@ -201,13 +201,13 @@ async def evaluate_week() -> tuple[str, dict]:
         concordance=dq["concordance"],
         conviction=dq["conviction_calibration"],
     )
-    previous = get_previous_variants(limit=5)
+    previous = await get_previous_variants(limit=5)
     _, stagnation_msg = _check_stagnation(previous)
 
     sb_client = get_supabase_client()
     regime = _get_market_regime_summary(sb_client, week_start, week_end)
 
-    baseline_metrics = get_baseline_metrics()
+    baseline_metrics = await get_baseline_metrics()
     baseline_text = ""
     if baseline_metrics:
         if isinstance(baseline_metrics, str):

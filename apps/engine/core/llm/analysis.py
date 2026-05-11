@@ -193,7 +193,7 @@ async def analyze_with_provider(
             from core.config import ENABLE_OPENAI_WEB_SEARCH
             enable_web_search = ENABLE_OPENAI_WEB_SEARCH
 
-        messages = PromptFactory.build_analysis_messages(
+        messages = await PromptFactory.build_analysis_messages(
             provider=provider,
             owner_id=model_name,
             portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",

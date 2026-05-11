@@ -3,6 +3,7 @@ import httpx
 from typing import Any, Callable, TypeVar
 
 from supabase import Client, create_client, ClientOptions
+from supabase import AsyncClient, create_async_client
 
 from .config import SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL, logger
 
@@ -42,6 +43,37 @@ def get_supabase_client() -> Client:
     )
     
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
+
+
+def get_async_supabase_client() -> AsyncClient:
+    """Initialize and return an asynchronous Supabase client.
+
+    Returns:
+        A configured AsyncClient instance.
+
+    Raises:
+        ValueError: If Supabase configuration is missing.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        error_msg = (
+            "Supabase configuration missing: ensure SUPABASE_PROJECT_URL "
+            "and SUPABASE_SERVICE_ROLE_KEY are set."
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        verify=True
+    )
+
+    options = ClientOptions(
+        httpx_client=http_client,
+        postgrest_client_timeout=10.0,
+        storage_client_timeout=10
+    )
+
+    return create_async_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
 
 
 def is_transient_supabase_error(exc: Exception) -> bool:

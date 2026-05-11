@@ -89,6 +89,7 @@ COMMAND_CALENDAR = "calendar"
 COMMAND_CAUSE_AND_EFFECT = "analyze-impact"
 COMMAND_AUDIT = "audit"
 COMMAND_AUTORESEARCH = "autoresearch"
+COMMAND_BOOTSTRAP_AUTORESEARCH = "bootstrap-autoresearch"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

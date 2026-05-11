@@ -1,5 +1,31 @@
 # Wiki Log
 
+## [2026-05-11] refactor | Two-tier prompt validator + simplified safety checker
+
+Changed auto-research validator from single-tier to two-tier:
+
+- **Hard invariants** (block activation): forbidden patterns ("bypass guardrails",
+  "ignore verification feedback", "skip tool use", "ignore portfolio limits",
+  "guess the price"), empty prompt, >3000 words
+- **Soft invariants** (warn but allow): `calculate_buy_quantity`,
+  `calculate_sell_quantity`, `5 Whys`
+
+Rationale: the control portfolios (OpenAI + Claude on hardcoded baseline) and the
+`<2 trades` safety checker already provide real guardrails. Over-constraining the
+validator prevents the researcher from experimenting with alternative reasoning
+techniques (MECE, first-principles, pre-mortem, etc.).
+
+Also removed the `>90% rejection rate` crash detection threshold — high rejection
+rates are normal (LLMs hallucinate often) and are handled by the verifier.
+Safety checker now only reverts on `<2 executed trades`.
+
+Files changed:
+- `apps/engine/autoresearch/validator.py`
+- `apps/engine/autoresearch/runner.py`
+- `apps/engine/tests/test_autoresearch.py`
+- `wiki/entities/autoresearch.md`
+- `wiki/concepts/auto-research-prompt-improver.md`
+
 ## [2026-05-11] fix | Auto-research price_history column name mismatch
 
 Fixed auto-research queries that used non-existent columns `date` and `close_price` on

@@ -35,9 +35,12 @@ The module is organized into a clean pipeline:
   a `PromptResearchResult` (new prompt text, reasoning, confidence)
 - **`prompt_store.py`** — DB CRUD for `prompt_experiments` table plus an
   in-process cache (60s TTL) for hot-path `get_active_prompt()` calls
-- **`validator.py`** — post-LLM safety check: rejects prompts missing
-  required tokens (tool requirements, 5 Whys) or containing forbidden
-  phrases (bypass guardrails, ignore verification)
+- **`validator.py`** — post-LLM safety check with two tiers: **hard
+  invariants** (forbidden phrases like "bypass guardrails", empty/oversized
+  prompts) that block activation, and **soft invariants** (tool
+  requirements, 5 Whys technique) that emit warnings but allow activation.
+  The control portfolios and `<2 trades` safety checker provide the real
+  guardrails.
 - **`runner.py`** — top-level orchestrator: safety check → evaluate →
   research → validate → save → activate
 
@@ -69,10 +72,14 @@ both groups and presents them side-by-side in the research report.
 
 ## Safety Mechanisms
 
-- **Crash detection**: >90% rejection rate or <2 executed trades → auto-revert
-  to previous variant before the next research cycle
-- **Prompt validation**: every LLM-proposed prompt is checked against
-  required-token and forbidden-pattern rules before activation
+- **Crash detection**: <2 executed trades in the evaluation week → auto-revert
+  to previous variant before the next research cycle. High rejection rates
+  are normal (LLMs hallucinate often) and are handled by the verifier, not
+  treated as crashes.
+- **Prompt validation**: two-tier. Hard invariants (forbidden phrases like
+  "bypass guardrails", empty/oversized prompts) block activation. Soft
+  invariants (tool usage, 5 Whys) emit warnings but let the researcher
+  experiment — the control portfolios benchmark the impact.
 - **Verifier unchanged**: only `CORE_ANALYSIS_SYSTEM_PROMPT` is modified;
   the verifier, contrarian, and all other prompts are never touched
 - **Lazy activation**: bad prompts can't reach production overnight — the

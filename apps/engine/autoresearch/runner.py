@@ -24,16 +24,16 @@ from .window import get_week_window
 
 logger = logging.getLogger("engine")
 
-SAFETY_MAX_REJECTION_RATE = 0.90
 SAFETY_MIN_TRADES = 2
 
 
 def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     """Check if the current active prompt caused a crash.
 
-    A "crash" is: > SAFETY_MAX_REJECTION_RATE rejection rate OR fewer than
-    SAFETY_MIN_TRADES executed trades across all experiment agents over
-    the evaluation week.
+    A "crash" is: fewer than SAFETY_MIN_TRADES executed trades across all
+    experiment agents over the evaluation week. High rejection rates are
+    normal (LLMs hallucinate often) and are handled by the verifier, not
+    treated as crashes.
 
     Returns (is_crash, reason).
     """
@@ -51,11 +51,7 @@ def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     decisions = decision_res.data or []
 
     if decisions:
-        rejected = sum(1 for d in decisions if (d.get("status") or "").startswith("REJECTED"))
-        rejection_rate = rejected / len(decisions)
         executed = sum(1 for d in decisions if d.get("status") == "EXECUTED")
-        if rejection_rate > SAFETY_MAX_REJECTION_RATE:
-            return True, f"Rejection rate {rejection_rate:.1%} exceeds safety threshold ({SAFETY_MAX_REJECTION_RATE:.1%})"
         if executed < SAFETY_MIN_TRADES:
             return True, f"Only {executed} executed trades (minimum is {SAFETY_MIN_TRADES})"
 
@@ -109,7 +105,11 @@ async def run():
     )
 
     # Reject unsafe prompts before we ever activate them.
-    is_valid, reason = validate_prompt(result.new_prompt_text)
+    is_valid, reason, warnings_list = validate_prompt(result.new_prompt_text)
+    if warnings_list:
+        for w in warnings_list:
+            logger.warning("Soft invariant violation: %s", w)
+
     if not is_valid:
         logger.error("Researcher proposal failed safety validation: %s. Skipping activation.", reason)
         return

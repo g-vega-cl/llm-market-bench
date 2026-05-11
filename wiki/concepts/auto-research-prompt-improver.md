@@ -61,7 +61,7 @@ rejected trades with reasoning, market regime context (VIXY/SPY from
 
 ```
 SUNDAY 6 PM ET:
-  1. runner.py checks for crash (>90% rejections → revert)
+  1. runner.py checks for crash (<2 executed trades → revert)
   2. evaluator.py gathers data, computes metrics, formats report
   3. researcher.py sends program.md + report to DeepSeek v4 Pro
   4. validator.py checks the proposed prompt for safety invariants
@@ -74,10 +74,14 @@ SUNDAY 6 PM ET:
 The verification layer (`verification.py`) never changes — it always runs
 the baseline verifier prompt. This means even a catastrophic auto-research
 failure produces rejected trades, not executed bad trades. Additionally:
-- Prompts are validated for required tokens (`calculate_buy_quantity`,
-  `calculate_sell_quantity`, `5 Whys`) before activation
-- Forbidden phrases (bypass guardrails, ignore verification) are caught
-- >90% rejection rate or <2 executed trades triggers auto-revert
+- **Two-tier validation**: Hard invariants (forbidden phrases like "bypass
+  guardrails", empty/oversized prompts) block activation. Soft invariants
+  (tool usage, 5 Whys) emit warnings but let the researcher experiment.
+- The control portfolios (OpenAI + Claude on baseline) provide a permanent
+  benchmark — if an experimental prompt degrades performance, it's visible
+  in the side-by-side metrics each week.
+- <2 executed trades triggers auto-revert at the start of the next cycle.
+  High rejection rates are expected and handled by the verifier.
 
 ## Related
 

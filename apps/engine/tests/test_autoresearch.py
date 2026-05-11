@@ -11,6 +11,7 @@ Covers the fixes from the post-review TDD pass:
 - query layer uses .in_() (not raw `filter(... "in", repr(...))`)
 """
 
+import asyncio
 import sys
 import time
 from datetime import date
@@ -196,7 +197,8 @@ class TestDecisionQuality:
 
 
 class TestPromptStore:
-    def test_revert_to_previous_scopes_by_prompt_name(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_revert_to_previous_scopes_by_prompt_name(self, monkeypatch):
         from autoresearch import prompt_store
 
         seen_filters: list[dict] = []
@@ -208,19 +210,24 @@ class TestPromptStore:
                 def method(*args, **kwargs):
                     seen_filters.append({"op": name, "args": args})
                     if name == "execute":
-                        if self._single_data is not None:
-                            r = MagicMock(); r.data = self._single_data
+                        async def exec_coro():
+                            if self._single_data is not None:
+                                r = MagicMock(); r.data = self._single_data
+                                return r
+                            r = MagicMock(); r.data = self._data
                             return r
-                        r = MagicMock(); r.data = self._data
-                        return r
+                        return exec_coro()
                     return self
                 return method
 
         client = MagicMock()
         client.table.return_value = Scoped(single_data={"variant_tag": "v123"})
-        monkeypatch.setattr("autoresearch.prompt_store.get_supabase_client", lambda: client)
+        client.auth.http_client.aclose = MagicMock(return_value=asyncio.Future())
+        client.auth.http_client.aclose.return_value.set_result(None)
 
-        prompt_store.revert_to_previous(prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT")
+        monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", lambda: client)
+
+        await prompt_store.revert_to_previous(prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT")
 
         # We expect every UPDATE/SELECT to be scoped by prompt_name.
         eq_calls = [f for f in seen_filters if f["op"] == "eq"]
@@ -229,41 +236,75 @@ class TestPromptStore:
             f"Expected at least 2 prompt_name eq() filters, got {scoped_columns}"
         )
 
-    def test_active_prompt_cache_serves_within_ttl(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_active_prompt_cache_serves_within_ttl(self, monkeypatch):
         from autoresearch import prompt_store
 
         call_count = {"n": 0}
 
         def fake_client():
             call_count["n"] += 1
-            client, _ = _make_client(single_data={"prompt_content": "PROMPT_TEXT"})
+            client = MagicMock()
+
+            class AsyncQuery(_QueryRecorder):
+                def __getattr__(self, name):
+                    if name.startswith("_"): raise AttributeError(name)
+                    def method(*args, **kwargs):
+                        if name == "execute":
+                            async def exec_coro():
+                                r = MagicMock(); r.data = self._single_data
+                                return r
+                            return exec_coro()
+                        return self
+                    return method
+
+            client.table.return_value = AsyncQuery(single_data={"prompt_content": "PROMPT_TEXT"})
+            client.auth.http_client.aclose = MagicMock(return_value=asyncio.Future())
+            client.auth.http_client.aclose.return_value.set_result(None)
             return client
 
-        monkeypatch.setattr("autoresearch.prompt_store.get_supabase_client", fake_client)
+        monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", fake_client)
         # ensure no leftover cache from a prior test
         prompt_store.clear_active_prompt_cache()
 
-        p1 = prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
-        p2 = prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
+        p1 = await prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
+        p2 = await prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
         assert p1 == p2 == "PROMPT_TEXT"
         assert call_count["n"] == 1, "Second call within TTL must be served from cache"
 
-    def test_active_prompt_cache_invalidates_after_save(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_active_prompt_cache_invalidates_after_save(self, monkeypatch):
         from autoresearch import prompt_store
 
         call_count = {"n": 0}
 
         def fake_client():
             call_count["n"] += 1
-            client, _ = _make_client(single_data={"prompt_content": f"v{call_count['n']}"})
+            client = MagicMock()
+
+            class AsyncQuery(_QueryRecorder):
+                def __getattr__(self, name):
+                    if name.startswith("_"): raise AttributeError(name)
+                    def method(*args, **kwargs):
+                        if name == "execute":
+                            async def exec_coro():
+                                r = MagicMock(); r.data = {"prompt_content": f"v{call_count['n']}"}
+                                return r
+                            return exec_coro()
+                        return self
+                    return method
+
+            client.table.return_value = AsyncQuery()
+            client.auth.http_client.aclose = MagicMock(return_value=asyncio.Future())
+            client.auth.http_client.aclose.return_value.set_result(None)
             return client
 
-        monkeypatch.setattr("autoresearch.prompt_store.get_supabase_client", fake_client)
+        monkeypatch.setattr("autoresearch.prompt_store.get_async_supabase_client", fake_client)
         prompt_store.clear_active_prompt_cache()
 
-        first = prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
+        first = await prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
         prompt_store.clear_active_prompt_cache()
-        second = prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
+        second = await prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
         assert first != second
 
 
@@ -354,9 +395,14 @@ class TestEvaluator:
             "mistake_patterns": [], "rejection_rate": 0.2, "total_decisions": 5,
             "total_trades": 2, "sample_wins": [], "sample_losses": [], "sample_rejections": [],
         })
-        monkeypatch.setattr(evaluator, "get_active_prompt", lambda: "ACTIVE_PROMPT")
-        monkeypatch.setattr(evaluator, "get_previous_variants", lambda **kw: [])
-        monkeypatch.setattr(evaluator, "get_baseline_metrics", lambda: None)
+
+        async def fake_get_active_prompt(): return "ACTIVE_PROMPT"
+        async def fake_get_previous_variants(**kw): return []
+        async def fake_get_baseline_metrics(): return None
+
+        monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_baseline_metrics", fake_get_baseline_metrics)
 
         client, _ = _make_client(data=[])
         monkeypatch.setattr(evaluator, "get_supabase_client", lambda: client)

@@ -76,7 +76,7 @@ async def run():
     is_crash, crash_reason = _check_safety(week_start, week_end)
     if is_crash:
         logger.warning("SAFETY: %s. Reverting to previous prompt.", crash_reason)
-        reverted = revert_to_previous()
+        reverted = await revert_to_previous()
         if reverted:
             logger.info("Reverted to %s. Skipping auto-research this week.", reverted)
         else:
@@ -116,7 +116,7 @@ async def run():
 
     # Save and activate the new variant
     try:
-        tag = save_variant(
+        tag = await save_variant(
             prompt_content=result.new_prompt_text,
             prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT",
             week_start=week_start.isoformat(),

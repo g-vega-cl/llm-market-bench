@@ -642,7 +642,17 @@ def main():
     parser = argparse.ArgumentParser(description="AI Wall Street Engine")
     parser.add_argument(
         "command",
-        choices=[COMMAND_INGEST, COMMAND_WEEKEND_INGEST, COMMAND_POST_ANALYSIS, COMMAND_GOVERNMENT, COMMAND_CALENDAR, COMMAND_CAUSE_AND_EFFECT, COMMAND_AUDIT, COMMAND_AUTORESEARCH],
+        choices=[
+            COMMAND_INGEST,
+            COMMAND_WEEKEND_INGEST,
+            COMMAND_POST_ANALYSIS,
+            COMMAND_GOVERNMENT,
+            COMMAND_CALENDAR,
+            COMMAND_CAUSE_AND_EFFECT,
+            COMMAND_AUDIT,
+            COMMAND_AUTORESEARCH,
+            COMMAND_BOOTSTRAP_AUTORESEARCH
+        ],
         help="Action to perform"
     )
 
@@ -676,6 +686,9 @@ def main():
     elif args.command == COMMAND_AUTORESEARCH:
         from autoresearch.runner import run
         asyncio.run(run())
+    elif args.command == COMMAND_BOOTSTRAP_AUTORESEARCH:
+        from autoresearch.bootstrap import bootstrap
+        asyncio.run(bootstrap())
 
 
 if __name__ == "__main__":

@@ -70,6 +70,23 @@ def collect_wiki_context() -> str:
         rel = str(f.relative_to(WIKI_DIR))
         pages.append(f"  wiki/{rel}")
     parts.append("=== Existing wiki pages ===\n\n" + "\n".join(pages) + "\n")
+    # Read staged raw/ documents so the LLM sees human-written design intent
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "--", "raw/"],
+            capture_output=True, text=True, timeout=5, cwd=REPO_ROOT,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            raw_files = result.stdout.strip().split("\n")
+            raw_context = []
+            for rel_path in raw_files:
+                full_path = REPO_ROOT / rel_path
+                if full_path.is_file():
+                    raw_context.append(f"=== staged: {rel_path} ===\n\n{full_path.read_text()}\n")
+            if raw_context:
+                parts.append("=== Staged raw/ documents (human-written design context) ===\n\n" + "\n".join(raw_context))
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
     return "\n".join(parts)
 
 

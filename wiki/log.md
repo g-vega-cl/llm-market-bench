@@ -148,3 +148,7 @@ This eliminates magic strings and ensures model names are consistent across engi
 ## 2025-04-10 refactor | Singleton Supabase client pattern
 
 Refactored `core/db.py` to implement singleton caching for both sync and async Supabase clients. The `get_supabase_client()` and `get_async_supabase_client()` functions now cache their respective clients globally, avoiding redundant client creation on every call. The async client now uses `AsyncClientOptions` instead of `ClientOptions`. The `_get_market_regime_summary` function in `autoresearch/evaluator.py` was updated to call `get_supabase_client()` internally rather than accepting it as a parameter. A `requirements.lock` file was added with pinned versions for reproducible builds, and `supabase` dependency was pinned to `~=2.27.0`.
+
+## 2025-04-10 enhancement | Auto-wiki now includes staged raw/ documents in context
+
+Enhanced `auto_wiki.py` to read staged `raw/` documents via `git diff --cached` and include them in the LLM context. This ensures the auto-wiki generator sees human-written design intent alongside existing wiki pages, improving documentation quality and relevance.

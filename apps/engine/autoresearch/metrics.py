@@ -58,11 +58,11 @@ def _spy_returns(sb_client, week_start: date, week_end: date) -> list[float]:
     """Extract daily SPY returns for Information Ratio benchmark."""
     res = (
         sb_client.table("price_history")
-        .select("date, close_price")
+        .select("fetched_at, price")
         .eq("ticker", "SPY")
-        .gte("date", week_start.isoformat())
-        .lte("date", week_end.isoformat())
-        .order("date")
+        .gte("fetched_at", week_start.isoformat())
+        .lte("fetched_at", week_end.isoformat())
+        .order("fetched_at")
         .execute()
     )
     rows = res.data or []
@@ -70,8 +70,8 @@ def _spy_returns(sb_client, week_start: date, week_end: date) -> list[float]:
         return []
     returns = []
     for i in range(1, len(rows)):
-        prev = float(rows[i - 1]["close_price"] or 0)
-        curr = float(rows[i]["close_price"] or 0)
+        prev = float(rows[i - 1]["price"] or 0)
+        curr = float(rows[i]["price"] or 0)
         if prev > 0:
             returns.append((curr - prev) / prev)
     return returns

@@ -34,16 +34,16 @@ def _get_market_regime_summary(week_start: date, week_end: date) -> str:
     try:
         vix_res = (
             sb_client.table("price_history")
-            .select("close_price")
+            .select("price")
             .eq("ticker", "VIXY")
-            .gte("date", (week_start - timedelta(days=30)).isoformat())
-            .lte("date", week_end.isoformat())
-            .order("date")
+            .gte("fetched_at", (week_start - timedelta(days=30)).isoformat())
+            .lte("fetched_at", week_end.isoformat())
+            .order("fetched_at")
             .execute()
         )
         if vix_res.data and len(vix_res.data) >= 2:
-            prev_vix = float(vix_res.data[-2].get("close_price") or 0)
-            curr_vix = float(vix_res.data[-1].get("close_price") or 0)
+            prev_vix = float(vix_res.data[-2].get("price") or 0)
+            curr_vix = float(vix_res.data[-1].get("price") or 0)
             if prev_vix > 0:
                 vix_change = (curr_vix - prev_vix) / prev_vix * 100
                 summary_parts.append(f"VIXY: {curr_vix:.1f} (change: {vix_change:+.1f}% WoW)")
@@ -53,16 +53,16 @@ def _get_market_regime_summary(week_start: date, week_end: date) -> str:
     try:
         spy_res = (
             sb_client.table("price_history")
-            .select("close_price")
+            .select("price")
             .eq("ticker", "SPY")
-            .gte("date", week_start.isoformat())
-            .lte("date", week_end.isoformat())
-            .order("date")
+            .gte("fetched_at", week_start.isoformat())
+            .lte("fetched_at", week_end.isoformat())
+            .order("fetched_at")
             .execute()
         )
         if spy_res.data and len(spy_res.data) >= 2:
-            spy_start = float(spy_res.data[0].get("close_price") or 0)
-            spy_end = float(spy_res.data[-1].get("close_price") or 0)
+            spy_start = float(spy_res.data[0].get("price") or 0)
+            spy_end = float(spy_res.data[-1].get("price") or 0)
             if spy_start > 0:
                 spy_change = (spy_end - spy_start) / spy_start * 100
                 summary_parts.append(f"SPY weekly return: {spy_change:+.2f}%")

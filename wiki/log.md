@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-05-11] fix | Auto-research price_history column name mismatch
+
+Fixed auto-research queries that used non-existent columns `date` and `close_price` on
+the `price_history` table. The real columns are `fetched_at` and `price` (established in
+migration `20260124020631_create_price_history.sql`). Affected files:
+
+- `apps/engine/autoresearch/evaluator.py` — VIXY and SPY market-regime queries
+- `apps/engine/autoresearch/metrics.py` — `_spy_returns()` SPY benchmark query
+
+Added regression tests in `test_autoresearch.py`:
+- `TestQuerySyntax.test_price_history_query_uses_fetched_at_and_price`
+- `TestEvaluator.test_market_regime_queries_use_fetched_at_and_price`
+
+Updated wiki pages to list `price_history` as a data source for metrics and
+market regime context.
+
 ## [2026-05-11] fix | Auto-research crash after singleton refactor
 
 Restored auto-research after the [2025-04-10] singleton refactor of
@@ -152,3 +168,35 @@ Refactored `core/db.py` to implement singleton caching for both sync and async S
 ## 2025-04-10 enhancement | Auto-wiki now includes staged raw/ documents in context
 
 Enhanced `auto_wiki.py` to read staged `raw/` documents via `git diff --cached` and include them in the LLM context. This ensures the auto-wiki generator sees human-written design intent alongside existing wiki pages, improving documentation quality and relevance.
+
+## [2026-05-11] fix | Auto-research price_history column name mismatch
+
+Fixed auto-research queries that used non-existent columns `date` and `close_price` on
+the `price_history` table. The real columns are `fetched_at` and `price` (established in
+migration `20260124020631_create_price_history.sql`). Affected files:
+
+- `apps/engine/autoresearch/evaluator.py` — VIXY and SPY market-regime queries
+- `apps/engine/autoresearch/metrics.py` — `_spy_returns()` SPY benchmark query
+
+Added regression tests in `test_autoresearch.py`:
+- `TestQuerySyntax.test_price_history_query_uses_fetched_at_and_price`
+- `TestEvaluator.test_market_regime_queries_use_fetched_at_and_price`
+
+Updated wiki pages to list `price_history` as a data source for metrics and
+market regime context.
+
+## [2026-05-11] fix | Auto-research price_history column name mismatch
+
+Fixed auto-research queries that used non-existent columns `date` and `close_price` on
+the `price_history` table. The real columns are `fetched_at` and `price` (established in
+migration `20260124020631_create_price_history.sql`). Affected files:
+
+- `apps/engine/autoresearch/evaluator.py` — VIXY and SPY market-regime queries
+- `apps/engine/autoresearch/metrics.py` — `_spy_returns()` SPY benchmark query
+
+Added regression tests in `test_autoresearch.py`:
+- `TestQuerySyntax.test_price_history_query_uses_fetched_at_and_price`
+- `TestEvaluator.test_market_regime_queries_use_fetched_at_and_price`
+
+Updated wiki pages to list `price_history` as a data source for metrics and
+market regime context.

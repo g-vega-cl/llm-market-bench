@@ -409,6 +409,32 @@ class TestEvaluator:
         assert isinstance(report, str) and "Weekly Trading Performance Report" in report
         assert isinstance(metrics, dict) and "composite" in metrics
 
+    def test_market_regime_queries_use_fetched_at_and_price(self, monkeypatch):
+        """VIXY and SPY queries in _get_market_regime_summary must use the real
+        column names `fetched_at` and `price`, not the non-existent `date` and
+        `close_price`."""
+        from autoresearch import evaluator
+
+        client, recorder = _make_client(data=[])
+        monkeypatch.setattr(evaluator, "get_supabase_client", lambda: client)
+
+        evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10))
+
+        select_args = [c[1][0] for c in recorder.calls if c[0] == "select"]
+        for sa in select_args:
+            assert "close_price" not in sa, (
+                f"close_price must not appear in select; got {select_args}"
+            )
+
+        filter_cols = [c[1][0] for c in recorder.calls if c[0] in ("gte", "lte", "order")]
+        date_filters = [col for col in filter_cols if col == "date"]
+        assert not date_filters, (
+            f"'date' must not appear in gte/lte/order args (use fetched_at): {filter_cols}"
+        )
+        assert "fetched_at" in filter_cols, (
+            f"fetched_at must appear in gte/lte/order args: {filter_cols}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Query layer — uses .in_(), not the fragile filter(... "in", repr(...)) form.
@@ -447,6 +473,32 @@ class TestQuerySyntax:
         for call in recorder.calls:
             if call[0] == "filter" and len(call[1]) >= 2:
                 assert call[1][1] != "in"
+
+    def test_price_history_query_uses_fetched_at_and_price(self, monkeypatch):
+        """The price_history table has `fetched_at` and `price` columns, NOT
+        `date` and `close_price`.  Verify that _spy_returns() builds the query
+        with the real column names so it does not fail at runtime."""
+        from autoresearch import metrics
+
+        client, recorder = _make_client(data=[])
+        monkeypatch.setattr(metrics, "get_supabase_client", lambda: client)
+
+        metrics.compute_wall_street_metrics(
+            frozenset({"m1", "m2"}), date(2026, 5, 1), date(2026, 5, 7)
+        )
+
+        select_args = [c[1][0] for c in recorder.calls if c[0] == "select"]
+        ph_selects = [a for a in select_args if "price" in a and "fetched_at" in a]
+        assert len(ph_selects) == 1, (
+            f"Expected 1 price_history select with fetched_at,price; got selects: {select_args}"
+        )
+        assert "close_price" not in ph_selects[0]
+        assert "date" not in ph_selects[0].split(", ")
+
+        filter_cols = [c[1][0] for c in recorder.calls if c[0] in ("gte", "lte", "order")]
+        assert "fetched_at" in filter_cols, (
+            f"fetched_at must appear in gte/lte/order args: {filter_cols}"
+        )
 
 
 # ---------------------------------------------------------------------------

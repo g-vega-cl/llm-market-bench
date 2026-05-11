@@ -22,13 +22,15 @@ The module is organized into a clean pipeline:
 - **`window.py`** — shared Mon–Sun week-boundary calculator used by both
   the evaluator and runner to avoid calendar drift
 - **`metrics.py`** — computes Wall Street metrics (Sharpe, Sortino, Info
-  Ratio, Max Drawdown, Profit Factor) from `portfolio_performance` and
-  `trades` tables; normalizes to 0–1 via `compute_composite_score()`
+  Ratio, Max Drawdown, Profit Factor) from `portfolio_performance`,
+  `price_history` (SPY benchmark for Information Ratio), and `trades`
+  tables; normalizes to 0–1 via `compute_composite_score()`
 - **`decision_quality.py`** — scores signal concordance (did BUYs lead to
   profitable SELLs?) and conviction calibration (do higher-confidence trades
   earn more?), tied to realized PnL outcomes
-- **`evaluator.py`** — gathers all data, computes metrics, formats the
-  structured markdown report fed to the auto-research LLM
+- **`evaluator.py`** — gathers all data (portfolio performance, decision
+  quality, price history for VIXY/SPY market regime), computes metrics,
+  formats the structured markdown report fed to the auto-research LLM
 - **`researcher.py`** — calls DeepSeek v4 Pro via Instructor, receives
   a `PromptResearchResult` (new prompt text, reasoning, confidence)
 - **`prompt_store.py`** — DB CRUD for `prompt_experiments` table plus an

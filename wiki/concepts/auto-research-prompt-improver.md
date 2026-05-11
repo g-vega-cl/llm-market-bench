@@ -30,7 +30,7 @@ The design follows the `autoresearch` repo pattern directly:
 The auto-research LLM receives a structured report with:
 
 ### 1. Wall Street Metrics (Quant Fund Standards)
-Computed from `portfolio_performance` and `trades` tables, not by the LLM:
+Computed from `portfolio_performance`, `price_history`, and `trades` tables, not by the LLM:
 - **Sharpe Ratio** — return per unit of total risk (annualized)
 - **Sortino Ratio** — return per unit of downside risk only
 - **Information Ratio** — outperformance vs. SPY per unit of tracking error
@@ -47,8 +47,8 @@ Computed from `portfolio_performance` and `trades` tables, not by the LLM:
 
 ### 3. Structural Analysis (Report Context Only)
 The report includes the full current prompt text, sample winning/losing/
-rejected trades with reasoning, and the previous 5 variants with their
-scores. The LLM decides what structural changes to make.
+rejected trades with reasoning, market regime context (VIXY/SPY from
+`price_history`), and the previous 5 variants with their scores. The LLM decides what structural changes to make.
 
 ### 4. Local Minima Escape
 - Stagnation flag: if composite score is within 5% for 2+ weeks

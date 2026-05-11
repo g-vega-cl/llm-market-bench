@@ -122,3 +122,7 @@ Extracted hardcoded model name strings into shared constants across the codebase
 - Renamed Gemini model from `gemini-3.1-flash-lite-preview` to `gemini-3.1-flash-lite` in `packages/config/models.json`
 
 This eliminates magic strings and ensures model names are consistent across engine and web layers.
+
+## 2025-04-10 refactor | Singleton Supabase client pattern
+
+Refactored `core/db.py` to implement singleton caching for both sync and async Supabase clients. The `get_supabase_client()` and `get_async_supabase_client()` functions now cache their respective clients globally, avoiding redundant client creation on every call. The async client now uses `AsyncClientOptions` instead of `ClientOptions`. The `_get_market_regime_summary` function in `autoresearch/evaluator.py` was updated to call `get_supabase_client()` internally rather than accepting it as a parameter. A `requirements.lock` file was added with pinned versions for reproducible builds, and `supabase` dependency was pinned to `~=2.27.0`.

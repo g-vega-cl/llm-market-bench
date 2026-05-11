@@ -22,13 +22,14 @@ logger = logging.getLogger("engine")
 CONTROL_OWNER_IDS = frozenset([OPENAI_MODEL, ANTHROPIC_MODEL])
 
 
-def _get_market_regime_summary(sb_client, week_start: date, week_end: date) -> str:
+def _get_market_regime_summary(week_start: date, week_end: date) -> str:
     """Brief market-regime summary from available data.
 
     VIXY is the volatility ETF tracked in `price_history` (see
     `core.macro_tracker`). The legacy index ticker "VIX" is never stored.
     """
     summary_parts = []
+    sb_client = get_supabase_client()
 
     try:
         vix_res = (
@@ -204,8 +205,7 @@ async def evaluate_week() -> tuple[str, dict]:
     previous = await get_previous_variants(limit=5)
     _, stagnation_msg = _check_stagnation(previous)
 
-    sb_client = get_supabase_client()
-    regime = _get_market_regime_summary(sb_client, week_start, week_end)
+    regime = _get_market_regime_summary(week_start, week_end)
 
     baseline_metrics = await get_baseline_metrics()
     baseline_text = ""

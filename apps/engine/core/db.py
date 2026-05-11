@@ -1,9 +1,11 @@
+import asyncio
+import inspect
 import time
 import httpx
 from typing import Any, Callable, TypeVar
 
 from supabase import Client, create_client, ClientOptions
-from supabase import AsyncClient, create_async_client
+from supabase import AsyncClient, AsyncClientOptions, create_async_client
 
 from .config import SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL, logger
 
@@ -11,16 +13,12 @@ T = TypeVar("T")
 
 SUPABASE_RETRIES = 3
 
+_supabase_client: Client | None = None
+_supabase_async_client: AsyncClient | None = None
 
-def get_supabase_client() -> Client:
-    """Initialize and return a Supabase client using the service role key.
 
-    Returns:
-        A configured Supabase client instance.
-
-    Raises:
-        ValueError: If Supabase configuration is missing.
-    """
+def _validate_config():
+    """Raise if Supabase configuration is missing."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         error_msg = (
             "Supabase configuration missing: ensure SUPABASE_PROJECT_URL "
@@ -28,52 +26,96 @@ def get_supabase_client() -> Client:
         )
         logger.error(error_msg)
         raise ValueError(error_msg)
-    
-    # Configure httpx client to avoid deprecation warnings in supabase-py
-    # by moving timeout and verify settings into the http_client itself.
+
+
+def _build_client_options():
+    """Build ClientOptions with a configured httpx client."""
     http_client = httpx.Client(
         timeout=httpx.Timeout(10.0, connect=5.0),
-        verify=True
+        verify=True,
     )
-    
-    options = ClientOptions(
+    return ClientOptions(
         httpx_client=http_client,
         postgrest_client_timeout=10.0,
-        storage_client_timeout=10
+        storage_client_timeout=10,
     )
-    
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
 
 
-def get_async_supabase_client() -> AsyncClient:
-    """Initialize and return an asynchronous Supabase client.
+def _build_async_client_options():
+    """Build AsyncClientOptions with a configured httpx async client."""
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        verify=True,
+    )
+    return AsyncClientOptions(
+        httpx_client=http_client,
+        postgrest_client_timeout=10.0,
+        storage_client_timeout=10,
+    )
+
+
+def get_supabase_client() -> Client:
+    """Return the shared sync Supabase client (singleton).
+
+    Creates the client on first call and caches it for all subsequent
+    calls. If ``create_client()`` ever becomes async in a future
+    supabase-py version, this function detects it and resolves the
+    coroutine.
 
     Returns:
-        A configured AsyncClient instance.
+        A configured sync Supabase client instance.
 
     Raises:
         ValueError: If Supabase configuration is missing.
     """
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        error_msg = (
-            "Supabase configuration missing: ensure SUPABASE_PROJECT_URL "
-            "and SUPABASE_SERVICE_ROLE_KEY are set."
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+
+    _validate_config()
+    options = _build_client_options()
+    result = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
+
+    if inspect.iscoroutine(result):
+        logger.warning(
+            "supabase.create_client returned a coroutine — "
+            "resolving synchronously. Consider migrating to "
+            "``await get_async_supabase_client()``."
         )
-        logger.error(error_msg)
-        raise ValueError(error_msg)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(result)
 
-    http_client = httpx.AsyncClient(
-        timeout=httpx.Timeout(10.0, connect=5.0),
-        verify=True
+    _supabase_client = result
+    return _supabase_client
+
+
+async def get_async_supabase_client() -> AsyncClient:
+    """Return the shared async Supabase client (singleton).
+
+    Creates the async client on first call and caches it. Prefer this
+    over ``get_supabase_client()`` in async code paths — it uses the
+    native async supabase client which is the direction of supabase-py.
+
+    Returns:
+        A configured async Supabase client instance.
+
+    Raises:
+        ValueError: If Supabase configuration is missing.
+    """
+    global _supabase_async_client
+    if _supabase_async_client is not None:
+        return _supabase_async_client
+
+    _validate_config()
+    options = _build_async_client_options()
+    _supabase_async_client = await create_async_client(
+        SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options
     )
-
-    options = ClientOptions(
-        httpx_client=http_client,
-        postgrest_client_timeout=10.0,
-        storage_client_timeout=10
-    )
-
-    return create_async_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
+    return _supabase_async_client
 
 
 def is_transient_supabase_error(exc: Exception) -> bool:

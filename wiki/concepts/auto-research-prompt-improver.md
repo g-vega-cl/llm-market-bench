@@ -10,19 +10,30 @@ A meta-researcher LLM evaluates weekly live trading performance and iteratively 
 ## Architecture
 
 The auto-research loop runs weekly:
-1. **Evaluate**: Compare live trading performance against control portfolios
-2. **Hypothesize**: Propose prompt changes to improve performance
-3. **Validate**: Check proposed prompt against hard invariants (forbidden patterns, size limits)
-4. **Activate**: If valid, deploy the new prompt for the next trading week
+1. **Safety check** — < 2 trades? Revert to previous prompt.
+2. **Evaluate** — Compute single score from weekly trading data. Find baseline (best score so far).
+3. **Hypothesize** — Meta-researcher LLM proposes prompt changes.
+4. **Deploy** — Always activate the new variant. No gate. Every week iterates.
+5. **Track** — If score > baseline, this prompt becomes the new baseline.
 
-## Validation
+## Score
 
-The validator enforces only **hard invariants** — patterns that would break the trading loop's safety contract:
-- Empty prompts
-- Prompts over 1000 words
-- Prompts containing "guess the price" or similar forbidden phrases
+```
+score = (portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)
+```
 
-There are **no soft invariants or recommended tokens**. The prompt is an experiment space — the control portfolios and safety checker provide the real guardrails. Hardcoded token requirements would only constrain the researcher's ability to explore.
+A single transparent number. The meta-researcher sees the components (portfolio return, SPY return, max drawdown) plus the baseline and Δ.
+
+## Baseline
+
+The baseline is the **highest score achieved so far**, tied to its prompt. The meta-researcher's goal is to propose a prompt that beats the baseline. When it does, that prompt+score becomes the new baseline. When it doesn't, the old baseline holds.
+
+```
+Week 1: score=1.5 → Baseline: 1.5 (new best)    → deploy
+Week 2: score=2.0 → Baseline: 2.0 (Δ: +0.50) ✓  → deploy
+Week 3: score=1.8 → Baseline: 2.0 (Δ: -0.20) ✗  → deploy (baseline stays)
+Week 4: score=2.5 → Baseline: 2.5 (Δ: +0.50) ✓  → deploy
+```
 
 ## Constraints
 
@@ -33,8 +44,15 @@ The researcher's `program.md` specifies:
 - Keep the prompt under 1000 words
 - Compatible with Gemini Flash and DeepSeek Flash
 
+## Design Philosophy
+
+- **Always explore**: Every week deploys a new prompt. The meta-researcher always gets to test its ideas.
+- **Baseline only moves up**: The target is the best score achieved. No chasing regressed targets.
+- **Trust the process**: No validator. The safety checker catches crashes; control portfolios provide reference. The meta-researcher learns from outcomes.
+- **Single metric**: One number to optimize eliminates gaming of composite weights.
+- **Transparent components**: The LLM sees why the score moved, not just that it moved.
+
 ## Related
 
 - [[entities/autoresearch]] — the implementation module
-- [[concepts/tool-enforcement]] — why tool usage requirements are critical
-- [[concepts/memory-feedback]] — the feedback loop that feeds into auto-research
+- [[entities/engine]] — the parent engine

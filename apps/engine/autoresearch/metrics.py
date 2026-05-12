@@ -258,3 +258,30 @@ def compute_composite_score(
         "regime_awareness": round(regime_awareness, 4),
         "warnings": warnings,
     }
+
+
+DRAWDOWN_PENALTY_WEIGHT = 0.3
+
+
+def compute_score(
+    portfolio_return_pct: float,
+    spy_return_pct: float,
+    max_drawdown_pct: float,
+) -> dict:
+    """Compute the single auto-research score.
+
+    Formula: score = (portfolio_return - SPY_return) - (max_drawdown × penalty_weight)
+
+    Positive score = beating SPY after risk penalty.
+    Zero = treading water.
+    Negative = losing to SPY or too volatile.
+    """
+    excess_return = portfolio_return_pct - spy_return_pct
+    penalty = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT
+    score = round(excess_return - penalty, 4)
+
+    return {
+        "score": score,
+        "excess_return": round(excess_return, 4),
+        "max_drawdown": max_drawdown_pct,
+    }

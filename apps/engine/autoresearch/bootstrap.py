@@ -32,7 +32,7 @@ async def bootstrap():
         prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT",
         week_start=week_start,
         week_end=week_end,
-        metrics={"composite": 0.5, "note": "Initial baseline"},
+        metrics={"score": 0, "excess_return": 0, "max_drawdown": 0, "note": "Initial baseline"},
         change_description="Initial baseline prompt from source code.",
         experiment_type="baseline"
     )

@@ -6,9 +6,8 @@ trading performance, proposes prompt changes, activates the best variant.
 
 from .metrics import (
     compute_wall_street_metrics,
-    compute_composite_score,
+    compute_score,
 )
-from .decision_quality import compute_decision_quality
 from .evaluator import evaluate_week
 from .researcher import run_research, PromptResearchResult
 from .prompt_store import (
@@ -20,13 +19,11 @@ from .prompt_store import (
     clear_active_prompt_cache,
 )
 from .runner import run
-from .validator import validate_prompt
 from .window import get_week_window
 
 __all__ = [
     "compute_wall_street_metrics",
-    "compute_composite_score",
-    "compute_decision_quality",
+    "compute_score",
     "evaluate_week",
     "run_research",
     "PromptResearchResult",
@@ -37,6 +34,5 @@ __all__ = [
     "revert_to_previous",
     "clear_active_prompt_cache",
     "run",
-    "validate_prompt",
     "get_week_window",
 ]

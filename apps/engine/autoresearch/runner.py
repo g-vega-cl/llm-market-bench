@@ -1,11 +1,11 @@
 """Auto-research runner — top-level orchestrator.
 
 Runs the weekly auto-research cycle:
-1. Evaluate past week's performance
-2. Call auto-research LLM to propose prompt changes
-3. Validate the proposed prompt against safety invariants
-4. Check safety conditions on the live agent
-5. Save and activate the validated variant
+1. Safety check (did the prompt crash trading?)
+2. Evaluate past week's performance (single score + baseline Δ)
+3. Call auto-research LLM to propose prompt changes
+4. Always deploy the new variant — no gate, every week iterates
+5. Save and activate
 
 Analogous to Karpathy's experiment loop in autoresearch.
 """
@@ -19,7 +19,6 @@ from core.db import get_async_supabase_client
 from .evaluator import evaluate_week
 from .researcher import run_research
 from .prompt_store import save_variant, revert_to_previous
-from .validator import validate_prompt
 from .window import get_week_window
 
 logger = logging.getLogger("engine")
@@ -60,10 +59,8 @@ async def run(dry_run: bool = False):
     """Run the full auto-research cycle.
 
     Args:
-        dry_run: If True, evaluate, research, and validate — but do not
-                 write to the database or change the active prompt.
-
-    This is the entry point called by the CLI (main.py autoresearch).
+        dry_run: If True, evaluate and research — but do not write to the
+                 database or change the active prompt.
     """
     week_start, week_end = get_week_window()
 
@@ -91,7 +88,7 @@ async def run(dry_run: bool = False):
     # Evaluate the week
     logger.info("Gathering performance data...")
     try:
-        report, composite = await evaluate_week(week_start, week_end)
+        report, metrics = await evaluate_week(week_start, week_end)
     except Exception as e:
         logger.error("Failed to evaluate week: %s", e)
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
@@ -115,60 +112,13 @@ async def run(dry_run: bool = False):
         result.experiment_type, result.confidence, result.change_description,
     )
 
-    # Reject unsafe prompts before we ever activate them.
-    is_valid, reason, warnings_list = validate_prompt(result.new_prompt_text)
-    if warnings_list:
-        for w in warnings_list:
-            logger.warning("Soft invariant violation: %s", w)
-
-    if not is_valid:
-        logger.error("Researcher proposal failed safety validation: %s.", reason)
-        if dry_run:
-            logger.info("DRY RUN: Would have rejected this proposal.")
-        else:
-            logger.error("AUTORESEARCH_RESULT: FAILED_VALIDATION | reason=%s", reason)
-        return
+    score = metrics["score"]
 
     if dry_run:
-        # Gate: skip if experiment already beats baseline (no change needed);
-        # activate when underperforming (prompt needs improvement).
-        baseline = composite.get("baseline_composite", 0)
-        exp_score = composite["composite"]
-        if baseline > 0 and exp_score >= baseline:
-            logger.info(
-                "DRY RUN: Composite %.4f already beats baseline %.4f — would skip, no improvement needed.",
-                exp_score, baseline,
-            )
-        else:
-            logger.info(
-                "DRY RUN: Composite %.4f below baseline %.4f — would activate (prompt needs improvement).",
-                exp_score, baseline,
-            )
-        logger.info("DRY RUN: Proposed prompt (%s, confidence=%d):",
-                     result.experiment_type, result.confidence)
-        logger.info("=" * 72)
-        logger.info(result.new_prompt_text)
-        logger.info("=" * 72)
-        logger.info("DRY RUN: Composite score: %.4f (baseline: %.4f)",
-                     exp_score, baseline)
+        logger.info("DRY RUN: Score: %.4f", score)
         logger.info("DRY RUN: Change description: %s", result.change_description)
         logger.info("DRY RUN: Full research output: %s", result.model_dump())
         logger.info("=== Auto-Research Dry Run Complete ===")
-        return
-
-    # Gate: skip if experiment already beats baseline (no change needed);
-    # activate when underperforming (prompt needs improvement).
-    baseline = composite.get("baseline_composite", 0)
-    exp_score = composite["composite"]
-    if baseline > 0 and exp_score >= baseline:
-        logger.info(
-            "Composite %.4f already beats baseline %.4f — skipping, no improvement needed.",
-            exp_score, baseline,
-        )
-        logger.info(
-            "AUTORESEARCH_RESULT: SKIPPED_ALREADY_WINNING | composite=%.4f | baseline=%.4f",
-            exp_score, baseline,
-        )
         return
 
     # Save and activate the new variant
@@ -178,7 +128,7 @@ async def run(dry_run: bool = False):
             prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT",
             week_start=week_start.isoformat(),
             week_end=week_end.isoformat(),
-            metrics=composite,
+            metrics=metrics,
             change_description=result.change_description,
             experiment_type=result.experiment_type,
             research_output=result.model_dump(),
@@ -191,5 +141,5 @@ async def run(dry_run: bool = False):
 
     logger.info("=== Auto-Research Cycle Complete ===")
     logger.info("Next week's prompt: %s (%s)", tag, result.experiment_type)
-    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | composite=%.4f",
-                tag, result.experiment_type, composite["composite"])
+    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | score=%.4f",
+                tag, result.experiment_type, score)

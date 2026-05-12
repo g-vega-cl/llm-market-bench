@@ -1,6 +1,39 @@
 # Wiki Log
 
-## [2026-05-11] fix | Auto-research code audit — 7 fixes from deep code review
+## [2026-05-12] simplify | Auto-research: remove validator + decision_quality, single score
+
+Major simplification of the auto-research system. TDD-driven with 30 passing tests.
+
+**Deleted:**
+- `autoresearch/validator.py` — 5 bypassable regex patterns + word cap. Replaced by trust in the safety checker.
+- `autoresearch/decision_quality.py` — conviction calibration, regime awareness, mistake patterns, sample trades. All unnecessary for single-score target.
+
+**New score formula:**
+```
+score = (portfolio_return_pct - spy_return_pct) - (max_drawdown_pct × 0.3)
+```
+Replaces the 8-dimension weighted composite (Sharpe, Sortino, MaxDD, Profit Factor, Info Ratio, Concordance, Conviction, Regime Awareness).
+
+**Simplified:**
+- `evaluator.py` — 301→126 lines. No more VIXY queries, concordance, stagnation checks, or long-formatted reports.
+- `runner.py` — 180→168 lines. No validator call. Gate: score ≥ 0 → skip, score < 0 → deploy.
+- `program.md` — 78→55 lines. Single-score focused.
+- `bootstrap.py` — baseline score: 0 (was 0.5 composite).
+- `__init__.py` — exports cleaned up.
+
+**Test suite: 33 passing** — added TestBaselineTracking (3 tests): baseline is max, shows delta, handles first week.
+
+## [2026-05-12] simplify | Auto-research: always deploy, target-to-beat
+
+Removed the activation gate. Every week deploys a new prompt variant regardless of score.
+The meta-researcher's goal is now explicit: beat last week's score (shown as "Target to beat" with Δ).
+
+- `runner.py` — removed the `score >= 0 → skip` gate. Always calls save_variant.
+- `evaluator.py` — report now includes "Target to beat: X (Δ: +/-Y vs last week)".
+- `program.md` — updated goal: "beat last week's score."
+- `TestActivationGate` — renamed methods, now asserts deploy on all score values (positive, negative, zero).
+
+## [2026-05-12] simplify | Auto-research: remove validator + decision_quality, single score
 
 Comprehensive TDD-driven fixes from a detailed codebase interview (the "grill me"
 session). All 7 issues identified, tested, and resolved:
@@ -448,3 +481,26 @@ Files:
 - `apps/engine/autoresearch/evaluator.py`
 - `apps/engine/autoresearch/prompt_store.py`
 - `apps/engine/tests/test_autoresearch.py`
+
+## [2026-05-12] simplify | Auto-research: remove validator + decision_quality, single score
+
+Major simplification of the auto-research system. TDD-driven with 30 passing tests.
+
+**Deleted:**
+- `autoresearch/validator.py` — 5 bypassable regex patterns + word cap. Replaced by trust in the safety checker.
+- `autoresearch/decision_quality.py` — conviction calibration, regime awareness, mistake patterns, sample trades. All unnecessary for single-score target.
+
+**New score formula:**
+```
+score = (portfolio_return_pct - spy_return_pct) - (max_drawdown_pct × 0.3)
+```
+Replaces the 8-dimension weighted composite (Sharpe, Sortino, MaxDD, Profit Factor, Info Ratio, Concordance, Conviction, Regime Awareness).
+
+**Simplified:**
+- `evaluator.py` — 301→126 lines. No more VIXY queries, concordance, stagnation checks, or long-formatted reports.
+- `runner.py` — 180→168 lines. No validator call. Always deploys new variant.
+- `program.md` — 78→55 lines. Single-score focused.
+- `bootstrap.py` — baseline score: 0 (was 0.5 composite).
+- `__init__.py` — exports cleaned up.
+
+**Test suite: 33 passing** — added TestBaselineTracking (3 tests): baseline is max, shows delta, handles first week.

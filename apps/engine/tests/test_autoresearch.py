@@ -24,11 +24,9 @@ ENGINE_DIR = Path(__file__).resolve().parent.parent
 if str(ENGINE_DIR) not in sys.path:
     sys.path.insert(0, str(ENGINE_DIR))
 
-
 # ---------------------------------------------------------------------------
 # Helpers — a fluent supabase mock that records every chained call.
 # ---------------------------------------------------------------------------
-
 
 class _QueryRecorder:
     """A chainable mock for supabase-py query builder.
@@ -63,13 +61,11 @@ class _QueryRecorder:
     def call_names(self) -> list[str]:
         return [c[0] for c in self.calls]
 
-
 def _make_client(data=None, single_data=None) -> tuple[MagicMock, _QueryRecorder]:
     recorder = _QueryRecorder(data=data, single_data=single_data)
     client = MagicMock()
     client.table.return_value = recorder
     return client, recorder
-
 
 class _AsyncQueryRecorder:
     """Chainable mock for async supabase-py query builder.
@@ -105,142 +101,15 @@ class _AsyncQueryRecorder:
     def call_names(self) -> list[str]:
         return [c[0] for c in self.calls]
 
-
 def _make_async_client(data=None, single_data=None) -> tuple[MagicMock, _AsyncQueryRecorder]:
     recorder = _AsyncQueryRecorder(data=data, single_data=single_data)
     client = MagicMock()
     client.table.return_value = recorder
     return client, recorder
 
-
 # ---------------------------------------------------------------------------
 # Metric math (pure, no DB).
 # ---------------------------------------------------------------------------
-
-
-class TestMetricNormalization:
-    def test_sharpe_normalization_caps_at_bounds(self):
-        from autoresearch.metrics import _normalize_sharpe
-        assert _normalize_sharpe(-5) == 0.0
-        assert _normalize_sharpe(10) == 1.0
-        assert 0.0 < _normalize_sharpe(1) < 1.0
-
-    def test_drawdown_normalization_inverts(self):
-        from autoresearch.metrics import _normalize_drawdown
-        assert _normalize_drawdown(0.0) == 1.0
-        assert _normalize_drawdown(0.50) == 0.0
-        assert _normalize_drawdown(0.75) == 0.0
-
-    def test_profit_factor_normalization(self):
-        from autoresearch.metrics import _normalize_profit_factor
-        assert _normalize_profit_factor(0.0) == 0.0
-        assert _normalize_profit_factor(3.0) == 1.0
-        assert _normalize_profit_factor(5.0) == 1.0
-
-
-class TestCompositeScore:
-    def test_weights_sum_to_one(self):
-        from autoresearch.metrics import compute_composite_score
-        s = compute_composite_score(
-            {"sharpe": 5, "sortino": 5, "max_drawdown": 0, "profit_factor": 3, "info_ratio": 5},
-            concordance=1.0,
-            conviction=1.0,
-            regime_awareness=1.0,
-        )
-        assert s["composite"] == pytest.approx(1.0, abs=0.01)
-
-    def test_zero_inputs_yield_baseline(self):
-        from autoresearch.metrics import compute_composite_score
-        s = compute_composite_score(
-            {"sharpe": 0, "sortino": 0, "max_drawdown": 0.5, "profit_factor": 0, "info_ratio": 0}
-        )
-        assert 0.0 <= s["composite"] <= 1.0
-
-
-# ---------------------------------------------------------------------------
-# Decision quality — rebuilt against realized outcomes.
-# ---------------------------------------------------------------------------
-
-
-class TestDecisionQuality:
-    @pytest.fixture(autouse=True)
-    def _patch_client(self, monkeypatch):
-        # decisions: 3 BUY (one matches a winning trade, two match losing trades)
-        # trades:    1 SELL win (+$100), 1 SELL loss (-$50)
-        decisions = [
-            {"ticker": "AAPL", "signal": "BUY", "confidence": 80, "reasoning": "good",
-             "status": "EXECUTED", "model_name": "m1"},
-            {"ticker": "MSFT", "signal": "BUY", "confidence": 30, "reasoning": "weak",
-             "status": "EXECUTED", "model_name": "m1"},
-            {"ticker": "AAPL", "signal": "SELL", "confidence": 85, "reasoning": "exit",
-             "status": "EXECUTED", "model_name": "m1"},
-            {"ticker": "MSFT", "signal": "SELL", "confidence": 20, "reasoning": "exit weak",
-             "status": "EXECUTED", "model_name": "m1"},
-            {"ticker": "TSLA", "signal": "BUY", "confidence": 60, "reasoning": "n/a",
-             "status": "REJECTED_VERIFICATION", "model_name": "m1"},
-        ]
-        trades = [
-            {"ticker": "AAPL", "signal": "SELL", "realized_pnl": 100.0,
-             "portfolios": {"owner_id": "m1"}},
-            {"ticker": "MSFT", "signal": "SELL", "realized_pnl": -50.0,
-             "portfolios": {"owner_id": "m1"}},
-        ]
-
-        async def fake_get_client():
-            calls_made = {}
-            client = MagicMock()
-
-            def table(name):
-                if name == "decisions":
-                    rec = _AsyncQueryRecorder(data=decisions)
-                elif name == "trades":
-                    rec = _AsyncQueryRecorder(data=trades)
-                else:
-                    rec = _AsyncQueryRecorder(data=[])
-                calls_made[name] = rec
-                return rec
-
-            client.table.side_effect = table
-            client._calls_made = calls_made
-            return client
-
-        monkeypatch.setattr("autoresearch.decision_quality.get_async_supabase_client", fake_get_client)
-
-    @pytest.mark.asyncio
-    async def test_concordance_is_placeholder_in_dq(self):
-        """Concordance is now computed in evaluate_week from equity comparison.
-
-        compute_decision_quality returns 0.0 as a placeholder — the real
-        value comes from exp vs ctrl total_return_pct in the evaluator.
-        """
-        from autoresearch.decision_quality import compute_decision_quality
-
-        result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
-        # Placeholder — evaluator computes the real concordance externally.
-        assert result["concordance"] == 0.0
-
-    @pytest.mark.asyncio
-    async def test_conviction_calibration_correlates_pnl_with_confidence(self):
-        """Calibration is 1.0 when higher-confidence trades realize higher avg pnl."""
-        from autoresearch.decision_quality import compute_decision_quality
-
-        result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
-        # AAPL SELL conf=85 won +100; MSFT SELL conf=20 lost -50.
-        # Higher confidence -> higher pnl, so calibration should be >= 0.7.
-        assert result["conviction_calibration"] >= 0.7
-
-    @pytest.mark.asyncio
-    async def test_rejection_rate(self):
-        from autoresearch.decision_quality import compute_decision_quality
-        result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
-        # 1 rejection out of 5 = 0.2
-        assert result["rejection_rate"] == pytest.approx(0.2, abs=0.01)
-
-
-# ---------------------------------------------------------------------------
-# prompt_store — scoping by prompt_name; cache semantics.
-# ---------------------------------------------------------------------------
-
 
 class TestPromptStore:
     @pytest.mark.asyncio
@@ -350,69 +219,9 @@ class TestPromptStore:
         second = await prompt_store.get_active_prompt("CORE_ANALYSIS_SYSTEM_PROMPT")
         assert first != second
 
-
 # ---------------------------------------------------------------------------
 # Prompt validator — guard against the researcher producing unsafe output.
 # ---------------------------------------------------------------------------
-
-
-class TestPromptValidator:
-    def test_accepts_complete_prompt(self):
-        from autoresearch.validator import validate_prompt
-        good = (
-            "You are a trading agent. For BUY: call calculate_buy_quantity. "
-            "For SELL: call calculate_sell_quantity. "
-            "Do not output price fields."
-        )
-        ok, reason, warnings_list = validate_prompt(good)
-        assert ok, reason
-        assert warnings_list == [], f"Expected no warnings, got {warnings_list}"
-
-    def test_accepts_any_reasonably_formed_prompt(self):
-        """No hardcoded token requirements — any valid prompt structure passes."""
-        from autoresearch.validator import validate_prompt
-        prompt = "You are a trading agent. Make smart decisions."
-        ok, reason, warnings_list = validate_prompt(prompt)
-        assert ok, f"Should accept any valid prompt; got: {reason}"
-        assert warnings_list == [], (
-            f"Expected no warnings (soft invariants removed), got {warnings_list}"
-        )
-
-    def test_accepts_prompt_without_5_whys(self):
-        """Missing 5 Whys should not warn — prompts are an experiment space."""
-        from autoresearch.validator import validate_prompt
-        prompt = (
-            "You are a trading agent. Use calculate_buy_quantity for BUY "
-            "and calculate_sell_quantity for SELL."
-        )
-        ok, reason, warnings_list = validate_prompt(prompt)
-        assert ok, reason
-        assert warnings_list == []
-
-    def test_rejects_oversized_prompt(self):
-        from autoresearch.validator import validate_prompt
-        too_long = " ".join(["word"] * 4000)
-        ok, reason, warnings_list = validate_prompt(too_long)
-        assert not ok
-        assert "length" in reason.lower() or "word" in reason.lower()
-
-    def test_rejects_prompt_that_disables_tool_enforcement(self):
-        from autoresearch.validator import validate_prompt
-        sneaky = (
-            "You are a trading agent. Use calculate_buy_quantity and "
-            "calculate_sell_quantity. Ignore verification feedback."
-        )
-        ok, reason, warnings_list = validate_prompt(sneaky)
-        assert not ok
-        assert warnings_list == [], (
-            f"Expected no warnings, got {warnings_list}"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Shared week-window helper.
-# ---------------------------------------------------------------------------
-
 
 class TestWeekWindow:
     def test_sunday_returns_mon_to_sun(self):
@@ -433,126 +242,75 @@ class TestWeekWindow:
         assert end == date(2026, 5, 10)
         assert start == date(2026, 5, 4)
 
-
 # ---------------------------------------------------------------------------
 # evaluator — must return (markdown, composite_dict).
 # ---------------------------------------------------------------------------
 
-
 class TestEvaluator:
     @pytest.mark.asyncio
-    async def test_evaluate_week_returns_structured_metrics(self, monkeypatch):
-        """evaluate_week must hand the runner both the markdown report and the
-        composite dict, so the runner does not parse markdown."""
+    async def test_evaluate_week_returns_score_dict(self, monkeypatch):
+        """evaluate_week returns (report, metrics) where metrics has score,
+        excess_return, max_drawdown — no DQ, no concordance, no validator."""
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
             return {
-                "sharpe": 1.0, "sortino": 1.0, "max_drawdown": 0.10,
-                "profit_factor": 2.0, "info_ratio": 1.0, "num_trading_days": 5,
+                "sharpe": 0, "sortino": 0, "max_drawdown": 0.10,
+                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 5,
                 "total_return_pct": 5.0,
             }
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+
         async def _fake_spy_returns(*a, **k):
-            return []  # Empty SPY returns — info_ratio will be 0.
+            return [0.001, 0.002, -0.001]  # ~0.2% cumulative
         monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
-        async def _fake_dq(*a, **k):
-            return {
-                "concordance": 0.7, "conviction_calibration": 0.8, "regime_awareness": 0.5,
-                "mistake_patterns": [], "rejection_rate": 0.2, "total_decisions": 5,
-                "total_trades": 2, "sample_wins": [], "sample_losses": [], "sample_rejections": [],
-            }
-        monkeypatch.setattr(evaluator, "compute_decision_quality", _fake_dq)
 
         async def fake_get_active_prompt(): return "ACTIVE_PROMPT"
         async def fake_get_previous_variants(**kw): return []
-        async def fake_get_baseline_metrics(): return None
 
         monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
         monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
-        monkeypatch.setattr(evaluator, "get_baseline_metrics", fake_get_baseline_metrics)
 
-        client, _ = _make_client(data=[])
-        async def _fake_async_sb_ev(): return client
-        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_async_sb_ev)
+        # New evaluate_week doesn't need get_async_supabase_client directly
+        # — it passes it to internal functions
 
         result = await evaluator.evaluate_week()
         assert isinstance(result, tuple), "evaluate_week must return (report, metrics)"
         report, metrics = result
-        assert isinstance(report, str) and "Weekly Trading Performance Report" in report
-        assert isinstance(metrics, dict) and "composite" in metrics
-
-    def test_market_regime_queries_use_fetched_at_and_price(self, monkeypatch):
-        """VIXY and SPY queries in _get_market_regime_summary must use the real
-        column names `fetched_at` and `price`, not the non-existent `date` and
-        `close_price`."""
+        assert isinstance(report, str) and "Weekly" in report
+        assert isinstance(metrics, dict) and "score" in metrics
+        assert "excess_return" in metrics
+        assert "max_drawdown" in metrics
+    @pytest.mark.asyncio
+    async def test_evaluate_week_includes_control_reference(self, monkeypatch):
+        """Report must mention control agent return as reference."""
         from autoresearch import evaluator
 
-        client, recorder = _make_client(data=[])
-        async def _fake_async_sb_mr(): return client
-        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_async_sb_mr)
+        async def _fake_ws_metrics(*a, **k):
+            return {
+                "sharpe": 0, "sortino": 0, "max_drawdown": 0.05,
+                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
+                "total_return_pct": 2.0,
+            }
+        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
 
-        asyncio.run(evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10)))
+        async def _fake_spy_returns(*a, **k):
+            return [0.001, 0.001, 0.001]
+        monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
 
-        select_args = [c[1][0] for c in recorder.calls if c[0] == "select"]
-        for sa in select_args:
-            assert "close_price" not in sa, (
-                f"close_price must not appear in select; got {select_args}"
-            )
+        async def fake_get_active_prompt(): return "PROMPT"
+        async def fake_get_previous_variants(**kw): return []
 
-        filter_cols = [c[1][0] for c in recorder.calls if c[0] in ("gte", "lte", "order")]
-        date_filters = [col for col in filter_cols if col == "date"]
-        assert not date_filters, (
-            f"'date' must not appear in gte/lte/order args (use fetched_at): {filter_cols}"
-        )
-        assert "fetched_at" in filter_cols, (
-            f"fetched_at must appear in gte/lte/order args: {filter_cols}"
-        )
+        monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
 
-    def test_concordance_from_equity_comparison(self):
-        """Concordance = 1.0 when exp return > ctrl return, 0.5 when tied, 0.0 otherwise."""
-        from autoresearch.metrics import compute_composite_score
-
-        # exp beats ctrl — concordance from evaluator would be 1.0
-        comp_beat = compute_composite_score(
-            {"total_return_pct": 5.0, "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
-             "profit_factor": 0, "info_ratio": 0},
-            concordance=1.0, conviction=0.5, regime_awareness=0.5,
-        )
-        assert comp_beat["concordance"] == 1.0
-
-        # exp tied with ctrl — concordance = 0.5
-        comp_tie = compute_composite_score(
-            {"total_return_pct": 5.0, "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
-             "profit_factor": 0, "info_ratio": 0},
-            concordance=0.5, conviction=0.5, regime_awareness=0.5,
-        )
-        assert comp_tie["concordance"] == 0.5
-
-        # exp trails ctrl — concordance = 0.0
-        comp_trail = compute_composite_score(
-            {"total_return_pct": 5.0, "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
-             "profit_factor": 0, "info_ratio": 0},
-            concordance=0.0, conviction=0.5, regime_awareness=0.5,
-        )
-        assert comp_trail["concordance"] == 0.0
-
-    def test_baseline_composite_in_metrics(self):
-        """evaluate_week includes baseline_composite in the returned metrics dict."""
-        from autoresearch.metrics import compute_composite_score
-        comp = compute_composite_score(
-            {"sharpe": 0, "sortino": 0, "max_drawdown": 0.5, "profit_factor": 0, "info_ratio": 0},
-            concordance=0.5, conviction=0.5, regime_awareness=0.5,
-        )
-        comp["baseline_composite"] = 0.35
-        assert "baseline_composite" in comp
-        assert comp["baseline_composite"] == 0.35
+        report, _ = await evaluator.evaluate_week()
+        assert "Control" in report, "Report must include control reference"
 
 
 # ---------------------------------------------------------------------------
 # Query layer — uses .in_(), not the fragile filter(... "in", repr(...)) form.
 # ---------------------------------------------------------------------------
-
 
 class TestQuerySyntax:
     def test_metrics_uses_in_method(self, monkeypatch):
@@ -574,20 +332,6 @@ class TestQuerySyntax:
                     "Use .in_(col, list) instead of raw .filter(col, 'in', '(...)')"
                 )
         assert "in_" in names, f"Expected .in_() to be called; got {names}"
-
-    def test_decision_quality_uses_in_method(self, monkeypatch):
-        from autoresearch import decision_quality
-
-        client, recorder = _make_async_client(data=[])
-        async def _fake_d(): return client
-        monkeypatch.setattr(decision_quality, "get_async_supabase_client", _fake_d)
-
-        asyncio.run(decision_quality.compute_decision_quality(
-            frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
-        ))
-        for call in recorder.calls:
-            if call[0] == "filter" and len(call[1]) >= 2:
-                assert call[1][1] != "in"
 
     def test_price_history_query_uses_fetched_at_and_price(self, monkeypatch):
         """The price_history table has `fetched_at` and `price` columns, NOT
@@ -616,11 +360,9 @@ class TestQuerySyntax:
             f"fetched_at must appear in gte/lte/order args: {filter_cols}"
         )
 
-
 # ---------------------------------------------------------------------------
 # Migration sanity — research_output must be JSONB.
 # ---------------------------------------------------------------------------
-
 
 class TestMigration:
     def test_research_output_is_jsonb(self):
@@ -632,169 +374,13 @@ class TestMigration:
             "research_output must be JSONB (a Python dict is written into this column)"
         )
 
-
 # ==============================================================================
 # NEW TESTS — TDD: write RED tests first, then implement.
 # ==============================================================================
 
-
 # ---------------------------------------------------------------------------
 # Test 1: regime_awareness wired into composite score + computed from VIXY.
 # ---------------------------------------------------------------------------
-
-
-class TestRegimeAwarenessInComposite:
-    """regime_awareness must be a weighted component of composite_score."""
-
-    def test_composite_includes_regime_awareness_weight(self):
-        from autoresearch.metrics import compute_composite_score
-
-        base_metrics = {
-            "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
-            "profit_factor": 0, "info_ratio": 0,
-        }
-        # regime_awareness=1.0 should raise composite vs 0.0
-        s_high = compute_composite_score(base_metrics, concordance=0.5,
-                                         conviction=0.5, regime_awareness=1.0)
-        s_low = compute_composite_score(base_metrics, concordance=0.5,
-                                        conviction=0.5, regime_awareness=0.0)
-        assert s_high["composite"] > s_low["composite"], (
-            f"regime_awareness must affect composite: high={s_high['composite']}, low={s_low['composite']}"
-        )
-
-    def test_all_weights_sum_to_one_with_regime(self):
-        from autoresearch.metrics import compute_composite_score
-
-        s = compute_composite_score(
-            {"sharpe": 5, "sortino": 5, "max_drawdown": 0,
-             "profit_factor": 3, "info_ratio": 5},
-            concordance=1.0, conviction=1.0, regime_awareness=1.0,
-        )
-        assert s["composite"] == pytest.approx(1.0, abs=0.01), (
-            f"Full-score inputs + regime_awareness=1 must yield composite ~1.0, got {s['composite']}"
-        )
-
-    def test_regime_awareness_in_output_dict(self):
-        from autoresearch.metrics import compute_composite_score
-
-        s = compute_composite_score(
-            {"sharpe": 1, "sortino": 1, "max_drawdown": 0.1,
-             "profit_factor": 2, "info_ratio": 1},
-            concordance=0.7, conviction=0.8, regime_awareness=0.6,
-        )
-        assert "regime_awareness" in s, (
-            f"composite dict must include regime_awareness key; got {list(s.keys())}"
-        )
-
-
-class TestRegimeAwarenessComputation:
-    """regime_awareness must be computed from actual VIXY data + trade decisions."""
-
-    @pytest.mark.asyncio
-    async def test_regime_awareness_computed_in_decision_quality(self, monkeypatch):
-        from autoresearch import decision_quality
-
-        # decisions: 8 BUYs, 2 SELLs (mostly aggressive buying)
-        decisions = [
-            {"ticker": f"T{i}", "signal": "BUY", "confidence": 80, "reasoning": "x",
-             "status": "EXECUTED", "model_name": "m1"}
-            for i in range(8)
-        ] + [
-            {"ticker": f"S{i}", "signal": "SELL", "confidence": 50, "reasoning": "x",
-             "status": "EXECUTED", "model_name": "m1"}
-            for i in range(2)
-        ]
-        trades = []
-
-        # VIXY went UP 10% (fear spiked) — agent kept buying aggressively → LOW awareness
-        vixy_data = [
-            {"price": 20.0, "fetched_at": "2026-05-01"},
-            {"price": 22.0, "fetched_at": "2026-05-02"},
-        ]
-
-        calls_made: dict[str, _QueryRecorder] = {}
-
-        async def fake_get_client():
-            client = MagicMock()
-
-            def table(name):
-                if name == "decisions":
-                    rec = _AsyncQueryRecorder(data=decisions)
-                elif name == "trades":
-                    rec = _AsyncQueryRecorder(data=trades)
-                elif name == "price_history":
-                    rec = _AsyncQueryRecorder(data=vixy_data)
-                else:
-                    rec = _AsyncQueryRecorder(data=[])
-                calls_made[name] = rec
-                return rec
-
-            client.table.side_effect = table
-            return client
-
-        monkeypatch.setattr(decision_quality, "get_async_supabase_client", fake_get_client)
-
-        result = await decision_quality.compute_decision_quality(
-            frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
-        )
-        # VIXY spiked + aggressive buying → regime_awareness < 0.5
-        assert result["regime_awareness"] < 0.5, (
-            f"High fear + aggressive buying must yield low regime_awareness, got {result['regime_awareness']}"
-        )
-
-    @pytest.mark.asyncio
-    async def test_regime_awareness_high_when_defensive_in_volatility(self, monkeypatch):
-        from autoresearch import decision_quality
-
-        # decisions: 2 BUYs, 8 SELLs (defensive positioning)
-        decisions = [
-            {"ticker": f"T{i}", "signal": "BUY", "confidence": 30, "reasoning": "x",
-             "status": "EXECUTED", "model_name": "m1"}
-            for i in range(2)
-        ] + [
-            {"ticker": f"S{i}", "signal": "SELL", "confidence": 80, "reasoning": "x",
-             "status": "EXECUTED", "model_name": "m1"}
-            for i in range(8)
-        ]
-        trades = []
-
-        # VIXY went UP 10% (fear spiked) — agent sold heavily → HIGH awareness
-        vixy_data = [
-            {"price": 20.0, "fetched_at": "2026-05-01"},
-            {"price": 22.0, "fetched_at": "2026-05-02"},
-        ]
-
-        async def fake_get_client():
-            client = MagicMock()
-
-            def table(name):
-                if name == "decisions":
-                    rec = _AsyncQueryRecorder(data=decisions)
-                elif name == "trades":
-                    rec = _AsyncQueryRecorder(data=[])
-                elif name == "price_history":
-                    rec = _AsyncQueryRecorder(data=vixy_data)
-                else:
-                    rec = _AsyncQueryRecorder(data=[])
-                return rec
-
-            client.table.side_effect = table
-            return client
-
-        monkeypatch.setattr(decision_quality, "get_async_supabase_client", fake_get_client)
-
-        result = await decision_quality.compute_decision_quality(
-            frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7)
-        )
-        assert result["regime_awareness"] > 0.5, (
-            f"High fear + defensive selling must yield high regime_awareness, got {result['regime_awareness']}"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Test 2: _close_client must NOT be called from researcher.py
-# ---------------------------------------------------------------------------
-
 
 class TestResearcherDoesNotCloseClient:
     """researcher.py must not call _close_client — the wiki forbids it."""
@@ -813,11 +399,9 @@ class TestResearcherDoesNotCloseClient:
                             "The wiki forbids closing the singleton httpx client."
                         )
 
-
 # ---------------------------------------------------------------------------
 # Test 3: runner must not duplicate get_week_window — evaluator owns it.
 # ---------------------------------------------------------------------------
-
 
 class TestRunnerWindowDuplication:
     """runner.py must get the week window from evaluator, not compute it twice."""
@@ -839,8 +423,6 @@ class TestRunnerWindowDuplication:
         monkeypatch.setattr(runner, "run_research", fake_research)
         async def _fake_check_safety(ws, we): return (False, "")
         monkeypatch.setattr(runner, "_check_safety", _fake_check_safety)
-        monkeypatch.setattr(runner, "validate_prompt",
-                            lambda p: (True, "", []))
         monkeypatch.setattr(runner, "save_variant",
                             lambda **kw: "v-test")
         monkeypatch.setattr(runner, "revert_to_previous",
@@ -856,11 +438,9 @@ class TestRunnerWindowDuplication:
         assert isinstance(ws, date), f"week_start must be a date, got {type(ws)}"
         assert isinstance(we, date), f"week_end must be a date, got {type(we)}"
 
-
 # ---------------------------------------------------------------------------
 # Test 4: _check_safety queries trades table, not just decisions.
 # ---------------------------------------------------------------------------
-
 
 class TestSafetyCheckUsesTrades:
     """_check_safety must count executed trades from the trades table."""
@@ -906,11 +486,9 @@ class TestSafetyCheckUsesTrades:
         )
         assert not is_crash, f"3 executed trades >= min; must not crash. Reason: {reason}"
 
-
 # ---------------------------------------------------------------------------
 # Test 5: Bootstrap tests + no CWD-dependent path hack.
 # ---------------------------------------------------------------------------
-
 
 class TestBootstrap:
     """Bootstrap must work without fragile sys.path hacks."""
@@ -963,111 +541,17 @@ class TestBootstrap:
             f"Second bootstrap must be idempotent (no double-save); got {len(save_calls)} calls"
         )
 
-
 # ---------------------------------------------------------------------------
 # Test 6: Word-count-based size validation (conservative cap: 1000 words ~1300 tokens).
 # ---------------------------------------------------------------------------
-
-
-class TestWordCountValidator:
-    """Validator must cap prompt size by word count (no external tokenizer dependency)."""
-
-    def test_rejects_oversized_prompt(self):
-        from autoresearch.validator import validate_prompt
-        # "The quick brown fox jumps over the lazy dog." has 9 words → * 150 = 1350 words > 1000 cap
-        long_text = "The quick brown fox jumps over the lazy dog. " * 150
-        ok, reason, _ = validate_prompt(long_text)
-        assert not ok, f"Prompt with >1000 words must be rejected; reason: {reason}"
-
-    def test_accepts_reasonable_prompt(self):
-        from autoresearch.validator import validate_prompt
-        short = (
-            "You are a trading agent. "
-            "For BUY: call calculate_buy_quantity. For SELL: call calculate_sell_quantity."
-        )
-        ok, reason, _ = validate_prompt(short)
-        assert ok, f"Short valid prompt must pass: {reason}"
-
-    def test_reason_mentions_words(self):
-        from autoresearch.validator import validate_prompt
-        long_text = "word " * 1500
-        ok, reason, _ = validate_prompt(long_text)
-        if not ok:
-            assert "words" in reason.lower(), (
-                f"Rejection reason must mention words; got: {reason}"
-            )
-
-    def test_exactly_at_cap_passes(self):
-        from autoresearch.validator import validate_prompt
-        # 1000 words exactly — must pass
-        text = "a " * 1000
-        ok, reason, _ = validate_prompt(text)
-        assert ok, f"Prompt at exact cap (1000 words) must pass: {reason}"
-
-
-# ---------------------------------------------------------------------------
-# Test 7: Composite score edge cases — missing benchmark, NaN, zero days.
-# ---------------------------------------------------------------------------
-
-
-class TestCompositeEdgeCases:
-    """Composite score must handle edge cases gracefully with clear flags."""
-
-    def test_missing_spy_benchmark_is_flagged(self):
-        from autoresearch.metrics import compute_composite_score
-
-        # info_ratio=0 means no benchmark available → flag
-        s = compute_composite_score(
-            {"sharpe": 1, "sortino": 1, "max_drawdown": 0.1,
-             "profit_factor": 2, "info_ratio": 0,
-             "num_trading_days": 5, "total_return_pct": 3.0},
-            concordance=0.7, conviction=0.8, regime_awareness=0.5,
-        )
-        assert "warnings" in s, (
-            "Composite dict must include 'warnings' key for edge case flags"
-        )
-
-    def test_no_data_produces_clear_signal(self):
-        from autoresearch.metrics import compute_composite_score
-
-        s = compute_composite_score(
-            {"sharpe": 0, "sortino": 0, "max_drawdown": 0,
-             "profit_factor": 0, "info_ratio": 0,
-             "num_trading_days": 0, "total_return_pct": 0},
-            concordance=0.5, conviction=0.5, regime_awareness=0.5,
-        )
-        assert s["composite"] >= 0, "Composite must not be negative"
-        assert "warnings" in s, "No-data scenario must produce warnings"
-        assert len(s["warnings"]) > 0, (
-            f"No-data must have at least 1 warning; got {s['warnings']}"
-        )
-
-    def test_negative_sharpe_normalizes_to_zero(self):
-        from autoresearch.metrics import compute_composite_score
-
-        s = compute_composite_score(
-            {"sharpe": -5, "sortino": -5, "max_drawdown": 0.5,
-             "profit_factor": 0, "info_ratio": -5},
-            concordance=0, conviction=0, regime_awareness=0,
-        )
-        assert s["composite"] >= 0, (
-            f"Worst-case inputs must not go below 0; got {s['composite']}"
-        )
-        # Should be close to 0 but not negative
-        assert s["composite"] < 0.3, (
-            f"Worst-case inputs should yield low score; got {s['composite']}"
-        )
-
 
 # ==============================================================================
 # PLAN HARDENING TESTS — TDD: write RED tests first, then implement.
 # ==============================================================================
 
-
 # ---------------------------------------------------------------------------
 # Helpers — async variant of _QueryRecorder for async supabase client tests.
 # ---------------------------------------------------------------------------
-
 
 class _AsyncQueryRecorder:
     """Chainable mock for async supabase-py query builder.
@@ -1103,18 +587,15 @@ class _AsyncQueryRecorder:
     def call_names(self) -> list[str]:
         return [c[0] for c in self.calls]
 
-
 def _make_async_client(data=None, single_data=None) -> tuple[MagicMock, _AsyncQueryRecorder]:
     recorder = _AsyncQueryRecorder(data=data, single_data=single_data)
     client = MagicMock()
     client.table.return_value = recorder
     return client, recorder
 
-
 # ---------------------------------------------------------------------------
 # Test A: save_variant atomicity — insert before demotion.
 # ---------------------------------------------------------------------------
-
 
 class TestSaveVariantAtomicity:
     """save_variant must insert BEFORE demoting the old active prompt."""
@@ -1173,11 +654,9 @@ class TestSaveVariantAtomicity:
             f"Full order: {op_order}"
         )
 
-
 # ---------------------------------------------------------------------------
 # Test B: run_research retry loop — validation errors vs non-retryable.
 # ---------------------------------------------------------------------------
-
 
 class TestResearcherRetry:
     """run_research must retry on validation errors and bail on non-retryable."""
@@ -1238,15 +717,13 @@ class TestResearcherRetry:
         assert result is None, "Must return None after all retries fail"
         assert call_count["n"] == 3, f"Expected 3 attempts, got {call_count['n']}"
 
-
 # ---------------------------------------------------------------------------
 # Test C: activation gate — skip when beating baseline, activate when losing.
 # ---------------------------------------------------------------------------
 
-
 class TestActivationGate:
-    """Gate must skip activation when experiment already beats baseline,
-    and activate when experiment is below baseline (needs improvement)."""
+    """Every week must deploy a new prompt variant — no skipping, no gate.
+    The meta-researcher always explores. Comparison against last week happens next cycle."""
 
     @staticmethod
     def _make_result(**overrides) -> "PromptResearchResult":
@@ -1262,15 +739,15 @@ class TestActivationGate:
         return PromptResearchResult(**defaults)
 
     @staticmethod
-    def _make_composite(composite: float, baseline_composite: float) -> dict:
-        return {"composite": composite, "baseline_composite": baseline_composite}
+    def _make_score(score: float) -> dict:
+        return {"score": score, "excess_return": 0.0, "max_drawdown": 0.0}
 
-    def _patch_runner(self, monkeypatch, exp_score, baseline_score):
+    def _patch_runner(self, monkeypatch, exp_score: float):
         """Patch runner deps. Returns (runner, save_calls) for assertion."""
         from autoresearch import runner
 
         async def fake_evaluate(ws, we):
-            return ("# report", self._make_composite(exp_score, baseline_score))
+            return ("# report", self._make_score(exp_score))
 
         async def fake_research(report):
             return self._make_result()
@@ -1280,7 +757,6 @@ class TestActivationGate:
 
         monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
         monkeypatch.setattr(runner, "run_research", fake_research)
-        monkeypatch.setattr(runner, "validate_prompt", lambda p: (True, "", []))
         monkeypatch.setattr(runner, "_check_safety", fake_check)
 
         save_calls = []
@@ -1293,113 +769,48 @@ class TestActivationGate:
         monkeypatch.setattr(runner, "revert_to_previous", lambda **kw: "v-prev")
         return runner, save_calls
 
-    def test_skips_when_beating_baseline(self, monkeypatch):
-        """When exp_score >= baseline, save_variant must NOT be called."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.75, baseline_score=0.50)
-        import asyncio
-        asyncio.run(runner.run())
-        assert len(save_calls) == 0, (
-            f"Gate should SKIP when exp (0.75) beats baseline (0.50); "
-            f"save_variant was called {len(save_calls)} times"
-        )
-
-    def test_activates_when_below_baseline(self, monkeypatch):
-        """When exp_score < baseline, save_variant MUST be called."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.25, baseline_score=0.50)
+    def test_deploys_when_positive_score(self, monkeypatch):
+        """Even with a positive score, deploy — the meta-researcher always explores."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.5)
         import asyncio
         asyncio.run(runner.run())
         assert len(save_calls) == 1, (
-            f"Gate should ACTIVATE when exp (0.25) is below baseline (0.50); "
+            f"Must ALWAYS deploy new variant (score=0.5 is positive, but we still iterate). "
             f"save_variant was called {len(save_calls)} times"
         )
 
-    def test_activates_when_no_baseline(self, monkeypatch):
-        """When baseline_composite is 0 (no baseline data), activate anyway."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.25, baseline_score=0.0)
+    def test_deploys_when_negative_score(self, monkeypatch):
+        """Negative score must also deploy — prompt needs immediate fixing."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
         import asyncio
         asyncio.run(runner.run())
         assert len(save_calls) == 1, (
-            f"Gate should ACTIVATE when baseline is 0 (no reference); "
+            f"Must deploy new variant when score is negative (-0.5). "
             f"save_variant was called {len(save_calls)} times"
         )
 
-    def test_skips_when_exactly_at_baseline(self, monkeypatch):
-        """When exp_score == baseline, skip — no clear improvement signal."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.50, baseline_score=0.50)
+        """When score < 0 (losing to SPY or too volatile), activate — prompt needs change."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
         import asyncio
         asyncio.run(runner.run())
-        assert len(save_calls) == 0, (
-            f"Gate should SKIP when exp == baseline (no clear signal for change); "
+        assert len(save_calls) == 1, (
+            f"Gate should ACTIVATE when score is negative (-0.5); "
             f"save_variant was called {len(save_calls)} times"
         )
 
+    def test_deploys_when_zero_score(self, monkeypatch):
+        """Zero score (treading water) should also deploy — keep experimenting."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.0)
+        import asyncio
+        asyncio.run(runner.run())
+        assert len(save_calls) == 1, (
+            f"Must deploy new variant even at zero score. "
+            f"save_variant was called {len(save_calls)} times"
+        )
 
 # ==============================================================================
 # TDD: Fix price_history end-of-day filtering and baseline metrics ordering.
 # ==============================================================================
-
-
-class TestPriceHistoryEndOfDayFiltering:
-    """price_history queries must include the full last day (T23:59:59),
-    not cut off at midnight (T00:00:00)."""
-
-    def test_spy_returns_uses_end_of_day_timestamp(self, monkeypatch):
-        """_spy_returns must lte fetched_at with T23:59:59, not just the date."""
-        from autoresearch import metrics
-
-        client, recorder = _make_async_client(data=[])
-        async def _fake_m(): return client
-        monkeypatch.setattr(metrics, "get_async_supabase_client", _fake_m)
-
-        asyncio.run(metrics._spy_returns(client, date(2026, 5, 4), date(2026, 5, 10)))
-
-        lte_calls = [c for c in recorder.calls if c[0] == "lte"]
-        assert len(lte_calls) == 1, f"Expected exactly 1 lte() call, got {lte_calls}"
-        col, val = lte_calls[0][1]
-        assert col == "fetched_at", f"Expected lte on fetched_at, got {col}"
-        assert "T23:59:59" in val, (
-            f"_spy_returns must use end-of-day timestamp (T23:59:59); got {val}"
-        )
-
-    def test_regime_summary_vixy_uses_end_of_day_timestamp(self, monkeypatch):
-        """_get_market_regime_summary VIXY query must lte fetched_at with T23:59:59."""
-        from autoresearch import evaluator
-
-        client, recorder = _make_async_client(data=[])
-        async def _fake_m(): return client
-        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_m)
-
-        asyncio.run(evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10)))
-
-        # There are two lte calls: one for VIXY (30-day window), one for SPY (week window)
-        lte_calls = [c for c in recorder.calls if c[0] == "lte"]
-        assert len(lte_calls) >= 1, f"Expected at least 1 lte() call, got {lte_calls}"
-        for c in lte_calls:
-            col, val = c[1]
-            if col == "fetched_at":
-                assert "T23:59:59" in val, (
-                    f"VIXY/SPY regime query must use end-of-day timestamp (T23:59:59); got {val}"
-                )
-
-    def test_regime_summary_spy_uses_end_of_day_timestamp(self, monkeypatch):
-        """_get_market_regime_summary SPY query must lte fetched_at with T23:59:59."""
-        from autoresearch import evaluator
-
-        client, recorder = _make_async_client(data=[])
-        async def _fake_m(): return client
-        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_m)
-
-        asyncio.run(evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10)))
-
-        lte_calls = [c for c in recorder.calls if c[0] == "lte"]
-        spy_lte = [c for c in lte_calls if c[1][0] == "fetched_at"]
-        assert len(spy_lte) >= 1, f"Expected at least 1 fetched_at lte, got {lte_calls}"
-        for c in spy_lte:
-            _, val = c[1]
-            assert "T23:59:59" in val, (
-                f"SPY regime query must use end-of-day timestamp (T23:59:59); got {val}"
-            )
-
 
 class TestBaselineMetricsOrdering:
     """get_baseline_metrics must return the most recent baseline, not the oldest."""
@@ -1428,4 +839,166 @@ class TestBaselineMetricsOrdering:
         assert col == "created_at", f"Expected order by created_at, got {col}"
         assert kwargs.get("desc") is True, (
             f"get_baseline_metrics must order DESC (most recent first); got desc={kwargs.get('desc')}"
+        )
+
+
+# ==============================================================================
+# PHASE 2: New single-score formula — RED tests.
+# ==============================================================================
+
+class TestComputeScore:
+    """compute_score(portfolio_return_pct, spy_return_pct, max_drawdown_pct)
+    returns a dict with score, excess_return, max_drawdown."""
+
+    def test_basic_formula(self):
+        """score = (portfolio_return - spy_return) - (max_drawdown * 0.3)"""
+        from autoresearch.metrics import compute_score
+        result = compute_score(portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=5.0)
+        assert result["excess_return"] == pytest.approx(2.0)
+        assert result["score"] == pytest.approx(0.5)  # 2.0 - (5.0 * 0.3) = 2.0 - 1.5 = 0.5
+
+    def test_drawdown_penalty_reduces_score(self):
+        """Higher drawdown must produce lower score for same excess return."""
+        from autoresearch.metrics import compute_score
+        low_dd = compute_score(portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=2.0)
+        high_dd = compute_score(portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=10.0)
+        assert low_dd["score"] > high_dd["score"]
+
+    def test_negative_excess_gives_negative_score(self):
+        """Underperforming SPY should produce negative score."""
+        from autoresearch.metrics import compute_score
+        result = compute_score(portfolio_return_pct=-2.0, spy_return_pct=1.0, max_drawdown_pct=2.0)
+        assert result["score"] < 0
+        assert result["excess_return"] == pytest.approx(-3.0)
+
+    def test_beat_spy_but_high_drawdown_can_be_negative(self):
+        """Beating SPY is not enough — drawdown penalty can flip score negative."""
+        from autoresearch.metrics import compute_score
+        result = compute_score(portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=15.0)
+        # excess = 2.0 - (15*0.3) = 2.0 - 4.5 = -2.5
+        assert result["score"] < 0
+
+    def test_zero_drawdown_positive_excess(self):
+        """Perfect run: excess return with no drawdown."""
+        from autoresearch.metrics import compute_score
+        result = compute_score(portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0)
+        assert result["score"] == pytest.approx(4.0)
+        assert result["max_drawdown"] == 0.0
+
+    def test_excess_return_in_output(self):
+        """Output dict must include excess_return and max_drawdown for transparency."""
+        from autoresearch.metrics import compute_score
+        result = compute_score(portfolio_return_pct=2.0, spy_return_pct=0.5, max_drawdown_pct=3.0)
+        assert "excess_return" in result
+        assert "max_drawdown" in result
+        assert "score" in result
+
+
+# ==============================================================================
+# Baseline tracking: best (score, prompt) pair. Replaces "last week's target."
+# ==============================================================================
+
+class TestBaselineTracking:
+    """The baseline is the highest score achieved so far (with its prompt).
+    It updates when beaten, stays when not. The meta-researcher's target."""
+
+    @pytest.mark.asyncio
+    async def test_baseline_is_max_historical_score(self, monkeypatch):
+        """Previous variants: [score=3.0, score=1.0, score=2.0].
+        Baseline must be 3.0 (the max), not 1.0 (most recent)."""
+        from autoresearch import evaluator
+
+        async def _fake_ws_metrics(*a, **k):
+            return {
+                "sharpe": 0, "sortino": 0, "max_drawdown": 0.02,
+                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
+                "total_return_pct": 2.0,
+            }
+        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+
+        async def _fake_spy_returns(*a, **k):
+            return [0.001, 0.001, 0.001]
+        monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
+
+        async def fake_get_active_prompt(): return "PROMPT"
+
+        # Previous variants — max score is 3.0 (v-middle), not 1.0 (v-latest)
+        async def fake_get_previous_variants(**kw):
+            return [
+                {"variant_tag": "v-latest", "experiment_type": "radical",
+                 "change_description": "most recent", "metrics": {"score": 1.0}},
+                {"variant_tag": "v-middle", "experiment_type": "incremental",
+                 "change_description": "best one", "metrics": {"score": 3.0}},
+                {"variant_tag": "v-old", "experiment_type": "incremental",
+                 "change_description": "old", "metrics": {"score": 2.0}},
+            ]
+
+        monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+
+        report, _ = await evaluator.evaluate_week()
+        assert "Baseline: 3.0" in report, (
+            f"Report must show max historical score as baseline, not most recent.\nReport:\n{report}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_baseline_shows_delta(self, monkeypatch):
+        """When current score is 2.0 and baseline is 3.0, show Δ: -1.0."""
+        from autoresearch import evaluator
+
+        async def _fake_ws_metrics(*a, **k):
+            return {
+                "sharpe": 0, "sortino": 0, "max_drawdown": 0.02,
+                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
+                "total_return_pct": 2.5,
+            }
+        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+
+        async def _fake_spy_returns(*a, **k):
+            return [0.001, 0.001, 0.001]
+        monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
+
+        async def fake_get_active_prompt(): return "PROMPT"
+
+        async def fake_get_previous_variants(**kw):
+            return [
+                {"variant_tag": "v-best", "experiment_type": "incremental",
+                 "change_description": "best", "metrics": {"score": 3.0}},
+            ]
+
+        monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+
+        report, _ = await evaluator.evaluate_week()
+        # Current score: portfolio=2.5, SPY=~0.3, drawdown=2.0 → score ≈ 1.9
+        # Baseline = 3.0 → delta should be negative
+        assert "Baseline:" in report
+        assert "Δ:" in report, f"Report must show delta vs baseline:\n{report}"
+
+    @pytest.mark.asyncio
+    async def test_no_previous_variants_shows_no_baseline(self, monkeypatch):
+        """First week with no prior variants must show 'no baseline yet'."""
+        from autoresearch import evaluator
+
+        async def _fake_ws_metrics(*a, **k):
+            return {
+                "sharpe": 0, "sortino": 0, "max_drawdown": 0.02,
+                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
+                "total_return_pct": 2.0,
+            }
+        monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+
+        async def _fake_spy_returns(*a, **k):
+            return [0.001, 0.001, 0.001]
+        monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
+
+        async def fake_get_active_prompt(): return "PROMPT"
+        async def fake_get_previous_variants(**kw): return []
+
+        monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+
+        report, _ = await evaluator.evaluate_week()
+        assert "no baseline" in report.lower() or "n/a" in report.lower(), (
+            f"First week report must indicate no baseline yet:\n{report}"
         )

@@ -368,3 +368,7 @@ beats the baseline (no change needed), activate when it's below (prompt needs
 improvement). Result tag changed from `SKIPPED_NO_IMPROVEMENT` to
 `SKIPPED_ALREADY_WINNING` to reflect the new semantics. Both dry-run and
 real-run paths updated.
+
+## [2026-05-12] refactor | Removed soft invariant enforcement from auto-research prompt validator
+
+The auto-research prompt validator previously enforced soft invariants (presence of "calculate_buy_quantity", "calculate_sell_quantity", "5 Whys") with warnings. These have been removed to make the prompt an experiment space. Only hard invariants (forbidden patterns, empty/oversized prompts) remain. The `program.md` constraints were also simplified to match.

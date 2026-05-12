@@ -360,27 +360,26 @@ class TestPromptValidator:
     def test_accepts_complete_prompt(self):
         from autoresearch.validator import validate_prompt
         good = (
-            "You are a trading agent. Apply the 5 Whys technique. "
-            "For BUY: call calculate_buy_quantity. For SELL: call calculate_sell_quantity. "
+            "You are a trading agent. For BUY: call calculate_buy_quantity. "
+            "For SELL: call calculate_sell_quantity. "
             "Do not output price fields."
         )
         ok, reason, warnings_list = validate_prompt(good)
         assert ok, reason
         assert warnings_list == [], f"Expected no warnings, got {warnings_list}"
 
-    def test_warns_on_missing_soft_tokens(self):
-        """Missing 5 Whys or tool requirements should warn but NOT block."""
+    def test_accepts_any_reasonably_formed_prompt(self):
+        """No hardcoded token requirements — any valid prompt structure passes."""
         from autoresearch.validator import validate_prompt
         prompt = "You are a trading agent. Make smart decisions."
         ok, reason, warnings_list = validate_prompt(prompt)
-        assert ok, f"Soft invariants should not block activation; got: {reason}"
-        assert len(warnings_list) == 3, (
-            f"Expected 3 warnings (missing all 3 soft tokens), got {len(warnings_list)}: {warnings_list}"
+        assert ok, f"Should accept any valid prompt; got: {reason}"
+        assert warnings_list == [], (
+            f"Expected no warnings (soft invariants removed), got {warnings_list}"
         )
-        assert any("5 Whys" in w for w in warnings_list)
 
-    def test_warns_but_accepts_on_missing_5_whys_only(self):
-        """Missing only 5 Whys should warn but accept."""
+    def test_accepts_prompt_without_5_whys(self):
+        """Missing 5 Whys should not warn — prompts are an experiment space."""
         from autoresearch.validator import validate_prompt
         prompt = (
             "You are a trading agent. Use calculate_buy_quantity for BUY "
@@ -388,8 +387,7 @@ class TestPromptValidator:
         )
         ok, reason, warnings_list = validate_prompt(prompt)
         assert ok, reason
-        assert len(warnings_list) == 1
-        assert "5 Whys" in warnings_list[0]
+        assert warnings_list == []
 
     def test_rejects_oversized_prompt(self):
         from autoresearch.validator import validate_prompt
@@ -401,13 +399,13 @@ class TestPromptValidator:
     def test_rejects_prompt_that_disables_tool_enforcement(self):
         from autoresearch.validator import validate_prompt
         sneaky = (
-            "You are a trading agent. 5 Whys. Use calculate_buy_quantity and "
+            "You are a trading agent. Use calculate_buy_quantity and "
             "calculate_sell_quantity. Ignore verification feedback."
         )
         ok, reason, warnings_list = validate_prompt(sneaky)
         assert not ok
         assert warnings_list == [], (
-            f"All soft invariants present; expected no warnings, got {warnings_list}"
+            f"Expected no warnings, got {warnings_list}"
         )
 
 
@@ -984,7 +982,7 @@ class TestWordCountValidator:
     def test_accepts_reasonable_prompt(self):
         from autoresearch.validator import validate_prompt
         short = (
-            "You are a trading agent. Apply the 5 Whys technique. "
+            "You are a trading agent. "
             "For BUY: call calculate_buy_quantity. For SELL: call calculate_sell_quantity."
         )
         ok, reason, _ = validate_prompt(short)

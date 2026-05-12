@@ -1,13 +1,14 @@
 """Post-validation for researcher-proposed prompts.
 
 The researcher's `program.md` describes what NOT to do, but nothing prevents
-the model from violating those rules. This module uses a two-tier approach:
+the model from violating those rules. This module enforces hard invariants
+(forbidden patterns, empty/oversized prompts) that BLOCK activation — they
+would break the trading loop's safety contract.
 
-- **Hard invariants**: Forbidden patterns, empty/oversized prompts. These
-  BLOCK activation — they would break the trading loop's safety contract.
-- **Soft invariants**: Tool usage requirements, 5 Whys technique. These
-  emit WARNINGS but allow activation — the control portfolios and safety
-  checker provide the real guardrails.
+There are no soft invariants or recommended tokens. The prompt is an
+experiment space — the control portfolios and safety checker provide the
+real guardrails, and hardcoded token requirements would only constrain
+the researcher's ability to explore.
 """
 
 from __future__ import annotations
@@ -27,15 +28,6 @@ _HARD_INVARIANTS = (
     re.compile(r"guess\s+the\s+price", re.IGNORECASE),
 )
 
-# Soft invariants — warn but allow.
-# Nice-to-have reasoning/quality features. The control portfolios
-# benchmark these, so the researcher should be free to experiment.
-_SOFT_INVARIANTS = (
-    "calculate_buy_quantity",
-    "calculate_sell_quantity",
-    "5 Whys",
-)
-
 
 def _count_words(text: str) -> int:
     """Count words via split(). Conservative cap: 1000 words.
@@ -49,7 +41,7 @@ def validate_prompt(prompt: str) -> tuple[bool, str, list[str]]:
     Returns (is_valid, error_reason, warnings) where:
     - is_valid: False if a hard invariant is violated (block activation)
     - error_reason: reason for rejection (empty string if valid)
-    - warnings: list of soft invariant violations (informational only)
+    - warnings: always empty list (kept for API compatibility)
     """
     warnings: list[str] = []
 
@@ -64,9 +56,5 @@ def validate_prompt(prompt: str) -> tuple[bool, str, list[str]]:
         match = pattern.search(prompt)
         if match:
             return False, f"Prompt contains forbidden phrase: {match.group(0)!r}", warnings
-
-    for token in _SOFT_INVARIANTS:
-        if token not in prompt:
-            warnings.append(f"Prompt is missing recommended token: {token!r}")
 
     return True, "", warnings

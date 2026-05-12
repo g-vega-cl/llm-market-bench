@@ -8,7 +8,7 @@ import argparse
 import asyncio
 from collections import defaultdict
 
-from analysis.analyze import analyze_chunks, analyze_chunks_streaming
+from analysis.analyze import analyze_chunks
 from analysis.consensus import process_consensus
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
@@ -32,7 +32,6 @@ from execution.portfolio import Portfolio
 from ingest.newsletter import ingest_newsletters
 from ingest.government import run_government_pipeline
 from ingest.calendar import run_calendar_pipeline
-from memory.store import add_memory
 from analysis.post_analysis import perform_post_analysis
 from analysis.market_feeling import analyze_market_feeling
 from analysis.pca_utils import update_pca_coordinates
@@ -387,7 +386,7 @@ async def _stage_decision_processing(
             logger.error(f"Background consensus/momentum failed: {e}")
             return []
     
-    consensus_bg_task = asyncio.create_task(run_consensus_background())
+    _ = asyncio.create_task(run_consensus_background())
     
     # --- Contrarian Analysis starts IMMEDIATELY (not after consensus) ---
     logger.info("Starting Contrarian Agent Analysis (in parallel with primary decisions)...")
@@ -672,6 +671,11 @@ def main():
         action="store_true",
         help="Force ingestion even outside market hours"
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run auto-research without writing to database"
+    )
 
     args = parser.parse_args()
 
@@ -696,7 +700,7 @@ def main():
         asyncio.run(run_audit())
     elif args.command == COMMAND_AUTORESEARCH:
         from autoresearch.runner import run
-        asyncio.run(run())
+        asyncio.run(run(dry_run=args.dry_run))
     elif args.command == COMMAND_BOOTSTRAP_AUTORESEARCH:
         from autoresearch.bootstrap import bootstrap
         asyncio.run(bootstrap())

@@ -56,29 +56,39 @@ async def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     return False, ""
 
 
-async def run():
+async def run(dry_run: bool = False):
     """Run the full auto-research cycle.
+
+    Args:
+        dry_run: If True, evaluate, research, and validate — but do not
+                 write to the database or change the active prompt.
 
     This is the entry point called by the CLI (main.py autoresearch).
     """
     week_start, week_end = get_week_window()
 
-    logger.info("=== Auto-Research Cycle ===")
+    label = " DRY RUN" if dry_run else ""
+    logger.info("=== Auto-Research Cycle%s ===", label)
+    if dry_run:
+        logger.info("DRY RUN: No database writes will be performed.")
     logger.info("Evaluating week %s to %s", week_start, week_end)
 
     # Check if the current prompt caused a crash
     is_crash, crash_reason = await _check_safety(week_start, week_end)
     if is_crash:
-        logger.warning("SAFETY: %s. Reverting to previous prompt.", crash_reason)
-        logger.warning("AUTORESEARCH_RESULT: SKIPPED_CRASH | reason=%s", crash_reason)
-        reverted = await revert_to_previous()
-        if reverted:
-            logger.info("Reverted to %s. Skipping auto-research this week.", reverted)
+        logger.warning("SAFETY: %s.", crash_reason)
+        if dry_run:
+            logger.info("DRY RUN: Would revert to previous prompt (skipping).")
         else:
-            logger.warning("No previous variant to revert to. Keeping current prompt.")
+            logger.warning("AUTORESEARCH_RESULT: SKIPPED_CRASH | reason=%s", crash_reason)
+            reverted = await revert_to_previous()
+            if reverted:
+                logger.info("Reverted to %s. Skipping auto-research this week.", reverted)
+            else:
+                logger.warning("No previous variant to revert to. Keeping current prompt.")
         return
 
-    # Evaluate the week — evaluator computes its own window, we pass ours to keep them in sync
+    # Evaluate the week
     logger.info("Gathering performance data...")
     try:
         report, composite = await evaluate_week(week_start, week_end)
@@ -112,8 +122,24 @@ async def run():
             logger.warning("Soft invariant violation: %s", w)
 
     if not is_valid:
-        logger.error("Researcher proposal failed safety validation: %s. Skipping activation.", reason)
-        logger.error("AUTORESEARCH_RESULT: FAILED_VALIDATION | reason=%s", reason)
+        logger.error("Researcher proposal failed safety validation: %s.", reason)
+        if dry_run:
+            logger.info("DRY RUN: Would have rejected this proposal.")
+        else:
+            logger.error("AUTORESEARCH_RESULT: FAILED_VALIDATION | reason=%s", reason)
+        return
+
+    if dry_run:
+        logger.info("DRY RUN: Prompt validated — would have been saved and activated.")
+        logger.info("DRY RUN: Proposed prompt (%s, confidence=%d):",
+                     result.experiment_type, result.confidence)
+        logger.info("=" * 72)
+        logger.info(result.new_prompt_text)
+        logger.info("=" * 72)
+        logger.info("DRY RUN: Composite score: %.4f", composite["composite"])
+        logger.info("DRY RUN: Change description: %s", result.change_description)
+        logger.info("DRY RUN: Full research output: %s", result.model_dump())
+        logger.info("=== Auto-Research Dry Run Complete ===")
         return
 
     # Save and activate the new variant

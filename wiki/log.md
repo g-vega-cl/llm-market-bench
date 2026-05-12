@@ -344,3 +344,11 @@ Reordered operations in `save_variant` to insert the new prompt variant BEFORE d
 ## [2026-05-11] refactor | Convert autoresearch DB calls to async client
 
 Converted all synchronous Supabase client calls in the autoresearch module to use the async client (`get_async_supabase_client`). Affected files: `metrics.py`, `decision_quality.py`, `evaluator.py`, `runner.py`. Internal helper functions (`_daily_returns`, `_spy_returns`, `_realized_pnl`, `_fetch_decisions`, `_fetch_trades`, `_compute_vixy_trend`, `_get_market_regime_summary`, `_check_safety`) were made async. Tests updated to use `_AsyncQueryRecorder` and `pytest.mark.asyncio`. Added `TestResearcherRetry` for `run_research` retry-loop coverage. Added `TestStagnationEdgeCases` for floor-level stagnation detection. Added `AUTORESEARCH_RESULT` summary log lines in `runner.py` for grep-ability. Renamed `_count_tokens` to `_count_words` in `validator.py` and fixed wiki tiktoken reference.
+
+## [2026-05-12] feature | Auto-research dry-run mode
+
+Added `--dry-run` flag to the `autoresearch` CLI command. When enabled, the auto-research cycle evaluates performance, generates a new prompt proposal, and validates it — but does not write to the database or change the active prompt. Useful for testing and previewing prompt changes before activation.
+
+## [2026-05-12] feature | Auto-research dry-run mode
+
+Added `--dry-run` flag to the `autoresearch` CLI command. When enabled, the auto-research cycle evaluates performance, generates a new prompt proposal, and validates it — but does not write to the database or change the active prompt. Useful for testing and previewing prompt changes before activation.

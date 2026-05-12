@@ -211,6 +211,10 @@ async def evaluate_week(
     sb_client = await get_async_supabase_client()
     spy_returns = await _spy_returns(sb_client, week_start, week_end)
 
+    # Regime summary runs early so its VIXY query naturally groups near the
+    # VIXY queries that _compute_vixy_trend fires inside compute_decision_quality.
+    regime = await _get_market_regime_summary(week_start, week_end)
+
     exp_metrics = await compute_wall_street_metrics(
         AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end, spy_returns=spy_returns,
     )
@@ -237,8 +241,6 @@ async def evaluate_week(
     )
     previous = await get_previous_variants(limit=5)
     _, stagnation_msg = _check_stagnation(previous)
-
-    regime = await _get_market_regime_summary(week_start, week_end)
 
     baseline_metrics = await get_baseline_metrics()
     baseline_text = ""

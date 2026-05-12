@@ -372,3 +372,21 @@ real-run paths updated.
 ## [2026-05-12] refactor | Removed soft invariant enforcement from auto-research prompt validator
 
 The auto-research prompt validator previously enforced soft invariants (presence of "calculate_buy_quantity", "calculate_sell_quantity", "5 Whys") with warnings. These have been removed to make the prompt an experiment space. Only hard invariants (forbidden patterns, empty/oversized prompts) remain. The `program.md` constraints were also simplified to match.
+
+## [2026-05-12] refactor | Reordered market-regime fetch in evaluator for better query grouping
+
+Moved `_get_market_regime_summary()` call in `evaluate_week()` from after
+`get_previous_variants()` to right after the SPY fetch at the top of the
+function. This groups its VIXY price_history query near the VIXY queries
+that `compute_decision_quality` fires internally, instead of interleaving
+them with the `prompt_experiments` queries from `get_previous_variants`
+and `get_baseline_metrics`.
+
+Considered and rejected deduplicating the SPY price_history query (fired
+by both `_spy_returns` and `_get_market_regime_summary`). The fix required
+adding side-effect parameters (`out_rows`) and conditional branching to
+two private functions — complexity cost far outweighed saving one ~50ms
+HTTP call against a local Supabase endpoint.
+
+Files:
+- `apps/engine/autoresearch/evaluator.py` — moved one function call up ~55 lines

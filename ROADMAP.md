@@ -70,6 +70,18 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
 - [ ] - check if this repo would help: https://github.com/anthropics/financial-services
 - [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
+- [ ] - add a local model?
+- [ ] - more logs?
+- [ ] - scenario analysis still empty
+- [ ] - can I add how much I have spent in each provider? Would be fun to visualize
+- [ ] - Benchify: the -44% value is just wrong.. Claude on ARM:
+
+"30-DAY POST-ANALYSIS (ARM): Avoid panic-selling high-growth semiconductor leaders based on short-term macroeconomic speculation; focus on long-term secular growth trends in AI/compute over transient CPI or geopolitical headlines. | ORIGINAL TRADE: SELL @ $149.50 | OUTCOME: -42.66% | ADVICE: Shift from tactical bearish/defensive to bullish/long-term hold; recognize ARM as a core infrastructure play rather than a cyclical chip stock."
+
+- [ ] - Benchify: improve get sector alternatives tool
+- [ ] - Benchify: use html for documentation?
+- [ ] - Always keep constant/steady instructions in the beginning of prompts, that way they get cached better. Keep the changing parts at the bottom.
+- [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
 
 ## Under Consideration
 

@@ -356,3 +356,15 @@ Added `--dry-run` flag to the `autoresearch` CLI command. When enabled, the auto
 ## [2026-05-12] refactor | Auto-research: concordance redefined and activation gate added
 
 Replaced the old BUY/SELL pair concordance in `decision_quality.py` with new equity-change comparison (experiment vs control total_return_pct) in `evaluator.py`. Added a gate in `runner.py` that only activates a new prompt if the experiment composite score exceeds the baseline. Also optimized `compute_wall_street_metrics` to accept pre-fetched SPY returns to avoid duplicate API calls when evaluating both experiment and control groups.
+
+## [2026-05-12] fix | Auto-research: activation gate logic inverted
+
+The activation gate in `runner.py` was checking `exp_score <= baseline` — blocking
+prompt changes when the experiment was UNDERperforming. This is backwards: you
+want to change the prompt when it's failing, not when it's already winning.
+
+Flipped to `exp_score >= baseline` — skip activation when the experiment already
+beats the baseline (no change needed), activate when it's below (prompt needs
+improvement). Result tag changed from `SKIPPED_NO_IMPROVEMENT` to
+`SKIPPED_ALREADY_WINNING` to reflect the new semantics. Both dry-run and
+real-run paths updated.

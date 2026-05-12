@@ -1239,3 +1239,98 @@ class TestResearcherRetry:
         result = await researcher.run_research("# Test Report")
         assert result is None, "Must return None after all retries fail"
         assert call_count["n"] == 3, f"Expected 3 attempts, got {call_count['n']}"
+
+
+# ---------------------------------------------------------------------------
+# Test C: activation gate — skip when beating baseline, activate when losing.
+# ---------------------------------------------------------------------------
+
+
+class TestActivationGate:
+    """Gate must skip activation when experiment already beats baseline,
+    and activate when experiment is below baseline (needs improvement)."""
+
+    @staticmethod
+    def _make_result(**overrides) -> "PromptResearchResult":
+        from autoresearch.researcher import PromptResearchResult
+        defaults = dict(
+            new_prompt_text="test prompt",
+            change_description="test change",
+            experiment_type="incremental",
+            research_reasoning="test reasoning",
+            confidence=75,
+        )
+        defaults.update(overrides)
+        return PromptResearchResult(**defaults)
+
+    @staticmethod
+    def _make_composite(composite: float, baseline_composite: float) -> dict:
+        return {"composite": composite, "baseline_composite": baseline_composite}
+
+    def _patch_runner(self, monkeypatch, exp_score, baseline_score):
+        """Patch runner deps. Returns (runner, save_calls) for assertion."""
+        from autoresearch import runner
+
+        async def fake_evaluate(ws, we):
+            return ("# report", self._make_composite(exp_score, baseline_score))
+
+        async def fake_research(report):
+            return self._make_result()
+
+        async def fake_check(ws, we):
+            return (False, "")
+
+        monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
+        monkeypatch.setattr(runner, "run_research", fake_research)
+        monkeypatch.setattr(runner, "validate_prompt", lambda p: (True, "", []))
+        monkeypatch.setattr(runner, "_check_safety", fake_check)
+
+        save_calls = []
+
+        async def fake_save(**kw):
+            save_calls.append(kw)
+            return "v-test"
+
+        monkeypatch.setattr(runner, "save_variant", fake_save)
+        monkeypatch.setattr(runner, "revert_to_previous", lambda **kw: "v-prev")
+        return runner, save_calls
+
+    def test_skips_when_beating_baseline(self, monkeypatch):
+        """When exp_score >= baseline, save_variant must NOT be called."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.75, baseline_score=0.50)
+        import asyncio
+        asyncio.run(runner.run())
+        assert len(save_calls) == 0, (
+            f"Gate should SKIP when exp (0.75) beats baseline (0.50); "
+            f"save_variant was called {len(save_calls)} times"
+        )
+
+    def test_activates_when_below_baseline(self, monkeypatch):
+        """When exp_score < baseline, save_variant MUST be called."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.25, baseline_score=0.50)
+        import asyncio
+        asyncio.run(runner.run())
+        assert len(save_calls) == 1, (
+            f"Gate should ACTIVATE when exp (0.25) is below baseline (0.50); "
+            f"save_variant was called {len(save_calls)} times"
+        )
+
+    def test_activates_when_no_baseline(self, monkeypatch):
+        """When baseline_composite is 0 (no baseline data), activate anyway."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.25, baseline_score=0.0)
+        import asyncio
+        asyncio.run(runner.run())
+        assert len(save_calls) == 1, (
+            f"Gate should ACTIVATE when baseline is 0 (no reference); "
+            f"save_variant was called {len(save_calls)} times"
+        )
+
+    def test_skips_when_exactly_at_baseline(self, monkeypatch):
+        """When exp_score == baseline, skip — no clear improvement signal."""
+        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.50, baseline_score=0.50)
+        import asyncio
+        asyncio.run(runner.run())
+        assert len(save_calls) == 0, (
+            f"Gate should SKIP when exp == baseline (no clear signal for change); "
+            f"save_variant was called {len(save_calls)} times"
+        )

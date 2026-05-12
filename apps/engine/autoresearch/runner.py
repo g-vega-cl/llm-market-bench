@@ -130,16 +130,20 @@ async def run(dry_run: bool = False):
         return
 
     if dry_run:
-        # Gate: only activate if the experiment composite beats baseline.
+        # Gate: skip if experiment already beats baseline (no change needed);
+        # activate when underperforming (prompt needs improvement).
         baseline = composite.get("baseline_composite", 0)
         exp_score = composite["composite"]
-        if baseline > 0 and exp_score <= baseline:
-            logger.warning(
-                "DRY RUN: Composite %.4f does not beat baseline %.4f — would NOT activate.",
+        if baseline > 0 and exp_score >= baseline:
+            logger.info(
+                "DRY RUN: Composite %.4f already beats baseline %.4f — would skip, no improvement needed.",
                 exp_score, baseline,
             )
         else:
-            logger.info("DRY RUN: Prompt validated — would have been saved and activated.")
+            logger.info(
+                "DRY RUN: Composite %.4f below baseline %.4f — would activate (prompt needs improvement).",
+                exp_score, baseline,
+            )
         logger.info("DRY RUN: Proposed prompt (%s, confidence=%d):",
                      result.experiment_type, result.confidence)
         logger.info("=" * 72)
@@ -152,16 +156,17 @@ async def run(dry_run: bool = False):
         logger.info("=== Auto-Research Dry Run Complete ===")
         return
 
-    # Gate: only activate if experiment composite beats baseline.
+    # Gate: skip if experiment already beats baseline (no change needed);
+    # activate when underperforming (prompt needs improvement).
     baseline = composite.get("baseline_composite", 0)
     exp_score = composite["composite"]
-    if baseline > 0 and exp_score <= baseline:
-        logger.warning(
-            "Composite %.4f does not beat baseline %.4f — skipping activation.",
+    if baseline > 0 and exp_score >= baseline:
+        logger.info(
+            "Composite %.4f already beats baseline %.4f — skipping, no improvement needed.",
             exp_score, baseline,
         )
-        logger.warning(
-            "AUTORESEARCH_RESULT: SKIPPED_NO_IMPROVEMENT | composite=%.4f | baseline=%.4f",
+        logger.info(
+            "AUTORESEARCH_RESULT: SKIPPED_ALREADY_WINNING | composite=%.4f | baseline=%.4f",
             exp_score, baseline,
         )
         return

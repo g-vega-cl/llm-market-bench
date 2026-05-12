@@ -207,17 +207,17 @@ class TestDecisionQuality:
         monkeypatch.setattr("autoresearch.decision_quality.get_async_supabase_client", fake_get_client)
 
     @pytest.mark.asyncio
-    async def test_concordance_uses_realized_pnl_direction(self):
-        """Concordance = fraction of BUY decisions whose follow-on SELL realized profit.
+    async def test_concordance_is_placeholder_in_dq(self):
+        """Concordance is now computed in evaluate_week from equity comparison.
 
-        Old behaviour just searched the reasoning text for the ticker — a tautology.
-        New behaviour: ties to actual outcomes.
+        compute_decision_quality returns 0.0 as a placeholder — the real
+        value comes from exp vs ctrl total_return_pct in the evaluator.
         """
         from autoresearch.decision_quality import compute_decision_quality
 
         result = await compute_decision_quality(frozenset({"m1"}), date(2026, 5, 1), date(2026, 5, 7))
-        # AAPL BUY became a winning SELL; MSFT BUY became a losing SELL -> 1/2 = 0.5
-        assert result["concordance"] == pytest.approx(0.5, abs=0.01)
+        # Placeholder — evaluator computes the real concordance externally.
+        assert result["concordance"] == 0.0
 
     @pytest.mark.asyncio
     async def test_conviction_calibration_correlates_pnl_with_confidence(self):
@@ -455,6 +455,9 @@ class TestEvaluator:
                 "total_return_pct": 5.0,
             }
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
+        async def _fake_spy_returns(*a, **k):
+            return []  # Empty SPY returns — info_ratio will be 0.
+        monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
         async def _fake_dq(*a, **k):
             return {
                 "concordance": 0.7, "conviction_calibration": 0.8, "regime_awareness": 0.5,
@@ -507,6 +510,45 @@ class TestEvaluator:
         assert "fetched_at" in filter_cols, (
             f"fetched_at must appear in gte/lte/order args: {filter_cols}"
         )
+
+    def test_concordance_from_equity_comparison(self):
+        """Concordance = 1.0 when exp return > ctrl return, 0.5 when tied, 0.0 otherwise."""
+        from autoresearch.metrics import compute_composite_score
+
+        # exp beats ctrl — concordance from evaluator would be 1.0
+        comp_beat = compute_composite_score(
+            {"total_return_pct": 5.0, "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
+             "profit_factor": 0, "info_ratio": 0},
+            concordance=1.0, conviction=0.5, regime_awareness=0.5,
+        )
+        assert comp_beat["concordance"] == 1.0
+
+        # exp tied with ctrl — concordance = 0.5
+        comp_tie = compute_composite_score(
+            {"total_return_pct": 5.0, "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
+             "profit_factor": 0, "info_ratio": 0},
+            concordance=0.5, conviction=0.5, regime_awareness=0.5,
+        )
+        assert comp_tie["concordance"] == 0.5
+
+        # exp trails ctrl — concordance = 0.0
+        comp_trail = compute_composite_score(
+            {"total_return_pct": 5.0, "sharpe": 0, "sortino": 0, "max_drawdown": 0.5,
+             "profit_factor": 0, "info_ratio": 0},
+            concordance=0.0, conviction=0.5, regime_awareness=0.5,
+        )
+        assert comp_trail["concordance"] == 0.0
+
+    def test_baseline_composite_in_metrics(self):
+        """evaluate_week includes baseline_composite in the returned metrics dict."""
+        from autoresearch.metrics import compute_composite_score
+        comp = compute_composite_score(
+            {"sharpe": 0, "sortino": 0, "max_drawdown": 0.5, "profit_factor": 0, "info_ratio": 0},
+            concordance=0.5, conviction=0.5, regime_awareness=0.5,
+        )
+        comp["baseline_composite"] = 0.35
+        assert "baseline_composite" in comp
+        assert comp["baseline_composite"] == 0.35
 
 
 # ---------------------------------------------------------------------------

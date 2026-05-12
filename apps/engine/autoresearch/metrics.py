@@ -104,15 +104,24 @@ async def compute_wall_street_metrics(
     owner_ids: frozenset | set,
     week_start: date,
     week_end: date,
+    spy_returns: list[float] | None = None,
 ) -> dict:
     """Compute all Wall Street metrics for the given agents and week.
+
+    Args:
+        owner_ids: Portfolio owner IDs to evaluate.
+        week_start, week_end: Evaluation window.
+        spy_returns: Pre-fetched SPY daily returns for Information Ratio.
+                     If None, fetched internally. Pass to avoid duplicate
+                     API calls when evaluating multiple agent groups.
 
     Returns a dict with keys: sharpe, sortino, max_drawdown, profit_factor,
     info_ratio, and their raw (unnormalized) values for the report.
     """
     sb_client = await get_async_supabase_client()
     returns = await _daily_returns(sb_client, owner_ids, week_start, week_end)
-    spy_returns = await _spy_returns(sb_client, week_start, week_end)
+    if spy_returns is None:
+        spy_returns = await _spy_returns(sb_client, week_start, week_end)
     gross_profit, gross_loss = await _realized_pnl(sb_client, owner_ids, week_start, week_end)
 
     metrics = {

@@ -1,16 +1,15 @@
 """Decision quality analysis for auto-research evaluation.
 
-Computes signal concordance, mistake pattern detection, and conviction
-calibration from decision logs and realized trade outcomes.
+Computes conviction calibration, regime awareness, and mistake pattern
+detection from decision logs and realized trade outcomes.
 
-Both `concordance` and `conviction_calibration` are tied to realized PnL —
-the previous heuristic versions (reasoning-keyword scan and SELL-frequency
-monotonicity) had no relationship to trading outcomes and have been replaced.
+Concordance is computed externally in the evaluator from equity change
+(experiment vs control total_return_pct), not from BUY-SELL pairs here.
 """
 
 import logging
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date
 
 from core.db import get_async_supabase_client
 
@@ -103,28 +102,6 @@ def _compute_regime_awareness(decisions: list[dict], vixy_trend: float) -> float
     return round(1.0 - abs(vixy_trend - sell_ratio), 4)
 
 
-def _compute_concordance(decisions: list[dict], trades: list[dict]) -> float:
-    """Fraction of BUY decisions whose follow-on SELL realized positive PnL.
-
-    A BUY is "concordant" when the position was eventually closed for a
-    profit during the same evaluation window. BUYs that never closed are
-    excluded from the denominator (unresolved).
-    """
-    sell_pnl_by_ticker: dict[str, float] = {}
-    for t in trades:
-        if t.get("signal") == "SELL":
-            ticker = (t.get("ticker") or "").upper()
-            sell_pnl_by_ticker[ticker] = sell_pnl_by_ticker.get(ticker, 0.0) + float(t.get("realized_pnl") or 0)
-
-    buys = [d for d in decisions if (d.get("signal") or "").upper() == "BUY" and d.get("status") == "EXECUTED"]
-    resolved_buys = [d for d in buys if (d.get("ticker") or "").upper() in sell_pnl_by_ticker]
-    if not resolved_buys:
-        return 0.5  # No closed positions to score against — neutral.
-
-    winners = sum(1 for d in resolved_buys if sell_pnl_by_ticker[(d.get("ticker") or "").upper()] > 0)
-    return winners / len(resolved_buys)
-
-
 def _compute_conviction_calibration(decisions: list[dict], trades: list[dict]) -> float:
     """1.0 when higher-confidence trades realize higher average PnL.
 
@@ -210,7 +187,6 @@ async def compute_decision_quality(
         rejection_reasons[reason] += 1
     result["mistake_patterns"] = rejection_reasons.most_common(5)
 
-    result["concordance"] = _compute_concordance(decisions, trades)
     result["conviction_calibration"] = _compute_conviction_calibration(decisions, trades)
 
     win_trades = sorted(

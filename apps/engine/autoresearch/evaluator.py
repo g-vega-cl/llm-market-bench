@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL, ANTHROPIC_MODEL
 from core.db import get_async_supabase_client
 
-from .metrics import compute_wall_street_metrics, compute_composite_score
+from .metrics import compute_wall_street_metrics, compute_composite_score, _spy_returns
 from .decision_quality import compute_decision_quality
 from .prompt_store import get_active_prompt, get_previous_variants, get_baseline_metrics
 from .window import get_week_window
@@ -207,12 +207,31 @@ async def evaluate_week(
     if not current_prompt:
         current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 
-    exp_metrics = await compute_wall_street_metrics(AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end)
-    ctrl_metrics = await compute_wall_street_metrics(CONTROL_OWNER_IDS, week_start, week_end)
+    # Fetch SPY returns once — same benchmark for both agent groups.
+    sb_client = await get_async_supabase_client()
+    spy_returns = await _spy_returns(sb_client, week_start, week_end)
+
+    exp_metrics = await compute_wall_street_metrics(
+        AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end, spy_returns=spy_returns,
+    )
+    ctrl_metrics = await compute_wall_street_metrics(
+        CONTROL_OWNER_IDS, week_start, week_end, spy_returns=spy_returns,
+    )
+
+    # Concordance: did experiment agents outperform control on equity change?
+    exp_return = exp_metrics.get("total_return_pct", 0)
+    ctrl_return = ctrl_metrics.get("total_return_pct", 0)
+    if exp_return > ctrl_return:
+        concordance = 1.0
+    elif abs(exp_return - ctrl_return) < 0.01:
+        concordance = 0.5  # Within 1 bp — effectively tied.
+    else:
+        concordance = 0.0
+
     dq = await compute_decision_quality(AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end)
     composite = compute_composite_score(
         exp_metrics,
-        concordance=dq["concordance"],
+        concordance=concordance,
         conviction=dq["conviction_calibration"],
         regime_awareness=dq["regime_awareness"],
     )
@@ -223,13 +242,17 @@ async def evaluate_week(
 
     baseline_metrics = await get_baseline_metrics()
     baseline_text = ""
+    baseline_composite = 0.0
     if baseline_metrics:
         if isinstance(baseline_metrics, str):
             try:
                 baseline_metrics = json.loads(baseline_metrics)
             except (json.JSONDecodeError, TypeError):
                 baseline_metrics = {}
-        baseline_text = f"**Baseline Composite Score:** {baseline_metrics.get('composite', 'N/A')}"
+        baseline_composite = float(baseline_metrics.get("composite", 0))
+        baseline_text = f"**Baseline Composite Score:** {baseline_composite}"
+    # Expose baseline for the runner's activation gate.
+    composite["baseline_composite"] = baseline_composite
 
     report_parts = [
         "# Weekly Trading Performance Report",

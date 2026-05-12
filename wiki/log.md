@@ -352,3 +352,7 @@ Added `--dry-run` flag to the `autoresearch` CLI command. When enabled, the auto
 ## [2026-05-12] feature | Auto-research dry-run mode
 
 Added `--dry-run` flag to the `autoresearch` CLI command. When enabled, the auto-research cycle evaluates performance, generates a new prompt proposal, and validates it — but does not write to the database or change the active prompt. Useful for testing and previewing prompt changes before activation.
+
+## [2026-05-12] refactor | Auto-research: concordance redefined and activation gate added
+
+Replaced the old BUY/SELL pair concordance in `decision_quality.py` with new equity-change comparison (experiment vs control total_return_pct) in `evaluator.py`. Added a gate in `runner.py` that only activates a new prompt if the experiment composite score exceeds the baseline. Also optimized `compute_wall_street_metrics` to accept pre-fetched SPY returns to avoid duplicate API calls when evaluating both experiment and control groups.

@@ -130,16 +130,40 @@ async def run(dry_run: bool = False):
         return
 
     if dry_run:
-        logger.info("DRY RUN: Prompt validated — would have been saved and activated.")
+        # Gate: only activate if the experiment composite beats baseline.
+        baseline = composite.get("baseline_composite", 0)
+        exp_score = composite["composite"]
+        if baseline > 0 and exp_score <= baseline:
+            logger.warning(
+                "DRY RUN: Composite %.4f does not beat baseline %.4f — would NOT activate.",
+                exp_score, baseline,
+            )
+        else:
+            logger.info("DRY RUN: Prompt validated — would have been saved and activated.")
         logger.info("DRY RUN: Proposed prompt (%s, confidence=%d):",
                      result.experiment_type, result.confidence)
         logger.info("=" * 72)
         logger.info(result.new_prompt_text)
         logger.info("=" * 72)
-        logger.info("DRY RUN: Composite score: %.4f", composite["composite"])
+        logger.info("DRY RUN: Composite score: %.4f (baseline: %.4f)",
+                     exp_score, baseline)
         logger.info("DRY RUN: Change description: %s", result.change_description)
         logger.info("DRY RUN: Full research output: %s", result.model_dump())
         logger.info("=== Auto-Research Dry Run Complete ===")
+        return
+
+    # Gate: only activate if experiment composite beats baseline.
+    baseline = composite.get("baseline_composite", 0)
+    exp_score = composite["composite"]
+    if baseline > 0 and exp_score <= baseline:
+        logger.warning(
+            "Composite %.4f does not beat baseline %.4f — skipping activation.",
+            exp_score, baseline,
+        )
+        logger.warning(
+            "AUTORESEARCH_RESULT: SKIPPED_NO_IMPROVEMENT | composite=%.4f | baseline=%.4f",
+            exp_score, baseline,
+        )
         return
 
     # Save and activate the new variant

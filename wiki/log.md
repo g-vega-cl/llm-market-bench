@@ -390,3 +390,61 @@ HTTP call against a local Supabase endpoint.
 
 Files:
 - `apps/engine/autoresearch/evaluator.py` — moved one function call up ~55 lines
+
+## [2026-05-12] fix | Auto-research query timestamp and baseline ordering bugs
+
+TDD-driven fixes for two bugs identified during a dry-run log review:
+
+1. **price_history queries cut off at midnight on the last day** —
+   `_spy_returns()` (metrics.py) and both VIXY/SPY branches of
+   `_get_market_regime_summary()` (evaluator.py) used `.lte("fetched_at",
+   week_end.isoformat())`, which resolves to `2026-05-10T00:00:00Z`. This
+   silently dropped any end-of-day prices fetched on the last trading day.
+   Fixed to use `f"{week_end.isoformat()}T23:59:59"`, consistent with how
+   `trades`, `decisions`, and `_compute_vixy_trend` already filter.
+
+2. **`get_baseline_metrics()` returned the oldest baseline** — ordered by
+   `created_at` ascending (`desc=False`) with `limit(1)`, so it always
+   fetched the bootstrap seed (`composite: 0.5`) instead of the most recent
+   baseline. Changed to `desc=True`.
+
+Tests added in `test_autoresearch.py`:
+- `TestPriceHistoryEndOfDayFiltering` (3 cases)
+- `TestBaselineMetricsOrdering` (1 case)
+
+All 56 autoresearch tests pass.
+
+Files:
+- `apps/engine/autoresearch/metrics.py`
+- `apps/engine/autoresearch/evaluator.py`
+- `apps/engine/autoresearch/prompt_store.py`
+- `apps/engine/tests/test_autoresearch.py`
+
+## [2026-05-12] fix | Auto-research query timestamp and baseline ordering bugs
+
+TDD-driven fixes for two bugs identified during a dry-run log review:
+
+1. **price_history queries cut off at midnight on the last day** —
+   `_spy_returns()` (metrics.py) and both VIXY/SPY branches of
+   `_get_market_regime_summary()` (evaluator.py) used `.lte("fetched_at",
+   week_end.isoformat())`, which resolves to `2026-05-10T00:00:00Z`. This
+   silently dropped any end-of-day prices fetched on the last trading day.
+   Fixed to use `f"{week_end.isoformat()}T23:59:59"`, consistent with how
+   `trades`, `decisions`, and `_compute_vixy_trend` already filter.
+
+2. **`get_baseline_metrics()` returned the oldest baseline** — ordered by
+   `created_at` ascending (`desc=False`) with `limit(1)`, so it always
+   fetched the bootstrap seed (`composite: 0.5`) instead of the most recent
+   baseline. Changed to `desc=True`.
+
+Tests added in `test_autoresearch.py`:
+- `TestPriceHistoryEndOfDayFiltering` (3 cases)
+- `TestBaselineMetricsOrdering` (1 case)
+
+All 56 autoresearch tests pass.
+
+Files:
+- `apps/engine/autoresearch/metrics.py`
+- `apps/engine/autoresearch/evaluator.py`
+- `apps/engine/autoresearch/prompt_store.py`
+- `apps/engine/tests/test_autoresearch.py`

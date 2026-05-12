@@ -61,7 +61,7 @@ async def _spy_returns(sb_client, week_start: date, week_end: date) -> list[floa
         .select("fetched_at, price")
         .eq("ticker", "SPY")
         .gte("fetched_at", week_start.isoformat())
-        .lte("fetched_at", week_end.isoformat())
+        .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
         .order("fetched_at")
         .execute()
     )

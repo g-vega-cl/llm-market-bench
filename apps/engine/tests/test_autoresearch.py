@@ -1332,3 +1332,100 @@ class TestActivationGate:
             f"Gate should SKIP when exp == baseline (no clear signal for change); "
             f"save_variant was called {len(save_calls)} times"
         )
+
+
+# ==============================================================================
+# TDD: Fix price_history end-of-day filtering and baseline metrics ordering.
+# ==============================================================================
+
+
+class TestPriceHistoryEndOfDayFiltering:
+    """price_history queries must include the full last day (T23:59:59),
+    not cut off at midnight (T00:00:00)."""
+
+    def test_spy_returns_uses_end_of_day_timestamp(self, monkeypatch):
+        """_spy_returns must lte fetched_at with T23:59:59, not just the date."""
+        from autoresearch import metrics
+
+        client, recorder = _make_async_client(data=[])
+        async def _fake_m(): return client
+        monkeypatch.setattr(metrics, "get_async_supabase_client", _fake_m)
+
+        asyncio.run(metrics._spy_returns(client, date(2026, 5, 4), date(2026, 5, 10)))
+
+        lte_calls = [c for c in recorder.calls if c[0] == "lte"]
+        assert len(lte_calls) == 1, f"Expected exactly 1 lte() call, got {lte_calls}"
+        col, val = lte_calls[0][1]
+        assert col == "fetched_at", f"Expected lte on fetched_at, got {col}"
+        assert "T23:59:59" in val, (
+            f"_spy_returns must use end-of-day timestamp (T23:59:59); got {val}"
+        )
+
+    def test_regime_summary_vixy_uses_end_of_day_timestamp(self, monkeypatch):
+        """_get_market_regime_summary VIXY query must lte fetched_at with T23:59:59."""
+        from autoresearch import evaluator
+
+        client, recorder = _make_async_client(data=[])
+        async def _fake_m(): return client
+        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_m)
+
+        asyncio.run(evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10)))
+
+        # There are two lte calls: one for VIXY (30-day window), one for SPY (week window)
+        lte_calls = [c for c in recorder.calls if c[0] == "lte"]
+        assert len(lte_calls) >= 1, f"Expected at least 1 lte() call, got {lte_calls}"
+        for c in lte_calls:
+            col, val = c[1]
+            if col == "fetched_at":
+                assert "T23:59:59" in val, (
+                    f"VIXY/SPY regime query must use end-of-day timestamp (T23:59:59); got {val}"
+                )
+
+    def test_regime_summary_spy_uses_end_of_day_timestamp(self, monkeypatch):
+        """_get_market_regime_summary SPY query must lte fetched_at with T23:59:59."""
+        from autoresearch import evaluator
+
+        client, recorder = _make_async_client(data=[])
+        async def _fake_m(): return client
+        monkeypatch.setattr(evaluator, "get_async_supabase_client", _fake_m)
+
+        asyncio.run(evaluator._get_market_regime_summary(date(2026, 5, 4), date(2026, 5, 10)))
+
+        lte_calls = [c for c in recorder.calls if c[0] == "lte"]
+        spy_lte = [c for c in lte_calls if c[1][0] == "fetched_at"]
+        assert len(spy_lte) >= 1, f"Expected at least 1 fetched_at lte, got {lte_calls}"
+        for c in spy_lte:
+            _, val = c[1]
+            assert "T23:59:59" in val, (
+                f"SPY regime query must use end-of-day timestamp (T23:59:59); got {val}"
+            )
+
+
+class TestBaselineMetricsOrdering:
+    """get_baseline_metrics must return the most recent baseline, not the oldest."""
+
+    @pytest.mark.asyncio
+    async def test_orders_by_created_at_descending(self, monkeypatch):
+        """Must call .order('created_at', desc=True), not desc=False."""
+        from autoresearch import prompt_store
+
+        recorder = _AsyncQueryRecorder(single_data={"metrics": {"composite": 0.75}})
+        client = MagicMock()
+        client.table.return_value = recorder
+
+        async def fake_client():
+            return client
+
+        monkeypatch.setattr(prompt_store, "get_async_supabase_client", fake_client)
+        prompt_store.clear_active_prompt_cache()
+
+        result = await prompt_store.get_baseline_metrics()
+
+        order_calls = [c for c in recorder.calls if c[0] == "order"]
+        assert len(order_calls) == 1, f"Expected exactly 1 order() call, got {order_calls}"
+        col, = order_calls[0][1]
+        kwargs = order_calls[0][2]
+        assert col == "created_at", f"Expected order by created_at, got {col}"
+        assert kwargs.get("desc") is True, (
+            f"get_baseline_metrics must order DESC (most recent first); got desc={kwargs.get('desc')}"
+        )

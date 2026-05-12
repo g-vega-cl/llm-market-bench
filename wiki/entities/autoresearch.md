@@ -20,6 +20,9 @@ The `apps/engine/autoresearch/` module implements the Karpathy-style autonomous 
 ## Recent Changes
 
 - **2025-04-04**: Removed soft invariant enforcement (calculate_buy_quantity, calculate_sell_quantity, 5 Whys). The validator now only checks hard invariants.
+- **2026-05-12**: Fixed two query bugs:
+  - `price_history` end-of-day filtering: VIXY/SPY regime queries and SPY benchmark queries now use `T23:59:59` instead of cutting off at midnight
+  - `get_baseline_metrics()` ordering: changed from ascending (oldest first) to descending (most recent baseline first)
 
 ## Related
 

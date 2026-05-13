@@ -23,6 +23,7 @@
 - [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM
 - [[concepts/tool-enforcement]] — 4-layer hallucination prevention system
 - [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG
+- [[concepts/supabase-grant-convention]] — Explicit GRANTs required for PostgREST Data API access
 
 ## Sources
 

@@ -32,3 +32,4 @@ Two RPC functions power RAG: `match_memories` (cross-agent global memories) and
 - [[entities/web-app]]
 - [[concepts/memory-feedback]]
 - [[concepts/rag-strategy]]
+- [[concepts/supabase-grant-convention]]

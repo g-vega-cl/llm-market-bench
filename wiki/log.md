@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-05-13] docs | Supabase Data API grants — proactive migration and convention
+
+Supabase announced that explicit GRANTs will be required for public schema
+tables starting October 30, 2026 for existing projects. Created migration
+`20260513000000_add_explicit_grants_for_data_api.sql` adding GRANT SELECT
+to anon/authenticated (for web frontend reads) and GRANT ALL to service_role
+(for engine writes) on all 18 existing tables. Documented the convention at
+[[concepts/supabase-grant-convention]]. Updated [[entities/database]] and
+`wiki/index.md` with cross-references.
+
 ## [2026-05-13] cleanup | Auto-research: delete dead code from metrics.py (~130 lines)
 
 Removed the old 8-dimension composite score machinery left over from the

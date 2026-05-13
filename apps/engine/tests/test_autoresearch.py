@@ -1071,3 +1071,79 @@ class TestDailyReturnsEqualWeighted:
         # Average = -0.05
         assert len(result) == 1
         assert result[0] == pytest.approx(-0.05)
+
+    @pytest.mark.asyncio
+    async def test_single_agent_returns_unchanged(self):
+        """Single agent: +10% daily → returns [0.10]"""
+        from autoresearch import metrics
+
+        rows = [
+            {"date": "2026-05-04", "total_equity": 10000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-05", "total_equity": 11000, "portfolios": {"owner_id": "gemini"}},
+        ]
+
+        client, recorder = _make_async_client(data=rows)
+
+        from datetime import date
+        result = await metrics._daily_returns(
+            client, {"gemini"},
+            date(2026, 5, 4), date(2026, 5, 5)
+        )
+
+        assert len(result) == 1
+        assert result[0] == pytest.approx(0.10)
+
+    @pytest.mark.asyncio
+    async def test_two_agents_two_days(self):
+        """Two agents, 3 days → 2 daily returns, each averaged."""
+        from autoresearch import metrics
+
+        rows = [
+            # Day 1
+            {"date": "2026-05-04", "total_equity": 10000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-04", "total_equity": 20000, "portfolios": {"owner_id": "deepseek"}},
+            # Day 2: Gemini +10%, DeepSeek -10%
+            {"date": "2026-05-05", "total_equity": 11000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-05", "total_equity": 18000, "portfolios": {"owner_id": "deepseek"}},
+            # Day 3: Gemini -9.09%, DeepSeek +11.11%
+            {"date": "2026-05-06", "total_equity": 10000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-06", "total_equity": 20000, "portfolios": {"owner_id": "deepseek"}},
+        ]
+
+        client, recorder = _make_async_client(data=rows)
+
+        from datetime import date
+        result = await metrics._daily_returns(
+            client, {"gemini", "deepseek"},
+            date(2026, 5, 4), date(2026, 5, 6)
+        )
+
+        # Day 1→2: gemini=(11000-10000)/10000=0.10, deepseek=(18000-20000)/20000=-0.10 → avg=0.0
+        # Day 2→3: gemini=(10000-11000)/11000≈-0.0909, deepseek=(20000-18000)/18000≈0.1111 → avg≈0.0101
+        assert len(result) == 2
+        assert result[0] == pytest.approx(0.0)
+        assert result[1] == pytest.approx(0.0101, abs=1e-4)
+
+    @pytest.mark.asyncio
+    async def test_missing_day_one_agent(self):
+        """DeepSeek missing on Day 2 → use only Gemini's return."""
+        from autoresearch import metrics
+
+        rows = [
+            {"date": "2026-05-04", "total_equity": 10000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-04", "total_equity": 5000, "portfolios": {"owner_id": "deepseek"}},
+            {"date": "2026-05-05", "total_equity": 11000, "portfolios": {"owner_id": "gemini"}},
+            # deepseek missing on 2026-05-05
+        ]
+
+        client, recorder = _make_async_client(data=rows)
+
+        from datetime import date
+        result = await metrics._daily_returns(
+            client, {"gemini", "deepseek"},
+            date(2026, 5, 4), date(2026, 5, 5)
+        )
+
+        # Only Gemini has data for both days: +10%
+        assert len(result) == 1
+        assert result[0] == pytest.approx(0.10)

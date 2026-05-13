@@ -612,3 +612,25 @@ prompt remained active, and the meta-researcher could drift further from the bas
   NOT called when above or when baseline unavailable. Removed duplicate test.
 
 **Test suite: 34 passing.**
+
+## [2026-05-13] test | Add single-agent daily returns test
+
+Added `test_single_agent_returns_unchanged` to `test_autoresearch.py` to verify that the daily returns calculation works correctly when only one agent is present. The test confirms a +10% daily return is computed as 0.10.
+
+## [2026-05-13] test | Add multi-agent daily returns averaging tests
+
+Added `test_two_agents_two_days` to `test_autoresearch.py` to verify that `_daily_returns` correctly averages returns across multiple agents over multiple days. The test confirms that with two agents and three days of data, the two daily return values are properly averaged: Day 1→2 averages +10% and -10% to 0.0; Day 2→3 averages -9.09% and +11.11% to approximately 0.0101.
+
+## [2026-05-13] refactor | Equal-weight daily returns in auto-research metrics
+
+Refactored `_daily_returns` in `autoresearch/metrics.py` to compute per-agent percentage returns independently and average them across agents per day, instead of aggregating raw equity first. This ensures equal weighting regardless of portfolio size ($10K vs $5K both count equally). Added tests for single-agent and multi-agent scenarios.
+
+## [2026-05-13] refactor | Equal-weight daily returns in auto-research metrics
+
+Refactored `_daily_returns` in `autoresearch/metrics.py` to compute per-agent percentage returns independently and average them across agents per day, instead of aggregating raw equity first. This ensures equal weighting regardless of portfolio size ($10K vs $5K both count equally). Added tests for single-agent and multi-agent scenarios.
+
+## [2026-05-13] refactor | Equal-weighted percentage returns in _daily_returns
+
+Rewrote `_daily_returns()` in `autoresearch/metrics.py` to compute per-agent percentage returns independently and average them per day, instead of aggregating raw equity across agents. This ensures equal weighting regardless of portfolio size ($10K vs $5K both count equally). Added test class `TestDailyReturnsEqualWeighted` with four tests: two agents with different returns, single agent, multi-day averaging, and missing-day edge case.
+
+**Files changed:** `apps/engine/autoresearch/metrics.py`, `apps/engine/tests/test_autoresearch.py`

@@ -82,6 +82,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: use html for documentation?
 - [ ] - Always keep constant/steady instructions in the beginning of prompts, that way they get cached better. Keep the changing parts at the bottom.
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
+- [ ] - Benchify: include copper in sector analysis.
+- [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 
 ## Under Consideration
 

@@ -13,10 +13,16 @@ logger = logging.getLogger("engine")
 
 
 async def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> list[float]:
-    """Extract daily equity returns for experiment agents in the given week.
+    """Extract daily percentage returns, equal-weighted across agents.
 
-    Joins portfolio_performance with portfolios to filter by owner_id.
+    Each agent's daily returns are computed independently from its own
+    equity curve, then averaged per day. A $10K portfolio and a $5K
+    portfolio have equal weight — only percentage changes matter.
+
+    Returns a list of averaged daily returns (one float per day gap).
     """
+    from collections import defaultdict
+
     owner_list = list(owner_ids)
     res = (
         sb_client.table("portfolio_performance")
@@ -31,20 +37,34 @@ async def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date
     if len(rows) < 2:
         return []
 
-    # Aggregate equity across agents per day
-    daily_equity: dict[str, float] = {}
+    # Group equity by (owner_id, date)
+    agent_equity: dict[str, dict[str, float]] = defaultdict(dict)
     for row in rows:
+        owner = row["portfolios"]["owner_id"]
         d = row["date"]
         eq = float(row["total_equity"] or 0)
-        daily_equity[d] = daily_equity.get(d, 0) + eq
+        agent_equity[owner][d] = eq
 
-    sorted_dates = sorted(daily_equity.keys())
+    # All unique dates across all agents, sorted
+    all_dates = sorted({row["date"] for row in rows})
+
+    # For each day gap, compute per-agent returns, then average
     returns = []
-    for i in range(1, len(sorted_dates)):
-        prev = daily_equity[sorted_dates[i - 1]]
-        curr = daily_equity[sorted_dates[i]]
-        if prev > 0:
-            returns.append((curr - prev) / prev)
+    for i in range(1, len(all_dates)):
+        prev_date = all_dates[i - 1]
+        curr_date = all_dates[i]
+
+        agent_daily_returns = []
+        for owner, equity_by_date in agent_equity.items():
+            prev_eq = equity_by_date.get(prev_date)
+            curr_eq = equity_by_date.get(curr_date)
+            if prev_eq is not None and curr_eq is not None and prev_eq > 0:
+                agent_daily_returns.append((curr_eq - prev_eq) / prev_eq)
+
+        if agent_daily_returns:
+            avg_return = sum(agent_daily_returns) / len(agent_daily_returns)
+            returns.append(avg_return)
+
     return returns
 
 

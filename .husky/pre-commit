@@ -8,5 +8,5 @@ if git diff --cached --name-only | grep -qE '^(wiki|raw)/'; then
   echo "[wiki] Running structural lint..."
   ./apps/engine/venv/bin/python3 apps/engine/wiki_lint.py || exit 1
   echo "[wiki] Re-indexing QMD..."
-  qmd update && qmd embed
+  export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd update && qmd embed
 fi

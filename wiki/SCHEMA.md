@@ -70,14 +70,18 @@ Every page should have at least one inbound link from another page or from
 
 ## QMD Search
 
-QMD indexes the wiki for fast search:
+QMD indexes the wiki for fast search. **Runtime note:** QMD's native module
+requires Node 22-25 (not 26+). On this machine, always prefix with:
+  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd ...`
+First use of `qmd query` or `qmd vsearch` will download a ~1.3GB embedding model
+to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no model.
 
 ```sh
-qmd query "your question"          # hybrid search + reranking (best quality)
-qmd search "keywords"              # fast BM25 keyword search
-qmd vsearch "semantic query"       # vector similarity search
-qmd get "path/to/page"             # retrieve full document
-qmd multi-get "entities/*.md"      # batch retrieve by glob
+qmd query "your question"          # hybrid search + reranking (best quality, needs model)
+qmd search "keywords"              # fast BM25 keyword search (no model needed)
+qmd vsearch "semantic query"       # vector similarity search (needs model)
+qmd get "path/to/page"             # retrieve full document (no model needed)
+qmd multi-get "entities/*.md"      # batch retrieve by glob (no model needed)
 ```
 
 After every significant wiki change, re-index:

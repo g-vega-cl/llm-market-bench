@@ -688,3 +688,11 @@ Added 13 new tickers across three tracking systems to give LLM agents a more com
 **Frontend** (BenchmarkSelector.tsx): 9→16 benchmark options in the dropdown.
 
 Documented at [[entities/macro-tracker]], [[sources/correlation-matrix-source]].
+
+## [2026-05-13] documentation | QMD runtime constraints and model download behavior
+
+Added runtime notes to AGENTS.md and wiki/SCHEMA.md documenting that QMD's native module requires Node 22-25 (not 26+), with nvm workaround. Also documented that `qmd query` and `qmd vsearch` download a ~1.3GB embedding model on first use, while `qmd search` and `qmd get` work immediately without a model.
+
+## [2026-05-13] documentation | QMD runtime constraints and model download behavior
+
+Added runtime notes to AGENTS.md and wiki/SCHEMA.md documenting that QMD's native module requires Node 22-25 (not 26+), with nvm workaround. Also documented that `qmd query` and `qmd vsearch` download a ~1.3GB embedding model on first use, while `qmd search` and `qmd get` work immediately without a model.

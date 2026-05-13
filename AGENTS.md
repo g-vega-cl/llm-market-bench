@@ -74,13 +74,18 @@ concepts mentioned but lacking their own page, and data gaps to investigate.
 
 ### QMD Search
 
-QMD indexes the wiki for fast search:
+QMD indexes the wiki for fast search. **Runtime note:** QMD's native module
+requires Node 22-25 (not 26+). On this machine, always prefix with:
+  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd ...`
+First use of `qmd query` or `qmd vsearch` will download a ~1.3GB embedding model
+to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no model.
+
 ```sh
-qmd query "question"              # hybrid + reranking (best)
-qmd search "keywords"             # fast BM25 keyword
-qmd vsearch "semantic query"      # vector similarity
-qmd get "entities/engine"         # get full document
-qmd multi-get "concepts/*.md"     # batch retrieve by glob
+qmd query "question"              # hybrid + reranking (best, needs model)
+qmd search "keywords"             # fast BM25 keyword (no model needed)
+qmd vsearch "semantic query"      # vector similarity (needs model)
+qmd get "entities/engine"         # get full document (no model needed)
+qmd multi-get "concepts/*.md"     # batch retrieve by glob (no model needed)
 ```
 
 After wiki changes:
@@ -92,7 +97,9 @@ qmd embed                          # regenerate embeddings
 ### Setup
 
 ```sh
-# Install QMD (requires Node.js >= 22)
+# Requires Node.js >= 22 AND <= 25 (better-sqlite3 doesn't support 26+).
+# If your system default is Node 26+, use nvm:
+#   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22
 npm install -g @tobilu/qmd
 
 # Add wiki as a collection

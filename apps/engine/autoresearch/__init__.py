@@ -16,6 +16,7 @@ from .prompt_store import (
     get_previous_variants,
     get_baseline_metrics,
     revert_to_previous,
+    revert_to_baseline,
     clear_active_prompt_cache,
 )
 from .runner import run
@@ -32,6 +33,7 @@ __all__ = [
     "get_previous_variants",
     "get_baseline_metrics",
     "revert_to_previous",
+    "revert_to_baseline",
     "clear_active_prompt_cache",
     "run",
     "get_week_window",

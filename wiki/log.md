@@ -1,5 +1,54 @@
 # Wiki Log
 
+## [2026-05-13] cleanup | Auto-research: delete dead code from metrics.py (~130 lines)
+
+Removed the old 8-dimension composite score machinery left over from the
+2026-05-12 simplification. TDD: updated test mocks first, then deleted.
+
+**Deleted:**
+- `compute_composite_score()` — old 8-weight composite, replaced by `compute_score()`
+- `_normalize_sharpe()`, `_normalize_sortino()`, `_normalize_drawdown()`,
+  `_normalize_profit_factor()`, `_normalize_info_ratio()` — all dead normalizers
+- `_realized_pnl()` — only consumer was profit_factor in the old composite
+- `TRADING_DAYS_PER_YEAR` (252), `RISK_FREE_RATE` (0.05) — only used for Sharpe/Sortino
+- `from math import sqrt` — only used for Sharpe/Sortino/Info Ratio
+- `spy_returns` parameter on `compute_wall_street_metrics()` — Info Ratio was the
+  only consumer; evaluator already computes SPY return separately via `_spy_returns()`
+
+**Slimmed:**
+- `compute_wall_street_metrics()` now returns only `{"total_return_pct": X, "max_drawdown": Y}`
+  (was an 8-field dict with sharpe/sortino/profit_factor/info_ratio/num_trading_days)
+
+**Test changes:**
+- 5 mock return values trimmed to 2 fields each
+- `test_price_history_query_uses_fetched_at_and_price` now tests `_spy_returns()` directly
+  instead of indirectly through `compute_wall_street_metrics()`
+
+**Test suite: 582 passing (unchanged).**
+
+## [2026-05-13] fix | Auto-research: hard ratchet — enforce Karpathy baseline revert
+
+When an experiment fails to beat the baseline (score < baseline), the active prompt
+is now reverted to the baseline via `revert_to_baseline()` BEFORE the meta-researcher
+runs. This is code-level enforcement of the Karpathy ratchet — the meta-researcher
+always builds from the known-good foundation, never from a failed experiment.
+
+Previously this was a "soft ratchet" — `program.md` instructed the LLM to use the
+baseline as foundation, but nothing in the code enforced it. A failed experiment's
+prompt remained active, and the meta-researcher could drift further from the baseline.
+
+**Changes:**
+- `prompt_store.py` — new `revert_to_baseline()`: demotes current active to 'kept',
+  promotes the all-time baseline variant to 'active'. Idempotent if baseline is
+  already active.
+- `runner.py` — calls `revert_to_baseline()` when `score < baseline_score`.
+  Dry-run logs the intent without executing.
+- `__init__.py` — exports `revert_to_baseline`.
+- `test_autoresearch.py` — 4 updated tests: revert called when below baseline,
+  NOT called when above or when baseline unavailable. Removed duplicate test.
+
+**Test suite: 34 passing.**
+
 ## [2026-05-12] simplify | Auto-research: remove validator + decision_quality, single score
 
 Major simplification of the auto-research system. TDD-driven with 30 passing tests.
@@ -504,3 +553,52 @@ Replaces the 8-dimension weighted composite (Sharpe, Sortino, MaxDD, Profit Fact
 - `__init__.py` — exports cleaned up.
 
 **Test suite: 33 passing** — added TestBaselineTracking (3 tests): baseline is max, shows delta, handles first week.
+
+## [2026-05-13] cleanup | Auto-research: delete dead code from metrics.py (~130 lines)
+
+Removed the old 8-dimension composite score machinery left over from the
+2026-05-12 simplification. TDD: updated test mocks first, then deleted.
+
+**Deleted:**
+- `compute_composite_score()` — old 8-weight composite, replaced by `compute_score()`
+- `_normalize_sharpe()`, `_normalize_sortino()`, `_normalize_drawdown()`,
+  `_normalize_profit_factor()`, `_normalize_info_ratio()` — all dead normalizers
+- `_realized_pnl()` — only consumer was profit_factor in the old composite
+- `TRADING_DAYS_PER_YEAR` (252), `RISK_FREE_RATE` (0.05) — only used for Sharpe/Sortino
+- `from math import sqrt` — only used for Sharpe/Sortino/Info Ratio
+- `spy_returns` parameter on `compute_wall_street_metrics()` — Info Ratio was the
+  only consumer; evaluator already computes SPY return separately via `_spy_returns()`
+
+**Slimmed:**
+- `compute_wall_street_metrics()` now returns only `{"total_return_pct": X, "max_drawdown": Y}`
+  (was an 8-field dict with sharpe/sortino/profit_factor/info_ratio/num_trading_days)
+
+**Test changes:**
+- 5 mock return values trimmed to 2 fields each
+- `test_price_history_query_uses_fetched_at_and_price` now tests `_spy_returns()` directly
+  instead of indirectly through `compute_wall_street_metrics()`
+
+**Test suite: 582 passing (unchanged).**
+
+## [2026-05-13] fix | Auto-research: hard ratchet — enforce Karpathy baseline revert
+
+When an experiment fails to beat the baseline (score < baseline), the active prompt
+is now reverted to the baseline via `revert_to_baseline()` BEFORE the meta-researcher
+runs. This is code-level enforcement of the Karpathy ratchet — the meta-researcher
+always builds from the known-good foundation, never from a failed experiment.
+
+Previously this was a "soft ratchet" — `program.md` instructed the LLM to use the
+baseline as foundation, but nothing in the code enforced it. A failed experiment's
+prompt remained active, and the meta-researcher could drift further from the baseline.
+
+**Changes:**
+- `prompt_store.py` — new `revert_to_baseline()`: demotes current active to 'kept',
+  promotes the all-time baseline variant to 'active'. Idempotent if baseline is
+  already active.
+- `runner.py` — calls `revert_to_baseline()` when `score < baseline_score`.
+  Dry-run logs the intent without executing.
+- `__init__.py` — exports `revert_to_baseline`.
+- `test_autoresearch.py` — 4 updated tests: revert called when below baseline,
+  NOT called when above or when baseline unavailable. Removed duplicate test.
+
+**Test suite: 34 passing.**

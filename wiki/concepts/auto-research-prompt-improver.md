@@ -12,9 +12,10 @@ A meta-researcher LLM evaluates weekly live trading performance and iteratively 
 The auto-research loop runs weekly:
 1. **Safety check** — < 2 trades? Revert to previous prompt.
 2. **Evaluate** — Compute single score from weekly trading data. Find baseline (best score so far).
-3. **Hypothesize** — Meta-researcher LLM proposes prompt changes.
-4. **Deploy** — Always activate the new variant. No gate. Every week iterates.
-5. **Track** — If score > baseline, this prompt becomes the new baseline.
+3. **Revert on failure** — If score < baseline, revert the active prompt to the baseline. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation, never from a failed experiment.
+4. **Hypothesize** — Meta-researcher LLM proposes prompt changes.
+5. **Deploy** — Always activate the new variant. No gate. Every week iterates.
+6. **Track** — If score > baseline, this prompt becomes the new baseline.
 
 ## Score
 
@@ -47,6 +48,7 @@ The researcher's `program.md` specifies:
 ## Design Philosophy
 
 - **Always explore**: Every week deploys a new prompt. The meta-researcher always gets to test its ideas.
+- **Hard ratchet**: When an experiment fails to beat the baseline, the active prompt is reverted to the baseline BEFORE the next experiment runs. The meta-researcher always builds from the known-good foundation — never from a failed experiment. This is enforced at the code level in `runner.py`, not just as instructions to the LLM.
 - **Baseline only moves up**: The target is the best score achieved. No chasing regressed targets.
 - **Trust the process**: No validator. The safety checker catches crashes; control portfolios provide reference. The meta-researcher learns from outcomes.
 - **Single metric**: One number to optimize eliminates gaming of composite weights.

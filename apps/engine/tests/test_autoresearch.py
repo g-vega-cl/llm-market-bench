@@ -254,11 +254,7 @@ class TestEvaluator:
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
-            return {
-                "sharpe": 0, "sortino": 0, "max_drawdown": 0.10,
-                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 5,
-                "total_return_pct": 5.0,
-            }
+            return {"total_return_pct": 5.0, "max_drawdown": 0.10}
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
 
         async def _fake_spy_returns(*a, **k):
@@ -289,11 +285,7 @@ class TestEvaluator:
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
-            return {
-                "sharpe": 0, "sortino": 0, "max_drawdown": 0.05,
-                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
-                "total_return_pct": 2.0,
-            }
+            return {"total_return_pct": 2.0, "max_drawdown": 0.05}
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
 
         async def _fake_spy_returns(*a, **k):
@@ -347,8 +339,8 @@ class TestQuerySyntax:
         async def _fake_m(): return client
         monkeypatch.setattr(metrics, "get_async_supabase_client", _fake_m)
 
-        asyncio.run(metrics.compute_wall_street_metrics(
-            frozenset({"m1", "m2"}), date(2026, 5, 1), date(2026, 5, 7)
+        asyncio.run(metrics._spy_returns(
+            client, date(2026, 5, 1), date(2026, 5, 7)
         ))
 
         select_args = [c[1][0] for c in recorder.calls if c[0] == "select"]
@@ -727,7 +719,8 @@ class TestResearcherRetry:
 
 class TestActivationGate:
     """Every week must deploy a new prompt variant — no skipping, no gate.
-    The meta-researcher always explores. Comparison against last week happens next cycle."""
+    The meta-researcher always explores. When score < baseline, the active
+    prompt is reverted to the baseline before the next experiment deploys."""
 
     @staticmethod
     def _make_result(**overrides) -> "PromptResearchResult":
@@ -747,7 +740,7 @@ class TestActivationGate:
         return {"score": score, "excess_return": 0.0, "max_drawdown": 0.0}
 
     def _patch_runner(self, monkeypatch, exp_score: float):
-        """Patch runner deps. Returns (runner, save_calls) for assertion."""
+        """Patch runner deps. Returns (runner, save_calls, revert_calls) for assertion."""
         from autoresearch import runner
 
         async def fake_evaluate(ws, we):
@@ -773,48 +766,99 @@ class TestActivationGate:
             save_calls.append(kw)
             return "v-test"
 
+        revert_calls = []
+
+        async def fake_revert_to_baseline(**kw):
+            revert_calls.append(kw)
+            return "v-baseline-reverted"
+
         monkeypatch.setattr(runner, "save_variant", fake_save)
         monkeypatch.setattr(runner, "revert_to_previous", lambda **kw: "v-prev")
-        return runner, save_calls
+        monkeypatch.setattr(runner, "revert_to_baseline", fake_revert_to_baseline)
+        return runner, save_calls, revert_calls
 
-    def test_deploys_when_positive_score(self, monkeypatch):
-        """Even with a positive score, deploy — the meta-researcher always explores."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.5)
+    def test_deploys_when_score_beats_baseline(self, monkeypatch):
+        """When score BEATS baseline, deploy AND do NOT revert to baseline."""
+        runner, save_calls, revert_calls = self._patch_runner(monkeypatch, exp_score=2.0)
         import asyncio
         asyncio.run(runner.run())
         assert len(save_calls) == 1, (
-            f"Must ALWAYS deploy new variant (score=0.5 is positive, but we still iterate). "
+            f"Must deploy new variant when score beats baseline (2.0 > 1.0). "
             f"save_variant was called {len(save_calls)} times"
         )
+        assert len(revert_calls) == 0, (
+            f"Must NOT revert when score beats baseline. "
+            f"revert_to_baseline was called {len(revert_calls)} times"
+        )
 
-    def test_deploys_when_negative_score(self, monkeypatch):
-        """Negative score must also deploy — prompt needs immediate fixing."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
+    def test_deploys_and_reverts_when_below_baseline(self, monkeypatch):
+        """When score < baseline, revert to baseline THEN deploy new variant."""
+        runner, save_calls, revert_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
         import asyncio
         asyncio.run(runner.run())
         assert len(save_calls) == 1, (
-            f"Must deploy new variant when score is negative (-0.5). "
+            f"Must still deploy new variant after revert. "
             f"save_variant was called {len(save_calls)} times"
         )
-
-        """When score < 0 (losing to SPY or too volatile), activate — prompt needs change."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
-        import asyncio
-        asyncio.run(runner.run())
-        assert len(save_calls) == 1, (
-            f"Gate should ACTIVATE when score is negative (-0.5); "
-            f"save_variant was called {len(save_calls)} times"
+        assert len(revert_calls) == 1, (
+            f"Must call revert_to_baseline when score (-0.5) < baseline (1.0). "
+            f"revert_to_baseline was called {len(revert_calls)} times"
         )
 
-    def test_deploys_when_zero_score(self, monkeypatch):
-        """Zero score (treading water) should also deploy — keep experimenting."""
-        runner, save_calls = self._patch_runner(monkeypatch, exp_score=0.0)
+    def test_deploys_and_reverts_when_zero_score(self, monkeypatch):
+        """Zero score (treading water) < baseline → revert + deploy."""
+        runner, save_calls, revert_calls = self._patch_runner(monkeypatch, exp_score=0.0)
         import asyncio
         asyncio.run(runner.run())
         assert len(save_calls) == 1, (
             f"Must deploy new variant even at zero score. "
             f"save_variant was called {len(save_calls)} times"
         )
+        assert len(revert_calls) == 1, (
+            f"Must revert when score (0.0) < baseline (1.0). "
+            f"revert_to_baseline was called {len(revert_calls)} times"
+        )
+
+    def test_deploys_when_baseline_unavailable(self, monkeypatch):
+        """When no baseline exists (first week), deploy without revert."""
+        from autoresearch import runner
+
+        async def fake_evaluate(ws, we):
+            return ("# report", self._make_score(0.5), None)
+
+        async def fake_research(report):
+            return self._make_result()
+
+        async def fake_baseline_metrics():
+            return None  # No baseline yet
+
+        async def fake_check(ws, we):
+            return (False, "")
+
+        monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
+        monkeypatch.setattr(runner, "run_research", fake_research)
+        monkeypatch.setattr(runner, "_check_safety", fake_check)
+        monkeypatch.setattr(runner, "get_baseline_metrics", fake_baseline_metrics)
+
+        save_calls = []
+        revert_calls = []
+
+        async def fake_save(**kw):
+            save_calls.append(kw)
+            return "v-test"
+
+        async def fake_revert_to_baseline(**kw):
+            revert_calls.append(kw)
+            return "v-baseline"
+
+        monkeypatch.setattr(runner, "save_variant", fake_save)
+        monkeypatch.setattr(runner, "revert_to_previous", lambda **kw: "v-prev")
+        monkeypatch.setattr(runner, "revert_to_baseline", fake_revert_to_baseline)
+
+        import asyncio
+        asyncio.run(runner.run())
+        assert len(save_calls) == 1
+        assert len(revert_calls) == 0, "No revert when no baseline exists"
 
 # ==============================================================================
 # TDD: Fix price_history end-of-day filtering and baseline metrics ordering.
@@ -912,11 +956,7 @@ class TestBaselineTracking:
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
-            return {
-                "sharpe": 0, "sortino": 0, "max_drawdown": 0.02,
-                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
-                "total_return_pct": 2.0,
-            }
+            return {"total_return_pct": 2.0, "max_drawdown": 0.02}
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
 
         async def _fake_spy_returns(*a, **k):
@@ -947,11 +987,7 @@ class TestBaselineTracking:
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
-            return {
-                "sharpe": 0, "sortino": 0, "max_drawdown": 0.02,
-                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
-                "total_return_pct": 2.5,
-            }
+            return {"total_return_pct": 2.5, "max_drawdown": 0.02}
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
 
         async def _fake_spy_returns(*a, **k):
@@ -983,11 +1019,7 @@ class TestBaselineTracking:
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
-            return {
-                "sharpe": 0, "sortino": 0, "max_drawdown": 0.02,
-                "profit_factor": 0, "info_ratio": 0, "num_trading_days": 3,
-                "total_return_pct": 2.0,
-            }
+            return {"total_return_pct": 2.0, "max_drawdown": 0.02}
         monkeypatch.setattr(evaluator, "compute_wall_street_metrics", _fake_ws_metrics)
 
         async def _fake_spy_returns(*a, **k):

@@ -87,12 +87,12 @@ async def evaluate_week(
 
     # Experiment group metrics.
     exp_metrics = await compute_wall_street_metrics(
-        AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end, spy_returns=spy_returns,
+        AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end,
     )
 
     # Control group metrics (reference only).
     ctrl_metrics = await compute_wall_street_metrics(
-        CONTROL_OWNER_IDS, week_start, week_end, spy_returns=spy_returns,
+        CONTROL_OWNER_IDS, week_start, week_end,
     )
 
     # Compute the single score.

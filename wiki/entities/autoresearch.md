@@ -12,9 +12,10 @@ The `apps/engine/autoresearch/` module implements the Karpathy-style autonomous 
 The auto-research loop runs weekly:
 1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
 2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
-3. **Research** — LLM proposes a new prompt variant (incremental or radical)
-4. **Deploy** — always activate the new variant. No gate, no skip. Every week gets a new prompt.
-5. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair).
+3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation.
+4. **Research** — LLM proposes a new prompt variant (incremental or radical)
+5. **Deploy** — always activate the new variant. No gate, no skip. Every week gets a new prompt.
+6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair).
 
 ## Files
 
@@ -32,6 +33,7 @@ The auto-research loop runs weekly:
 - **Single score**: One number to optimize — risk-adjusted return vs SPY. No composite of 8 dimensions.
 - **No validator**: Removed. The safety checker (< 2 trades → revert) is the only guardrail. Trust the process.
 - **Always deploy**: Every week deploys a new prompt. No gate. The meta-researcher always explores.
+- **Hard ratchet**: When an experiment fails to beat the baseline, `revert_to_baseline()` is called to set the active prompt back to the baseline before the next experiment. Code-level enforcement — not just instructions to the LLM.
 - **Baseline tracking**: The highest score achieved so far (tied to its prompt). The meta-researcher's target. Only moves up.
 - **Only the trading prompt is modified**: Tools, portfolio rules, execution logic remain unchanged.
 - **Control portfolios are reference only**: Shown in the report but not part of the score.
@@ -47,6 +49,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-05-13**: Hard ratchet — `revert_to_baseline()` enforces Karpathy pattern. When score < baseline, the active prompt is reverted to the baseline before the next experiment. No more trusting the LLM to voluntarily go back to the baseline.
 - **2026-05-12**: Always deploy — removed activation gate. Every week gets a new prompt regardless of score.
 - **2026-05-12**: Baseline tracking — baseline is max historical score, not last week's score. With tests.
 - **2026-05-12**: Major simplification — removed validator.py, decision_quality.py. Replaced 8-dimension composite score with single formula. Dropped VIXY regime queries, concordance, conviction calibration, mistake patterns, sample trades, and stagnation checks.

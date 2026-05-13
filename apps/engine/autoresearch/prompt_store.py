@@ -183,3 +183,50 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
 
     logger.warning("No previous kept variant to revert to (prompt_name=%s)", prompt_name)
     return None
+
+
+async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> str | None:
+    """Revert the active prompt to the all-time baseline (best score ever).
+
+    Used when the current experiment underperforms vs the baseline.
+    Marks the current active as 'kept' (not 'crashed' — it didn't crash,
+    it just failed to beat the baseline) and promotes the baseline variant
+    to 'active'.
+
+    Returns the baseline variant_tag, or None if no baseline exists.
+    """
+    baseline = await get_all_time_baseline(prompt_name)
+    if baseline is None:
+        logger.warning("No baseline to revert to (prompt_name=%s)", prompt_name)
+        return None
+
+    baseline_tag = baseline["variant_tag"]
+    sb_client = await get_async_supabase_client()
+
+    # Check if baseline is already active — nothing to do.
+    active = await (
+        sb_client.table("prompt_experiments")
+        .select("variant_tag")
+        .eq("prompt_name", prompt_name)
+        .eq("status", "active")
+        .maybe_single()
+        .execute()
+    )
+    if active and active.data and active.data["variant_tag"] == baseline_tag:
+        logger.info("Baseline %s is already active. No revert needed.", baseline_tag)
+        return baseline_tag
+
+    # Demote current active (if any) to 'kept' — it wasn't a crash, just
+    # an experiment that failed to beat the baseline.
+    await sb_client.table("prompt_experiments").update({"status": "kept"}).eq(
+        "status", "active"
+    ).eq("prompt_name", prompt_name).execute()
+
+    # Promote the baseline to active.
+    await sb_client.table("prompt_experiments").update({"status": "active"}).eq(
+        "prompt_name", prompt_name
+    ).eq("variant_tag", baseline_tag).execute()
+
+    clear_active_prompt_cache()
+    logger.info("Reverted to baseline prompt variant: %s", baseline_tag)
+    return baseline_tag

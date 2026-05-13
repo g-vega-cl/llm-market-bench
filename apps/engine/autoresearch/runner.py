@@ -18,7 +18,7 @@ from core.db import get_async_supabase_client
 
 from .evaluator import evaluate_week
 from .researcher import run_research
-from .prompt_store import save_variant, revert_to_previous, get_baseline_metrics
+from .prompt_store import save_variant, revert_to_previous, revert_to_baseline, get_baseline_metrics
 from .window import get_week_window
 
 logger = logging.getLogger("engine")
@@ -94,7 +94,10 @@ async def run(dry_run: bool = False):
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
         return
 
-    # Log baseline comparison
+    # Log baseline comparison — enforce the Karpathy ratchet.
+    # If score < baseline, revert the active prompt to the baseline so the
+    # meta-researcher always builds from the known-good foundation, never
+    # from a failed experiment.
     score = metrics["score"]
     baseline_metrics = await get_baseline_metrics()
     if baseline_metrics:
@@ -102,7 +105,13 @@ async def run(dry_run: bool = False):
         if score > baseline_score:
             logger.info("RATCHET: New score %.4f BEATS baseline %.4f. New baseline established.", score, baseline_score)
         else:
-            logger.info("RATCHET: New score %.4f failed to beat baseline %.4f.", score, baseline_score)
+            logger.info("RATCHET: New score %.4f failed to beat baseline %.4f. Reverting to baseline.", score, baseline_score)
+            if not dry_run:
+                reverted = await revert_to_baseline()
+                if reverted:
+                    logger.info("Active prompt reverted to baseline: %s", reverted)
+            else:
+                logger.info("DRY RUN: Would revert active prompt to baseline.")
 
     # Run the auto-research LLM
     logger.info("Calling auto-research LLM...")

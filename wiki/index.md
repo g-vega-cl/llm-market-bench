@@ -21,6 +21,7 @@
 - [[concepts/reasoning]] — Parallel LLM analysis with tool-calling loops
 - [[concepts/consensus]] — Semantic grouping, weighted voting, event promotion
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
+- [[concepts/alpaca-order-sync]] — Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)
 - [[concepts/memory-feedback]] — Post-mortem, contrarian analysis, cause & effect
 - [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM
 - [[concepts/tool-enforcement]] — 4-layer hallucination prevention system

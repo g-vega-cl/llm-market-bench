@@ -50,8 +50,9 @@ An immutable ledger of all executed trades. **Supabase is the source of truth.**
 - `realized_pnl` (NUMERIC): The profit or loss realized by this trade (for SELL signals).
 - `realized_pnl_pct` (NUMERIC): The profit or loss percentage realized by this trade.
 - `alpaca_order_id` (TEXT): Broker paper-trading order UUID for third-party audit.
-- `alpaca_status` (TEXT): Broker order status (`PENDING`, `FILLED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`). `SKIPPED_NO_POSITION` means the SELL was not mirrored to the broker because both the broker and the Supabase `portfolio_positions` ledger showed zero shares of the ticker, preventing an accidental short. Before skipping, the broker mirror consults Supabase as fallback — if the ledger shows the position, the SELL proceeds.
+- `alpaca_status` (TEXT): Broker order lifecycle: `SUBMITTED` (order placed), `FILLED`, `REJECTED`, `CANCELED`, `EXPIRED` (terminal states synced by daily GitHub Actions job), `ERROR` (submission failure), `SKIPPED_NO_POSITION` (SELL blocked — no shares held). Before 2026-05-14, initial status was `PENDING` instead of `SUBMITTED`; the sync script handles both.
 - `alpaca_submitted_at` (TIMESTAMPTZ): When the order was submitted to Alpaca.
+- `alpaca_filled_at` (TIMESTAMPTZ): When Alpaca reported the order as filled (set by sync script). Added 2026-05-14.
 
 ### `portfolio_performance`
 Daily snapshots of portfolio metrics for equity curve visualization.

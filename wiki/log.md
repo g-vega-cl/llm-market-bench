@@ -1,5 +1,23 @@
 # Wiki Log
 
+## [2026-05-14] fix | Alpaca order status sync — decoupled cron job (SUBMITTED → FILLED)
+
+Fixed the bug where `alpaca_status` permanently showed `PENDING` in the dashboard
+even though Alpaca had filled the order. Root cause: the original "fire-and-forget"
+design had no sync mechanism back from Alpaca to Supabase.
+
+**Changes**:
+- `execution/alpaca_broker.py`: Renamed initial status `PENDING` → `SUBMITTED`
+- `scripts/sync_alpaca_orders.py`: New standalone script — queries pending trades,
+  checks Alpaca via `get_order_by_id()`, updates status
+- `.github/workflows/sync-alpaca.yml`: Daily cron at 4pm ET + manual dispatch
+- `TradesTable.tsx`: Handles both `PENDING` (legacy) and `SUBMITTED`
+- `supabase/migrations/20260514000000_add_alpaca_filled_at_to_trades.sql`: New column
+- `concepts/alpaca-order-sync.md`: New wiki page documenting the architecture
+
+In-process polling was rejected because `asyncio.run()` cancels pending tasks
+when the pipeline completes. The decoupled cron approach is simpler and more reliable.
+
 ## [2026-05-13] docs | Expanded macro tracker and ETF universe — copper, bonds, crypto, country coverage
 
 Added 13 new tickers across three tracking systems to give LLM agents a more
@@ -696,3 +714,39 @@ Added runtime notes to AGENTS.md and wiki/SCHEMA.md documenting that QMD's nativ
 ## [2026-05-13] documentation | QMD runtime constraints and model download behavior
 
 Added runtime notes to AGENTS.md and wiki/SCHEMA.md documenting that QMD's native module requires Node 22-25 (not 26+), with nvm workaround. Also documented that `qmd query` and `qmd vsearch` download a ~1.3GB embedding model on first use, while `qmd search` and `qmd get` work immediately without a model.
+
+## [2026-05-13] fix | Alpaca order status sync — decoupled cron job (SUBMITTED → FILLED)
+
+Fixed the bug where `alpaca_status` permanently showed `PENDING` in the dashboard
+even though Alpaca had filled the order. Root cause: the original "fire-and-forget"
+design had no sync mechanism back from Alpaca to Supabase.
+
+**Changes**:
+- `execution/alpaca_broker.py`: Renamed initial status `PENDING` → `SUBMITTED`
+- `scripts/sync_alpaca_orders.py`: New standalone script — queries pending trades,
+  checks Alpaca via `get_order_by_id()`, updates status
+- `.github/workflows/sync-alpaca.yml`: Daily cron at 4pm ET + manual dispatch
+- `TradesTable.tsx`: Handles both `PENDING` (legacy) and `SUBMITTED`
+- `supabase/migrations/20260514000000_add_alpaca_filled_at_to_trades.sql`: New column
+- `concepts/alpaca-order-sync.md`: New wiki page documenting the architecture
+
+In-process polling was rejected because `asyncio.run()` cancels pending tasks
+when the pipeline completes. The decoupled cron approach is simpler and more reliable.
+
+## [2026-05-13] fix | Alpaca order status sync — decoupled cron job (SUBMITTED → FILLED)
+
+Fixed the bug where `alpaca_status` permanently showed `PENDING` in the dashboard
+even though Alpaca had filled the order. Root cause: the original "fire-and-forget"
+design had no sync mechanism back from Alpaca to Supabase.
+
+**Changes**:
+- `execution/alpaca_broker.py`: Renamed initial status `PENDING` → `SUBMITTED`
+- `scripts/sync_alpaca_orders.py`: New standalone script — queries pending trades,
+  checks Alpaca via `get_order_by_id()`, updates status
+- `.github/workflows/sync-alpaca.yml`: Daily cron at 4pm ET + manual dispatch
+- `TradesTable.tsx`: Handles both `PENDING` (legacy) and `SUBMITTED`
+- `supabase/migrations/20260514000000_add_alpaca_filled_at_to_trades.sql`: New column
+- `concepts/alpaca-order-sync.md`: New wiki page documenting the architecture
+
+In-process polling was rejected because `asyncio.run()` cancels pending tasks
+when the pipeline completes. The decoupled cron approach is simpler and more reliable.

@@ -71,7 +71,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                 variant="soft"
                                                 colorScheme={
                                                     trade.alpaca_status === 'FILLED' ? 'success' :
-                                                    trade.alpaca_status === 'PENDING' ? 'warning' :
+                                                    (trade.alpaca_status === 'PENDING' || trade.alpaca_status === 'SUBMITTED') ? 'warning' :
                                                     'danger'
                                                 }
                                                 radius="md"

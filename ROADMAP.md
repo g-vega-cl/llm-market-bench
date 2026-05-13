@@ -12,7 +12,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
 - [ ] **Review lessons learned and the learning loop** -
-- [ ] **Revisit the concepts map** -
+- [ ] **Revisit the concepts map** - It should be something like "this new trend is comming up or leaving"
 - [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
   - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
@@ -80,6 +80,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
 - [ ] - Benchify: include copper in sector analysis.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
+- [ ] - Revisit alpaca trades.
 
 ## Under Consideration
 

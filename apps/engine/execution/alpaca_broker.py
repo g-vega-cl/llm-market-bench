@@ -130,7 +130,7 @@ class AlpacaBroker:
         try:
             order = self._client.submit_order(order_request)
             order_id_str = str(order.id) if order.id else None
-            await self._update_trade(trade_id, order_id_str, "PENDING")
+            await self._update_trade(trade_id, order_id_str, "SUBMITTED")
             logger.info(
                 f"[Alpaca] Submitted {signal} {quantity} {ticker} @ ${limit_price:.2f} "
                 f"(OrderID: {order_id_str}, ClientOrderID: {client_order_id})"

@@ -1,9 +1,11 @@
 """Unit tests for the Pre-Market Validation logic (Approach 3: no AI price)."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
-from execution.validation import validate_decision, ValidationStatus
+
+import pytest
+
 from execution.providers.base import TickerData
+from execution.validation import ValidationStatus, validate_decision
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,12 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
+
 from core.db import get_supabase_client
+
 
 async def check_failed_decisions():
     supabase = get_supabase_client()

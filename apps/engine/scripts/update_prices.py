@@ -2,15 +2,16 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
 import time
+
 from core.config import logger
-from core.db import get_supabase_client, is_transient_supabase_error, SUPABASE_RETRIES
+from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
-
 
 BENCHMARK_TICKERS = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH',
                      'TLT', 'TIP', 'UNG', 'BTCUSD', 'EWU', 'EWC', 'CPER']

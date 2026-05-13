@@ -1,165 +1,180 @@
 /// <reference types="vite/client" />
-import {
-  HeadContent,
-  Link,
-  Outlet,
-  Scripts,
-  createRootRoute,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createServerFn } from '@tanstack/react-start'
-import * as React from 'react'
-import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary'
-import { NotFound } from '~/components/ui/NotFound'
-import { Button, Badge } from '@llm-market-bench/ui-design-system'
-import { QueryClientProviderWrapper } from '~/lib/query-client'
-import appCss from '../styles/app.css?url'
-import { seo } from '~/lib/seo'
-import { getSupabaseServerClient } from '~/lib/supabase'
-import { PostHogProvider } from '@posthog/react'
+
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
+import { PostHogProvider } from '@posthog/react';
+import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { createServerFn } from '@tanstack/react-start';
+import type * as React from 'react';
+import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
+import { NotFound } from '~/components/ui/NotFound';
+import { QueryClientProviderWrapper } from '~/lib/query-client';
+import { seo } from '~/lib/seo';
+import { getSupabaseServerClient } from '~/lib/supabase';
+import appCss from '../styles/app.css?url';
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = getSupabaseServerClient()
-  const { data, error: _error } = await supabase.auth.getUser()
+    const supabase = getSupabaseServerClient();
+    const { data, error: _error } = await supabase.auth.getUser();
 
-  if (!data.user?.email) {
-    return null
-  }
-
-  return {
-    email: data.user.email,
-  }
-})
-
-export const Route = createRootRoute({
-  beforeLoad: async () => {
-    const user = await fetchUser()
+    if (!data.user?.email) {
+        return null;
+    }
 
     return {
-      user,
-    }
-  },
-  head: () => ({
-    meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      ...seo({
-        title:
-          'Benchify, LLM Market Benchmarking',
-        description: `Benchify is a LLM Market Benchmarking platform`,
-      }),
-    ],
-    links: [{ rel: 'stylesheet', href: appCss }],
-  }),
-  errorComponent: (props) => {
-    return (
-      <RootDocument>
-        <DefaultCatchBoundary {...props} />
-      </RootDocument>
-    )
-  },
-  notFoundComponent: () => <NotFound />,
-  component: RootComponent,
-})
+        email: data.user.email,
+    };
+});
+
+export const Route = createRootRoute({
+    beforeLoad: async () => {
+        const user = await fetchUser();
+
+        return {
+            user,
+        };
+    },
+    head: () => ({
+        meta: [
+            {
+                charSet: 'utf-8',
+            },
+            {
+                name: 'viewport',
+                content: 'width=device-width, initial-scale=1',
+            },
+            ...seo({
+                title: 'Benchify, LLM Market Benchmarking',
+                description: `Benchify is a LLM Market Benchmarking platform`,
+            }),
+        ],
+        links: [{ rel: 'stylesheet', href: appCss }],
+    }),
+    errorComponent: (props) => {
+        return (
+            <RootDocument>
+                <DefaultCatchBoundary {...props} />
+            </RootDocument>
+        );
+    },
+    notFoundComponent: () => <NotFound />,
+    component: RootComponent,
+});
 
 function RootComponent() {
-  return (
-    <RootDocument>
-      <QueryClientProviderWrapper>
-        <Outlet />
-      </QueryClientProviderWrapper>
-    </RootDocument>
-  )
+    return (
+        <RootDocument>
+            <QueryClientProviderWrapper>
+                <Outlet />
+            </QueryClientProviderWrapper>
+        </RootDocument>
+    );
 }
 
 function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
-  return (
-    <Link
-      to={to}
-      activeProps={{ className: 'text-accent' }}
-      activeOptions={{ exact }}
-      className="hover:text-accent-hover transition-colors relative"
-    >
-      {({ isActive }) => (
-        <>
-          {label}
-          {isActive && (
-            <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full" />
-          )}
-        </>
-      )}
-    </Link>
-  )
+    return (
+        <Link
+            to={to}
+            activeProps={{ className: 'text-accent' }}
+            activeOptions={{ exact }}
+            className="hover:text-accent-hover transition-colors relative"
+        >
+            {({ isActive }) => (
+                <>
+                    {label}
+                    {isActive && (
+                        <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full" />
+                    )}
+                </>
+            )}
+        </Link>
+    );
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = Route.useRouteContext()
+    const { user } = Route.useRouteContext();
 
-  const navItems = [
-    { to: '/', label: 'Today', exact: true },
-    { to: '/memories', label: 'Memories' },
-    { to: '/posts', label: 'Posts' },
-    { to: '/concepts', label: 'Concepts' },
-    { to: '/portfolios', label: 'Portfolios' },
-    { to: '/how-it-works', label: 'How it Works' },
-    { to: '/reasoning', label: 'Reasoning' },
-    { to: '/cause-and-effect', label: 'Cause & Effect' },
-    { to: '/audits', label: 'Audits' },
-    { to: '/market-overview', label: 'Market Overview' },
-  ]
+    const navItems = [
+        { to: '/', label: 'Today', exact: true },
+        { to: '/memories', label: 'Memories' },
+        { to: '/posts', label: 'Posts' },
+        { to: '/concepts', label: 'Concepts' },
+        { to: '/portfolios', label: 'Portfolios' },
+        { to: '/how-it-works', label: 'How it Works' },
+        { to: '/reasoning', label: 'Reasoning' },
+        { to: '/cause-and-effect', label: 'Cause & Effect' },
+        { to: '/audits', label: 'Audits' },
+        { to: '/market-overview', label: 'Market Overview' },
+    ];
 
-  return (
-    <html>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <PostHogProvider
-          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
-          options={{
-            api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-            ui_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
-            defaults: '2025-05-24',
-            capture_exceptions: true,
-            debug: import.meta.env.DEV,
-          }}
-        >
-          <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
-            {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} label={item.label} exact={item.exact} />
-            ))}
+    return (
+        <html>
+            <head>
+                <HeadContent />
+            </head>
+            <body>
+                <PostHogProvider
+                    apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!}
+                    options={{
+                        api_host:
+                            import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+                        ui_host:
+                            import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
+                        defaults: '2025-05-24',
+                        capture_exceptions: true,
+                        debug: import.meta.env.DEV,
+                    }}
+                >
+                    <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
+                        {navItems.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                label={item.label}
+                                exact={item.exact}
+                            />
+                        ))}
 
-            <div className="ml-auto flex items-center gap-4">
-              {user ? (
-                <>
-                  <Badge variant="soft" size="sm" colorScheme="neutral" className="normal-case tracking-normal">
-                    {user.email}
-                  </Badge>
-                  <Link to="/logout">
-                    <Button variant="ghost" size="sm" colorScheme="danger" className="uppercase tracking-widest">
-                      Logout
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <Link to="/login">
-                  <Button variant="solid" size="sm" className="uppercase tracking-widest">
-                    Login
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </nav>
-          {children}
-          <TanStackRouterDevtools position="bottom-right" />
-          <Scripts />
-        </PostHogProvider>
-      </body>
-    </html>
-  )
+                        <div className="ml-auto flex items-center gap-4">
+                            {user ? (
+                                <>
+                                    <Badge
+                                        variant="soft"
+                                        size="sm"
+                                        colorScheme="neutral"
+                                        className="normal-case tracking-normal"
+                                    >
+                                        {user.email}
+                                    </Badge>
+                                    <Link to="/logout">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            colorScheme="danger"
+                                            className="uppercase tracking-widest"
+                                        >
+                                            Logout
+                                        </Button>
+                                    </Link>
+                                </>
+                            ) : (
+                                <Link to="/login">
+                                    <Button
+                                        variant="solid"
+                                        size="sm"
+                                        className="uppercase tracking-widest"
+                                    >
+                                        Login
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
+                    </nav>
+                    {children}
+                    <TanStackRouterDevtools position="bottom-right" />
+                    <Scripts />
+                </PostHogProvider>
+            </body>
+        </html>
+    );
 }

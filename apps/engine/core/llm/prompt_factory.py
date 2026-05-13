@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 
 from core.llm import prompts
 
@@ -49,7 +49,7 @@ class PromptFactory:
         system_template: str, 
         user_template: str, 
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Base method to construct message list.
         
         Handles generic provider adaptations like web search stripping.
@@ -92,7 +92,7 @@ class PromptFactory:
         market_data_block: str = "",
         owner_id: str = None,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for the primary analysis loop.
 
         If owner_id is in the experiment group, loads the active prompt
@@ -123,7 +123,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for the verifier agent."""
         return cls._build_messages(
             provider,
@@ -138,7 +138,7 @@ class PromptFactory:
         provider: str,
         market_data_block: str = "",
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for the contrarian agent."""
         kwargs["market_data_block"] = market_data_block
         return cls._build_messages(
@@ -153,7 +153,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for the manager/post-analysis agent."""
         return cls._build_messages(
             provider,
@@ -167,7 +167,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for synthesizing events."""
         return cls._build_messages(
             provider,
@@ -181,7 +181,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for determining relationships."""
         return cls._build_messages(
             provider,
@@ -195,7 +195,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for defining cause and effect."""
         return cls._build_messages(
             provider,
@@ -209,7 +209,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for discovery mapping. No system prompt."""
         return cls._build_messages(
             provider,
@@ -223,7 +223,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for asset ranking. No system prompt."""
         return cls._build_messages(
             provider,
@@ -237,7 +237,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for ticker suggestion. No system prompt."""
         return cls._build_messages(
             provider,
@@ -251,7 +251,7 @@ class PromptFactory:
         cls,
         provider: str,
         **kwargs
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Builds messages for de-advertisement module."""
         return cls._build_messages(
             provider,

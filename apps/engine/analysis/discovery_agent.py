@@ -3,11 +3,10 @@
 import json
 import logging
 import re
-from typing import List, Optional
 
 from core.config import GEMINI_MODEL
 from core.llm import clients, prompts, tools
-from core.llm.handlers import gemini, openai, anthropic
+from core.llm.handlers import anthropic, gemini, openai
 
 logger = logging.getLogger("engine")
 
@@ -35,7 +34,7 @@ class DiscoveryAgent:
         # Handlers translate canonical defs to provider-specific format internally.
         self.discovery_tools = [tools.RUN_STOCK_SCREENER_TOOL]
 
-    async def discover_assets(self, theme: str, context: Optional[str] = None) -> List[dict]:
+    async def discover_assets(self, theme: str, context: str | None = None) -> list[dict]:
         """Executes a single-call tool-calling mission to find ~5 assets for a given theme.
         
         Args:
@@ -94,7 +93,7 @@ class DiscoveryAgent:
         assets = self._parse_json_response(final_text)
         
         if not assets:
-            logger.warning(f"DiscoveryAgent: Failed to parse JSON from response")
+            logger.warning("DiscoveryAgent: Failed to parse JSON from response")
             return []
         
         logger.info(f"DiscoveryAgent: Successfully extracted {len(assets)} assets")
@@ -183,7 +182,7 @@ class DiscoveryAgent:
         except Exception as e:
             logger.warning(f"DiscoveryAgent: forced text completion failed: {e}")
 
-    def _parse_json_response(self, text: str) -> List[dict]:
+    def _parse_json_response(self, text: str) -> list[dict]:
         """Extract and parse JSON from the response text."""
         json_match = None
         

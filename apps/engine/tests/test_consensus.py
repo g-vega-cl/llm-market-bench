@@ -1,11 +1,13 @@
 """Tests for the Event Consensus Protocol."""
 
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from analysis.consensus import _is_vague_government_event, _resolve_impact_tie, process_consensus
 from core.config import GEMINI_MODEL
 from core.models import MacroEvent
-from analysis.consensus import process_consensus, _resolve_impact_tie, _is_vague_government_event
+
 
 @pytest.fixture
 def sample_events():

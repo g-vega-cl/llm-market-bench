@@ -5,10 +5,9 @@ function-tool schema). Handlers translate to provider-specific formats via
 ``to_anthropic`` / ``to_gemini`` at the boundary.
 """
 
-from typing import Optional
-from execution.market_data import MarketDataManager
-from core.db import get_supabase_client
 
+from core.db import get_supabase_client
+from execution.market_data import MarketDataManager
 
 # =============================================================================
 # FORMAT ADAPTERS
@@ -459,19 +458,19 @@ def compute_volume_context(history: list[dict]) -> str:
 
 
 async def execute_stock_screener_tool(
-    market_cap_more_than: Optional[float] = None,
-    market_cap_lower_than: Optional[float] = None,
-    price_more_than: Optional[float] = None,
-    price_lower_than: Optional[float] = None,
-    beta_more_than: Optional[float] = None,
-    beta_lower_than: Optional[float] = None,
-    volume_more_than: Optional[float] = None,
-    volume_lower_than: Optional[float] = None,
-    dividend_more_than: Optional[float] = None,
-    dividend_lower_than: Optional[float] = None,
-    sector: Optional[str] = None,
-    industry: Optional[str] = None,
-    exchange: Optional[str] = "NYSE,NASDAQ",
+    market_cap_more_than: float | None = None,
+    market_cap_lower_than: float | None = None,
+    price_more_than: float | None = None,
+    price_lower_than: float | None = None,
+    beta_more_than: float | None = None,
+    beta_lower_than: float | None = None,
+    volume_more_than: float | None = None,
+    volume_lower_than: float | None = None,
+    dividend_more_than: float | None = None,
+    dividend_lower_than: float | None = None,
+    sector: str | None = None,
+    industry: str | None = None,
+    exchange: str | None = "NYSE,NASDAQ",
     limit: int = 10,
     is_actively_trading: bool = True
 ) -> str:
@@ -699,9 +698,9 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
 
 async def execute_search_related_tickers_tool(theme: str) -> str:
     """Uses LLM to search for tickers related to a theme."""
-    from core.llm.prompt_factory import PromptFactory
-    from core.llm.clients import get_gemini_client
     from core.config import GEMINI_MODEL
+    from core.llm.clients import get_gemini_client
+    from core.llm.prompt_factory import PromptFactory
     from core.models import TickerSuggestion
 
     client = get_gemini_client()

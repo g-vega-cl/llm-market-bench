@@ -1,10 +1,11 @@
 
-import pytest
 import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
-import sys
 import os
-from datetime import datetime, timezone, timedelta
+import sys
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
@@ -30,13 +31,13 @@ async def test_cause_and_effect_semantic_dedupe():
     event_a = {
         "id": "uuid-a",
         "content": "A liquidity crisis in private credit is unfolding.",
-        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "created_at": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
         "metadata": {}
     }
     event_b = {
         "id": "uuid-b",
         "content": "Private credit liquidity is tightening significantly.",
-        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "created_at": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
         "metadata": {}
     }
     
@@ -99,7 +100,7 @@ async def test_cause_and_effect_expanded_tickers():
     event = {
         "id": "uuid-c",
         "content": "A major shift is happening in private credit markets.",
-        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "created_at": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
         "metadata": {}
     }
     
@@ -158,7 +159,7 @@ async def test_cause_and_effect_includes_dates_in_market_performance():
     event = {
         "id": "uuid-date-test",
         "content": "Fed announced rate pause affecting banking sector.",
-        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "created_at": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
         "metadata": {
             "scenario_analysis": "Banks should benefit from stable yields."
         }
@@ -220,7 +221,7 @@ async def test_cause_and_effect_includes_dates_in_market_performance():
         
         assert "17.43%" in user_message, f"Percentage change should be calculated. Got: {user_message}"
         
-        print(f"\nTest Passed: Dates included in market_performance text.")
+        print("\nTest Passed: Dates included in market_performance text.")
 
 
 @pytest.mark.asyncio
@@ -239,7 +240,7 @@ async def test_cause_and_effect_ticker_cleaning():
     event = {
         "id": "uuid-ticker-clean",
         "content": "Energy sector experiencing volatility due to Strait of Hormuz tensions.",
-        "created_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        "created_at": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
         "metadata": {}
     }
     

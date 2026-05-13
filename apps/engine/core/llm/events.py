@@ -3,19 +3,19 @@
 import logging
 import re
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from core import config
 from core.llm import clients
-from core.llm.prompt_factory import PromptFactory
 from core.llm.logger import log_reasoning_trace
+from core.llm.prompt_factory import PromptFactory
 
 logger = logging.getLogger("engine")
 
 
-def _normalize_future_date(date_str: Optional[str], note_str: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+def _normalize_future_date(date_str: str | None, note_str: str | None) -> tuple[str | None, str | None]:
     """Validates and normalizes the future date string.
 
     Returns:
@@ -74,18 +74,18 @@ async def synthesize_event(
         class SynthesisResponse(BaseModel):
             name: str
             summary: str
-            future_date: Optional[str] = None
-            future_date_note: Optional[str] = None
+            future_date: str | None = None
+            future_date_note: str | None = None
             is_ongoing: bool = False
             is_future_catalyst: bool = False
-            historical_parallel: Optional[str] = None
-            scenario_analysis: Optional[str] = Field(None, description="Unified view of material resolutions. REQUIRED: At least two outcomes with estimated probability percentages summing to 100%, AND a 'Trading Plan' for each.")
+            historical_parallel: str | None = None
+            scenario_analysis: str | None = Field(None, description="Unified view of material resolutions. REQUIRED: At least two outcomes with estimated probability percentages summing to 100%, AND a 'Trading Plan' for each.")
             importance_score: int = 5
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
             # Use List to handle Gemini's tendency to emit multiple tool calls for the schema
-            response_model=List[SynthesisResponse], 
+            response_model=list[SynthesisResponse], 
             messages=messages,
             max_retries=2,
         )
@@ -178,8 +178,8 @@ async def analyze_event_relationship(
         )
 
         class RelationshipResponse(BaseModel):
-            parent_index: Optional[int] = None
-            relationship_type: Optional[str] = None
+            parent_index: int | None = None
+            relationship_type: str | None = None
             should_resolve: bool = False
 
         resp = await client.chat.completions.create(

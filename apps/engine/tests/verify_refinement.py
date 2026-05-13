@@ -1,12 +1,12 @@
 import asyncio
 import os
 import sys
-import logging
 
 # Add current directory to sys.path
 sys.path.append(os.getcwd())
 
 from execution.providers.ibkr import IBKRProvider
+
 
 async def verify_refinement():
     print("Verifying IBKR refinement (readonly=True, suppressed logs)...")

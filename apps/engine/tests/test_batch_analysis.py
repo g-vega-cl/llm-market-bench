@@ -1,10 +1,13 @@
 """Tests for batch analysis logic."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
-from core.models import DecisionObject
+
+import pytest
+
 #, DecisionsResponse  <-- Need to import if we mock
 from analysis.analyze import analyze_chunks
+from core.models import DecisionObject
+
 
 @pytest.fixture
 def mock_llm_analyze():

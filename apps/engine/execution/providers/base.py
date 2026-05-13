@@ -1,8 +1,8 @@
 """Base interface for financial data providers."""
 
 from abc import ABC, abstractmethod
+
 from pydantic import BaseModel
-from typing import Optional
 
 
 class TickerData(BaseModel):
@@ -12,7 +12,7 @@ class TickerData(BaseModel):
     market_cap: float
     exists: bool = True
     currency: str = "USD"
-    exchange: Optional[str] = None
+    exchange: str | None = None
 
 
 class FinancialProvider(ABC):
@@ -20,7 +20,7 @@ class FinancialProvider(ABC):
     provider_name: str = "base"
 
     @abstractmethod
-    async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
+    async def get_ticker_data(self, ticker: str) -> TickerData | None:
         """Fetch real-time/delayed ticker data including price and market cap.
         
         Returns:

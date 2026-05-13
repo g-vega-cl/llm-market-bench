@@ -1,8 +1,11 @@
 """Tests for Daily Performance Snapshotting."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.portfolio import Portfolio, Position
+
 
 @pytest.mark.asyncio
 async def test_record_performance_snapshot():

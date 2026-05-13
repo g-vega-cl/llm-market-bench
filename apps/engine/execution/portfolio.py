@@ -7,8 +7,8 @@ for each LLM agent, utilizing the database for persistence.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Optional, Any, List
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from core.db import get_supabase_client
@@ -23,7 +23,12 @@ class Position:
     average_cost_basis: float
 
 
-from .reg_t_validation import calculate_reg_t_metrics, validate_trade_compliance, RegTMetrics, ValidationResult
+from .reg_t_validation import (
+    RegTMetrics,
+    ValidationResult,
+    calculate_reg_t_metrics,
+    validate_trade_compliance,
+)
 
 
 class Portfolio:
@@ -31,12 +36,12 @@ class Portfolio:
 
     def __init__(self, owner_id: str):
         self.owner_id = owner_id
-        self.id: Optional[UUID] = None
+        self.id: UUID | None = None
         self.cash_balance: float = 10000.00
         self.sma: float = 0.0
-        self.positions: Dict[str, Position] = {}
+        self.positions: dict[str, Position] = {}
         # Metrics cache
-        self.metrics: Optional[RegTMetrics] = None
+        self.metrics: RegTMetrics | None = None
 
     async def initialize(self):
         """Loads from DB or creates a new portfolio if none exists."""
@@ -105,7 +110,7 @@ class Portfolio:
                 average_cost_basis=float(p["average_cost_basis"])
             )
 
-    def calculate_reg_t_metrics(self, current_prices: Dict[str, float]) -> RegTMetrics:
+    def calculate_reg_t_metrics(self, current_prices: dict[str, float]) -> RegTMetrics:
         """Calculates Reg T margin metrics based on current market prices.
         
         Delegates to the granular logic in reg_t_validation.py.
@@ -134,7 +139,7 @@ class Portfolio:
         
         return self.metrics
 
-    async def get_portfolio_summary(self, current_prices: Dict[str, float]) -> str:
+    async def get_portfolio_summary(self, current_prices: dict[str, float]) -> str:
         """Generates a text summary for the LLM prompt."""
         metrics = self.calculate_reg_t_metrics(current_prices)
         
@@ -164,7 +169,7 @@ class Portfolio:
         recent_trades = await self.get_recent_trades(hours=48)
         if recent_trades:
             summary.append("\nRecently Executed Trades (Last 48h):")
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             for t in recent_trades:
                 # Format: SIGNAL ticker: qty @ price (Time Ago) - Reason: ...
                 executed_at_str = t.get("executed_at", "")
@@ -179,7 +184,7 @@ class Portfolio:
                         from dateutil import parser
                         exec_time = parser.isoparse(executed_at_str)
                         if exec_time.tzinfo is None:
-                            exec_time = exec_time.replace(tzinfo=timezone.utc)
+                            exec_time = exec_time.replace(tzinfo=UTC)
                             
                         diff = now - exec_time
                         
@@ -219,7 +224,7 @@ class Portfolio:
             
         try:
             client = get_supabase_client()
-            cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+            cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
             
             # Fetch trades for this portfolio
             response = client.table("trades").select(
@@ -278,7 +283,7 @@ class Portfolio:
             is_sell_tool_used=is_sell_tool_used
         )
 
-    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str, decision_id: str | None = None, current_prices: Dict[str, float] = None) -> Optional[UUID]:
+    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str, decision_id: str | None = None, current_prices: dict[str, float] = None) -> UUID | None:
         """Executes the trade by updating cash, positions, and ledger.
         
         Args:
@@ -446,7 +451,7 @@ class Portfolio:
             # In real system: Rollback local state
             return None
 
-    async def _check_and_sell_dust_positions(self, current_prices: Dict[str, float]):
+    async def _check_and_sell_dust_positions(self, current_prices: dict[str, float]):
         """Check all positions and automatically sell any that are below 10% of portfolio equity.
         
         This prevents portfolio pollution from small 'dust' positions after partial sells.
@@ -539,7 +544,7 @@ class Portfolio:
             self.calculate_reg_t_metrics(updated_prices)
             await self.save_metrics()
 
-    async def record_performance_snapshot(self, current_prices: Dict[str, float]):
+    async def record_performance_snapshot(self, current_prices: dict[str, float]):
         """Records an immutable daily performance snapshot of the portfolio."""
         if not self.id:
             logger.error("Cannot snapshot uninitialized portfolio.")

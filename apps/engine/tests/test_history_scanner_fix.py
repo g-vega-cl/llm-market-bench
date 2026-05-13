@@ -1,12 +1,13 @@
-import sys
-import os
 import json
+import os
+import sys
 from unittest.mock import MagicMock
 
 # Add apps/engine to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.llm.analysis import _scan_history_for_tools
+
 
 def test_history_scanner_with_objects():
     # Mock tool call object (OpenAI style)

@@ -27,7 +27,7 @@ async def test_endpoint(url):
 
         # 2. Test Price Fetch (AAPL)
         try:
-            print(f"Fetching Price for AAPL...")
+            print("Fetching Price for AAPL...")
             resp = await client.get(f"{url}/price/AAPL", headers=headers, timeout=15)
             if resp.status_code == 200:
                 print(f"SUCCESS! AAPL Price: {resp.json().get('price')}")

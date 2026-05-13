@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 MOCK_ASSETS_RESULT = [
     {"ticker": "UUUU", "name": "Energy Fuels", "reason": "Uranium mining with exposure to SMR fuel demand"},

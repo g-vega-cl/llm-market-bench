@@ -1,9 +1,11 @@
 """Tests for ingest.calendar module."""
 
-import pytest
 from unittest.mock import MagicMock, patch
-from ingest.calendar import CalendarPipeline
+
+import pytest
+
 from core.models import DecisionsResponse, MacroEvent
+from ingest.calendar import CalendarPipeline
 
 SAMPLE_HTML = """
 <table id="calendar">

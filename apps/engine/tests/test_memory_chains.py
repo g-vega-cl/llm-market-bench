@@ -9,8 +9,8 @@ from pathlib import Path
 engine_path = str(Path(__file__).parent.parent / "apps" / "engine")
 sys.path.append(engine_path)
 
-from memory.store import add_memory, update_memory_status, find_potential_ancestors
 from core.llm import analyze_event_relationship
+from memory.store import add_memory, find_potential_ancestors, update_memory_status
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("verification")

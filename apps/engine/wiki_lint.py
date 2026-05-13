@@ -11,8 +11,9 @@ Exit code 0 = clean, 1 = issues found.
 import argparse
 import re
 import sys
-import yaml
 from pathlib import Path
+
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"

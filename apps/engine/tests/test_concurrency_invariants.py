@@ -1,10 +1,11 @@
-import asyncio
-import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from core.models import DecisionObject
 from execution.validation import ValidationResult, ValidationStatus
-from main import _stage_decision_processing, run_ingest
+from main import _stage_decision_processing
+
 
 @pytest.fixture
 def mock_deps():
@@ -67,7 +68,8 @@ async def test_conviction_priority_double_buy(mock_deps):
     d2 = DecisionObject(signal="BUY", ticker="L_CONV", confidence=80, reasoning="R2", source_id="s2", model_name="agent-a", original_index=1)
 
     state = {"bp": 1500.0}
-    from execution.reg_t_validation import RegTMetrics, ValidationResult as ComplianceResult
+    from execution.reg_t_validation import RegTMetrics
+    from execution.reg_t_validation import ValidationResult as ComplianceResult
 
     def get_metrics():
         return RegTMetrics(total_equity=10000, initial_margin_req=0, maintenance_margin_req=0,

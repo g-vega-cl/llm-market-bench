@@ -8,11 +8,11 @@ markdown report and the score dict so the runner does not parse markdown.
 import logging
 from datetime import date
 
-from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL, ANTHROPIC_MODEL
+from core.config import ANTHROPIC_MODEL, AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL
 from core.db import get_async_supabase_client
 
-from .metrics import compute_wall_street_metrics, _spy_returns, compute_score
-from .prompt_store import get_active_prompt, get_previous_variants, get_all_time_baseline
+from .metrics import _spy_returns, compute_score, compute_wall_street_metrics
+from .prompt_store import get_active_prompt, get_all_time_baseline, get_previous_variants
 from .window import get_week_window
 
 logger = logging.getLogger("engine")

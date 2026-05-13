@@ -1,8 +1,11 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
+import memory.embeddings
 from analysis.analyze import analyze_chunks
 from core.models import DecisionsResponse
-import memory.embeddings
+
 
 @pytest.mark.asyncio
 async def test_consolidated_call_counts():

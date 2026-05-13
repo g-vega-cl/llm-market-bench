@@ -1,8 +1,11 @@
 import asyncio
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.market_data import MarketDataManager
 from execution.providers.base import TickerData
+
 
 @pytest.mark.asyncio
 async def test_fallback_to_last_known():
@@ -70,7 +73,7 @@ if __name__ == "__main__":
     if not hasattr(patch, "CoroutineMock"):
         class CoroutineMock(MagicMock):
             async def __call__(self, *args, **kwargs):
-                return super(CoroutineMock, self).__call__(*args, **kwargs)
+                return super().__call__(*args, **kwargs)
         asyncio.CoroutineMock = CoroutineMock
 
     asyncio.run(run_tests())

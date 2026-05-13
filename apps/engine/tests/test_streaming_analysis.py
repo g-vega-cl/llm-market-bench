@@ -7,10 +7,12 @@ These tests verify that:
 4. Consensus and momentum run in parallel (fire-and-forget)
 """
 
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from core.models import DecisionObject, DecisionsResponse, MacroEvent
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from core.models import DecisionObject, DecisionsResponse
 
 
 class TestAnalyzeChunksStreaming:
@@ -376,8 +378,8 @@ class TestClientCleanup:
     @pytest.mark.asyncio
     async def test_close_client_handles_none_underlying(self):
         """Test that close_client handles client with None underlying without error."""
+
         from core.llm.clients import close_client
-        import instructor
         
         # Create a mock client with client.client = None
         mock_client = MagicMock()

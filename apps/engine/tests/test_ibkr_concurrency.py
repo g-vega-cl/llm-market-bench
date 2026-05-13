@@ -1,15 +1,14 @@
 import asyncio
 import os
 import sys
-import logging
 
 # Add apps/engine to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from execution.providers.ibkr import IBKRProvider
-from core.config import logger
-
 import pytest
+
+from execution.providers.ibkr import IBKRProvider
+
 
 @pytest.mark.skipif(os.getenv("CI") == "true", reason="Skipping live IBKR tests in CI")
 @pytest.mark.asyncio

@@ -5,10 +5,9 @@ pre-fetch market data extraction works, prompts are rewritten, the execution
 pipeline no longer relies on LLM-produced prices, and validation changes.
 """
 
-import pytest
-from pydantic import ValidationError
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # =============================================================================
 # Round 1 — DecisionObject field changes

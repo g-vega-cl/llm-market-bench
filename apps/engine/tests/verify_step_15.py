@@ -2,8 +2,9 @@
 
 import asyncio
 import logging
-from memory.store import add_memory, retrieve_context
+
 from core.models import DecisionObject
+from memory.store import add_memory, retrieve_context
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("verify")
@@ -44,7 +45,7 @@ async def verify_step_15():
         print("❌ Failed to embed reasoning.")
         return
 
-    print(f"\n2. Retrieving context for query: 'Apple iPhone demand'")
+    print("\n2. Retrieving context for query: 'Apple iPhone demand'")
     context = retrieve_context("Apple iPhone demand")
     
     if decision.reasoning in context:

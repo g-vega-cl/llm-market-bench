@@ -1,8 +1,10 @@
-import pytest
-import math
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.market_data import MarketDataManager
 from execution.providers.base import TickerData
+
 
 @pytest.fixture
 def mock_supabase():

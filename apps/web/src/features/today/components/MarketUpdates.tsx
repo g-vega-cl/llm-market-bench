@@ -1,24 +1,27 @@
-import * as React from 'react'
-import { SectionHeading } from '@llm-market-bench/ui-design-system'
+import { SectionHeading } from '@llm-market-bench/ui-design-system';
+import * as React from 'react';
 
 interface MarketUpdatesProps {
-    priceUpdates: any[]
+    priceUpdates: any[];
 }
 
 export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
-    if (!priceUpdates.length) return null
+    if (!priceUpdates.length) return null;
 
     // Deduplicate updates by ticker and show most recent
     const latestPrices = priceUpdates.reduce((acc: any, curr: any) => {
-        if (!acc[curr.ticker] || new Date(curr.fetched_at) > new Date(acc[curr.ticker].fetched_at)) {
-            acc[curr.ticker] = curr
+        if (
+            !acc[curr.ticker] ||
+            new Date(curr.fetched_at) > new Date(acc[curr.ticker].fetched_at)
+        ) {
+            acc[curr.ticker] = curr;
         }
-        return acc
-    }, {})
+        return acc;
+    }, {});
 
     const sortedPrices = Object.values(latestPrices).sort((a: any, b: any) =>
-        a.ticker.localeCompare(b.ticker)
-    )
+        a.ticker.localeCompare(b.ticker),
+    );
 
     return (
         <section className="space-y-8 animate-slide-up">
@@ -35,8 +38,8 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {sortedPrices.map((update: any, idx) => {
-                    const priceChange = update.price_change || 0
-                    const isPositive = priceChange >= 0
+                    const priceChange = update.price_change || 0;
+                    const isPositive = priceChange >= 0;
 
                     return (
                         <div
@@ -45,9 +48,11 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                             style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             {/* Background Gradient on Hover */}
-                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300 ${
-                                isPositive ? 'bg-neon-green-500' : 'bg-alert-red-500'
-                            }`} />
+                            <div
+                                className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300 ${
+                                    isPositive ? 'bg-neon-green-500' : 'bg-alert-red-500'
+                                }`}
+                            />
 
                             {/* Ticker */}
                             <div className="relative">
@@ -62,11 +67,16 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
 
                                 {/* Change Indicator */}
                                 {priceChange !== 0 && (
-                                    <div className={`flex items-center justify-center gap-1 text-xs font-bold ${
-                                        isPositive ? 'text-neon-green-500' : 'text-alert-red-500'
-                                    }`}>
+                                    <div
+                                        className={`flex items-center justify-center gap-1 text-xs font-bold ${
+                                            isPositive
+                                                ? 'text-neon-green-500'
+                                                : 'text-alert-red-500'
+                                        }`}
+                                    >
                                         <span>
-                                            {isPositive ? '↑' : '↓'} {Math.abs(priceChange).toFixed(2)}%
+                                            {isPositive ? '↑' : '↓'}{' '}
+                                            {Math.abs(priceChange).toFixed(2)}%
                                         </span>
                                     </div>
                                 )}
@@ -76,14 +86,14 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                                     <span className="w-1 h-1 bg-zinc-300 rounded-full" />
                                     {new Date(update.fetched_at).toLocaleTimeString([], {
                                         hour: '2-digit',
-                                        minute: '2-digit'
+                                        minute: '2-digit',
                                     })}
                                 </div>
                             </div>
                         </div>
-                    )
+                    );
                 })}
             </div>
         </section>
-    )
+    );
 }

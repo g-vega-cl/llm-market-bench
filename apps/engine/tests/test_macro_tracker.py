@@ -1,8 +1,9 @@
 """Unit tests for Global Macro Tracker module."""
 
-import pytest
-import math
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from core.macro_tracker import MACRO_TICKERS, get_global_macro_context
 
 

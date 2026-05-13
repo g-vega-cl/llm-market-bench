@@ -1,10 +1,12 @@
 """Tests for the decision attribution service."""
 
 from unittest.mock import MagicMock, patch
+
 import pytest
-from core.models import DecisionObject
-from core.config import GEMINI_MODEL
+
 from attribution.service import save_decision
+from core.config import GEMINI_MODEL
+from core.models import DecisionObject
 
 
 @pytest.fixture(autouse=True)

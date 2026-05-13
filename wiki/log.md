@@ -750,3 +750,7 @@ design had no sync mechanism back from Alpaca to Supabase.
 
 In-process polling was rejected because `asyncio.run()` cancels pending tasks
 when the pipeline completes. The decoupled cron approach is simpler and more reliable.
+
+## [2026-05-13] refactor | Ruff + Biome linting: massive import sort and code style cleanup
+
+Applied `ruff check --fix` (Python engine) and `pnpm biome check --fix` (TypeScript web + packages) across the entire monorepo. Changes are purely cosmetic: import reordering (isort), type annotation modernization (`Optional[X]` → `X | None`, `List[X]` → `list[X]`, `Dict[X,Y]` → `dict[X,Y]`), `datetime.timezone.utc` → `datetime.UTC`, f-string cleanup, whitespace normalization, and Biome formatting (4-space indent, single quotes, trailing commas). Added `ruff.toml` and `biome.json` config files. Added `ruff` to `requirements.txt` and `@biomejs/biome` to root `package.json`. Updated `.husky/pre-commit` to run both linters before tests. No behavioral changes.

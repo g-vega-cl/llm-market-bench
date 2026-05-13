@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from execution.market_data import MarketDataManager
 from execution.providers.yfinance import YFinanceProvider
-from execution.providers.fmp import FMPProvider
+
 
 @pytest.mark.asyncio
 async def test_market_data_manager_get_history_cache_hit():
@@ -77,8 +79,9 @@ async def test_yfinance_provider_get_history():
     mock_hist = MagicMock()
     mock_hist.empty = False
     
-    import pandas as pd
     import datetime
+
+    import pandas as pd
     
     data = {
         "Close": [100.0, 101.0, 102.0]

@@ -3,17 +3,18 @@
 This is a one-off maintenance script to fix velocity scores after the formula update.
 """
 
-import sys
-import os
 import logging
-from datetime import datetime, timezone
+import os
+import sys
+from datetime import UTC, datetime
+
 import tqdm
 
 # Add the engine root directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.db import get_supabase_client
 from analysis.momentum import calculate_velocity
+from core.db import get_supabase_client
 
 # Configure logging
 logging.basicConfig(
@@ -66,7 +67,7 @@ def main():
                 sb.table("concept_metrics").update({
                     "concept_vector": vector, # Update to the new prefixed vector!
                     "velocity_score": new_velocity,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
+                    "updated_at": datetime.now(UTC).isoformat()
                 }).eq("id", c_id).execute()
                 
                 updated_count += 1

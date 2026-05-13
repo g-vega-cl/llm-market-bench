@@ -4,17 +4,15 @@ Supabase remains the source of truth. Alpaca is fire-and-forget.
 Every executed trade is mirrored as a DAY limit order, tagged with agent metadata.
 """
 
-import asyncio
 import logging
-from typing import Optional
 from uuid import UUID
 
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import LimitOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.common.exceptions import APIError
+from alpaca.trading.client import TradingClient
+from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.requests import LimitOrderRequest
 
-from core.config import ALPACA_ENABLED, ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER_ENDPOINT
+from core.config import ALPACA_API_KEY, ALPACA_ENABLED, ALPACA_PAPER_ENDPOINT, ALPACA_SECRET_KEY
 from core.db import get_supabase_client
 
 logger = logging.getLogger("engine")
@@ -24,7 +22,7 @@ class AlpacaBroker:
     """Thin wrapper around Alpaca Trading API for limit order submission."""
 
     def __init__(self):
-        self._client: Optional[TradingClient] = None
+        self._client: TradingClient | None = None
 
         if not ALPACA_ENABLED:
             logger.info("[Alpaca] Disabled via ALPACA_ENABLED constant.")
@@ -140,7 +138,7 @@ class AlpacaBroker:
             await self._update_trade(trade_id, None, "ERROR")
 
     async def _update_trade(
-        self, trade_id: UUID, order_id: Optional[str], status: str
+        self, trade_id: UUID, order_id: str | None, status: str
     ) -> None:
         """Update the trades row with Alpaca metadata."""
         try:

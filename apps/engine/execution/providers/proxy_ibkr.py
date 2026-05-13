@@ -1,8 +1,10 @@
+
 import httpx
-import logging
-from typing import Optional, List, Dict
+
+from core.config import IBKR_PROXY_TOKEN, IBKR_PROXY_URL, logger
+
 from .base import FinancialProvider, TickerData
-from core.config import IBKR_PROXY_URL, IBKR_PROXY_TOKEN, logger
+
 
 class ProxyIBKRProvider(FinancialProvider):
     """Provider that fetches IBKR data via a secure Proxy API."""
@@ -16,7 +18,7 @@ class ProxyIBKRProvider(FinancialProvider):
             "Authorization": f"Bearer {IBKR_PROXY_TOKEN}" if IBKR_PROXY_TOKEN else ""
         }
 
-    async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
+    async def get_ticker_data(self, ticker: str) -> TickerData | None:
         """Fetch ticker data from the proxy."""
         if not self.base_url:
             return None
@@ -38,7 +40,7 @@ class ProxyIBKRProvider(FinancialProvider):
                 logger.error(f"Failed to fetch {ticker} from proxy: {e}")
                 return None
 
-    async def get_history(self, ticker: str, days: int = 14) -> List[Dict]:
+    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
         """Fetch historical data from the proxy."""
         if not self.base_url:
             return []

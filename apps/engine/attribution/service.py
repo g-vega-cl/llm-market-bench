@@ -5,10 +5,11 @@ creating an audit trail that links decisions to source newsletters.
 """
 
 from typing import Any
+
 from supabase import Client
 
-from core.models import DecisionObject
 from core.config import logger
+from core.models import DecisionObject
 from memory.embeddings import get_embedding
 
 

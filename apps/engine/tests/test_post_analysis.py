@@ -1,11 +1,12 @@
 """Tests for post_analysis module."""
 
-import pytest
 import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
-import sys
 import os
-from datetime import datetime, timezone, timedelta
+import sys
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.config import GEMINI_MODEL
 
@@ -30,7 +31,7 @@ async def test_post_analysis_skips_existing_memory():
         "quantity": 3,
         "price": 175.0,
         "signal": "BUY",
-        "executed_at": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+        "executed_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
         "decisions": [{
             "reasoning": "AI momentum",
             "model_name": "test_model",
@@ -101,7 +102,7 @@ def test_window_date_calculation():
     """Verify window date calculation for 5, 14, 30 days ago."""
     from datetime import timedelta
     
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     
     for days_back in [5, 14, 30]:
         target_date = (now - timedelta(days=days_back)).date()
@@ -132,7 +133,7 @@ async def test_post_analysis_metadata_includes_model_name():
         "quantity": 10,
         "price": 180.0,
         "signal": "BUY",
-        "executed_at": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+        "executed_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
         "decisions": [{
             "reasoning": "Strong earnings momentum",
             "model_name": GEMINI_MODEL,

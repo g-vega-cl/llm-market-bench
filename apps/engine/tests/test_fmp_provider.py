@@ -1,8 +1,11 @@
-import pytest
-import httpx
-from unittest.mock import AsyncMock, patch, MagicMock
-from execution.providers.fmp import FMPProvider
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
+
+from execution.providers.fmp import FMPProvider
+
 
 @pytest.mark.asyncio
 async def test_fmp_provider_get_history_date_parameters():

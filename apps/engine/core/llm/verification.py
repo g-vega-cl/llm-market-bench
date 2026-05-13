@@ -3,14 +3,14 @@
 import asyncio
 import copy
 import logging
-from typing import List
 
-from core.models import DecisionObject, VerificationResult
 from core.llm import clients, tools
-from core.llm.prompt_factory import PromptFactory
-from .utils import ensure_list
 from core.llm.logger import log_reasoning_trace
+from core.llm.prompt_factory import PromptFactory
+from core.models import DecisionObject, VerificationResult
 from memory.store import retrieve_for_decision
+
+from .utils import ensure_list
 
 logger = logging.getLogger("engine")
 
@@ -48,7 +48,7 @@ async def verify_trading_decision(
     model_name = decision.model_name or "gpt-4o"
 
     # --- Specialized Agent Model Mapping ---
-    from core.config import GEMINI_MODEL, ANTHROPIC_MODEL, DEEPSEEK_MODEL
+    from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL
 
     AGENT_MODEL_MAPPING = {
         "contrarian_agent": GEMINI_MODEL,
@@ -230,7 +230,7 @@ async def verify_trading_decision(
         # Anthropic calls via instructor require max_tokens
         create_args = {
             "model": model_name,
-            "response_model": List[
+            "response_model": list[
                 VerificationResult
             ],  # Use List to handle Gemini multi-block tool calls
             "messages": copy.deepcopy(instructor_messages),

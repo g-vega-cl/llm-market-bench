@@ -8,18 +8,12 @@ import asyncio
 import logging
 
 from core import llm
-from core.config import (
-    OPENAI_MODEL,
-    ANTHROPIC_MODEL,
-    GEMINI_MODEL,
-    DEEPSEEK_MODEL,
-    logger
-)
+from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL, OPENAI_MODEL, logger
 from core.db import get_supabase_client
 from core.models import DecisionObject, MacroEvent
-from execution.portfolio import Portfolio
 from execution.market_data import MarketDataManager
-from memory.store import retrieve_top_memories, get_top_trending_concepts
+from execution.portfolio import Portfolio
+from memory.store import get_top_trending_concepts, retrieve_top_memories
 
 logger = logging.getLogger("engine")
 
@@ -167,8 +161,8 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
             continue
 
-        from datetime import datetime
         import calendar
+        from datetime import datetime
         
         now = datetime.now()
         day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
@@ -389,8 +383,8 @@ async def analyze_chunks_streaming(chunks: list[dict]):
             logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
             continue
 
-        from datetime import datetime
         import calendar
+        from datetime import datetime
         
         now = datetime.now()
         day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."

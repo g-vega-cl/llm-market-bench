@@ -1,8 +1,9 @@
 """Tests for core.audit.analyzer module."""
 
-import pytest
 import json
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 
 class TestAnalyzeLogBlob:

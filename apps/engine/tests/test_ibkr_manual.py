@@ -1,9 +1,9 @@
 import asyncio
 import os
-import sys
-import logging
 import random
+import sys
 from math import isnan
+
 from dotenv import load_dotenv
 
 # Add current directory to path (apps/engine)
@@ -12,11 +12,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Load environment variables
 load_dotenv(".env")
 
-from ib_async import IB, Stock, util
-from execution.providers.ibkr import IBKRProvider
-from core.config import IBKR_HOST, IBKR_PORT, logger
-
 import pytest
+from ib_async import IB, Stock
+
+from core.config import IBKR_HOST, IBKR_PORT
+
 
 @pytest.mark.skipif(os.getenv("CI") == "true", reason="Skipping live IBKR tests in CI")
 @pytest.mark.asyncio

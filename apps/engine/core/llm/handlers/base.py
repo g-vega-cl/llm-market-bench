@@ -2,6 +2,7 @@
 
 from core.llm import tools
 
+
 async def execute_tool(name: str, args: dict, model_name: str) -> str:
     """Dispatches tool execution to the correct tool implementation.
 

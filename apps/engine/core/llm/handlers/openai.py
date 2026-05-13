@@ -2,6 +2,7 @@
 
 import json
 import logging
+
 from core.llm import tools
 from core.llm.handlers import base
 
@@ -66,7 +67,7 @@ async def run_tool_loop(
     """
     import typing
     for _ in range(max_tool_steps):
-        args: typing.Dict[str, typing.Any] = {
+        args: dict[str, typing.Any] = {
             "model": model_name,
             "messages": messages,
             "tools": override_tools if override_tools is not None else _build_tool_list(enable_web_search),

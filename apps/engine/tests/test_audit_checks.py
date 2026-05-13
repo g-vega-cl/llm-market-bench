@@ -1,6 +1,5 @@
 """Tests for core.audit.checks module."""
 
-import pytest
 from core.audit.checks import AUDIT_CHECKS
 
 

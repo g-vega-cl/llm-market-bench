@@ -1,10 +1,11 @@
 """Tests for market_feeling analysis module."""
 
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from datetime import datetime, timedelta, timezone
-import sys
 import os
+import sys
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
@@ -325,7 +326,7 @@ class TestIsMarketFeelingStale:
         from analysis.market_feeling import is_market_feeling_stale
 
         recent = {
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(UTC).isoformat()
         }
         assert is_market_feeling_stale(recent, stale_threshold_hours=4) is False
 
@@ -333,7 +334,7 @@ class TestIsMarketFeelingStale:
         """Test that old feeling (5 hours old) is stale."""
         from analysis.market_feeling import is_market_feeling_stale
 
-        old_time = datetime.now(timezone.utc) - timedelta(hours=5)
+        old_time = datetime.now(UTC) - timedelta(hours=5)
         old = {"created_at": old_time.isoformat()}
 
         assert is_market_feeling_stale(old, stale_threshold_hours=4) is True

@@ -22,9 +22,9 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from core.config import (
+    ANTHROPIC_MODEL,
     ENABLE_ANTHROPIC_WEB_SEARCH,
     ENABLE_GEMINI_WEB_SEARCH,
-    ANTHROPIC_MODEL,
     GEMINI_MODEL,
 )
 from core.llm import clients

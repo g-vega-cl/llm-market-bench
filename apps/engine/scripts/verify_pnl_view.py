@@ -8,6 +8,7 @@ sys.path.append(os.path.join(os.getcwd(), "apps/engine"))
 
 from core.db import get_supabase_client
 
+
 async def verify_pnl():
     supabase = get_supabase_client()
     ticker = f"TEST_{uuid4().hex[:4]}"

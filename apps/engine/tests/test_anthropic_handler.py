@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from core.llm.handlers import anthropic
+
 
 @pytest.mark.asyncio
 async def test_run_tool_loop_strips_whitespace():

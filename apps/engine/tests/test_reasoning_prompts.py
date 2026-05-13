@@ -1,5 +1,5 @@
-import pytest
 from apps.engine.core.llm.prompts import SYNTHESIS_USER_PROMPT_TEMPLATE
+
 
 def test_catalyst_logic_constraints():
     """Verify that the synthesis prompt contains the negative constraints for catalysts."""
@@ -16,7 +16,12 @@ def test_scenario_probabilities_required():
 
 def test_5_whys_integration():
     """Verify that the 5 Whys technique is mentioned in relevant prompts."""
-    from apps.engine.core.llm.prompts import CORE_ANALYSIS_SYSTEM_PROMPT, MANAGER_USER_PROMPT_TEMPLATE, CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE, ANALYSIS_USER_PROMPT_TEMPLATE
+    from apps.engine.core.llm.prompts import (
+        ANALYSIS_USER_PROMPT_TEMPLATE,
+        CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE,
+        CORE_ANALYSIS_SYSTEM_PROMPT,
+        MANAGER_USER_PROMPT_TEMPLATE,
+    )
     
     # Check System Prompt
     assert "5 Whys" in CORE_ANALYSIS_SYSTEM_PROMPT

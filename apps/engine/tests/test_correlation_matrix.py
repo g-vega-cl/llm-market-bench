@@ -8,9 +8,10 @@ This module tests:
 5. Ticker verification logic
 """
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
 
 import analysis.correlation_matrix as correlation_matrix
 

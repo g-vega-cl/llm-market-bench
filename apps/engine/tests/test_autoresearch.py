@@ -13,10 +13,9 @@ Covers the fixes from the post-review TDD pass:
 
 import asyncio
 import sys
-import time
 from datetime import date
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

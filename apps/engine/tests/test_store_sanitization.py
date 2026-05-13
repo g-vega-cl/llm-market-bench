@@ -1,6 +1,7 @@
 """Tests for memory store: HTML sanitization and RAG scoping."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from memory.store import prune_context, retrieve_for_decision
 
 

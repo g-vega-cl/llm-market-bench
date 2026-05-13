@@ -1,12 +1,13 @@
 """Tests for analysis logic and Pydantic models."""
 
-import pytest
-from pydantic import ValidationError
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from pydantic import ValidationError
+
 from analysis.analyze import analyze_chunks
-from core.models import DecisionObject, DecisionsResponse, MacroEvent
 from core.llm.analysis import _repair_json_string, _try_parse_decisions_response
+from core.models import DecisionObject, DecisionsResponse
 
 
 class TestDecisionObject:
@@ -84,8 +85,9 @@ class TestAnalysisOrchestration:
     async def test_analyze_chunks_orchestration(self, monkeypatch):
         """Test that analyze_chunks calls analyze_with_provider for each model and chunk."""
 
-        from core.models import DecisionsResponse
         from unittest.mock import MagicMock, patch
+
+        from core.models import DecisionsResponse
         
         async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
             # Return a DecisionsResponse object
@@ -142,8 +144,9 @@ class TestAnalysisOrchestration:
     async def test_analyze_chunks_skips_malformed(self, monkeypatch, caplog):
         """Test that malformed chunks are skipped with a warning."""
 
-        from core.models import DecisionsResponse
         from unittest.mock import MagicMock, patch
+
+        from core.models import DecisionsResponse
         
         async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
             decisions = [

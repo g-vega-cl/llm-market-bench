@@ -17,8 +17,8 @@ from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
 from core.db import get_async_supabase_client
 
 from .evaluator import evaluate_week
+from .prompt_store import get_baseline_metrics, revert_to_baseline, revert_to_previous, save_variant
 from .researcher import run_research
-from .prompt_store import save_variant, revert_to_previous, revert_to_baseline, get_baseline_metrics
 from .window import get_week_window
 
 logger = logging.getLogger("engine")

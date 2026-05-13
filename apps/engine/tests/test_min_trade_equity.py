@@ -1,7 +1,6 @@
 """Tests for minimum trade size - equity-based (not buying power based)."""
 
-import pytest
-from execution.reg_t_validation import validate_trade_compliance, RegTMetrics
+from execution.reg_t_validation import RegTMetrics, validate_trade_compliance
 
 
 def test_min_trade_uses_equity_not_buying_power():

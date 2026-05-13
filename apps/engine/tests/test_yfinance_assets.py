@@ -1,7 +1,9 @@
-import pytest
-import asyncio
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.providers.yfinance import YFinanceProvider
+
 
 @pytest.mark.asyncio
 async def test_yfinance_get_ticker_data_etf_assets():

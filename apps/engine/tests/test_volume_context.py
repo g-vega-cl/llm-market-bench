@@ -1,11 +1,13 @@
 """Tests for volume context functionality in tools."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from core.llm.tools import (
     compute_volume_context,
-    execute_volatility_metrics_tool,
     execute_stock_screener_tool,
+    execute_volatility_metrics_tool,
 )
 
 
@@ -121,7 +123,7 @@ class TestComputeVolumeContext:
         for i, entry in enumerate(history):
             history_with_none.append(entry)
             if i > 0 and i < 20:
-                history_with_none.append({"price": 999.0, "volume": None, "fetched_at": f"2024-01-00"})
+                history_with_none.append({"price": 999.0, "volume": None, "fetched_at": "2024-01-00"})
         
         result = compute_volume_context(history_with_none)
         

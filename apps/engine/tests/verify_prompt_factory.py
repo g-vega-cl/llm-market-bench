@@ -1,12 +1,12 @@
 
-import sys
 import os
+import sys
 
 # Add apps/engine to path
 sys.path.append(os.path.join(os.getcwd(), "apps", "engine"))
 
 from core.llm.prompt_factory import PromptFactory
-from core.llm import prompts
+
 
 def test_prompt_factory_refinements():
     print("Testing PromptFactory refinements...")

@@ -5,24 +5,24 @@ against actual price performance to generate 'lessons learned' for long-term mem
 """
 
 import asyncio
-import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, List
+from datetime import UTC, datetime, timedelta
 
-from core.config import logger, GEMINI_MODEL
+from pydantic import BaseModel, Field
+
+from core.config import GEMINI_MODEL, logger
 from core.db import get_supabase_client
 from core.llm import get_gemini_client
 from core.llm.prompt_factory import PromptFactory
 from execution.market_data import MarketDataManager
 from memory.store import add_memory
-from pydantic import BaseModel, Field
+
 
 class PostAnalysisResult(BaseModel):
     lesson: str = Field(..., description="A concise lesson learned")
     is_regret: bool = Field(..., description="Whether the trade was a mistake")
     sentiment_shift: str = Field(..., description="How to adjust view on this ticker/sector")
 
-async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
+async def perform_post_analysis(windows: list[int] = [5, 14, 30]):
     """Analyzes trades from specific intervals ago and generates self-corrective memories.
 
     Args:
@@ -37,7 +37,7 @@ async def perform_post_analysis(windows: List[int] = [5, 14, 30]):
 
     for days_back in windows:
         # 1. Fetch trades from the target window
-        target_date = (datetime.now(timezone.utc) - timedelta(days=days_back)).date()
+        target_date = (datetime.now(UTC) - timedelta(days=days_back)).date()
         start_time = datetime.combine(target_date, datetime.min.time()).isoformat()
         end_time = datetime.combine(target_date, datetime.max.time()).isoformat()
         

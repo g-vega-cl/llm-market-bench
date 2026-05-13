@@ -1,13 +1,14 @@
 """Mocked tests for the Gemini tool-calling loop."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
-from core.llm import analyze_with_provider
-import core.llm.handlers.gemini as gemini_handler
-from core.llm.handlers.gemini import _build_gemini_tools
-from core.models import DecisionsResponse, DecisionObject
+
 from core.config import GEMINI_MODEL
+from core.llm import analyze_with_provider
+from core.llm.handlers.gemini import _build_gemini_tools
+from core.models import DecisionObject, DecisionsResponse
+
 
 def test_build_gemini_tools_includes_search_with_function_tools():
     """Google Search grounding should be added even when function tools exist."""
@@ -28,6 +29,7 @@ async def test_gemini_tool_loop_configures_afc_for_google_search():
     when enable_google_search=True.
     """
     from unittest.mock import AsyncMock, MagicMock
+
     from core.llm.handlers import gemini
 
     # Mock the raw client's async generate_content method
@@ -67,6 +69,7 @@ async def test_gemini_tool_loop_configures_tool_config_for_google_search():
     set include_server_side_tool_invocations to satisfy Gemini API requirements.
     """
     from unittest.mock import AsyncMock, MagicMock
+
     from core.llm.handlers import gemini
 
     raw_client = MagicMock()

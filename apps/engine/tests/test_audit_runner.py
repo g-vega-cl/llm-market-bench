@@ -1,8 +1,7 @@
 """Tests for core.audit.runner module."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 
 class TestGenerateAuditRunId:
@@ -17,12 +16,13 @@ class TestGenerateAuditRunId:
         assert run_id.startswith("audit-")
         parts = run_id.split("-")
         assert len(parts) == 3
-        assert parts[1] == datetime.now(timezone.utc).strftime("%Y%m%d")
+        assert parts[1] == datetime.now(UTC).strftime("%Y%m%d")
         assert len(parts[2]) == 6
 
     def test_audit_run_id_includes_timestamp(self):
         """Verify audit run ID includes timestamp that changes per second."""
         import time
+
         from core.audit.runner import generate_audit_run_id
 
         id1 = generate_audit_run_id()

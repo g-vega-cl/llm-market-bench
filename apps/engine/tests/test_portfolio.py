@@ -1,8 +1,10 @@
 """Tests for Portfolio management and Reg T4 calculations."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from execution.portfolio import Portfolio, RegTMetrics, Position
+
+from execution.portfolio import Portfolio, Position, RegTMetrics
 
 # --- Reg T Scenario Tests ---
 

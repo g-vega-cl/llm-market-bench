@@ -1,12 +1,12 @@
-import * as React from 'react'
-import { SectionHeading, Card } from '@llm-market-bench/ui-design-system'
+import { Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import * as React from 'react';
 
 interface NewsletterFeedProps {
-    newsletters: any[]
+    newsletters: any[];
 }
 
 export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
-    if (!newsletters.length) return null
+    if (!newsletters.length) return null;
 
     return (
         <section className="space-y-8 animate-slide-up">
@@ -28,9 +28,11 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                         style={{ animationDelay: `${idx * 100}ms` }}
                     >
                         {/* Gradient Border on Hover */}
-                        <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        <div
+                            className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                             style={{
-                                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)',
+                                background:
+                                    'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)',
                             }}
                         />
                         <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none border-2 border-electric-blue-500/30" />
@@ -53,7 +55,7 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                     <span className="w-2 h-2 bg-electric-blue-400 rounded-full animate-pulse" />
                                     {new Date(news.date).toLocaleTimeString([], {
                                         hour: '2-digit',
-                                        minute: '2-digit'
+                                        minute: '2-digit',
                                     })}
                                 </span>
                             </div>
@@ -73,7 +75,18 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                 </span>
                                 <span className="text-[9px] font-bold text-electric-blue-500 uppercase tracking-wider group-hover:translate-x-2 transition-transform duration-300 inline-flex items-center gap-1.5">
                                     Read More
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform duration-300">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="group-hover:translate-x-1 transition-transform duration-300"
+                                    >
                                         <path d="M5 12h14M12 5l7 7-7 7" />
                                     </svg>
                                 </span>
@@ -83,5 +96,5 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                 ))}
             </div>
         </section>
-    )
+    );
 }

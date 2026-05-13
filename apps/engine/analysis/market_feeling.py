@@ -1,19 +1,18 @@
 import json
-import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from core.config import logger, MINIMAX_API_KEY, MINIMAX_MODEL
+from core.config import MINIMAX_API_KEY, MINIMAX_MODEL, logger
 from core.db import get_supabase_client
 from core.llm import MiniMaxClient
 
-"""Market Feeling Analysis - LLM-driven market sentiment.
+f"""Market Feeling Analysis - LLM-driven market sentiment.
 
 This module generates the "How I'm feeling and why" sentiment analysis
-by calling MiniMax {model} with today's trading data (trades, lessons, memories).
+by calling MiniMax {MINIMAX_MODEL} with today's trading data (trades, lessons, memories).
 
 The result is stored in the market_feeling table and is displayed on the Today page.
-""".format(model=MINIMAX_MODEL)
+"""
 
 MARKET_FEELING_PROMPT = """You are an expert AI market analyst observing the AI trading agents' decisions and reasoning.
 
@@ -88,7 +87,7 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
     Returns:
         Dict with trades, lessons, events, and reasoning.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     est_date_str = now.strftime("%Y-%m-%d")
 
     if weekend_mode:
@@ -280,11 +279,11 @@ def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
 
 
 async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] | None:
-    """Generate market feeling sentiment using MiniMax.
+    f"""Generate market feeling sentiment using MiniMax.
 
     This function:
     1. Gathers today's (or week's) trading data
-    2. Calls MiniMax {model} to generate sentiment analysis
+    2. Calls MiniMax {MINIMAX_MODEL} to generate sentiment analysis
     3. Stores the result in the market_feeling table
     4. Returns the created record
 
@@ -293,7 +292,7 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
 
     Returns:
         The created market_feeling record, or None if failed.
-    """.format(model=MINIMAX_MODEL)
+    """
     mode_label = "weekend" if weekend_mode else "daily"
     logger.info(f"Starting {mode_label} market feeling analysis with MiniMax {MINIMAX_MODEL}...")
 
@@ -440,7 +439,7 @@ def is_market_feeling_stale(feeling: dict[str, Any], stale_threshold_hours: int 
         return True
 
     created_at = datetime.fromisoformat(feeling["created_at"].replace("Z", "+00:00"))
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     age_hours = (now - created_at).total_seconds() / 3600
     return age_hours > stale_threshold_hours

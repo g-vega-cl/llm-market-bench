@@ -1,15 +1,16 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 """Script to manually trigger PCA update for concepts.
 
 Run this script to recalculate 2D coordinates for all market concepts.
 """
 
-import asyncio
 import logging
-from core.db import get_supabase_client
+
 from analysis.pca_utils import update_pca_coordinates
+from core.db import get_supabase_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

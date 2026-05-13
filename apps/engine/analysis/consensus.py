@@ -7,18 +7,15 @@ and promote them to the global timeline (long-term memory) if consensus is reach
 import logging
 from collections import defaultdict
 from typing import Any
+
 import numpy as np
 
-from core.models import MacroEvent, DecisionObject
-from memory.store import (
-    add_memory, 
-    find_potential_ancestors, 
-    update_memory_status
-)
-from memory.embeddings import get_embeddings_batch
-from core.llm import synthesize_event, analyze_event_relationship
-from core.config import MODEL_WEIGHTS
 from analysis.discovery_service import DiscoveryService
+from core.config import MODEL_WEIGHTS
+from core.llm import analyze_event_relationship, synthesize_event
+from core.models import DecisionObject, MacroEvent
+from memory.embeddings import get_embeddings_batch
+from memory.store import add_memory, find_potential_ancestors, update_memory_status
 
 logger = logging.getLogger("engine")
 

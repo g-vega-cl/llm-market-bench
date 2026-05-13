@@ -1,10 +1,10 @@
-import { MODELS } from '~/config/models'
-import { createFileRoute } from '@tanstack/react-router'
-import { ThoughtProcessFlow } from '../components/ThoughtProcessFlow'
+import { createFileRoute } from '@tanstack/react-router';
+import { MODELS } from '~/config/models';
+import { ThoughtProcessFlow } from '../components/ThoughtProcessFlow';
 
 export const Route = createFileRoute('/how-it-works')({
     component: HowItWorks,
-})
+});
 
 function HowItWorks() {
     return (
@@ -15,16 +15,27 @@ function HowItWorks() {
                         How Benchify Works
                     </h1>
                     <p className="text-xl text-slate-400">
-                        Benchify is an automated arena where leading AI models compete in the stock market.
-                        Four primary LLMs (OpenAI, Claude, Gemini, DeepSeek) analyze newsletters, debate global events,
-                        and execute trades — with specialized agents for verification, contrarian positioning, and post-analysis.
+                        Benchify is an automated arena where leading AI models compete in the stock
+                        market. Four primary LLMs (OpenAI, Claude, Gemini, DeepSeek) analyze
+                        newsletters, debate global events, and execute trades — with specialized
+                        agents for verification, contrarian positioning, and post-analysis.
                     </p>
                     <div className="flex gap-2 justify-center mt-4 flex-wrap">
-                        <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">OpenAI {MODELS.OPENAI}</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude {MODELS.ANTHROPIC}</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini {MODELS.GEMINI}</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek {MODELS.DEEPSEEK}</span>
-                        <span className="px-3 py-1 text-sm rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">MiniMax {MODELS.MINIMAX}</span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                            OpenAI {MODELS.OPENAI}
+                        </span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                            Claude {MODELS.ANTHROPIC}
+                        </span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            Gemini {MODELS.GEMINI}
+                        </span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                            DeepSeek {MODELS.DEEPSEEK}
+                        </span>
+                        <span className="px-3 py-1 text-sm rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                            MiniMax {MODELS.MINIMAX}
+                        </span>
                     </div>
                     <p className="text-lg text-slate-500 mt-4">
                         Tripled trigger multiple times daily during US market hours
@@ -40,24 +51,60 @@ function HowItWorks() {
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-blue-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-blue-400 font-mono text-sm tracking-wider uppercase">Phase 1</span>
-                                    <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Tripled Trigger: Multiple Daily Runs</span>
+                                    <span className="text-blue-400 font-mono text-sm tracking-wider uppercase">
+                                        Phase 1
+                                    </span>
+                                    <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        Tripled Trigger: Multiple Daily Runs
+                                    </span>
                                 </div>
-                                <h3 className="text-2xl font-bold text-white">Ingestion & Normalization</h3>
+                                <h3 className="text-2xl font-bold text-white">
+                                    Ingestion & Normalization
+                                </h3>
                                 <p className="text-slate-400">
-                                    GitHub Actions fires the pipeline at market open, midday, and afternoon. The engine enforces a <strong className="text-blue-300">Holiday-Aware Market Hours Check</strong> via FMP API (5-minute TTL caching) to skip execution outside 09:30-16:00 ET, weekends, or US holidays.
+                                    GitHub Actions fires the pipeline at market open, midday, and
+                                    afternoon. The engine enforces a{' '}
+                                    <strong className="text-blue-300">
+                                        Holiday-Aware Market Hours Check
+                                    </strong>{' '}
+                                    via FMP API (5-minute TTL caching) to skip execution outside
+                                    09:30-16:00 ET, weekends, or US holidays.
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li>Scrapes unread emails from Gmail; removes ads via Gemini Flash</li>
-                                    <li>Economic Calendar ingestion from Trading Economics (bi-weekly)</li>
-                                    <li>Data snapshotting with idempotency keys (source_id, chunk_hash)</li>
-                                    <li><strong className="text-blue-300">FMP Market Status Check</strong> with class-level caching to avoid redundant API calls</li>
-                                    <li><strong className="text-blue-300">Dust Cleanup</strong>: Auto-sells negligible positions before analysis to keep LLMs focused on meaningful holdings</li>
+                                    <li>
+                                        Scrapes unread emails from Gmail; removes ads via Gemini
+                                        Flash
+                                    </li>
+                                    <li>
+                                        Economic Calendar ingestion from Trading Economics
+                                        (bi-weekly)
+                                    </li>
+                                    <li>
+                                        Data snapshotting with idempotency keys (source_id,
+                                        chunk_hash)
+                                    </li>
+                                    <li>
+                                        <strong className="text-blue-300">
+                                            FMP Market Status Check
+                                        </strong>{' '}
+                                        with class-level caching to avoid redundant API calls
+                                    </li>
+                                    <li>
+                                        <strong className="text-blue-300">Dust Cleanup</strong>:
+                                        Auto-sells negligible positions before analysis to keep LLMs
+                                        focused on meaningful holdings
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">FMP Cache</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Gmail API</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Trading Economics</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        FMP Cache
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        Gmail API
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        Trading Economics
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -70,21 +117,62 @@ function HowItWorks() {
                         </div>
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-indigo-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
-                                <span className="text-indigo-400 font-mono text-sm tracking-wider uppercase">Phase 2</span>
-                                <h3 className="text-2xl font-bold text-white">Pre-Analysis Setup</h3>
+                                <span className="text-indigo-400 font-mono text-sm tracking-wider uppercase">
+                                    Phase 2
+                                </span>
+                                <h3 className="text-2xl font-bold text-white">
+                                    Pre-Analysis Setup
+                                </h3>
                                 <p className="text-slate-400">
-                                    Before LLM analysis, the engine prepares context and validates market conditions. It performs a <strong className="text-indigo-300">Holiday-Aware Market Hours Check</strong> via FMP API (5-min TTL caching) to ensure execution only during 09:30-16:00 ET on trading days.
+                                    Before LLM analysis, the engine prepares context and validates
+                                    market conditions. It performs a{' '}
+                                    <strong className="text-indigo-300">
+                                        Holiday-Aware Market Hours Check
+                                    </strong>{' '}
+                                    via FMP API (5-min TTL caching) to ensure execution only during
+                                    09:30-16:00 ET on trading days.
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-indigo-300">Global Macro Snapshot</strong>: Real-time quotes for 16 curated assets (broad equities, international, commodities, yields) with σ-based regime detection (Risk-On/Risk-Off at 2σ threshold)</li>
-                                    <li><strong className="text-indigo-300">Portfolio Initialization</strong>: Initializes all agent portfolios, fetches current prices for all unique holdings in parallel</li>
-                                    <li><strong className="text-indigo-300">Light Context Injection</strong>: Retrieves top-5 highest-importance memories + trending concepts (~500 tokens) — no embedding calls in hot path</li>
-                                    <li><strong className="text-indigo-300">Calendar Strategy</strong>: Injects Turn of Month and Payday Anomaly context based on current date</li>
+                                    <li>
+                                        <strong className="text-indigo-300">
+                                            Global Macro Snapshot
+                                        </strong>
+                                        : Real-time quotes for 16 curated assets (broad equities,
+                                        international, commodities, yields) with σ-based regime
+                                        detection (Risk-On/Risk-Off at 2σ threshold)
+                                    </li>
+                                    <li>
+                                        <strong className="text-indigo-300">
+                                            Portfolio Initialization
+                                        </strong>
+                                        : Initializes all agent portfolios, fetches current prices
+                                        for all unique holdings in parallel
+                                    </li>
+                                    <li>
+                                        <strong className="text-indigo-300">
+                                            Light Context Injection
+                                        </strong>
+                                        : Retrieves top-5 highest-importance memories + trending
+                                        concepts (~500 tokens) — no embedding calls in hot path
+                                    </li>
+                                    <li>
+                                        <strong className="text-indigo-300">
+                                            Calendar Strategy
+                                        </strong>
+                                        : Injects Turn of Month and Payday Anomaly context based on
+                                        current date
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">FMP Cache</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Global Macro Tracker</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Risk-On/Risk-Off</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                        FMP Cache
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                        Global Macro Tracker
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                        Risk-On/Risk-Off
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -97,29 +185,74 @@ function HowItWorks() {
                         </div>
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-purple-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
-                                <span className="text-purple-400 font-mono text-sm tracking-wider uppercase">Phase 3</span>
-                                <h3 className="text-2xl font-bold text-white">Parallel LLM Analysis</h3>
+                                <span className="text-purple-400 font-mono text-sm tracking-wider uppercase">
+                                    Phase 3
+                                </span>
+                                <h3 className="text-2xl font-bold text-white">
+                                    Parallel LLM Analysis
+                                </h3>
                                 <p className="text-slate-400">
-                                    Four LLMs analyze data in parallel using the <strong className="text-purple-300">PromptFactory</strong> for semantically identical instructions. Each receives the Global Macro Snapshot for Risk-On/Risk-Off awareness.
+                                    Four LLMs analyze data in parallel using the{' '}
+                                    <strong className="text-purple-300">PromptFactory</strong> for
+                                    semantically identical instructions. Each receives the Global
+                                    Macro Snapshot for Risk-On/Risk-Off awareness.
                                 </p>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 border border-green-500/30">OpenAI {MODELS.OPENAI}</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">Claude {MODELS.ANTHROPIC}</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">Gemini {MODELS.GEMINI}</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">DeepSeek {MODELS.DEEPSEEK}</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 border border-green-500/30">
+                                        OpenAI {MODELS.OPENAI}
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                                        Claude {MODELS.ANTHROPIC}
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        Gemini {MODELS.GEMINI}
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                                        DeepSeek {MODELS.DEEPSEEK}
+                                    </span>
                                 </div>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-purple-300">Asynchronous Chunk Batching</strong>: 20 chunks per LLM call to prevent token truncation</li>
-                                    <li><strong className="text-purple-300">Web Search</strong>: Claude (`web_search_20250305`) and Gemini (`google_search`) with automatic citations</li>
-                                    <li><strong className="text-purple-300">Stock Screener</strong>: `run_stock_screener` tool for liquidity-filtered asset discovery</li>
-                                    <li><strong className="text-purple-300">DiscoveryAgent</strong>: Alpha Discovery via tool-calling loop (up to 3 steps) for "Investable Assets" mapping</li>
-                                    <li><strong className="text-purple-300">DeepSeek Thinking Mode</strong>: CoT reasoning with `reasoning_content` preservation</li>
+                                    <li>
+                                        <strong className="text-purple-300">
+                                            Asynchronous Chunk Batching
+                                        </strong>
+                                        : 20 chunks per LLM call to prevent token truncation
+                                    </li>
+                                    <li>
+                                        <strong className="text-purple-300">Web Search</strong>:
+                                        Claude (`web_search_20250305`) and Gemini (`google_search`)
+                                        with automatic citations
+                                    </li>
+                                    <li>
+                                        <strong className="text-purple-300">Stock Screener</strong>:
+                                        `run_stock_screener` tool for liquidity-filtered asset
+                                        discovery
+                                    </li>
+                                    <li>
+                                        <strong className="text-purple-300">DiscoveryAgent</strong>:
+                                        Alpha Discovery via tool-calling loop (up to 3 steps) for
+                                        "Investable Assets" mapping
+                                    </li>
+                                    <li>
+                                        <strong className="text-purple-300">
+                                            DeepSeek Thinking Mode
+                                        </strong>
+                                        : CoT reasoning with `reasoning_content` preservation
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">PromptFactory</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">Global Macro Tracker</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">Web Search + Citations</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">DiscoveryAgent</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        PromptFactory
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        Global Macro Tracker
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        Web Search + Citations
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        DiscoveryAgent
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -132,26 +265,74 @@ function HowItWorks() {
                         </div>
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-teal-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
-                                <span className="text-teal-400 font-mono text-sm tracking-wider uppercase">Phase 4</span>
-                                <h3 className="text-2xl font-bold text-white">Consensus & Synthesis</h3>
+                                <span className="text-teal-400 font-mono text-sm tracking-wider uppercase">
+                                    Phase 4
+                                </span>
+                                <h3 className="text-2xl font-bold text-white">
+                                    Consensus & Synthesis
+                                </h3>
                                 <p className="text-slate-400">
-                                    After LLM analysis, events are clustered and promoted through <strong className="text-teal-300">Semantic Grouping</strong> (pgvector cosine similarity) → weighted consensus → event promotion. Promoted events trigger Alpha Discovery for "Investable Assets" mapping.
+                                    After LLM analysis, events are clustered and promoted through{' '}
+                                    <strong className="text-teal-300">Semantic Grouping</strong>{' '}
+                                    (pgvector cosine similarity) → weighted consensus → event
+                                    promotion. Promoted events trigger Alpha Discovery for
+                                    "Investable Assets" mapping.
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-teal-300">Semantic Grouping</strong>: Gemini embeddings cluster events by cosine similarity across all LLMs</li>
-                                    <li><strong className="text-teal-300">Weighted Consensus</strong>: Cumulative model weight above threshold promotes events; impact (BULLISH/BEARISH) by weighted majority</li>
-                                    <li><strong className="text-teal-300">Temporal Deduplication</strong>: New events checked against memories table within recency window; near-duplicates dropped</li>
-                                    <li><strong className="text-teal-300">Relationship Analysis</strong>: Links parent events via `parent_id` as REVERSAL, RESOLUTION, or UPDATE; auto-marks ancestors as `RESOLVED`</li>
-                                    <li><strong className="text-teal-300">Trend & Momentum</strong>: Concept velocity tracking (Intensity × Growth), PCA visualization, semantic merging of similar concepts</li>
+                                    <li>
+                                        <strong className="text-teal-300">Semantic Grouping</strong>
+                                        : Gemini embeddings cluster events by cosine similarity
+                                        across all LLMs
+                                    </li>
+                                    <li>
+                                        <strong className="text-teal-300">
+                                            Weighted Consensus
+                                        </strong>
+                                        : Cumulative model weight above threshold promotes events;
+                                        impact (BULLISH/BEARISH) by weighted majority
+                                    </li>
+                                    <li>
+                                        <strong className="text-teal-300">
+                                            Temporal Deduplication
+                                        </strong>
+                                        : New events checked against memories table within recency
+                                        window; near-duplicates dropped
+                                    </li>
+                                    <li>
+                                        <strong className="text-teal-300">
+                                            Relationship Analysis
+                                        </strong>
+                                        : Links parent events via `parent_id` as REVERSAL,
+                                        RESOLUTION, or UPDATE; auto-marks ancestors as `RESOLVED`
+                                    </li>
+                                    <li>
+                                        <strong className="text-teal-300">Trend & Momentum</strong>:
+                                        Concept velocity tracking (Intensity × Growth), PCA
+                                        visualization, semantic merging of similar concepts
+                                    </li>
                                 </ul>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-teal-300">Scenario Analysis</strong>: Promoted events require at least two distinct outcomes with trading plans per outcome</li>
-                                    <li><strong className="text-teal-300">Horizon Watch</strong>: Only high-importance events with future catalysts appear on dashboard</li>
+                                    <li>
+                                        <strong className="text-teal-300">Scenario Analysis</strong>
+                                        : Promoted events require at least two distinct outcomes
+                                        with trading plans per outcome
+                                    </li>
+                                    <li>
+                                        <strong className="text-teal-300">Horizon Watch</strong>:
+                                        Only high-importance events with future catalysts appear on
+                                        dashboard
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">pgvector</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">Alpha Discovery</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">Scenario Analysis</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                                        pgvector
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                                        Alpha Discovery
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                                        Scenario Analysis
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -164,28 +345,94 @@ function HowItWorks() {
                         </div>
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-amber-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
-                                <span className="text-amber-400 font-mono text-sm tracking-wider uppercase">Phase 5</span>
-                                <h3 className="text-2xl font-bold text-white">The Skeptical Verifier</h3>
+                                <span className="text-amber-400 font-mono text-sm tracking-wider uppercase">
+                                    Phase 5
+                                </span>
+                                <h3 className="text-2xl font-bold text-white">
+                                    The Skeptical Verifier
+                                </h3>
                                 <p className="text-slate-400">
-                                    A dedicated "Skeptical Agent" intercepts every Buy/Sell signal using the <strong className="text-amber-300">same intelligence profile</strong> as the original generator. It performs a <strong className="text-amber-300">4-Layer Enforcement</strong> audit and retrieves <strong className="text-amber-300">targeted per-trade RAG context</strong> (up to 2k tokens, ranked by importance × similarity) from pgvector to validate against past decisions and lessons learned.
+                                    A dedicated "Skeptical Agent" intercepts every Buy/Sell signal
+                                    using the{' '}
+                                    <strong className="text-amber-300">
+                                        same intelligence profile
+                                    </strong>{' '}
+                                    as the original generator. It performs a{' '}
+                                    <strong className="text-amber-300">4-Layer Enforcement</strong>{' '}
+                                    audit and retrieves{' '}
+                                    <strong className="text-amber-300">
+                                        targeted per-trade RAG context
+                                    </strong>{' '}
+                                    (up to 2k tokens, ranked by importance × similarity) from
+                                    pgvector to validate against past decisions and lessons learned.
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-amber-300">Layer 1</strong>: Pre-Prompt Strengthening (enhanced system prompts with few-shot examples)</li>
-                                    <li><strong className="text-amber-300">Layer 2</strong>: Prompt Context Enhancement (portfolio source of truth, held tickers list)</li>
-                                    <li><strong className="text-amber-300">Layer 3</strong>: History scanning for actual tool calls via native function calling</li>
-                                    <li><strong className="text-amber-300">Layer 4</strong>: Structured output enforcement with `price_source` field declaration</li>
+                                    <li>
+                                        <strong className="text-amber-300">Layer 1</strong>:
+                                        Pre-Prompt Strengthening (enhanced system prompts with
+                                        few-shot examples)
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">Layer 2</strong>: Prompt
+                                        Context Enhancement (portfolio source of truth, held tickers
+                                        list)
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">Layer 3</strong>: History
+                                        scanning for actual tool calls via native function calling
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">Layer 4</strong>:
+                                        Structured output enforcement with `price_source` field
+                                        declaration
+                                    </li>
                                 </ul>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-amber-300">Hard Tool Enforcement</strong>: `get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity` must be actual function calls — text claims are hallucinations</li>
-                                    <li><strong className="text-amber-300">Ownership Pre-Validation</strong>: SELL signals for unheld tickers are rejected pre-analysis</li>
-                                    <li><strong className="text-amber-300">50% Confidence Penalty</strong>: Decisions without verified tool calls receive automatic reduction</li>
-                                    <li><strong className="text-amber-300">Strategic Reasoning Audit</strong>: Validates logical consistency of "sell X to fund Y" patterns</li>
-                                    <li><strong className="text-amber-300">Calendar & Seasonal Strategies</strong>: Turn of Month, Payday Anomaly adherence checks</li>
+                                    <li>
+                                        <strong className="text-amber-300">
+                                            Hard Tool Enforcement
+                                        </strong>
+                                        : `get_stock_quote`, `calculate_buy_quantity`,
+                                        `calculate_sell_quantity` must be actual function calls —
+                                        text claims are hallucinations
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">
+                                            Ownership Pre-Validation
+                                        </strong>
+                                        : SELL signals for unheld tickers are rejected pre-analysis
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">
+                                            50% Confidence Penalty
+                                        </strong>
+                                        : Decisions without verified tool calls receive automatic
+                                        reduction
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">
+                                            Strategic Reasoning Audit
+                                        </strong>
+                                        : Validates logical consistency of "sell X to fund Y"
+                                        patterns
+                                    </li>
+                                    <li>
+                                        <strong className="text-amber-300">
+                                            Calendar & Seasonal Strategies
+                                        </strong>
+                                        : Turn of Month, Payday Anomaly adherence checks
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">4-Layer Enforcement</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Hard Tool Enforcement</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Ownership Validation</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        4-Layer Enforcement
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        Hard Tool Enforcement
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        Ownership Validation
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -198,27 +445,85 @@ function HowItWorks() {
                         </div>
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-emerald-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
-                                <span className="text-emerald-400 font-mono text-sm tracking-wider uppercase">Phase 6</span>
-                                <h3 className="text-2xl font-bold text-white">Execution & Settlement</h3>
+                                <span className="text-emerald-400 font-mono text-sm tracking-wider uppercase">
+                                    Phase 6
+                                </span>
+                                <h3 className="text-2xl font-bold text-white">
+                                    Execution & Settlement
+                                </h3>
                                 <p className="text-slate-400">
-                                    Approved trades undergo strict guardrails. The engine executes trades with <strong className="text-emerald-300">Atomic Settlement</strong> ("Commit at End" pattern) and links decisions to trades via <strong className="text-emerald-300">Two-Phase Attribution Locking</strong>.
+                                    Approved trades undergo strict guardrails. The engine executes
+                                    trades with{' '}
+                                    <strong className="text-emerald-300">Atomic Settlement</strong>{' '}
+                                    ("Commit at End" pattern) and links decisions to trades via{' '}
+                                    <strong className="text-emerald-300">
+                                        Two-Phase Attribution Locking
+                                    </strong>
+                                    .
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-emerald-300">FMP-Verified Market Hours</strong>: Holiday-aware with 5-minute TTL caching</li>
-                                    <li><strong className="text-emerald-300">5.0% Price Banding</strong>: Rejects trades where AI price deviates &gt;5% from market</li>
-                                    <li><strong className="text-emerald-300">Reg T Margin Validation</strong>: Buying power check with $1,000 absolute minimum for BUYs</li>
-                                    <li><strong className="text-emerald-300">10% Minimum Position Rule</strong>: Auto-upsize for BUYs; 100% sell for SELLS below floor</li>
-                                    <li><strong className="text-emerald-300">Atomic Settlement</strong>: Cash/positions update only if ledger entry succeeds — prevents "Phantom Deductions"</li>
-                                    <li><strong className="text-emerald-300">Two-Phase Attribution Locking</strong>: Decision (status=VALIDATED) → Trade → Decision (status=EXECUTED, trade_id)</li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            FMP-Verified Market Hours
+                                        </strong>
+                                        : Holiday-aware with 5-minute TTL caching
+                                    </li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            5.0% Price Banding
+                                        </strong>
+                                        : Rejects trades where AI price deviates &gt;5% from market
+                                    </li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            Reg T Margin Validation
+                                        </strong>
+                                        : Buying power check with $1,000 absolute minimum for BUYs
+                                    </li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            10% Minimum Position Rule
+                                        </strong>
+                                        : Auto-upsize for BUYs; 100% sell for SELLS below floor
+                                    </li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            Atomic Settlement
+                                        </strong>
+                                        : Cash/positions update only if ledger entry succeeds —
+                                        prevents "Phantom Deductions"
+                                    </li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            Two-Phase Attribution Locking
+                                        </strong>
+                                        : Decision (status=VALIDATED) → Trade → Decision
+                                        (status=EXECUTED, trade_id)
+                                    </li>
                                 </ul>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-emerald-300">Real-time P&L</strong>: SQL View calculates `(market_price - avg_cost) * quantity` on-the-fly</li>
-                                    <li><strong className="text-emerald-300">Immediate Consistency</strong>: Reg T metrics persisted immediately after every trade</li>
+                                    <li>
+                                        <strong className="text-emerald-300">Real-time P&L</strong>:
+                                        SQL View calculates `(market_price - avg_cost) * quantity`
+                                        on-the-fly
+                                    </li>
+                                    <li>
+                                        <strong className="text-emerald-300">
+                                            Immediate Consistency
+                                        </strong>
+                                        : Reg T metrics persisted immediately after every trade
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Reg T Compliance</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Atomic Settlement</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Attribution Locking</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Reg T Compliance
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Atomic Settlement
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Attribution Locking
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -231,32 +536,82 @@ function HowItWorks() {
                         </div>
                         <div className="w-full md:w-[calc(50%-2.5rem)] p-6 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-pink-500/50 transition-colors shadow-lg backdrop-blur-sm">
                             <div className="flex flex-col gap-2">
-                                <span className="text-pink-400 font-mono text-sm tracking-wider uppercase">Phase 7</span>
-                                <h3 className="text-2xl font-bold text-white">Learning & Feedback</h3>
+                                <span className="text-pink-400 font-mono text-sm tracking-wider uppercase">
+                                    Phase 7
+                                </span>
+                                <h3 className="text-2xl font-bold text-white">
+                                    Learning & Feedback
+                                </h3>
                                 <p className="text-slate-400">
-                                    The cycle completes. Specialized agents perform post-analysis while the system maintains long-term memory via pgvector RAG with <strong className="text-pink-300">Scenario Analysis</strong> for context awareness.
+                                    The cycle completes. Specialized agents perform post-analysis
+                                    while the system maintains long-term memory via pgvector RAG
+                                    with{' '}
+                                    <strong className="text-pink-300">Scenario Analysis</strong> for
+                                    context awareness.
                                 </p>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-pink-300">Manager Agent</strong>: Post-analysis at 5, 14, 30-day intervals; generates "Lessons Learned" stored as `LESSON_LEARNED` memories</li>
-                                    <li><strong className="text-pink-300">Contrarian Agent</strong>: Identifies crowded trades and missed risks using `List[ContrarianAgentResponse]` for multi-block robustness</li>
-                                    <li><strong className="text-pink-300">Government Tracking</strong>: Monthly audit of incentives/policies with strict compliance enforcement</li>
-                                    <li><strong className="text-pink-300">Cause & Effect Analysis</strong>: Bi-weekly (Tuesdays & Fridays) with semantic deduplication (pgvector, 24h lookback, 0.90 similarity)</li>
-                                    <li><strong className="text-pink-300">Dynamic Ticker Discovery</strong>: FMP API for sector proxies, ETFs, derivative play tickers</li>
+                                    <li>
+                                        <strong className="text-pink-300">Manager Agent</strong>:
+                                        Post-analysis at 5, 14, 30-day intervals; generates "Lessons
+                                        Learned" stored as `LESSON_LEARNED` memories
+                                    </li>
+                                    <li>
+                                        <strong className="text-pink-300">Contrarian Agent</strong>:
+                                        Identifies crowded trades and missed risks using
+                                        `List[ContrarianAgentResponse]` for multi-block robustness
+                                    </li>
+                                    <li>
+                                        <strong className="text-pink-300">
+                                            Government Tracking
+                                        </strong>
+                                        : Monthly audit of incentives/policies with strict
+                                        compliance enforcement
+                                    </li>
+                                    <li>
+                                        <strong className="text-pink-300">
+                                            Cause & Effect Analysis
+                                        </strong>
+                                        : Bi-weekly (Tuesdays & Fridays) with semantic deduplication
+                                        (pgvector, 24h lookback, 0.90 similarity)
+                                    </li>
+                                    <li>
+                                        <strong className="text-pink-300">
+                                            Dynamic Ticker Discovery
+                                        </strong>
+                                        : FMP API for sector proxies, ETFs, derivative play tickers
+                                    </li>
                                 </ul>
                                 <ul className="mt-2 space-y-1 text-sm text-slate-500 list-disc list-inside">
-                                    <li><strong className="text-pink-300">Long-term Memory</strong>: pgvector store with Scenario Analysis (multi-outcome + trading plans)</li>
-                                    <li><strong className="text-pink-300">Semantic Deduplication</strong>: 24-hour lookback, &gt;0.90 similarity threshold prevents duplicates</li>
+                                    <li>
+                                        <strong className="text-pink-300">Long-term Memory</strong>:
+                                        pgvector store with Scenario Analysis (multi-outcome +
+                                        trading plans)
+                                    </li>
+                                    <li>
+                                        <strong className="text-pink-300">
+                                            Semantic Deduplication
+                                        </strong>
+                                        : 24-hour lookback, &gt;0.90 similarity threshold prevents
+                                        duplicates
+                                    </li>
                                 </ul>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">Manager Agent</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">Contrarian Agent</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">pgvector RAG</span>
-                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">Cause & Effect</span>
+                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                                        Manager Agent
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                                        Contrarian Agent
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                                        pgvector RAG
+                                    </span>
+                                    <span className="px-2 py-1 text-xs rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                                        Cause & Effect
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <ThoughtProcessFlow />
@@ -266,11 +621,14 @@ function HowItWorks() {
                     <p className="text-slate-400 mb-8">
                         Explore the live portfolios and performance metrics of each agent.
                     </p>
-                    <a href="/portfolios" className="inline-block px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors shadow-lg shadow-blue-900/20">
+                    <a
+                        href="/portfolios"
+                        className="inline-block px-8 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors shadow-lg shadow-blue-900/20"
+                    >
                         View Portfolios
                     </a>
                 </div>
             </div>
         </div>
-    )
+    );
 }

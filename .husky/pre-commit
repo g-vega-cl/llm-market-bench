@@ -1,6 +1,13 @@
 # Auto-document code changes in the wiki (non-blocking)
 bash scripts/auto-wiki.sh || true
 
+# Lint Python (engine)
+cd apps/engine && source .venv/bin/activate && ruff check && cd ../..
+
+# Lint TypeScript (web + packages)
+pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system
+
+# Run tests + type-check
 cd apps/engine && source .venv/bin/activate && python3 -m pytest && cd ../.. && cd apps/web && pnpm test && cd ../.. && pnpm build:web
 
 # Run wiki lint and re-index QMD when wiki/ files change

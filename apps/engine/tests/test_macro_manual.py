@@ -8,9 +8,9 @@ Note: Requires FMP_API_KEY to be set in environment.
 """
 
 import asyncio
-import sys
-from execution.market_data import MarketDataManager
+
 from core.macro_tracker import MACRO_TICKERS
+from execution.market_data import MarketDataManager
 
 
 async def main():

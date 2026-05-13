@@ -1,8 +1,11 @@
 import asyncio
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from execution.validation import validate_decision, ValidationStatus
+
 from execution.providers.base import TickerData
+from execution.validation import ValidationStatus, validate_decision
+
 
 @pytest.mark.asyncio
 async def test_etf_liquidity_fix():

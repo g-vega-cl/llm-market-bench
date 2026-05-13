@@ -1,7 +1,7 @@
 import asyncio
 import logging
-import json
 import sys
+
 sys.path.insert(0, '..')
 from analysis.analyze import analyze_chunks
 from analysis.consensus import process_consensus

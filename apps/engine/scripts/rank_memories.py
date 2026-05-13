@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 """Utility to rank existing memories by importance using an LLM.
 
@@ -9,10 +10,12 @@ importance_score (5) and uses an LLM to assign a more accurate score (1-10).
 
 import asyncio
 import logging
+
+from pydantic import BaseModel, Field
+
+from core import config
 from core.db import get_supabase_client
 from core.llm.clients import get_gemini_client
-from core import config
-from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ranker")

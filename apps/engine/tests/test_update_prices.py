@@ -1,11 +1,13 @@
 """
 Tests for scripts.update_prices.py script, specifically the benchmark history fetching functionality.
 """
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from scripts.update_prices import (
-    BENCHMARK_TICKERS,
     BENCHMARK_HISTORY_DAYS,
+    BENCHMARK_TICKERS,
     fetch_benchmark_history,
 )
 

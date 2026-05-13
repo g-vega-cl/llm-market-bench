@@ -1,15 +1,16 @@
 
-import pytest
-from unittest.mock import MagicMock, patch
-import sys
 import os
-from datetime import datetime, timezone, timedelta
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from apps.engine.memory.store import add_memory, find_similar_memory
+
 
 @pytest.fixture
 def mock_supabase():

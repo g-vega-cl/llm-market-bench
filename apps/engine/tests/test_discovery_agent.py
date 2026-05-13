@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from analysis.discovery_agent import DiscoveryAgent
 
+import pytest
+
+from analysis.discovery_agent import DiscoveryAgent
 
 VALID_JSON_RESULT = """Here is my analysis:
 

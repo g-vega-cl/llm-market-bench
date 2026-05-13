@@ -7,9 +7,11 @@ This test makes a single real API call to OpenAI to verify that:
 """
 
 import asyncio
+
 import pytest
-from core.llm import analyze_with_provider
+
 from core.config import OPENAI_MODEL
+from core.llm import analyze_with_provider
 
 
 @pytest.mark.asyncio

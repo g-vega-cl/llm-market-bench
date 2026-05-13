@@ -1,8 +1,10 @@
 """Unit tests for MarketDataManager caching logic."""
 
-import pytest
 import datetime
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from execution.market_data import MarketDataManager
 from execution.providers.base import TickerData
 
@@ -14,7 +16,7 @@ async def test_market_data_manager_cache_hit():
         "ticker": "AAPL",
         "price": 150.0,
         "market_cap": 2.5e12,
-        "fetched_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        "fetched_at": datetime.datetime.now(datetime.UTC).isoformat()
     }
     
     with patch("execution.market_data.get_supabase_client") as mock_db:
@@ -37,7 +39,7 @@ async def test_market_data_manager_cache_hit():
 async def test_market_data_manager_cache_stale():
     """Test that manager fetches from provider if cache is stale."""
     # 310 seconds ago (default TTL is 300)
-    stale_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=310)).isoformat()
+    stale_time = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=310)).isoformat()
     mock_cached_data = {
         "ticker": "TSLA",
         "price": 100.0,
@@ -114,6 +116,7 @@ class TestCacheTTL:
         """MARKET_DATA_CACHE_TTL_SECONDS env var should set the default."""
         monkeypatch.setenv("MARKET_DATA_CACHE_TTL_SECONDS", "120")
         import importlib
+
         import core.config
         importlib.reload(core.config)
         try:
@@ -126,7 +129,7 @@ class TestCacheTTL:
     @pytest.mark.asyncio
     async def test_cache_fresh_within_ttl(self):
         """Data within the 300s TTL should be a cache hit (not stale)."""
-        fresh_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=290)).isoformat()
+        fresh_time = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=290)).isoformat()
         mock_cached = {
             "ticker": "AAPL",
             "price": 150.0,
@@ -150,7 +153,7 @@ class TestCacheTTL:
     @pytest.mark.asyncio
     async def test_cache_stale_beyond_ttl(self):
         """Data beyond the 300s TTL should be fetched from provider."""
-        stale_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=310)).isoformat()
+        stale_time = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=310)).isoformat()
         mock_cached = {
             "ticker": "META",
             "price": 400.0,

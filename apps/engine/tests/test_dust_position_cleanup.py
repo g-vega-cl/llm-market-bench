@@ -1,7 +1,9 @@
 """Tests for the 10% minimum position rule (dust position cleanup)."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from execution.portfolio import Portfolio
 
 

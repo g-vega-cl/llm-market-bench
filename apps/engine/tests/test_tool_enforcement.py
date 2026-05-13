@@ -1,10 +1,17 @@
 """Tests for Hard Tool Enforcement in analysis.py."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from core.llm.analysis import analyze_with_provider, _scan_history_for_tools, _validate_and_enrich_government_events
+
 from analysis.consensus import _is_vague_government_event
-from core.models import DecisionsResponse, DecisionObject, MacroEvent
+from core.llm.analysis import (
+    _scan_history_for_tools,
+    _validate_and_enrich_government_events,
+    analyze_with_provider,
+)
+from core.models import DecisionObject, DecisionsResponse, MacroEvent
+
 
 @pytest.fixture
 def mock_clients():

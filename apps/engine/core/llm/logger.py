@@ -1,11 +1,11 @@
 """Logging utility for LLM reasoning traces."""
 
 import logging
-from typing import Any, List, Optional
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import Any
 
-from core.db import get_supabase_client
 from core.config import logger as pipeline_logger
+from core.db import get_supabase_client
 
 logger = logging.getLogger("engine.llm_logger")
 
@@ -13,9 +13,9 @@ async def log_reasoning_trace(
     task_type: str,
     model_provider: str,
     model_name: str,
-    prompt: List[dict],
+    prompt: list[dict],
     response: Any,
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 ) -> None:
     """Asynchronously logs an LLM reasoning trace to Supabase.
     

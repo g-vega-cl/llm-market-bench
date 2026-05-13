@@ -1,11 +1,12 @@
 """Mocked tests for the LLM tool-calling loop and format adapters."""
 
-import pytest
 import json
-from unittest.mock import AsyncMock, patch, MagicMock
-from core.llm import analyze_with_provider
-from core.models import DecisionsResponse, DecisionObject
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from core.llm import analyze_with_provider
+from core.models import DecisionObject, DecisionsResponse
 
 # =============================================================================
 # Format adapter unit tests (canonical → provider-specific)

@@ -1,8 +1,11 @@
 """Unit tests for the YFinanceProvider."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.providers.yfinance import YFinanceProvider
+
 
 @pytest.mark.asyncio
 async def test_yfinance_provider_get_ticker_data_success():

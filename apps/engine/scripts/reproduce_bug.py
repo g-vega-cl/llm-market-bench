@@ -1,10 +1,12 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
+
 from execution.portfolio import Portfolio, Position
-from execution.reg_t_validation import calculate_reg_t_metrics
+
 
 async def reproduce():
     print("--- Simulating Portfolio Trades ---")
@@ -53,9 +55,9 @@ async def reproduce():
 
     print("\n--- Final State vs User Data ---")
     print(f"Calculated Cash: {p.cash_balance}")
-    print(f"User Cash: -5427.145")
+    print("User Cash: -5427.145")
     print(f"Calculated Equity: {metrics2.total_equity}")
-    print(f"User Equity: 7225.195")
+    print("User Equity: 7225.195")
     
 if __name__ == "__main__":
     asyncio.run(reproduce())

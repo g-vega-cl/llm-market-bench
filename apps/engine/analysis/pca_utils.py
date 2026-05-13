@@ -6,6 +6,7 @@ to reduce them to 2 dimensions, and updating the database with the new coordinat
 
 import json
 import logging
+
 import numpy as np
 from sklearn.decomposition import PCA
 from supabase import Client

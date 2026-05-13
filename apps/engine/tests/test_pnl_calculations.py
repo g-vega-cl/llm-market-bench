@@ -8,8 +8,10 @@ This module tests:
 5. Multi-lot position management
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
 from execution.portfolio import Portfolio, Position
 
 

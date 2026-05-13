@@ -5,16 +5,16 @@ and uses DeepSeek to identify high-importance events for Horizon Watch.
 """
 
 import subprocess
-import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import datetime
+
 from bs4 import BeautifulSoup
 
+from core.config import DEEPSEEK_MODEL, logger
 from core.db import get_supabase_client
 from core.llm.clients import get_deepseek_client
-from core.config import DEEPSEEK_MODEL, logger
-from core.models import MacroEvent, DecisionsResponse
+from core.models import DecisionsResponse
 from memory.store import add_memory
+
 
 class CalendarPipeline:
     """Pipeline for fetching and processing economic calendar data."""
@@ -39,7 +39,7 @@ class CalendarPipeline:
             logger.error(f"Failed to fetch calendar HTML: {e}")
             return ""
 
-    def parse_events(self, html: str) -> List[dict]:
+    def parse_events(self, html: str) -> list[dict]:
         """Parses event rows from the Trading Economics HTML."""
         if not html:
             return []

@@ -6,7 +6,7 @@ once per analysis batch on the trading hot path.
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core.db import get_async_supabase_client
@@ -69,7 +69,7 @@ async def save_variant(
 ) -> str:
     sb_client = await get_async_supabase_client()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     tag = f"v{now.strftime('%Y%m%d-%H%M%S')}"
 
     insert_data: dict[str, Any] = {

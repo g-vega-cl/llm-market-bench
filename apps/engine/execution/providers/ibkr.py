@@ -1,14 +1,15 @@
 """IBKR implementation of FinancialProvider."""
 
 import asyncio
-import xml.etree.ElementTree as ET
 import logging
 import math
-from typing import Optional, List, Dict
+import xml.etree.ElementTree as ET
 
 from ib_async import IB, Stock, util
+
+from core.config import IBKR_CLIENT_ID, IBKR_HOST, IBKR_PORT, logger
+
 from .base import FinancialProvider, TickerData
-from core.config import logger, IBKR_HOST, IBKR_PORT, IBKR_CLIENT_ID
 
 
 class IBKRProvider(FinancialProvider):
@@ -18,7 +19,7 @@ class IBKRProvider(FinancialProvider):
     Requires a running IBKR TWS or Gateway instance.
     """
 
-    _ib: Optional[IB] = None
+    _ib: IB | None = None
     _lock = asyncio.Lock()
 
     @classmethod
@@ -46,7 +47,7 @@ class IBKRProvider(FinancialProvider):
 
             return cls._ib
 
-    async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
+    async def get_ticker_data(self, ticker: str) -> TickerData | None:
         """Fetch stock quote and market cap from IBKR."""
         ib = await self._get_ib_client()
         try:
@@ -127,7 +128,7 @@ class IBKRProvider(FinancialProvider):
             # We no longer disconnect here to allow the shared client to be reused.
             pass
 
-    async def get_history(self, ticker: str, days: int = 14) -> List[Dict]:
+    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
         """Fetch historical price data from IBKR."""
         ib = await self._get_ib_client()
         try:

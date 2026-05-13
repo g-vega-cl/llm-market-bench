@@ -1,8 +1,10 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from supabase import create_client
-from .checks import AUDIT_CHECKS
+
 from .analyzer import analyze_log_blob
+from .checks import AUDIT_CHECKS
 
 logger = logging.getLogger("engine")
 
@@ -16,7 +18,7 @@ def configure(url: str, service_role_key: str):
 
 
 def generate_audit_run_id() -> str:
-    return datetime.now(timezone.utc).strftime("audit-%Y%m%d-%H%M%S")
+    return datetime.now(UTC).strftime("audit-%Y%m%d-%H%M%S")
 
 
 async def run_audit():
@@ -90,16 +92,14 @@ def insert_audit(
 def categorize_audit_type(check_id: str) -> str:
     if check_id.startswith("orphan") or check_id.startswith("executed"):
         return "DB_ANOMALY"
-    elif check_id.startswith("invalid") or check_id.startswith("stale") or check_id.startswith("empty"):
-        return "DATA_QUALITY"
-    elif check_id.startswith("duplicate"):
+    elif check_id.startswith("invalid") or check_id.startswith("stale") or check_id.startswith("empty") or check_id.startswith("duplicate"):
         return "DATA_QUALITY"
     else:
         return "CODE_ERROR"
 
 
 async def analyze_recent_logs(supabase, audit_run_id: str):
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+    cutoff = datetime.now(UTC) - timedelta(hours=48)
     cutoff_str = cutoff.isoformat()
 
     result = supabase.table("ingestion_logs") \

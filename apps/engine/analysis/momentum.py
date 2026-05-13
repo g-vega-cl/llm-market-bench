@@ -5,10 +5,12 @@ and velocity of market concepts identified during consensus.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from supabase import Client
-from memory.embeddings import get_embeddings_batch
+
 from core import config
+from memory.embeddings import get_embeddings_batch
 
 logger = logging.getLogger("engine")
 
@@ -24,7 +26,7 @@ async def decay_stale_concepts(sb_client: Client, decay_days: int = None):
             Defaults to MOMENTUM_DECAY_HALF_LIFE_DAYS from config.
     """
     decay_days = decay_days or config.MOMENTUM_DECAY_HALF_LIFE_DAYS
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=decay_days)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(days=decay_days)).isoformat()
 
     try:
         # Fetch stale concepts with velocity > 0.01 (skip already-decayed concepts)
@@ -40,7 +42,7 @@ async def decay_stale_concepts(sb_client: Client, decay_days: int = None):
             new_velocity = concept["velocity_score"] * 0.5
             sb_client.table("concept_metrics").update({
                 "velocity_score": new_velocity,
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "updated_at": datetime.now(UTC).isoformat()
             }).eq("id", concept["id"]).execute()
 
         logger.info(f"Decayed velocity for {len(response.data)} stale concepts.")
@@ -84,7 +86,7 @@ def calculate_velocity(sb_client: Client, embedding: list[float]) -> float:
     - Growth = (Avg daily 7d) / max(Avg daily 30d, 0.1)
     """
     import math
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     
     # Recent: last 7 days
     recent_cutoff = (now - timedelta(days=7)).isoformat()
@@ -142,7 +144,7 @@ def calculate_velocity(sb_client: Client, embedding: list[float]) -> float:
 
 def _get_90d_mentions(sb_client: Client, embedding: list[float]) -> int:
     """Helper to get mention count over the last 90 days."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=config.MOMENTUM_EXTENDED_WINDOW_DAYS)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(days=config.MOMENTUM_EXTENDED_WINDOW_DAYS)).isoformat()
     try:
         res = sb_client.rpc(
             "match_memories_with_time",
@@ -171,7 +173,7 @@ def update_concept_metrics(sb_client: Client, concept_name: str, embedding: list
             }
         ).execute()
         
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         mentions_90d = _get_90d_mentions(sb_client, embedding)
         
         if match_res.data:

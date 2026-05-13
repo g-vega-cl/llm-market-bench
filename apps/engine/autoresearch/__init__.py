@@ -4,21 +4,21 @@ Karpathy-style autonomous prompt improvement: evaluates 1 week of live
 trading performance, proposes prompt changes, activates the best variant.
 """
 
-from .metrics import (
-    compute_wall_street_metrics,
-    compute_score,
-)
 from .evaluator import evaluate_week
-from .researcher import run_research, PromptResearchResult
-from .prompt_store import (
-    get_active_prompt,
-    save_variant,
-    get_previous_variants,
-    get_baseline_metrics,
-    revert_to_previous,
-    revert_to_baseline,
-    clear_active_prompt_cache,
+from .metrics import (
+    compute_score,
+    compute_wall_street_metrics,
 )
+from .prompt_store import (
+    clear_active_prompt_cache,
+    get_active_prompt,
+    get_baseline_metrics,
+    get_previous_variants,
+    revert_to_baseline,
+    revert_to_previous,
+    save_variant,
+)
+from .researcher import PromptResearchResult, run_research
 from .runner import run
 from .window import get_week_window
 

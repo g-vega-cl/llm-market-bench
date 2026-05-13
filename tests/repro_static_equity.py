@@ -1,5 +1,4 @@
-import asyncio
-from apps.engine.execution.portfolio import Portfolio, Position
+from apps.engine.execution.portfolio import Position
 from apps.engine.execution.reg_t_validation import calculate_reg_t_metrics
 
 # Mock the database interaction by overriding the relevant methods or mocking the dependencies

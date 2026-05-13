@@ -9,8 +9,10 @@ See: main.py -> _stage_dust_cleanup() and execution/portfolio.py -> _check_and_s
 These tests verify the automatic enforcement behavior, not a callable tool.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.portfolio import Portfolio
 
 

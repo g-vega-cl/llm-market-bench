@@ -1,12 +1,7 @@
 """LLM package for multi-provider analysis and event synthesis."""
 
+from core.llm import analysis, clients, events, minimax, prompts, tools
 from execution.market_data import MarketDataManager
-from core.llm import analysis
-from core.llm import clients
-from core.llm import events
-from core.llm import minimax
-from core.llm import prompts
-from core.llm import tools
 
 # Primary functions
 analyze_with_provider = analysis.analyze_with_provider

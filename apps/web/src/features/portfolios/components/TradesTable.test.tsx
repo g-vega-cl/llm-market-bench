@@ -1,6 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
-import { TradesTable, Trade } from './TradesTable'
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { type Trade, TradesTable } from './TradesTable';
 
 const mockTrades: Trade[] = [
     {
@@ -36,51 +36,51 @@ const mockTrades: Trade[] = [
         alpaca_status: null,
         alpaca_order_id: null,
         alpaca_submitted_at: null,
-    }
-]
+    },
+];
 
 describe('TradesTable', () => {
     it('renders all trades in the list', () => {
-        render(<TradesTable trades={mockTrades} />)
-        expect(screen.getByText('AAPL')).toBeInTheDocument()
-        expect(screen.getByText('TSLA')).toBeInTheDocument()
-        expect(screen.getByText('BUY')).toBeInTheDocument()
-        expect(screen.getByText('SELL')).toBeInTheDocument()
-    })
+        render(<TradesTable trades={mockTrades} />);
+        expect(screen.getByText('AAPL')).toBeInTheDocument();
+        expect(screen.getByText('TSLA')).toBeInTheDocument();
+        expect(screen.getByText('BUY')).toBeInTheDocument();
+        expect(screen.getByText('SELL')).toBeInTheDocument();
+    });
 
     it('expands reasoning when a trade is clicked', () => {
-        render(<TradesTable trades={mockTrades} />)
+        render(<TradesTable trades={mockTrades} />);
 
         // Reasoning hidden initially
-        expect(screen.queryByText('Strong earnings report.')).not.toBeInTheDocument()
+        expect(screen.queryByText('Strong earnings report.')).not.toBeInTheDocument();
 
         // Click AAPL trade
-        fireEvent.click(screen.getByText('AAPL'))
+        fireEvent.click(screen.getByText('AAPL'));
 
-        expect(screen.getByText('Strong earnings report.')).toBeInTheDocument()
-        expect(screen.getByText('Thinking Process')).toBeInTheDocument()
-    })
+        expect(screen.getByText('Strong earnings report.')).toBeInTheDocument();
+        expect(screen.getByText('Thinking Process')).toBeInTheDocument();
+    });
 
     it('applies correct styling for signals', () => {
-        render(<TradesTable trades={mockTrades} />)
-        const buyBadge = screen.getByText('BUY')
-        const sellBadge = screen.getByText('SELL')
+        render(<TradesTable trades={mockTrades} />);
+        const buyBadge = screen.getByText('BUY');
+        const sellBadge = screen.getByText('SELL');
 
-        expect(buyBadge).toHaveClass('bg-success-light')
-        expect(sellBadge).toHaveClass('bg-danger-light')
-    })
+        expect(buyBadge).toHaveClass('bg-success-light');
+        expect(sellBadge).toHaveClass('bg-danger-light');
+    });
 
     it('renders alpaca status badges with correct colors and links', () => {
-        render(<TradesTable trades={mockTrades} />)
+        render(<TradesTable trades={mockTrades} />);
 
-        const filledText = screen.getByText('FILLED')
-        expect(filledText).toBeInTheDocument()
-        expect(filledText).toHaveClass('bg-success-light')
+        const filledText = screen.getByText('FILLED');
+        expect(filledText).toBeInTheDocument();
+        expect(filledText).toHaveClass('bg-success-light');
 
-        const filledLink = filledText.closest('a')
-        expect(filledLink).toHaveAttribute('href', 'https://paper.alpaca.markets/orders')
+        const filledLink = filledText.closest('a');
+        expect(filledLink).toHaveAttribute('href', 'https://paper.alpaca.markets/orders');
 
-        const dashes = screen.getAllByText('\u2014')
-        expect(dashes.length).toBeGreaterThanOrEqual(3)
-    })
-})
+        const dashes = screen.getAllByText('\u2014');
+        expect(dashes.length).toBeGreaterThanOrEqual(3);
+    });
+});

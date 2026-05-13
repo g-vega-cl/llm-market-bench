@@ -1,8 +1,9 @@
 """Test for memory optimization and future event tracking."""
 
-import pytest
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timezone, timedelta
+
+import pytest
 
 
 def test_future_date_extraction():
@@ -52,7 +53,7 @@ def test_memory_decay():
     old_memory = {
         "id": "test-id",
         "relevance_score": 1.0,
-        "created_at": (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+        "created_at": (datetime.now(UTC) - timedelta(days=40)).isoformat()
     }
     
     mock_sb.table.return_value.select.return_value.eq.return_value.lt.return_value.gt.return_value.execute.return_value.data = [old_memory]

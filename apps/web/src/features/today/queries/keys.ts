@@ -1,4 +1,4 @@
-import type { QueryKey } from '@tanstack/react-query'
+import type { QueryKey } from '@tanstack/react-query';
 
 /**
  * Query keys for the Today feature.
@@ -8,6 +8,6 @@ import type { QueryKey } from '@tanstack/react-query'
  * @see https://tanstack.com/query/latest/docs/framework/react/guides/query-keys
  */
 export const todayQueryKeys = {
-  all: ['benchify', 'today'] as const,
-  data: () => ['benchify', 'today', 'data'] as const,
-} as const
+    all: ['benchify', 'today'] as const,
+    data: () => ['benchify', 'today', 'data'] as const,
+} as const;

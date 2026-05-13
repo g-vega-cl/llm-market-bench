@@ -1,10 +1,13 @@
 """Integration tests for the main execution pipeline."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
+
 from core.models import DecisionObject
 from execution.validation import ValidationResult, ValidationStatus
 from main import run_ingest, run_weekend_ingest
+
 
 @pytest.fixture
 def mock_dependencies():

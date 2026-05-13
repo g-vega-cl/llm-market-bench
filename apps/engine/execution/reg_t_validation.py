@@ -6,8 +6,6 @@ defined in 'raw/docs/engine/account-buying-power-reg-t4-calculations.md'.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
-import logging
 
 from core.config import MIN_TRADE_VALUE, logger
 
@@ -29,14 +27,14 @@ class RegTMetrics:
 class ValidationResult:
     """Result of a trade compliance check."""
     passed: bool
-    reason: Optional[str] = None
+    reason: str | None = None
     max_affordable_shares: int = 0
 
 
 def calculate_reg_t_metrics(
     cash_balance: float,
-    positions: Dict[str, dict],
-    current_prices: Dict[str, float],
+    positions: dict[str, dict],
+    current_prices: dict[str, float],
     previous_sma: float = 0.0
 ) -> RegTMetrics:
     """Calculates granular Reg T metrics including stateful SMA.

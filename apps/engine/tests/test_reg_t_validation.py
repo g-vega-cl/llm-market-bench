@@ -1,9 +1,9 @@
 """Tests for Regulation T margin logic - Full Scenario Suite."""
 import pytest
+
 from execution.reg_t_validation import (
-    calculate_reg_t_metrics, 
-    validate_trade_compliance, 
-    RegTMetrics
+    calculate_reg_t_metrics,
+    validate_trade_compliance,
 )
 
 # Reference: raw/docs/engine/account-buying-power-reg-t4-calculations.md

@@ -4,15 +4,13 @@ This module performs monthly checks for government budgets, objectives,
 and incentives to inform the trading agents.
 """
 
-import logging
-from datetime import datetime, timezone
-from typing import List, Optional
 
-from core.db import get_supabase_client
-from core.llm import get_gemini_client, prompts
 from core.config import GEMINI_MODEL, logger
-from core.models import MacroEvent, DecisionsResponse
+from core.db import get_supabase_client
+from core.llm import get_gemini_client
+from core.models import DecisionsResponse
 from memory.store import add_memory
+
 
 class GovernmentPipeline:
     """Monthly pipeline for tracking government budgets and incentives."""

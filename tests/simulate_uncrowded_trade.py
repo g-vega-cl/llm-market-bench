@@ -4,7 +4,6 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../apps/engine')))
 
-from core.models import DecisionObject
 from analyze import analyze_chunks
 
 async def run_simulation():

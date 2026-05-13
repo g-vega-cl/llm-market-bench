@@ -10,19 +10,19 @@ Usage:
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
+from alpaca.common.exceptions import APIError
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderStatus
-from alpaca.common.exceptions import APIError
 
 from core.config import (
     ALPACA_API_KEY,
-    ALPACA_SECRET_KEY,
     ALPACA_PAPER_ENDPOINT,
+    ALPACA_SECRET_KEY,
     logger,
 )
 from core.db import get_supabase_client
@@ -57,7 +57,7 @@ def sync_orders() -> dict:
     )
     supabase = get_supabase_client()
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=MAX_AGE_HOURS)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(hours=MAX_AGE_HOURS)).isoformat()
 
     # Query SUBMITTED trades (new) and PENDING trades (legacy, from before 2026-05-14 rename)
     result = (

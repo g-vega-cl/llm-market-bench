@@ -1,11 +1,18 @@
 import asyncio
 import inspect
 import time
-import httpx
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
-from supabase import Client, create_client, ClientOptions
-from supabase import AsyncClient, AsyncClientOptions, create_async_client
+import httpx
+from supabase import (
+    AsyncClient,
+    AsyncClientOptions,
+    Client,
+    ClientOptions,
+    create_async_client,
+    create_client,
+)
 
 from .config import SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL, logger
 

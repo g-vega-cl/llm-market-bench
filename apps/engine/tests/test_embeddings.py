@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from memory.embeddings import get_embeddings_batch, get_client
+
 import memory.embeddings
-from core import config
+from memory.embeddings import get_client, get_embeddings_batch
+
 
 @pytest.fixture(autouse=True)
 def reset_client():

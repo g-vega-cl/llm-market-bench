@@ -1,13 +1,14 @@
 """Anthropic tool loop handler."""
 
 import logging
+
+from core.config import (
+    ANTHROPIC_MAX_WEB_SEARCHES,
+    ANTHROPIC_WEB_SEARCH_VERSION,
+    ENABLE_ANTHROPIC_WEB_SEARCH,
+)
 from core.llm import tools
 from core.llm.handlers import base
-from core.config import (
-    ENABLE_ANTHROPIC_WEB_SEARCH,
-    ANTHROPIC_WEB_SEARCH_VERSION,
-    ANTHROPIC_MAX_WEB_SEARCHES
-)
 
 logger = logging.getLogger("engine")
 

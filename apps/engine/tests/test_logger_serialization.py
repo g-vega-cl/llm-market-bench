@@ -1,7 +1,10 @@
-import pytest
 import dataclasses
-from core.llm.logger import log_reasoning_trace
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from core.llm.logger import log_reasoning_trace
+
 
 @dataclasses.dataclass
 class MockToolCall:

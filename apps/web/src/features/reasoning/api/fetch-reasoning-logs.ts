@@ -1,58 +1,62 @@
-import { getSupabaseBrowserClient } from '~/lib/supabase-client'
-import type { LLMReasoningLog } from '@llm-market-bench/database'
+import type { LLMReasoningLog } from '@llm-market-bench/database';
+import { getSupabaseBrowserClient } from '~/lib/supabase-client';
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
 export interface PaginatedReasoningLogs {
-  data: LLMReasoningLog[]
-  hasMore: boolean
-  nextCursor: string | null
+    data: LLMReasoningLog[];
+    hasMore: boolean;
+    nextCursor: string | null;
 }
 
-export async function fetchReasoningLogs(cursor?: string, pageSize: number = PAGE_SIZE): Promise<PaginatedReasoningLogs> {
-  const supabase = getSupabaseBrowserClient()
+export async function fetchReasoningLogs(
+    cursor?: string,
+    pageSize: number = PAGE_SIZE,
+): Promise<PaginatedReasoningLogs> {
+    const supabase = getSupabaseBrowserClient();
 
-  let query = supabase
-    .from('llm_reasoning_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(pageSize + 1)
+    let query = supabase
+        .from('llm_reasoning_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(pageSize + 1);
 
-  if (cursor) {
-    query = query.lt('created_at', cursor)
-  }
+    if (cursor) {
+        query = query.lt('created_at', cursor);
+    }
 
-  const { data, error } = await query
+    const { data, error } = await query;
 
-  if (error) {
-    console.error('Error fetching reasoning logs:', error)
-    throw error
-  }
+    if (error) {
+        console.error('Error fetching reasoning logs:', error);
+        throw error;
+    }
 
-  const hasMore = data.length > pageSize
-  const paginatedData = hasMore ? data.slice(0, pageSize) : data
+    const hasMore = data.length > pageSize;
+    const paginatedData = hasMore ? data.slice(0, pageSize) : data;
 
-  const nextCursor = hasMore && paginatedData.length > 0
-    ? paginatedData[paginatedData.length - 1].created_at
-    : null
+    const nextCursor =
+        hasMore && paginatedData.length > 0
+            ? paginatedData[paginatedData.length - 1].created_at
+            : null;
 
-  return {
-    data: paginatedData,
-    hasMore,
-    nextCursor
-  }
+    return {
+        data: paginatedData,
+        hasMore,
+        nextCursor,
+    };
 }
 
 export async function fetchAllReasoningLogs(): Promise<LLMReasoningLog[]> {
-  const supabase = getSupabaseBrowserClient()
-  const { data, error } = await supabase
-    .from('llm_reasoning_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('llm_reasoning_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching reasoning logs:', error)
-    throw error
-  }
-  return data as LLMReasoningLog[]
+    if (error) {
+        console.error('Error fetching reasoning logs:', error);
+        throw error;
+    }
+    return data as LLMReasoningLog[];
 }

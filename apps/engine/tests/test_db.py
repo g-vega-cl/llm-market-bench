@@ -1,9 +1,10 @@
 """Tests for core.db module."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from core.db import is_transient_supabase_error, with_retry, SUPABASE_RETRIES
+import pytest
+
+from core.db import SUPABASE_RETRIES, is_transient_supabase_error, with_retry
 
 
 class TestIsTransientSupabaseError:
@@ -110,15 +111,13 @@ class TestWithRetry:
 
     def test_exhausts_retries_and_raises(self):
         operation = MagicMock(side_effect=Exception("502 Bad Gateway"))
-        with patch("time.sleep"):
-            with pytest.raises(Exception) as exc_info:
-                with_retry(operation, "test_op")
+        with patch("time.sleep"), pytest.raises(Exception) as exc_info:
+            with_retry(operation, "test_op")
         assert "502 Bad Gateway" in str(exc_info.value)
         assert operation.call_count == SUPABASE_RETRIES
 
     def test_uses_correct_retry_count(self):
         operation = MagicMock(side_effect=Exception("502 Bad Gateway"))
-        with patch("time.sleep"):
-            with pytest.raises(Exception):
-                with_retry(operation, "test_op")
+        with patch("time.sleep"), pytest.raises(Exception):
+            with_retry(operation, "test_op")
         assert operation.call_count == 3

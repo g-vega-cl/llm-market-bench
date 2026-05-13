@@ -1,18 +1,18 @@
-import * as React from 'react'
-import { getAgentInfo } from '../lib/agent-info'
-import { SectionHeading, ConfidenceBar, Badge, Card } from '@llm-market-bench/ui-design-system'
+import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
+import * as React from 'react';
+import { getAgentInfo } from '../lib/agent-info';
+
 interface AgentInsightsProps {
-    memories: any[]
+    memories: any[];
 }
 export function AgentInsights({ memories }: AgentInsightsProps) {
-    const consensus = memories.filter(m => m.memory_type === 'MARKET_EVENT')
-    const lessons = memories.filter(m => m.memory_type === 'LESSON_LEARNED')
-    const incentives = memories.filter(m => m.memory_type === 'GOVERNMENT_INCENTIVE')
-    if (!consensus.length && !lessons.length && !incentives.length) return null
+    const consensus = memories.filter((m) => m.memory_type === 'MARKET_EVENT');
+    const lessons = memories.filter((m) => m.memory_type === 'LESSON_LEARNED');
+    const incentives = memories.filter((m) => m.memory_type === 'GOVERNMENT_INCENTIVE');
+    if (!consensus.length && !lessons.length && !incentives.length) return null;
     // Calculate consensus strength
-    const consensusStrength = consensus.length > 0
-        ? Math.min(100, (consensus.length / 3) * 100)
-        : 0
+    const consensusStrength =
+        consensus.length > 0 ? Math.min(100, (consensus.length / 3) * 100) : 0;
     return (
         <section className="space-y-8 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -20,7 +20,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 {/* Consensus Meter */}
                 {consensus.length > 0 && (
                     <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-md">
-                        <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Consensus</span>
+                        <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">
+                            Consensus
+                        </span>
                         <div className="flex items-center gap-2">
                             <div className="w-32 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
                                 <div
@@ -28,7 +30,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     style={{ width: `${consensusStrength}%` }}
                                 />
                             </div>
-                            <span className="text-sm font-black text-deep-purple-500 tabular-nums">{Math.round(consensusStrength)}%</span>
+                            <span className="text-sm font-black text-deep-purple-500 tabular-nums">
+                                {Math.round(consensusStrength)}%
+                            </span>
                         </div>
                     </div>
                 )}
@@ -36,7 +40,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
             <div className="space-y-6">
                 {/* Market Consensus - Priority Display */}
                 {consensus.map((m, idx) => {
-                    const agents = extractAgents(m)
+                    const agents = extractAgents(m);
                     return (
                         <div
                             key={m.id}
@@ -48,7 +52,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             {/* Agent Participation */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge severity="medium" variant="soft" radius="lg" size="sm">Market Consensus</Badge>
+                                    <Badge severity="medium" variant="soft" radius="lg" size="sm">
+                                        Market Consensus
+                                    </Badge>
                                     {agents.length > 0 && (
                                         <div className="flex items-center gap-1 flex-wrap">
                                             {agents.slice(0, 4).map((agent, i) => (
@@ -73,15 +79,19 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                         month: 'short',
                                         day: 'numeric',
                                         hour: '2-digit',
-                                        minute: '2-digit'
+                                        minute: '2-digit',
                                     })}
                                 </span>
                             </div>
                             {/* Content */}
                             <p className="text-lg text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-4 relative">
-                                <span className="absolute -top-3 -left-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">"</span>
+                                <span className="absolute -top-3 -left-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
+                                    "
+                                </span>
                                 {m.content}
-                                <span className="absolute -bottom-6 -right-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">"</span>
+                                <span className="absolute -bottom-6 -right-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
+                                    "
+                                </span>
                             </p>
                             {/* Metadata */}
                             {m.metadata?.importance_score && (
@@ -94,20 +104,22 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     </div>
                                     {m.metadata?.tickers && m.metadata.tickers.length > 0 && (
                                         <div className="flex gap-2 flex-wrap">
-                                            {m.metadata.tickers.slice(0, 5).map((ticker: string, i: number) => (
-                                                <span
-                                                    key={i}
-                                                    className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded-md uppercase tracking-wide border border-zinc-200 dark:border-zinc-700 hover:border-deep-purple-400 transition-colors"
-                                                >
-                                                    {ticker}
-                                                </span>
-                                            ))}
+                                            {m.metadata.tickers
+                                                .slice(0, 5)
+                                                .map((ticker: string, i: number) => (
+                                                    <span
+                                                        key={i}
+                                                        className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded-md uppercase tracking-wide border border-zinc-200 dark:border-zinc-700 hover:border-deep-purple-400 transition-colors"
+                                                    >
+                                                        {ticker}
+                                                    </span>
+                                                ))}
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
-                    )
+                    );
                 })}
                 {/* Government Incentives */}
                 {incentives.map((m, idx) => (
@@ -118,7 +130,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <Badge colorScheme="success" variant="soft" radius="lg" size="sm">Government Incentive</Badge>
+                                <Badge colorScheme="success" variant="soft" radius="lg" size="sm">
+                                    Government Incentive
+                                </Badge>
                                 <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
                                     <span>💰</span> Policy Alert
                                 </span>
@@ -126,7 +140,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                 {new Date(m.created_at).toLocaleDateString('en-US', {
                                     month: 'short',
-                                    day: 'numeric'
+                                    day: 'numeric',
                                 })}
                             </span>
                         </div>
@@ -147,31 +161,35 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     <div
                         key={m.id}
                         className="group p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 card-lift animate-slide-up"
-                        style={{ animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms` }}
+                        style={{
+                            animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms`,
+                        }}
                     >
                         {(() => {
-                            const lessonAgent = getAgentInfo(m.metadata?.model_name)
+                            const lessonAgent = getAgentInfo(m.metadata?.model_name);
                             return (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge severity="high" variant="soft" radius="lg" size="sm">Lesson Learned</Badge>
-                                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
-                                    <span>📝</span> Post-Analysis
-                                </span>
-                                {lessonAgent.name !== 'Unknown' && (
-                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                                        {lessonAgent.name}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge severity="high" variant="soft" radius="lg" size="sm">
+                                            Lesson Learned
+                                        </Badge>
+                                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                            <span>📝</span> Post-Analysis
+                                        </span>
+                                        {lessonAgent.name !== 'Unknown' && (
+                                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                                {lessonAgent.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                        {new Date(m.created_at).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                        })}
                                     </span>
-                                )}
-                            </div>
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                {new Date(m.created_at).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric'
-                                })}
-                            </span>
-                        </div>
-                            )
+                                </div>
+                            );
                         })()}
                         <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
                             "{m.content}"
@@ -187,24 +205,24 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 ))}
             </div>
         </section>
-    )
+    );
 }
 // Helper to extract agent information from memory
 function extractAgents(memory: any) {
-    const agents = []
+    const agents = [];
     // Try to extract from metadata
     if (memory.metadata?.participating_agents) {
         for (const agentId of memory.metadata.participating_agents) {
-            const info = getAgentInfo(agentId)
-            agents.push(info)
+            const info = getAgentInfo(agentId);
+            agents.push(info);
         }
     }
     // Try to extract from content or model_name if available
     if (memory.model_name) {
-        const info = getAgentInfo(memory.model_name)
-        if (!agents.find(a => a.name === info.name)) {
-            agents.push(info)
+        const info = getAgentInfo(memory.model_name);
+        if (!agents.find((a) => a.name === info.name)) {
+            agents.push(info);
         }
     }
-    return agents
+    return agents;
 }

@@ -1,10 +1,11 @@
 """Integration test for RAG context retrieval."""
 
-import pytest
 import asyncio
 import logging
+
+import pytest
+
 from memory.store import add_memory, retrieve_context
-from core.db import get_supabase_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("test")
@@ -24,7 +25,7 @@ async def test_memory_flow():
         print("❌ Failed to add memory.")
         return
 
-    print(f"\n2. Retrieving context for query: 'What did the Fed do recently?'")
+    print("\n2. Retrieving context for query: 'What did the Fed do recently?'")
     context = retrieve_context("What did the Fed do recently?")
     
     if test_content in context:

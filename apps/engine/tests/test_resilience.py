@@ -14,7 +14,6 @@ async def test_individual_task_failure_does_not_halt_pipeline():
     """Verify that one model failing doesn't stop others."""
 
     from core.models import DecisionsResponse
-    from unittest.mock import MagicMock, patch
     
     async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
         if provider == "openai":

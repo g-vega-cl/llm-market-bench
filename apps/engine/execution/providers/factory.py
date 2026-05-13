@@ -1,11 +1,13 @@
 """Factory for financial data providers."""
 
 from core.config import FINANCIAL_PROVIDER, logger
+
 from .base import FinancialProvider
 from .fmp import FMPProvider
-from .yfinance import YFinanceProvider
 from .ibkr import IBKRProvider
 from .proxy_ibkr import ProxyIBKRProvider
+from .yfinance import YFinanceProvider
+
 
 def get_financial_provider(provider_name: str = None) -> FinancialProvider:
     """Factory to return a financial provider instance.

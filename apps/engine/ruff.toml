@@ -1,0 +1,25 @@
+# Ruff linter configuration for llm-market-bench engine
+# Run: ruff check apps/engine/
+# Format: ruff format apps/engine/
+
+target-version = "py312"
+line-length = 100
+extend-exclude = ["apps/engine/venv", ".ruff_cache"]
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "UP",   # pyupgrade (modern syntax)
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = []
+
+[lint.isort]
+known-first-party = ["core", "analysis", "autoresearch", "execution", "scripts"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

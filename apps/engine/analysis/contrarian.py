@@ -5,25 +5,25 @@ contrarian opportunities or missed risks.
 """
 
 import asyncio
-import logging
-from typing import List, Tuple, Callable, Optional
+from collections.abc import Callable
 
-from core.models import DecisionObject, MacroEvent, DecisionsResponse, ContrarianAgentResponse
-from core.llm import get_gemini_client
 from core.config import GEMINI_MODEL, logger
-from execution.portfolio import Portfolio
+from core.llm import get_gemini_client
+from core.models import DecisionObject, MacroEvent
 from execution.market_data import MarketDataManager
+from execution.portfolio import Portfolio
 from memory.store import retrieve_context_batch
 
+
 async def run_contrarian_analysis(
-    chunks: List[dict],
-    other_decisions: List[DecisionObject],
+    chunks: list[dict],
+    other_decisions: list[DecisionObject],
     context: str = "",
     portfolio: Portfolio = None,
     market_data: MarketDataManager = None,
     llm_client = None,
     retrieve_context_fn: Callable = None
-) -> Tuple[List[DecisionObject], List[MacroEvent]]:
+) -> tuple[list[DecisionObject], list[MacroEvent]]:
     """Runs the contrarian analysis using Gemini Flash 3.
 
     Args:
@@ -105,9 +105,9 @@ async def run_contrarian_analysis(
     client = llm_client
 
     try:
-        from core.models import DecisionsResponse
-        from typing import List
+
         from core.llm.prompt_factory import PromptFactory
+        from core.models import DecisionsResponse
 
         messages = PromptFactory.build_contrarian_messages(
             provider="gemini",
@@ -122,7 +122,7 @@ async def run_contrarian_analysis(
         # This is expected behavior with instructor.Mode.GENAI_TOOLS and multiple news chunks
         resp_awaitable = client.chat.completions.create(
             model=GEMINI_MODEL,
-            response_model=List[DecisionsResponse],
+            response_model=list[DecisionsResponse],
             messages=messages,
             max_retries=2
         )

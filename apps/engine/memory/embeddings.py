@@ -1,7 +1,9 @@
 """Google Gemini embedding implementation."""
 
 import logging
+
 from google import genai
+
 from core import config
 from core.config import GEMINI_EMBEDDING_MODEL
 

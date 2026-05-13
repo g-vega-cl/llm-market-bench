@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
+
 from execution.portfolio import Portfolio
-from execution.market_data import MarketDataManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("verify")

@@ -4,9 +4,8 @@ This test simulates a market data failure (price = 0) for a position on margin
 and verifies that the system falls back to cost basis to prevent negative equity.
 """
 
-import pytest
 from execution.portfolio import Portfolio, Position
-from execution.reg_t_validation import calculate_reg_t_metrics
+
 
 def test_negative_equity_fix_fallback():
     # Setup: Account on margin

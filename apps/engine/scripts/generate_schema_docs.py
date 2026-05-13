@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import os
-import csv
-import psycopg2
-from collections import defaultdict
 from pathlib import Path
+
+import psycopg2
 from dotenv import load_dotenv
 
 # --- Configuration ---

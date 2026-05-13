@@ -6,9 +6,8 @@ It calculates daily percentage changes and 30-day volatility to flag unusual mar
 providing vital contextual "regime" awareness to the LLM prior to decision-making.
 """
 
-import math
 import logging
-from typing import Dict, Any, List
+import math
 
 logger = logging.getLogger("engine")
 

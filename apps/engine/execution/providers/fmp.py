@@ -2,11 +2,14 @@
 
 import asyncio
 import time
-import httpx
 from datetime import datetime, timedelta
-from typing import Optional, TypedDict
-from .base import FinancialProvider, TickerData
+from typing import TypedDict
+
+import httpx
+
 from core.config import FMP_API_KEY, logger
+
+from .base import FinancialProvider, TickerData
 
 
 class HistoryEntry(TypedDict):
@@ -27,7 +30,7 @@ class FMPProvider(FinancialProvider):
             logger.warning("FMP_API_KEY not found in environment. FMP validation will be disabled.")
         self.api_key = FMP_API_KEY
 
-    async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
+    async def get_ticker_data(self, ticker: str) -> TickerData | None:
         if not self.api_key:
             return None
 
@@ -178,19 +181,19 @@ class FMPProvider(FinancialProvider):
 
     async def screen_stocks(
         self, 
-        market_cap_more_than: Optional[float] = None, 
-        market_cap_lower_than: Optional[float] = None,
-        price_more_than: Optional[float] = None,
-        price_lower_than: Optional[float] = None,
-        beta_more_than: Optional[float] = None,
-        beta_lower_than: Optional[float] = None,
-        volume_more_than: Optional[float] = None,
-        volume_lower_than: Optional[float] = None,
-        dividend_more_than: Optional[float] = None,
-        dividend_lower_than: Optional[float] = None,
-        sector: Optional[str] = None, 
-        industry: Optional[str] = None, 
-        exchange: Optional[str] = "NYSE,NASDAQ",
+        market_cap_more_than: float | None = None, 
+        market_cap_lower_than: float | None = None,
+        price_more_than: float | None = None,
+        price_lower_than: float | None = None,
+        beta_more_than: float | None = None,
+        beta_lower_than: float | None = None,
+        volume_more_than: float | None = None,
+        volume_lower_than: float | None = None,
+        dividend_more_than: float | None = None,
+        dividend_lower_than: float | None = None,
+        sector: str | None = None, 
+        industry: str | None = None, 
+        exchange: str | None = "NYSE,NASDAQ",
         limit: int = 10,
         is_actively_trading: bool = True
     ) -> list[dict]:

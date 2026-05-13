@@ -1,10 +1,13 @@
 """Tests for second-step verification logic."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from core.models import DecisionObject, VerificationResult
+
+from core.config import ANTHROPIC_MODEL, GEMINI_MODEL
 from core.llm.verification import verify_trading_decision
-from core.config import GEMINI_MODEL, ANTHROPIC_MODEL
+from core.models import DecisionObject, VerificationResult
+
 
 @pytest.mark.asyncio
 async def test_verify_trading_decision_approved():

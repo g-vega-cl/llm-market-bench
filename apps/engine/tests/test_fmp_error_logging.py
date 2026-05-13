@@ -1,8 +1,10 @@
 """Tests for FMP provider error handling and logging."""
 
-import pytest
-import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
+
 from execution.providers.fmp import FMPProvider
 
 

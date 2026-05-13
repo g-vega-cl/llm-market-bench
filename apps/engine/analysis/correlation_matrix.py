@@ -10,21 +10,19 @@ Usage:
 """
 
 import asyncio
-import json
-import sys
 import os
+import sys
+
 # Add the engine root directory to path for sibling package imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import numpy as np
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
+import numpy as np
 from scipy import stats
 
 from core.config import FMP_API_KEY, logger
 from core.db import get_supabase_client
 from execution.providers.fmp import FMPProvider
-
 
 # =============================================================================
 # TICKER UNIVERSE
@@ -66,7 +64,7 @@ SMA_WINDOW = 5  # days for smoothing endpoints in 90d return calc
 # DATA FETCHING
 # =============================================================================
 
-async def fetch_ticker_history(provider: FMPProvider, ticker: str, days: int) -> Optional[list[float]]:
+async def fetch_ticker_history(provider: FMPProvider, ticker: str, days: int) -> list[float] | None:
     """Fetch historical close prices for a ticker.
 
     Returns:
@@ -99,7 +97,7 @@ async def fetch_all_prices(tickers: list[str], days: int) -> dict[str, list[floa
     # Fetch all tickers in parallel with semaphore to limit concurrency
     semaphore = asyncio.Semaphore(10)
 
-    async def fetch_one(ticker: str) -> tuple[str, Optional[list[float]]]:
+    async def fetch_one(ticker: str) -> tuple[str, list[float] | None]:
         async with semaphore:
             prices = await fetch_ticker_history(provider, ticker, days)
             return ticker, prices
@@ -241,10 +239,9 @@ def store_correlation_results(
     Returns:
         The run_id (UUID) of the created correlation run.
     """
-    from supabase import Client
 
     # Get today's date (Sunday)
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     run_date = today.isoformat()
 
     # Check if we already have a run for this date
@@ -269,9 +266,9 @@ def store_correlation_results(
     # Build list of correlation_data records
     correlation_records = []
     for (ticker_a, ticker_b), pearson_corr in pearson_corrs.items():
-        spearman_corr = spearman_corrs.get((ticker_a, ticker_b), None)
-        returns_a = returns_90d.get(ticker_a, None)
-        returns_b = returns_90d.get(ticker_b, None)
+        spearman_corr = spearman_corrs.get((ticker_a, ticker_b))
+        returns_a = returns_90d.get(ticker_a)
+        returns_b = returns_90d.get(ticker_b)
 
         correlation_records.append({
             "run_id": run_id,
@@ -367,7 +364,7 @@ async def main():
             failed_tickers.append(ticker)
             logger.warning(f"  FAIL: {ticker} - insufficient data")
 
-    logger.info(f"\nVerification complete:")
+    logger.info("\nVerification complete:")
     logger.info(f"  Valid tickers: {len(valid_tickers)}")
     logger.info(f"  Failed tickers: {len(failed_tickers)}")
 
@@ -438,21 +435,21 @@ async def main():
         logger.error(f"Storage verification query failed: {e}")
         sys.exit(1)
 
-    logger.info(f"\nCorrelation matrix computation complete!")
+    logger.info("\nCorrelation matrix computation complete!")
     logger.info(f"Run ID: {run_id}")
     logger.info(f"Total pairs computed: {len(pearson_corrs)}")
 
     # Log some summary statistics
     if pearson_corrs:
         corr_values = list(pearson_corrs.values())
-        logger.info(f"\nPearson correlation stats:")
+        logger.info("\nPearson correlation stats:")
         logger.info(f"  Min:  {min(corr_values):.4f}")
         logger.info(f"  Max:  {max(corr_values):.4f}")
         logger.info(f"  Mean: {np.mean(corr_values):.4f}")
 
         # Find most uncorrelated pairs (closest to 0)
         uncorrelated = sorted(pearson_corrs.items(), key=lambda x: abs(x[1]))[:5]
-        logger.info(f"\nMost uncorrelated pairs:")
+        logger.info("\nMost uncorrelated pairs:")
         for (a, b), corr in uncorrelated:
             r_a = returns_90d.get(a, 0)
             r_b = returns_90d.get(b, 0)

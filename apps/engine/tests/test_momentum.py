@@ -1,8 +1,11 @@
 """Tests for Trend & Concept Momentum Analysis."""
 
-import pytest
 from unittest.mock import MagicMock, patch
-from analysis.momentum import calculate_velocity, update_concept_metrics, analyze_momentum
+
+import pytest
+
+from analysis.momentum import analyze_momentum, calculate_velocity, update_concept_metrics
+
 
 @pytest.fixture
 def mock_supabase():

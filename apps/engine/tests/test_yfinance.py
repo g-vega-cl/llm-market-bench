@@ -1,13 +1,14 @@
 import asyncio
-import pytest
 import os
 import sys
+
+import pytest
 
 # Add apps/engine to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from execution.providers.yfinance import YFinanceProvider
-from core.config import logger
+
 
 @pytest.mark.asyncio
 async def test_yfinance():

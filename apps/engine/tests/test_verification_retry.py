@@ -1,9 +1,11 @@
 """Tests for verification — no retry loop on empty responses."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from core.models import DecisionObject, VerificationResult
+
 from core.llm.verification import verify_trading_decision
+from core.models import DecisionObject, VerificationResult
 
 
 @pytest.mark.asyncio

@@ -1,14 +1,11 @@
 """Main validation service for pre-market trade logic."""
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
-from core.config import (
-    MIN_MARKET_CAP_BILLIONS,
-    logger
-)
+from core.config import MIN_MARKET_CAP_BILLIONS, logger
+
 from .market_data import MarketDataManager
 
 
@@ -26,9 +23,9 @@ class ValidationResult(BaseModel):
     """Result of a trade validation check."""
     ticker: str
     status: ValidationStatus
-    reason: Optional[str] = None
-    market_price: Optional[float] = None
-    market_cap: Optional[float] = None
+    reason: str | None = None
+    market_price: float | None = None
+    market_cap: float | None = None
 
 
 async def validate_decision(ticker: str) -> ValidationResult:
@@ -104,7 +101,7 @@ async def validate_decision(ticker: str) -> ValidationResult:
     )
 
 
-async def validate_semantic_overlap(ticker: str, reasoning: str, model_name: Optional[str] = None, threshold: float = 0.90) -> Optional[str]:
+async def validate_semantic_overlap(ticker: str, reasoning: str, model_name: str | None = None, threshold: float = 0.90) -> str | None:
     """Checks if this trade is redundant based on recent similar reasoning.
 
     Args:

@@ -6,11 +6,11 @@ Run via: python -m autoresearch.bootstrap  (from apps/engine/ with venv active)
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-from autoresearch.prompt_store import save_variant, get_active_prompt
-from core.llm.prompts import CORE_ANALYSIS_SYSTEM_PROMPT
+from autoresearch.prompt_store import get_active_prompt, save_variant
 from core.config import logger
+from core.llm.prompts import CORE_ANALYSIS_SYSTEM_PROMPT
 
 
 async def bootstrap():
@@ -23,7 +23,7 @@ async def bootstrap():
 
     logger.info("No active prompt found. Bootstrapping with baseline...")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     week_start = (now - timedelta(days=7)).date().isoformat()
     week_end = now.date().isoformat()
 

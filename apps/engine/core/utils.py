@@ -2,7 +2,6 @@
 
 import datetime
 import logging
-from typing import Optional
 
 from execution.market_data import MarketDataManager
 

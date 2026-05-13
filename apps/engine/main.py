@@ -7,36 +7,37 @@ including newsletter ingestion, database snapshotting, and LLM analysis.
 import argparse
 import asyncio
 from collections import defaultdict
+from datetime import UTC
 
 from analysis.analyze import analyze_chunks
+from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
 from analysis.consensus import process_consensus
-from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.contrarian import run_contrarian_analysis
-from core.llm.verification import verify_trading_decision
+from analysis.market_feeling import analyze_market_feeling
+from analysis.momentum import analyze_momentum, decay_stale_concepts
+from analysis.pca_utils import update_pca_coordinates
+from analysis.post_analysis import perform_post_analysis
 from attribution.service import save_decision
+from core.audit import run_audit
 from core.config import (
-    COMMAND_INGEST,
-    COMMAND_WEEKEND_INGEST,
-    COMMAND_POST_ANALYSIS,
-    COMMAND_GOVERNMENT,
-    COMMAND_CALENDAR,
-    COMMAND_CAUSE_AND_EFFECT,
     COMMAND_AUDIT,
     COMMAND_AUTORESEARCH,
     COMMAND_BOOTSTRAP_AUTORESEARCH,
-    logger
+    COMMAND_CALENDAR,
+    COMMAND_CAUSE_AND_EFFECT,
+    COMMAND_GOVERNMENT,
+    COMMAND_INGEST,
+    COMMAND_POST_ANALYSIS,
+    COMMAND_WEEKEND_INGEST,
+    logger,
 )
 from core.db import get_supabase_client, upsert_newsletter_snapshot
-from execution.validation import validate_decision, validate_semantic_overlap, ValidationStatus
+from core.llm.verification import verify_trading_decision
 from execution.portfolio import Portfolio
-from ingest.newsletter import ingest_newsletters
-from ingest.government import run_government_pipeline
+from execution.validation import ValidationStatus, validate_decision, validate_semantic_overlap
 from ingest.calendar import run_calendar_pipeline
-from analysis.post_analysis import perform_post_analysis
-from analysis.market_feeling import analyze_market_feeling
-from analysis.pca_utils import update_pca_coordinates
-from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
-from core.audit import run_audit
+from ingest.government import run_government_pipeline
+from ingest.newsletter import ingest_newsletters
 
 
 async def _stage_ingest_and_snapshot():
@@ -71,8 +72,8 @@ async def _stage_dust_cleanup(sb_client):
     when making allocation decisions. Runs regardless of whether newsletter data exists,
     as it's a safety net for accumulated dust from any source.
     """
-    from execution.market_data import MarketDataManager
     from analysis.analyze import MODELS
+    from execution.market_data import MarketDataManager
     
     logger.info("Starting Pre-Analysis Dust Cleanup...")
     mdm = MarketDataManager()
@@ -475,7 +476,7 @@ async def run_ingest(force: bool = False):
     """Runs the full ingestion and analysis pipeline."""
     import io
     import logging
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)
@@ -487,7 +488,7 @@ async def run_ingest(force: bool = False):
     logger.addHandler(handler)
 
     from zoneinfo import ZoneInfo
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     run_id = now.strftime("%Y-%m-%d_%H-%M-%S")
     run_date = now.date()
     current_hour_et = datetime.now(ZoneInfo("America/New_York")).hour
@@ -568,7 +569,7 @@ async def run_weekend_ingest():
     """Weekend read-only pipeline: news ingestion + market feeling update."""
     import io
     import logging
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)
@@ -579,7 +580,7 @@ async def run_weekend_ingest():
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     run_id = now.strftime("%Y-%m-%d_%H-%M-%S")
     run_date = now.date()
 
@@ -692,9 +693,9 @@ def main():
     elif args.command == COMMAND_CAUSE_AND_EFFECT:
         asyncio.run(run_cause_and_effect())
     elif args.command == COMMAND_AUDIT:
-        from core.audit.runner import configure as configure_audit
         from core.audit.analyzer import configure as configure_analyzer
-        from core.config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DEEPSEEK_API_KEY
+        from core.audit.runner import configure as configure_audit
+        from core.config import DEEPSEEK_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
         configure_audit(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         configure_analyzer(DEEPSEEK_API_KEY)
         asyncio.run(run_audit())

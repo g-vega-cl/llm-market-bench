@@ -1,7 +1,8 @@
 """Tests for ingest.newsletter module."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from ingest.newsletter import (
     clean_text,
@@ -93,8 +94,9 @@ async def test_ingest_newsletters_summary(caplog):
             ), "sender@b.com"),
         ]
 
-        from ingest.newsletter import ingest_newsletters
         import logging
+
+        from ingest.newsletter import ingest_newsletters
 
         caplog.set_level(logging.INFO)
 
@@ -128,8 +130,9 @@ async def test_ingest_newsletters_fragility_fix(caplog):
             "sender@a.com"
         )
 
-        from ingest.newsletter import ingest_newsletters
         import logging
+
+        from ingest.newsletter import ingest_newsletters
         caplog.set_level(logging.WARNING)
 
         await ingest_newsletters(newer_than_days=1)
@@ -154,8 +157,9 @@ async def test_ingest_newsletters_fragility_trigger(caplog):
         # Returns sender name but NO snapshot (e.g., parsing exception internally)
         mock_process.return_value = (None, "sender@a.com")
 
-        from ingest.newsletter import ingest_newsletters
         import logging
+
+        from ingest.newsletter import ingest_newsletters
         caplog.set_level(logging.WARNING)
 
         await ingest_newsletters(newer_than_days=1)

@@ -1,7 +1,9 @@
-import pytest
-import asyncio
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from execution.portfolio import Portfolio, Position
+
 
 @pytest.mark.asyncio
 async def test_execute_trade_price_persistence():

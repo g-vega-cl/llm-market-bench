@@ -1,8 +1,11 @@
 
-import pytest
 import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
-from execution.portfolio import Portfolio, Position
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from execution.portfolio import Portfolio
+
 
 @pytest.mark.asyncio
 async def test_atomic_trade_failure_reversal():

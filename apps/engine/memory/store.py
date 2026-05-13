@@ -2,10 +2,13 @@
 
 import logging
 import re
-from datetime import datetime, timezone, timedelta
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 from supabase import Client
+
 from core.db import get_supabase_client
+
 from .embeddings import get_embedding, get_embeddings_batch
 
 logger = logging.getLogger("engine")
@@ -350,7 +353,7 @@ def find_similar_memory(
     threshold: float = 0.90,
     hours: int = 24,
     embedding: list[float] = None,
-) -> Optional[str]:
+) -> str | None:
     """Checks if a semantically similar memory exists within the last N hours.
 
     Returns:
@@ -373,8 +376,8 @@ def find_similar_decision(
     threshold: float = 0.90,
     hours: int = 24,
     embedding: list[float] = None,
-    model_name: Optional[str] = None,
-) -> Optional[dict]:
+    model_name: str | None = None,
+) -> dict | None:
     """Checks if a semantically similar trade decision exists for this ticker within the last N hours.
 
     Args:
@@ -405,10 +408,10 @@ def find_similar_vector(
     threshold: float = 0.90,
     hours: int = 24,
     embedding: list[float] = None,
-    status_filter: Optional[str] = None,
-    ticker_filter: Optional[str] = None,
-    model_name_filter: Optional[str] = None,
-) -> Optional[Any]:
+    status_filter: str | None = None,
+    ticker_filter: str | None = None,
+    model_name_filter: str | None = None,
+) -> Any | None:
     """Generic semantic similarity check across tables with embeddings."""
     try:
         if embedding is None:
@@ -418,7 +421,7 @@ def find_similar_vector(
             return None
 
         client = get_supabase_client()
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
 
         query = client.table(table_name).select("*").filter("created_at", "gte", cutoff)
 
@@ -481,11 +484,11 @@ def update_memory_status(memory_id: str, status: str) -> bool:
 
 def add_memory(
     content: str,
-    metadata: Optional[dict[str, Any]] = None,
-    parent_id: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    parent_id: str | None = None,
     status: str = "ACTIVE",
-    relationship_type: Optional[str] = None,
-    target_date: Optional[str] = None,
+    relationship_type: str | None = None,
+    target_date: str | None = None,
     memory_type: str = "MARKET_EVENT",
     check_similarity: bool = False,
     similarity_threshold: float = 0.90,
@@ -579,7 +582,7 @@ def decay_memories(sb_client: Client, decay_days: int = None):
     from core import config
 
     decay_days = decay_days or config.MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=decay_days)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(days=decay_days)).isoformat()
 
     try:
         # Fetch active memories with relevance > threshold

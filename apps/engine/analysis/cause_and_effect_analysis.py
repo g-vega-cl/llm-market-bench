@@ -4,18 +4,17 @@ This module analyzes past market events to understand their actual impact
 on the market, creating a historical library of cause-and-effect relationships.
 """
 
-import logging
 import re
-from datetime import datetime, timedelta, timezone
-from typing import List, Any
+from datetime import UTC, datetime, timedelta
 
-from core.config import logger, GEMINI_MODEL
+from core.config import GEMINI_MODEL, logger
 from core.db import get_supabase_client
 from core.llm import get_gemini_client
 from core.llm.prompt_factory import PromptFactory
 from core.models import CauseAndEffectResult, TickerSuggestion
 from execution.market_data import MarketDataManager
 from memory.store import find_similar_memory
+
 
 async def extract_related_tickers(event_summary: str) -> list[str]:
     """Uses LLM to suggest relevant tickers for an event."""
@@ -52,7 +51,7 @@ async def perform_cause_and_effect_analysis():
 
     # 1. Fetch recent unresolved MARKET_EVENT memories
     # We look for events that are older than 24h OR have passed their target_date
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     one_day_ago = (now - timedelta(days=1)).isoformat()
 
     res = sb_client.table("memories").select(

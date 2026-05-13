@@ -2,9 +2,10 @@
 import asyncio
 import logging
 import sys
+
 sys.path.insert(0, '..')
-from memory.store import add_memory
 from core.db import get_supabase_client
+from memory.store import add_memory
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,8 +54,8 @@ async def reproduce():
     logger.info("Cleanup complete.")
 
 if __name__ == "__main__":
-    import sys
     import os
+    import sys
     # Add project root to path
     sys.path.append(os.getcwd())
     

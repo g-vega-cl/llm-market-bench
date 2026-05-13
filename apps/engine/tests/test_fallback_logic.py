@@ -1,8 +1,9 @@
 """Unit tests for MarketDataManager single-provider retry behavior."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import math
-from unittest.mock import MagicMock, AsyncMock, patch
+
 from execution.market_data import MarketDataManager
 from execution.providers.base import TickerData
 

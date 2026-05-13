@@ -6,15 +6,17 @@ Bug: get_history() returns today's intraday ticks from price_history table
 instead of fetching actual historical EOD data when requesting historical prices.
 """
 import datetime
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from execution.market_data import MarketDataManager
 
 
 @pytest.fixture
 def mock_today():
     """Fixture to provide current date in UTC."""
-    return datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    return datetime.datetime.now(datetime.UTC).date().isoformat()
 
 
 @pytest.mark.asyncio
@@ -159,9 +161,9 @@ async def test_get_history_mixed_today_and_old_data_still_fetches():
     old_date = "2026-04-10"
     mock_res = MagicMock()
     mock_res.data = [
-        {"price": 172.50, "fetched_at": f"2026-04-15T19:59:24+00:00"},
-        {"price": 172.00, "fetched_at": f"2026-04-15T19:58:22+00:00"},
-        {"price": 171.50, "fetched_at": f"2026-04-15T19:57:48+00:00"},
+        {"price": 172.50, "fetched_at": "2026-04-15T19:59:24+00:00"},
+        {"price": 172.00, "fetched_at": "2026-04-15T19:58:22+00:00"},
+        {"price": 171.50, "fetched_at": "2026-04-15T19:57:48+00:00"},
         {"price": 171.00, "fetched_at": f"{old_date}T16:00:00+00:00"},
         {"price": 170.50, "fetched_at": f"{old_date}T16:00:00+00:00"},
     ]

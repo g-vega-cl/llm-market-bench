@@ -2,10 +2,10 @@ import asyncio
 import logging
 import math
 import os
-from typing import List, Dict, Optional
+from typing import List, Optional
 from xml.etree import ElementTree as ET
 
-from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ib_async import IB, Stock, util
 from pydantic import BaseModel

@@ -1,71 +1,71 @@
-import * as React from 'react'
-import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages'
-import { SectionHeading, Badge } from '@llm-market-bench/ui-design-system'
+import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
+import * as React from 'react';
+import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
 
 interface FutureCatalystsProps {
-    events: any[]
+    events: any[];
 }
 
 function extractDate(content: string): string | null {
-    const match = content.match(/(\d{4}-\d{2}-\d{2})/)
-    return match ? match[1] : null
+    const match = content.match(/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
 }
 
 function getCountdown(targetDate: Date) {
-    const now = new Date()
-    const diff = targetDate.getTime() - now.getTime()
+    const now = new Date();
+    const diff = targetDate.getTime() - now.getTime();
 
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, isPassed: true }
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, isPassed: true };
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    return { days, hours, minutes, isPassed: false }
+    return { days, hours, minutes, isPassed: false };
 }
 
 function getImportanceColor(score: number) {
-    if (score >= 9) return 'from-alert-red-500 to-rose-600'
-    if (score >= 8) return 'from-cyber-yellow-500 to-amber-600'
-    if (score >= 6) return 'from-electric-blue-500 to-blue-600'
-    return 'from-steel-400 to-zinc-500'
+    if (score >= 9) return 'from-alert-red-500 to-rose-600';
+    if (score >= 8) return 'from-cyber-yellow-500 to-amber-600';
+    if (score >= 6) return 'from-electric-blue-500 to-blue-600';
+    return 'from-steel-400 to-zinc-500';
 }
 
 function getImportanceLabel(score: number) {
-    if (score >= 9) return 'Critical'
-    if (score >= 8) return 'High'
-    if (score >= 6) return 'Medium'
-    return 'Low'
+    if (score >= 9) return 'Critical';
+    if (score >= 8) return 'High';
+    if (score >= 6) return 'Medium';
+    return 'Low';
 }
 
 export function FutureCatalysts({ events }: FutureCatalystsProps) {
-    const [, forceUpdate] = React.useState({})
+    const [, forceUpdate] = React.useState({});
 
     // Update countdowns every minute
     React.useEffect(() => {
-        const interval = setInterval(() => forceUpdate({}), 60 * 1000)
-        return () => clearInterval(interval)
-    }, [])
+        const interval = setInterval(() => forceUpdate({}), 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
 
-    if (!events.length) return null
+    if (!events.length) return null;
 
     // Sort by date
     const sortedEvents = [...events].sort((a, b) => {
-        const dateA = a.target_date || extractDate(a.content)
-        const dateB = b.target_date || extractDate(b.content)
-        if (!dateA && !dateB) return 0
-        if (!dateA) return 1
-        if (!dateB) return -1
-        return new Date(dateA).getTime() - new Date(dateB).getTime()
-    })
+        const dateA = a.target_date || extractDate(a.content);
+        const dateB = b.target_date || extractDate(b.content);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+    });
 
     // Filter out passed events and count only visible ones
-    const visibleEvents = sortedEvents.filter(event => {
-        const eventDate = event.target_date || extractDate(event.content)
-        const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null
-        const countdown = dateObj ? getCountdown(dateObj) : null
-        return !countdown?.isPassed
-    })
+    const visibleEvents = sortedEvents.filter((event) => {
+        const eventDate = event.target_date || extractDate(event.content);
+        const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null;
+        const countdown = dateObj ? getCountdown(dateObj) : null;
+        return !countdown?.isPassed;
+    });
 
     return (
         <section className="space-y-8 animate-slide-up">
@@ -86,14 +86,14 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
 
                 <div className="space-y-4">
                     {visibleEvents.map((event, idx) => {
-                        const dateNote = event.metadata?.future_date_note
-                        const eventDate = event.target_date || extractDate(event.content)
-                        const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null
-                        const countdown = dateObj ? getCountdown(dateObj) : null
-                        const importanceScore = event.metadata?.importance_score || 7
+                        const dateNote = event.metadata?.future_date_note;
+                        const eventDate = event.target_date || extractDate(event.content);
+                        const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null;
+                        const countdown = dateObj ? getCountdown(dateObj) : null;
+                        const importanceScore = event.metadata?.importance_score || 7;
 
                         // Skip if passed
-                        if (countdown?.isPassed) return null
+                        if (countdown?.isPassed) return null;
 
                         return (
                             <div
@@ -102,10 +102,20 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                 style={{ animationDelay: `${idx * 100}ms` }}
                             >
                                 {/* Timeline Dot */}
-                                <div className={`absolute left-6 top-6 w-5 h-5 rounded-full border-4 border-white dark:border-zinc-950 shadow-lg bg-gradient-to-br ${getImportanceColor(importanceScore)} z-10 group-hover:scale-125 group-hover:shadow-xl transition-all duration-300`} />
+                                <div
+                                    className={`absolute left-6 top-6 w-5 h-5 rounded-full border-4 border-white dark:border-zinc-950 shadow-lg bg-gradient-to-br ${getImportanceColor(importanceScore)} z-10 group-hover:scale-125 group-hover:shadow-xl transition-all duration-300`}
+                                />
 
                                 {/* Card */}
-                                <div className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-xl hover:shadow-cyber-yellow-500/10 transition-all duration-300 card-lift border-l-4" style={{ borderLeftColor: dateObj && countdown && countdown.days <= 3 ? '#ef4444' : '#eab308' }}>
+                                <div
+                                    className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-xl hover:shadow-cyber-yellow-500/10 transition-all duration-300 card-lift border-l-4"
+                                    style={{
+                                        borderLeftColor:
+                                            dateObj && countdown && countdown.days <= 3
+                                                ? '#ef4444'
+                                                : '#eab308',
+                                    }}
+                                >
                                     {/* Header */}
                                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                                         <div className="flex-1 min-w-0">
@@ -115,7 +125,8 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-cyber-yellow-100 to-amber-100 dark:from-cyber-yellow-900/30 dark:to-amber-900/30 text-cyber-yellow-700 dark:text-cyber-yellow-300 text-xs font-black rounded-lg border border-cyber-yellow-200 dark:border-cyber-yellow-800 shadow-sm">
                                                         <span className="text-lg">⏱️</span>
                                                         <span className="font-mono tabular-nums">
-                                                            {countdown.days}d {countdown.hours}h {countdown.minutes}m
+                                                            {countdown.days}d {countdown.hours}h{' '}
+                                                            {countdown.minutes}m
                                                         </span>
                                                     </div>
                                                 )}
@@ -126,9 +137,11 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                 )}
                                                 <Badge
                                                     severity={
-                                                        importanceScore >= 9 ? 'critical' :
-                                                        importanceScore >= 8 ? 'high' :
-                                                        'medium'
+                                                        importanceScore >= 9
+                                                            ? 'critical'
+                                                            : importanceScore >= 8
+                                                              ? 'high'
+                                                              : 'medium'
                                                     }
                                                     variant="soft"
                                                     radius="lg"
@@ -139,22 +152,30 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                             </div>
 
                                             {/* Event Time if available */}
-                                            {event.metadata?.event_time && event.metadata.event_time !== 'N/A' && (
-                                                <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                                                    <span>🕐</span>
-                                                    <span className="font-mono tabular-nums">{event.metadata.event_time}</span>
-                                                </div>
-                                            )}
+                                            {event.metadata?.event_time &&
+                                                event.metadata.event_time !== 'N/A' && (
+                                                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                                                        <span>🕐</span>
+                                                        <span className="font-mono tabular-nums">
+                                                            {event.metadata.event_time}
+                                                        </span>
+                                                    </div>
+                                                )}
                                         </div>
 
                                         {/* Date Display */}
                                         {dateObj && (
                                             <div className="text-right">
                                                 <div className="text-2xl font-black text-zinc-900 dark:text-white text-display">
-                                                    {dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    {dateObj.toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                    })}
                                                 </div>
                                                 <div className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-                                                    {dateObj.toLocaleDateString('en-US', { year: 'numeric' })}
+                                                    {dateObj.toLocaleDateString('en-US', {
+                                                        year: 'numeric',
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
@@ -176,8 +197,13 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                             </div>
                                             <div className="bg-gradient-to-br from-cyber-yellow-50/50 via-amber-50/30 to-transparent dark:from-cyber-yellow-950/10 dark:via-amber-950/5 p-4 rounded-2xl border border-cyber-yellow-100 dark:border-cyber-yellow-900/30">
                                                 <div className="space-y-1">
-                                                    {parseScenarioPercentages(event.metadata.scenario_analysis).map((line, i) => (
-                                                        <div key={i} className="flex items-start gap-2">
+                                                    {parseScenarioPercentages(
+                                                        event.metadata.scenario_analysis,
+                                                    ).map((line, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="flex items-start gap-2"
+                                                        >
                                                             {line.percentage && (
                                                                 <span className="inline-flex items-center px-1.5 py-0.5 bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-700 dark:text-cyber-yellow-300 text-[9px] font-black rounded border border-cyber-yellow-200 dark:border-cyber-yellow-800 tabular-nums mt-0.5">
                                                                     {line.percentage}
@@ -194,24 +220,27 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                     )}
 
                                     {/* Tickers if available */}
-                                    {event.metadata?.tickers && event.metadata.tickers.length > 0 && (
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            {event.metadata.tickers.map((ticker: string, i: number) => (
-                                                <span
-                                                    key={i}
-                                                    className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold rounded-lg uppercase tracking-wider border border-zinc-200 dark:border-zinc-700 hover:border-cyber-yellow-500 hover:text-cyber-yellow-600 dark:hover:text-cyber-yellow-400 transition-all duration-300 cursor-default"
-                                                >
-                                                    {ticker}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
+                                    {event.metadata?.tickers &&
+                                        event.metadata.tickers.length > 0 && (
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {event.metadata.tickers.map(
+                                                    (ticker: string, i: number) => (
+                                                        <span
+                                                            key={i}
+                                                            className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold rounded-lg uppercase tracking-wider border border-zinc-200 dark:border-zinc-700 hover:border-cyber-yellow-500 hover:text-cyber-yellow-600 dark:hover:text-cyber-yellow-400 transition-all duration-300 cursor-default"
+                                                        >
+                                                            {ticker}
+                                                        </span>
+                                                    ),
+                                                )}
+                                            </div>
+                                        )}
                                 </div>
                             </div>
-                        )
+                        );
                     })}
                 </div>
             </div>
         </section>
-    )
+    );
 }

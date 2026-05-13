@@ -1,11 +1,12 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import logging
 import os
 import re
-import logging
 from datetime import datetime
-from typing import Optional
+
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -17,14 +18,14 @@ url = os.environ.get("SUPABASE_PROJECT_URL")
 key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 if not url or not key:
-    print(f"Error: SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY are required.")
+    print("Error: SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY are required.")
     exit(1)
 
 supabase = create_client(url, key)
 logger = logging.getLogger("cleanup")
 logging.basicConfig(level=logging.INFO)
 
-def _extract_date_from_content(content: str) -> Optional[str]:
+def _extract_date_from_content(content: str) -> str | None:
     """Tries to extract a YYYY-MM-DD date from the content string."""
     match = re.search(r"(\d{4}-\d{2}-\d{2})", content)
     if match:
@@ -37,7 +38,7 @@ def _extract_date_from_content(content: str) -> Optional[str]:
             pass
     return None
 
-def _normalize_future_date(date_str: Optional[str], note_str: Optional[str], content: str = "") -> tuple[Optional[str], Optional[str]]:
+def _normalize_future_date(date_str: str | None, note_str: str | None, content: str = "") -> tuple[str | None, str | None]:
     """Validates and normalizes the future date string.
     If date_str is missing, attempts to extract it from content.
     """

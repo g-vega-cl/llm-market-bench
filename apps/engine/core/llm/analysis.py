@@ -5,15 +5,15 @@ import copy
 import json
 import logging
 import re
-from typing import List
 
-from core.models import DecisionsResponse, MacroEvent
-from core.llm import clients
-from core.llm.prompt_factory import PromptFactory
-from core.llm.policy_lookup import lookup_policy, PolicyLookupResult
-from .utils import ensure_list
-from core.llm.logger import log_reasoning_trace
 from core.config import MIN_TRADE_VALUE
+from core.llm import clients
+from core.llm.logger import log_reasoning_trace
+from core.llm.policy_lookup import lookup_policy
+from core.llm.prompt_factory import PromptFactory
+from core.models import DecisionsResponse, MacroEvent
+
+from .utils import ensure_list
 
 logger = logging.getLogger("engine")
 
@@ -265,7 +265,7 @@ async def analyze_with_provider(
 
         final_args = {
             "model": model_name,
-            "response_model": DecisionsResponse if provider != "gemini" else List[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
+            "response_model": DecisionsResponse if provider != "gemini" else list[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
             "messages": copy.deepcopy(messages),
             "max_retries": 2,
         }
@@ -681,7 +681,7 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
     }
 
 
-def _extract_held_tickers(portfolio_context: str) -> List[str]:
+def _extract_held_tickers(portfolio_context: str) -> list[str]:
     """Extracts held ticker symbols from portfolio context string.
     
     Parses the portfolio context to find all tickers the agent currently owns.

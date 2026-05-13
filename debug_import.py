@@ -8,7 +8,6 @@ sys.path.append(engine_path)
 
 try:
     print("Attempting to import memory.store...")
-    import memory.store
     print("Import success!")
 except Exception as e:
     print(f"Import failed: {e}")

@@ -1,7 +1,10 @@
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime, timezone, timedelta
+
 from execution.portfolio import Portfolio, Position
+
 
 @pytest.mark.asyncio
 async def test_portfolio_summary_time_ago():
@@ -11,7 +14,7 @@ async def test_portfolio_summary_time_ago():
     portfolio.positions = {"AAPL": Position(ticker="AAPL", quantity=10, average_cost_basis=150.0)}
     
     # Mock get_recent_trades to return trades with different timestamps
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     mock_trades = [
         {
             "ticker": "AAPL",

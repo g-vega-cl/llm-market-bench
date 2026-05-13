@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch, AsyncMock
 from apps.engine.execution.market_data import MarketDataManager
-from apps.engine.execution.providers.base import TickerData
 
 class TestMarketDataFallback(unittest.IsolatedAsyncioTestCase):
     async def test_fallback_logic(self):

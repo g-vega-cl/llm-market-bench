@@ -1,52 +1,56 @@
-import { getSupabaseBrowserClient } from '~/lib/supabase-client'
-import type { Memory } from '@llm-market-bench/database'
+import type { Memory } from '@llm-market-bench/database';
+import { getSupabaseBrowserClient } from '~/lib/supabase-client';
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
 export interface PaginatedMemories {
-  data: Memory[]
-  hasMore: boolean
-  nextCursor: string | null
+    data: Memory[];
+    hasMore: boolean;
+    nextCursor: string | null;
 }
 
-export async function fetchMemories(cursor?: string, pageSize: number = PAGE_SIZE): Promise<PaginatedMemories> {
-  const supabase = getSupabaseBrowserClient()
+export async function fetchMemories(
+    cursor?: string,
+    pageSize: number = PAGE_SIZE,
+): Promise<PaginatedMemories> {
+    const supabase = getSupabaseBrowserClient();
 
-  let query = supabase
-    .from('memories')
-    .select('*, parent_id, status, relationship_type')
-    .order('created_at', { ascending: false })
-    .limit(pageSize + 1)
+    let query = supabase
+        .from('memories')
+        .select('*, parent_id, status, relationship_type')
+        .order('created_at', { ascending: false })
+        .limit(pageSize + 1);
 
-  if (cursor) {
-    query = query.lt('created_at', cursor)
-  }
+    if (cursor) {
+        query = query.lt('created_at', cursor);
+    }
 
-  const { data, error } = await query
+    const { data, error } = await query;
 
-  if (error) throw error
+    if (error) throw error;
 
-  const hasMore = data.length > pageSize
-  const paginatedData = hasMore ? data.slice(0, pageSize) : data
+    const hasMore = data.length > pageSize;
+    const paginatedData = hasMore ? data.slice(0, pageSize) : data;
 
-  const nextCursor = hasMore && paginatedData.length > 0
-    ? paginatedData[paginatedData.length - 1].created_at
-    : null
+    const nextCursor =
+        hasMore && paginatedData.length > 0
+            ? paginatedData[paginatedData.length - 1].created_at
+            : null;
 
-  return {
-    data: paginatedData,
-    hasMore,
-    nextCursor
-  }
+    return {
+        data: paginatedData,
+        hasMore,
+        nextCursor,
+    };
 }
 
 export async function fetchAllMemories(): Promise<Memory[]> {
-  const supabase = getSupabaseBrowserClient()
-  const { data, error } = await supabase
-    .from('memories')
-    .select('*, parent_id, status, relationship_type')
-    .order('created_at', { ascending: false })
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('memories')
+        .select('*, parent_id, status, relationship_type')
+        .order('created_at', { ascending: false });
 
-  if (error) throw error
-  return data as Memory[]
+    if (error) throw error;
+    return data as Memory[];
 }

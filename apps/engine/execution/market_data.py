@@ -6,10 +6,10 @@ external financial APIs and a local database cache to optimize data retrieval.
 
 import datetime
 import math
-from typing import Optional
 
 from core.config import FMP_API_KEY, logger
 from core.db import get_supabase_client
+
 from .providers.base import FinancialProvider, TickerData
 from .providers.factory import get_financial_provider
 
@@ -23,7 +23,7 @@ def _validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]
     if not rows:
         return False, "no data"
 
-    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    today = datetime.datetime.now(datetime.UTC).date().isoformat()
     distinct_dates = set()
     for row in rows:
         fetched_at = row.get("fetched_at", "")
@@ -61,7 +61,7 @@ class MarketDataManager:
     # In-memory cache for screener results to avoid redundant API hits within a session
     _screener_cache: dict = {}
 
-    def __init__(self, cache_ttl_seconds: Optional[int] = None):
+    def __init__(self, cache_ttl_seconds: int | None = None):
         import core.config as cfg
         self.client = get_supabase_client()
         self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else cfg.MARKET_DATA_CACHE_TTL_SECONDS
@@ -89,7 +89,7 @@ class MarketDataManager:
         import datetime
         
         # Check class-level cache first to avoid repeated API calls
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         cache = MarketDataManager._market_status_cache
         
         if cache["fetched_at"] is not None:
@@ -114,7 +114,7 @@ class MarketDataManager:
                 import httpx
                 async with httpx.AsyncClient() as client:
                     # Use NASDAQ as the proxy for US Market status
-                    url = f"https://financialmodelingprep.com/stable/exchange-market-hours"
+                    url = "https://financialmodelingprep.com/stable/exchange-market-hours"
                     params = {"exchange": "NASDAQ", "apikey": FMP_API_KEY}
                     resp = await client.get(url, params=params)
                     resp.raise_for_status()
@@ -147,7 +147,7 @@ class MarketDataManager:
         
         return result
 
-    async def get_quote(self, ticker: str, force_refresh: bool = False) -> Optional[TickerData]:
+    async def get_quote(self, ticker: str, force_refresh: bool = False) -> TickerData | None:
         """Fetch stock quote, checking cache first unless force_refresh is True.
         
         Args:
@@ -193,19 +193,19 @@ class MarketDataManager:
 
     async def screen_stocks(
         self, 
-        market_cap_more_than: Optional[float] = None, 
-        market_cap_lower_than: Optional[float] = None,
-        price_more_than: Optional[float] = None,
-        price_lower_than: Optional[float] = None,
-        beta_more_than: Optional[float] = None,
-        beta_lower_than: Optional[float] = None,
-        volume_more_than: Optional[float] = None,
-        volume_lower_than: Optional[float] = None,
-        dividend_more_than: Optional[float] = None,
-        dividend_lower_than: Optional[float] = None,
-        sector: Optional[str] = None, 
-        industry: Optional[str] = None, 
-        exchange: Optional[str] = "NYSE,NASDAQ",
+        market_cap_more_than: float | None = None, 
+        market_cap_lower_than: float | None = None,
+        price_more_than: float | None = None,
+        price_lower_than: float | None = None,
+        beta_more_than: float | None = None,
+        beta_lower_than: float | None = None,
+        volume_more_than: float | None = None,
+        volume_lower_than: float | None = None,
+        dividend_more_than: float | None = None,
+        dividend_lower_than: float | None = None,
+        sector: str | None = None, 
+        industry: str | None = None, 
+        exchange: str | None = "NYSE,NASDAQ",
         limit: int = 10,
         is_actively_trading: bool = True
     ) -> list[dict]:
@@ -315,9 +315,10 @@ class MarketDataManager:
 
         return results
 
-    async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> Optional[TickerData]:
+    async def _fetch_with_backoff(self, provider: FinancialProvider, ticker: str) -> TickerData | None:
         """Helper to fetch data from a provider with retries and validation."""
         import asyncio
+
         from core.config import MARKET_DATA_RETRIES
         
         for attempt in range(1, MARKET_DATA_RETRIES + 1):
@@ -338,7 +339,7 @@ class MarketDataManager:
                 await asyncio.sleep(wait_time)
         return None
 
-    def _get_last_known_price(self, ticker: str) -> Optional[TickerData]:
+    def _get_last_known_price(self, ticker: str) -> TickerData | None:
         """Retrieves the most recent price from the history table."""
         try:
              # We want the latest entry from price_history
@@ -362,7 +363,7 @@ class MarketDataManager:
         
         return None
 
-    def _get_from_cache(self, ticker: str) -> Optional[TickerData]:
+    def _get_from_cache(self, ticker: str) -> TickerData | None:
         """Internal helper to retrieve and validate cached data."""
         try:
             response = self.client.table("market_data_cache") \
@@ -375,7 +376,7 @@ class MarketDataManager:
             
             record = response.data[0]
             fetched_at = datetime.datetime.fromisoformat(record["fetched_at"].replace("Z", "+00:00"))
-            now = datetime.datetime.now(datetime.timezone.utc)
+            now = datetime.datetime.now(datetime.UTC)
             
             # Check if cache is stale
             if (now - fetched_at).total_seconds() > self.cache_ttl_seconds:
@@ -403,7 +404,7 @@ class MarketDataManager:
         crowding out true historical records with high-frequency batch snapshots.
         """
         try:
-            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            now_iso = datetime.datetime.now(datetime.UTC).isoformat()
             cache_payloads = []
 
             for data in data_list:

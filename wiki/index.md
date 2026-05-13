@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/biome-linter]] — TypeScript/JS linter and formatter (biome) for the web app and packages
+- [[entities/ruff-linter]] — Python linter and formatter (ruff) for the engine
 - [[entities/auto-wiki]] — Auto-wiki documentation generator (pre-commit LLM integration)
 - [[entities/engine]] — Python data engine (pipeline, analysis, execution)
 - [[entities/web-app]] — TanStack Start dashboard (React + TypeScript)

@@ -1,10 +1,12 @@
 """Tests for decision consolidation logic."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from core.models import DecisionObject
+import pytest
+
 from analysis.consensus import process_decision_consensus
+from core.models import DecisionObject
+
 
 @pytest.fixture
 def sample_decisions():

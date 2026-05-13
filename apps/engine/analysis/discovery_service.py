@@ -4,10 +4,10 @@ This module uses specialized agents to identify market themes and
 discover actual companies and ETFs related to those themes.
 """
 
-from typing import List, Optional
 import logging
-from core.config import OPENAI_MODEL
+
 from analysis.discovery_agent import DiscoveryAgent
+from core.config import OPENAI_MODEL
 
 logger = logging.getLogger("engine")
 
@@ -17,7 +17,7 @@ class DiscoveryService:
     def __init__(self):
         self.agent = DiscoveryAgent(model_name=OPENAI_MODEL)
 
-    async def discover_assets(self, event_content: str, event_summary: Optional[str] = None) -> List[dict]:
+    async def discover_assets(self, event_content: str, event_summary: str | None = None) -> list[dict]:
         """Delegates asset discovery to a specialized Discovery Agent.
         
         The agent uses a single-call tool-calling approach to identify ~5 beneficiaries,

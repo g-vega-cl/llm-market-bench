@@ -13,13 +13,13 @@ NO real API keys or network calls are used. All external dependencies are mocked
 """
 
 import asyncio
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from alpaca.trading.enums import OrderSide, TimeInForce
-from execution.alpaca_broker import AlpacaBroker
 
+from execution.alpaca_broker import AlpacaBroker
 
 # ---------------------------------------------------------------------------
 # Fixtures

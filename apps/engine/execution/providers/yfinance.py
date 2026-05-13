@@ -2,10 +2,12 @@
 
 import asyncio
 import time
+
 import yfinance as yf
-from typing import Optional
-from .base import FinancialProvider, TickerData
+
 from core.config import logger
+
+from .base import FinancialProvider, TickerData
 
 
 class YFinanceProvider(FinancialProvider):
@@ -14,7 +16,7 @@ class YFinanceProvider(FinancialProvider):
 
     _last_call_time = 0.0  # Shared across all instances to throttle globally
 
-    async def get_ticker_data(self, ticker: str) -> Optional[TickerData]:
+    async def get_ticker_data(self, ticker: str) -> TickerData | None:
         # Throttling logic
         from core.config import FINANCIAL_API_THROTTLE_SECONDS
         if FINANCIAL_API_THROTTLE_SECONDS > 0:

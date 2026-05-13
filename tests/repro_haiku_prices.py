@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, AsyncMock, patch
 # Add apps/engine to path
 sys.path.append(os.path.join(os.getcwd(), "apps", "engine"))
 
-from core.llm.analysis import analyze_with_provider
 from core.models import DecisionsResponse, DecisionObject
 
 # Setup logging

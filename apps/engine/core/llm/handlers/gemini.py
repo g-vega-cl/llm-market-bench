@@ -1,10 +1,11 @@
 """Gemini tool loop handler."""
 
+import inspect
 import json
 import logging
-import inspect
+
 from google.genai import types
-from google.genai import models as genai_models
+
 from core.llm import tools
 from core.llm.handlers import base
 

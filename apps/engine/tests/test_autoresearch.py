@@ -1038,3 +1038,36 @@ class TestBaselineTracking:
         assert "no baseline" in report.lower() or "n/a" in report.lower(), (
             f"First week report must indicate no baseline yet:\n{report}"
         )
+
+# ==============================================================================
+# TDD: _daily_returns must compute equal-weighted percentage returns.
+# ==============================================================================
+
+class TestDailyReturnsEqualWeighted:
+    """_daily_returns must average per-agent percentage returns, not sum equity."""
+
+    @pytest.mark.asyncio
+    async def test_two_agents_equal_weighted(self):
+        """Two agents: Gemini +10%, DeepSeek -20% → average = -5%"""
+        from autoresearch import metrics
+
+        rows = [
+            {"date": "2026-05-04", "total_equity": 10000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-04", "total_equity": 5000, "portfolios": {"owner_id": "deepseek"}},
+            {"date": "2026-05-05", "total_equity": 11000, "portfolios": {"owner_id": "gemini"}},
+            {"date": "2026-05-05", "total_equity": 4000, "portfolios": {"owner_id": "deepseek"}},
+        ]
+
+        client, recorder = _make_async_client(data=rows)
+
+        from datetime import date
+        result = await metrics._daily_returns(
+            client, {"gemini", "deepseek"},
+            date(2026, 5, 4), date(2026, 5, 5)
+        )
+
+        # Gemini: (11000-10000)/10000 = +0.10
+        # DeepSeek: (4000-5000)/5000 = -0.20
+        # Average = -0.05
+        assert len(result) == 1
+        assert result[0] == pytest.approx(-0.05)

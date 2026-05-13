@@ -19,6 +19,7 @@
 ## Concepts
 
 - [[concepts/equal-weighted-returns]] — Per-agent percentage returns averaged equally regardless of portfolio size
+- [[concepts/project-linting]] — Code quality enforcement: Ruff (Python) + Biome (TypeScript) in pre-commit
 - [[concepts/ingestion]] — Newsletter scraping, economic calendar, government tracking
 - [[concepts/reasoning]] — Parallel LLM analysis with tool-calling loops
 - [[concepts/consensus]] — Semantic grouping, weighted voting, event promotion

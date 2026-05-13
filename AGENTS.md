@@ -2,11 +2,20 @@
 
 ## Commands
 - Test engine:   `./apps/engine/venv/bin/python3 -m pytest`
-- Lint engine:   `ruff check apps/engine/`
+- Lint engine:   `./apps/engine/venv/bin/ruff check apps/engine/`
+- Format engine: `./apps/engine/venv/bin/ruff format apps/engine/`
+- Lint web:      `pnpm biome check`
+- Format web:    `pnpm biome check --write`
 - Build web:     `cd apps/web && pnpm run build`
 - Typecheck web: `cd apps/web && pnpm run typecheck`
 - Test web:      `cd apps/web && pnpm test`
 - Auto-wiki dry: `./apps/engine/venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
+
+## Linting
+- Python (engine): Ruff with rules E, F, I, UP, B, SIM. Config at `apps/engine/ruff.toml`.
+- TypeScript (web + packages): Biome with recommended rules + organize imports. Config at `biome.json`.
+- Both run in `.husky/pre-commit` before tests (fail-fast).
+- Format with `ruff format` / `biome check --write`.
 
 ## Principles
 - Code is truth. Docs are hints. When they conflict, trust the code.

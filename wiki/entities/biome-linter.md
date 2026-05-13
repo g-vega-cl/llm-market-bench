@@ -19,8 +19,14 @@ Configured in `biome.json` at the monorepo root:
 
 ## Usage
 
+Lint + format check:
 ```sh
-pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system
+pnpm biome check
+```
+
+Auto-fix all:
+```sh
+pnpm biome check --write
 ```
 
 Runs as part of the pre-commit hook before tests.

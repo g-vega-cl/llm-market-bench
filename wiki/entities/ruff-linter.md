@@ -19,8 +19,19 @@ Configured in `apps/engine/ruff.toml`:
 
 ## Usage
 
+Lint:
 ```sh
 cd apps/engine && source .venv/bin/activate && ruff check && cd ../..
+```
+
+Auto-fix safe issues:
+```sh
+cd apps/engine && source .venv/bin/activate && ruff check --fix && cd ../..
+```
+
+Format:
+```sh
+cd apps/engine && source .venv/bin/activate && ruff format && cd ../..
 ```
 
 Runs as part of the pre-commit hook before tests.

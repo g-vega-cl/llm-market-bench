@@ -1,5 +1,13 @@
 # Wiki Log
 
+## [2026-05-14] tooling | Set up linting: Ruff (Python) + Biome (TypeScript)
+
+Added code quality enforcement to the project:
+- **Ruff** (`apps/engine/ruff.toml`): Rules E, F, I, UP, B, SIM. Installed in engine venv, added to `requirements.txt`.
+- **Biome** (`biome.json`): Recommended rules + organize imports. Covers `apps/web/`, `packages/database/`, `packages/ui-design-system/`. Installed as root devDependency (`@biomejs/biome`).
+- **Pre-commit**: `.husky/pre-commit` now runs `ruff check` and `pnpm biome check` before tests.
+- Config documents: `apps/engine/ruff.toml`, `biome.json`.
+
 ## [2026-05-14] fix | Alpaca order status sync — decoupled cron job (SUBMITTED → FILLED)
 
 Fixed the bug where `alpaca_status` permanently showed `PENDING` in the dashboard
@@ -754,3 +762,7 @@ when the pipeline completes. The decoupled cron approach is simpler and more rel
 ## [2026-05-13] refactor | Ruff + Biome linting: massive import sort and code style cleanup
 
 Applied `ruff check --fix` (Python engine) and `pnpm biome check --fix` (TypeScript web + packages) across the entire monorepo. Changes are purely cosmetic: import reordering (isort), type annotation modernization (`Optional[X]` → `X | None`, `List[X]` → `list[X]`, `Dict[X,Y]` → `dict[X,Y]`), `datetime.timezone.utc` → `datetime.UTC`, f-string cleanup, whitespace normalization, and Biome formatting (4-space indent, single quotes, trailing commas). Added `ruff.toml` and `biome.json` config files. Added `ruff` to `requirements.txt` and `@biomejs/biome` to root `package.json`. Updated `.husky/pre-commit` to run both linters before tests. No behavioral changes.
+
+## [2026-05-13] docs | Updated linting documentation and added project-linting concept page
+
+Updated AGENTS.md with full lint/format commands for both Ruff and Biome. Created new [[concepts/project-linting]] page documenting the dual-linter setup, pre-commit hook order, and configuration details. Updated [[entities/ruff-linter]] and [[entities/biome-linter]] with format commands and auto-fix usage. Added [[concepts/project-linting]] to the wiki index.

@@ -18,7 +18,7 @@ from core.db import get_async_supabase_client
 
 from .evaluator import evaluate_week
 from .researcher import run_research
-from .prompt_store import save_variant, revert_to_previous
+from .prompt_store import save_variant, revert_to_previous, get_baseline_metrics
 from .window import get_week_window
 
 logger = logging.getLogger("engine")
@@ -88,11 +88,21 @@ async def run(dry_run: bool = False):
     # Evaluate the week
     logger.info("Gathering performance data...")
     try:
-        report, metrics = await evaluate_week(week_start, week_end)
+        report, metrics, baseline_tag = await evaluate_week(week_start, week_end)
     except Exception as e:
         logger.error("Failed to evaluate week: %s", e)
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
         return
+
+    # Log baseline comparison
+    score = metrics["score"]
+    baseline_metrics = await get_baseline_metrics()
+    if baseline_metrics:
+        baseline_score = baseline_metrics.get("score", 0)
+        if score > baseline_score:
+            logger.info("RATCHET: New score %.4f BEATS baseline %.4f. New baseline established.", score, baseline_score)
+        else:
+            logger.info("RATCHET: New score %.4f failed to beat baseline %.4f.", score, baseline_score)
 
     # Run the auto-research LLM
     logger.info("Calling auto-research LLM...")
@@ -132,6 +142,7 @@ async def run(dry_run: bool = False):
             change_description=result.change_description,
             experiment_type=result.experiment_type,
             research_output=result.model_dump(),
+            parent_tag=baseline_tag,
         )
         logger.info("New active prompt variant: %s", tag)
     except Exception as e:

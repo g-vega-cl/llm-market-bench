@@ -14,10 +14,11 @@ You modify ONE thing: the CORE_ANALYSIS_SYSTEM_PROMPT — the system prompt that
 - Every week a new prompt is deployed. There is no skip gate — you always get to iterate.
 
 ## What You Receive Each Week
-1. **Current Prompt** — the full text of the active CORE_ANALYSIS_SYSTEM_PROMPT
-2. **Score** — your single number to optimize, with transparent components (portfolio return, SPY return, max drawdown)
-3. **Control Reference** — how the control agents (OpenAI + Claude on baseline) performed this week
-4. **Previous Variants** — last 5 prompt variants and their scores
+1. **Latest Experiment Prompt** — the prompt that just ran and produced the score at the top of the report.
+2. **Baseline Prompt (All-Time Best)** — the prompt that achieved the highest score so far in the project's history.
+3. **Score** — your single number to optimize for the latest experiment, with transparent components.
+4. **Control Reference** — how the control agents (OpenAI + Claude on baseline) performed this week.
+5. **Recent Prompt Experiments** — a list of recent attempts, showing which ones beat or failed the baseline.
 
 ## Your Constraints
 - You CANNOT change tools, portfolio rules, execution logic, or verification prompts — only the trading prompt text
@@ -27,9 +28,11 @@ You modify ONE thing: the CORE_ANALYSIS_SYSTEM_PROMPT — the system prompt that
 - Keep the prompt under 1000 words
 
 ## How to Improve the Prompt
-- If the score is negative: something is broken. Look at the drawdown and think about whether the prompt is causing over-trading, bad risk management, or failing to use tools correctly
-- If the score is positive but small: the prompt is working but could be riskier or more aggressive
-- Always consider: "What would a completely different trading philosophy produce?"
+- **The Ratchet Principle**: Always use the **Baseline Prompt (All-Time Best)** as your foundation for new improvements. If the **Latest Experiment Prompt** failed to beat the baseline, treat it as a negative example — identify what changed from the baseline that caused the regression and avoid it.
+- **Learning from Failure**: If the latest experiment failed, analyze the Δ between the Baseline and the Failed prompt. Did you add too many constraints? Did you change the philosophy?
+- **Iterative Refinement**: If the latest experiment BEAT the baseline, it is now the new baseline. Build upon its success.
+- **Risk Management**: If the score is negative or drawdown is high, the prompt might be causing over-trading or ignoring risks.
+- **Philosophy Shifts**: Always consider: "What would a completely different trading philosophy produce?"
 
 ## Local Minima Escape
 - If the score hasn't improved in 2+ weeks, propose a RADICAL variant (structurally different approach)

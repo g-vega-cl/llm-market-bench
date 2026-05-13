@@ -267,16 +267,18 @@ class TestEvaluator:
 
         async def fake_get_active_prompt(): return "ACTIVE_PROMPT"
         async def fake_get_previous_variants(**kw): return []
+        async def fake_get_all_time_baseline(): return None
 
         monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
         monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", fake_get_all_time_baseline)
 
         # New evaluate_week doesn't need get_async_supabase_client directly
         # — it passes it to internal functions
 
         result = await evaluator.evaluate_week()
-        assert isinstance(result, tuple), "evaluate_week must return (report, metrics)"
-        report, metrics = result
+        assert isinstance(result, tuple), "evaluate_week must return (report, metrics, baseline_tag)"
+        report, metrics, baseline_tag = result
         assert isinstance(report, str) and "Weekly" in report
         assert isinstance(metrics, dict) and "score" in metrics
         assert "excess_return" in metrics
@@ -300,11 +302,13 @@ class TestEvaluator:
 
         async def fake_get_active_prompt(): return "PROMPT"
         async def fake_get_previous_variants(**kw): return []
+        async def fake_get_all_time_baseline(): return None
 
         monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
         monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", fake_get_all_time_baseline)
 
-        report, _ = await evaluator.evaluate_week()
+        report, _, _ = await evaluator.evaluate_week()
         assert "Control" in report, "Report must include control reference"
 
 
@@ -747,10 +751,13 @@ class TestActivationGate:
         from autoresearch import runner
 
         async def fake_evaluate(ws, we):
-            return ("# report", self._make_score(exp_score))
+            return ("# report", self._make_score(exp_score), "v-baseline")
 
         async def fake_research(report):
             return self._make_result()
+
+        async def fake_baseline_metrics():
+            return self._make_score(1.0)
 
         async def fake_check(ws, we):
             return (False, "")
@@ -758,6 +765,7 @@ class TestActivationGate:
         monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
         monkeypatch.setattr(runner, "run_research", fake_research)
         monkeypatch.setattr(runner, "_check_safety", fake_check)
+        monkeypatch.setattr(runner, "get_baseline_metrics", fake_baseline_metrics)
 
         save_calls = []
 
@@ -816,30 +824,26 @@ class TestBaselineMetricsOrdering:
     """get_baseline_metrics must return the most recent baseline, not the oldest."""
 
     @pytest.mark.asyncio
-    async def test_orders_by_created_at_descending(self, monkeypatch):
-        """Must call .order('created_at', desc=True), not desc=False."""
+    async def test_all_time_baseline_logic(self, monkeypatch):
+        """get_all_time_baseline must find the variant with the highest score."""
         from autoresearch import prompt_store
 
-        recorder = _AsyncQueryRecorder(single_data={"metrics": {"composite": 0.75}})
-        client = MagicMock()
-        client.table.return_value = recorder
+        variants = [
+            {"variant_tag": "v1", "metrics": {"score": 1.0}},
+            {"variant_tag": "v2", "metrics": {"score": 3.0}},
+            {"variant_tag": "v3", "metrics": {"score": 2.0}},
+        ]
 
-        async def fake_client():
-            return client
+        client, recorder = _make_async_client(data=variants)
+        monkeypatch.setattr(prompt_store, "get_async_supabase_client", lambda: asyncio.Future())
 
+        # Manually override the client return to avoid real network call
+        async def fake_client(): return client
         monkeypatch.setattr(prompt_store, "get_async_supabase_client", fake_client)
-        prompt_store.clear_active_prompt_cache()
 
-        result = await prompt_store.get_baseline_metrics()
-
-        order_calls = [c for c in recorder.calls if c[0] == "order"]
-        assert len(order_calls) == 1, f"Expected exactly 1 order() call, got {order_calls}"
-        col, = order_calls[0][1]
-        kwargs = order_calls[0][2]
-        assert col == "created_at", f"Expected order by created_at, got {col}"
-        assert kwargs.get("desc") is True, (
-            f"get_baseline_metrics must order DESC (most recent first); got desc={kwargs.get('desc')}"
-        )
+        result = await prompt_store.get_all_time_baseline()
+        assert result["variant_tag"] == "v2"
+        assert result["metrics"]["score"] == 3.0
 
 
 # ==============================================================================
@@ -904,8 +908,7 @@ class TestBaselineTracking:
 
     @pytest.mark.asyncio
     async def test_baseline_is_max_historical_score(self, monkeypatch):
-        """Previous variants: [score=3.0, score=1.0, score=2.0].
-        Baseline must be 3.0 (the max), not 1.0 (most recent)."""
+        """Baseline must be taken from get_all_time_baseline()."""
         from autoresearch import evaluator
 
         async def _fake_ws_metrics(*a, **k):
@@ -921,24 +924,21 @@ class TestBaselineTracking:
         monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
 
         async def fake_get_active_prompt(): return "PROMPT"
-
-        # Previous variants — max score is 3.0 (v-middle), not 1.0 (v-latest)
-        async def fake_get_previous_variants(**kw):
-            return [
-                {"variant_tag": "v-latest", "experiment_type": "radical",
-                 "change_description": "most recent", "metrics": {"score": 1.0}},
-                {"variant_tag": "v-middle", "experiment_type": "incremental",
-                 "change_description": "best one", "metrics": {"score": 3.0}},
-                {"variant_tag": "v-old", "experiment_type": "incremental",
-                 "change_description": "old", "metrics": {"score": 2.0}},
-            ]
+        async def fake_get_previous_variants(**kw): return []
+        async def fake_get_all_time_baseline():
+            return {
+                "variant_tag": "v-best",
+                "prompt_content": "BEST_PROMPT",
+                "metrics": {"score": 3.0}
+            }
 
         monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
         monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", fake_get_all_time_baseline)
 
-        report, _ = await evaluator.evaluate_week()
+        report, _, _ = await evaluator.evaluate_week()
         assert "Baseline: 3.0" in report, (
-            f"Report must show max historical score as baseline, not most recent.\nReport:\n{report}"
+            f"Report must show max historical score as baseline.\nReport:\n{report}"
         )
 
     @pytest.mark.asyncio
@@ -959,17 +959,19 @@ class TestBaselineTracking:
         monkeypatch.setattr(evaluator, "_spy_returns", _fake_spy_returns)
 
         async def fake_get_active_prompt(): return "PROMPT"
-
-        async def fake_get_previous_variants(**kw):
-            return [
-                {"variant_tag": "v-best", "experiment_type": "incremental",
-                 "change_description": "best", "metrics": {"score": 3.0}},
-            ]
+        async def fake_get_previous_variants(**kw): return []
+        async def fake_get_all_time_baseline():
+            return {
+                "variant_tag": "v-best",
+                "prompt_content": "BEST_PROMPT",
+                "metrics": {"score": 3.0}
+            }
 
         monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
         monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", fake_get_all_time_baseline)
 
-        report, _ = await evaluator.evaluate_week()
+        report, _, _ = await evaluator.evaluate_week()
         # Current score: portfolio=2.5, SPY=~0.3, drawdown=2.0 → score ≈ 1.9
         # Baseline = 3.0 → delta should be negative
         assert "Baseline:" in report
@@ -994,11 +996,13 @@ class TestBaselineTracking:
 
         async def fake_get_active_prompt(): return "PROMPT"
         async def fake_get_previous_variants(**kw): return []
+        async def fake_get_all_time_baseline(): return None
 
         monkeypatch.setattr(evaluator, "get_active_prompt", fake_get_active_prompt)
         monkeypatch.setattr(evaluator, "get_previous_variants", fake_get_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", fake_get_all_time_baseline)
 
-        report, _ = await evaluator.evaluate_week()
+        report, _, _ = await evaluator.evaluate_week()
         assert "no baseline" in report.lower() or "n/a" in report.lower(), (
             f"First week report must indicate no baseline yet:\n{report}"
         )

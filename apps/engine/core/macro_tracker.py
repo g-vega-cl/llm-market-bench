@@ -25,19 +25,30 @@ MACRO_TICKERS = {
         "EWY": "South Korea",
         "VGK": "Europe",
         "MCHI": "China",
-        "EEM": "Emerging Markets"
+        "EEM": "Emerging Markets",
+        "EWU": "United Kingdom",
+        "EWC": "Canada",
+        "INDA": "India",
     },
     "Commodities": {
         "GLD": "Gold",
         "SLV": "Silver",
         "CPER": "Copper",
-        "USO": "Oil (WTI)"
+        "USO": "Oil (WTI)",
+        "UNG": "Natural Gas",
     },
-    "Yields & Indices": {
-        "IEF": "10-Yr US Treasury Yield (IEF)",
-        "UUP": "US Dollar Index (DXY)",
-        "VIXY": "Volatility Index (VIX)"
-    }
+    "Fixed Income": {
+        "IEF": "7-10yr Treasury",
+        "TLT": "20+yr Treasury",
+        "TIP": "TIPS (Inflation)",
+    },
+    "FX & Risk": {
+        "UUP": "US Dollar Index",
+        "VIXY": "Volatility Index",
+    },
+    "Crypto": {
+        "BTCUSD": "Bitcoin",
+    },
 }
 
 async def get_global_macro_context(market_data_manager) -> str:

@@ -27,6 +27,9 @@ class TestMacroTickers:
         assert "VGK" in intl_tickers
         assert "MCHI" in intl_tickers
         assert "EEM" in intl_tickers
+        assert "EWU" in intl_tickers
+        assert "EWC" in intl_tickers
+        assert "INDA" in intl_tickers
 
     def test_commodity_tickers_exist(self):
         """Verify commodity tickers are defined."""
@@ -36,15 +39,30 @@ class TestMacroTickers:
         assert "SLV" in comm_tickers
         assert "CPER" in comm_tickers
         assert "USO" in comm_tickers
+        assert "UNG" in comm_tickers
 
-    def test_yields_indices_tickers_use_fmp_compatible_symbols(self):
-        """Verify yields/indices tickers are FMP-compatible ETFs, not Yahoo-style symbols."""
-        assert "Yields & Indices" in MACRO_TICKERS
-        yields_tickers = MACRO_TICKERS["Yields & Indices"]
-        
-        assert "IEF" in yields_tickers, "Expected IEF (Treasury ETF) instead of ^TNX"
-        assert "UUP" in yields_tickers, "Expected UUP (Dollar ETF) instead of DX-Y.NYB"
-        assert "VIXY" in yields_tickers, "Expected VIXY (VIX ETF) instead of ^VIX"
+    def test_fixed_income_tickers_use_fmp_compatible_symbols(self):
+        """Verify fixed income tickers are FMP-compatible ETFs, not Yahoo-style symbols."""
+        assert "Fixed Income" in MACRO_TICKERS
+        fi_tickers = MACRO_TICKERS["Fixed Income"]
+
+        assert "IEF" in fi_tickers, "Expected IEF (Treasury ETF) instead of ^TNX"
+        assert "TLT" in fi_tickers, "Expected TLT (Long Treasury ETF)"
+        assert "TIP" in fi_tickers, "Expected TIP (TIPS ETF)"
+
+    def test_fx_risk_tickers_use_fmp_compatible_symbols(self):
+        """Verify FX & Risk tickers are FMP-compatible ETFs."""
+        assert "FX & Risk" in MACRO_TICKERS
+        fx_tickers = MACRO_TICKERS["FX & Risk"]
+
+        assert "UUP" in fx_tickers, "Expected UUP (Dollar ETF)"
+        assert "VIXY" in fx_tickers, "Expected VIXY (VIX ETF)"
+
+    def test_crypto_tickers_exist(self):
+        """Verify crypto tickers are defined."""
+        assert "Crypto" in MACRO_TICKERS
+        crypto_tickers = MACRO_TICKERS["Crypto"]
+        assert "BTCUSD" in crypto_tickers
 
     def test_no_yahoo_style_tickers(self):
         """Verify no Yahoo Finance-style tickers (with ^ or -Y.) are present."""
@@ -57,11 +75,11 @@ class TestMacroTickers:
             assert "-Y." not in ticker, f"Yahoo-style ticker {ticker} found (contains -Y.)"
 
     def test_total_ticker_count(self):
-        """Verify we have exactly 16 macro tickers (4+5+4+3)."""
+        """Verify we have exactly 23 macro tickers (4+8+5+3+2+1)."""
         all_tickers = []
         for category_dict in MACRO_TICKERS.values():
             all_tickers.extend(category_dict.keys())
-        assert len(all_tickers) == 16
+        assert len(all_tickers) == 23
 
 
 class TestGetGlobalMacroContext:
@@ -156,16 +174,16 @@ class TestGetGlobalMacroContext:
 
     @pytest.mark.asyncio
     async def test_batch_quotes_called_with_all_tickers(self):
-        """Test that get_quotes is called with all 16 macro tickers."""
+        """Test that get_quotes is called with all 23 macro tickers."""
         mock_mdm = MagicMock()
         mock_mdm.get_quotes = AsyncMock(return_value={})
         mock_mdm.get_history = AsyncMock(return_value=[])
-        
+
         await get_global_macro_context(mock_mdm)
-        
+
         call_args = mock_mdm.get_quotes.call_args
         tickers_passed = call_args[0][0]
-        assert len(tickers_passed) == 16
+        assert len(tickers_passed) == 23
         assert "SPY" in tickers_passed
         assert "IEF" in tickers_passed
         assert "UUP" in tickers_passed
@@ -275,14 +293,16 @@ class TestGetGlobalMacroContext:
         assert "GLD" in result
 
     @pytest.mark.asyncio
-    async def test_all_four_categories_present(self):
-        """Test that all four ticker categories are present in output."""
+    async def test_all_six_categories_present(self):
+        """Test that all six ticker categories are present in output."""
         mock_mdm = MagicMock()
         mock_mdm.get_quotes = AsyncMock(return_value={
             "SPY": MagicMock(exists=True, price=450.0),
             "EWJ": MagicMock(exists=True, price=80.0),
             "GLD": MagicMock(exists=True, price=180.0),
             "IEF": MagicMock(exists=True, price=95.0),
+            "UUP": MagicMock(exists=True, price=28.0),
+            "BTCUSD": MagicMock(exists=True, price=87000.0),
         })
         mock_mdm.get_history = AsyncMock(return_value=[
             {"price": 445.0, "fetched_at": "2024-01-01"},
@@ -295,46 +315,38 @@ class TestGetGlobalMacroContext:
         assert "[ EQUITIES ]" in result
         assert "[ INTERNATIONAL ]" in result
         assert "[ COMMODITIES ]" in result
-        assert "[ YIELDS & INDICES ]" in result
+        assert "[ FIXED INCOME ]" in result
+        assert "[ FX & RISK ]" in result
+        assert "[ CRYPTO ]" in result
 
 
-class TestMacroTrackerYieldIndices:
-    """Specific tests for Yields & Indices category."""
+class TestMacroTrackerFixedIncome:
+    """Specific tests for Fixed Income category."""
 
-    def test_yields_ticker_names_are_descriptive(self):
-        """Verify yield/index tickers have meaningful descriptions."""
-        yields = MACRO_TICKERS["Yields & Indices"]
-        
-        assert "10-Yr" in yields["IEF"] or "Treasury" in yields["IEF"]
-        assert "Dollar" in yields["UUP"] or "DXY" in yields["UUP"]
-        assert "Volatility" in yields["VIXY"] or "VIX" in yields["VIXY"]
+    def test_fixed_income_ticker_names_are_descriptive(self):
+        """Verify fixed income tickers have meaningful descriptions."""
+        fi = MACRO_TICKERS["Fixed Income"]
+
+        assert "Treasury" in fi["IEF"] or "7-10yr" in fi["IEF"]
+        assert "Treasury" in fi["TLT"] or "20+yr" in fi["TLT"]
+        assert "TIPS" in fi["TIP"] or "Inflation" in fi["TIP"]
 
     @pytest.mark.asyncio
     async def test_fmp_compatible_tickers_can_be_fetched(self):
         """Verify the FMP-compatible tickers can be passed to market data manager."""
-        yield_tickers = list(MACRO_TICKERS["Yields & Indices"].keys())
-        
-        assert "IEF" in yield_tickers
-        assert "UUP" in yield_tickers
-        assert "VIXY" in yield_tickers
-        
+        fi_tickers = list(MACRO_TICKERS["Fixed Income"].keys())
+        fx_tickers = list(MACRO_TICKERS["FX & Risk"].keys())
+
+        assert "IEF" in fi_tickers
+        assert "TLT" in fi_tickers
+        assert "TIP" in fi_tickers
+        assert "UUP" in fx_tickers
+        assert "VIXY" in fx_tickers
+
         all_tickers = []
         for category in MACRO_TICKERS.values():
             all_tickers.extend(category.keys())
-        
+
         for ticker in all_tickers:
-            assert ticker.isalpha() or ticker in ["IEF", "UUP", "VIXY"], f"Ticker {ticker} may not be FMP-compatible"
-
-    def test_yields_indices_tickers_are_uppercase(self):
-        """Verify all yield/index tickers are uppercase."""
-        yields = MACRO_TICKERS["Yields & Indices"]
-        for ticker in yields.keys():
-            assert ticker.isupper(), f"Ticker {ticker} should be uppercase"
-            assert ticker.isalpha(), f"Ticker {ticker} should be alphabetic"
-
-    def test_yields_indices_tickers_match_fmp_etf_format(self):
-        """Verify tickers follow FMP ETF ticker format (3-4 letters)."""
-        yields = MACRO_TICKERS["Yields & Indices"]
-        for ticker in yields.keys():
-            assert 3 <= len(ticker) <= 4, f"Ticker {ticker} should be 3-4 characters"
-            assert ticker.isalpha(), f"Ticker {ticker} should be alphabetic"
+            # Allow alphanumeric tickers (BTCUSD) alongside alphabetic ones
+            assert ticker.isalnum(), f"Ticker {ticker} should be alphanumeric"

@@ -31,20 +31,23 @@ from execution.providers.fmp import FMPProvider
 # =============================================================================
 
 TICKER_UNIVERSE = [
-    # US Sectors (11)
+    # US Sectors (14)
     "XLK", "SMH", "XLE", "XLF", "XLV", "XLY", "XLI", "XLB", "XLU", "XLRE", "XLC",
+    "XOP", "XME", "XBI",
+    # US Sub-Sectors (3)
+    "KRE", "XRT", "XHB",
     # US Broad (4)
     "QQQ", "VIG", "IWM", "SPY",
-    # International Developed (7)
-    "EFA", "EWJ", "EWG", "EWL", "EWP", "SCZ", "BWX",
-    # Emerging Markets (5)
-    "EEM", "MCHI", "EWZ", "EIDO", "EPI",
-    # Commodities (4)
-    "GLD", "SLV", "PDBC", "USO",
-    # Bonds (4)
-    "TLT", "IEF", "LQD", "EMB",
-    # International Bonds (2)
-    "BNDX", "IAGG",
+    # International Developed (8)
+    "EFA", "EWJ", "EWG", "EWL", "EWP", "SCZ", "BWX", "EWA",
+    # Emerging Markets (6)
+    "EEM", "MCHI", "EWZ", "EIDO", "EPI", "INDA",
+    # Commodities (7)
+    "GLD", "SLV", "PDBC", "USO", "CPER", "UNG", "DBA",
+    # Bonds (6)
+    "TLT", "IEF", "LQD", "EMB", "HYG", "AGG",
+    # International Bonds (3)
+    "BNDX", "IAGG", "EMLC",
     # Real Assets (2)
     "VNQ", "ICF",
     # Dollar (1)

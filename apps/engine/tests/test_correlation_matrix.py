@@ -56,7 +56,10 @@ class TestTickerUniverse:
         tickers = correlation_matrix.TICKER_UNIVERSE
 
         assert "GLD" in tickers  # Gold
+        assert "SLV" in tickers  # Silver
         assert "USO" in tickers  # Oil
+        assert "CPER" in tickers  # Copper
+        assert "UNG" in tickers  # Natural Gas
 
     def test_ticker_universe_contains_crypto(self):
         """Verify ticker universe contains crypto."""

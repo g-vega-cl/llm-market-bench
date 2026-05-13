@@ -12,7 +12,8 @@ from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
 
 
-BENCHMARK_TICKERS = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH']
+BENCHMARK_TICKERS = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH',
+                     'TLT', 'TIP', 'UNG', 'BTCUSD', 'EWU', 'EWC', 'CPER']
 BENCHMARK_HISTORY_DAYS = 90
 
 

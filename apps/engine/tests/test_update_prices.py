@@ -28,7 +28,8 @@ class TestBenchmarkConstants:
 
     def test_expected_benchmark_tickers_present(self):
         """Common benchmark tickers should be present in the list."""
-        expected = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH']
+        expected = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH',
+                     'TLT', 'TIP', 'UNG', 'BTCUSD', 'EWU', 'EWC', 'CPER']
         for ticker in expected:
             assert ticker in BENCHMARK_TICKERS, f"Expected benchmark {ticker} not found"
 
@@ -111,9 +112,10 @@ class TestBenchmarkTickerConsistency:
         """BENCHMARK_TICKERS should match the frontend BENCHMARK_OPTIONS ticker list.
 
         Frontend selector is defined in:
-        apps/web/src/routes/portfolios/components/-BenchmarkSelector.tsx
+        apps/web/src/features/portfolios/components/BenchmarkSelector.tsx
         """
-        frontend_tickers = ['SPY', 'QQQ', 'URTH', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA']
+        frontend_tickers = ['SPY', 'QQQ', 'URTH', 'GLD', 'CPER', 'UNG', 'TLT', 'TIP',
+                            'BTCUSD', 'VGK', 'EWJ', 'EWU', 'EWC', 'EEM', 'IWM', 'DIA']
 
         assert set(BENCHMARK_TICKERS) == set(frontend_tickers), (
             f"BENCHMARK_TICKERS {BENCHMARK_TICKERS} does not match "

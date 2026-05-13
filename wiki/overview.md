@@ -26,7 +26,7 @@ The platform is a monorepo with three layers:
 The daily pipeline runs on a cron schedule during US market hours in six phases:
 
 1. **Ingestion** — fetch newsletters, economic calendar, government data
-2. **Pre-Analysis** — market hours check, dust cleanup, macro tracking
+2. **Pre-Analysis** — market hours check, dust cleanup, macro tracking (23 tickers across 6 categories: equities, international, commodities, fixed income, FX/risk, crypto)
 3. **Analysis** — parallel LLM analysis with tool-calling loops
 4. **Consensus** — semantic grouping, event promotion, trend tracking
 5. **Execution** — validation, Reg T checks, trade settlement, attribution

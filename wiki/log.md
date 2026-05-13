@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-05-13] docs | Expanded macro tracker and ETF universe — copper, bonds, crypto, country coverage
+
+Added 13 new tickers across three tracking systems to give LLM agents a more
+complete picture of the global economy:
+
+**Macro Tracker** (macro_tracker.py): 16→23 tickers, 4→6 categories.
+New: Fixed Income (TLT, TIP, IEF), Crypto (BTCUSD), FX & Risk (UUP, VIXY).
+New international: EWU (UK), EWC (Canada), INDA (India).
+New commodities: UNG (Natural Gas).
+
+**Benchmark Tickers** (update_prices.py): 9→16 tickers.
+Added TLT, TIP, UNG, BTCUSD, EWU, EWC, CPER for benchmark tracking.
+
+**Correlation Universe** (correlation_matrix.py): 57→70 tickers.
+Added CPER, HYG, AGG, XOP, XME, XBI, KRE, XRT, INDA, EWA, DBA, XHB, EMLC.
+
+**Frontend** (BenchmarkSelector.tsx): 9→16 benchmark options in the dropdown.
+
+Documented at [[entities/macro-tracker]], [[sources/correlation-matrix-source]].
+
 ## [2026-05-13] docs | Supabase Data API grants — proactive migration and convention
 
 Supabase announced that explicit GRANTs will be required for public schema
@@ -634,3 +654,37 @@ Refactored `_daily_returns` in `autoresearch/metrics.py` to compute per-agent pe
 Rewrote `_daily_returns()` in `autoresearch/metrics.py` to compute per-agent percentage returns independently and average them per day, instead of aggregating raw equity across agents. This ensures equal weighting regardless of portfolio size ($10K vs $5K both count equally). Added test class `TestDailyReturnsEqualWeighted` with four tests: two agents with different returns, single agent, multi-day averaging, and missing-day edge case.
 
 **Files changed:** `apps/engine/autoresearch/metrics.py`, `apps/engine/tests/test_autoresearch.py`
+
+## [2026-05-13] docs | Expanded macro tracker and ETF universe — copper, bonds, crypto, country coverage
+
+Added 13 new tickers across three tracking systems to give LLM agents a more
+complete picture of the global economy:
+
+**Macro Tracker** (macro_tracker.py): 16→23 tickers, 4→6 categories.
+New: Fixed Income (TLT, TIP, IEF), Crypto (BTCUSD), FX & Risk (UUP, VIXY).
+New international: EWU (UK), EWC (Canada), INDA (India).
+New commodities: UNG (Natural Gas).
+
+**Benchmark Tickers** (update_prices.py): 9→16 tickers.
+Added TLT, TIP, UNG, BTCUSD, EWU, EWC, CPER for benchmark tracking.
+
+**Correlation Universe** (correlation_matrix.py): 57→70 tickers.
+Added CPER, HYG, AGG, XOP, XME, XBI, KRE, XRT, INDA, EWA, DBA, XHB, EMLC.
+
+**Frontend** (BenchmarkSelector.tsx): 9→16 benchmark options in the dropdown.
+
+Documented at [[entities/macro-tracker]], [[sources/correlation-matrix-source]].
+
+## [2026-05-13] docs | Expanded macro tracker and ETF universe — copper, bonds, crypto, country coverage
+
+Added 13 new tickers across three tracking systems to give LLM agents a more complete picture of the global economy:
+
+**Macro Tracker** (macro_tracker.py): 16→23 tickers, 4→6 categories. New: Fixed Income (TLT, TIP, IEF), Crypto (BTCUSD), FX & Risk (UUP, VIXY). New international: EWU (UK), EWC (Canada), INDA (India). New commodities: UNG (Natural Gas).
+
+**Benchmark Tickers** (update_prices.py): 9→16 tickers. Added TLT, TIP, UNG, BTCUSD, EWU, EWC, CPER for benchmark tracking.
+
+**Correlation Universe** (correlation_matrix.py): 57→70 tickers. Added CPER, HYG, AGG, XOP, XME, XBI, KRE, XRT, INDA, EWA, DBA, XHB, EMLC.
+
+**Frontend** (BenchmarkSelector.tsx): 9→16 benchmark options in the dropdown.
+
+Documented at [[entities/macro-tracker]], [[sources/correlation-matrix-source]].

@@ -12,6 +12,7 @@
 - [[entities/database]] — Supabase PostgreSQL schema (pgvector, RLS)
 - [[entities/pipeline]] — Full daily pipeline from ingestion to feedback
 - [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop
+- [[entities/macro-tracker]] — 23-ticker global macro regime monitoring
 
 ## Concepts
 

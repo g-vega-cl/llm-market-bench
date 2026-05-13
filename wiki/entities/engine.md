@@ -13,7 +13,8 @@ executing trades, and running feedback loops.
 ## Key Subsystems
 
 - **Ingestion** (`ingest/`) — Gmail API fetching, ad removal, calendar scraping
-- **Analysis** (`analysis/`) — LLM orchestration, Discovery Agent, momentum tracking
+- **Analysis** (`analysis/`) — LLM orchestration, Discovery Agent, momentum tracking, correlation matrix
+- **Macro Tracker** (`core/macro_tracker.py`) — 23-ticker global regime monitoring (equities, intl, commodities, fixed income, FX/risk, crypto)
 - **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek
 - **Execution** (`execution/`) — validation, Reg T checks, portfolio management
 - **Memory** (`memory/`) — pgvector embeddings, RAG retrieval, deduplication

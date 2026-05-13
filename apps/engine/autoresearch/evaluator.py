@@ -12,7 +12,7 @@ from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL, ANTHROP
 from core.db import get_async_supabase_client
 
 from .metrics import compute_wall_street_metrics, _spy_returns, compute_score
-from .prompt_store import get_active_prompt, get_previous_variants
+from .prompt_store import get_active_prompt, get_previous_variants, get_all_time_baseline
 from .window import get_week_window
 
 logger = logging.getLogger("engine")
@@ -20,11 +20,11 @@ logger = logging.getLogger("engine")
 CONTROL_OWNER_IDS = frozenset([OPENAI_MODEL, ANTHROPIC_MODEL])
 
 
-def _format_variants(variants: list[dict]) -> str:
+def _format_variants(variants: list[dict], baseline_score: float | None = None) -> str:
     if not variants:
         return "No previous variants."
 
-    lines = ["**Previous Prompt Variants:**"]
+    lines = ["**Recent Prompt Experiments:**"]
     for v in variants[:5]:
         tag = v.get("variant_tag", "?")
         exp_type = v.get("experiment_type", "?")
@@ -36,15 +36,24 @@ def _format_variants(variants: list[dict]) -> str:
                 m = json.loads(m)
             except (json.JSONDecodeError, TypeError):
                 m = {}
-        score = m.get("score", "?")
-        lines.append(f"  - {tag} ({exp_type}): {desc} | Score: {score}")
+        score = m.get("score")
+        score_str = f"{score}" if score is not None else "?"
+
+        status = ""
+        if score is not None and baseline_score is not None:
+            if score >= baseline_score:
+                status = " [NEW BEST]" if score > baseline_score else " [TIED BEST]"
+            else:
+                status = " [FAILED TO BEAT BASELINE]"
+
+        lines.append(f"  - {tag} ({exp_type}): {desc} | Score: {score_str}{status}")
     return "\n".join(lines)
 
 
 async def evaluate_week(
     week_start: date | None = None,
     week_end: date | None = None,
-) -> tuple[str, dict]:
+) -> tuple[str, dict, str | None]:
     """Gather all data for the past week and format the evaluation report.
 
     If week_start/week_end are not provided, they are computed from the
@@ -94,24 +103,20 @@ async def evaluate_week(
     )
 
     previous = await get_previous_variants(limit=5)
+    baseline_variant = await get_all_time_baseline()
 
-    # Extract baseline: the highest score achieved so far (with its prompt).
     baseline_score = None
-    if previous:
-        all_scores = []
-        for v in previous:
-            m = v.get("metrics", {})
-            if isinstance(m, str):
-                import json
-                try:
-                    m = json.loads(m)
-                except (json.JSONDecodeError, TypeError):
-                    m = {}
-            s = m.get("score")
-            if s is not None:
-                all_scores.append(s)
-        if all_scores:
-            baseline_score = max(all_scores)
+    baseline_prompt = None
+    if baseline_variant:
+        baseline_prompt = baseline_variant.get("prompt_content")
+        m = baseline_variant.get("metrics", {})
+        if isinstance(m, str):
+            import json
+            try:
+                m = json.loads(m)
+            except (json.JSONDecodeError, TypeError):
+                m = {}
+        baseline_score = m.get("score")
 
     # Build minimal report.
     baseline_line = ""
@@ -140,9 +145,16 @@ async def evaluate_week(
         f"{ctrl_metrics.get('total_return_pct', 0):+.1f}% return, "
         f"-{ctrl_metrics.get('max_drawdown', 0) * 100:.1f}% drawdown",
         "",
-        _format_variants(previous),
+        _format_variants(previous, baseline_score=baseline_score),
         "",
-        "# Current Prompt",
+        "# Baseline Prompt (All-Time Best)",
+        "This is the prompt that achieved the highest score so far. Use this as your foundation.",
+        "```",
+        baseline_prompt or "No baseline prompt yet.",
+        "```",
+        "",
+        "# Latest Experiment Prompt (Just Evaluated)",
+        "This is the prompt that produced the score at the top of this report.",
         "```",
         current_prompt,
         "```",
@@ -153,4 +165,4 @@ async def evaluate_week(
         "and confidence.",
     ]
 
-    return "\n".join(report_parts), score_result
+    return "\n".join(report_parts), score_result, baseline_variant.get("variant_tag") if baseline_variant else None

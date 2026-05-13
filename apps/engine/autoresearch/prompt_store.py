@@ -115,21 +115,44 @@ async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSI
     return res.data or []
 
 
-async def get_baseline_metrics(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+    """Return the prompt variant with the highest score achieved so far."""
     sb_client = await get_async_supabase_client()
+    # Fetch all variants for this prompt name. Since it's a weekly loop,
+    # the number of rows will remain small (e.g., 52 per year).
     res = await (
         sb_client.table("prompt_experiments")
-        .select("metrics")
+        .select("*")
         .eq("prompt_name", prompt_name)
-        .eq("experiment_type", "baseline")
-        .order("created_at", desc=True)
-        .limit(1)
-        .maybe_single()
         .execute()
     )
-    if res and res.data:
-        return res.data["metrics"]
-    return None
+
+    if not res or not res.data:
+        return None
+
+    best_variant = None
+    max_score = -float("inf")
+
+    for v in res.data:
+        m = v.get("metrics", {})
+        if isinstance(m, str):
+            import json
+            try:
+                m = json.loads(m)
+            except (json.JSONDecodeError, TypeError):
+                m = {}
+        score = m.get("score")
+        if score is not None and (best_variant is None or score > max_score):
+            max_score = score
+            best_variant = v
+
+    return best_variant
+
+
+async def get_baseline_metrics(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+    """Legacy helper: now returns metrics of the all-time baseline."""
+    baseline = await get_all_time_baseline(prompt_name)
+    return baseline["metrics"] if baseline else None
 
 
 async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> str | None:

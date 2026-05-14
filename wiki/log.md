@@ -1362,3 +1362,15 @@ Refactored `EventChainPage.tsx` to use `Badge`, `Button`, `PageLayout`, and `Sec
 ## [2026-05-14] refactor | Design system Button migration & primitive cleanup
 
 Replaced raw `<button>` elements with the design system's `Button` primitive across 10 components: ThoughtProcessFlow, DefaultCatchBoundary, NotFound, MemoriesList, PortfolioComparisonChart, HumanFriendlyPrompt, HumanFriendlyResponse, Auth, Login. Also removed unused primitives from `ui-design-system`: ErrorBoundary, Skeleton, CardHeader/CardBody/CardFooter, ErrorMessage. The Auth component additionally adopted `Input` and `Label` primitives. Added test coverage to verify DS component usage.
+
+## [2026-05-14] refactor | Design system simplification
+
+Removed Select primitive entirely, reduced Badge variants (removed `dot` variant, stripped `critical` and `low` severity), trimmed LoadingSpinner sizes (removed `xs` and `lg`), removed `elevated` Card variant and `accentBorder` props, eliminated `alert` gradient from HeroBackground and SectionHeading, and simplified severity mappings in AuditCard/FutureCatalysts severity mapping simplified to only `high`/`medium`. This is a>
+
+## [2026-05-14] refactor | Design system simplification
+
+Removed Select primitive entirely, reduced Badge variants (removed `dot` variant, stripped `critical` and `low` severity), trimmed LoadingSpinner sizes (removed `xs` and `lg`), removed `elevated` Card variant and `accentBorder` props, eliminated `alert` gradient from HeroBackground and SectionHeading, and simplified severity mappings in AuditCard/FutureCatalysts to only `high`/`medium`.
+
+## [2026-05-14] refactor | Design system simplification
+
+Removed Select primitive entirely, reduced Badge variants (removed `dot` variant, stripped `critical` and `low` severity), trimmed LoadingSpinner sizes (removed `xs` and `lg`), removed `elevated` Card variant and `accentBorder` props, eliminated `alert` gradient from HeroBackground and SectionHeading, and simplified severity mappings in AuditCard/FutureCatalysts to only `high`/`medium`.

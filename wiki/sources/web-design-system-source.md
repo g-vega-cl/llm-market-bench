@@ -1,26 +1,66 @@
 ---
-tags: [web, ui, design-system]
+tags: [design-system, ui, primitives]
 category: source
 ---
 
-# Source: Web Design System
+# Web Design System: "Bloomberg Terminal meets Wired"
 
-Synthesized from `raw/docs/web/DESIGN_SYSTEM.md` and current codebase at `packages/ui-design-system/`.
+This source page documents the UI design system used across the TanStack Start dashboard. It is a collection of primitives and patterns that enforce visual financial data with a high-tech, polished look.
 
-## Takeaways
+## Recent Changes (May 2025)
 
-- **"Bloomberg Terminal meets Wired"**: Aesthetics prioritize data density and readability with a semantic color palette (Electric Blue, Neon Green, Alert Red, Deep Purple, Cyber Yellow).
-- **Fully adopted**: All 10 web app pages use the design system as their primary UI vocabulary. No page uses zero DS components (as of 2026-05-14 migration).
-- **Component categories**:
-  - **Primitives**: Button (5 variants), Card (5 variants), Badge (3 variants + severity), Input/Select/Skeleton, ErrorBoundary, LoadingSpinner
-  - **Patterns**: SectionHeading, ConfidenceBar, StatPill, MetricTile, EmptyState, LoadingBoundary, ErrorCard
-  - **Layouts**: PageLayout, HeroBackground
-- **Cross-cutting consistency**: All "Load More" buttons use Button with isLoading, all error states use ErrorCard, all loading states use LoadingBoundary, all section titles use SectionHeading with semantic gradients.
-- **Color consistency**: zinc palette used consistently across all pages (ReasoningPage was migrated from gray-* to zinc-*).
-- **Hero deduplication**: MarketOverviewPage's hero was a raw copy-paste of HeroBackground — replaced with the actual component, removing 78 lines of duplicated code.
-- **Simplicity over abstraction**: Prefers direct mapping of props to Tailwind classes rather than complex token layers, ensuring the build output is predictable and easy to debug.
-- **Accessibility**: WCAG AA contrast ratios, visible focus states, aria labels.
+The following items have been **removed** as part of a design system simplification:
+
+- ~~Select primitive~~ (deleted entirely)
+- ~~Badge variant `dot`~~
+- ~~Badge severity levels `critical` and `low`~~ (now only `high` and `medium`)
+- ~~LoadingSpinner sizes `xs` and `lg`~~ (now only `sm` and `md`)
+- ~~Card variant `elevated`~~ (now only `default`, `outlined`, `ghost`, `glass`)
+- ~~Card props `accentBorder` and `accentBorderColor`~~
+- ~~Gradient `alert`~~ removed from HeroBackground, SectionHeading, and Card gradient options
+
+---
+
+## Primitives
+
+### Badge
+- **Variants:** `solid`, `soft`, `outline` (~~dot~~)
+- **Sizes:** `sm`, `md`
+- **Color schemes:** `accent`, `success`, `danger`, `info`, `warning`, `neutral`
+- **Severity:** `high`, `medium` (overrides colorScheme when provided)
+- **Radius:** `full`, `lg`, `md`
+
+### Button (contains LoadingSpinner)
+- **LoadingSpinner sizes:** `sm`, `md` (~~xs~~, ~~lg~~)
+
+### Card
+- **Variants:** `default`, `outlined`, `ghost`, `glass` (~~elevated~~)
+- **Padding:** `none`, `sm`, `md`, `lg`
+`
+- **Gradients:** `electric`, `success`, `alert` (removed), `success`, `catalyst`, `ai`
+- ~~No accentBorder or accentBorderColor props~~
+
+### Select
+- ~~Completely removed~~ (no longer part of the design system)
+
+### Input / Label
+- Unchanged.
+
+## Patterns
+
+### LoadingBoundary
+- Uses LoadingSpinner with `size="md"` (was `lg`).
+
+### SectionHeading & HeroBackground
+both accept a `gradient` prop with allowed values: `electric`, `success`, `catalyst`, `ai` (~~alert~~).
+
+## Severity Mapping in Application Code
+
+- `AuditCard`: maps ` CRITICAL` → `high`, `LOW` → `medium`
+- `FutureCatalysts` uses threshold: importance >=8 → `high`, else `medium`
+
+---
 
 ## Related
-
 - [[entities/web-app]]
+- [[concepts/project-linting]]

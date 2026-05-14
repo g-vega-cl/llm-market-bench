@@ -30,7 +30,7 @@ export function LoadingBoundary({
                 className={cn('flex flex-col items-center justify-center gap-3', className)}
                 style={{ minHeight }}
             >
-                <LoadingSpinner size="lg" className="text-accent" />
+                <LoadingSpinner size="md" className="text-accent" />
                 {loadingText && <p className="text-sm text-zinc-500">{loadingText}</p>}
             </div>
         );

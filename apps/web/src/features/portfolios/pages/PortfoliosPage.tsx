@@ -45,11 +45,11 @@ function PortfolioCard({
         >
             <Card
                 padding="md"
-                variant={deprecated ? 'default' : 'elevated'}
+                variant="default"
                 className={
                     deprecated
                         ? 'opacity-60 hover:opacity-80'
-                        : 'hover:shadow-md group-hover:border-zinc-300'
+                        : 'shadow-md hover:shadow-md group-hover:border-zinc-300'
                 }
             >
                 <div className="flex justify-between items-start mb-4">

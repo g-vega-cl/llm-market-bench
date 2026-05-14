@@ -9,7 +9,7 @@ import { cn } from '../lib/cn';
  */
 
 export interface SectionHeadingProps {
-    gradient?: 'electric' | 'success' | 'catalyst' | 'ai' | 'alert';
+    gradient?: 'electric' | 'success' | 'catalyst' | 'ai';
     children: React.ReactNode;
     className?: string;
 }
@@ -19,7 +19,6 @@ const decoratorMap: Record<string, string> = {
     success: 'bg-gradient-to-b from-neon-green-500 to-emerald-600',
     catalyst: 'bg-gradient-to-b from-cyber-yellow-500 to-amber-600',
     ai: 'bg-gradient-to-b from-deep-purple-500 to-electric-blue-500',
-    alert: 'bg-gradient-to-b from-amber-500 to-orange-600',
 };
 
 const textGradientMap: Record<string, string> = {
@@ -27,7 +26,6 @@ const textGradientMap: Record<string, string> = {
     success: 'text-gradient-success',
     catalyst: 'text-gradient-catalyst',
     ai: 'text-gradient-electric',
-    alert: 'text-gradient-alert',
 };
 
 export function SectionHeading({

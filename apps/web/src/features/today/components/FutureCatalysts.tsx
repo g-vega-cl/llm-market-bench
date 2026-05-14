@@ -137,11 +137,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                 )}
                                                 <Badge
                                                     severity={
-                                                        importanceScore >= 9
-                                                            ? 'critical'
-                                                            : importanceScore >= 8
-                                                              ? 'high'
-                                                              : 'medium'
+                                                        importanceScore >= 8 ? 'high' : 'medium'
                                                     }
                                                     variant="soft"
                                                     radius="lg"

@@ -13,12 +13,12 @@ interface AuditCardProps {
     };
 }
 
-function getSeverity(severity: string): 'critical' | 'high' | 'medium' | 'low' {
-    const map: Record<string, 'critical' | 'high' | 'medium' | 'low'> = {
-        CRITICAL: 'critical',
+function getSeverity(severity: string): 'high' | 'medium' {
+    const map: Record<string, 'high' | 'medium'> = {
+        CRITICAL: 'high',
         HIGH: 'high',
         MEDIUM: 'medium',
-        LOW: 'low',
+        LOW: 'medium',
     };
     return map[severity] ?? 'medium';
 }

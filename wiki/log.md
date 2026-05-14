@@ -1077,3 +1077,7 @@ Without `set -e`, bash continued past failures. With `cd A && cmd && cd B` chain
 - Updated [[entities/biome-linter]] — non-blocking status, monorepo path notes
 - Updated [[concepts/project-linting]] — full pre-commit hook design, TypeScript type conventions, TanStack deep inference pitfall
 - Updated [[llm-market-bench-development]] skill — `Record<string, any>` convention, pre-commit design rules, linter configuration updates
+
+## 2025-04-09 infra | Python version bump 3.11 → 3.12 across all GitHub Actions workflows
+
+Updated `python-version` from 3.11 to 3.12 in all 10 CI/CD workflow files: audit.yml, calendar.yml, cause-and-effect.yml, correlation.yml, ingest.yml, post-analysis.yml, sync-alpaca.yml, update-prices.yml, weekend-ingest.yml, wiki-lint.yml. This is a uniform infrastructure change affecting the entire CI pipeline.

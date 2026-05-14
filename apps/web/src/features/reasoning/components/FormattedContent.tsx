@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 interface FormattedContentProps {
     content: any;
 }
@@ -15,7 +13,7 @@ export function FormattedContent({ content }: FormattedContentProps) {
                     </pre>
                 );
             }
-        } catch (e) {
+        } catch (_e) {
             // not JSON
         }
         return <>{content}</>;

@@ -177,6 +177,7 @@ export function ThoughtProcessFlow() {
                 <div className="grid md:grid-cols-5 gap-4 mb-8">
                     {steps.map((step, idx) => (
                         <button
+                            type="button"
                             key={step.id}
                             onClick={() => setActiveStep(idx)}
                             className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-300 group ${
@@ -234,6 +235,7 @@ export function ThoughtProcessFlow() {
 
                 <div className="mt-12 flex justify-between items-center border-t border-slate-800 pt-8">
                     <button
+                        type="button"
                         onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
                         disabled={activeStep === 0}
                         className="px-6 py-2 rounded-full border border-slate-700 text-white font-medium hover:bg-slate-800 transition-colors disabled:opacity-30"
@@ -249,6 +251,7 @@ export function ThoughtProcessFlow() {
                         ))}
                     </div>
                     <button
+                        type="button"
                         onClick={() =>
                             setActiveStep((prev) => Math.min(steps.length - 1, prev + 1))
                         }

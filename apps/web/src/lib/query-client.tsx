@@ -36,7 +36,7 @@ function makeQueryClient() {
         }),
         // Global mutation cache for error handling
         mutationCache: new MutationCache({
-            onError: (error, variables, context, mutation) => {
+            onError: (error, _variables, _context, _mutation) => {
                 // Global error logging
                 console.error('[MutationCache] Error:', error);
             },

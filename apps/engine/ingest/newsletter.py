@@ -4,6 +4,7 @@ This module handles fetching newsletters from Gmail, parsing email content,
 and transforming them into structured snapshots for database storage.
 """
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -80,25 +81,18 @@ def get_gmail_service():
                 scopes=token_data.get("scopes", GMAIL_SCOPES),
             )
         except Exception as e:
-            logger.error(
-                f"AUTHENTICATION FAILURE: Error parsing GMAIL credentials or token: {e}"
-            )
+            logger.error(f"AUTHENTICATION FAILURE: Error parsing GMAIL credentials or token: {e}")
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
             except Exception as e:
-                logger.error(
-                    f"TOKEN REFRESH FAILURE: Could not refresh Google token: {e}"
-                )
+                logger.error(f"TOKEN REFRESH FAILURE: Could not refresh Google token: {e}")
                 creds = None
 
         if not creds:
-            logger.error(
-                "NO VALID GMAIL CREDENTIALS: Manual re-authentication required "
-                "or check GMAIL_TOKEN_JSON."
-            )
+            logger.error("NO VALID GMAIL CREDENTIALS: Manual re-authentication required or check GMAIL_TOKEN_JSON.")
             return None
 
     try:
@@ -225,10 +219,48 @@ def generate_chunk_hash(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()
 
 
-async def _process_message(
-    service: Any,
-    msg_ref: dict[str, str]
-) -> tuple[NewsletterSnapshot | None, str | None]:
+async def _fetch_raw_message(service: Any, msg_ref: dict[str, str]) -> tuple[NewsletterSnapshot | None, str | None]:
+    """Fetch a single message from Gmail and build a raw snapshot without cleaning.
+
+    Args:
+        service: Gmail API service resource.
+        msg_ref: Dictionary containing the message 'id'.
+
+    Returns:
+        A tuple of (NewsletterSnapshot or None, sender_string or None).
+    """
+    sender = None
+    try:
+        msg = service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute()
+        headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
+
+        subject = headers.get("Subject", "No Subject")
+        sender = headers.get("From", "Unknown")
+        raw_date = headers.get("Date")
+
+        try:
+            date_dt = parsedate_to_datetime(raw_date)
+            date = date_dt.isoformat()
+        except Exception:
+            date = datetime.now().isoformat()
+
+        body = extract_email_body(msg["payload"])
+
+        return NewsletterSnapshot(
+            source_id=generate_source_id(date, sender, subject),
+            chunk_hash=generate_chunk_hash(body),
+            sender=sender,
+            date=date,
+            subject=subject,
+            content=body,
+            ingested_at=datetime.now().isoformat(),
+        ), sender
+    except Exception as e:
+        logger.error(f"Error fetching raw message {msg_ref.get('id')}: {e}")
+        return None, sender
+
+
+async def _process_message(service: Any, msg_ref: dict[str, str]) -> tuple[NewsletterSnapshot | None, str | None]:
     """Fetch a single message and transform it into a NewsletterSnapshot.
 
     Args:
@@ -240,11 +272,7 @@ async def _process_message(
     """
     sender = None
     try:
-        msg = service.users().messages().get(
-            userId="me",
-            id=msg_ref["id"],
-            format="full"
-        ).execute()
+        msg = service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute()
         headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
 
         subject = headers.get("Subject", "No Subject")
@@ -294,11 +322,7 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
     logger.info(f"Fetching newsletters with query: {query}")
 
     try:
-        results = service.users().messages().list(
-            userId="me",
-            q=query,
-            maxResults=20
-        ).execute()
+        results = service.users().messages().list(userId="me", q=query, maxResults=20).execute()
         messages = results.get("messages", [])
         if not messages:
             logger.info(
@@ -310,18 +334,34 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
 
         logger.info(f"Found {len(messages)} messages. Starting processing...")
 
-        snapshots = []
+        # Phase 1: Fetch all raw message bodies (fast, Gmail API only)
+        raw_results = []
         attempted_senders = set()
         for msg_ref in messages:
-            snapshot, sender = await _process_message(service, msg_ref)
+            raw_snapshot, sender = await _fetch_raw_message(service, msg_ref)
             if sender:
                 attempted_senders.add(sender)
-            if snapshot:
-                snapshots.append(asdict(snapshot))
+            if raw_snapshot:
+                raw_results.append((raw_snapshot, sender))
+
+        # Phase 2: Clean all bodies in parallel via LLM
+        snapshots = []
+        if raw_results:
+            cleaning_tasks = [clean_newsletter_content(snapshot.content) for snapshot, _ in raw_results]
+            cleaned_bodies = await asyncio.gather(*cleaning_tasks, return_exceptions=True)
+
+            # Phase 3: Assemble cleaned snapshots
+            for (raw_snapshot, sender), cleaned_body in zip(raw_results, cleaned_bodies, strict=True):
+                if isinstance(cleaned_body, Exception):
+                    logger.error(f"Cleaning failed for {sender}: {cleaned_body}. Using raw body.")
+                    cleaned_body = raw_snapshot.content
+                raw_snapshot.content = cleaned_body
+                raw_snapshot.chunk_hash = generate_chunk_hash(cleaned_body)
+                snapshots.append(asdict(raw_snapshot))
 
         # Summarize results by sender
         sender_counts = Counter(s["sender"] for s in snapshots)
-        
+
         # --- Semantic Fragility Monitoring ---
         # Detect if any sender found in today's messages failed to produce a snapshot
         # This indicates a template change or parsing error.
@@ -335,9 +375,7 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
                 )
 
         if snapshots:
-            stats = ", ".join(
-                [f"{count} from {sender}" for sender, count in sender_counts.items()]
-            )
+            stats = ", ".join([f"{count} from {sender}" for sender, count in sender_counts.items()])
             logger.info(f"Successfully ingested {len(snapshots)} newsletters: {stats}")
         else:
             logger.info("No messages were successfully processed into snapshots.")

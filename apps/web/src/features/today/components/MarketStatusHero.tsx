@@ -1,6 +1,5 @@
 import type { MarketFeeling } from '@llm-market-bench/database';
 import { Badge, Card, ConfidenceBar, HeroBackground } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
 
 interface MarketStatusHeroProps {
     data: {
@@ -282,6 +281,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                 >
+                                    <title>SVG</title>
                                     <path d="M5 12h14M12 5l7 7-7 7" />
                                 </svg>
                             </a>

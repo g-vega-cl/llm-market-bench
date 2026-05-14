@@ -1,4 +1,4 @@
-import { Badge, MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
+import { MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { getAgentInfo } from '../lib/agent-info';
 
@@ -14,7 +14,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     const [filter, setFilter] = React.useState<FilterType>('ALL');
 
     // Include rejections from decisions
-    const rejections = decisions.filter((d) => d.status && d.status.startsWith('REJECTED'));
+    const rejections = decisions.filter((d) => d.status?.startsWith('REJECTED'));
 
     // Normalize and sort all activity
     const allActivity = React.useMemo(() => {
@@ -218,6 +218,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                         strokeLinejoin="round"
                                                         className="text-zinc-300 group-hover:text-zinc-400 transition-colors"
                                                     >
+                                                        <title>SVG</title>
                                                         <path d="m6 9 6 6 6-6" />
                                                     </svg>
                                                 </div>

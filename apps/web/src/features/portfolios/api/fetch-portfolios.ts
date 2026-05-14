@@ -1,10 +1,7 @@
 import type {
-    Decision,
     Portfolio,
     PortfolioPerformance,
-    PositionPnl,
     PositionWithReasoning,
-    Trade,
     TradeWithReasoning,
 } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';

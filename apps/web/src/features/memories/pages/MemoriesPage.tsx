@@ -1,7 +1,6 @@
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
-import type { PaginatedMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesList } from '~/features/memories/components/MemoriesList';
 import { memoriesQueries } from '~/features/memories/queries/options';
 
@@ -72,6 +71,7 @@ export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
                     {hasNextPage && (
                         <div className="mt-8 flex justify-center">
                             <button
+                                type="button"
                                 onClick={() => {
                                     fetchNextPage();
                                     posthog.capture('memories_load_more_clicked');

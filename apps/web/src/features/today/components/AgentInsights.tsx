@@ -1,5 +1,4 @@
-import { Badge, Card, ConfidenceBar, SectionHeading } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
+import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface AgentInsightsProps {

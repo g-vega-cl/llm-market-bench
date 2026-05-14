@@ -11,7 +11,8 @@ The daily pipeline runs on a cron schedule during US market hours
 ## Phase 1: Ingestion
 
 Gmail API fetches unread newsletters → BeautifulSoup HTML parsing → Gemini Flash
-removes ads → deterministic source_id + chunk_hash → UPSERT into
+removes ads (all newsletters cleaned in parallel via `asyncio.gather`) →
+deterministic source_id + chunk_hash → UPSERT into
 `newsletter_snapshots`. Parallel fetching of economic calendar and government
 data.
 
@@ -44,6 +45,11 @@ Pre-market validation (existence, liquidity, staleness ≤2%, buying power, min
 value, SMA floor) → Reg T margin check → "Commit at the End" settlement
 (decision_id → position UPSERT → trade INSERT → cash/save) → Alpaca paper
 mirror. Attribution locking creates bidirectional Decision ↔ Trade links.
+
+After execution, a daily performance snapshot records equity curves for all
+active portfolios (those holding positions — empty cash-only portfolios are
+skipped). Market data is fetched in batch via `get_quotes()` rather than
+individual sequential `get_quote()` calls.
 
 ## Phase 6: Feedback
 

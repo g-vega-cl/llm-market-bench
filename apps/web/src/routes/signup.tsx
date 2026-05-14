@@ -56,9 +56,7 @@ function SignupComp() {
             }}
             afterSubmit={
                 signupMutation.data ? (
-                    <>
-                        <div className="text-red-400">{(signupMutation.data as any).message}</div>
-                    </>
+                    <div className="text-red-400">{(signupMutation.data as any).message}</div>
                 ) : null
             }
         />

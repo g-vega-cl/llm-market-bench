@@ -1,5 +1,3 @@
-import type { QueryKey } from '@tanstack/react-query';
-
 /**
  * Query keys for the Memories feature.
  */

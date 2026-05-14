@@ -33,12 +33,12 @@ test('fetchBenchmarkHistory deduplicates by date keeping latest price', async ()
 
     expect(mockClient.from).toHaveBeenCalledWith('price_history');
 
-    expect(result['SPY']).toHaveLength(2);
-    expect(result['SPY'][0].date).toBe('2024-01-01');
+    expect(result.SPY).toHaveLength(2);
+    expect(result.SPY[0].date).toBe('2024-01-01');
     // Should keep the later price from the same day
-    expect(result['SPY'][0].price).toBe(101.5);
-    expect(result['SPY'][1].date).toBe('2024-01-02');
-    expect(result['SPY'][1].price).toBe(102.0);
+    expect(result.SPY[0].price).toBe(101.5);
+    expect(result.SPY[1].date).toBe('2024-01-02');
+    expect(result.SPY[1].price).toBe(102.0);
 });
 
 test('fetchBenchmarkHistory returns empty object for empty tickers', async () => {
@@ -58,8 +58,8 @@ test('fetchBenchmarkHistory keeps only last price per day for multiple tickers',
 
     const result = await fetchBenchmarkHistory(['SPY', 'QQQ'], '2024-01-01', '2024-01-01');
 
-    expect(result['SPY']).toHaveLength(1);
-    expect(result['SPY'][0].price).toBe(101.0);
-    expect(result['QQQ']).toHaveLength(1);
-    expect(result['QQQ'][0].price).toBe(202.0);
+    expect(result.SPY).toHaveLength(1);
+    expect(result.SPY[0].price).toBe(101.0);
+    expect(result.QQQ).toHaveLength(1);
+    expect(result.QQQ[0].price).toBe(202.0);
 });

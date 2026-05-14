@@ -2,6 +2,8 @@ import * as React from 'react';
 import { DataCard } from './DataCard';
 
 export function HumanFriendlyResponse({ response }: { response: any }) {
+    const [activeTab, setActiveTab] = React.useState('RAW');
+
     if (!response || typeof response !== 'object') {
         return (
             <section>
@@ -16,6 +18,7 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
                         {JSON.stringify(response, null, 2)}
                     </pre>
                     <button
+                        type="button"
                         onClick={() =>
                             navigator.clipboard.writeText(JSON.stringify(response, null, 2))
                         }
@@ -29,8 +32,6 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
     }
 
     const keys = Object.keys(response);
-    const [activeTab, setActiveTab] = React.useState(keys[0] || 'RAW');
-
     const displayedKeys = [...keys, 'RAW'];
 
     return (
@@ -45,6 +46,7 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
                 <div className="flex gap-0.5 md:gap-1 p-0.5 md:p-1 bg-gray-100 dark:bg-gray-900 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800 shadow-inner overflow-x-auto">
                     {displayedKeys.map((key) => (
                         <button
+                            type="button"
                             key={key}
                             onClick={() => setActiveTab(key)}
                             className={`px-2 md:px-4 py-1 md:py-1.5 rounded-md md:rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all duration-200 whitespace-nowrap min-h-[32px] md:min-h-[unset] ${
@@ -66,6 +68,7 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
                             {JSON.stringify(response, null, 2)}
                         </pre>
                         <button
+                            type="button"
                             onClick={() =>
                                 navigator.clipboard.writeText(JSON.stringify(response, null, 2))
                             }

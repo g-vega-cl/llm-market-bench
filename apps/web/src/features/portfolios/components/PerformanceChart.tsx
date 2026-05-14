@@ -19,7 +19,7 @@ interface ChartLine {
     ticker?: string;
 }
 
-function normalizeToPercentage(data: ChartLine[], baseDate: Date, baseValue: number): ChartLine[] {
+function normalizeToPercentage(data: ChartLine[], _baseDate: Date, baseValue: number): ChartLine[] {
     if (baseValue === 0) return data;
     return data.map((d) => ({
         ...d,
@@ -64,7 +64,7 @@ export function PerformanceChart({
         let allLines: ChartLine[] = parsedData;
         let benchmarkLines: ChartLine[] = [];
 
-        if (selectedBenchmark && benchmarkData && benchmarkData[selectedBenchmark]) {
+        if (selectedBenchmark && benchmarkData?.[selectedBenchmark]) {
             benchmarkLines = benchmarkData[selectedBenchmark].map((d) => ({
                 date: new Date(d.date),
                 value: d.price,
@@ -222,7 +222,7 @@ export function PerformanceChart({
 
         const bisector = d3.bisector<ChartLine, Date>((d) => d.date).left;
 
-        const overlay = g
+        const _overlay = g
             .append('rect')
             .attr('class', 'overlay')
             .attr('width', width)
@@ -276,7 +276,7 @@ export function PerformanceChart({
                 setTooltipData(null);
             });
 
-        const crosshair = g
+        const _crosshair = g
             .append('line')
             .attr('class', 'crosshair')
             .attr('stroke', '#64748b')
@@ -288,7 +288,7 @@ export function PerformanceChart({
             .attr('y1', 0)
             .attr('y2', height);
 
-        const dot = g
+        const _dot = g
             .append('circle')
             .attr('class', 'dot')
             .attr('r', 6)
@@ -297,7 +297,7 @@ export function PerformanceChart({
             .attr('stroke-width', 2)
             .attr('opacity', 0);
 
-        const benchmarkDot = g
+        const _benchmarkDot = g
             .append('circle')
             .attr('class', 'benchmark-dot')
             .attr('r', 5)
@@ -350,7 +350,7 @@ export function PerformanceChart({
                 .attr('fill', '#f59e0b')
                 .text(String(benchmarkLabel));
         }
-    }, [data, benchmarkData, selectedBenchmark, showPercentage]);
+    }, [data, benchmarkData, selectedBenchmark, showPercentage, tooltipData?.x]);
 
     React.useEffect(() => {
         if (!svgRef.current || !tooltipData) return;
@@ -392,7 +392,7 @@ export function PerformanceChart({
         }
     }, [tooltipData, selectedBenchmark, benchmarkData, data]);
 
-    const hasBenchmark = selectedBenchmark && benchmarkData && benchmarkData[selectedBenchmark];
+    const hasBenchmark = selectedBenchmark && benchmarkData?.[selectedBenchmark];
 
     const getLatestWithBenchmark = () => {
         if (data.length === 0) return null;

@@ -10,5 +10,5 @@ export function parseScenarioPercentages(
 
 export function extractPercentage(text: string): string | null {
     const match = text.match(/(\d{1,3})\s*%/);
-    return match ? match[1] + '%' : null;
+    return match ? `${match[1]}%` : null;
 }

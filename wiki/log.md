@@ -1081,3 +1081,65 @@ Without `set -e`, bash continued past failures. With `cd A && cmd && cd B` chain
 ## 2025-04-09 infra | Python version bump 3.11 → 3.12 across all GitHub Actions workflows
 
 Updated `python-version` from 3.11 to 3.12 in all 10 CI/CD workflow files: audit.yml, calendar.yml, cause-and-effect.yml, correlation.yml, ingest.yml, post-analysis.yml, sync-alpaca.yml, update-prices.yml, weekend-ingest.yml, wiki-lint.yml. This is a uniform infrastructure change affecting the entire CI pipeline.
+
+## [2026-05-14] perf | Parallel newsletter cleaning + snapshot optimization
+
+### Changes
+- **Parallel ad removal**: `ingest_newsletters()` now fetches all Gmail bodies first, then runs `clean_newsletter_content()` on all newsletters concurrently via `asyncio.gather()`. Previously each newsletter was cleaned sequentially (7 newsletters × ~7s = ~49s; now ~13s). Extracted `_fetch_raw_message()` from `_process_message()` to separate Gmail API fetch from LLM cleaning.
+- **Snapshot filtering**: `_stage_snapshots_and_pca()` now only snapshots portfolios that hold actual positions. Empty cash-only portfolios (test_model, gpt-5-mini, etc.) are skipped, reducing 11 snapshots to ~5 per run.
+- **Batch market data**: Snapshot price fetching switched from individual `get_quote()` calls (25+ sequential FMP API calls) to `get_quotes()` batch fetch (single batched API call). Also eliminated the double-call bug where `get_quote()` was called twice per ticker (once for truthiness, once for value).
+
+### Files changed
+- `apps/engine/ingest/newsletter.py`: +import asyncio, +`_fetch_raw_message()`, refactored `ingest_newsletters()` to three-phase (fetch → parallel-clean → assemble)
+- `apps/engine/main.py`: `_stage_snapshots_and_pca()` — filter `if p.positions:`, use `get_quotes()` instead of dict comprehension with `get_quote()`
+- `apps/engine/tests/test_newsletter.py`: +`test_ingest_newsletters_parallel_cleaning`, updated mocks from `_process_message` → `_fetch_raw_message`
+- `apps/engine/tests/test_performance_snapshot.py`: +`test_stage_snapshots_skips_portfolios_without_positions`, +`test_stage_snapshots_uses_batch_get_quotes`
+- `wiki/entities/pipeline.md`: noted parallel ad removal + snapshot filtering + batch fetch
+- `wiki/concepts/ingestion.md`: noted parallel cleaning
+
+### Test results
+589 passed, 0 failed, no regressions.
+
+## [2026-05-14] perf | Parallel newsletter cleaning + snapshot optimization
+
+### Changes
+- **Parallel ad removal**: `ingest_newsletters()` now fetches all Gmail bodies first, then runs `clean_newsletter_content()` on all newsletters concurrently via `asyncio.gather()`. Previously each newsletter was cleaned sequentially (7 newsletters × ~7s = ~49s; now ~13s). Extracted `_fetch_raw_message()` from `_process_message()` to separate Gmail API fetch from LLM cleaning.
+- **Snapshot filtering**: `_stage_snapshots_and_pca()` now only snapshots portfolios that hold actual positions. Empty cash-only portfolios (test_model, gpt-5-mini, etc.) are skipped, reducing 11 snapshots to ~5 per run.
+- **Batch market data**: Snapshot price fetching switched from individual `get_quote()` calls (25+ sequential FMP API calls) to `get_quotes()` batch fetch (single batched API call). Also eliminated the double-call bug where `get_quote()` was called twice per ticker (once for truthiness, once for value).
+
+### Files changed
+- `apps/engine/ingest/newsletter.py`: +import asyncio, +`_fetch_raw_message()`, refactored `ingest_newsletters()` to three-phase (fetch → parallel-clean → assemble)
+- `apps/engine/main.py`: `_stage_snapshots_and_pca()` — filter `if p.positions:`, use `get_quotes()` instead of dict comprehension with `get_quote()`
+- `apps/engine/tests/test_newsletter.py`: +`test_ingest_newsletters_parallel_cleaning`, updated mocks from `_process_message` → `_fetch_raw_message`
+- `apps/engine/tests/test_performance_snapshot.py`: +`test_stage_snapshots_skips_portfolios_without_positions`, +`test_stage_snapshots_uses_batch_get_quotes`
+- `wiki/entities/pipeline.md`: noted parallel ad removal + snapshot filtering + batch fetch
+- `wiki/concepts/ingestion.md`: noted parallel cleaning
+
+### Test results
+589 passed, 0 failed, no regressions.
+
+## [2026-05-14] chore | Add batch-fix scripts for Biome lint rules
+
+Added two utility scripts: `scripts/fix_button_types.py` adds `type="button"` to all `<button>` elements lacking a type attribute, and `scripts/fix_svg_titles.py` adds `<title>SVG</title>` as the first child of `<svg>` elements without a title. These automate fixing the Biome lint rules `useButtonType` and `noSvgWithoutTitle` across the entire codebase.
+
+## [2026-05-14] perf | Parallel newsletter cleaning + snapshot optimization
+
+### Changes
+- **Parallel ad removal**: `ingest_newsletters()` now fetches all Gmail bodies first, then runs `clean_newsletter_content()` on all newsletters concurrently via `asyncio.gather()`. Previously each newsletter was cleaned sequentially (7 newsletters × ~7s = ~49s; now ~13s). Extracted `_fetch_raw_message()` from `_process_message()` to separate Gmail API fetch from LLM cleaning.
+- **Snapshot filtering**: `_stage_snapshots_and_pca()` now only snapshots portfolios that hold actual positions. Empty cash-only portfolios (test_model, gpt-5-mini, etc.) are skipped, reducing 11 snapshots to ~5 per run.
+- **Batch market data**: Snapshot price fetching switched from individual `get_quote()` calls (25+ sequential FMP API calls) to `get_quotes()` batch fetch (single batched API call). Also eliminated the double-call bug where `get_quote()` was called twice per ticker (once for truthiness, once for value).
+
+### Files changed
+- `apps/engine/ingest/newsletter.py`: +import asyncio, +`_fetch_raw_message()`, refactored `ingest_newsletters()` to three-phase (fetch → parallel-clean → assemble)
+- `apps/engine/main.py`: `_stage_snapshots_and_pca()` — filter `if p.positions:`, use `get_quotes()` instead of dict comprehension with `get_quote()`
+- `apps/engine/tests/test_newsletter.py`: +`test_ingest_newsletters_parallel_cleaning`, updated mocks from `_process_message` → `_fetch_raw_message`
+- `apps/engine/tests/test_performance_snapshot.py`: +`test_stage_snapshots_skips_portfolios_without_positions`, +`test_stage_snapshots_uses_batch_get_quotes`
+- `wiki/entities/pipeline.md`: noted parallel ad removal + snapshot filtering + batch fetch
+- `wiki/concepts/ingestion.md`: noted parallel cleaning
+
+### Test results
+589 passed, 0 failed, no regressions.
+
+## [2026-05-14] chore | Add batch-fix scripts for Biome lint rules
+
+Added two utility scripts: `scripts/fix_button_types.py` adds `type="button"` to all `<button>` elements lacking a type attribute, and `scripts/fix_svg_titles.py` adds `<title>SVG</title>` as the first child of `<svg>` elements without a title. These automate fixing the Biome lint rules `useButtonType` and `noSvgWithoutTitle` across the entire codebase.

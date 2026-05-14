@@ -1,5 +1,3 @@
-import type { QueryKey } from '@tanstack/react-query';
-
 // ============================================================================
 // Query Key Factories
 // Following TanStack's recommended pattern for type-safe query keys

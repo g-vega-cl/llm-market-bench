@@ -80,8 +80,8 @@ describe('PositionsTable', () => {
             ),
         ).toBeInTheDocument();
         // Percentage values
-        const aaplPct = (((10 * 150) / totalInvested) * 100).toFixed(2) + '%';
-        const tslaPct = (((5 * 700) / totalInvested) * 100).toFixed(2) + '%';
+        const aaplPct = `${(((10 * 150) / totalInvested) * 100).toFixed(2)}%`;
+        const tslaPct = `${(((5 * 700) / totalInvested) * 100).toFixed(2)}%`;
         expect(screen.getByText(aaplPct)).toBeInTheDocument();
         expect(screen.getByText(tslaPct)).toBeInTheDocument();
     });

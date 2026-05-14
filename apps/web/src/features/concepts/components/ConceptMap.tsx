@@ -27,7 +27,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
     } | null>(null);
 
     // Debug Stats
-    const conceptCount = data.length;
+    const _conceptCount = data.length;
 
     React.useEffect(() => {
         if (!data || data.length === 0 || !svgRef.current) return;
@@ -124,7 +124,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
             .attr('d', (d) => pathGenerator(d.geometry as any))
             .attr('fill', (d) => {
                 const centroid = pathGenerator.centroid(d.geometry as any);
-                if (!centroid || isNaN(centroid[0])) return '#eee';
+                if (!centroid || Number.isNaN(centroid[0])) return '#eee';
                 return getSpatialColor(centroid[0], centroid[1]);
             })
             .attr('fill-opacity', (d) => 0.05 + d.properties.value * 0.1)
@@ -132,7 +132,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
             .attr('stroke-width', 0.5)
             .attr('stroke-opacity', 0.1)
             .style('cursor', 'crosshair')
-            .on('mouseenter', function (event, d) {
+            .on('mouseenter', function (_event, d) {
                 d3.select(this)
                     .transition()
                     .duration(100)
@@ -140,7 +140,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
                     .attr('stroke-opacity', 0.8);
 
                 const centroid = pathGenerator.centroid(d.geometry as any);
-                if (centroid && !isNaN(centroid[0])) {
+                if (centroid && !Number.isNaN(centroid[0])) {
                     const cx = centroid[0];
                     const cy = centroid[1];
 
@@ -168,7 +168,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
                     }
                 }
             })
-            .on('mouseleave', function (event, d) {
+            .on('mouseleave', function (_event, d) {
                 d3.select(this)
                     .transition()
                     .duration(200)
@@ -178,7 +178,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
             });
 
         // Draw Nodes (Restored Velocity Color)
-        const pointsG = svg
+        const _pointsG = svg
             .append('g')
             .selectAll('circle')
             .data(data)

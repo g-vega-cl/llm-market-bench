@@ -61,6 +61,7 @@ export function AuditCard({ audit }: AuditCardProps) {
             {audit.suggestion && (
                 <div className="mt-4 pt-4 border-t border-zinc-700">
                     <button
+                        type="button"
                         onClick={() => setExpanded(!expanded)}
                         className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
                     >

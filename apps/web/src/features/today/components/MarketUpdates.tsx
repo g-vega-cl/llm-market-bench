@@ -1,5 +1,4 @@
 import { SectionHeading } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
 
 interface MarketUpdatesProps {
     priceUpdates: any[];

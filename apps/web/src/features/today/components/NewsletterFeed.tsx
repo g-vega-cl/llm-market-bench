@@ -1,5 +1,4 @@
-import { Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
+import { SectionHeading } from '@llm-market-bench/ui-design-system';
 
 interface NewsletterFeedProps {
     newsletters: any[];
@@ -87,6 +86,7 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                         strokeLinejoin="round"
                                         className="group-hover:translate-x-1 transition-transform duration-300"
                                     >
+                                        <title>SVG</title>
                                         <path d="M5 12h14M12 5l7 7-7 7" />
                                     </svg>
                                 </span>

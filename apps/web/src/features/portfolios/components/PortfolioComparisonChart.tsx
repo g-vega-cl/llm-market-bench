@@ -134,7 +134,7 @@ export function PortfolioComparisonChart({
         });
 
         let benchmarkLines: ChartLine[] = [];
-        if (selectedBenchmark && benchmarkData && benchmarkData[selectedBenchmark]) {
+        if (selectedBenchmark && benchmarkData?.[selectedBenchmark]) {
             benchmarkLines = benchmarkData[selectedBenchmark].map((d) => ({
                 date: new Date(d.date),
                 value: d.price,
@@ -238,7 +238,7 @@ export function PortfolioComparisonChart({
 
         const bisector = d3.bisector<ChartLine, Date>((d) => d.date).left;
 
-        const overlay = g
+        const _overlay = g
             .append('rect')
             .attr('class', 'overlay')
             .attr('width', width)
@@ -322,7 +322,7 @@ export function PortfolioComparisonChart({
             .attr('y1', 0)
             .attr('y2', height);
 
-        portfolioGroups.forEach((points, portfolioId) => {
+        portfolioGroups.forEach((_points, portfolioId) => {
             const color = portfolioColors[portfolioId];
             g.append('circle')
                 .attr('class', `dot-${portfolioId}`)
@@ -344,7 +344,7 @@ export function PortfolioComparisonChart({
         const legend = g.append('g').attr('transform', `translate(${width + 20}, 20)`);
 
         let legendY = 0;
-        portfolioGroups.forEach((points, portfolioId) => {
+        portfolioGroups.forEach((_points, portfolioId) => {
             const portfolio = data.find((p) => p.portfolioId === portfolioId);
             const color = portfolioColors[portfolioId];
             const label = portfolio?.ownerId.replace(/-/g, ' ') || portfolioId;
@@ -448,11 +448,11 @@ export function PortfolioComparisonChart({
                 const lastDate = new Date(
                     data[0].performance[data[0].performance.length - 1]?.date || Date.now(),
                 );
-                const xPos = x(lastDate);
+                const _xPos = x(lastDate);
 
                 svg.select('.crosshair').attr('opacity', 0);
 
-                data.forEach((portfolio, index) => {
+                data.forEach((portfolio, _index) => {
                     const dot = svg.select(`.dot-${portfolio.portfolioId}`);
                     const pv = latest.portfolioValues.find((p) => p.ownerId === portfolio.ownerId);
                     if (dot.size() > 0 && pv) {
@@ -463,7 +463,7 @@ export function PortfolioComparisonChart({
                 svg.select('.benchmark-dot').attr('opacity', 0);
             }
         }
-    }, [clickedData, latestData, displayData, data, benchmarkData, selectedBenchmark]);
+    }, [clickedData, latestData, displayData, data]);
 
     const sortedPortfolioValues = displayData?.portfolioValues
         ? [...displayData.portfolioValues].sort((a, b) => b.value - a.value)
@@ -479,6 +479,7 @@ export function PortfolioComparisonChart({
                     <div className="text-xs text-zinc-400">Normalized to percentage returns</div>
                     {clickedData && (
                         <button
+                            type="button"
                             onClick={handleReset}
                             className="text-xs text-sky-600 hover:text-sky-700 font-medium"
                         >

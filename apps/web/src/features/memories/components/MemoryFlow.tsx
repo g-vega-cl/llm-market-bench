@@ -39,7 +39,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             })),
         ];
 
-        let root;
+        let root: d3.HierarchyNode<any>;
         try {
             root = d3
                 .stratify<any>()
@@ -121,14 +121,14 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .append('g')
             .attr('class', (d) => `node ${d.children ? 'node--internal' : 'node--leaf'}`)
             .attr('transform', (d: any) => `translate(${d.x || 0},${d.y || 0})`)
-            .on('click', (event, d) => {
+            .on('click', (_event, d) => {
                 onSelect?.(d.data.id);
             })
             .on('mouseenter', (event, d) => {
                 setHoveredNode(d.data);
                 d3.select(event.currentTarget).select('rect').attr('stroke-width', 2);
             })
-            .on('mouseleave', (event, d) => {
+            .on('mouseleave', (event, _d) => {
                 setHoveredNode(null);
                 d3.select(event.currentTarget).select('rect').attr('stroke-width', 1);
             });

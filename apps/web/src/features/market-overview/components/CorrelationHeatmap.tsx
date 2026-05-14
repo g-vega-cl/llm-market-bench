@@ -264,7 +264,7 @@ function SimplifiedMatrix({
         <div className="min-w-fit">
             <div className="flex">
                 <div className="w-16 shrink-0" />
-                {tickers.map((ticker, i) => (
+                {tickers.map((ticker, _i) => (
                     <div key={ticker} className="w-8 shrink-0 text-center">
                         <div
                             className="text-[8px] font-mono font-bold text-zinc-500 truncate transform -rotate-45 origin-center"

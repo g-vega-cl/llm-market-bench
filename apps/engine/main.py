@@ -447,26 +447,34 @@ async def _stage_decision_processing(
 
 
 async def _stage_snapshots_and_pca(sb_client):
-    """Stage 4: Performance snapshots and PCA updates."""
+    """Stage 4: Performance snapshots and PCA updates.
+
+    Only snapshots portfolios that hold actual positions — empty cash-only
+    portfolios don't change between runs and don't need daily snapshots.
+    Uses batch get_quotes() for efficient parallel market data fetching.
+    """
     logger.info("Starting Daily Performance Snapshot...")
     port_res = sb_client.table("portfolios").select("owner_id").execute()
     owners = [p["owner_id"] for p in port_res.data] if port_res.data else []
-    
+
     if owners:
         from execution.market_data import MarketDataManager
         mdm = MarketDataManager()
         all_tickers = set()
-        portfolios = []
+        active_portfolios = []
         for owner in owners:
             p = Portfolio(owner_id=owner)
             await p.initialize()
-            all_tickers.update(p.positions.keys())
-            portfolios.append(p)
-        
-        price_map = {t: (await mdm.get_quote(t)).price for t in all_tickers if await mdm.get_quote(t)}
-        for p in portfolios:
-            await p.record_performance_snapshot(price_map)
-            await p.save_metrics()
+            if p.positions:
+                all_tickers.update(p.positions.keys())
+                active_portfolios.append(p)
+
+        if all_tickers:
+            quotes = await mdm.get_quotes(list(all_tickers))
+            price_map = {t: data.price for t, data in quotes.items()}
+            for p in active_portfolios:
+                await p.record_performance_snapshot(price_map)
+                await p.save_metrics()
 
     logger.info("Updating PCA coordinates...")
     update_pca_coordinates(sb_client)

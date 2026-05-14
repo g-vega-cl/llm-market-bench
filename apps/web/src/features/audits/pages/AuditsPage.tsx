@@ -101,6 +101,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                     {hasNextPage && (
                         <div className="pt-4 pb-2">
                             <button
+                                type="button"
                                 onClick={() => fetchNextPage()}
                                 disabled={isFetchingNextPage}
                                 className="w-full py-4 px-6 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"

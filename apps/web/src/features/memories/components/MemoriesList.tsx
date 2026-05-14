@@ -50,6 +50,7 @@ export function MemoriesList({ memories }: MemoriesListProps) {
                     <div className="flex flex-wrap gap-2">
                         {FILTERS.map((type) => (
                             <button
+                                type="button"
                                 key={type.id}
                                 onClick={() => setFilter(type.id)}
                                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
@@ -65,6 +66,7 @@ export function MemoriesList({ memories }: MemoriesListProps) {
 
                     {/* View Toggle */}
                     <button
+                        type="button"
                         onClick={() => setShowFlow(!showFlow)}
                         className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors border ${
                             showFlow

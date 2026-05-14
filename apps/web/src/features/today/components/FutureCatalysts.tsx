@@ -62,7 +62,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
     // Filter out passed events and count only visible ones
     const visibleEvents = sortedEvents.filter((event) => {
         const eventDate = event.target_date || extractDate(event.content);
-        const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null;
+        const dateObj = eventDate ? new Date(`${eventDate}T00:00:00`) : null;
         const countdown = dateObj ? getCountdown(dateObj) : null;
         return !countdown?.isPassed;
     });
@@ -88,7 +88,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                     {visibleEvents.map((event, idx) => {
                         const dateNote = event.metadata?.future_date_note;
                         const eventDate = event.target_date || extractDate(event.content);
-                        const dateObj = eventDate ? new Date(eventDate + 'T00:00:00') : null;
+                        const dateObj = eventDate ? new Date(`${eventDate}T00:00:00`) : null;
                         const countdown = dateObj ? getCountdown(dateObj) : null;
                         const importanceScore = event.metadata?.importance_score || 7;
 

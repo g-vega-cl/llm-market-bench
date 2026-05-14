@@ -1,7 +1,6 @@
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
-import type { PaginatedReasoningLogs } from '../api/fetch-reasoning-logs';
 import { HumanFriendlyPrompt } from '../components/HumanFriendlyPrompt';
 import { HumanFriendlyResponse } from '../components/HumanFriendlyResponse';
 import { reasoningQueries } from '../queries/options';
@@ -75,6 +74,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                 <div className="flex gap-2 p-1.5 bg-gray-100 dark:bg-gray-900/50 rounded-2xl w-fit border border-gray-200 dark:border-gray-800 backdrop-blur-xl min-w-max">
                     {categories.map((cat) => (
                         <button
+                            type="button"
                             key={cat}
                             onClick={() => {
                                 setActiveTab(cat);
@@ -98,6 +98,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                 {selectedLog && (
                     <div className="lg:hidden mb-4">
                         <button
+                            type="button"
                             onClick={() => setSelectedLogId(null)}
                             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]"
                         >
@@ -107,6 +108,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
+                                <title>SVG</title>
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -172,6 +174,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                     {hasNextPage && (
                         <div className="pt-3 md:pt-4 pb-1 md:pb-2">
                             <button
+                                type="button"
                                 onClick={() => {
                                     fetchNextPage();
                                     posthog.capture('reasoning_load_more_clicked');

@@ -17,6 +17,8 @@
 - Both run in `.husky/pre-commit` before tests (fail-fast).
 - Format with `ruff format` / `biome check --write`.
 
+**After every code change, verify lint passes before marking work complete.** The pre-commit hook will block commits with lint errors. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint is not done.
+
 ## Principles
 - Code is truth. Docs are hints. When they conflict, trust the code.
 - Read the code before acting — don't assume.

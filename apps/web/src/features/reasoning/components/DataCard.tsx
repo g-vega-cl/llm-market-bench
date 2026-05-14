@@ -1,5 +1,4 @@
 import { Badge } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
 
 export function DataCard({ item }: { item: any }) {
     if (typeof item !== 'object' || item === null) {
@@ -16,7 +15,7 @@ export function DataCard({ item }: { item: any }) {
             typeof v === 'string' &&
             (v.length > 60 || k.includes('reasoning') || k.includes('summary')),
     );
-    const shortFields = entries.filter(([k, v]) => !longTextFields.find(([lk]) => lk === k));
+    const shortFields = entries.filter(([k, _v]) => !longTextFields.find(([lk]) => lk === k));
 
     return (
         <div className="p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40 shadow-sm hover:shadow-xl hover:border-blue-500/30 transition-all duration-300 group/card">

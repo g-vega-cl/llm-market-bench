@@ -68,6 +68,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                 viewBox="0 0 24 24"
                                                 stroke="currentColor"
                                             >
+                                                <title>SVG</title>
                                                 <path
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"

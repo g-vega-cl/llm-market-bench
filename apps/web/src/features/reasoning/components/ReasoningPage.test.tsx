@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { HumanFriendlyPrompt } from './HumanFriendlyPrompt';
 import { HumanFriendlyResponse } from './HumanFriendlyResponse';
@@ -54,6 +53,7 @@ describe('HumanFriendlyResponse', () => {
     it('shows data for the selected tab', () => {
         render(<HumanFriendlyResponse response={mockResponse} />);
 
+        fireEvent.click(screen.getByText('decisions'));
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getByText('BUY')).toBeInTheDocument();
 

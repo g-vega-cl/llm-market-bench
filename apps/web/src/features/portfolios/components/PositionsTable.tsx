@@ -146,6 +146,7 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                                                 viewBox="0 0 24 24"
                                                 stroke="currentColor"
                                             >
+                                                <title>SVG</title>
                                                 <path
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
@@ -187,12 +188,12 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                                 </td>
                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
                                     {totalInvestedCash
-                                        ? (
+                                        ? `${(
                                               (((pos.quantity ?? 0) *
                                                   (pos.average_cost_basis ?? 0)) /
                                                   totalInvestedCash) *
-                                              100
-                                          ).toFixed(2) + '%'
+                                                  100
+                                          ).toFixed(2)}%`
                                         : '0%'}
                                 </td>
                                 <td

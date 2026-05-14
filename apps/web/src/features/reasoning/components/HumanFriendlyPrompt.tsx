@@ -23,6 +23,7 @@ export function HumanFriendlyPrompt({ prompt }: { prompt: any[] }) {
                     <div className="flex gap-0.5 md:gap-1 p-0.5 md:p-1 bg-gray-100 dark:bg-gray-900 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800 shadow-inner overflow-x-auto">
                         {roles.map((role) => (
                             <button
+                                type="button"
                                 key={role}
                                 onClick={() => setActiveRole(role)}
                                 className={`px-2 md:px-4 py-1 md:py-1.5 rounded-md md:rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all duration-200 whitespace-nowrap min-h-[32px] md:min-h-[unset] ${
@@ -43,8 +44,7 @@ export function HumanFriendlyPrompt({ prompt }: { prompt: any[] }) {
                     const isSystem = msg.role === 'system';
                     const isAssistant = msg.role === 'assistant' || msg.role === 'model';
                     const isTool =
-                        msg.role === 'tool' ||
-                        (msg.parts && msg.parts.some((p: any) => p.function_response));
+                        msg.role === 'tool' || msg.parts?.some((p: any) => p.function_response);
 
                     return (
                         <div

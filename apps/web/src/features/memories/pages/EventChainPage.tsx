@@ -1,6 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import * as React from 'react';
 import { eventChainQueries } from '~/features/memories/queries/options';
 
 interface EventChainPageProps {
@@ -51,6 +50,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
                                 >
+                                    <title>SVG</title>
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"

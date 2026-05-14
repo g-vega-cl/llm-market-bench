@@ -123,6 +123,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
             {memory.metadata?.scenario_analysis && (
                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <button
+                        type="button"
                         onClick={() => setIsExpanded(!isExpanded)}
                         className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                     >
@@ -132,6 +133,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
+                            <title>SVG</title>
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -223,6 +225,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                                                 .slice(0, 6)
                                                 .map((asset: any, idx: number) => (
                                                     <button
+                                                        type="button"
                                                         key={idx}
                                                         onClick={() => setSelectedAsset(asset)}
                                                         className="flex flex-col items-start justify-between p-3 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full"
@@ -270,6 +273,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
+                            <title>SVG</title>
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -317,6 +321,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                                 </div>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => setSelectedAsset(null)}
                                 className="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                             >
@@ -326,6 +331,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
                                 >
+                                    <title>SVG</title>
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -358,6 +364,7 @@ export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
                                     View on Yahoo Finance
                                 </a>
                                 <button
+                                    type="button"
                                     onClick={() => setSelectedAsset(null)}
                                     className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium rounded transition-colors"
                                 >

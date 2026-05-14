@@ -126,9 +126,11 @@ class TestPromptStore:
                     if name == "execute":
                         async def exec_coro():
                             if self._single_data is not None:
-                                r = MagicMock(); r.data = self._single_data
+                                r = MagicMock()
+                                r.data = self._single_data
                                 return r
-                            r = MagicMock(); r.data = self._data
+                            r = MagicMock()
+                            r.data = self._data
                             return r
                         return exec_coro()
                     return self
@@ -163,11 +165,13 @@ class TestPromptStore:
 
             class AsyncQuery(_QueryRecorder):
                 def __getattr__(self, name):
-                    if name.startswith("_"): raise AttributeError(name)
+                    if name.startswith("_"):
+                        raise AttributeError(name)
                     def method(*args, **kwargs):
                         if name == "execute":
                             async def exec_coro():
-                                r = MagicMock(); r.data = self._single_data
+                                r = MagicMock()
+                                r.data = self._single_data
                                 return r
                             return exec_coro()
                         return self
@@ -197,11 +201,13 @@ class TestPromptStore:
 
             class AsyncQuery(_QueryRecorder):
                 def __getattr__(self, name):
-                    if name.startswith("_"): raise AttributeError(name)
+                    if name.startswith("_"):
+                        raise AttributeError(name)
                     def method(*args, **kwargs):
                         if name == "execute":
                             async def exec_coro():
-                                r = MagicMock(); r.data = {"prompt_content": f"v{call_count['n']}"}
+                                r = MagicMock()
+                                r.data = {"prompt_content": f"v{call_count['n']}"}
                                 return r
                             return exec_coro()
                         return self
@@ -386,13 +392,12 @@ class TestResearcherDoesNotCloseClient:
         path = ENGINE_DIR / "autoresearch" / "researcher.py"
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.module == "core.llm":
-                    for alias in node.names:
-                        assert alias.name != "_close_client", (
-                            "researcher.py must not import _close_client. "
-                            "The wiki forbids closing the singleton httpx client."
-                        )
+            if isinstance(node, ast.ImportFrom) and node.module == "core.llm":
+                for alias in node.names:
+                    assert alias.name != "_close_client", (
+                        "researcher.py must not import _close_client. "
+                        "The wiki forbids closing the singleton httpx client."
+                    )
 
 # ---------------------------------------------------------------------------
 # Test 3: runner must not duplicate get_week_window — evaluator owns it.
@@ -494,17 +499,18 @@ class TestBootstrap:
         path = ENGINE_DIR / "autoresearch" / "bootstrap.py"
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                # Check for sys.path.append or sys.path.insert
-                if isinstance(node.func, ast.Attribute):
-                    if isinstance(node.func.value, ast.Attribute):
-                        if (node.func.value.attr == "path" and
-                                node.func.value.value.id == "sys"):  # type: ignore[union-attr]
-                            # Must not contain getcwd() or "apps"
-                            code = ast.unparse(node)
-                            assert "getcwd" not in code and "apps" not in code, (
-                                f"bootstrap.py must not use CWD-dependent paths: {code}"
-                            )
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Attribute)
+                and node.func.value.attr == "path"
+                and node.func.value.value.id == "sys"  # type: ignore[union-attr]
+            ):
+                # Must not contain getcwd() or "apps"
+                code = ast.unparse(node)
+                assert "getcwd" not in code and "apps" not in code, (
+                    f"bootstrap.py must not use CWD-dependent paths: {code}"
+                )
 
     @pytest.mark.asyncio
     async def test_bootstrap_idempotent(self, monkeypatch):
@@ -722,7 +728,7 @@ class TestActivationGate:
     prompt is reverted to the baseline before the next experiment deploys."""
 
     @staticmethod
-    def _make_result(**overrides) -> "PromptResearchResult":
+    def _make_result(**overrides) -> "PromptResearchResult":  # noqa: F821
         from autoresearch.researcher import PromptResearchResult
         defaults = dict(
             new_prompt_text="test prompt",

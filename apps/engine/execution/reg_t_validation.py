@@ -139,7 +139,7 @@ def calculate_reg_t_metrics(
     # Realized Value = Cash + Total Cost Basis
     # We need to sum cost basis from positions
     total_cost_basis = 0.0
-    for ticker, pos in positions.items():
+    for _ticker, pos in positions.items():
         if hasattr(pos, "average_cost_basis"):
             cost_basis = pos.average_cost_basis * (pos.quantity if hasattr(pos, "quantity") else 0)
         elif isinstance(pos, dict):

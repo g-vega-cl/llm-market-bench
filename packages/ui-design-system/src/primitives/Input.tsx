@@ -46,6 +46,7 @@ export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> 
 export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     ({ className, children, ...props }, ref) => {
         return (
+            // biome-ignore lint/a11y/noLabelWithoutControl: Generic label wrapper component
             <label
                 ref={ref}
                 className={cn(

@@ -13,20 +13,20 @@ from main import run_ingest
 def mock_dependencies():
     """Setup mocks for SELL guardrail tests."""
     with patch("main.ingest_newsletters") as mock_ingest, \
-         patch("main.get_supabase_client") as mock_get_client, \
-         patch("main.upsert_newsletter_snapshot") as mock_upsert, \
-         patch("main._stage_dust_cleanup", new_callable=AsyncMock) as mock_dust, \
+         patch("main.get_supabase_client"), \
+         patch("main.upsert_newsletter_snapshot"), \
+         patch("main._stage_dust_cleanup", new_callable=AsyncMock), \
          patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze, \
          patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
-         patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
-         patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
+         patch("main.analyze_momentum", new_callable=AsyncMock), \
+         patch("main.decay_stale_concepts", new_callable=AsyncMock), \
          patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling, \
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
          patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap, \
          patch("main.Portfolio") as MockPortfolio, \
          patch("execution.market_data.MarketDataManager") as MockMDM, \
-         patch("main.verify_trading_decision", new_callable=AsyncMock) as mock_verify, \
+         patch("main.verify_trading_decision", new_callable=AsyncMock), \
          patch("main.save_decision") as mock_save:
         
         # Setup defaults

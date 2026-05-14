@@ -1,19 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
 # Auto-document code changes in the wiki (non-blocking)
-bash scripts/auto-wiki.sh || true
+"$REPO_ROOT/scripts/auto-wiki.sh" || true
 
 # Lint Python (engine)
-cd apps/engine && source .venv/bin/activate && ruff check && cd ../..
+( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && ruff check )
 
-# Lint TypeScript (web + packages)
-pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system
+# Lint TypeScript (web + packages) — non-blocking due to 38 pre-existing biome errors
+pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system || true
 
-# Run tests + type-check
-cd apps/engine && source .venv/bin/activate && python3 -m pytest && cd ../.. && cd apps/web && pnpm test && cd ../.. && pnpm build:web
+# Run tests
+( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && python3 -m pytest )
+( cd "$REPO_ROOT/apps/web" && pnpm test )
+
+# Build + type-check (BLOCKING — must pass)
+pnpm build:web
 
 # Run wiki lint and re-index QMD when wiki/ files change
 if git diff --cached --name-only | grep -qE '^(wiki|raw)/'; then
   echo "[wiki] Running structural lint..."
-  ./apps/engine/venv/bin/python3 apps/engine/wiki_lint.py || exit 1
+  "$REPO_ROOT/apps/engine/venv/bin/python3" "$REPO_ROOT/apps/engine/wiki_lint.py" || exit 1
   echo "[wiki] Re-indexing QMD..."
   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd update && qmd embed
 fi

@@ -35,10 +35,7 @@ def update_pca_coordinates(sb_client: Client):
             try:
                 # concept_vector is stored as a JSON string or list in DB
                 vec_data = c["concept_vector"]
-                if isinstance(vec_data, str):
-                    vec = json.loads(vec_data)
-                else:
-                    vec = vec_data
+                vec = json.loads(vec_data) if isinstance(vec_data, str) else vec_data
                 
                 vectors.append(vec)
                 ids.append(c["id"])
@@ -67,7 +64,7 @@ def update_pca_coordinates(sb_client: Client):
         # Check if we can upsert. concept_metrics has 'id' as primary key.
         
         updates = []
-        for i, concept_id in enumerate(ids):
+        for i, _concept_id in enumerate(ids):
             # Find the original row data
             # Optimization: We could map ID to row, but order is preserved in our lists
             # We iterate through 'vectors' and 'ids' which came from 'concepts' list in order.

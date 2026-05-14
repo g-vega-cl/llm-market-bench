@@ -177,9 +177,8 @@ def extract_email_body(payload: dict[str, Any]) -> str:
                 if mime_type == "text/plain":
                     if len(decoded) > len(collected["plain"]):
                         collected["plain"] = decoded
-                elif mime_type == "text/html":
-                    if len(decoded) > len(collected["html"]):
-                        collected["html"] = decoded
+                elif mime_type == "text/html" and len(decoded) > len(collected["html"]):
+                    collected["html"] = decoded
             except Exception as e:
                 logger.warning(f"Failed to decode email part: {e}")
 

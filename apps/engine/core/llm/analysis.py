@@ -121,7 +121,7 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
         strategies.append(lambda d: DecisionsResponse.model_validate_json(d))
 
         try:
-            parsed = json.loads(repaired)
+            json.loads(repaired)
             strategies.append(lambda d: DecisionsResponse.model_validate_json(d) if isinstance(d, dict) else DecisionsResponse(**d))
         except Exception:
             pass
@@ -471,9 +471,7 @@ async def _validate_and_enrich_government_events(
         for pattern in VAGUE_GOV_PATTERNS:
             if pattern in name_lower:
                 return True
-        if name_lower in ("government policy update", "policy update"):
-            return True
-        return False
+        return name_lower in ("government policy update", "policy update")
 
     gov_chunks = [chunk for chunk in chunks if chunk_has_gov_content(chunk.get("content", ""))]
     if not gov_chunks:

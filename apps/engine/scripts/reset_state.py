@@ -39,7 +39,6 @@ async def reset_database():
             buying_power = 40000.00
             excess_liquidity = 10000.00
             maintenance_margin = 0.0
-            available_funds = 10000.00
             sma = 10000.00
             realized = 10000.00
             

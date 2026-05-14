@@ -10,7 +10,6 @@ from core.db import get_supabase_client
 
 async def check_failed_decisions():
     supabase = get_supabase_client()
-    portfolio_id = "41e2f4be-8a0e-4cce-a700-b06b10019d44"
     model_name = "gpt-5.4-nano"
     
     print(f"--- Decisions for {model_name} ---")

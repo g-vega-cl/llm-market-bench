@@ -14,9 +14,6 @@ def get_week_window(today: date | None = None) -> tuple[date, date]:
     week just closed). Otherwise, walk back to the prior Sunday.
     """
     today = today or date.today()
-    if today.weekday() == 6:  # Sunday
-        week_end = today
-    else:
-        week_end = today - timedelta(days=today.weekday() + 1)
+    week_end = today if today.weekday() == 6 else today - timedelta(days=today.weekday() + 1)
     week_start = week_end - timedelta(days=6)
     return week_start, week_end

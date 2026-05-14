@@ -1,7 +1,13 @@
-import type { Portfolio } from '@llm-market-bench/database';
+import type {
+    Portfolio,
+    PortfolioPerformance,
+    PositionWithReasoning,
+    TradeWithReasoning,
+} from '@llm-market-bench/database';
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { PositionsTable } from '../components/PositionsTable';

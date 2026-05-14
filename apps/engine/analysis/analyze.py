@@ -5,7 +5,7 @@ multiple LLM providers (OpenAI, Claude, Gemini, DeepSeek).
 """
 
 import asyncio
-import logging
+from datetime import datetime
 
 from core import llm
 from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL, OPENAI_MODEL, logger
@@ -14,8 +14,6 @@ from core.models import DecisionObject, MacroEvent
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
 from memory.store import get_top_trending_concepts, retrieve_top_memories
-
-logger = logging.getLogger("engine")
 
 # Configuration for models to use
 MODELS = [
@@ -162,7 +160,6 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             continue
 
         import calendar
-        from datetime import datetime
         
         now = datetime.now()
         day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
@@ -324,10 +321,8 @@ async def analyze_chunks_streaming(chunks: list[dict]):
                 aggregated_context += f"\n\n{trending_concepts}"
             else:
                 aggregated_context = trending_concepts
-        uncrowded_context = ""
     else:
         aggregated_context = ""
-        uncrowded_context = ""
 
     portfolios = {}
     all_tickers = set()
@@ -384,7 +379,6 @@ async def analyze_chunks_streaming(chunks: list[dict]):
             continue
 
         import calendar
-        from datetime import datetime
         
         now = datetime.now()
         day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."

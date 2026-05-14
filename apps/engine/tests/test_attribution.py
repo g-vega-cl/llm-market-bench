@@ -77,7 +77,7 @@ def test_save_decision_with_trade_id(mock_supabase):
     )
     
     trade_id = "550e8400-e29b-41d4-a716-446655440000"
-    result = save_decision(mock_supabase, decision, trade_id=trade_id)
+    save_decision(mock_supabase, decision, trade_id=trade_id)
     
     args, kwargs = mock_supabase.table().upsert.call_args
     payload = args[0]

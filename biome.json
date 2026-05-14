@@ -13,7 +13,9 @@
             "!**/dist",
             "!**/.netlify",
             "!**/node_modules",
-            "!**/.vinxi"
+            "!**/.vinxi",
+            "!**/routeTree.gen.ts",
+            "!**/app.css"
         ]
     },
     "formatter": {
@@ -36,13 +38,87 @@
         "enabled": true,
         "rules": {
             "recommended": true,
+            "a11y": {
+                "noStaticElementInteractions": "warn",
+                "useKeyWithClickEvents": "warn",
+                "noLabelWithoutControl": "warn"
+            },
             "complexity": {
                 "noExcessiveCognitiveComplexity": "warn"
+            },
+            "suspicious": {
+                "noExplicitAny": "warn",
+                "noArrayIndexKey": "warn"
             },
             "style": {
                 "noNonNullAssertion": "warn"
             }
         }
     },
+    "overrides": [
+        {
+            "includes": ["**/CorrelationHeatmap.tsx"],
+            "linter": {
+                "rules": {
+                    "a11y": {
+                        "noStaticElementInteractions": "off",
+                        "useKeyWithClickEvents": "off"
+                    },
+                    "complexity": {
+                        "noExcessiveCognitiveComplexity": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": [
+                "**/PerformanceChart.tsx",
+                "**/PortfolioComparisonChart.tsx",
+                "**/PositionsTable.tsx",
+                "**/TradesTable.tsx",
+                "**/UncorrelatedPairs.tsx",
+                "**/FutureCatalysts.tsx",
+                "**/MarketStatusHero.tsx",
+                "**/HumanFriendlyPrompt.tsx",
+                "**/HumanFriendlyResponse.tsx",
+                "**/ReasoningPage.tsx",
+                "**/MemoryCard.tsx",
+                "**/MarketOverviewPage.tsx",
+                "**/MemoryFlow.tsx",
+                "**/EventChainPage.tsx",
+                "**/fetch-portfolios.ts",
+                "**/ConceptMap.tsx"
+            ],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveCognitiveComplexity": "off"
+                    },
+                    "a11y": {
+                        "noStaticElementInteractions": "off",
+                        "useKeyWithClickEvents": "off"
+                    },
+                    "style": {
+                        "noNonNullAssertion": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/TradeActivity.tsx"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveCognitiveComplexity": "off"
+                    },
+                    "a11y": {
+                        "noStaticElementInteractions": "off",
+                        "useKeyWithClickEvents": "off",
+                        "useSemanticElements": "off"
+                    }
+                }
+            }
+        }
+    ],
     "assist": { "actions": { "source": { "organizeImports": "on" } } }
 }

@@ -116,6 +116,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
         return (
             <button
+                type="button"
                 ref={ref}
                 className={cn(base, roundedClasses, colorClasses, sizeClasses, className)}
                 disabled={disabled || isLoading}
@@ -157,6 +158,7 @@ export function LoadingSpinner({ size = 'md', className, ...props }: LoadingSpin
             viewBox="0 0 24 24"
             {...props}
         >
+            <title>SVG</title>
             <circle
                 className="opacity-25"
                 cx="12"

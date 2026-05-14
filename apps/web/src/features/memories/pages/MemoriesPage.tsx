@@ -1,6 +1,7 @@
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import type { PaginatedMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesList } from '~/features/memories/components/MemoriesList';
 import { memoriesQueries } from '~/features/memories/queries/options';
 

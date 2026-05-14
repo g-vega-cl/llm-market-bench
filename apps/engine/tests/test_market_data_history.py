@@ -27,8 +27,7 @@ async def test_market_data_manager_get_history_cache_hit():
     
     mock_provider = AsyncMock()
     
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
             # Request 10 days, we have 8 (80% which is >= 70% threshold)
             history = await manager.get_history("AAPL", days=10)
@@ -53,8 +52,7 @@ async def test_market_data_manager_get_history_fallback_batch_upsert():
         {"price": 151.0, "volume": 10000000, "fetched_at": "2026-02-02T10:00:00"}
     ]
     
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
             history = await manager.get_history("NEW_STOCK", days=14)
         

@@ -71,7 +71,7 @@ async def analyze_momentum(sb_client: Client, consensus_events: list[dict]):
         logger.error(f"Failed to get embeddings for momentum analysis: {e}")
         return
 
-    for event, embedding in zip(consensus_events, embeddings):
+    for event, embedding in zip(consensus_events, embeddings, strict=False):
         try:
             velocity = calculate_velocity(sb_client, embedding)
             update_concept_metrics(sb_client, event["event_name"], embedding, velocity)
@@ -174,7 +174,7 @@ def update_concept_metrics(sb_client: Client, concept_name: str, embedding: list
         ).execute()
         
         now = datetime.now(UTC).isoformat()
-        mentions_90d = _get_90d_mentions(sb_client, embedding)
+        _get_90d_mentions(sb_client, embedding)
         
         if match_res.data:
             # Semantic match found - merge!

@@ -55,7 +55,7 @@ async def _daily_returns(sb_client, owner_ids: frozenset | set, week_start: date
         curr_date = all_dates[i]
 
         agent_daily_returns = []
-        for owner, equity_by_date in agent_equity.items():
+        for _owner, equity_by_date in agent_equity.items():
             prev_eq = equity_by_date.get(prev_date)
             curr_eq = equity_by_date.get(curr_date)
             if prev_eq is not None and curr_eq is not None and prev_eq > 0:

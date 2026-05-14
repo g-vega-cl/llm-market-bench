@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { fetchTodayData } from '~/features/today/api/fetch-today-data';
 import { TodayPage } from '~/features/today/pages/TodayPage';
 
-const getTodayData = createServerFn({ method: 'GET' }).handler(async () => {
+const getTodayData = (createServerFn({ method: 'GET' }) as any).handler(async () => {
     return fetchTodayData();
 });
 

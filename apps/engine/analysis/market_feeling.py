@@ -279,11 +279,11 @@ def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
 
 
 async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] | None:
-    f"""Generate market feeling sentiment using MiniMax.
+    """Generate market feeling sentiment using MiniMax.
 
     This function:
     1. Gathers today's (or week's) trading data
-    2. Calls MiniMax {MINIMAX_MODEL} to generate sentiment analysis
+    2. Calls MiniMax to generate sentiment analysis
     3. Stores the result in the market_feeling table
     4. Returns the created record
 

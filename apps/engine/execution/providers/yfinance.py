@@ -35,12 +35,13 @@ class YFinanceProvider(FinancialProvider):
             t = await loop.run_in_executor(None, lambda: yf.Ticker(ticker))
             info = await loop.run_in_executor(None, lambda: t.info)
 
-            if not info or "symbol" not in info:
-                # yfinance often returns an almost empty dict if ticker is not found
-                # or it might throw an error. Checking for 'symbol' is a good proxy.
-                if not info or info.get('trailingPegRatio') is None and info.get('marketCap') is None:
-                    logger.warning(f"Ticker {ticker} not found on yfinance or has no data.")
-                    return None
+            if not info or (
+                "symbol" not in info
+                and info.get("trailingPegRatio") is None
+                and info.get("marketCap") is None
+            ):
+                logger.warning(f"Ticker {ticker} not found on yfinance or has no data.")
+                return None
 
             # Different keys might contain price depending on market state
             price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")

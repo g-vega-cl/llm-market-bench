@@ -14,12 +14,12 @@ def mock_dependencies():
     """Setup all mocks required for run_ingest."""
     with patch("main.ingest_newsletters") as mock_ingest, \
          patch("main.get_supabase_client") as mock_get_client, \
-         patch("main.upsert_newsletter_snapshot") as mock_upsert, \
+         patch("main.upsert_newsletter_snapshot"), \
          patch("main._stage_dust_cleanup", new_callable=AsyncMock) as mock_dust, \
          patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze, \
          patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus, \
-         patch("main.analyze_momentum", new_callable=AsyncMock) as mock_momentum, \
-         patch("main.decay_stale_concepts", new_callable=AsyncMock) as mock_decay, \
+         patch("main.analyze_momentum", new_callable=AsyncMock), \
+         patch("main.decay_stale_concepts", new_callable=AsyncMock), \
          patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling, \
          patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian, \
          patch("main.validate_decision", new_callable=AsyncMock) as mock_validate, \
@@ -314,12 +314,12 @@ async def test_run_ingest_aborts_when_presave_returns_no_id(mock_dependencies):
 async def test_run_weekend_ingest_skips_analysis_and_trading():
     """Test that weekend pipeline only runs ingestion and market feeling."""
     with patch("main.ingest_newsletters") as mock_ingest, \
-         patch("main.get_supabase_client") as mock_get_client, \
-         patch("main.upsert_newsletter_snapshot") as mock_upsert, \
+         patch("main.get_supabase_client"), \
+         patch("main.upsert_newsletter_snapshot"), \
          patch("main._stage_dust_cleanup", new_callable=AsyncMock) as mock_dust, \
          patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze, \
          patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling, \
-         patch("main.Portfolio") as MockPortfolio:
+         patch("main.Portfolio"):
 
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_market_feeling.return_value = {"sentiment_label": "Weekend Recap", "sentiment_emoji": "📅"}

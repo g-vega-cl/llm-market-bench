@@ -8,6 +8,7 @@ function-tool schema). Handlers translate to provider-specific formats via
 
 from core.db import get_supabase_client
 from execution.market_data import MarketDataManager
+from memory.embeddings import get_embedding
 
 # =============================================================================
 # FORMAT ADAPTERS
@@ -522,9 +523,6 @@ async def execute_stock_screener_tool(
         return f"Error executing stock screener: {str(e)}"
 
 
-from memory.embeddings import get_embedding
-
-
 async def execute_sector_alternatives_tool(ticker: str) -> str:
     """Identifies sector alternatives for a ticker using vector search on past decisions."""
     client = get_supabase_client()
@@ -643,7 +641,7 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
     portfolio = Portfolio(owner_id)
     await portfolio.initialize()
 
-    manager = MarketDataManager()
+    MarketDataManager()
 
     try:
         res = client.table("position_pnl") \

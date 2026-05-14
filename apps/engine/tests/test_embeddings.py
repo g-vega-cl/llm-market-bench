@@ -14,15 +14,13 @@ def reset_client():
 
 def test_get_client_missing_key():
     """Test that get_client raises ValueError when API key is missing."""
-    with patch("core.config.GEMINI_API_KEY", None):
-        with pytest.raises(ValueError, match="GEMINI_API_KEY is not set"):
-            get_client()
+    with patch("core.config.GEMINI_API_KEY", None), pytest.raises(ValueError, match="GEMINI_API_KEY is not set"):
+        get_client()
 
 def test_get_client_success():
     """Test that get_client creates and caches the client."""
     mock_client = MagicMock()
-    with patch("core.config.GEMINI_API_KEY", "fake-key"):
-        with patch("google.genai.Client", return_value=mock_client) as mock_genai:
+    with patch("core.config.GEMINI_API_KEY", "fake-key"), patch("google.genai.Client", return_value=mock_client) as mock_genai:
             client1 = get_client()
             client2 = get_client()
             
@@ -45,18 +43,16 @@ def test_get_embeddings_batch_success():
     mock_response.embeddings = [mock_embedding]
     mock_client.models.embed_content.return_value = mock_response
     
-    with patch("core.config.GEMINI_API_KEY", "fake-key"):
-        with patch("google.genai.Client", return_value=mock_client):
-            results = get_embeddings_batch(["test text"])
-            assert results == [[0.1, 0.2, 0.3]]
-            mock_client.models.embed_content.assert_called_once()
+    with patch("core.config.GEMINI_API_KEY", "fake-key"), patch("google.genai.Client", return_value=mock_client):
+        results = get_embeddings_batch(["test text"])
+        assert results == [[0.1, 0.2, 0.3]]
+        mock_client.models.embed_content.assert_called_once()
 
 def test_get_embeddings_batch_api_error():
     """Test that get_embeddings_batch handles API errors gracefully."""
     mock_client = MagicMock()
     mock_client.models.embed_content.side_effect = Exception("API Error")
     
-    with patch("core.config.GEMINI_API_KEY", "fake-key"):
-        with patch("google.genai.Client", return_value=mock_client):
-            results = get_embeddings_batch(["test text"])
-            assert results == []
+    with patch("core.config.GEMINI_API_KEY", "fake-key"), patch("google.genai.Client", return_value=mock_client):
+        results = get_embeddings_batch(["test text"])
+        assert results == []

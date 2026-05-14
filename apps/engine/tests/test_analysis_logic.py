@@ -454,7 +454,7 @@ class TestAnthropicMessageFlattening:
              patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock), \
              patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages_in):
 
-            result = await analyze_with_provider(
+            await analyze_with_provider(
                 provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks
             )
             return captured.get("messages", [])

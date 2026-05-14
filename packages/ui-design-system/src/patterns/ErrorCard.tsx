@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { cn } from '../lib/cn';
 
 /**
@@ -32,6 +31,7 @@ export function ErrorCard({ title = 'Error', message, className, onRetry }: Erro
             {onRetry && (
                 <div className="mt-4">
                     <button
+                        type="button"
                         onClick={onRetry}
                         className="px-3 py-1.5 text-xs font-medium text-white bg-danger rounded-lg hover:bg-danger/90 transition-colors"
                     >

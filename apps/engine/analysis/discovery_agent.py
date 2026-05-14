@@ -1,5 +1,6 @@
 """Specialized agent for discovering investable assets based on market themes."""
 
+import contextlib
 import json
 import logging
 import re
@@ -197,18 +198,14 @@ class DiscoveryAgent:
         if not json_match:
             json_array_match = re.search(r'\[[\s\S]*\]', text)
             if json_array_match:
-                try:
+                with contextlib.suppress(json.JSONDecodeError):
                     json_match = json.loads(json_array_match.group(0))
-                except json.JSONDecodeError:
-                    pass
         
         if not json_match:
             json_obj_match = re.search(r'\{[\s\S]*\}', text)
             if json_obj_match:
-                try:
+                with contextlib.suppress(json.JSONDecodeError):
                     json_match = json.loads(json_obj_match.group(0))
-                except json.JSONDecodeError:
-                    pass
         
         if not json_match:
             logger.warning("DiscoveryAgent: No JSON found in response")

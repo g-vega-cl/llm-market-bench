@@ -120,7 +120,7 @@ def generate_markdown(conn):
             if not columns:
                 md_lines.append("- *Table not found or no columns.*")
             else:
-                for col_name, data_type, is_nullable in columns:
+                for col_name, data_type, _is_nullable in columns:
                     fmt_type = format_type(data_type)
                     # Helper for primary key identification (basic heuristic)
                     pk_info = "Primary key." if col_name == "id" else ""

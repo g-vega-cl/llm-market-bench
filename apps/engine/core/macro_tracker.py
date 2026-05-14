@@ -63,7 +63,7 @@ async def get_global_macro_context(market_data_manager) -> str:
     
     # Flatten all tickers into a single list to batch fetch quotes
     all_tickers = []
-    for category, items in MACRO_TICKERS.items():
+    for _category, items in MACRO_TICKERS.items():
         all_tickers.extend(items.keys())
         
     # Batch fetch current quotes
@@ -106,10 +106,7 @@ async def get_global_macro_context(market_data_manager) -> str:
             else:
                 today_px = quote.price
                 
-            if yesterday_close > 0:
-                today_pct_change = ((today_px - yesterday_close) / yesterday_close) * 100
-            else:
-                today_pct_change = 0.0
+            today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
                 
             # Compute standard deviation
             if len(returns) > 2:

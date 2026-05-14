@@ -8,453 +8,455 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root';
-import { Route as AuthedRouteImport } from './routes/_authed';
-import { Route as AuthedPostsRouteImport } from './routes/_authed/posts';
-import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId';
-import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index';
-import { Route as AuditsIndexRouteImport } from './routes/audits/index';
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback';
-import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index';
-import { Route as ConceptsIndexRouteImport } from './routes/concepts/index';
-import { Route as HowItWorksRouteImport } from './routes/how-it-works';
-import { Route as IndexRouteImport } from './routes/index';
-import { Route as LoginRouteImport } from './routes/login';
-import { Route as LogoutRouteImport } from './routes/logout';
-import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index';
-import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId';
-import { Route as MemoriesIndexRouteImport } from './routes/memories/index';
-import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId';
-import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index';
-import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index';
-import { Route as SignupRouteImport } from './routes/signup';
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
+import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
+import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
+import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
+import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
+import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
+import { Route as AuditsIndexRouteImport } from './routes/audits/index'
+import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
+import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
+import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
+import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
 const SignupRoute = SignupRouteImport.update({
-    id: '/signup',
-    path: '/signup',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogoutRoute = LogoutRouteImport.update({
-    id: '/logout',
-    path: '/logout',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/logout',
+  path: '/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
-    id: '/login',
-    path: '/login',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
-    id: '/how-it-works',
-    path: '/how-it-works',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedRoute = AuthedRouteImport.update({
-    id: '/_authed',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReasoningIndexRoute = ReasoningIndexRouteImport.update({
-    id: '/reasoning/',
-    path: '/reasoning/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/reasoning/',
+  path: '/reasoning/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
-    id: '/portfolios/',
-    path: '/portfolios/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/portfolios/',
+  path: '/portfolios/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
-    id: '/memories/',
-    path: '/memories/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/memories/',
+  path: '/memories/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketOverviewIndexRoute = MarketOverviewIndexRouteImport.update({
-    id: '/market-overview/',
-    path: '/market-overview/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/market-overview/',
+  path: '/market-overview/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
-    id: '/concepts/',
-    path: '/concepts/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/concepts/',
+  path: '/concepts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CauseAndEffectIndexRoute = CauseAndEffectIndexRouteImport.update({
-    id: '/cause-and-effect/',
-    path: '/cause-and-effect/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/cause-and-effect/',
+  path: '/cause-and-effect/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditsIndexRoute = AuditsIndexRouteImport.update({
-    id: '/audits/',
-    path: '/audits/',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/audits/',
+  path: '/audits/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
-    id: '/portfolios/$portfolioId',
-    path: '/portfolios/$portfolioId',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/portfolios/$portfolioId',
+  path: '/portfolios/$portfolioId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
-    id: '/auth/callback',
-    path: '/auth/callback',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedPostsRoute = AuthedPostsRouteImport.update({
-    id: '/posts',
-    path: '/posts',
-    getParentRoute: () => AuthedRoute,
-} as any);
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthedPostsRoute,
-} as any);
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedPostsRoute,
+} as any)
 const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
-    id: '/memories/chain/$memoryId',
-    path: '/memories/chain/$memoryId',
-    getParentRoute: () => rootRouteImport,
-} as any);
+  id: '/memories/chain/$memoryId',
+  path: '/memories/chain/$memoryId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedPostsPostIdRoute = AuthedPostsPostIdRouteImport.update({
-    id: '/$postId',
-    path: '/$postId',
-    getParentRoute: () => AuthedPostsRoute,
-} as any);
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => AuthedPostsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-    '/': typeof IndexRoute;
-    '/how-it-works': typeof HowItWorksRoute;
-    '/login': typeof LoginRoute;
-    '/logout': typeof LogoutRoute;
-    '/signup': typeof SignupRoute;
-    '/posts': typeof AuthedPostsRouteWithChildren;
-    '/auth/callback': typeof AuthCallbackRoute;
-    '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute;
-    '/audits/': typeof AuditsIndexRoute;
-    '/cause-and-effect/': typeof CauseAndEffectIndexRoute;
-    '/concepts/': typeof ConceptsIndexRoute;
-    '/market-overview/': typeof MarketOverviewIndexRoute;
-    '/memories/': typeof MemoriesIndexRoute;
-    '/portfolios/': typeof PortfoliosIndexRoute;
-    '/reasoning/': typeof ReasoningIndexRoute;
-    '/posts/$postId': typeof AuthedPostsPostIdRoute;
-    '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute;
-    '/posts/': typeof AuthedPostsIndexRoute;
+  '/': typeof IndexRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
+  '/signup': typeof SignupRoute
+  '/posts': typeof AuthedPostsRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/audits/': typeof AuditsIndexRoute
+  '/cause-and-effect/': typeof CauseAndEffectIndexRoute
+  '/concepts/': typeof ConceptsIndexRoute
+  '/market-overview/': typeof MarketOverviewIndexRoute
+  '/memories/': typeof MemoriesIndexRoute
+  '/portfolios/': typeof PortfoliosIndexRoute
+  '/reasoning/': typeof ReasoningIndexRoute
+  '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/posts/': typeof AuthedPostsIndexRoute
 }
 export interface FileRoutesByTo {
-    '/': typeof IndexRoute;
-    '/how-it-works': typeof HowItWorksRoute;
-    '/login': typeof LoginRoute;
-    '/logout': typeof LogoutRoute;
-    '/signup': typeof SignupRoute;
-    '/auth/callback': typeof AuthCallbackRoute;
-    '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute;
-    '/audits': typeof AuditsIndexRoute;
-    '/cause-and-effect': typeof CauseAndEffectIndexRoute;
-    '/concepts': typeof ConceptsIndexRoute;
-    '/market-overview': typeof MarketOverviewIndexRoute;
-    '/memories': typeof MemoriesIndexRoute;
-    '/portfolios': typeof PortfoliosIndexRoute;
-    '/reasoning': typeof ReasoningIndexRoute;
-    '/posts/$postId': typeof AuthedPostsPostIdRoute;
-    '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute;
-    '/posts': typeof AuthedPostsIndexRoute;
+  '/': typeof IndexRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
+  '/signup': typeof SignupRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/audits': typeof AuditsIndexRoute
+  '/cause-and-effect': typeof CauseAndEffectIndexRoute
+  '/concepts': typeof ConceptsIndexRoute
+  '/market-overview': typeof MarketOverviewIndexRoute
+  '/memories': typeof MemoriesIndexRoute
+  '/portfolios': typeof PortfoliosIndexRoute
+  '/reasoning': typeof ReasoningIndexRoute
+  '/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/posts': typeof AuthedPostsIndexRoute
 }
 export interface FileRoutesById {
-    __root__: typeof rootRouteImport;
-    '/': typeof IndexRoute;
-    '/_authed': typeof AuthedRouteWithChildren;
-    '/how-it-works': typeof HowItWorksRoute;
-    '/login': typeof LoginRoute;
-    '/logout': typeof LogoutRoute;
-    '/signup': typeof SignupRoute;
-    '/_authed/posts': typeof AuthedPostsRouteWithChildren;
-    '/auth/callback': typeof AuthCallbackRoute;
-    '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute;
-    '/audits/': typeof AuditsIndexRoute;
-    '/cause-and-effect/': typeof CauseAndEffectIndexRoute;
-    '/concepts/': typeof ConceptsIndexRoute;
-    '/market-overview/': typeof MarketOverviewIndexRoute;
-    '/memories/': typeof MemoriesIndexRoute;
-    '/portfolios/': typeof PortfoliosIndexRoute;
-    '/reasoning/': typeof ReasoningIndexRoute;
-    '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute;
-    '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute;
-    '/_authed/posts/': typeof AuthedPostsIndexRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/how-it-works': typeof HowItWorksRoute
+  '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
+  '/signup': typeof SignupRoute
+  '/_authed/posts': typeof AuthedPostsRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/audits/': typeof AuditsIndexRoute
+  '/cause-and-effect/': typeof CauseAndEffectIndexRoute
+  '/concepts/': typeof ConceptsIndexRoute
+  '/market-overview/': typeof MarketOverviewIndexRoute
+  '/memories/': typeof MemoriesIndexRoute
+  '/portfolios/': typeof PortfoliosIndexRoute
+  '/reasoning/': typeof ReasoningIndexRoute
+  '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
+  '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
 export interface FileRouteTypes {
-    fileRoutesByFullPath: FileRoutesByFullPath;
-    fullPaths:
-        | '/'
-        | '/how-it-works'
-        | '/login'
-        | '/logout'
-        | '/signup'
-        | '/posts'
-        | '/auth/callback'
-        | '/portfolios/$portfolioId'
-        | '/audits/'
-        | '/cause-and-effect/'
-        | '/concepts/'
-        | '/market-overview/'
-        | '/memories/'
-        | '/portfolios/'
-        | '/reasoning/'
-        | '/posts/$postId'
-        | '/memories/chain/$memoryId'
-        | '/posts/';
-    fileRoutesByTo: FileRoutesByTo;
-    to:
-        | '/'
-        | '/how-it-works'
-        | '/login'
-        | '/logout'
-        | '/signup'
-        | '/auth/callback'
-        | '/portfolios/$portfolioId'
-        | '/audits'
-        | '/cause-and-effect'
-        | '/concepts'
-        | '/market-overview'
-        | '/memories'
-        | '/portfolios'
-        | '/reasoning'
-        | '/posts/$postId'
-        | '/memories/chain/$memoryId'
-        | '/posts';
-    id:
-        | '__root__'
-        | '/'
-        | '/_authed'
-        | '/how-it-works'
-        | '/login'
-        | '/logout'
-        | '/signup'
-        | '/_authed/posts'
-        | '/auth/callback'
-        | '/portfolios/$portfolioId'
-        | '/audits/'
-        | '/cause-and-effect/'
-        | '/concepts/'
-        | '/market-overview/'
-        | '/memories/'
-        | '/portfolios/'
-        | '/reasoning/'
-        | '/_authed/posts/$postId'
-        | '/memories/chain/$memoryId'
-        | '/_authed/posts/';
-    fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/how-it-works'
+    | '/login'
+    | '/logout'
+    | '/signup'
+    | '/posts'
+    | '/auth/callback'
+    | '/portfolios/$portfolioId'
+    | '/audits/'
+    | '/cause-and-effect/'
+    | '/concepts/'
+    | '/market-overview/'
+    | '/memories/'
+    | '/portfolios/'
+    | '/reasoning/'
+    | '/posts/$postId'
+    | '/memories/chain/$memoryId'
+    | '/posts/'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/how-it-works'
+    | '/login'
+    | '/logout'
+    | '/signup'
+    | '/auth/callback'
+    | '/portfolios/$portfolioId'
+    | '/audits'
+    | '/cause-and-effect'
+    | '/concepts'
+    | '/market-overview'
+    | '/memories'
+    | '/portfolios'
+    | '/reasoning'
+    | '/posts/$postId'
+    | '/memories/chain/$memoryId'
+    | '/posts'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authed'
+    | '/how-it-works'
+    | '/login'
+    | '/logout'
+    | '/signup'
+    | '/_authed/posts'
+    | '/auth/callback'
+    | '/portfolios/$portfolioId'
+    | '/audits/'
+    | '/cause-and-effect/'
+    | '/concepts/'
+    | '/market-overview/'
+    | '/memories/'
+    | '/portfolios/'
+    | '/reasoning/'
+    | '/_authed/posts/$postId'
+    | '/memories/chain/$memoryId'
+    | '/_authed/posts/'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-    IndexRoute: typeof IndexRoute;
-    AuthedRoute: typeof AuthedRouteWithChildren;
-    HowItWorksRoute: typeof HowItWorksRoute;
-    LoginRoute: typeof LoginRoute;
-    LogoutRoute: typeof LogoutRoute;
-    SignupRoute: typeof SignupRoute;
-    AuthCallbackRoute: typeof AuthCallbackRoute;
-    PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute;
-    AuditsIndexRoute: typeof AuditsIndexRoute;
-    CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute;
-    ConceptsIndexRoute: typeof ConceptsIndexRoute;
-    MarketOverviewIndexRoute: typeof MarketOverviewIndexRoute;
-    MemoriesIndexRoute: typeof MemoriesIndexRoute;
-    PortfoliosIndexRoute: typeof PortfoliosIndexRoute;
-    ReasoningIndexRoute: typeof ReasoningIndexRoute;
-    MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute;
+  IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+  HowItWorksRoute: typeof HowItWorksRoute
+  LoginRoute: typeof LoginRoute
+  LogoutRoute: typeof LogoutRoute
+  SignupRoute: typeof SignupRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
+  AuditsIndexRoute: typeof AuditsIndexRoute
+  CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute
+  ConceptsIndexRoute: typeof ConceptsIndexRoute
+  MarketOverviewIndexRoute: typeof MarketOverviewIndexRoute
+  MemoriesIndexRoute: typeof MemoriesIndexRoute
+  PortfoliosIndexRoute: typeof PortfoliosIndexRoute
+  ReasoningIndexRoute: typeof ReasoningIndexRoute
+  MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
 }
 
 declare module '@tanstack/react-router' {
-    interface FileRoutesByPath {
-        '/signup': {
-            id: '/signup';
-            path: '/signup';
-            fullPath: '/signup';
-            preLoaderRoute: typeof SignupRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/logout': {
-            id: '/logout';
-            path: '/logout';
-            fullPath: '/logout';
-            preLoaderRoute: typeof LogoutRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/login': {
-            id: '/login';
-            path: '/login';
-            fullPath: '/login';
-            preLoaderRoute: typeof LoginRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/how-it-works': {
-            id: '/how-it-works';
-            path: '/how-it-works';
-            fullPath: '/how-it-works';
-            preLoaderRoute: typeof HowItWorksRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/_authed': {
-            id: '/_authed';
-            path: '';
-            fullPath: '/';
-            preLoaderRoute: typeof AuthedRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/': {
-            id: '/';
-            path: '/';
-            fullPath: '/';
-            preLoaderRoute: typeof IndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/reasoning/': {
-            id: '/reasoning/';
-            path: '/reasoning';
-            fullPath: '/reasoning/';
-            preLoaderRoute: typeof ReasoningIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/portfolios/': {
-            id: '/portfolios/';
-            path: '/portfolios';
-            fullPath: '/portfolios/';
-            preLoaderRoute: typeof PortfoliosIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/memories/': {
-            id: '/memories/';
-            path: '/memories';
-            fullPath: '/memories/';
-            preLoaderRoute: typeof MemoriesIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/market-overview/': {
-            id: '/market-overview/';
-            path: '/market-overview';
-            fullPath: '/market-overview/';
-            preLoaderRoute: typeof MarketOverviewIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/concepts/': {
-            id: '/concepts/';
-            path: '/concepts';
-            fullPath: '/concepts/';
-            preLoaderRoute: typeof ConceptsIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/cause-and-effect/': {
-            id: '/cause-and-effect/';
-            path: '/cause-and-effect';
-            fullPath: '/cause-and-effect/';
-            preLoaderRoute: typeof CauseAndEffectIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/audits/': {
-            id: '/audits/';
-            path: '/audits';
-            fullPath: '/audits/';
-            preLoaderRoute: typeof AuditsIndexRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/portfolios/$portfolioId': {
-            id: '/portfolios/$portfolioId';
-            path: '/portfolios/$portfolioId';
-            fullPath: '/portfolios/$portfolioId';
-            preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/auth/callback': {
-            id: '/auth/callback';
-            path: '/auth/callback';
-            fullPath: '/auth/callback';
-            preLoaderRoute: typeof AuthCallbackRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/_authed/posts': {
-            id: '/_authed/posts';
-            path: '/posts';
-            fullPath: '/posts';
-            preLoaderRoute: typeof AuthedPostsRouteImport;
-            parentRoute: typeof AuthedRoute;
-        };
-        '/_authed/posts/': {
-            id: '/_authed/posts/';
-            path: '/';
-            fullPath: '/posts/';
-            preLoaderRoute: typeof AuthedPostsIndexRouteImport;
-            parentRoute: typeof AuthedPostsRoute;
-        };
-        '/memories/chain/$memoryId': {
-            id: '/memories/chain/$memoryId';
-            path: '/memories/chain/$memoryId';
-            fullPath: '/memories/chain/$memoryId';
-            preLoaderRoute: typeof MemoriesChainMemoryIdRouteImport;
-            parentRoute: typeof rootRouteImport;
-        };
-        '/_authed/posts/$postId': {
-            id: '/_authed/posts/$postId';
-            path: '/$postId';
-            fullPath: '/posts/$postId';
-            preLoaderRoute: typeof AuthedPostsPostIdRouteImport;
-            parentRoute: typeof AuthedPostsRoute;
-        };
+  interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
     }
+    '/logout': {
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reasoning/': {
+      id: '/reasoning/'
+      path: '/reasoning'
+      fullPath: '/reasoning/'
+      preLoaderRoute: typeof ReasoningIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolios/': {
+      id: '/portfolios/'
+      path: '/portfolios'
+      fullPath: '/portfolios/'
+      preLoaderRoute: typeof PortfoliosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/memories/': {
+      id: '/memories/'
+      path: '/memories'
+      fullPath: '/memories/'
+      preLoaderRoute: typeof MemoriesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/market-overview/': {
+      id: '/market-overview/'
+      path: '/market-overview'
+      fullPath: '/market-overview/'
+      preLoaderRoute: typeof MarketOverviewIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/concepts/': {
+      id: '/concepts/'
+      path: '/concepts'
+      fullPath: '/concepts/'
+      preLoaderRoute: typeof ConceptsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cause-and-effect/': {
+      id: '/cause-and-effect/'
+      path: '/cause-and-effect'
+      fullPath: '/cause-and-effect/'
+      preLoaderRoute: typeof CauseAndEffectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audits/': {
+      id: '/audits/'
+      path: '/audits'
+      fullPath: '/audits/'
+      preLoaderRoute: typeof AuditsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolios/$portfolioId': {
+      id: '/portfolios/$portfolioId'
+      path: '/portfolios/$portfolioId'
+      fullPath: '/portfolios/$portfolioId'
+      preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/posts': {
+      id: '/_authed/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof AuthedPostsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/posts/': {
+      id: '/_authed/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof AuthedPostsIndexRouteImport
+      parentRoute: typeof AuthedPostsRoute
+    }
+    '/memories/chain/$memoryId': {
+      id: '/memories/chain/$memoryId'
+      path: '/memories/chain/$memoryId'
+      fullPath: '/memories/chain/$memoryId'
+      preLoaderRoute: typeof MemoriesChainMemoryIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/posts/$postId': {
+      id: '/_authed/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof AuthedPostsPostIdRouteImport
+      parentRoute: typeof AuthedPostsRoute
+    }
+  }
 }
 
 interface AuthedPostsRouteChildren {
-    AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute;
-    AuthedPostsIndexRoute: typeof AuthedPostsIndexRoute;
+  AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
+  AuthedPostsIndexRoute: typeof AuthedPostsIndexRoute
 }
 
 const AuthedPostsRouteChildren: AuthedPostsRouteChildren = {
-    AuthedPostsPostIdRoute: AuthedPostsPostIdRoute,
-    AuthedPostsIndexRoute: AuthedPostsIndexRoute,
-};
+  AuthedPostsPostIdRoute: AuthedPostsPostIdRoute,
+  AuthedPostsIndexRoute: AuthedPostsIndexRoute,
+}
 
-const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(AuthedPostsRouteChildren);
+const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
+  AuthedPostsRouteChildren,
+)
 
 interface AuthedRouteChildren {
-    AuthedPostsRoute: typeof AuthedPostsRouteWithChildren;
+  AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-    AuthedPostsRoute: AuthedPostsRouteWithChildren,
-};
+  AuthedPostsRoute: AuthedPostsRouteWithChildren,
+}
 
-const AuthedRouteWithChildren = AuthedRoute._addFileChildren(AuthedRouteChildren);
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-    IndexRoute: IndexRoute,
-    AuthedRoute: AuthedRouteWithChildren,
-    HowItWorksRoute: HowItWorksRoute,
-    LoginRoute: LoginRoute,
-    LogoutRoute: LogoutRoute,
-    SignupRoute: SignupRoute,
-    AuthCallbackRoute: AuthCallbackRoute,
-    PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
-    AuditsIndexRoute: AuditsIndexRoute,
-    CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,
-    ConceptsIndexRoute: ConceptsIndexRoute,
-    MarketOverviewIndexRoute: MarketOverviewIndexRoute,
-    MemoriesIndexRoute: MemoriesIndexRoute,
-    PortfoliosIndexRoute: PortfoliosIndexRoute,
-    ReasoningIndexRoute: ReasoningIndexRoute,
-    MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
-};
+  IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
+  HowItWorksRoute: HowItWorksRoute,
+  LoginRoute: LoginRoute,
+  LogoutRoute: LogoutRoute,
+  SignupRoute: SignupRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
+  AuditsIndexRoute: AuditsIndexRoute,
+  CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,
+  ConceptsIndexRoute: ConceptsIndexRoute,
+  MarketOverviewIndexRoute: MarketOverviewIndexRoute,
+  MemoriesIndexRoute: MemoriesIndexRoute,
+  PortfoliosIndexRoute: PortfoliosIndexRoute,
+  ReasoningIndexRoute: ReasoningIndexRoute,
+  MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
+}
 export const routeTree = rootRouteImport
-    ._addFileChildren(rootRouteChildren)
-    ._addFileTypes<FileRouteTypes>();
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
-import type { createStart } from '@tanstack/react-start';
-import type { getRouter } from './router.tsx';
-
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
 declare module '@tanstack/react-start' {
-    interface Register {
-        ssr: true;
-        router: Awaited<ReturnType<typeof getRouter>>;
-    }
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }

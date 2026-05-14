@@ -48,14 +48,15 @@ export function EmptyState({ emoji, title, subtitle, actions, className }: Empty
                 <div className="flex gap-4 flex-wrap justify-center">
                     {actions.map((action, i) =>
                         action.href ? (
-                            <a key={i} href={action.href}>
-                                <Button variant={i === 0 ? 'solid' : 'outline'}>
+                            <a key={action.href} href={action.href}>
+                                <Button type="button" variant={i === 0 ? 'solid' : 'outline'}>
                                     {action.label}
                                 </Button>
                             </a>
                         ) : (
                             <Button
-                                key={i}
+                                type="button"
+                                key={action.label}
                                 variant={i === 0 ? 'solid' : 'outline'}
                                 onClick={action.onClick}
                             >

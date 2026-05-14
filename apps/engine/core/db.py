@@ -150,7 +150,7 @@ def is_transient_supabase_error(exc: Exception) -> bool:
     return any(kw in error_str for kw in transient_keywords)
 
 
-def with_retry(operation: Callable[[], T], operation_name: str = "operation") -> T:
+def with_retry[T](operation: Callable[[], T], operation_name: str = "operation") -> T:
     """Execute a Supabase operation with retry logic and exponential backoff.
     
     Retries on transient errors (502, 503, 504, timeouts, connection errors).

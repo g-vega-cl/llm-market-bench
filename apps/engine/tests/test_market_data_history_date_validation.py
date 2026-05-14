@@ -50,8 +50,7 @@ async def test_get_history_rejects_same_day_cache(mock_today):
         {"price": 171.20, "fetched_at": "2026-04-10"},
     ]
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
             history = await manager.get_history("ORCL", days=7)
 
@@ -80,8 +79,7 @@ async def test_get_history_accepts_multi_day_cache():
 
     mock_provider = AsyncMock()
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
             history = await manager.get_history("ORCL", days=7)
 
@@ -115,10 +113,9 @@ async def test_get_history_requires_minimum_date_span():
         {"price": 171.20, "fetched_at": "2026-04-10"},
     ]
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
-            history = await manager.get_history("ORCL", days=7)
+            await manager.get_history("ORCL", days=7)
 
     mock_provider.get_history.assert_called_once()
 
@@ -145,10 +142,9 @@ async def test_get_history_validates_distinct_trading_days():
         {"price": 172.50, "fetched_at": "2026-04-14"},
     ]
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
-            history = await manager.get_history("ORCL", days=10)
+            await manager.get_history("ORCL", days=10)
 
     mock_provider.get_history.assert_called_once()
 
@@ -174,10 +170,9 @@ async def test_get_history_mixed_today_and_old_data_still_fetches():
     mock_provider = AsyncMock()
     mock_provider.get_history.return_value = []
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
-            history = await manager.get_history("ORCL", days=7)
+            await manager.get_history("ORCL", days=7)
 
     mock_provider.get_history.assert_called_once()
 
@@ -200,8 +195,7 @@ async def test_get_history_pure_historical_cache_works():
 
     mock_provider = AsyncMock()
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
             history = await manager.get_history("ORCL", days=7)
 
@@ -238,8 +232,7 @@ async def test_get_history_rejects_single_date_cache():
         {"price": 173.00, "fetched_at": "2026-05-02"},
     ]
 
-    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase):
-        with patch("execution.market_data.get_financial_provider", return_value=mock_provider):
+    with patch("execution.market_data.get_supabase_client", return_value=mock_supabase), patch("execution.market_data.get_financial_provider", return_value=mock_provider):
             manager = MarketDataManager()
             history = await manager.get_history("MSFT", days=7)
 

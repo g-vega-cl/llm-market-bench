@@ -1,6 +1,7 @@
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import type { PaginatedReasoningLogs } from '../api/fetch-reasoning-logs';
 import { HumanFriendlyPrompt } from '../components/HumanFriendlyPrompt';
 import { HumanFriendlyResponse } from '../components/HumanFriendlyResponse';
 import { reasoningQueries } from '../queries/options';

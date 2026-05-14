@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { cn } from '../lib/cn';
 
 export interface StatPillProps {
@@ -31,6 +30,7 @@ export function StatPill({
 
     return (
         <button
+            type="button"
             onClick={onClick}
             className={cn(
                 'flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-900 border rounded-full shadow-sm transition-all duration-300 cursor-pointer',

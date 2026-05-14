@@ -22,12 +22,14 @@ class PostAnalysisResult(BaseModel):
     is_regret: bool = Field(..., description="Whether the trade was a mistake")
     sentiment_shift: str = Field(..., description="How to adjust view on this ticker/sector")
 
-async def perform_post_analysis(windows: list[int] = [5, 14, 30]):
+async def perform_post_analysis(windows: list[int] = None):
     """Analyzes trades from specific intervals ago and generates self-corrective memories.
 
     Args:
         windows: List of days-back intervals to evaluate trade performance.
     """
+    if windows is None:
+        windows = [5, 14, 30]
     logger.info(f"Starting Post-Analysis for windows: {windows} days ago...")
     sb_client = get_supabase_client()
     mdm = MarketDataManager()

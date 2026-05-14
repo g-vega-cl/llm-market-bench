@@ -117,7 +117,7 @@ class TestWithRetry:
         assert operation.call_count == SUPABASE_RETRIES
 
     def test_uses_correct_retry_count(self):
-        operation = MagicMock(side_effect=Exception("502 Bad Gateway"))
-        with patch("time.sleep"), pytest.raises(Exception):
+        operation = MagicMock(side_effect=RuntimeError("502 Bad Gateway"))
+        with patch("time.sleep"), pytest.raises(RuntimeError):
             with_retry(operation, "test_op")
         assert operation.call_count == 3

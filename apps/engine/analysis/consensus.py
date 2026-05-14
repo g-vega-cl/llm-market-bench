@@ -149,10 +149,14 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
         source_ids.add(occ.source_id)
         importance_scores.append(occ.importance_score)
         
-        if occ.is_ongoing: ongoing_votes += weight
-        if occ.is_future_catalyst: catalyst_votes += weight
-        if occ.historical_parallel: parallels.append(occ.historical_parallel)
-        if getattr(occ, "scenario_analysis", None): scenarios.append(occ.scenario_analysis)
+        if occ.is_ongoing:
+            ongoing_votes += weight
+        if occ.is_future_catalyst:
+            catalyst_votes += weight
+        if occ.historical_parallel:
+            parallels.append(occ.historical_parallel)
+        if getattr(occ, "scenario_analysis", None):
+            scenarios.append(occ.scenario_analysis)
 
     majority_impact = _resolve_impact_tie(impact_weights)
     

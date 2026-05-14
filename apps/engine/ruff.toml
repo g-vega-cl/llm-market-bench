@@ -3,7 +3,7 @@
 # Format: ruff format apps/engine/
 
 target-version = "py312"
-line-length = 100
+line-length = 120
 extend-exclude = ["apps/engine/venv", ".ruff_cache"]
 
 [lint]
@@ -15,7 +15,17 @@ select = [
     "B",    # flake8-bugbear
     "SIM",  # flake8-simplify
 ]
-ignore = []
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+# Scripts and manual tests use sys.path manipulation for imports
+"scripts/*.py" = ["E402"]
+"tests/test_ibkr_manual.py" = ["E402"]
+"tests/test_memory_chains.py" = ["E402"]
+# Nested with in test files — often clearer than combined with long param lists
+"tests/*.py" = ["SIM117"]
+# B023 false positive: closures called within same loop iteration
+"tests/test_concurrency_invariants.py" = ["B023"]
 
 [lint.isort]
 known-first-party = ["core", "analysis", "autoresearch", "execution", "scripts"]

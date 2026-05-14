@@ -31,7 +31,7 @@ const getEventChain = createServerFn({ method: 'GET' })
             currentId = memory.parent_id;
         }
 
-        return { chain, targetMemory: memoryMap.get(memoryId) };
+        return { chain, targetMemory: memoryMap.get(memoryId) ?? null };
     });
 
 export const Route = createFileRoute('/memories/chain/$memoryId')({

@@ -56,4 +56,4 @@ class FinancialProvider(ABC):
     @classmethod
     async def disconnect_all(cls):
         """Optional hook to close persistent connections."""
-        pass
+        return

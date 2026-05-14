@@ -209,7 +209,7 @@ class TestComputeCorrelationMatrices:
         pearson_corrs, _ = correlation_matrix.compute_correlation_matrices(returns_dict)
 
         # All pairs should have correlation of 1
-        for (a, b), corr in pearson_corrs.items():
+        for (_a, _b), corr in pearson_corrs.items():
             assert corr == pytest.approx(1.0, abs=0.01)
 
     def test_mismatched_lengths_uses_minimum(self):
@@ -586,8 +586,7 @@ class TestStorageVerification:
 
                     mock_provider = MagicMock()
                     mock_provider.get_history = mock_history
-                    with patch('analysis.correlation_matrix.FMPProvider', return_value=mock_provider):
-                        with patch('analysis.correlation_matrix.store_correlation_results', return_value="test-run-id"):
+                    with patch('analysis.correlation_matrix.FMPProvider', return_value=mock_provider), patch('analysis.correlation_matrix.store_correlation_results', return_value="test-run-id"):
                             # Mock verification query to return matching count (1 pair for 2 tickers)
                             mock_count_response = MagicMock()
                             mock_count_response.count = 1

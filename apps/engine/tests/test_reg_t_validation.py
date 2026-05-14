@@ -16,7 +16,6 @@ def test_scenario_1_near_full_cash_no_leverage():
     cash = 49.76
     positions = {"QQQ": {"quantity": 16, "average_cost_basis": 621.89}} 
     prices = {"QQQ": 621.89}
-    previous_sma = 10000.00 # Started with 10k? Or does it adjust? 
     # If we started with 10k, bought 9950, SMA drops by 4975 (50%).
     # New SMA = 5025.
     # Metrics Calc logic: Ratchet.

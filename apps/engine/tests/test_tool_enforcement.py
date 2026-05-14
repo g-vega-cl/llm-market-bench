@@ -23,7 +23,7 @@ def mock_clients():
         mock_factories.get.return_value = mock_factory
         
         # Mock Instructor-wrapped client
-        mock_instructor_client = MagicMock()
+        MagicMock()
         mock_client.chat.completions.create = AsyncMock()
         
         yield {

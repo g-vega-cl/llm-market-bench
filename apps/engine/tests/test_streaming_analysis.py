@@ -86,7 +86,7 @@ class TestAnalyzeChunksStreaming:
 
             # Collect results as they stream in
             results = []
-            async for (model_decisions, model_events, config) in analyze_chunks_streaming(chunks):
+            async for (model_decisions, _model_events, config) in analyze_chunks_streaming(chunks):
                 results.append((model_decisions, config))
                 # If we got at least one result, we can already start execution
 
@@ -258,7 +258,7 @@ class TestDecisionCallback:
                 mock_market_data_class.return_value = mock_market_data
 
                 results = []
-                async for (model_decisions, model_events, config) in analyze_chunks_streaming(chunks):
+                async for (model_decisions, _model_events, config) in analyze_chunks_streaming(chunks):
                     results.append((model_decisions, config))
                     # Simulate callback for each model's decisions
                     for d in model_decisions:
@@ -315,7 +315,7 @@ class TestLoggingTiming:
         from analysis.analyze import analyze_chunks_streaming
         
         async def mock_analyze(*args, **kwargs):
-            model_name = kwargs.get("model_name", "unknown")
+            kwargs.get("model_name", "unknown")
             await asyncio.sleep(0.05)
             return DecisionsResponse(
                 decisions=[

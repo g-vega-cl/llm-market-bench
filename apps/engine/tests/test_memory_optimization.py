@@ -25,7 +25,7 @@ def test_future_date_extraction():
     # 3. Checking that memories table receives the data in target_date column
     
     # For now, we document expected behavior
-    for text, expected_date in test_cases:
+    for _text, _expected_date in test_cases:
         # The LLM should extract expected_date from text
         pass
 

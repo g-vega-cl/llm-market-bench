@@ -32,7 +32,7 @@ async def main():
     
     print("\nFetching quotes for all macro tickers...")
     all_tickers = []
-    for category, items in MACRO_TICKERS.items():
+    for _category, items in MACRO_TICKERS.items():
         all_tickers.extend(items.keys())
     
     quotes = await mdm.get_quotes(all_tickers, force_refresh=True)

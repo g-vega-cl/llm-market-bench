@@ -70,7 +70,7 @@ async def perform_cause_and_effect_analysis():
         content = event["content"]
         meta = event.get("metadata", {})
         scenario_analysis = meta.get("scenario_analysis", "None provided.")
-        created_at = datetime.fromisoformat(event["created_at"])
+        datetime.fromisoformat(event["created_at"])
         
         # 2. Check if analysis already exists (exact ID or semantic similarity)
         existing = sb_client.table("cause_and_effect").select("id").filter("event_id", "eq", event_id).execute()

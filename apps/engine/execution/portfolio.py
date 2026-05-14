@@ -13,6 +13,13 @@ from uuid import UUID
 
 from core.db import get_supabase_client
 
+from .reg_t_validation import (
+    RegTMetrics,
+    ValidationResult,
+    calculate_reg_t_metrics,
+    validate_trade_compliance,
+)
+
 logger = logging.getLogger("engine")
 
 
@@ -21,14 +28,6 @@ class Position:
     ticker: str
     quantity: int
     average_cost_basis: float
-
-
-from .reg_t_validation import (
-    RegTMetrics,
-    ValidationResult,
-    calculate_reg_t_metrics,
-    validate_trade_compliance,
-)
 
 
 class Portfolio:

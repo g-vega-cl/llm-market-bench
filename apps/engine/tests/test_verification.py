@@ -320,8 +320,7 @@ async def test_verification_retry_validation_error():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -374,8 +373,7 @@ async def test_verification_retry_on_empty_result():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -419,8 +417,7 @@ async def test_verification_all_retries_fail():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -483,8 +480,7 @@ async def test_verification_deepseek_empty_content_recovery():
             messages.clear()
             messages.extend(messages_with_empty_content)
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock, side_effect=fake_tool_loop):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock, side_effect=fake_tool_loop), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -535,8 +531,7 @@ async def test_verification_deepseek_retry_across_3_empty_then_success():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -584,8 +579,7 @@ async def test_verification_deepseek_all_validation_errors_then_fallback():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",
@@ -628,8 +622,7 @@ async def test_verification_deepseek_non_retryable_error_raises():
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
 
-        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
-            with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock), patch("core.llm.clients.close_client", new_callable=AsyncMock):
                 result = await verify_trading_decision(
                     decision=decision,
                     portfolio_context="Cash: $10,000",

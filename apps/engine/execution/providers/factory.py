@@ -33,12 +33,10 @@ def get_financial_provider(provider_name: str = None) -> FinancialProvider:
 
 def get_active_provider_class():
     """Returns the class of the currently configured provider."""
-    if FINANCIAL_PROVIDER == "fmp":
-        return FMPProvider
-    elif FINANCIAL_PROVIDER == "yfinance":
-        return YFinanceProvider
-    elif FINANCIAL_PROVIDER == "ibkr":
-        return IBKRProvider
-    elif FINANCIAL_PROVIDER == "ibkr_proxy":
-        return ProxyIBKRProvider
-    return FMPProvider
+    _provider_map = {
+        "fmp": FMPProvider,
+        "yfinance": YFinanceProvider,
+        "ibkr": IBKRProvider,
+        "ibkr_proxy": ProxyIBKRProvider,
+    }
+    return _provider_map.get(FINANCIAL_PROVIDER, FMPProvider)

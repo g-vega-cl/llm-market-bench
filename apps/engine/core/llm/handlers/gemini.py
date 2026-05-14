@@ -90,10 +90,7 @@ async def run_tool_loop(
             to override defaults. Translated to Gemini format internally.
         enable_google_search: Whether to enable Google Search grounding.
     """
-    if override_tools is not None:
-        tool_defs = [tools.to_gemini(t) for t in override_tools]
-    else:
-        tool_defs = DEFAULT_GEMINI_TOOLS
+    tool_defs = [tools.to_gemini(t) for t in override_tools] if override_tools is not None else DEFAULT_GEMINI_TOOLS
 
     for _ in range(max_tool_steps):
         # Convert OpenAI-style messages or pass native Content
@@ -205,7 +202,7 @@ async def run_tool_loop(
         
         # Check if this is a multi-function-call response (Gemini sometimes splits responses)
         # Count function calls in this response
-        function_call_count = sum(1 for part in candidate.content.parts if part.function_call)
+        sum(1 for part in candidate.content.parts if part.function_call)
         
         # Append native Content object to history to preserve thought_signature
         messages.append(candidate.content)

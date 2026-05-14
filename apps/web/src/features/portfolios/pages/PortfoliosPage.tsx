@@ -1,5 +1,11 @@
 import type { Portfolio } from '@llm-market-bench/database';
-import { Badge, Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
+import {
+    Badge,
+    Card,
+    MetricTile,
+    PageLayout,
+    SectionHeading,
+} from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
@@ -125,8 +131,8 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     const hasComparison = comparisonData?.portfolios && comparisonData.portfolios.length > 0;
 
     return (
-        <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
-            <div className="flex flex-col w-full">
+        <div className="min-h-screen">
+            <PageLayout>
                 <header className="mb-12">
                     <SectionHeading gradient="electric">Agent Portfolios</SectionHeading>
                     <p className="text-zinc-500 text-lg leading-relaxed mt-2">
@@ -197,7 +203,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                         </div>
                     </section>
                 )}
-            </div>
+            </PageLayout>
         </div>
     );
 }

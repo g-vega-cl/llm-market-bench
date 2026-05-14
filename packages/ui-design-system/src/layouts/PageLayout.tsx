@@ -4,7 +4,8 @@ import { cn } from '../lib/cn';
 /**
  * PageLayout primitive.
  *
- * Standard page wrapper with consistent padding and max-width.
+ * Standard content wrapper with consistent padding and max-width.
+ * Pages add their own outer divs for background color, min-h-screen, etc.
  */
 
 export interface PageLayoutProps {
@@ -29,16 +30,15 @@ export function PageLayout({
     withPadding = true,
 }: PageLayoutProps) {
     return (
-        <div className={cn('min-h-screen', className)}>
-            <div
-                className={cn(
-                    'mx-auto w-full',
-                    maxWidthMap[maxWidth],
-                    withPadding && 'px-6 md:px-12 py-8',
-                )}
-            >
-                {children}
-            </div>
+        <div
+            className={cn(
+                'mx-auto w-full',
+                maxWidthMap[maxWidth],
+                withPadding && 'px-6 md:px-12 py-12',
+                className,
+            )}
+        >
+            {children}
         </div>
     );
 }

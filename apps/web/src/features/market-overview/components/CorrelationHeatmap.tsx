@@ -1,4 +1,4 @@
-import { Button, Card } from '@llm-market-bench/ui-design-system';
+import { Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import type { CorrelationData } from '../api/fetch-market-overview';
 
@@ -68,9 +68,7 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
     return (
         <section>
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100 tracking-tight">
-                    Correlation Matrix
-                </h2>
+                <SectionHeading gradient="ai">Correlation Matrix</SectionHeading>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-zinc-500">Method:</span>

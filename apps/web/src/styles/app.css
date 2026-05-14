@@ -15,7 +15,7 @@
 @theme inline {
   /* Typography */
   --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-body: "Satoshi", system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
   /* Semantic color tokens */

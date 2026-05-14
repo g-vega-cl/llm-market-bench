@@ -1,4 +1,4 @@
-import { Button, Card } from '@llm-market-bench/ui-design-system';
+import { Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import type { CorrelationData } from '../api/fetch-market-overview';
 
@@ -54,9 +54,9 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
     return (
         <section>
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100 tracking-tight">
+                <SectionHeading gradient="success">
                     Uncorrelated Pairs with Positive Momentum
-                </h2>
+                </SectionHeading>
             </div>
 
             <Card variant="default" padding="none" className="overflow-hidden">

@@ -1,5 +1,11 @@
 import type { Portfolio } from '@llm-market-bench/database';
-import { Badge, Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
+import {
+    Badge,
+    Card,
+    MetricTile,
+    PageLayout,
+    SectionHeading,
+} from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
@@ -70,13 +76,13 @@ export function PortfolioDetailPage({
     }
 
     return (
-        <div className="flex flex-col min-h-screen px-4 sm:px-6 md:px-12 py-8 md:py-12">
-            <div className="flex flex-col w-full">
+        <div className="min-h-screen">
+            <PageLayout className="px-4 sm:px-6 md:px-12 py-8 md:py-12" withPadding={false}>
                 <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
                     <div>
-                        <h1 className="text-2xl md:text-4xl font-bold text-zinc-900 mb-2 tracking-tight capitalize">
+                        <SectionHeading gradient="electric">
                             {portfolio.owner_id.replace(/-/g, ' ')}
-                        </h1>
+                        </SectionHeading>
                         <p className="text-zinc-500 text-sm md:text-lg">
                             Portfolio analysis and performance timeline.
                         </p>
@@ -138,7 +144,7 @@ export function PortfolioDetailPage({
                         <TradesTable trades={trades as any} />
                     </section>
                 </div>
-            </div>
+            </PageLayout>
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { EmptyState } from '@llm-market-bench/ui-design-system';
+import { EmptyState, PageLayout } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { AgentInsights } from '../components/AgentInsights';
 import { FutureCatalysts } from '../components/FutureCatalysts';
@@ -32,23 +32,21 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
             {/* Market Status Hero */}
             <MarketStatusHero data={data} />
 
-            <main className="flex flex-col px-6 md:px-12 py-12 space-y-24 pb-24">
-                <div className="flex flex-col w-full">
-                    {isEmpty ? (
-                        <EmptyStateView
-                            hasFutureEvents={!!data.futureEvents?.length}
-                            futureEvents={data.futureEvents}
-                        />
-                    ) : (
-                        <div className="space-y-24 animate-slide-up">
-                            <AgentInsights memories={data.memories} />
-                            <NewsletterFeed newsletters={data.newsletters} />
-                            <TradeActivity trades={data.trades} decisions={data.decisions} />
-                            <FutureCatalysts events={data.futureEvents} />
-                        </div>
-                    )}
-                </div>
-            </main>
+            <PageLayout className="space-y-24 pb-24">
+                {isEmpty ? (
+                    <EmptyStateView
+                        hasFutureEvents={!!data.futureEvents?.length}
+                        futureEvents={data.futureEvents}
+                    />
+                ) : (
+                    <div className="space-y-24 animate-slide-up">
+                        <AgentInsights memories={data.memories} />
+                        <NewsletterFeed newsletters={data.newsletters} />
+                        <TradeActivity trades={data.trades} decisions={data.decisions} />
+                        <FutureCatalysts events={data.futureEvents} />
+                    </div>
+                )}
+            </PageLayout>
         </div>
     );
 }

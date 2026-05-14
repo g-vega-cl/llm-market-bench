@@ -5,6 +5,8 @@ import {
     ConfidenceBar,
     EmptyState,
     HeroBackground,
+    PageLayout,
+    SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -29,7 +31,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             <MarketOverviewHero marketFeeling={data.marketFeeling} />
 
-            <main className="flex flex-col px-6 md:px-12 py-12 space-y-24 pb-24">
+            <PageLayout className="space-y-24 pb-24">
                 {data.correlationRun ? (
                     <div className="space-y-24 animate-slide-up">
                         <CorrelationHeatmap
@@ -42,7 +44,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                 ) : (
                     <EmptyCorrelationState />
                 )}
-            </main>
+            </PageLayout>
         </div>
     );
 }
@@ -289,9 +291,9 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: any[] }) 
 
     return (
         <section>
-            <h2 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100 mb-8 tracking-tight">
+            <SectionHeading gradient="electric">
                 Sector Performance (90-Day Trailing Returns)
-            </h2>
+            </SectionHeading>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Object.entries(tickerReturns).map(([category, items]) => (
                     <Card key={category} padding="sm">

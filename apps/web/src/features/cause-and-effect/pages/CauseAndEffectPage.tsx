@@ -1,4 +1,4 @@
-import { SectionHeading } from '@llm-market-bench/ui-design-system';
+import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
@@ -23,8 +23,8 @@ export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageP
     }, [posthog]);
 
     return (
-        <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
-            <div className="flex flex-col w-full">
+        <div className="min-h-screen">
+            <PageLayout>
                 <header className="mb-12">
                     <SectionHeading gradient="catalyst">Cause & Effect Library</SectionHeading>
                     <p className="text-zinc-400 text-lg leading-relaxed mt-2">
@@ -34,7 +34,7 @@ export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageP
                 </header>
 
                 <CauseAndEffectList entries={(data as any[]) || []} />
-            </div>
+            </PageLayout>
         </div>
     );
 }

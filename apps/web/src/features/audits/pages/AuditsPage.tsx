@@ -3,6 +3,7 @@ import {
     ErrorCard,
     LoadingBoundary,
     LoadingSpinner,
+    PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -50,8 +51,8 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
     }
 
     return (
-        <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
-            <div className="flex flex-col w-full">
+        <div className="min-h-screen">
+            <PageLayout>
                 <header className="mb-12">
                     <SectionHeading gradient="ai">System Audits</SectionHeading>
                     <p className="text-zinc-400 text-lg leading-relaxed mt-2">
@@ -124,7 +125,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                         </div>
                     )}
                 </div>
-            </div>
+            </PageLayout>
         </div>
     );
 }

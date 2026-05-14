@@ -2,6 +2,7 @@ import {
     Button,
     ErrorCard,
     LoadingBoundary,
+    PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
@@ -37,51 +38,45 @@ export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
     }
 
     return (
-        <div className="flex flex-col min-h-screen">
+        <div className="min-h-screen">
             {/* Header */}
             <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-                <div className="flex flex-col px-6 md:px-12 py-8">
-                    <div className="flex flex-col w-full max-w-5xl mx-auto">
-                        <SectionHeading gradient="electric">AI Memories</SectionHeading>
-                        <p className="text-zinc-600 dark:text-zinc-400 text-base mt-2">
-                            Market insights, strategic decisions, and post-trade analysis from AI
-                            agents.
-                        </p>
-                    </div>
-                </div>
+                <PageLayout maxWidth="md" className="py-8">
+                    <SectionHeading gradient="electric">AI Memories</SectionHeading>
+                    <p className="text-zinc-600 dark:text-zinc-400 text-base mt-2">
+                        Market insights, strategic decisions, and post-trade analysis from AI
+                        agents.
+                    </p>
+                </PageLayout>
             </div>
 
             {/* Main Content */}
-            <div className="flex flex-col flex-1 px-6 md:px-12 py-8">
-                <div className="flex flex-col w-full max-w-5xl mx-auto">
-                    <MemoriesList memories={allMemories || []} />
+            <PageLayout maxWidth="md" className="py-8">
+                <MemoriesList memories={allMemories || []} />
 
-                    {/* Load More Button */}
-                    {hasNextPage && (
-                        <div className="mt-8 flex justify-center">
-                            <Button
-                                variant="solid"
-                                size="lg"
-                                colorScheme="neutral"
-                                onClick={() => {
-                                    fetchNextPage();
-                                    posthog.capture('memories_load_more_clicked');
-                                }}
-                                isLoading={isFetchingNextPage}
-                            >
-                                Load More
-                            </Button>
-                        </div>
-                    )}
+                {/* Load More Button */}
+                {hasNextPage && (
+                    <div className="mt-8 flex justify-center">
+                        <Button
+                            variant="solid"
+                            size="lg"
+                            colorScheme="neutral"
+                            onClick={() => {
+                                fetchNextPage();
+                                posthog.capture('memories_load_more_clicked');
+                            }}
+                            isLoading={isFetchingNextPage}
+                        >
+                            Load More
+                        </Button>
+                    </div>
+                )}
 
-                    {/* No More Data Indicator */}
-                    {!hasNextPage && allMemories && allMemories.length > 0 && (
-                        <div className="mt-8 text-center text-sm text-zinc-500">
-                            End of memories
-                        </div>
-                    )}
-                </div>
-            </div>
+                {/* No More Data Indicator */}
+                {!hasNextPage && allMemories && allMemories.length > 0 && (
+                    <div className="mt-8 text-center text-sm text-zinc-500">End of memories</div>
+                )}
+            </PageLayout>
         </div>
     );
 }

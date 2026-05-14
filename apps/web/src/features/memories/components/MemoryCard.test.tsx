@@ -88,7 +88,7 @@ describe('MemoryCard scenario percentage badges', () => {
 
     it('does not show analysis section when no scenario_analysis', () => {
         const memory = makeMemory();
-        memory.metadata!.scenario_analysis = undefined;
+        memory.metadata.scenario_analysis = undefined;
 
         render(<MemoryCard memory={memory} />);
 

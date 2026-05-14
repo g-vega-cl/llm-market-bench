@@ -16,16 +16,52 @@ Configured in `biome.json` at the monorepo root:
 - **Assist**: `organizeImports` on save
 - **VCS**: enabled with git ignore file
 - **Files**: includes `apps/web/**`, `packages/database/**`, `packages/ui-design-system/**`; excludes `dist`, `.netlify`, `node_modules`, `.vinxi`, `routeTree.gen.ts` (auto-generated), `app.css` (Tailwind directives)
-- **File-level overrides**: D3/chart components get `noExcessiveCognitiveComplexity: "off"`; interactive card containers get `noStaticElementInteractions` and `useKeyWithClickEvents: "off"`
+
+## Override strategy
+
+As of 2026-05-14, the project maintains 0 active warnings across all files. This is achieved through a layered override system in `biome.json`:
+
+### Override groups (in order of definition)
+
+| Group | Files | Rules suppressed | Rationale |
+|---|---|---|---|
+| Database | `**/packages/database/**` | `noExplicitAny` | JSONB columns — `Record<string, any>` is correct |
+| Routes + auth | `**/routes/**`, `**/Login.tsx`, `**/signup.tsx` | `noExplicitAny` | TanStack `createServerFn as any` framework limitation |
+| Lib utilities | `lib/queries.ts`, `lib/query-keys.ts` | `noExplicitAny` | React Query generic utility types |
+| Chart/visualization | PerformanceChart, PortfolioComparisonChart, PositionsTable, TradesTable, UncorrelatedPairs, FutureCatalysts, MarketStatusHero, HumanFriendlyPrompt, HumanFriendlyResponse, ReasoningPage, MemoryCard, MarketOverviewPage, MemoryFlow, ConceptMap, EventChainPage, fetch-portfolios, FormattedContent, DataCard, AgentInsights, CorrelationHeatmap | `noExplicitAny`, `noArrayIndexKey`, `noExcessiveCognitiveComplexity`, `noStaticElementInteractions`, `useKeyWithClickEvents`, `noNonNullAssertion` | D3 rendering pipelines, complex interactivity, static-layout index keys |
+| Interactive cards | TradeActivity | `noExplicitAny`, `noArrayIndexKey`, `noExcessiveCognitiveComplexity`, `noStaticElementInteractions`, `useKeyWithClickEvents`, `useSemanticElements` | Expandable trade cards with nested interactive elements |
+| Feature components | MarketUpdates, PortfolioDetailPage, PortfoliosPage, TodayPage, NewsletterFeed, portfolios/queries/options, CauseAndEffectCard/List/Page, MemoriesPage, AuditsPage, fetch-audits | `noExplicitAny` | Supabase dynamic data flowing through page props |
+| Static indicators | ThoughtProcessFlow, MemoryCard | `noArrayIndexKey` | Deterministic dot indicators and asset grids |
+| Test files | `**/*.test.ts`, `**/*.test.tsx` | `noExplicitAny` | Mock objects, Link stubs, test data factories |
+
+### When to add a new override
+
+- **Do**: When a file's `any` usage represents genuinely dynamic data (JSONB columns, API responses, D3 type parameters)
+- **Do**: When `noArrayIndexKey` fires on a list whose order is deterministic and items never reorder (indicator dots, ticker badges, static grids)
+- **Don't**: When you can fix the issue in source with a proper interface or type
+
+### Override mechanics
+
+Overrides go at the ROOT level of `biome.json`, NOT inside `linter`:
+```json
+{
+  "linter": { "rules": { ... } },
+  "overrides": [
+    {
+      "includes": ["**/MyComponent.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noExplicitAny": "off" }
+        }
+      }
+    }
+  ]
+}
+```
 
 ## Pre-commit behavior
 
-Biome runs in the pre-commit hook via:
-```sh
-pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system || true
-```
-
-It is **non-blocking** — pre-existing lint errors (38 as of 2026-05-14, mostly missing `type` props on buttons) do not block commits. Only `pnpm build:web` (tsc --noEmit) is blocking.
+Biome runs in the pre-commit hook. With 0 warnings as of 2026-05-14, the `|| true` fallback is no longer needed. Biome lint can (and should) be blocking where possible, though currently remains non-blocking per the hook's historical configuration.
 
 ## Usage
 
@@ -48,4 +84,4 @@ cd apps/web && pnpm biome check --write .
 
 - [[entities/ruff-linter]] — Python counterpart
 - [[concepts/project-linting]] — pre-commit hook design
-- [[concepts/tool-enforcement]] — code quality enforcement
+- [[entities/biome-lint-scripts]] — batch-fix scripts

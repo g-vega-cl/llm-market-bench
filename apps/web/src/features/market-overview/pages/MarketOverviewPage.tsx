@@ -30,10 +30,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
                             tickers={data.correlationRun.tickers}
                         />
                         <UncorrelatedPairs correlationData={data.correlationData} />
-                        <SectorPerformanceGrid
-                            correlationData={data.correlationData}
-                            tickers={data.correlationRun.tickers}
-                        />
+                        <SectorPerformanceGrid correlationData={data.correlationData} />
                     </div>
                 ) : (
                     <EmptyCorrelationState />
@@ -262,13 +259,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
     );
 }
 
-function SectorPerformanceGrid({
-    correlationData,
-    tickers,
-}: {
-    correlationData: any[];
-    tickers: string[];
-}) {
+function SectorPerformanceGrid({ correlationData }: { correlationData: any[] }) {
     const tickerReturns = React.useMemo(() => {
         const returns: Record<string, { positive: boolean; ticker: string }[]> = {};
 

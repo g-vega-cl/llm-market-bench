@@ -57,6 +57,16 @@
     },
     "overrides": [
         {
+            "includes": ["**/packages/database/**"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    }
+                }
+            }
+        },
+        {
             "includes": ["**/CorrelationHeatmap.tsx"],
             "linter": {
                 "rules": {
@@ -66,6 +76,29 @@
                     },
                     "complexity": {
                         "noExcessiveCognitiveComplexity": "off"
+                    },
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/routes/**", "**/Login.tsx", "**/signup.tsx"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/lib/queries.ts", "**/lib/query-keys.ts"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
                     }
                 }
             }
@@ -85,9 +118,12 @@
                 "**/MemoryCard.tsx",
                 "**/MarketOverviewPage.tsx",
                 "**/MemoryFlow.tsx",
+                "**/ConceptMap.tsx",
                 "**/EventChainPage.tsx",
                 "**/fetch-portfolios.ts",
-                "**/ConceptMap.tsx"
+                "**/FormattedContent.tsx",
+                "**/DataCard.tsx",
+                "**/AgentInsights.tsx"
             ],
             "linter": {
                 "rules": {
@@ -100,6 +136,10 @@
                     },
                     "style": {
                         "noNonNullAssertion": "off"
+                    },
+                    "suspicious": {
+                        "noExplicitAny": "off",
+                        "noArrayIndexKey": "off"
                     }
                 }
             }
@@ -115,6 +155,53 @@
                         "noStaticElementInteractions": "off",
                         "useKeyWithClickEvents": "off",
                         "useSemanticElements": "off"
+                    },
+                    "suspicious": {
+                        "noExplicitAny": "off",
+                        "noArrayIndexKey": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": [
+                "**/MarketUpdates.tsx",
+                "**/PortfolioDetailPage.tsx",
+                "**/PortfoliosPage.tsx",
+                "**/TodayPage.tsx",
+                "**/NewsletterFeed.tsx",
+                "**/portfolios/queries/options.ts",
+                "**/CauseAndEffectCard.tsx",
+                "**/CauseAndEffectList.tsx",
+                "**/CauseAndEffectPage.tsx",
+                "**/MemoriesPage.tsx",
+                "**/AuditsPage.tsx",
+                "**/fetch-audits.ts"
+            ],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/ThoughtProcessFlow.tsx", "**/MemoryCard.tsx"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noArrayIndexKey": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/*.test.ts", "**/*.test.tsx"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
                     }
                 }
             }

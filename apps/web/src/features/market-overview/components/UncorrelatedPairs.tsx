@@ -63,8 +63,11 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
                 <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
                     <div className="flex flex-wrap items-center gap-6">
                         <div className="flex items-center gap-3">
-                            <label className="text-sm text-zinc-500">Max Correlation:</label>
+                            <label htmlFor="max-corr-slider" className="text-sm text-zinc-500">
+                                Max Correlation:
+                            </label>
                             <input
+                                id="max-corr-slider"
                                 type="range"
                                 min="0"
                                 max="0.8"
@@ -79,8 +82,11 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <label className="text-sm text-zinc-500">Min 90d Return:</label>
+                            <label htmlFor="min-return-slider" className="text-sm text-zinc-500">
+                                Min 90d Return:
+                            </label>
                             <input
+                                id="min-return-slider"
                                 type="range"
                                 min="-10"
                                 max="20"

@@ -49,9 +49,9 @@ export function Login() {
                                 <button
                                     className="text-blue-500"
                                     onClick={(e) => {
-                                        const formData = new FormData(
-                                            (e.target as HTMLButtonElement).form!,
-                                        );
+                                        const form = (e.target as HTMLButtonElement).form;
+                                        if (!form) return;
+                                        const formData = new FormData(form);
 
                                         signupMutation.mutate({
                                             email: formData.get('email') as string,

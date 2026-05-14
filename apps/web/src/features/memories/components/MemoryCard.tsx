@@ -6,10 +6,9 @@ import type { Memory } from './MemoriesList';
 
 interface MemoryCardProps {
     memory: Memory;
-    parentMemory?: Memory | null;
 }
 
-export function MemoryCard({ memory, parentMemory }: MemoryCardProps) {
+export function MemoryCard({ memory }: MemoryCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
     const [selectedAsset, setSelectedAsset] = React.useState<any | null>(null);
 

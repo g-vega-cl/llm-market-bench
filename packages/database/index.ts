@@ -1,12 +1,10 @@
 export type { Database } from './supabase-types';
 
-type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
-
 export type Memory = {
     id: string;
     content: string;
     created_at: string | null;
-    metadata: any;
+    metadata: Record<string, any>;
     status: string | null;
     parent_id: string | null;
     relationship_type: string | null;
@@ -20,7 +18,7 @@ export type MemoryInsert = {
     id?: string;
     content: string;
     created_at?: string | null;
-    metadata?: any;
+    metadata?: Record<string, any>;
     status?: string | null;
     parent_id?: string | null;
     relationship_type?: string | null;
@@ -34,7 +32,7 @@ export type MemoryUpdate = {
     id?: string;
     content?: string;
     created_at?: string | null;
-    metadata?: any;
+    metadata?: Record<string, any>;
     status?: string | null;
     parent_id?: string | null;
     relationship_type?: string | null;
@@ -57,7 +55,7 @@ export type Decision = {
     status: string | null;
     price: number | null;
     trade_id: string | null;
-    metadata: any;
+    metadata: Record<string, any>;
     limit_price: number | null;
 };
 
@@ -74,7 +72,7 @@ export type DecisionInsert = {
     status?: string | null;
     price?: number | null;
     trade_id?: string | null;
-    metadata?: any;
+    metadata?: Record<string, any>;
     limit_price?: number | null;
 };
 
@@ -91,7 +89,7 @@ export type DecisionUpdate = {
     status?: string | null;
     price?: number | null;
     trade_id?: string | null;
-    metadata?: any;
+    metadata?: Record<string, any>;
     limit_price?: number | null;
 };
 
@@ -206,9 +204,9 @@ export type LLMReasoningLog = {
     task_type: string;
     model_provider: string;
     model_name: string;
-    prompt: any;
-    response: any;
-    metadata: any;
+    prompt: Record<string, any>;
+    response: Record<string, any>;
+    metadata: Record<string, any>;
     created_at: string | null;
 };
 

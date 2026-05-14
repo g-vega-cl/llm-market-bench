@@ -19,6 +19,7 @@
 
 ## Concepts
 
+- [[concepts/model-anomalies]] - Catalog of observed LLM behavioral anomalies (empty responses, zero decisions)
 - [[concepts/equal-weighted-returns]] — Per-agent percentage returns averaged equally regardless of portfolio size
 - [[concepts/project-linting]] — Code quality enforcement: Ruff (Python) + Biome (TypeScript) in pre-commit
 - [[concepts/ingestion]] — Newsletter scraping, economic calendar, government tracking

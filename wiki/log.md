@@ -1374,3 +1374,12 @@ Removed Select primitive entirely, reduced Badge variants (removed `dot` variant
 ## [2026-05-14] refactor | Design system simplification
 
 Removed Select primitive entirely, reduced Badge variants (removed `dot` variant, stripped `critical` and `low` severity), trimmed LoadingSpinner sizes (removed `xs` and `lg`), removed `elevated` Card variant and `accentBorder` props, eliminated `alert` gradient from HeroBackground and SectionHeading, and simplified severity mappings in AuditCard/FutureCatalysts to only `high`/`medium`.
+
+## [2026-05-14] investigation | MiniMax empty response & Gemini-3.1-flash-lite zero decisions
+
+Added two investigation items to ROADMAP to ROADMAP.md:
+- MiniMax market feeling analysis returning empty JSON responses, and Gemini-3.1-flash-lite generating zero trading decisions. These are non-trivial behavioral anomalies that may indicate model-specific issues requiring deeper analysis.
+
+## [2026-05-14] investigation | MiniMax empty response & Gemini-3.1-flash-lite zero decisions
+
+Added two investigation items to ROADMAP.md documenting behavioral anomalies: MiniMax market feeling analysis returning empty JSON responses, and Gemini-3.1-flash-lite generating zero trading decisions. These are non-trivial model-specific issues that may indicate reliability problems requiring deeper analysis.

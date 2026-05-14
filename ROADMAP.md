@@ -81,6 +81,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: include copper in sector analysis.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 - [ ] - Revisit alpaca trades.
+- [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
+- [ ] - Gemini-3.1-flash-lite generated 0 decisions.
 
 ## Under Consideration
 

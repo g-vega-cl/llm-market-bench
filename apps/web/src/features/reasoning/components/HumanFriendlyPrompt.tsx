@@ -1,3 +1,4 @@
+import { Button } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { FormattedContent } from './FormattedContent';
 
@@ -22,18 +23,15 @@ export function HumanFriendlyPrompt({ prompt }: { prompt: any[] }) {
                 {shouldShowTabs && (
                     <div className="flex gap-0.5 md:gap-1 p-0.5 md:p-1 bg-gray-100 dark:bg-gray-900 rounded-lg md:rounded-xl border border-gray-200 dark:border-gray-800 shadow-inner overflow-x-auto">
                         {roles.map((role) => (
-                            <button
-                                type="button"
+                            <Button
                                 key={role}
+                                size="sm"
+                                variant={activeRole === role ? 'solid' : 'ghost'}
+                                colorScheme={activeRole === role ? 'accent' : 'neutral'}
                                 onClick={() => setActiveRole(role)}
-                                className={`px-2 md:px-4 py-1 md:py-1.5 rounded-md md:rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all duration-200 whitespace-nowrap min-h-[32px] md:min-h-[unset] ${
-                                    activeRole === role
-                                        ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm ring-1 ring-black/5'
-                                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'
-                                }`}
                             >
                                 {role}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 )}

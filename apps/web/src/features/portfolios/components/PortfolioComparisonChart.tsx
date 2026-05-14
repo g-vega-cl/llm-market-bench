@@ -1,3 +1,4 @@
+import { Button } from '@llm-market-bench/ui-design-system';
 import * as d3 from 'd3';
 import * as React from 'react';
 import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
@@ -478,13 +479,9 @@ export function PortfolioComparisonChart({
                 <div className="flex items-center gap-3">
                     <div className="text-xs text-zinc-400">Normalized to percentage returns</div>
                     {clickedData && (
-                        <button
-                            type="button"
-                            onClick={handleReset}
-                            className="text-xs text-sky-600 hover:text-sky-700 font-medium"
-                        >
+                        <Button variant="ghost" colorScheme="info" size="sm" onClick={handleReset}>
                             Reset
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>

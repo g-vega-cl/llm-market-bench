@@ -66,6 +66,24 @@ describe('MemoriesList', () => {
         expect(screen.getByText('Post-mortem on AAPL')).toBeInTheDocument();
     });
 
+    it('filter buttons use DS Button component', () => {
+        render(<MemoriesList memories={mockMemories} />);
+
+        // Only the filter pills (All, Events, Decisions, Post-Mortems) + Show Flow toggle
+        const filterButtons = screen.getAllByRole('button');
+        const dsButtons = filterButtons.filter((btn) =>
+            ['All', 'Events', 'Decisions', 'Post-Mortems', 'Show Flow', 'Hide Flow'].includes(
+                btn.textContent || '',
+            ),
+        );
+        expect(dsButtons.length).toBeGreaterThanOrEqual(5);
+
+        for (const btn of dsButtons) {
+            expect(btn.className).toContain('inline-flex');
+            expect(btn.className).toContain('font-bold');
+        }
+    });
+
     it('filters memories by type when button is clicked', () => {
         render(<MemoriesList memories={mockMemories} />);
 

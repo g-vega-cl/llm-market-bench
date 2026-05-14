@@ -61,16 +61,3 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     },
 );
 Label.displayName = 'Label';
-
-export interface ErrorMessageProps extends React.HTMLAttributes<HTMLSpanElement> {}
-
-export const ErrorMessage = React.forwardRef<HTMLSpanElement, ErrorMessageProps>(
-    ({ className, children, ...props }, ref) => {
-        return (
-            <span ref={ref} className={cn('block text-xs text-danger mt-1', className)} {...props}>
-                {children}
-            </span>
-        );
-    },
-);
-ErrorMessage.displayName = 'ErrorMessage';

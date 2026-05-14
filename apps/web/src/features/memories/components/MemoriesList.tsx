@@ -1,4 +1,5 @@
 import type { Memory } from '@llm-market-bench/database';
+import { Button } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { MemoryCard } from './MemoryCard';
 import { MemoryFlow } from './MemoryFlow';
@@ -49,33 +50,27 @@ export function MemoriesList({ memories }: MemoriesListProps) {
                     {/* Filter Pills */}
                     <div className="flex flex-wrap gap-2">
                         {FILTERS.map((type) => (
-                            <button
-                                type="button"
+                            <Button
                                 key={type.id}
+                                size="sm"
+                                variant={filter === type.id ? 'solid' : 'soft'}
+                                colorScheme="neutral"
                                 onClick={() => setFilter(type.id)}
-                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                                    filter === type.id
-                                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                                        : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-                                }`}
                             >
                                 {type.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
 
                     {/* View Toggle */}
-                    <button
-                        type="button"
+                    <Button
+                        size="sm"
+                        variant={showFlow ? 'solid' : 'outline'}
+                        colorScheme="neutral"
                         onClick={() => setShowFlow(!showFlow)}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors border ${
-                            showFlow
-                                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                                : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
                     >
                         {showFlow ? 'Hide Flow' : 'Show Flow'}
-                    </button>
+                    </Button>
                 </div>
             </div>
 

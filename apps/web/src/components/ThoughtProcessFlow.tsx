@@ -1,3 +1,4 @@
+import { Button } from '@llm-market-bench/ui-design-system';
 import type React from 'react';
 import { useState } from 'react';
 
@@ -176,15 +177,12 @@ export function ThoughtProcessFlow() {
 
                 <div className="grid md:grid-cols-5 gap-4 mb-8">
                     {steps.map((step, idx) => (
-                        <button
-                            type="button"
+                        <Button
                             key={step.id}
+                            variant={activeStep === idx ? 'solid' : 'outline'}
+                            colorScheme="info"
+                            className="flex-col p-4 rounded-2xl transition-all duration-300"
                             onClick={() => setActiveStep(idx)}
-                            className={`flex flex-col items-center p-4 rounded-2xl transition-all duration-300 group ${
-                                activeStep === idx
-                                    ? 'bg-blue-600/10 border-blue-500/50 border'
-                                    : 'hover:bg-slate-800/50 border border-transparent'
-                            }`}
                         >
                             <span
                                 className={`text-2xl mb-2 transition-transform duration-300 ${activeStep === idx ? 'scale-125' : 'group-hover:scale-110'}`}
@@ -196,7 +194,7 @@ export function ThoughtProcessFlow() {
                             >
                                 Step {idx + 1}
                             </span>
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
@@ -234,14 +232,16 @@ export function ThoughtProcessFlow() {
                 </div>
 
                 <div className="mt-12 flex justify-between items-center border-t border-slate-800 pt-8">
-                    <button
-                        type="button"
-                        onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
+                    <Button
+                        variant="outline"
+                        colorScheme="neutral"
+                        rounded="full"
+                        className="px-6 py-2"
                         disabled={activeStep === 0}
-                        className="px-6 py-2 rounded-full border border-slate-700 text-white font-medium hover:bg-slate-800 transition-colors disabled:opacity-30"
+                        onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
                     >
                         ← Prev
-                    </button>
+                    </Button>
                     <div className="flex gap-1.5">
                         {steps.map((_, idx) => (
                             <div
@@ -250,16 +250,17 @@ export function ThoughtProcessFlow() {
                             />
                         ))}
                     </div>
-                    <button
-                        type="button"
+                    <Button
+                        colorScheme="info"
+                        rounded="full"
+                        className="px-6 py-2 shadow-lg shadow-blue-600/20"
+                        disabled={activeStep === steps.length - 1}
                         onClick={() =>
                             setActiveStep((prev) => Math.min(steps.length - 1, prev + 1))
                         }
-                        disabled={activeStep === steps.length - 1}
-                        className="px-6 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-500 transition-colors disabled:opacity-30 shadow-lg shadow-blue-600/20"
                     >
                         Next →
-                    </button>
+                    </Button>
                 </div>
             </div>
         </section>

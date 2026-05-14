@@ -42,13 +42,9 @@ export type { ButtonProps, LoadingSpinnerProps } from './primitives/Button';
 // Primitives
 // ---------------------------------------------------------------------------
 export { Button, LoadingSpinner } from './primitives/Button';
-export type { CardBodyProps, CardFooterProps, CardHeaderProps, CardProps } from './primitives/Card';
-export { Card, CardBody, CardFooter, CardHeader } from './primitives/Card';
-export type { ErrorBoundaryProps } from './primitives/ErrorBoundary';
-export { ErrorBoundary } from './primitives/ErrorBoundary';
-export type { ErrorMessageProps, InputProps, LabelProps } from './primitives/Input';
-export { ErrorMessage, Input, Label } from './primitives/Input';
+export type { CardProps } from './primitives/Card';
+export { Card } from './primitives/Card';
+export type { InputProps, LabelProps } from './primitives/Input';
+export { Input, Label } from './primitives/Input';
 export type { SelectProps } from './primitives/Select';
 export { Select } from './primitives/Select';
-export type { SkeletonProps } from './primitives/Skeleton';
-export { Skeleton } from './primitives/Skeleton';

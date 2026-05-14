@@ -1,3 +1,4 @@
+import { Button } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
@@ -46,7 +47,9 @@ export function Login() {
                         {loginMutation.data.error &&
                         (loginMutation.data as any).message === 'Invalid login credentials' ? (
                             <div>
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    colorScheme="info"
                                     className="text-blue-500"
                                     onClick={(e) => {
                                         const form = (e.target as HTMLButtonElement).form;
@@ -58,10 +61,9 @@ export function Login() {
                                             password: formData.get('password') as string,
                                         } as any);
                                     }}
-                                    type="button"
                                 >
                                     Sign up instead?
-                                </button>
+                                </Button>
                             </div>
                         ) : null}
                     </>

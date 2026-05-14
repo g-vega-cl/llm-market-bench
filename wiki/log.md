@@ -1358,3 +1358,7 @@ Consolidated design system usage across all 9 web pages. Migrated all pages to u
 ## [2026-05-14] refactor | EventChainPage UI refactor to use design system components
 
 Refactored `EventChainPage.tsx` to use `Badge`, `Button`, `PageLayout`, and `SectionHeading` from the shared `@llm-market-bench/ui-design-system` package. Replaced inline styling and conditional class logic with centralized `getTypeBadgeColor` and `getImpactBadgeColor` helper functions. This improves consistency with the rest of the web app and reduces duplication.
+
+## [2026-05-14] refactor | Design system Button migration & primitive cleanup
+
+Replaced raw `<button>` elements with the design system's `Button` primitive across 10 components: ThoughtProcessFlow, DefaultCatchBoundary, NotFound, MemoriesList, PortfolioComparisonChart, HumanFriendlyPrompt, HumanFriendlyResponse, Auth, Login. Also removed unused primitives from `ui-design-system`: ErrorBoundary, Skeleton, CardHeader/CardBody/CardFooter, ErrorMessage. The Auth component additionally adopted `Input` and `Label` primitives. Added test coverage to verify DS component usage.

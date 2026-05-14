@@ -1354,3 +1354,7 @@ The design system at `packages/ui-design-system/` was well-structured but incons
 ## [2026-05-14] refactor | Design System Consolidation
 
 Consolidated design system usage across all 9 web pages. Migrated all pages to use PageLayout wrapper, replaced raw headings with SectionHeading, fixed ReasoningPage (zero DS usage → full DS adoption), migrated ConceptsPage from gray→zinc color tokens, and updated PageLayout to remove min-h-screen (now handled by page-level divs). Satoshi font import removed in favor of system-ui fallback.
+
+## [2026-05-14] refactor | EventChainPage UI refactor to use design system components
+
+Refactored `EventChainPage.tsx` to use `Badge`, `Button`, `PageLayout`, and `SectionHeading` from the shared `@llm-market-bench/ui-design-system` package. Replaced inline styling and conditional class logic with centralized `getTypeBadgeColor` and `getImpactBadgeColor` helper functions. This improves consistency with the rest of the web app and reduces duplication.

@@ -35,13 +35,19 @@ Features: today (dashboard), portfolios (summary + detail with D3 equity curves)
 
 ## Design System
 
-"Bloomberg Terminal Meets Wired Magazine" at `packages/ui-design-system/`:
+"Bloomberg Terminal Meets Wired Magazine" at `packages/ui-design-system/`. Fully adopted across all pages as of 2026-05-14.
+
 - Colors: Electric Blue (primary), Neon Green (BUY), Alert Red (SELL), Deep Purple (AI), Cyber Yellow (catalysts)
 - Typography: Space Grotesk headlines, Satoshi body, JetBrains Mono data
 - Semantic gradients: electric, success, alert, catalyst, ai
-- Components: Button (5 variants), Card (5 variants), Badge (3 variants, severity), ConfidenceBar, StatPill, MetricTile, SectionHeading, HeroBackground, Agent Pills, Timeline
+- Primitives: Button (5 variants), Card (5 variants), Badge (3 variants + severity), Input, Select, Skeleton, ErrorBoundary, LoadingSpinner
+- Patterns: SectionHeading, ConfidenceBar, StatPill, MetricTile, EmptyState, LoadingBoundary, ErrorCard
+- Layouts: PageLayout, HeroBackground
+- Utilities: cn (clsx-based className merging)
 - Motion: slide-up, scale-in, staggered delays (100-500ms), float, pulse-glow — all respect prefers-reduced-motion
 - Accessibility: WCAG AA (4.5:1), aria labels, visible focus states
+
+Cross-cutting conventions: all "Load More" buttons use Button with isLoading, all error states use ErrorCard, all loading states use LoadingBoundary, all section titles use SectionHeading. Color palette is consistently zinc-based across all pages.
 
 ## Deployment
 

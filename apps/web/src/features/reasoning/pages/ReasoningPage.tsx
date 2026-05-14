@@ -32,10 +32,10 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
     // Handle loading and error states
     if (status === 'pending') {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+            <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">
+                    <p className="text-zinc-500 dark:text-zinc-400 text-lg">
                         Loading reasoning traces...
                     </p>
                 </div>
@@ -45,10 +45,10 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
 
     if (status === 'error') {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+            <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
                 <div className="text-center p-8">
                     <p className="text-red-500 text-lg mb-4">Failed to load reasoning logs</p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm">
                         {(error as Error).message}
                     </p>
                 </div>
@@ -57,12 +57,12 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 p-4 md:p-12 animate-slow-fade">
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-4 md:p-12 animate-slow-fade">
             <header className="mb-6 md:mb-12">
                 <h1 className="text-3xl md:text-5xl font-extrabold mb-3 md:mb-4 tracking-tighter bg-gradient-to-r from-blue-500 to-teal-400 bg-clip-text text-transparent">
                     LLM Research Audit Trail
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm md:text-xl max-w-3xl leading-relaxed font-light">
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-xl max-w-3xl leading-relaxed font-light">
                     The ultimate source of truth for agent cognition. Every tool call, every prompt,
                     and every internal "thought" trace is captured here for deep research and
                     auditing.
@@ -71,7 +71,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
 
             {/* Tabs - Horizontal scroll on mobile */}
             <div className="mb-6 md:mb-8 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-                <div className="flex gap-2 p-1.5 bg-gray-100 dark:bg-gray-900/50 rounded-2xl w-fit border border-gray-200 dark:border-gray-800 backdrop-blur-xl min-w-max">
+                <div className="flex gap-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/50 rounded-2xl w-fit border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl min-w-max">
                     {categories.map((cat) => (
                         <button
                             type="button"
@@ -83,7 +83,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                             className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap min-h-[44px] ${
                                 activeTab === cat
                                     ? 'bg-white dark:bg-blue-600 shadow-xl text-blue-600 dark:text-white border-b-2 border-blue-500 dark:border-blue-400'
-                                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'
+                                    : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
                             }`}
                         >
                             {cat}
@@ -100,7 +100,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                         <button
                             type="button"
                             onClick={() => setSelectedLogId(null)}
-                            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors min-h-[44px]"
+                            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors min-h-[44px]"
                         >
                             <svg
                                 className="w-4 h-4"
@@ -140,32 +140,32 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                             className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border transition-all cursor-pointer group hover:shadow-2xl hover:-translate-y-1 ${
                                 selectedLogId === log.id
                                     ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-2xl ring-1 ring-blue-500/50'
-                                    : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm'
+                                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm'
                             }`}
                         >
                             <div className="flex justify-between items-start mb-2 md:mb-3">
-                                <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[9px] md:text-[10px] uppercase font-black tracking-widest bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                                <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[9px] md:text-[10px] uppercase font-black tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
                                     {log.task_type}
                                 </span>
-                                <span className="text-[9px] md:text-[10px] text-gray-400 font-mono italic">
+                                <span className="text-[9px] md:text-[10px] text-zinc-400 font-mono italic">
                                     {log.created_at
                                         ? new Date(log.created_at).toLocaleTimeString()
                                         : '-'}
                                 </span>
                             </div>
-                            <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base md:text-lg leading-tight group-hover:text-blue-500 transition-colors">
+                            <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-base md:text-lg leading-tight group-hover:text-blue-500 transition-colors">
                                 {log.metadata?.ticker || 'Global Analysis'}
                             </h3>
                             <div className="flex items-center gap-2 mt-1.5 md:mt-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                                <p className="text-[10px] md:text-[11px] font-medium text-gray-500 dark:text-gray-500 tracking-wide uppercase">
+                                <p className="text-[10px] md:text-[11px] font-medium text-zinc-500 dark:text-zinc-500 tracking-wide uppercase">
                                     {log.model_provider} • {log.model_name}
                                 </p>
                             </div>
                         </div>
                     ))}
                     {(!filteredLogs || filteredLogs.length === 0) && (
-                        <div className="text-center py-8 md:py-12 p-6 md:p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl md:rounded-3xl text-gray-400 italic">
+                        <div className="text-center py-8 md:py-12 p-6 md:p-8 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl md:rounded-3xl text-zinc-400 italic">
                             No logs found for this category.
                         </div>
                     )}
@@ -196,7 +196,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
 
                     {/* No More Data Indicator */}
                     {!hasNextPage && filteredLogs && filteredLogs.length > 0 && (
-                        <div className="text-center py-3 md:py-4 text-gray-400 dark:text-gray-500 text-[10px] md:text-xs uppercase tracking-widest">
+                        <div className="text-center py-3 md:py-4 text-zinc-400 dark:text-zinc-500 text-[10px] md:text-xs uppercase tracking-widest">
                             • End of reasoning traces •
                         </div>
                     )}
@@ -211,15 +211,15 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
 
                 {/* Trace Viewer - Full width on mobile when selected */}
                 <div
-                    className={`${selectedLog ? 'block' : 'hidden lg:block'} lg:col-span-8 bg-white dark:bg-gray-900/60 rounded-2xl md:rounded-[2.5rem] border border-gray-200 dark:border-gray-800 p-6 md:p-10 shadow-3xl backdrop-blur-3xl relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col group/viewer`}
+                    className={`${selectedLog ? 'block' : 'hidden lg:block'} lg:col-span-8 bg-white dark:bg-zinc-900/60 rounded-2xl md:rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 md:p-10 shadow-3xl backdrop-blur-3xl relative overflow-hidden max-h-[80vh] md:h-[75vh] flex flex-col group/viewer`}
                 >
                     {/* Decorative Background Glow */}
                     <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
                     {!selectedLog ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-3 md:space-y-4">
-                            <div className="w-12 md:w-16 h-12 md:h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center animate-pulse">
-                                <div className="w-6 md:w-8 h-6 md:h-8 rounded bg-gray-200 dark:bg-gray-700" />
+                        <div className="h-full flex flex-col items-center justify-center text-zinc-400 space-y-3 md:space-y-4">
+                            <div className="w-12 md:w-16 h-12 md:h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center animate-pulse">
+                                <div className="w-6 md:w-8 h-6 md:h-8 rounded bg-zinc-200 dark:bg-zinc-700" />
                             </div>
                             <p className="italic font-light text-sm md:text-lg text-center px-4">
                                 Select a reasoning trace to inspect the thinking process.
@@ -228,17 +228,17 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                     ) : (
                         <>
                             {/* Sticky Header on Desktop */}
-                            <div className="flex justify-between items-start mb-6 md:mb-8 pb-4 md:pb-8 border-b border-gray-100 dark:border-gray-800/50 sticky top-0 bg-white dark:bg-gray-900/60 z-10 -mx-6 md:-mx-10 px-6 md:px-10 pt-6 md:pt-0">
+                            <div className="flex justify-between items-start mb-6 md:mb-8 pb-4 md:pb-8 border-b border-zinc-100 dark:border-zinc-800/50 sticky top-0 bg-white dark:bg-zinc-900/60 z-10 -mx-6 md:-mx-10 px-6 md:px-10 pt-6 md:pt-0">
                                 <div>
                                     <div className="flex items-center gap-2 md:gap-3 mb-1.5 md:mb-2 flex-wrap">
-                                        <h2 className="text-xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                                        <h2 className="text-xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
                                             {selectedLog.metadata?.ticker || selectedLog.task_type}
                                         </h2>
                                         <span className="px-2 md:px-3 py-0.5 md:py-1 rounded-lg bg-blue-500/10 text-blue-500 text-[9px] md:text-[10px] uppercase font-black tracking-widest border border-blue-500/20">
                                             Audit Mode
                                         </span>
                                     </div>
-                                    <p className="text-[10px] md:text-xs text-gray-400 font-mono tracking-tighter bg-gray-100 dark:bg-gray-800/50 px-1.5 md:px-2 py-0.5 md:py-1 rounded-md w-fit">
+                                    <p className="text-[10px] md:text-xs text-zinc-400 font-mono tracking-tighter bg-zinc-100 dark:bg-zinc-800/50 px-1.5 md:px-2 py-0.5 md:py-1 rounded-md w-fit">
                                         UUID: {selectedLog.id} •{' '}
                                         {selectedLog.created_at
                                             ? new Date(selectedLog.created_at).toLocaleString()
@@ -247,7 +247,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto space-y-6 md:space-y-10 pr-3 md:pr-6 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+                            <div className="flex-1 overflow-y-auto space-y-6 md:space-y-10 pr-3 md:pr-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
                                 {/* Conversation Trace */}
                                 <HumanFriendlyPrompt prompt={selectedLog.prompt} />
 

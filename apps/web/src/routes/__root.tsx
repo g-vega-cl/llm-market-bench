@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { Badge, Button } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, cn } from '@llm-market-bench/ui-design-system';
 import { PostHogProvider } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
@@ -125,7 +125,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                         debug: import.meta.env.DEV,
                     }}
                 >
-                    <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-80 text-sm font-bold uppercase tracking-widest">
+                    <nav
+                        className={cn(
+                            'flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4',
+                            'bg-white/80 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800',
+                            'sticky top-0 z-50 backdrop-blur-md',
+                            'text-sm font-bold uppercase tracking-widest',
+                        )}
+                    >
                         {navItems.map((item) => (
                             <NavLink
                                 key={item.to}

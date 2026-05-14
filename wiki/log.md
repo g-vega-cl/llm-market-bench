@@ -1318,3 +1318,35 @@ Files where `any` or index keys are genuinely the right call received targeted o
 3. **Test files exempted** — mock `Link` components, Supabase client stubs, and test data factories use loose types by design. Override is cleaner than hand-typing every mock.
 
 4. **Biome lint can now be blocking** — with 0 warnings, the `|| true` on the biome check line in `pre-commit` can be removed. The hook currently has biome as non-blocking because pre-existing errors were accepted. Those are now gone.
+
+## [2026-05-14] design-system | Full design system adoption across all web app pages
+
+### Context
+
+The design system at `packages/ui-design-system/` was well-structured but inconsistently used: 14 files imported from it, but 7 pages used zero DS components, relying entirely on raw Tailwind. MarketOverviewPage had a 60-line raw copy-paste of HeroBackground. ReasoningPage used `gray-*` colors instead of the app's `zinc-*` palette. Five different raw "Load More" button implementations existed across the codebase.
+
+### Changed files
+
+- `apps/web/src/features/market-overview/pages/MarketOverviewPage.tsx` — HeroBackground replaces 60-line raw copy; Card for sentiment; Badge for status/direction; ConfidenceBar for scores; EmptyState for correlation pending; Card for sector grid. **-78 lines.**
+- `apps/web/src/features/reasoning/pages/ReasoningPage.tsx` — 24 `gray-*` → `zinc-*` replacements
+- `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` — Card + MetricTile for equity/cash; SectionHeading for section titles; Badge for "Audit Trail"; Card for empty state
+- `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` — Card replaces raw portfolio cards; MetricTile for equity/cash/buying-power; Badge for active/retired; SectionHeading everywhere
+- `apps/web/src/features/memories/pages/MemoriesPage.tsx` — Button for "Load More"; ErrorCard for errors; LoadingBoundary for loading; SectionHeading for header
+- `apps/web/src/features/audits/pages/AuditsPage.tsx` — Button for "Load More"; ErrorCard; LoadingBoundary; LoadingSpinner for fetch indicator; SectionHeading
+- `apps/web/src/features/cause-and-effect/pages/CauseAndEffectPage.tsx` — SectionHeading replaces raw h1
+- `apps/web/src/routes/__root.tsx` — cn() utility replaces raw string concatenation; bg-white/80 replaces bg-opacity-80
+- `packages/ui-design-system/README.md` — added Adoption section + Usage Patterns reference
+- `wiki/sources/web-design-system-source.md` — updated takeaways with current state
+- `wiki/entities/web-app.md` — removed stale Stack/Cluster/Grid/AgentPills/Timeline; added actual component inventory + cross-cutting conventions
+
+### Before / After
+
+- **Before**: 7 pages with zero DS usage; duplicate HeroBackground; 5 ad-hoc "Load More" implementations; inconsistent color palettes
+- **After**: Every page uses the DS; unified loading/error/button patterns; consistent zinc palette; HeroBackground deduplicated; 86 tests all green; biome + ruff clean
+
+### Key decisions
+
+1. **Fix adoption before aesthetics** — user chose to get the DS consistently used everywhere before rethinking the visual language. This gives a clean foundation for the aesthetic refresh.
+2. **No new DS components added** — existing primitives/patterns covered every use case. No abstraction was needed; just consistent usage.
+3. **cn() utility for clean classNames** — replaced raw string concatenation patterns with the DS's cn utility where it improved readability.
+4. **Patterns page in README** — documents which DS components each page uses, serving as a quick reference for contributors and a living inventory.

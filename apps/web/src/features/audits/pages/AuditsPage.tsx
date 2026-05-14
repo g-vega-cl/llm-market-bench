@@ -1,3 +1,10 @@
+import {
+    Button,
+    ErrorCard,
+    LoadingBoundary,
+    LoadingSpinner,
+    SectionHeading,
+} from '@llm-market-bench/ui-design-system';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import { AuditCard } from '../components/AuditCard';
@@ -32,30 +39,22 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
 
     if (status === 'pending') {
         return (
-            <div className="flex flex-col min-h-screen px-6 md:px-12 py-12 items-center justify-center">
-                <div className="w-16 h-16 border-4 border-zinc-500 border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-zinc-400 text-lg">Loading audits...</p>
-            </div>
+            <LoadingBoundary isLoading={true}>
+                <div />
+            </LoadingBoundary>
         );
     }
 
     if (status === 'error') {
-        return (
-            <div className="flex flex-col min-h-screen px-6 md:px-12 py-12 items-center justify-center">
-                <p className="text-red-400 text-lg mb-2">Failed to load audits</p>
-                <p className="text-zinc-500 text-sm">{(error as Error).message}</p>
-            </div>
-        );
+        return <ErrorCard title="Failed to load audits" message={(error as Error).message} />;
     }
 
     return (
         <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
             <div className="flex flex-col w-full">
                 <header className="mb-12">
-                    <h1 className="text-4xl font-bold text-zinc-400 mb-4 tracking-tight">
-                        System Audits
-                    </h1>
-                    <p className="text-zinc-400 text-lg leading-relaxed">
+                    <SectionHeading gradient="ai">System Audits</SectionHeading>
+                    <p className="text-zinc-400 text-lg leading-relaxed mt-2">
                         Database integrity checks, code error monitoring, and continuous improvement
                         suggestions. Updated weekly.
                     </p>
@@ -100,21 +99,16 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
 
                     {hasNextPage && (
                         <div className="pt-4 pb-2">
-                            <button
-                                type="button"
+                            <Button
+                                variant="solid"
+                                size="lg"
+                                colorScheme="neutral"
                                 onClick={() => fetchNextPage()}
-                                disabled={isFetchingNextPage}
-                                className="w-full py-4 px-6 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                isLoading={isFetchingNextPage}
+                                className="w-full"
                             >
-                                {isFetchingNextPage ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                                        Loading...
-                                    </span>
-                                ) : (
-                                    'Load More'
-                                )}
-                            </button>
+                                Load More
+                            </Button>
                         </div>
                     )}
 
@@ -126,7 +120,7 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
 
                     {isFetching && !isFetchingNextPage && (
                         <div className="text-center py-2">
-                            <div className="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                            <LoadingSpinner size="sm" />
                         </div>
                     )}
                 </div>

@@ -1,4 +1,5 @@
 import type { Portfolio } from '@llm-market-bench/database';
+import { Badge, Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
@@ -80,32 +81,18 @@ export function PortfolioDetailPage({
                             Portfolio analysis and performance timeline.
                         </p>
                     </div>
-                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 md:p-4 flex gap-4 md:gap-8">
-                        <div>
-                            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
-                                Total Equity
-                            </div>
-                            <div className="text-xl md:text-2xl font-bold text-zinc-900">
-                                $
-                                {Number(portfolio.total_equity || 0).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
-                                Cash
-                            </div>
-                            <div className="text-xl md:text-2xl font-bold text-zinc-900">
-                                $
-                                {Number(portfolio.cash_balance).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </div>
-                        </div>
-                    </div>
+                    <Card padding="md" className="flex gap-4 md:gap-8">
+                        <MetricTile
+                            icon="💰"
+                            label="Total Equity"
+                            value={`$${Number(portfolio.total_equity || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        />
+                        <MetricTile
+                            icon="💵"
+                            label="Cash"
+                            value={`$${Number(portfolio.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        />
+                    </Card>
                 </header>
 
                 <div className="flex flex-col space-y-12">
@@ -124,25 +111,29 @@ export function PortfolioDetailPage({
                             showPercentage={!!selectedBenchmark}
                         />
                         {(!history || history.length === 0) && (
-                            <div className="mt-4 p-8 border border-dashed border-zinc-300 rounded-xl text-center text-zinc-500">
+                            <Card
+                                variant="outlined"
+                                padding="md"
+                                className="text-center text-zinc-500"
+                            >
                                 No performance history available yet. Performance is recorded daily.
-                            </div>
+                            </Card>
                         )}
                     </section>
 
                     {/* Positions Table */}
                     <section>
-                        <h3 className="text-xl font-bold text-zinc-900 mb-6">Current Positions</h3>
+                        <SectionHeading gradient="electric">Current Positions</SectionHeading>
                         <PositionsTable positions={positions as any} />
                     </section>
 
                     {/* Recent Trades Table */}
                     <section>
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-bold text-zinc-900">Recent Trades</h3>
-                            <span className="text-sm text-zinc-500 bg-zinc-100 px-3 py-1 rounded-full font-medium">
+                            <SectionHeading gradient="success">Recent Trades</SectionHeading>
+                            <Badge variant="soft" size="sm" colorScheme="neutral">
                                 Audit Trail
-                            </span>
+                            </Badge>
                         </div>
                         <TradesTable trades={trades as any} />
                     </section>

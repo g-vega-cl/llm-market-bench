@@ -1,3 +1,4 @@
+import { SectionHeading } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
@@ -25,10 +26,8 @@ export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageP
         <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
             <div className="flex flex-col w-full">
                 <header className="mb-12">
-                    <h1 className="text-4xl font-bold text-zinc-400 mb-4 tracking-tight">
-                        Cause & Effect Library
-                    </h1>
-                    <p className="text-zinc-400 text-lg leading-relaxed">
+                    <SectionHeading gradient="catalyst">Cause & Effect Library</SectionHeading>
+                    <p className="text-zinc-400 text-lg leading-relaxed mt-2">
                         A historical playbook of market reactions. Explore why the market moved
                         following specific global events and use it as a frame for the future.
                     </p>

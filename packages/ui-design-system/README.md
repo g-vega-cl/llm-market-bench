@@ -6,6 +6,10 @@ Shared UI design system for the LLM Market Bench monorepo. Homegrown component l
 
 **"Bloomberg Terminal Meets Wired Magazine"** — data-dense but readable, motion with purpose, distinctive typography.
 
+## Adoption
+
+All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Reasoning, Audits, Cause & Effect, Concepts) use the design system as their primary UI vocabulary. No page uses zero design system components.
+
 ## Exports
 
 ### Primitives
@@ -24,13 +28,13 @@ Shared UI design system for the LLM Market Bench monorepo. Homegrown component l
 
 ### Patterns
 
-| Component | Props |
-|-----------|-------|
-| `SectionHeading` | `gradient` (electric/success/catalyst/ai/alert), `children`, `className` |
-| `ConfidenceBar` | `label`, `value`, `colorScheme` (accent/success/danger/info/warning), `textStyle` (default/hero), `className` |
-| `StatPill` | `label`, `value`, `colorScheme` (accent/success/danger/info/warning/neutral), `isActive`, `onClick`, `className` |
-| `MetricTile` | `icon`, `label`, `value`, `className` |
-| `EmptyState` | Emoji, title, subtitle, action buttons |
+| Component | Purpose |
+|-----------|---------|
+| `SectionHeading` | Section title with gradient decorator bar and gradient text |
+| `ConfidenceBar` | Percentage bar with label, color scheme, hero variant |
+| `StatPill` | Clickable filter pill with colored dot and count |
+| `MetricTile` | Compact stat display with icon, label, and value |
+| `EmptyState` | Emoji, title, subtitle, action buttons for zero-data states |
 | `LoadingBoundary` | Suspense wrapper with loading skeleton |
 | `ErrorCard` | Error display card with retry |
 
@@ -46,6 +50,28 @@ Shared UI design system for the LLM Market Bench monorepo. Homegrown component l
 | Export | Purpose |
 |--------|---------|
 | `cn` | `clsx`-based className utility |
+
+## Usage Patterns
+
+### Pages
+
+- **Today**: HeroBackground, Card, Badge, ConfidenceBar, SectionHeading, MetricTile, StatPill, EmptyState
+- **Portfolios**: Card, Badge, SectionHeading, MetricTile
+- **Portfolio Detail**: Card, MetricTile, SectionHeading, Badge
+- **Market Overview**: HeroBackground, Card, Badge, ConfidenceBar, SectionHeading, EmptyState
+- **Memories**: SectionHeading, Button, ErrorCard, LoadingBoundary
+- **Audits**: SectionHeading, Button, ErrorCard, LoadingBoundary, LoadingSpinner
+- **Reasoning**: zinc palette alignment (SectionHeading/Button for controls)
+- **Cause & Effect**: SectionHeading
+- **Root Layout**: Button, Badge, cn
+
+### Cross-cutting
+
+- All "Load More" buttons use `Button` with `isLoading` for pending state
+- All error states use `ErrorCard` with title + message
+- All loading states use `LoadingBoundary` wrapper
+- All section titles use `SectionHeading` with semantic gradients
+- Color palette is consistently zinc-based across all pages
 
 ## Principles
 

@@ -1,4 +1,5 @@
 import type { Portfolio } from '@llm-market-bench/database';
+import { Badge, Card, MetricTile, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
@@ -36,12 +37,14 @@ function PortfolioCard({
             params={{ portfolioId: portfolio.id }}
             className="block group"
         >
-            <div
-                className={`h-full p-6 border rounded-xl shadow-sm transition-shadow ${
+            <Card
+                padding="md"
+                variant={deprecated ? 'default' : 'elevated'}
+                className={
                     deprecated
-                        ? 'border-zinc-200 bg-zinc-50 opacity-60 hover:opacity-80 hover:shadow-md'
-                        : 'border-zinc-200 bg-white hover:shadow-md group-hover:border-zinc-300'
-                }`}
+                        ? 'opacity-60 hover:opacity-80'
+                        : 'hover:shadow-md group-hover:border-zinc-300'
+                }
             >
                 <div className="flex justify-between items-start mb-4">
                     <h3
@@ -51,55 +54,36 @@ function PortfolioCard({
                     >
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
-                    <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${
-                            deprecated
-                                ? 'bg-zinc-200 text-zinc-500'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}
+                    <Badge
+                        variant="soft"
+                        size="sm"
+                        colorScheme={deprecated ? 'neutral' : 'success'}
                     >
                         {deprecated ? 'Retired' : 'Active'}
-                    </span>
+                    </Badge>
                 </div>
 
                 <div className="space-y-4">
-                    <div>
-                        <div className="text-sm text-zinc-500 mb-1">Total Equity</div>
-                        <div
-                            className={`text-2xl font-bold ${deprecated ? 'text-zinc-500' : 'text-zinc-900'}`}
-                        >
-                            $
-                            {Number(portfolio.total_equity || 0).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            })}
-                        </div>
-                    </div>
+                    <MetricTile
+                        icon="💰"
+                        label="Total Equity"
+                        value={`$${Number(portfolio.total_equity || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    />
 
-                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100">
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-1">Cash</div>
-                            <div className="text-sm font-semibold text-zinc-600">
-                                $
-                                {Number(portfolio.cash_balance).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-1">Buying Power</div>
-                            <div className="text-sm font-semibold text-zinc-600">
-                                $
-                                {Number(portfolio.buying_power || 0).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                        <MetricTile
+                            icon="💵"
+                            label="Cash"
+                            value={`$${Number(portfolio.cash_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        />
+                        <MetricTile
+                            icon="📊"
+                            label="Buying Power"
+                            value={`$${Number(portfolio.buying_power || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        />
                     </div>
                 </div>
-            </div>
+            </Card>
         </Link>
     );
 }
@@ -144,10 +128,8 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
         <div className="flex flex-col min-h-screen px-6 md:px-12 py-12">
             <div className="flex flex-col w-full">
                 <header className="mb-12">
-                    <h1 className="text-4xl font-bold text-zinc-800 mb-4 tracking-tight">
-                        Agent Portfolios
-                    </h1>
-                    <p className="text-zinc-500 text-lg leading-relaxed">
+                    <SectionHeading gradient="electric">Agent Portfolios</SectionHeading>
+                    <p className="text-zinc-500 text-lg leading-relaxed mt-2">
                         Live performance and current holdings of our AI trading agents.
                     </p>
                 </header>
@@ -166,10 +148,10 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                     <section className="mb-16">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h2 className="text-xl font-bold text-zinc-900 mb-1">
+                                <SectionHeading gradient="success">
                                     Performance Comparison
-                                </h2>
-                                <p className="text-sm text-zinc-500">
+                                </SectionHeading>
+                                <p className="text-sm text-zinc-500 mt-1">
                                     Normalized percentage returns over the last 90 days
                                 </p>
                             </div>
@@ -194,10 +176,10 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             <h2 className="text-lg font-semibold text-zinc-400 tracking-wide uppercase text-sm">
                                 Retired Agents
                             </h2>
-                            <div className="flex-1 border-t border-zinc-200" />
-                            <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-1 rounded-full">
+                            <div className="flex-1 border-t border-zinc-200 dark:border-zinc-800" />
+                            <Badge variant="soft" size="sm" colorScheme="neutral">
                                 No longer trading
-                            </span>
+                            </Badge>
                         </div>
                         <p className="text-sm text-zinc-400 mb-6">
                             These portfolios are preserved for historical reference. They no longer

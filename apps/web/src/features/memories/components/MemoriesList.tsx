@@ -90,9 +90,7 @@ export function MemoriesList({ memories }: MemoriesListProps) {
             <div className="flex flex-col space-y-4">
                 {filteredMemories.map((memory) => (
                     <div key={memory.id}>
-                        <MemoryCard
-                            memory={memory}
-                        />
+                        <MemoryCard memory={memory} />
                     </div>
                 ))}
 

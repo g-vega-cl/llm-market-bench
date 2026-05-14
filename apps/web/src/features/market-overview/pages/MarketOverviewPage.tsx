@@ -1,4 +1,11 @@
 import type { MarketFeeling } from '@llm-market-bench/database';
+import {
+    Badge,
+    Card,
+    ConfidenceBar,
+    EmptyState,
+    HeroBackground,
+} from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
@@ -80,11 +87,13 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
         }
     };
 
-    const getConfidenceColor = (score: number | null | undefined): string => {
-        if (!score) return 'bg-steel-500';
-        if (score >= 70) return 'bg-neon-green-500';
-        if (score >= 40) return 'bg-amber-500';
-        return 'bg-alert-red-500';
+    const getConfidenceColorScheme = (
+        score: number | null | undefined,
+    ): 'accent' | 'success' | 'danger' | 'info' | 'warning' => {
+        if (!score) return 'accent';
+        if (score >= 70) return 'success';
+        if (score >= 40) return 'warning';
+        return 'danger';
     };
 
     const isStale = marketFeeling
@@ -97,165 +106,141 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
         : true;
 
     return (
-        <div className="relative overflow-hidden gradient-electric">
-            <div className="absolute inset-0 opacity-10">
-                <div
-                    className="absolute inset-0"
-                    style={{
-                        backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-                        backgroundSize: '40px 40px',
-                    }}
-                />
-            </div>
-
-            <div className="absolute inset-0 bg-gradient-to-br from-electric-blue-600/90 via-deep-purple-600/80 to-electric-blue-800/90" />
-
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-electric-blue-400/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-deep-purple-400/20 rounded-full blur-3xl animate-pulse animate-stagger-2" />
-
-            <div className="relative max-w-7xl mx-auto px-6 md:px-12 py-16 md:py-20">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                    <div className="space-y-6 animate-slide-up">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-                            <h1 className="text-5xl sm:text-6xl font-black text-white tracking-tighter text-display drop-shadow-lg">
-                                MARKET OVERVIEW
-                            </h1>
-                            <div className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-bold rounded-full border border-white/30 shadow-lg">
-                                {now.toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    month: 'long',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                })}
-                            </div>
-                        </div>
-
-                        <p className="text-lg text-electric-blue-100 font-light leading-relaxed max-w-2xl drop-shadow">
-                            Real-time correlation matrix, uncorrelated asset pairs, and macro
-                            sentiment analysis. Updated weekly on Sundays.
-                        </p>
-
-                        <div className="flex items-center gap-4">
-                            <div
-                                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${
-                                    isMarketOpen
-                                        ? 'bg-neon-green-500/20 text-neon-green-300 border border-neon-green-500/30'
-                                        : 'bg-steel-500/20 text-steel-300 border border-steel-500/30'
-                                }`}
-                            >
-                                <div
-                                    className={`w-2 h-2 rounded-full ${
-                                        isMarketOpen ? 'bg-neon-green-400 live-dot' : 'bg-steel-400'
-                                    }`}
-                                />
-                                {isMarketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
-                            </div>
-                            <Link
-                                to="/"
-                                className="text-sm text-electric-blue-200 hover:text-white transition-colors underline underline-offset-2"
-                            >
-                                View AI Trading Activity →
-                            </Link>
+        <HeroBackground gradient="electric">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div className="space-y-6 animate-slide-up">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
+                        <h1 className="text-5xl sm:text-6xl font-black text-white tracking-tighter text-display drop-shadow-lg">
+                            MARKET OVERVIEW
+                        </h1>
+                        <div className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-bold rounded-full border border-white/30 shadow-lg">
+                            {now.toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric',
+                            })}
                         </div>
                     </div>
 
-                    <div className="space-y-6 animate-slide-up animate-stagger-2">
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 shadow-2xl">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-black text-electric-blue-200 uppercase tracking-widest">
-                                    How I'm Feeling
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-2xl animate-float">
-                                        {marketFeeling?.sentiment_emoji || '🤔'}
-                                    </span>
-                                    {isStale && marketFeeling && (
-                                        <span
-                                            className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full"
-                                            title="Data is older than 4 hours"
-                                        >
-                                            ⚠
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+                    <p className="text-lg text-electric-blue-100 font-light leading-relaxed max-w-2xl drop-shadow">
+                        Real-time correlation matrix, uncorrelated asset pairs, and macro sentiment
+                        analysis. Updated weekly on Sundays.
+                    </p>
 
-                            <div
-                                className={`text-3xl sm:text-4xl font-black mb-3 text-display drop-shadow ${getDirectionColor(marketFeeling?.market_direction)}`}
-                            >
-                                {marketFeeling?.sentiment_label || 'Analyzing...'}
-                            </div>
-
-                            {marketFeeling?.market_direction && (
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span
-                                        className={`text-xs font-bold px-2 py-1 rounded-full border ${
-                                            marketFeeling.market_direction === 'BULLISH'
-                                                ? 'bg-neon-green-500/20 text-neon-green-300 border-neon-green-500/30'
-                                                : marketFeeling.market_direction === 'BEARISH'
-                                                  ? 'bg-alert-red-500/20 text-alert-red-300 border-alert-red-500/30'
-                                                  : 'bg-steel-500/20 text-steel-300 border-steel-500/30'
-                                        }`}
-                                    >
-                                        {marketFeeling.market_direction}
-                                    </span>
-                                </div>
-                            )}
-
-                            {marketFeeling?.confidence_score !== null &&
-                                marketFeeling?.confidence_score !== undefined && (
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="text-[10px] text-electric-blue-200 uppercase tracking-wider">
-                                            Confidence
-                                        </span>
-                                        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden shadow-inner max-w-[120px]">
-                                            <div
-                                                className={`h-full ${getConfidenceColor(marketFeeling.confidence_score)} transition-all duration-1000`}
-                                                style={{
-                                                    width: `${marketFeeling.confidence_score}%`,
-                                                }}
-                                            />
-                                        </div>
-                                        <span className="text-xs font-bold text-white tabular-nums">
-                                            {marketFeeling.confidence_score}%
-                                        </span>
-                                    </div>
-                                )}
-
-                            {marketFeeling?.why_explanation && (
-                                <p className="text-sm text-electric-blue-100 leading-relaxed mb-4 italic">
-                                    "{marketFeeling.why_explanation}"
-                                </p>
-                            )}
-
-                            {marketFeeling?.primary_concern && (
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    <span className="text-[10px] text-electric-blue-300 uppercase tracking-wider">
-                                        Primary Concern:
-                                    </span>
-                                    <span className="text-xs px-2 py-1 bg-white/5 rounded-lg text-electric-blue-100 border border-white/10">
-                                        {marketFeeling.primary_concern}
-                                    </span>
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
-                                <span className="text-[10px] text-electric-blue-300">
-                                    {marketFeeling?.created_at
-                                        ? `Last analyzed: ${formatTimeAgo(marketFeeling.created_at)}`
-                                        : 'Waiting for analysis...'}
-                                </span>
-                                {marketFeeling?.model_used && (
-                                    <span className="text-[10px] text-electric-blue-400/50">
-                                        • {marketFeeling.model_used}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                    <div className="flex items-center gap-4">
+                        <Badge
+                            variant="soft"
+                            colorScheme={isMarketOpen ? 'success' : 'neutral'}
+                            className="gap-2"
+                        >
+                            <span
+                                className={
+                                    isMarketOpen ? 'live-dot' : 'w-2 h-2 rounded-full bg-steel-400'
+                                }
+                            />
+                            {isMarketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
+                        </Badge>
+                        <Link
+                            to="/"
+                            className="text-sm text-electric-blue-200 hover:text-white transition-colors underline underline-offset-2"
+                        >
+                            View AI Trading Activity →
+                        </Link>
                     </div>
                 </div>
+
+                <div className="space-y-6 animate-slide-up animate-stagger-2">
+                    <Card variant="glass" padding="md" className="rounded-3xl shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-xs font-black text-electric-blue-200 uppercase tracking-widest">
+                                How I'm Feeling
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl animate-float">
+                                    {marketFeeling?.sentiment_emoji || '🤔'}
+                                </span>
+                                {isStale && marketFeeling && (
+                                    <span
+                                        className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full"
+                                        title="Data is older than 4 hours"
+                                    >
+                                        ⚠
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div
+                            className={`text-3xl sm:text-4xl font-black mb-3 text-display drop-shadow ${getDirectionColor(marketFeeling?.market_direction)}`}
+                        >
+                            {marketFeeling?.sentiment_label || 'Analyzing...'}
+                        </div>
+
+                        {marketFeeling?.market_direction && (
+                            <div className="flex items-center gap-2 mb-4">
+                                <Badge
+                                    variant="soft"
+                                    colorScheme={
+                                        marketFeeling.market_direction === 'BULLISH'
+                                            ? 'success'
+                                            : marketFeeling.market_direction === 'BEARISH'
+                                              ? 'danger'
+                                              : 'neutral'
+                                    }
+                                    size="sm"
+                                >
+                                    {marketFeeling.market_direction}
+                                </Badge>
+                            </div>
+                        )}
+
+                        {marketFeeling?.confidence_score !== null &&
+                            marketFeeling?.confidence_score !== undefined && (
+                                <ConfidenceBar
+                                    label="Confidence"
+                                    value={marketFeeling.confidence_score}
+                                    colorScheme={getConfidenceColorScheme(
+                                        marketFeeling.confidence_score,
+                                    )}
+                                    textStyle="hero"
+                                    className="mb-4"
+                                />
+                            )}
+
+                        {marketFeeling?.why_explanation && (
+                            <p className="text-sm text-electric-blue-100 leading-relaxed mb-4 italic">
+                                "{marketFeeling.why_explanation}"
+                            </p>
+                        )}
+
+                        {marketFeeling?.primary_concern && (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                <span className="text-[10px] text-electric-blue-300 uppercase tracking-wider">
+                                    Primary Concern:
+                                </span>
+                                <span className="text-xs px-2 py-1 bg-white/5 rounded-lg text-electric-blue-100 border border-white/10">
+                                    {marketFeeling.primary_concern}
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
+                            <span className="text-[10px] text-electric-blue-300">
+                                {marketFeeling?.created_at
+                                    ? `Last analyzed: ${formatTimeAgo(marketFeeling.created_at)}`
+                                    : 'Waiting for analysis...'}
+                            </span>
+                            {marketFeeling?.model_used && (
+                                <span className="text-[10px] text-electric-blue-400/50">
+                                    • {marketFeeling.model_used}
+                                </span>
+                            )}
+                        </div>
+                    </Card>
+                </div>
             </div>
-        </div>
+        </HeroBackground>
     );
 }
 
@@ -309,10 +294,7 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: any[] }) 
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Object.entries(tickerReturns).map(([category, items]) => (
-                    <div
-                        key={category}
-                        className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5"
-                    >
+                    <Card key={category} padding="sm">
                         <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4">
                             {category}
                         </h3>
@@ -330,7 +312,7 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: any[] }) 
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Card>
                 ))}
             </div>
         </section>
@@ -339,18 +321,10 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: any[] }) 
 
 function EmptyCorrelationState() {
     return (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-32 h-32 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-8">
-                <span className="text-6xl">📊</span>
-            </div>
-            <h2 className="text-2xl font-bold text-zinc-700 dark:text-zinc-300 mb-4">
-                Correlation Matrix Pending
-            </h2>
-            <p className="text-zinc-500 dark:text-zinc-500 max-w-md mb-8">
-                The correlation matrix runs weekly on Sundays at 16:00 ET. Check back after the next
-                scheduled run for uncorrelated asset pairs.
-            </p>
-            <div className="text-sm text-zinc-400">Next run: This Sunday at 16:00 ET</div>
-        </div>
+        <EmptyState
+            emoji="📊"
+            title="Correlation Matrix Pending"
+            subtitle="The correlation matrix runs weekly on Sundays at 16:00 ET. Check back after the next scheduled run for uncorrelated asset pairs."
+        />
     );
 }

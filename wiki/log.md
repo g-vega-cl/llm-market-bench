@@ -1395,3 +1395,7 @@ Added two investigation items to ROADMAP.md documenting behavioral anomalies: Mi
 ## [2026-05-15] removal | Government incentive tracking feature removed
 
 Removed the `is_government_incentive` field from `MacroEvent` model, the `_validate_and_enrich_government_events()` function from analysis.py, and all related GOV-DETECT keyword matching and UNFLAGGED POLICY EVENT warnings. The model-level flag was unreliable and produced noise. The consensus `_is_vague_government_event()` helper remains for synthesis quality control. Also upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki lint configurations.
+
+## [2026-05-15] config | Update default model from deepseek-v4-pro to deepseek-v4-flash
+
+Changed the default OpenRouter model in `auto_wiki.py` and `wiki_lint_llm.py` from `deepseek/deepseek-v4-pro` to `deepseek/deepseek-v4-flash`. This is a non-trivial configuration change affecting both the auto-wiki documentation generator and the LLM wiki lint runner.

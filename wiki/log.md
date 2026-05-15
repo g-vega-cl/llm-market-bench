@@ -1509,3 +1509,7 @@ Removed all IBKR-related components to reduce codebase noise, as FMP and YFinanc
 - **Tests**: Deleted `test_ibkr_manual.py`, `test_ibkr_concurrency.py`, and `verify_refinement.py`.
 - **Dependencies**: Removed `ib-async` from `requirements.txt`.
 - **Documentation**: Updated `README.md` and sanitized comments in `validation.py` and `test_etf_validation.py`.
+
+## [2026-05-15] note | yfinance reliability concern flagged
+
+Added a ROADMAP item questioning yfinance as a backup data source due to reliability issues, with a note to at least log its usage thoroughly.

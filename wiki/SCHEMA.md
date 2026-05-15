@@ -1,3 +1,8 @@
+---
+tags: [tag1, tag2]
+category: entity|concept|source|synthesis|interaction
+---
+
 # Wiki Schema & Conventions
 
 The LLM writes and maintains this wiki. The human curates sources and asks questions.
@@ -72,7 +77,9 @@ Every page should have at least one inbound link from another page or from
 
 QMD indexes the wiki for fast search. **Runtime note:** QMD's native module
 requires Node 22-25 (not 26+). On this machine, always prefix with:
-  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd ...`
+  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd ...`
+~~`export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd ...`~~
+
 First use of `qmd query` or `qmd vsearch` will download a ~1.3GB embedding model
 to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no model.
 
@@ -114,3 +121,15 @@ The wiki has two layers of automated quality checks:
   gh workflow run wiki-lint.yml -f model="any-openrouter-model"
   ```
 
+## Installation (for reference)
+
+```sh
+# Requires Node.js >= 24 AND <= 25 (better-sqlite3 doesn't support 26+).
+# If your system default is Node 26+, use nvm:
+#   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
+~~#   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22~~
+npm install -g @tobilu/qmd
+
+# Add wiki as a collection
+qmd add wiki
+```

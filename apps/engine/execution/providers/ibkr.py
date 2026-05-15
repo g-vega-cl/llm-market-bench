@@ -107,7 +107,8 @@ class IBKRProvider(FinancialProvider):
                         if mkt_cap_node is not None:
                             market_cap = float(mkt_cap_node.text)
             except Exception as e:
-                logger.warning(f"Error fetching fundamental data for {ticker} from IBKR: {e}")
+                error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+                logger.warning(f"Error fetching fundamental data for {ticker} from IBKR: {error_details}")
 
             if market_cap is None or math.isnan(market_cap):
                 market_cap = 0.0
@@ -122,7 +123,8 @@ class IBKRProvider(FinancialProvider):
             )
 
         except Exception as e:
-            logger.error(f"Unexpected error fetching data from IBKR for {ticker}: {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Unexpected error fetching data from IBKR for {ticker}: {error_details}")
             return None
         finally:
             # We no longer disconnect here to allow the shared client to be reused.
@@ -164,7 +166,8 @@ class IBKRProvider(FinancialProvider):
             return results
 
         except Exception as e:
-            logger.error(f"Error fetching history from IBKR for {ticker}: {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Error fetching history from IBKR for {ticker}: {error_details}")
             return []
         finally:
             # We no longer disconnect here to allow the shared client to be reused.

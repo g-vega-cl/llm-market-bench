@@ -48,3 +48,10 @@ curl -H "Authorization: Bearer your-secret-password" https://clvg.uk/price/AAPL
 If you see a `503 Service Unavailable` or `TimeoutError`:
 - Ensure TWS is logged in and the API is enabled.
 - The proxy automatically retries with random Client IDs to avoid "ClientId already in use" errors.
+
+## Logging & Observability
+The proxy uses the standard Python `logging` library. As of the May 2026 Audit:
+- All critical errors use `logger.exception()` to capture full tracebacks.
+- Logs include timestamps and log levels.
+- These logs are consumable by the core engine's automated log analyzer for root-cause diagnosis.
+

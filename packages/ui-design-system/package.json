@@ -2,6 +2,9 @@
     "name": "@llm-market-bench/ui-design-system",
     "version": "0.1.0",
     "private": true,
+    "engines": {
+        "node": ">=24"
+    },
     "description": "Shared UI design system for LLM Market Bench",
     "type": "module",
     "main": "src/index.ts",

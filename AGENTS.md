@@ -23,6 +23,7 @@
 - Code is truth. Docs are hints. When they conflict, trust the code.
 - Read the code before acting — don't assume.
 - Small, verifiable changes. Test after each.
+- **Observability:** Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system (DeepSeek-based) can perform root-cause analysis on failures. Traceability > Brevity.
 
 ## Config
 - Model names:   `packages/config/models.json`
@@ -87,7 +88,7 @@ concepts mentioned but lacking their own page, and data gaps to investigate.
 
 QMD indexes the wiki for fast search. **Runtime note:** QMD's native module
 requires Node 22-25 (not 26+). On this machine, always prefix with:
-  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd ...`
+  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd ...`
 First use of `qmd query` or `qmd vsearch` will download a ~1.3GB embedding model
 to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no model.
 
@@ -110,7 +111,7 @@ qmd embed                          # regenerate embeddings
 ```sh
 # Requires Node.js >= 22 AND <= 25 (better-sqlite3 doesn't support 26+).
 # If your system default is Node 26+, use nvm:
-#   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22
+#   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
 npm install -g @tobilu/qmd
 
 # Add wiki as a collection

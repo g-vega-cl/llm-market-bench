@@ -151,8 +151,8 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             if len(chunks_to_analyze) < len(valid_chunks):
                 logger.info(f"[{model}] Skipping {len(valid_chunks) - len(chunks_to_analyze)} chunks already analyzed.")
                 
-        except Exception as filter_err:
-            logger.error(f"Error filtering idempotent chunks for {model}: {filter_err}")
+        except Exception:
+            logger.exception(f"Error filtering idempotent chunks for {model}")
             chunks_to_analyze = valid_chunks # Fallback to all if DB fails
 
         if not chunks_to_analyze:
@@ -221,7 +221,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             config = task_configs[i] # Use the tracked config for this specific task
 
             if isinstance(res, Exception):
-                logger.error(f"Batch analysis task failed for {config['provider']} ({config['model']}): {res}")
+                logger.exception(f"Batch analysis task failed for {config['provider']} ({config['model']})")
             else:
                 # res is a DecisionsResponse object
                 # Process decisions

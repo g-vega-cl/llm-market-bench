@@ -174,7 +174,7 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
             last_exception = exc
             
             if not is_transient_supabase_error(exc):
-                logger.error(f"{operation_name} failed with non-transient error: {exc}")
+                logger.exception(f"{operation_name} failed with non-transient error")
                 raise
             
             if attempt < SUPABASE_RETRIES:
@@ -185,9 +185,8 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
                 )
                 time.sleep(wait_time)
             else:
-                logger.error(
-                    f"{operation_name} failed after {SUPABASE_RETRIES} attempts. "
-                    f"Last error: {exc}"
+                logger.exception(
+                    f"{operation_name} failed after {SUPABASE_RETRIES} attempts"
                 )
     
     raise last_exception

@@ -227,7 +227,7 @@ Stores pipeline stdout/stderr blobs for log analysis and debugging.
 - `log_blob` (TEXT): Full stdout/stderr capture.
 - `created_at` (TIMESTAMPTZ): Entry timestamp.
 
-**Retention:** Logs are automatically deleted after 48 hours via GitHub Actions cleanup job.
+**Retention:** Logs are automatically deleted after 48 hours via the **System Audit** workflow (`.github/workflows/audit.yml`).
 
 ---
 
@@ -265,7 +265,7 @@ Refreshed multiple times daily during market hours.
 - `input_tokens`, `output_tokens` (INT): Token usage for cost tracking.
 - `created_at`, `updated_at` (TIMESTAMPTZ): Timestamps.
 
-**Retention**: Records older than 30 days should be cleaned up (handled by cleanup job).
+**Retention**: Records older than 30 days are automatically cleaned up via the **System Audit** workflow (`.github/workflows/audit.yml`).
 
 **Security (RLS)**:
 - **Public**: Read access (`SELECT`) for frontend display.

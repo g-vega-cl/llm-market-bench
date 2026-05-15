@@ -63,7 +63,8 @@ class YFinanceProvider(FinancialProvider):
             )
 
         except Exception as e:
-            logger.error(f"Unexpected error fetching data from yfinance for {ticker}: {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Unexpected error fetching data from yfinance for {ticker}: {error_details}")
             return None
 
     async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
@@ -98,5 +99,6 @@ class YFinanceProvider(FinancialProvider):
             return results
 
         except Exception as e:
-            logger.error(f"Error fetching history from yfinance for {ticker}: {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Error fetching history from yfinance for {ticker}: {error_details}")
             return []

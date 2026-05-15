@@ -1,5 +1,8 @@
 {
   "name": "@repo/config",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=24"
+  },
   "main": "models.json"
 }

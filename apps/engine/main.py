@@ -58,10 +58,10 @@ async def _stage_ingest_and_snapshot():
         try:
             upsert_newsletter_snapshot(sb_client, item)
             saved_count += 1
-        except Exception as e:
-            logger.error(f"Error saving snapshot for {item.get('source_id', 'unknown')}: {e}")
+        except Exception:
+            logger.exception(f"Error saving snapshot for {item.get('source_id', 'unknown')}")
 
-    logger.info(f"Successfully saved {saved_count} snapshots to Supabase.")
+    logger.info(f"Successfully saved {saved_count}/{len(data)} snapshots to Supabase.")
     return data, sb_client
 
 
@@ -110,8 +110,8 @@ async def _stage_dust_cleanup(sb_client):
                     cleaned_tickers.append((model, ticker))
                     total_cleaned += 1
             
-        except Exception as e:
-            logger.error(f"Dust cleanup failed for {model}: {e}")
+        except Exception:
+            logger.exception(f"Dust cleanup failed for {model}")
     
     logger.info(f"Pre-Analysis Dust Cleanup complete. Cleaned {total_cleaned} dust positions: {cleaned_tickers}")
 
@@ -352,8 +352,8 @@ async def _process_single_decision(
                         counters["saved"] += 1
 
             return status == "EXECUTED" or status == "VALIDATED"
-        except Exception as e:
-            logger.error(f"Failed to process decision for {d.ticker}: {e}")
+        except Exception:
+            logger.exception(f"Failed to process decision for {d.ticker}")
             return False
 
 

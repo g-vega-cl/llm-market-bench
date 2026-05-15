@@ -126,7 +126,8 @@ See [web/tanstack-start-deploy-official.md](./web/tanstack-start-deploy-official
 
 - **Daily pipeline**: `.github/workflows/ingest.yml` — weekday trading runs.
 - **Weekend pipeline**: `.github/workflows/weekend-ingest.yml` — ingestion + market feeling only, no trading.
-- **DB backup**: `.github/workflows/db-backup.yml` — gzips a Postgres dump to a workflow artifact. Restore: `gunzip … | psql <connection_string>`.
+- **System Audit**: `.github/workflows/audit.yml` — weekly anomaly detection findings and record cleanup.
+- **DB backup**: `.github/workflows/db-backup.yml` — gzips a Postgres dump to a workflow artifact.
 
 Each workflow lists its own required secrets and schedule — read the YAML rather than duplicating here. Model names live in [`packages/config/models.json`](../packages/config/models.json) (not env vars).
 

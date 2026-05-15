@@ -83,8 +83,8 @@ class FMPProvider(FinancialProvider):
                 )
             return None
         except Exception as e:
-            error_details = repr(e) if str(e) == "" else f"{e} ({repr(e)})"
-            logger.error(f"Unexpected error fetching data from FMP for {ticker}: {error_details}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.exception(f"Unexpected error fetching data from FMP for {ticker}: {error_details}")
             return None
 
     async def get_ticker_data_batch(self, tickers: list[str]) -> dict[str, TickerData]:
@@ -159,7 +159,8 @@ class FMPProvider(FinancialProvider):
                 return results
 
         except Exception as e:
-            logger.error(f"Error fetching history from FMP for {ticker}: {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Error fetching history from FMP for {ticker}: {error_details}")
             return []
 
     async def search_tickers(self, query: str, limit: int = 5) -> list[dict]:
@@ -176,7 +177,8 @@ class FMPProvider(FinancialProvider):
                 resp.raise_for_status()
                 return resp.json()
         except Exception as e:
-            logger.error(f"Error searching tickers on FMP for '{query}': {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Error searching tickers on FMP for '{query}': {error_details}")
             return []
 
     async def screen_stocks(
@@ -251,5 +253,6 @@ class FMPProvider(FinancialProvider):
                 resp.raise_for_status()
                 return resp.json()
         except Exception as e:
-            logger.error(f"Error screening stocks on FMP: {e}")
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Error screening stocks on FMP: {error_details}")
             return []

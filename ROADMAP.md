@@ -71,7 +71,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - check if this repo would help: https://github.com/anthropics/financial-services
 - [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
 - [ ] - add a local model?
-- [ ] - more logs?
+- [x] **Comprehensive Logging Audit & Traceback Hardening.** — Refactored engine, proxy, and provider logging to use `logger.exception` for full traceback capture. Enhanced log format with module names and added granular pipeline progress tracking. This enables the automated LLM log analyzer to perform root-cause analysis on ingestion and execution failures.
 - [ ] - scenario analysis still empty
 - [ ] - can I add how much I have spent in each provider? Would be fun to visualize
 - [ ] - Benchify: improve get sector alternatives tool

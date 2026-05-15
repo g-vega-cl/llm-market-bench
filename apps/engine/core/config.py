@@ -19,7 +19,7 @@ ENV_PATH = BASE_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 # --- Logging Configuration ---
-LOG_FORMAT = "[%(asctime)s] %(levelname)s: %(message)s"
+LOG_FORMAT = "[%(asctime)s] [%(name)s] %(levelname)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger("engine")
 

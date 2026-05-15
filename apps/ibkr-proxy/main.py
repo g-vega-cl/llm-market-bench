@@ -145,9 +145,9 @@ async def get_price(ticker: str, user=Depends(get_current_user)):
         )
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error fetching {ticker}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception(f"Error fetching {ticker}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/history/{ticker}", response_model=List[HistoryItem])
 async def get_history(ticker: str, days: int = 14, user=Depends(get_current_user)):
@@ -179,6 +179,6 @@ async def get_history(ticker: str, days: int = 14, user=Depends(get_current_user
             }
             for bar in reversed(bars)
         ]
-    except Exception as e:
-        logger.error(f"Error fetching history for {ticker}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception(f"Error fetching history for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal server error")

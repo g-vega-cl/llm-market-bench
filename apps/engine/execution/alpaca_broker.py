@@ -133,8 +133,8 @@ class AlpacaBroker:
                 f"[Alpaca] Submitted {signal} {quantity} {ticker} @ ${limit_price:.2f} "
                 f"(OrderID: {order_id_str}, ClientOrderID: {client_order_id})"
             )
-        except Exception as exc:
-            logger.error(f"[Alpaca] Failed to submit order for {ticker}: {exc}")
+        except Exception:
+            logger.exception(f"[Alpaca] Failed to submit order for {ticker}")
             await self._update_trade(trade_id, None, "ERROR")
 
     async def _update_trade(

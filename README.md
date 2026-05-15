@@ -52,7 +52,7 @@ llm-market-bench/
 ### Prerequisites
 
 - Python 3.10+
-- Node.js 20+ & `pnpm`
+- Node.js 24+ & `pnpm`
 - Supabase Account
 
 ### Workspace Setup
@@ -130,6 +130,7 @@ pnpm --filter web dev
 - **CI Testing**: Runs on every push to `main`. See `.github/workflows/ci.yml`.
 - **Daily Pipeline**: Cron-triggered during US market hours, with a holiday-aware market-hours check. Schedule: `.github/workflows/ingest.yml`.
 - **Price Updates**: Periodic during market hours. Schedule: `.github/workflows/update-prices.yml`.
+- **System Audit**: Weekly anomaly detection and data cleanup. Schedule: `.github/workflows/audit.yml`.
 
 ## Key Features
 
@@ -184,6 +185,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 - [Tool Enforcement](./wiki/concepts/tool-enforcement.md) — 4-layer hallucination prevention
 - [RAG Strategy](./wiki/concepts/rag-strategy.md) — Tiered context injection
 - [Memory & Feedback](./wiki/concepts/memory-feedback.md) — Post-mortem, contrarian analysis
+- [Observability Standard](./wiki/concepts/observability-standard.md) — Traceback hardening and pipeline audits
 - [Ingestion Pipeline](./wiki/concepts/ingestion.md) — Newsletters, calendar, government data
 
 ### Technical Reference Docs

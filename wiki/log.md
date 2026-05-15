@@ -1424,6 +1424,38 @@ Replaced all remaining `any` type annotations with proper TypeScript types acros
 
 Changed `FormattedContent.tsx` to use a deterministic `partKey()` hash function instead of array index as React key. This improves React reconciliation stability when list order changes. Also removed the `noArrayIndexKey` Biome lint rule from `biome.json` since the codebase no longer uses array index keys.
 
+## [2026-05-15] audit | Comprehensive Logging Audit & Traceback Hardening
+
+Performed a system-wide audit of logging practices and implemented improvements to ensure rich, audit-ready observability data.
+
+### Changes
+- **Core Engine**: Updated `apps/engine/core/config.py` with an enhanced `LOG_FORMAT` that includes module names (`[%(name)s]`).
+- **Traceback Hardening**: Replaced 100+ `logger.error()` calls with `logger.exception()` across the engine, providers (FMP, IBKR), and proxy. This ensures that the automated LLM log analyzer (DeepSeek) can perform root-cause analysis on the full stack trace.
+- **Pipeline Observability**: Added granular success/total tracking to ingestion, snapshotting, and decision stages in `main.py`.
+- **IBKR Proxy**: Hardened error handling and logging to match engine standards.
+- **Documentation**: Established [[concepts/observability-standard]] as the project's canonical logging convention. Updated `AGENTS.md`, `ROADMAP.md`, and `apps/ibkr-proxy/README.md`.
+
+### Result
+The system now provides deterministic tracebacks for all critical failures, enabling the "anomaly detector" audit layer to accurately identify and suggest fixes for ingestion or execution errors without manual log mining.
+
 ## [2026-05-15] fix | Fix price backfill to use pre-injected price_map for consistency
 
 Changed the `injected_market_price` backfill logic in `analyze.py` to first use the price from the `price_map` that was injected into the LLM's prompt. Previously, it always fetched a fresh price from the market, which could cause false drift detections when compared to the JIT execution price. Now it stamps the price the LLM actually saw, falling back to a fresh fetch only for tickers discovered via tool calls.
+
+## [2026-05-15] audit | Comprehensive Logging Audit & Traceback Hardening
+
+Performed a system-wide audit of logging practices and implemented improvements to ensure rich, audit-ready observability data.
+
+### Changes
+- **Core Engine**: Updated `apps/engine/core/config.py` with an enhanced `LOG_FORMAT` that includes module names (`[%(name)s]`).
+- **Traceback Hardening**: Replaced 100+ `logger.error()` calls with `logger.exception()` across the engine, providers (FMP, IBKR), and proxy. This ensures that the automated LLM log analyzer (DeepSeek) can perform root-cause analysis on the full stack trace.
+- **Pipeline Observability**: Added granular success/total tracking to ingestion, snapshotting, and decision stages in `main.py`.
+- **IBKR Proxy**: Hardened error handling and logging to match engine standards.
+- **Documentation**: Established [[concepts/observability-standard]] as the project's canonical logging convention. Updated `AGENTS.md`, `ROADMAP.md`, and `apps/ibkr-proxy/README.md`.
+
+### Result
+The system now provides deterministic tracebacks for all critical failures, enabling the "anomaly detector" audit layer to accurately identify and suggest fixes for ingestion or execution errors without manual log mining.
+
+## [2026-05-15] infra | Node.js version bump to 24 and audit workflow consolidation
+
+Updated the entire monorepo to require Node.js >= 24. Added `.nvmrc` with `24`, updated `netlify.toml`, all `package.json` files, and development documentation. The QMD wiki search tool now uses `nvm use 24` instead of `nvm use 22`. Also consolidated the weekly audit workflow: merged the cleanup job into the audit job and added automatic cleanup of `market_feeling` records older than 30 days.

@@ -2,6 +2,9 @@
   command = "pnpm build:web"
   publish = "apps/web/dist/client"
 
+[build.environment]
+  NODE_VERSION = "24"
+
 [dev]
   command = "pnpm dev"
   port = 3000

@@ -233,17 +233,27 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                     # are generated in order, this number remains unique and stable per model.
                     decision.original_index = (i * 1000) + j
 
-                    # Backfill injected_market_price if missing but ticker is present
+                    # Stamp injected_market_price from the price_map the LLM actually saw.
+                    # This MUST use the pre-analysis price_map, not a fresh network fetch —
+                    # otherwise the staleness check compares a post-analysis price against the
+                    # JIT execution price, producing false drift detections. The LLM decided
+                    # based on the price in price_map (or a tool call); we record that price.
                     if decision.ticker and (getattr(decision, "injected_market_price", None) is None):
-                        try:
-                            logger.info(f"[{config['model']}] Price missing for {decision.ticker}. Backfilling from market data...")
-                            mdm = MarketDataManager()
-                            quote = await mdm.get_quote(decision.ticker)
-                            if quote and quote.exists:
-                                decision.injected_market_price = quote.price
-                                logger.info(f"[{config['model']}] Backfilled {decision.ticker} price: ${decision.injected_market_price:.2f}")
-                        except Exception as bp_err:
-                            logger.warning(f"Failed to backfill price for {decision.ticker}: {bp_err}")
+                        ticker = decision.ticker.upper()
+                        if ticker in price_map:
+                            decision.injected_market_price = price_map[ticker]
+                        else:
+                            # Ticker not in pre-fetched price_map — LLM discovered it via a tool
+                            # call (get_stock_quote). Fall back to a fresh fetch as best effort.
+                            try:
+                                logger.info(f"[{config['model']}] Price missing for {ticker} (tool-called). Backfilling from market data...")
+                                mdm = MarketDataManager()
+                                quote = await mdm.get_quote(ticker)
+                                if quote and quote.exists:
+                                    decision.injected_market_price = quote.price
+                                    logger.info(f"[{config['model']}] Backfilled {ticker} price: ${decision.injected_market_price:.2f}")
+                            except Exception as bp_err:
+                                logger.warning(f"Failed to backfill price for {ticker}: {bp_err}")
 
                     valid_decisions.append(decision)
                 

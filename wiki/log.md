@@ -1423,3 +1423,7 @@ Replaced all remaining `any` type annotations with proper TypeScript types acros
 ## [2026-05-15] refactor | Replace array index keys with stable content-hash keys
 
 Changed `FormattedContent.tsx` to use a deterministic `partKey()` hash function instead of array index as React key. This improves React reconciliation stability when list order changes. Also removed the `noArrayIndexKey` Biome lint rule from `biome.json` since the codebase no longer uses array index keys.
+
+## [2026-05-15] fix | Fix price backfill to use pre-injected price_map for consistency
+
+Changed the `injected_market_price` backfill logic in `analyze.py` to first use the price from the `price_map` that was injected into the LLM's prompt. Previously, it always fetched a fresh price from the market, which could cause false drift detections when compared to the JIT execution price. Now it stamps the price the LLM actually saw, falling back to a fresh fetch only for tickers discovered via tool calls.

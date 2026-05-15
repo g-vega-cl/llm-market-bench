@@ -132,7 +132,8 @@ qmd embed
 
 ### Conventions
 
-- Never delete content from wiki — strike through or mark superseded
-- Log every action in `log.md` with `## [YYYY-MM-DD] action | Title`
-- Answers that add value get filed back as wiki pages
-- New knowledge comes from `raw/` ingest or direct wiki editing
+- **Living Synthesis**: The wiki is a "compiled" state of knowledge, not a graveyard of old claims. When new information supersedes the old, update the pages to reflect the current best understanding. Remove or replace stale content rather than using strikethroughs.
+- **Log for History**: Use `log.md` and Git as the chronological record. Every wiki update should be logged in `log.md` with a brief description.
+- **Cite Sources**: When adding knowledge, cite the source (e.g., `[[sources/source-name]]`).
+- **Cross-Link**: Maintain referential integrity. Concepts and entities mentioned should link to their respective pages.
+- **Answers become pages**: High-value results from queries or discussions should be filed back into the wiki.

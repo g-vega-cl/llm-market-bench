@@ -11,37 +11,36 @@ This source page documents the UI design system used across the TanStack Start d
 
 The following items have been **removed** as part of a design system simplification:
 
-- ~~Select primitive~~ (deleted entirely)
-- ~~Badge variant `dot`~~
-- ~~Badge severity levels `critical` and `low`~~ (now only `high` and `medium`)
-- ~~LoadingSpinner sizes `xs` and `lg`~~ (now only `sm` and `md`)
-- ~~Card variant `elevated`~~ (now only `default`, `outlined`, `ghost`, `glass`)
-- ~~Card props `accentBorder` and `accentBorderColor`~~
-- ~~Gradient `alert`~~ removed from HeroBackground, SectionHeading, and Card gradient options
+- Select primitive (deleted entirely)
+- Badge variant `dot`
+- Badge severity levels `critical` and `low` (now only `high` and `medium`)
+- LoadingSpinner sizes `xs` and `lg` (now only `sm` and `md`)
+- Card variant `elevated` (now only `default`, `outlined`, `ghost`, `glass`)
+- Card props `accentBorder` and `accentBorderColor`
+- Gradient `alert` removed from HeroBackground, SectionHeading, and Card gradient options
 
 ---
 
 ## Primitives
 
 ### Badge
-- **Variants:** `solid`, `soft`, `outline` (~~dot~~)
+- **Variants:** `solid`, `soft`, `outline` (Note: `dot` removed)
 - **Sizes:** `sm`, `md`
 - **Color schemes:** `accent`, `success`, `danger`, `info`, `warning`, `neutral`
 - **Severity:** `high`, `medium` (overrides colorScheme when provided)
 - **Radius:** `full`, `lg`, `md`
 
 ### Button (contains LoadingSpinner)
-- **LoadingSpinner sizes:** `sm`, `md` (~~xs~~, ~~lg~~)
+- **LoadingSpinner sizes:** `sm`, `md`
 
 ### Card
-- **Variants:** `default`, `outlined`, `ghost`, `glass` (~~elevated~~)
+- **Variants:** `default`, `outlined`, `ghost`, `glass`
 - **Padding:** `none`, `sm`, `md`, `lg`
-`
-- **Gradients:** `electric`, `success`, `alert` (removed), `success`, `catalyst`, `ai`
-- ~~No accentBorder or accentBorderColor props~~
+- **Gradients:** `electric`, `success`, `catalyst`, `ai`
+- Note: `accentBorder` and `accentBorderColor` props have been removed.
 
 ### Select
-- ~~Completely removed~~ (no longer part of the design system)
+- This primitive has been completely removed from the design system.
 
 ### Input / Label
 - Unchanged.
@@ -49,10 +48,10 @@ The following items have been **removed** as part of a design system simplificat
 ## Patterns
 
 ### LoadingBoundary
-- Uses LoadingSpinner with `size="md"` (was `lg`).
+- Uses LoadingSpinner with `size="md"`.
 
 ### SectionHeading & HeroBackground
-both accept a `gradient` prop with allowed values: `electric`, `success`, `catalyst`, `ai` (~~alert~~).
+Both accept a `gradient` prop with allowed values: `electric`, `success`, `catalyst`, `ai`.
 
 ## Severity Mapping in Application Code
 

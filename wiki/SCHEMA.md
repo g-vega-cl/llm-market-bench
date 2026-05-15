@@ -78,7 +78,6 @@ Every page should have at least one inbound link from another page or from
 QMD indexes the wiki for fast search. **Runtime note:** QMD's native module
 requires Node 22-25 (not 26+). On this machine, always prefix with:
   `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd ...`
-~~`export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22 && qmd ...`~~
 
 First use of `qmd query` or `qmd vsearch` will download a ~1.3GB embedding model
 to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no model.
@@ -99,7 +98,7 @@ qmd embed                          # regenerate embeddings
 
 ## Maintenance Rules
 
-1. **Never delete** — strike through deprecated content or mark it superseded
+1. **Refine Synthesis** — Keep pages sharp and current. Replace or remove stale/superseded content to maintain a clean "current best" understanding. Do not use strikethroughs for old content; rely on Git and `log.md` for history.
 2. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`
 3. **Answers become pages** — good query answers get filed back into the wiki
 4. **Lint weekly** — check for contradictions, orphans, stale claims, gaps
@@ -127,7 +126,6 @@ The wiki has two layers of automated quality checks:
 # Requires Node.js >= 24 AND <= 25 (better-sqlite3 doesn't support 26+).
 # If your system default is Node 26+, use nvm:
 #   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
-~~#   export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 22~~
 npm install -g @tobilu/qmd
 
 # Add wiki as a collection

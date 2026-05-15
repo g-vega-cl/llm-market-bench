@@ -19,7 +19,7 @@ async def test_verification_accepts_rejected_as_is():
         source_id="src_1",
         price=180.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     empty_response = VerificationResult(
@@ -74,7 +74,7 @@ async def test_verification_no_retry_on_valid_response():
         source_id="src_2",
         price=120.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     valid_response = VerificationResult(
@@ -126,7 +126,7 @@ async def test_verification_none_response_fallback():
         source_id="src_3",
         price=50.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:

@@ -62,7 +62,6 @@ class GovernmentPipeline:
                     memory_type="GOVERNMENT_INCENTIVE",
                     target_date=event.expiry_date,
                     metadata={
-                        "is_government_incentive": True,
                         "expiry_date": event.expiry_date,
                         "impact": event.impact
                     },

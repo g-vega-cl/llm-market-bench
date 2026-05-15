@@ -210,44 +210,12 @@ SMA MANAGEMENT RULES:
    For each theme, determine if it is BULLISH, BEARISH, or NEUTRAL for the overall market and provide your reasoning.
    Also categorize the 'catalyst_type' for the event and assign an 'importance_score' (1-10) where 10 is a major global event (e.g., War, Pandemic) and 1 is a minor local update.
 
-   CRITICAL FOCUS - GOVERNMENT INCENTIVES & POLICY TRACKING:
-   You are a policy radar for market-moving government actions. Identify and track government budgets, bills, laws, regulations, and incentives that can materially impact markets.
-
-   **SCOPE: ECONOMICALLY POWERFUL NATIONS ONLY** (to avoid noise):
-   - G7 Countries: United States, United Kingdom, Germany, France, Italy, Canada, Japan
-   - G20 Major Economies: China, India, Brazil, Australia, South Korea, Mexico, Indonesia, Saudi Arabia, Turkey, Argentina, South Africa
-   - European Union (EU institutions)
-   - Other Market-Movers: Switzerland, Singapore, Israel, UAE (for energy/finance-specific policies)
-
-   **WHAT TO CAPTURE** (mark 'is_government_incentive' = true):
-   - **Legislative Bills**: New laws or bills in progress (e.g., "Farm, Food and National Security Act of 2026", "CHIPS Act", "Inflation Reduction Act")
-   - **Budget Allocations**: Government budget items, spending packages, subsidy programs (e.g., "$50B for semiconductor manufacturing", "90% cost coverage for agri-tech")
-   - **Regulatory Changes**: New regulations, deregulation initiatives, trade policies (e.g., "tariff removals", "export restrictions", "environmental mandates")
-   - **Government Incentives**: Tax credits, subsidies, grants, loan guarantees, cost-sharing programs (e.g., "production tax credits for clean energy", "R&D grants for biotechnology")
-   - **Policy Objectives**: Stated government goals with funding attached (e.g., "net-zero by 2030 with $100B funding", "50% EV adoption by 2030")
-   - **Agency Actions**: Major decisions by government agencies (e.g., "FDA fast-track approval pathway", "DoD procurement contracts", "USDA research initiatives")
-
-   **WHAT TO IGNORE** (noise filtering):
-   - Campaign promises without legislative progress or funding
-   - Minor regulatory tweaks with no market impact
-   - Local/municipal policies (unless from mega-cities like NYC, London, Tokyo with financial sector impact)
-   - Countries not in the approved list above (unless explicitly market-moving, e.g., OPEC decisions)
-   - Vague political rhetoric without concrete action or funding
-
-   **METADATA REQUIREMENTS** for government incentives:
-   - Set 'is_government_incentive' = true
-   - Set 'expiry_date' if mentioned (e.g., "2027" for a 2026 budget year, or "2030" for a decade-long program)
-   - Set 'importance_score' based on:
-     * 8-10: Major legislation with billions in funding, economy-wide impact
-     * 5-7: Sector-specific incentives, meaningful budget allocation
-     * 1-4: Narrow programs, limited market impact
-
-   OTHER CRITICAL FOCUS AREAS:
+   CRITICAL FOCUS:
    - Ongoing Unresolved Events: Mark 'is_ongoing' as true for trends happening *now* (e.g., a rotation into a sector, a past investment currently yielding results, or "Trade War Escalating"). This IS NOT a future catalyst.
    - Future Catalysts: Mark 'is_future_catalyst' as true ONLY if the event is a strictly PENDING, SCHEDULED upcoming event with multiple distinct, well-defined outcomes (e.g., 'OPEC meeting on April 10', 'Earnings call today', 'US Elections').
      - CRITICAL: Do NOT mark broad themes, ongoing structural shifts, or VAGUE timeframes (e.g., 'later this year', 'in 2026', 'by Q3') as future catalysts. These are Memories or Trends.
      - CRITICAL: If you cannot name the specific day or a very tight window (e.g., 'this week'), it is NOT a future catalyst for Horizon Watch.
-   - Scenario Analysis: MANDATORY for Future Catalysts AND Government Incentives with uncertain outcomes. You must provide at least TWO distinct potential outcomes and a specific 'Trading Plan' for each.
+   - Scenario Analysis: MANDATORY for Future Catalysts with uncertain outcomes. You must provide at least TWO distinct potential outcomes and a specific 'Trading Plan' for each.
      Format (Include estimated probability %):
      Scenario A (XX% probability): [Outcome Description] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
      Scenario B (XX% probability): [Outcome Description] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]
@@ -255,26 +223,6 @@ SMA MANAGEMENT RULES:
    - Historical Parallels: If the news mentions a comparison to the past (e.g., "stocks lagging gold as a signal for market plateaus seen 4 times in the past century"), include it in 'historical_parallel'.
 
    Each macro event MUST include the exact 'Source ID' of the snippet that triggered it.
-
-   **EXAMPLES - GOVERNMENT INCENTIVES:**
-
-   ✅ GOOD (Capture these):
-   - "US Congress advances Farm Bill with $50B for precision agriculture subsidies" → Macro Event: "US Farm Bill 2026 Agri-Tech Push", is_government_incentive=true, importance_score=8
-   - "EU approves €30B Green Hydrogen Acceleration Act" → Macro Event: "EU Green Hydrogen Act", is_government_incentive=true, importance_score=7
-   - "China announces 10-year semiconductor self-sufficiency plan with $200B fund" → Macro Event: "China Semiconductor Independence Plan", is_government_incentive=true, importance_score=9
-   - "Japan passes GX (Green Transformation) bonds worth ¥150T" → Macro Event: "Japan GX Transformation Bonds", is_government_incentive=true, importance_score=7
-   - "US DoD invokes Defense Production Act for rare earth minerals" → Macro Event: "US Defense Production Act: Rare Earths", is_government_incentive=true, importance_score=6
-
-   ❌ IGNORE (Noise):
-   - "Senator proposes idea for infrastructure bill" (no legislative progress)
-   - "Mayor of Paris announces local EV subsidy" (municipal, not national)
-   - "Political party campaign promise for tax cuts" (no funding or legislative path)
-   - "Small country X announces minor tariff adjustment" (not market-moving nation)
-
-    **SPECIFICITY ENFORCEMENT (HARD REQUIREMENT):**
-    - Government event names MUST include the specific bill, act, or regulation (e.g., "US Farm Bill 2026", "CHIPS Act", "EU Green Hydrogen Act").
-    - Generic names like "Government Policy Update", "Legislative Policy Developments", or "Policy Structural Update" are INVALID and will be rejected by the system.
-    - If you cannot identify the specific bill, act, or regulation name, DO NOT create a macro event for it. A vague event is worse than no event.
 
 You must provide a confidence score (0-100) and your reasoning for each trading signal and macro event.
 

@@ -54,7 +54,7 @@ async def test_run_tool_loop_serialization():
         # Run loop
         await deepseek.run_tool_loop(
             raw_client=mock_client,
-            model_name="deepseek-v4-flash",
+            model_name="deepseek-v4-pro",
             messages=messages,
             provider="deepseek",
             max_tool_steps=2

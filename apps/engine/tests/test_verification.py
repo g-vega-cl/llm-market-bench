@@ -293,7 +293,7 @@ async def test_verification_retry_validation_error():
         source_id="src_retry_val",
         price=180.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     valid_response = VerificationResult(
@@ -346,7 +346,7 @@ async def test_verification_retry_on_empty_result():
         source_id="src_retry_empty",
         price=350.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     valid_response = VerificationResult(
@@ -399,7 +399,7 @@ async def test_verification_all_retries_fail():
         source_id="src_all_fail",
         price=50.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
@@ -442,7 +442,7 @@ async def test_verification_deepseek_empty_content_recovery():
         source_id="src_ds_think",
         price=120.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     valid_response = VerificationResult(
@@ -503,7 +503,7 @@ async def test_verification_deepseek_retry_across_3_empty_then_success():
         source_id="src_multi_empty",
         price=180.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     valid_response = VerificationResult(
@@ -557,7 +557,7 @@ async def test_verification_deepseek_all_validation_errors_then_fallback():
         source_id="src_cascade",
         price=50.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
@@ -604,7 +604,7 @@ async def test_verification_deepseek_non_retryable_error_raises():
         source_id="src_hard_fail",
         price=50.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-flash"
+        model_name="deepseek-v4-pro"
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:

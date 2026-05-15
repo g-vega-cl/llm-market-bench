@@ -320,7 +320,6 @@ class TestTryParseDecisionsResponse:
                     "is_ongoing": False,
                     "is_future_catalyst": True,
                     "historical_parallel": None,
-                    "is_government_incentive": False,
                     "expiry_date": "2026-12-31",
                     "importance_score": 7,
                     "confidence": 80,

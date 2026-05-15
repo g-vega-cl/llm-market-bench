@@ -1383,3 +1383,15 @@ Added two investigation items to ROADMAP to ROADMAP.md:
 ## [2026-05-14] investigation | MiniMax empty response & Gemini-3.1-flash-lite zero decisions
 
 Added two investigation items to ROADMAP.md documenting behavioral anomalies: MiniMax market feeling analysis returning empty JSON responses, and Gemini-3.1-flash-lite generating zero trading decisions. These are non-trivial model-specific issues that may indicate reliability problems requiring deeper analysis.
+
+## [2026-05-15] removal | Government incentive tracking removed; model upgraded to deepseek-v4-pro
+
+- Removed `is_government_incentive` field from MacroEvent model and all related validation/enrichment logic (`_validate_and_enrich_government_events()`).
+- Removed government incentive prompt instructions from the analysis prompt.
+- The consensus `_is_vague_government_event()` helper remains for synthesis quality control.
+- Upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki linting.
+- Updated raw/docs/reference/government-incentive-quick-ref.md to a removal notice.
+
+## [2026-05-15] removal | Government incentive tracking feature removed
+
+Removed the `is_government_incentive` field from `MacroEvent` model, the `_validate_and_enrich_government_events()` function from analysis.py, and all related GOV-DETECT keyword matching and UNFLAGGED POLICY EVENT warnings. The model-level flag was unreliable and produced noise. The consensus `_is_vague_government_event()` helper remains for synthesis quality control. Also upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki lint configurations.

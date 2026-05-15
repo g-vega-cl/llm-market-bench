@@ -143,10 +143,6 @@ class MacroEvent(BaseModel):
         None,
         description="A historical comparison mentioned (e.g. 'Like the 1970s stagflation')"
     )
-    is_government_incentive: bool = Field(
-        False,
-        description="Whether this event is related to government budgets, objectives, or incentives"
-    )
     expiry_date: str | None = Field(
         None,
         description="The date or timeframe when this incentive or policy expires (e.g., '2027')"

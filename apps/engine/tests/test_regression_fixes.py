@@ -97,7 +97,7 @@ async def test_deepseek_reasoning_preservation_regression():
     
     await run_tool_loop(
         mock_client,
-        model_name="deepseek-v4-flash",
+        model_name="deepseek-v4-pro",
         messages=messages,
         provider="deepseek",
         max_tool_steps=2

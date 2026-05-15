@@ -36,7 +36,7 @@ WIKI_DIR = REPO_ROOT / "wiki"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
-DEFAULT_MODEL = "deepseek/deepseek-v4-flash"
+DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
 DEFAULT_OLLAMA_MODEL = "qwen3.5:latest"
 
 

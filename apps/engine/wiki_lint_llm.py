@@ -115,7 +115,7 @@ def main():
     parser.add_argument("--model", help="OpenRouter model name (e.g., anthropic/claude-haiku-4-5)")
     args = parser.parse_args()
 
-    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-flash"
+    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-pro"
     api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:

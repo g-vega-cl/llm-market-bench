@@ -365,7 +365,6 @@ async def test_process_consensus_accepts_specific_government_event(
             source_id="source1",
             model_provider="openai",
             model_name="gpt-4",
-            is_government_incentive=True,
         ),
         MacroEvent(
             event_name="US Farm Bill 2026",
@@ -375,7 +374,6 @@ async def test_process_consensus_accepts_specific_government_event(
             source_id="source1",
             model_provider="anthropic",
             model_name="claude-3",
-            is_government_incentive=True,
         ),
     ]
 

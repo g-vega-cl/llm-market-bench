@@ -34,7 +34,7 @@ describe('AgentInsights', () => {
     });
 
     it('renders agent name text for known DeepSeek model', () => {
-        render(<AgentInsights memories={[createLessonMemory('deepseek-v4-flash')]} />);
+        render(<AgentInsights memories={[createLessonMemory('deepseek-v4-pro')]} />);
         expect(screen.getByText('DeepSeek')).toBeInTheDocument();
     });
 

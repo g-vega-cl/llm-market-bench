@@ -1,17 +1,19 @@
 # AGENTS.md
 
 ## Commands
-- Test engine:   `./apps/engine/venv/bin/python3 -m pytest`
-- Lint engine:   `./apps/engine/venv/bin/ruff check apps/engine/`
+
+- Test engine: `./apps/engine/venv/bin/python3 -m pytest`
+- Lint engine: `./apps/engine/venv/bin/ruff check apps/engine/`
 - Format engine: `./apps/engine/venv/bin/ruff format apps/engine/`
-- Lint web:      `pnpm biome check`
-- Format web:    `pnpm biome check --write`
-- Build web:     `cd apps/web && pnpm run build`
+- Lint web: `pnpm biome check`
+- Format web: `pnpm biome check --write`
+- Build web: `cd apps/web && pnpm run build`
 - Typecheck web: `cd apps/web && pnpm run typecheck`
-- Test web:      `cd apps/web && pnpm test`
+- Test web: `cd apps/web && pnpm test`
 - Auto-wiki dry: `./apps/engine/venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
 
 ## Linting
+
 - Python (engine): Ruff with rules E, F, I, UP, B, SIM. Config at `apps/engine/ruff.toml`.
 - TypeScript (web + packages): Biome with recommended rules + organize imports. Config at `biome.json`.
 - Both run in `.husky/pre-commit` before tests (fail-fast).
@@ -20,18 +22,22 @@
 **After every code change, verify lint passes before marking work complete.** The pre-commit hook will block commits with lint errors. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint is not done.
 
 ## Principles
+
 - Code is truth. Docs are hints. When they conflict, trust the code.
 - Read the code before acting — don't assume.
-- Small, verifiable changes. Test after each.
-- **Observability:** Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system (DeepSeek-based) can perform root-cause analysis on failures. Traceability > Brevity.
+- **Plan & TDD First:** Before making any changes, perform research and present a written strategy for explicit approval. All implementation plans MUST include a step for creating reproduction tests first.
+- Small, verifiable changes. Use Test Driven Development (TDD).
+- **Observability:** Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
 
 ## Config
-- Model names:   `packages/config/models.json`
-- Env vars:      `apps/engine/.env.example`
-- DB schema:     `supabase/migrations/`
+
+- Model names: `packages/config/models.json`
+- Env vars: `apps/engine/.env.example`
+- DB schema: `supabase/migrations/`
 - DB source of truth is the remote Supabase project (applied via `supabase db push --linked`)
 
 ## Docs
+
 - Original design documents preserved in `raw/docs/`
 - Canonical synthesized knowledge in `wiki/`
 
@@ -57,12 +63,14 @@ raw/             # Immutable source documents (LLM reads, never writes)
 ### Page Format
 
 Every wiki page uses YAML frontmatter:
+
 ```yaml
 ---
 tags: [tag1, tag2]
 category: entity|concept|source|synthesis
 ---
 ```
+
 Cross-references use `[[entities/page-name]]` style. Naming is kebab-case.
 
 ### Operations
@@ -88,7 +96,7 @@ concepts mentioned but lacking their own page, and data gaps to investigate.
 
 QMD indexes the wiki for fast search. **Runtime note:** QMD's native module
 requires Node 22-25 (not 26+). On this machine, always prefix with:
-  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd ...`
+`export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd ...`
 First use of `qmd query` or `qmd vsearch` will download a ~1.3GB embedding model
 to `~/.cache/qmd/models/`. `qmd search` and `qmd get` work immediately with no model.
 
@@ -101,6 +109,7 @@ qmd multi-get "concepts/*.md"     # batch retrieve by glob (no model needed)
 ```
 
 After wiki changes:
+
 ```sh
 qmd update                         # re-scan
 qmd embed                          # regenerate embeddings
@@ -122,6 +131,7 @@ qmd embed
 ```
 
 ### Conventions
+
 - Never delete content from wiki — strike through or mark superseded
 - Log every action in `log.md` with `## [YYYY-MM-DD] action | Title`
 - Answers that add value get filed back as wiki pages

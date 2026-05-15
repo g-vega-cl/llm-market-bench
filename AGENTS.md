@@ -25,6 +25,9 @@
 
 1. **Search First (QMD)**: Before answering any question or starting any task, YOU MUST search the wiki using `qmd` (query, search, or vsearch). The wiki is the "compiled" project memory; do not rely on general knowledge.
 2. **Plan First**: Before making *any* code changes or executing multi-turn workflows, present a written strategy and wait for explicit approval. Do not "just fix it."
+   - **Research & Strategy**: Stay in "Default" mode (avoid automated/restricted plan modes) to ensure full access to `qmd` and shell tools during research.
+   - **Wait for Approval**: Stop and wait for an explicit "Go ahead" before beginning the Execution phase.
+   - **TDD Requirement**: Every plan MUST include a reproduction test that fails without the change.
 3. **TDD First**: Every implementation plan MUST include a step for creating a reproduction test first. Verification requires a test that fails without your change and passes with it.
 4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting — don't assume.
 5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.

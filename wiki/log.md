@@ -1481,3 +1481,9 @@ Extracted database cleanup logic from CI workflow into a dedicated `core/cleanup
 - Added reproduction tests for both bugs.
 - `AGENTS.md`: Reordered and clarified principles to enforce Search-First, Plan-First, and TDD-First sequence.
 - Added [[concepts/agent-workflow]] wiki page documenting the new mandatory workflow.
+
+## [2026-05-15] update | Agent workflow rules refined
+
+Added Research & Strategy and TDD Requirement sub-bullets under Plan First in AGENTS.md: agents must stay in Default mode for research, wait for explicit 'Go ahead' before execution, and include a reproduction test in every plan.
+
+Updated [[concepts/agent-workflow]] to reflect these changes.

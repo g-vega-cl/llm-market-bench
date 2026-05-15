@@ -1471,3 +1471,13 @@ Updated `AGENTS.md` and `wiki/SCHEMA.md` to replace the "never delete" (striketh
 ## [2026-05-15] feature | Database cleanup module
 
 Extracted database cleanup logic from CI workflow into a dedicated `core/cleanup.py` module with a new `cleanup` command. The module provides `run_cleanup()` for periodic deletion of stale ingestion logs, resolved audits, and market feeling records. Added unit tests in `tests/test_cleanup.py`.
+- 2026-05-15: Synchronized wiki with new AGENTS.md mandates by adding [[concepts/agent-workflow]].
+
+## [2026-05-15] fix | Engine bug fixes and agent workflow update
+
+- `market_data.py`: Added 24-hour staleness check to `_get_last_known_price` to prevent returning prices older than 24 hours.
+- `fmp.py`: Added ticker symbol verification to prevent using data from a different ticker due to FMP list shifting.
+- `reg_t_validation.py`: Fixed margin requirement calculation to use absolute stock value; added buying power sanity guardrail capped at 4x total equity to prevent inflation from negative positions.
+- Added reproduction tests for both bugs.
+- `AGENTS.md`: Reordered and clarified principles to enforce Search-First, Plan-First, and TDD-First sequence.
+- Added [[concepts/agent-workflow]] wiki page documenting the new mandatory workflow.

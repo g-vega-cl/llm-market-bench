@@ -60,7 +60,16 @@ class FMPProvider(FinancialProvider):
                     logger.warning(f"Ticker {ticker} not found on FMP.")
                     return None
 
-                q = quote_data[0]
+                # Verify ticker match to handle potential FMP list shifting/search-like behavior
+                q = None
+                for candidate in quote_data:
+                    if str(candidate.get("symbol")).upper() == ticker.upper():
+                        q = candidate
+                        break
+                
+                if q is None:
+                    logger.warning(f"FMP returned data but none matched requested ticker {ticker}. Response: {quote_data[:1]}")
+                    return None
 
                 return TickerData(
                     ticker=ticker,

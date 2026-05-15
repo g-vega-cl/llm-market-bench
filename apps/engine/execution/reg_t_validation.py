@@ -49,6 +49,7 @@ def calculate_reg_t_metrics(
         RegTMetrics object.
     """
     stock_value = 0.0
+    abs_stock_value = 0.0 # Used for margin requirements
     
     for ticker, pos in positions.items():
         # Handle both dicts (from DB) and Position objects (from Portfolio class)
@@ -75,6 +76,7 @@ def calculate_reg_t_metrics(
                 price = 0.0
         
         stock_value += qty * price
+        abs_stock_value += abs(qty) * price
 
     total_equity = cash_balance + stock_value
     
@@ -85,8 +87,8 @@ def calculate_reg_t_metrics(
     # For Buying Power calculations, BP = 4 * Excess Liquidity.
     # Excess Liquidity = Equity - Maintenance Margin.
     
-    maintenance_margin_req = stock_value * 0.33
-    initial_margin_req = stock_value * 0.57
+    maintenance_margin_req = abs_stock_value * 0.33
+    initial_margin_req = abs_stock_value * 0.57
     
     # Excess Liquidity = Equity - Maintenance Margin
     excess_liquidity = total_equity - maintenance_margin_req
@@ -114,27 +116,19 @@ def calculate_reg_t_metrics(
     sma = max(previous_sma, current_surplus)
 
     # Buying Power
-    # Buying Power = 2 * SMA (for Overnight) or 4 * Excess (intraday)?
-    # The doc says "Buying Power = 4 * Excess Liquidity" in Scenario 1.
-    # BUT in Scenario 1, Excess (7512) matches SMA (7512) if we assume starting fresh.
-    # In Scenario 3 (Loss), Excess is 6328, SMA is 3500.
-    # Buying Power should be based on SMA? 
-    # Interactive Brokers T-Margin BP is usually based on Excess Liquidity for intraday opening.
-    # But SMA limits overnight holds.
-    # The User's Doc specifically has a row "Buying Power".
-    # Scenario 3: Excess=6328. BP=12875? 6328 * 2 = 12656. 6328 * 4 = 25312.
-    # user doc: "Buying Power | $12,875.60 | $3,218.90 x 4"
-    # Wait, $3,218.90 is "Available Funds" in their S3 table.
-    # So BP = 4 * Available Funds? 
-    # Let's check S1 in Doc (Updated one).
-    # S1: Avail Funds 5024. BP 20099. (5024 * 4 = 20096). Matches 4x Available Funds.
-    # S2: Avail Funds 4218. BP 16875. (4218 * 4 = 16872). Matches.
-    # S3: Avail Funds 3218. BP 12875. (3218 * 4 = 12872). Matches.
-    
-    # OK, REVISION: Buying Power in the user's updated doc is 4 * Available Funds (Equity - IM).
-    # NOT 4 * Excess Liquidity (Equity - MM).
+    # Buying Power = 4 * Available Funds (Equity - IM).
     
     buying_power = max(0.0, available_funds * 4.0)
+    
+    # SANITY GUARDRAIL: Buying power cannot exceed 4x Total Equity (Theoretical limit)
+    # This prevents corrupted states (negative margin) from inflating BP.
+    theoretical_limit = max(0.0, total_equity * 4.0)
+    if buying_power > theoretical_limit:
+        logger.warning(
+            f"Reg T Anomaly Detected: Calculated Buying Power (${buying_power:,.2f}) exceeds "
+            f"theoretical limit (${theoretical_limit:,.2f}) for equity (${total_equity:,.2f}). Capping."
+        )
+        buying_power = theoretical_limit
 
     # Realized Value = Cash + Total Cost Basis
     # We need to sum cost basis from positions

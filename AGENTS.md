@@ -21,13 +21,13 @@
 
 **After every code change, verify lint passes before marking work complete.** The pre-commit hook will block commits with lint errors. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint is not done.
 
-## Principles
+## Principles (MANDATORY)
 
-- Code is truth. Docs are hints. When they conflict, trust the code.
-- Read the code before acting — don't assume.
-- **Plan & TDD First:** Before making any changes, perform research and present a written strategy for explicit approval. All implementation plans MUST include a step for creating reproduction tests first.
-- Small, verifiable changes. Use Test Driven Development (TDD).
-- **Observability:** Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
+1. **Search First (QMD)**: Before answering any question or starting any task, YOU MUST search the wiki using `qmd` (query, search, or vsearch). The wiki is the "compiled" project memory; do not rely on general knowledge.
+2. **Plan First**: Before making *any* code changes or executing multi-turn workflows, present a written strategy and wait for explicit approval. Do not "just fix it."
+3. **TDD First**: Every implementation plan MUST include a step for creating a reproduction test first. Verification requires a test that fails without your change and passes with it.
+4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting — don't assume.
+5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
 
 ## Config
 

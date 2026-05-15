@@ -83,6 +83,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Revisit alpaca trades.
 - [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
 - [ ] - Gemini-3.1-flash-lite generated 0 decisions.
+- [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
 
 ## Under Consideration
 

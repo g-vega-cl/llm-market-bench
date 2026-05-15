@@ -340,7 +340,7 @@ class MarketDataManager:
         return None
 
     def _get_last_known_price(self, ticker: str) -> TickerData | None:
-        """Retrieves the most recent price from the history table."""
+        """Retrieves the most recent price from the history table with a 24h staleness check."""
         try:
              # We want the latest entry from price_history
              response = self.client.table("price_history") \
@@ -352,6 +352,24 @@ class MarketDataManager:
              
              if response.data:
                   record = response.data[0]
+                  fetched_at_str = record.get("fetched_at", "")
+                  if fetched_at_str:
+                      try:
+                          from dateutil import parser
+                          fetched_at = parser.isoparse(fetched_at_str)
+                          if fetched_at.tzinfo is None:
+                              fetched_at = fetched_at.replace(tzinfo=datetime.UTC)
+                          
+                          now = datetime.datetime.now(datetime.UTC)
+                          age_hours = (now - fetched_at).total_seconds() / 3600
+                          
+                          if age_hours > 24:
+                              logger.warning(f"Last known price for {ticker} is stale ({age_hours:.1f}h old). Rejecting.")
+                              return None
+                      except Exception as parse_err:
+                          logger.error(f"Error parsing fetched_at for {ticker}: {parse_err}")
+                          return None
+
                   return TickerData(
                       ticker=record["ticker"],
                       price=float(record["price"]),

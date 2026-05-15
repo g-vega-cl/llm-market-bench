@@ -1419,3 +1419,7 @@ Replaced all remaining `any` type annotations with proper TypeScript types acros
 ## [2026-05-15] refactor | Eliminated any types across web app and consolidated database types
 
 Replaced all remaining `any` type annotations with proper TypeScript types across the web app codebase, promoted `noExplicitAny` from `warn` to `error` in Biome, and rewrote `packages/database/index.ts` to use Supabase generated types with `Omit` for flexible JSON fields. Route handlers were updated to use `createServerFn` with `.inputValidator()` pattern. Infinite query factories now enforce `extends CursorPage` constraint for safe `getNextPageParam` access. Three D3 components (`ConceptMap`, `MemoryFlow`) received proper type annotations. All `any` overrides removed from `biome.json` except where genuinely required.
+
+## [2026-05-15] refactor | Replace array index keys with stable content-hash keys
+
+Changed `FormattedContent.tsx` to use a deterministic `partKey()` hash function instead of array index as React key. This improves React reconciliation stability when list order changes. Also removed the `noArrayIndexKey` Biome lint rule from `biome.json` since the codebase no longer uses array index keys.

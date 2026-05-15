@@ -2,6 +2,18 @@ interface FormattedContentProps {
     content: unknown;
 }
 
+/** Derive a stable key from part content — deterministic, no index dependency. */
+function partKey(part: unknown): string {
+    const str = JSON.stringify(part);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const ch = str.charCodeAt(i);
+        hash = (hash << 5) - hash + ch;
+        hash |= 0;
+    }
+    return String(hash);
+}
+
 export function FormattedContent({ content }: FormattedContentProps) {
     if (typeof content === 'string') {
         try {
@@ -22,9 +34,9 @@ export function FormattedContent({ content }: FormattedContentProps) {
     if (Array.isArray(content)) {
         return (
             <div className="space-y-3 md:space-y-4">
-                {content.map((part, i) => (
+                {content.map((part) => (
                     <div
-                        key={i}
+                        key={partKey(part)}
                         className="border-l-2 border-gray-200 dark:border-gray-700 pl-3 md:pl-4 py-0.5 md:py-1"
                     >
                         {part.text && (

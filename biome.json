@@ -47,8 +47,7 @@
                 "noExcessiveCognitiveComplexity": "warn"
             },
             "suspicious": {
-                "noExplicitAny": "error",
-                "noArrayIndexKey": "warn"
+                "noExplicitAny": "error"
             },
             "style": {
                 "noNonNullAssertion": "warn"

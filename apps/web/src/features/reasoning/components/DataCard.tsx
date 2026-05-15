@@ -1,6 +1,7 @@
 import { Badge } from '@llm-market-bench/ui-design-system';
 
-export function DataCard({ item }: { item: any }) {
+// biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+export function DataCard({ item }: { item: Record<string, any> }) {
     if (typeof item !== 'object' || item === null) {
         return (
             <div className="p-3 md:p-4 border border-gray-200 dark:border-gray-800 rounded-xl md:rounded-2xl bg-gray-50/50 dark:bg-gray-900/50 font-mono text-[11px] md:text-xs">

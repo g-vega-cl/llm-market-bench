@@ -11,7 +11,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
-import type { MarketOverviewData } from '../api/fetch-market-overview';
+import type { CorrelationData, MarketOverviewData } from '../api/fetch-market-overview';
 import { CorrelationHeatmap } from '../components/CorrelationHeatmap';
 import { UncorrelatedPairs } from '../components/UncorrelatedPairs';
 import { marketOverviewQueries } from '../queries/options';
@@ -246,7 +246,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
     );
 }
 
-function SectorPerformanceGrid({ correlationData }: { correlationData: any[] }) {
+function SectorPerformanceGrid({ correlationData }: { correlationData: CorrelationData[] }) {
     const tickerReturns = React.useMemo(() => {
         const returns: Record<string, { positive: boolean; ticker: string }[]> = {};
 

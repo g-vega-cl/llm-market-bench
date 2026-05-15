@@ -7,6 +7,10 @@ interface MemoryFlowProps {
     onSelect?: (id: string) => void;
 }
 
+interface StratifyData extends Memory {
+    parentId: string | null;
+}
+
 export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
     const containerRef = React.useRef<HTMLDivElement>(null);
     const [hoveredNode, setHoveredNode] = React.useState<Memory | null>(null);
@@ -31,18 +35,31 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
 
         const idSet = new Set(nodes.map((n) => n.id));
 
-        const stratifiedData = [
-            { id: rootId, content: 'Root', created_at: '', metadata: {} } as any,
+        const stratifiedData: StratifyData[] = [
+            {
+                id: rootId,
+                content: 'Root',
+                created_at: '',
+                metadata: {},
+                parentId: null,
+                status: null,
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: null,
+                importance_score: null,
+                target_date: null,
+            },
             ...nodes.map((n) => ({
                 ...n,
                 parentId: n.parent_id && idSet.has(n.parent_id) ? n.parent_id : rootId,
             })),
         ];
 
-        let root: d3.HierarchyNode<any>;
+        let root: d3.HierarchyNode<StratifyData>;
         try {
             root = d3
-                .stratify<any>()
+                .stratify<StratifyData>()
                 .id((d) => d.id)
                 .parentId((d) => d.parentId)(stratifiedData);
         } catch (e) {
@@ -52,9 +69,9 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
 
         const nodeWidth = 220;
         const nodeHeight = 80;
-        const tree = d3.tree<any>().nodeSize([nodeWidth + 40, nodeHeight + 50]);
+        const tree = d3.tree<StratifyData>().nodeSize([nodeWidth + 40, nodeHeight + 50]);
 
-        root.sort((a, b) => ((a.data.created_at || 0) < (b.data.created_at || 0) ? 1 : -1));
+        root.sort((a, b) => ((a.data.created_at || '') < (b.data.created_at || '') ? 1 : -1));
 
         tree(root);
 
@@ -97,6 +114,11 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .on('dblclick.zoom', null);
 
         // Links
+        const linkGenerator = d3
+            .linkVertical<d3.HierarchyLink<StratifyData>, d3.HierarchyNode<StratifyData>>()
+            .x((d) => d.x || 0)
+            .y((d) => d.y || 0);
+
         g.selectAll('.link')
             .data(root.links())
             .enter()
@@ -105,13 +127,8 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .attr('fill', 'none')
             .attr('stroke', '#e4e4e7')
             .attr('stroke-width', 1)
-            .attr(
-                'd',
-                d3
-                    .linkVertical()
-                    .x((d: any) => d.x || 0)
-                    .y((d: any) => d.y || 0) as any,
-            );
+            // biome-ignore lint/suspicious/noExplicitAny: D3 type casting
+            .attr('d', linkGenerator as any);
 
         // Nodes
         const node = g
@@ -120,7 +137,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .enter()
             .append('g')
             .attr('class', (d) => `node ${d.children ? 'node--internal' : 'node--leaf'}`)
-            .attr('transform', (d: any) => `translate(${d.x || 0},${d.y || 0})`)
+            .attr('transform', (d) => `translate(${d.x || 0},${d.y || 0})`)
             .on('click', (_event, d) => {
                 onSelect?.(d.data.id);
             })
@@ -157,7 +174,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .attr('dy', 20)
             .attr('x', -nodeWidth / 2 + 12)
             .attr('text-anchor', 'start')
-            .text((d: any) => {
+            .text((d) => {
                 const t = d.data.metadata?.type?.replace('_', ' ') || 'Memory';
                 return t.charAt(0).toUpperCase() + t.slice(1).replace('_', ' ');
             })
@@ -171,7 +188,7 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .attr('dy', 20)
             .attr('x', nodeWidth / 2 - 12)
             .attr('text-anchor', 'end')
-            .text((d: any) => {
+            .text((d) => {
                 if (!d.data.created_at) return '';
                 return new Date(d.data.created_at).toLocaleDateString();
             })

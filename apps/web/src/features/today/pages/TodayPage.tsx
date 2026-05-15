@@ -1,3 +1,11 @@
+import type {
+    Decision,
+    MarketDataCache,
+    MarketFeeling,
+    Memory,
+    NewsletterSnapshot,
+    Trade,
+} from '@llm-market-bench/database';
 import { EmptyState, PageLayout } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { AgentInsights } from '../components/AgentInsights';
@@ -7,9 +15,19 @@ import { NewsletterFeed } from '../components/NewsletterFeed';
 import { TradeActivity } from '../components/TradeActivity';
 import { todayQueries } from '../queries/options';
 
+interface TodayData {
+    newsletters: NewsletterSnapshot[];
+    trades: (Trade & { portfolios: { owner_id: string } })[];
+    decisions: Decision[];
+    memories: Memory[];
+    priceUpdates: MarketDataCache[];
+    futureEvents: Memory[];
+    marketFeeling: MarketFeeling | null;
+}
+
 interface TodayPageProps {
-    initialData: any;
-    fetchFn: () => Promise<any>;
+    initialData: TodayData;
+    fetchFn: () => Promise<TodayData>;
 }
 
 export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
@@ -56,7 +74,7 @@ function EmptyStateView({
     futureEvents,
 }: {
     hasFutureEvents: boolean;
-    futureEvents: any[];
+    futureEvents: Memory[];
 }) {
     const jokes = [
         {

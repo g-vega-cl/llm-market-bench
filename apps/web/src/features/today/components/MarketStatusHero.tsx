@@ -1,14 +1,21 @@
-import type { MarketFeeling } from '@llm-market-bench/database';
+import type {
+    Decision,
+    MarketDataCache,
+    MarketFeeling,
+    Memory,
+    NewsletterSnapshot,
+    Trade,
+} from '@llm-market-bench/database';
 import { Badge, Card, ConfidenceBar, HeroBackground } from '@llm-market-bench/ui-design-system';
 
 interface MarketStatusHeroProps {
     data: {
-        trades?: any[];
-        decisions?: any[];
-        memories?: any[];
-        priceUpdates?: any[];
-        futureEvents?: any[];
-        newsletters?: any[];
+        trades?: Trade[];
+        decisions?: Decision[];
+        memories?: Memory[];
+        priceUpdates?: MarketDataCache[];
+        futureEvents?: Record<string, unknown>[];
+        newsletters?: NewsletterSnapshot[];
         marketFeeling?: MarketFeeling | null;
     };
 }

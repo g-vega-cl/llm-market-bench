@@ -1,6 +1,8 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { queryKeys } from './query-keys';
 
+type CursorPage = { nextCursor?: string | null };
+
 /**
  * Centralized query options factory.
  * These factories take an optional fetch function so they can easily integrate
@@ -87,7 +89,7 @@ export const queries = {
     // Audits
     // --------------------------------------------------------------------------
     audits: {
-        list: <T>(opts?: {
+        list: <T extends CursorPage>(opts?: {
             cursor?: string;
             fetchFn?: (cursor: string | undefined) => Promise<T>;
         }) =>
@@ -98,7 +100,7 @@ export const queries = {
                         ? opts.fetchFn(pageParam)
                         : Promise.reject(new Error('fetchFn required')),
                 initialPageParam: undefined as string | undefined,
-                getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
+                getNextPageParam: (lastPage: T) => lastPage.nextCursor ?? undefined,
                 staleTime: 1000 * 60 * 5, // 5 minutes
             }),
     },
@@ -117,7 +119,7 @@ export const queries = {
     // Memories
     // --------------------------------------------------------------------------
     memories: {
-        list: <T>(opts?: {
+        list: <T extends CursorPage>(opts?: {
             filters?: { status?: string; memoryType?: string };
             cursor?: string;
             fetchFn?: (cursor: string | undefined) => Promise<T>;
@@ -129,7 +131,7 @@ export const queries = {
                         ? opts.fetchFn(pageParam)
                         : Promise.reject(new Error('fetchFn required')),
                 initialPageParam: undefined as string | undefined,
-                getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
+                getNextPageParam: (lastPage: T) => lastPage.nextCursor ?? undefined,
                 staleTime: 1000 * 60 * 5, // 5 minutes
             }),
         detail: <T>(opts: { id: string; fetchFn?: () => Promise<T> }) =>
@@ -174,7 +176,7 @@ export const queries = {
     // Reasoning
     // --------------------------------------------------------------------------
     reasoning: {
-        list: <T>(opts?: {
+        list: <T extends CursorPage>(opts?: {
             cursor?: string;
             fetchFn?: (cursor: string | undefined) => Promise<T>;
         }) =>
@@ -185,7 +187,7 @@ export const queries = {
                         ? opts.fetchFn(pageParam)
                         : Promise.reject(new Error('fetchFn required')),
                 initialPageParam: undefined as string | undefined,
-                getNextPageParam: (lastPage: any) => lastPage?.nextCursor ?? undefined,
+                getNextPageParam: (lastPage: T) => lastPage.nextCursor ?? undefined,
                 staleTime: 1000 * 60 * 5, // 5 minutes
             }),
         detail: <T>(opts: { id: string; fetchFn?: () => Promise<T> }) =>

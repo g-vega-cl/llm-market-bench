@@ -1,4 +1,6 @@
-export function CauseAndEffectCard({ entry }: { entry: any }) {
+import type { CauseAndEffectEntry } from '../api/fetch-cause-and-effect';
+
+export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
     const { event, analysis, market_outcome, confidence, tags, created_at } = entry;
 
     return (

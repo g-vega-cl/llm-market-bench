@@ -9,6 +9,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
+import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
 import { portfolioQueries } from '../queries/options';
@@ -22,10 +23,10 @@ interface PortfoliosPageProps {
         benchmark: string,
         maxDays: number,
     ) => Promise<{
-        portfolios: any[];
+        portfolios: PortfolioPerformanceItem[];
         startDate: string;
         endDate: string;
-        benchmarkData: Record<string, any>;
+        benchmarkData: Record<string, BenchmarkDataPoint[]>;
     }>;
 }
 
@@ -103,10 +104,10 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY');
     const [comparisonInitialData, setComparisonInitialData] = React.useState<
         | {
-              portfolios: any[];
+              portfolios: PortfolioPerformanceItem[];
               startDate: string;
               endDate: string;
-              benchmarkData: Record<string, any>;
+              benchmarkData: Record<string, BenchmarkDataPoint[]>;
           }
         | undefined
     >(undefined);

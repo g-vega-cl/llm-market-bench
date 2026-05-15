@@ -10,7 +10,13 @@ interface MemoryCardProps {
 
 export function MemoryCard({ memory }: MemoryCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
-    const [selectedAsset, setSelectedAsset] = React.useState<any | null>(null);
+    interface DiscoveredAsset {
+        ticker: string;
+        name: string;
+        reason: string;
+    }
+
+    const [selectedAsset, setSelectedAsset] = React.useState<DiscoveredAsset | null>(null);
 
     return (
         <Card
@@ -222,7 +228,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                         {memory.metadata.discovered_assets ? (
                                             memory.metadata.discovered_assets
                                                 .slice(0, 6)
-                                                .map((asset: any, idx: number) => (
+                                                .map((asset: DiscoveredAsset, idx: number) => (
                                                     <button
                                                         type="button"
                                                         key={idx}

@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { NotFound } from './NotFound';
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+    Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+        <a {...props}>{children}</a>
+    ),
 }));
 
 describe('NotFound — uses design system', () => {

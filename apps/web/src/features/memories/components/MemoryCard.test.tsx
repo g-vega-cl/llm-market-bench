@@ -7,7 +7,9 @@ vi.mock('@tanstack/react-router', async () => {
     const actual = await vi.importActual('@tanstack/react-router');
     return {
         ...actual,
-        Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+        Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+            <a {...props}>{children}</a>
+        ),
     };
 });
 
@@ -88,7 +90,9 @@ describe('MemoryCard scenario percentage badges', () => {
 
     it('does not show analysis section when no scenario_analysis', () => {
         const memory = makeMemory();
-        memory.metadata.scenario_analysis = undefined;
+        if (memory.metadata) {
+            memory.metadata.scenario_analysis = undefined;
+        }
 
         render(<MemoryCard memory={memory} />);
 

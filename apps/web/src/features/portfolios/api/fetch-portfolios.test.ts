@@ -1,6 +1,16 @@
 import { expect, test, vi } from 'vitest';
 
-let mockSupabaseClient: any = null;
+interface PriceHistoryRecord {
+    ticker: string;
+    price: number;
+    fetched_at: string;
+}
+
+interface MockSupabaseChain {
+    [key: string]: ReturnType<typeof vi.fn>;
+}
+
+let mockSupabaseClient: MockSupabaseChain | null = null;
 
 vi.mock('~/lib/supabase', () => ({
     getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
@@ -8,8 +18,8 @@ vi.mock('~/lib/supabase', () => ({
 
 import { fetchBenchmarkHistory } from './fetch-portfolios';
 
-function createMockSupabaseClient(mockData: any[]) {
-    const chain: Record<string, any> = {
+function createMockSupabaseClient(mockData: PriceHistoryRecord[]): MockSupabaseChain {
+    const chain: MockSupabaseChain = {
         order: vi.fn(() => Promise.resolve({ data: mockData, error: null })),
         lte: vi.fn(() => chain),
         gte: vi.fn(() => chain),

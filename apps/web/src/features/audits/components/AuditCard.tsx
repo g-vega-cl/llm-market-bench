@@ -9,7 +9,7 @@ interface AuditCardProps {
         severity: string;
         audit_type: string;
         suggestion: string | null;
-        created_at: string;
+        created_at: string | null;
     };
 }
 
@@ -45,13 +45,15 @@ export function AuditCard({ audit }: AuditCardProps) {
                         <span className="text-xs text-zinc-500 uppercase tracking-wider">
                             {typeLabels[audit.audit_type] || audit.audit_type}
                         </span>
-                        <span className="text-xs text-zinc-600">
-                            {new Date(audit.created_at).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                            })}
-                        </span>
+                        {audit.created_at && (
+                            <span className="text-xs text-zinc-600">
+                                {new Date(audit.created_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                })}
+                            </span>
+                        )}
                     </div>
                     <h3 className="text-lg font-medium text-zinc-200 mb-2">{audit.title}</h3>
                     <p className="text-zinc-400 text-sm">{audit.description}</p>

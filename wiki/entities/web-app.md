@@ -31,6 +31,14 @@ Feature-sliced monorepo with three layers:
 - **Route Shells** (`src/routes/`) — Thin delegation, zero business logic
 - **Design System** (`packages/ui-design-system/`) — Pure UI primitives
 
+### Type Consolidation (2026-05-15)
+
+The application underwent a major type safety consolidation to remove `any` and `unknown` in favor of explicit interfaces. Key conventions:
+- **JSON Fields**: Use `Record<string, any>` for database JSONB fields (metadata, prompt, response) to ensure compatibility with TanStack Start's serialization layer.
+- **Server Functions**: Use `.inputValidator()` and avoid `as unknown` casting to maintain type integrity.
+- **Infinite Queries**: Implement the `extends CursorPage` constraint in all list factories.
+- **Timestamp Handling**: Gracefully handle `string | null` for all database timestamps.
+
 Features: today (dashboard), portfolios (summary + detail with D3 equity curves), reasoning (LLM audit trail), memories (memory chains), market-overview (correlation heatmap), concepts (PCA concept map), audits (system audit logs).
 
 ## Design System

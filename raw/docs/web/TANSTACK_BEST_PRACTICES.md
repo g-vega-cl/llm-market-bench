@@ -2,17 +2,20 @@
 
 ## Query Options Factory
 
-All queries are defined centrally in `src/lib/queries.ts` using `queryOptions` / `infiniteQueryOptions`. Call sites use named parameters for type safety:
+All queries are defined centrally in `src/lib/queries.ts` using `queryOptions` / `infiniteQueryOptions`. Call sites use named parameters for type safety. 
+
+For **infinite queries**, the generic type `T` must extend `CursorPage` to ensure `getNextPageParam` can safely access the cursor:
 
 ```typescript
-// Simple query
-queries.today({ fetchFn: () => getTodayDataFn() })
-
-// Detail query (required id)
-queries.portfolios.detail({ id: portfolioId, fetchFn: () => getPortfolioFn(portfolioId) })
-
-// Infinite query (cursor pagination)
-queries.reasoning.list({ cursor: undefined, fetchFn: (pageParam) => getReasoningFn({ data: pageParam }) })
+// Infinite query definition
+list: <T extends CursorPage>(opts?: {
+    cursor?: string;
+    fetchFn?: (cursor: string | undefined) => Promise<T>;
+}) =>
+    infiniteQueryOptions({
+        // ...
+        getNextPageParam: (lastPage: T) => lastPage.nextCursor ?? undefined,
+    }),
 ```
 
 **Named parameters** make the API explicit at call sites, enable IDE autocomplete, and allow easy addition of optional params without breaking changes.

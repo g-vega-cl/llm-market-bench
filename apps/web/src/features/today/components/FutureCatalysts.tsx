@@ -1,9 +1,10 @@
+import type { Memory } from '@llm-market-bench/database';
 import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
 
 interface FutureCatalystsProps {
-    events: any[];
+    events: Memory[];
 }
 
 function extractDate(content: string): string | null {

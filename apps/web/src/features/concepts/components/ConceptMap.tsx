@@ -91,7 +91,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
         // This ensures that two distant clusters at the same density level are treated as separate hover targets.
         type ContourFeature = {
             type: 'Feature';
-            geometry: { type: 'Polygon'; coordinates: any[][][] };
+            geometry: { type: 'Polygon'; coordinates: number[][][] };
             properties: { value: number }; // Density value
         };
 
@@ -121,9 +121,9 @@ export function ConceptMap({ data }: { data: Concept[] }) {
             .data(separateContours)
             .enter()
             .append('path')
-            .attr('d', (d) => pathGenerator(d.geometry as any))
+            .attr('d', (d) => pathGenerator(d.geometry as d3.GeoPermissibleObjects))
             .attr('fill', (d) => {
-                const centroid = pathGenerator.centroid(d.geometry as any);
+                const centroid = pathGenerator.centroid(d.geometry as d3.GeoPermissibleObjects);
                 if (!centroid || Number.isNaN(centroid[0])) return '#eee';
                 return getSpatialColor(centroid[0], centroid[1]);
             })
@@ -139,7 +139,7 @@ export function ConceptMap({ data }: { data: Concept[] }) {
                     .attr('fill-opacity', 0.4)
                     .attr('stroke-opacity', 0.8);
 
-                const centroid = pathGenerator.centroid(d.geometry as any);
+                const centroid = pathGenerator.centroid(d.geometry as d3.GeoPermissibleObjects);
                 if (centroid && !Number.isNaN(centroid[0])) {
                     const cx = centroid[0];
                     const cy = centroid[1];

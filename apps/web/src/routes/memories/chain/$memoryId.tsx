@@ -1,3 +1,4 @@
+import type { Memory } from '@llm-market-bench/database';
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { fetchMemories } from '~/features/memories/api/fetch-memories';
@@ -7,7 +8,7 @@ const getEventChain = createServerFn({ method: 'GET' })
     .inputValidator((d: string) => d)
     .handler(async ({ data: memoryId }: { data: string }) => {
         // Fetch all memories and build the chain
-        const allMemories: any[] = [];
+        const allMemories: Memory[] = [];
         let cursor: string | undefined;
 
         // Fetch all memories (could optimize with specific query)
@@ -19,8 +20,8 @@ const getEventChain = createServerFn({ method: 'GET' })
         }
 
         // Build the chain starting from the given memory
-        const chain: any[] = [];
-        let currentId = memoryId;
+        const chain: Memory[] = [];
+        let currentId: string | null = memoryId;
         const memoryMap = new Map(allMemories.map((m) => [m.id, m]));
 
         // Traverse backwards through the chain, INCLUDING the target memory
@@ -48,7 +49,7 @@ function RouteComponent() {
         <EventChainPage
             memoryId={memoryId}
             initialData={initialData}
-            fetchFn={() => getEventChainFn({ data: memoryId } as any)}
+            fetchFn={() => getEventChainFn({ data: memoryId })}
         />
     );
 }

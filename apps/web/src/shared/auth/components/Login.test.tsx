@@ -18,7 +18,7 @@ vi.mock('@tanstack/react-router', async () => {
 });
 
 vi.mock('@tanstack/react-start', () => ({
-    useServerFn: (fn: any) => fn,
+    useServerFn: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 vi.mock('@tanstack/react-query', async () => {

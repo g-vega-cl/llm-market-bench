@@ -2,7 +2,22 @@ import { Button } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { FormattedContent } from './FormattedContent';
 
-export function HumanFriendlyPrompt({ prompt }: { prompt: any[] }) {
+interface PromptMessage {
+    role: string;
+    content?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    parts?: any[]; // Parts can be complex and model-specific
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    [key: string]: any;
+}
+
+export function HumanFriendlyPrompt({
+    prompt: rawPrompt,
+}: {
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    prompt: PromptMessage[] | Record<string, any>;
+}) {
+    const prompt = Array.isArray(rawPrompt) ? (rawPrompt as PromptMessage[]) : [];
     const roles = ['ALL', ...new Set(prompt?.map((m) => m.role) || [])];
     const [activeRole, setActiveRole] = React.useState('ALL');
 
@@ -42,7 +57,11 @@ export function HumanFriendlyPrompt({ prompt }: { prompt: any[] }) {
                     const isSystem = msg.role === 'system';
                     const isAssistant = msg.role === 'assistant' || msg.role === 'model';
                     const isTool =
-                        msg.role === 'tool' || msg.parts?.some((p: any) => p.function_response);
+                        msg.role === 'tool' ||
+                        msg.parts?.some(
+                            (p: { function_response?: unknown; [key: string]: unknown }) =>
+                                p.function_response,
+                        );
 
                     return (
                         <div

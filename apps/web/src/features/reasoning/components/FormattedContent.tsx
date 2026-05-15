@@ -1,5 +1,5 @@
 interface FormattedContentProps {
-    content: any;
+    content: unknown;
 }
 
 export function FormattedContent({ content }: FormattedContentProps) {

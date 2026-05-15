@@ -3,9 +3,9 @@ import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { fetchReasoningLogs } from '~/features/reasoning/api/fetch-reasoning-logs';
 import { ReasoningPage } from '~/features/reasoning/pages/ReasoningPage';
 
-const getReasoningLogs = (createServerFn({ method: 'GET' }) as any)
+const getReasoningLogs = createServerFn({ method: 'GET' })
     .inputValidator((d: string | undefined) => d)
-    .handler(async ({ data: cursor }: { data: string | undefined }) => {
+    .handler(async ({ data: cursor }) => {
         return fetchReasoningLogs(cursor);
     });
 

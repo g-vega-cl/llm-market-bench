@@ -2,12 +2,13 @@ import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import type { CauseAndEffectEntry } from '../api/fetch-cause-and-effect';
 import { CauseAndEffectList } from '../components/CauseAndEffectList';
 import { causeAndEffectQueries } from '../queries/options';
 
 interface CauseAndEffectPageProps {
-    initialData: any[];
-    fetchFn: () => Promise<any[]>;
+    initialData: CauseAndEffectEntry[];
+    fetchFn: () => Promise<CauseAndEffectEntry[]>;
 }
 
 export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageProps) {
@@ -33,7 +34,7 @@ export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageP
                     </p>
                 </header>
 
-                <CauseAndEffectList entries={(data as any[]) || []} />
+                <CauseAndEffectList entries={data || []} />
             </PageLayout>
         </div>
     );

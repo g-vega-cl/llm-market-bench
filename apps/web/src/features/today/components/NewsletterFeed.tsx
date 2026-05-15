@@ -1,7 +1,8 @@
+import type { NewsletterSnapshot } from '@llm-market-bench/database';
 import { SectionHeading } from '@llm-market-bench/ui-design-system';
 
 interface NewsletterFeedProps {
-    newsletters: any[];
+    newsletters: NewsletterSnapshot[];
 }
 
 export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
@@ -44,11 +45,6 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                     <span className="px-3 py-1.5 bg-gradient-to-r from-electric-blue-100 to-blue-100 dark:from-electric-blue-900/30 dark:to-blue-900/30 text-electric-blue-700 dark:text-electric-blue-300 text-[9px] font-black uppercase tracking-widest rounded-xl border border-electric-blue-200 dark:border-electric-blue-800 shadow-sm">
                                         {news.sender}
                                     </span>
-                                    {news.has_attachments && (
-                                        <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[9px] font-bold rounded-lg uppercase tracking-wider border border-zinc-200 dark:border-zinc-700">
-                                            📎
-                                        </span>
-                                    )}
                                 </div>
                                 <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5 tabular-nums">
                                     <span className="w-2 h-2 bg-electric-blue-400 rounded-full animate-pulse" />

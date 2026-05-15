@@ -10,9 +10,10 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import { MemoriesList } from '~/features/memories/components/MemoriesList';
 import { memoriesQueries } from '~/features/memories/queries/options';
+import type { PaginatedMemories } from '../api/fetch-memories';
 
 interface MemoriesPageProps {
-    fetchFn: (cursor: string | undefined) => Promise<any>;
+    fetchFn: (cursor: string | undefined) => Promise<PaginatedMemories>;
 }
 
 export function MemoriesPage({ fetchFn }: MemoriesPageProps) {

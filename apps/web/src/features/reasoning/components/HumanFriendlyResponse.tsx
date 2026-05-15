@@ -2,7 +2,7 @@ import { Button } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { DataCard } from './DataCard';
 
-export function HumanFriendlyResponse({ response }: { response: any }) {
+export function HumanFriendlyResponse({ response }: { response: unknown }) {
     const [activeTab, setActiveTab] = React.useState('RAW');
 
     if (!response || typeof response !== 'object') {
@@ -34,7 +34,8 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
         );
     }
 
-    const keys = Object.keys(response);
+    const resp = response as Record<string, unknown>;
+    const keys = Object.keys(resp);
     const displayedKeys = [...keys, 'RAW'];
 
     return (
@@ -81,7 +82,7 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
                     </div>
                 ) : (
                     <div className="animate-slow-fade">
-                        <ResponseDataView value={response[activeTab]} label={activeTab} />
+                        <ResponseDataView value={resp[activeTab]} label={activeTab} />
                     </div>
                 )}
             </div>
@@ -89,7 +90,7 @@ export function HumanFriendlyResponse({ response }: { response: any }) {
     );
 }
 
-function ResponseDataView({ value, label }: { value: any; label: string }) {
+function ResponseDataView({ value, label }: { value: unknown; label: string }) {
     if (Array.isArray(value)) {
         return (
             <div className="grid grid-cols-1 gap-3 md:gap-4">

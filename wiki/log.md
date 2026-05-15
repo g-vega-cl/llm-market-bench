@@ -1399,3 +1399,23 @@ Removed the `is_government_incentive` field from `MacroEvent` model, the `_valid
 ## [2026-05-15] config | Update default model from deepseek-v4-pro to deepseek-v4-flash
 
 Changed the default OpenRouter model in `auto_wiki.py` and `wiki_lint_llm.py` from `deepseek/deepseek-v4-pro` to `deepseek/deepseek-v4-flash`. This is a non-trivial configuration change affecting both the auto-wiki documentation generator and the LLM wiki lint runner.
+
+## 2025-04-07 refactor | Eliminated `any` types across web app
+
+Replaced all remaining `any` type annotations with proper TypeScript types across the web app codebase. This includes:
+- Replacing `any` with `Record<string, unknown>`, `unknown`, and specific interfaces in components, pages, and API functions
+- Adding explicit type definitions for `StratifyData`, `PriceUpdate`, `TradeItem`, `DecisionItem`, `ChainMemory`, `EventChainData`, `DiscoveredAsset`, `TodayData`, `CursorPage`, `SignupVariables`, `AuthResult`, `LoginVariables`, and `MockSupabaseChain`
+- Updating `biome.json` to promote `noExplicitAny` from `warn` to `error` and removing all override exemptions for this rule
+- Updating `packages/database/index.ts` to use `Record<string, unknown>` instead of `Record<string, any>`
+- Fixing route handler type assertions for `createServerFn` and `useServerFn`
+- Fixing `d3` type usage in `ConceptMap.tsx` and `MemoryFlow.tsx`
+
+This completes the migration to a fully typed frontend with zero `any` usage.
+
+## [2026-05-15] refactor | Eliminated any types across web app and consolidated database types
+
+Replaced all remaining `any` type annotations with proper TypeScript types across the web app codebase, promoted `noExplicitAny` from `warn` to `error` in Biome, and rewrote `packages/database/index.ts` to use Supabase generated types with `Omit` for flexible JSON fields. Route handlers were updated to use `createServerFn` with `.inputValidator()` pattern. Infinite query factories now enforce `extends CursorPage` constraint for safe `getNextPageParam` access. Three D3 components (`ConceptMap`, `MemoryFlow`) received proper type annotations. All `any` overrides removed from `biome.json` except where genuinely required.
+
+## [2026-05-15] refactor | Eliminated any types across web app and consolidated database types
+
+Replaced all remaining `any` type annotations with proper TypeScript types across the web app codebase, promoted `noExplicitAny` from `warn` to `error` in Biome, and rewrote `packages/database/index.ts` to use Supabase generated types with `Omit` for flexible JSON fields. Route handlers were updated to use `createServerFn` with `.inputValidator()` pattern. Infinite query factories now enforce `extends CursorPage` constraint for safe `getNextPageParam` access. Three D3 components (`ConceptMap`, `MemoryFlow`) received proper type annotations. All `any` overrides removed from `biome.json` except where genuinely required.

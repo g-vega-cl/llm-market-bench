@@ -1,24 +1,34 @@
 import { SectionHeading } from '@llm-market-bench/ui-design-system';
 
+interface PriceUpdate {
+    ticker: string;
+    price: number;
+    price_change: number;
+    fetched_at: string;
+}
+
 interface MarketUpdatesProps {
-    priceUpdates: any[];
+    priceUpdates: PriceUpdate[];
 }
 
 export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
     if (!priceUpdates.length) return null;
 
     // Deduplicate updates by ticker and show most recent
-    const latestPrices = priceUpdates.reduce((acc: any, curr: any) => {
-        if (
-            !acc[curr.ticker] ||
-            new Date(curr.fetched_at) > new Date(acc[curr.ticker].fetched_at)
-        ) {
-            acc[curr.ticker] = curr;
-        }
-        return acc;
-    }, {});
+    const latestPrices = priceUpdates.reduce(
+        (acc: Record<string, PriceUpdate>, curr: PriceUpdate) => {
+            if (
+                !acc[curr.ticker] ||
+                new Date(curr.fetched_at) > new Date(acc[curr.ticker].fetched_at)
+            ) {
+                acc[curr.ticker] = curr;
+            }
+            return acc;
+        },
+        {},
+    );
 
-    const sortedPrices = Object.values(latestPrices).sort((a: any, b: any) =>
+    const sortedPrices = Object.values(latestPrices).sort((a: PriceUpdate, b: PriceUpdate) =>
         a.ticker.localeCompare(b.ticker),
     );
 
@@ -36,7 +46,7 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {sortedPrices.map((update: any, idx) => {
+                {sortedPrices.map((update: PriceUpdate, idx) => {
                     const priceChange = update.price_change || 0;
                     const isPositive = priceChange >= 0;
 

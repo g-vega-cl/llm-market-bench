@@ -15,7 +15,7 @@ describe('AgentInsights', () => {
         relevance_score: null,
         importance_score: null,
         target_date: null,
-        metadata: modelName ? { model_name: modelName } : undefined,
+        metadata: modelName ? { model_name: modelName } : {},
     });
 
     it('renders agent name text for known Gemini model', () => {

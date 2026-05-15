@@ -1,6 +1,7 @@
+import type { CauseAndEffectEntry } from '../api/fetch-cause-and-effect';
 import { CauseAndEffectCard } from './CauseAndEffectCard';
 
-export function CauseAndEffectList({ entries }: { entries: any[] }) {
+export function CauseAndEffectList({ entries }: { entries: CauseAndEffectEntry[] }) {
     if (entries.length === 0) {
         return (
             <div className="text-zinc-500 py-12 text-center border border-dashed border-zinc-800 rounded-xl">

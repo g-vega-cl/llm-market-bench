@@ -1,12 +1,15 @@
 import { usePostHog } from '@posthog/react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { createServerFn, useServerFn } from '@tanstack/react-start';
+import { createServerFn } from '@tanstack/react-start';
 import { getSupabaseServerClient } from '~/lib/supabase';
 import { Auth } from '~/shared/auth';
 
+type SignupVariables = { email: string; password: string; redirectUrl?: string };
+type AuthResult = { error: true; message: string };
+
 export const signupFn = createServerFn({ method: 'POST' })
-    .inputValidator((d: { email: string; password: string; redirectUrl?: string }) => d)
+    .inputValidator((d: SignupVariables) => d)
     .handler(async ({ data }) => {
         const supabase = getSupabaseServerClient();
         const { error } = await supabase.auth.signUp({
@@ -32,12 +35,12 @@ export const Route = createFileRoute('/signup')({
 
 function SignupComp() {
     const posthog = usePostHog();
-    const signupMutation = useMutation({
-        mutationFn: useServerFn(signupFn) as any,
+    const signupMutation = useMutation<AuthResult, Error, SignupVariables>({
+        mutationFn: (data: SignupVariables) => signupFn({ data }),
         onSuccess: (data, variables) => {
-            if (!(data as any)?.error) {
-                posthog.identify((variables as any).email);
-                posthog.capture('user_signed_up', { email: (variables as any).email });
+            if (!data?.error) {
+                posthog.identify(variables.email);
+                posthog.capture('user_signed_up', { email: variables.email });
             }
         },
     });
@@ -52,11 +55,11 @@ function SignupComp() {
                 signupMutation.mutate({
                     email: formData.get('email') as string,
                     password: formData.get('password') as string,
-                } as any);
+                });
             }}
             afterSubmit={
                 signupMutation.data ? (
-                    <div className="text-red-400">{(signupMutation.data as any).message}</div>
+                    <div className="text-red-400">{signupMutation.data.message}</div>
                 ) : null
             }
         />

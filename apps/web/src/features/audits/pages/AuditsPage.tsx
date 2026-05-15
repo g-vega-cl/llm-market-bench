@@ -8,11 +8,12 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import type { PaginatedAudits } from '../api/fetch-audits';
 import { AuditCard } from '../components/AuditCard';
 import { auditsQueries } from '../queries/options';
 
 interface AuditsPageProps {
-    fetchFn: (cursor: string | undefined) => Promise<any>;
+    fetchFn: (cursor: string | undefined) => Promise<PaginatedAudits>;
 }
 
 export function AuditsPage({ fetchFn }: AuditsPageProps) {

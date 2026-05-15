@@ -1,4 +1,9 @@
-import type { Portfolio } from '@llm-market-bench/database';
+import type {
+    Portfolio,
+    PortfolioPerformance,
+    PositionWithReasoning,
+    TradeWithReasoning,
+} from '@llm-market-bench/database';
 import { queryOptions } from '@tanstack/react-query';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { portfolioQueryKeys } from './keys';
@@ -7,9 +12,9 @@ type PortfolioWithActive = Portfolio & { is_active: boolean };
 
 interface PortfolioDetailData {
     portfolio: Portfolio;
-    positions: any[];
-    history: any[];
-    trades: any[];
+    positions: PositionWithReasoning[];
+    history: PortfolioPerformance[];
+    trades: TradeWithReasoning[];
 }
 
 interface ComparisonData {

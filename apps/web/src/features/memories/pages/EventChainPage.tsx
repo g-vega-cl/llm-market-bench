@@ -3,10 +3,23 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { eventChainQueries } from '~/features/memories/queries/options';
 
+interface ChainMemory {
+    id: string;
+    content: string;
+    created_at: string | null;
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    metadata?: Record<string, any> | null;
+}
+
+interface EventChainData {
+    chain: ChainMemory[];
+    targetMemory: ChainMemory | null;
+}
+
 interface EventChainPageProps {
     memoryId: string;
-    initialData: any;
-    fetchFn: () => Promise<any>;
+    initialData: EventChainData;
+    fetchFn: () => Promise<EventChainData>;
 }
 
 function getTypeBadgeColor(type: string): 'accent' | 'info' | 'warning' | 'neutral' {
@@ -96,7 +109,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
 
             <PageLayout maxWidth="sm" className="py-8">
                 <div className="flex flex-col space-y-0">
-                    {chain.map((memory: any, index: number) => (
+                    {chain.map((memory: ChainMemory, index: number) => (
                         <div key={memory.id} className="relative">
                             {index < chain.length - 1 && (
                                 <div className="absolute left-6 top-14 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
@@ -131,16 +144,18 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                 {formatType(memory.metadata?.type)}
                                             </Badge>
                                             <span className="text-xs text-zinc-400 font-mono">
-                                                {new Date(memory.created_at).toLocaleString(
-                                                    'en-US',
-                                                    {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                        year: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    },
-                                                )}
+                                                {memory.created_at
+                                                    ? new Date(memory.created_at).toLocaleString(
+                                                          'en-US',
+                                                          {
+                                                              month: 'short',
+                                                              day: 'numeric',
+                                                              year: 'numeric',
+                                                              hour: '2-digit',
+                                                              minute: '2-digit',
+                                                          },
+                                                      )
+                                                    : 'Pending'}
                                             </span>
                                         </div>
                                         {memory.id === targetMemory.id && (

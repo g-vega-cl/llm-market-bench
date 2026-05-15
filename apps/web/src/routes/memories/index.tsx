@@ -3,7 +3,7 @@ import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { fetchMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
-const getMemories = (createServerFn({ method: 'GET' }) as any)
+const getMemories = createServerFn({ method: 'GET' })
     .inputValidator((d: string | undefined) => d)
     .handler(async ({ data: cursor }: { data: string | undefined }) => {
         return fetchMemories(cursor);

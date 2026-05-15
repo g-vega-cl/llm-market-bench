@@ -10,7 +10,8 @@ export interface SystemAudit {
     audit_type: string;
     suggestion: string | null;
     created_at: string | null;
-    metadata: any;
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    metadata: Record<string, any>;
 }
 
 export interface PaginatedAudits {

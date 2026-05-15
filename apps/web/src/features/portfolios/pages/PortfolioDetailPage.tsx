@@ -1,4 +1,9 @@
-import type { Portfolio } from '@llm-market-bench/database';
+import type {
+    Portfolio,
+    PortfolioPerformance,
+    PositionWithReasoning,
+    TradeWithReasoning,
+} from '@llm-market-bench/database';
 import {
     Badge,
     Card,
@@ -9,6 +14,7 @@ import {
 import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { PositionsTable } from '../components/PositionsTable';
@@ -17,9 +23,9 @@ import { portfolioQueries } from '../queries/options';
 
 interface PortfolioDetailData {
     portfolio: Portfolio;
-    positions: any[];
-    history: any[];
-    trades: any[];
+    positions: PositionWithReasoning[];
+    history: PortfolioPerformance[];
+    trades: TradeWithReasoning[];
 }
 
 interface PortfolioDetailPageProps {
@@ -29,7 +35,7 @@ interface PortfolioDetailPageProps {
         tickers: string[],
         startDate: string,
         endDate: string,
-    ) => Promise<Record<string, any[]>>;
+    ) => Promise<Record<string, BenchmarkDataPoint[]>>;
 }
 
 export function PortfolioDetailPage({
@@ -130,7 +136,7 @@ export function PortfolioDetailPage({
                     {/* Positions Table */}
                     <section>
                         <SectionHeading gradient="electric">Current Positions</SectionHeading>
-                        <PositionsTable positions={positions as any} />
+                        <PositionsTable positions={positions} />
                     </section>
 
                     {/* Recent Trades Table */}
@@ -141,7 +147,7 @@ export function PortfolioDetailPage({
                                 Audit Trail
                             </Badge>
                         </div>
-                        <TradesTable trades={trades as any} />
+                        <TradesTable trades={trades} />
                     </section>
                 </div>
             </PageLayout>

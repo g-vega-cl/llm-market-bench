@@ -96,7 +96,9 @@ export const queryKeys = {
  * Extracts the data type from a query function
  * Usage: type MemoriesData = InferQueryData<typeof fetchMemories>
  */
-export type InferQueryData<T extends (...args: any[]) => Promise<any>> = Awaited<ReturnType<T>>;
+export type InferQueryData<T extends (...args: unknown[]) => Promise<unknown>> = Awaited<
+    ReturnType<T>
+>;
 
 /**
  * Type for paginated response

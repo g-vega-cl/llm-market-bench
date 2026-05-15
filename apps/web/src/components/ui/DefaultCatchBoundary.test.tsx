@@ -6,8 +6,12 @@ vi.mock('@tanstack/react-router', async () => {
     const actual = await vi.importActual('@tanstack/react-router');
     return {
         ...actual,
-        ErrorComponent: ({ error }: any) => <div>Error: {error?.message || 'Unknown error'}</div>,
-        Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+        ErrorComponent: ({ error }: { error?: Error }) => (
+            <div>Error: {error?.message || 'Unknown error'}</div>
+        ),
+        Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+            <a {...props}>{children}</a>
+        ),
         useRouter: () => ({ invalidate: vi.fn() }),
         useMatch: () => false,
         rootRouteId: '__root__',

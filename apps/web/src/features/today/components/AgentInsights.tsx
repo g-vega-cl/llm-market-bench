@@ -1,8 +1,9 @@
+import type { Memory } from '@llm-market-bench/database';
 import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface AgentInsightsProps {
-    memories: any[];
+    memories: Memory[];
 }
 export function AgentInsights({ memories }: AgentInsightsProps) {
     const consensus = memories.filter((m) => m.memory_type === 'MARKET_EVENT');
@@ -74,12 +75,14 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     )}
                                 </div>
                                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                    {new Date(m.created_at).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
+                                    {m.created_at
+                                        ? new Date(m.created_at).toLocaleDateString('en-US', {
+                                              month: 'short',
+                                              day: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                          })
+                                        : 'Pending'}
                                 </span>
                             </div>
                             {/* Content */}
@@ -137,10 +140,12 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 </span>
                             </div>
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                {new Date(m.created_at).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                })}
+                                {m.created_at
+                                    ? new Date(m.created_at).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                      })
+                                    : 'Pending'}
                             </span>
                         </div>
                         <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">
@@ -182,10 +187,12 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                         )}
                                     </div>
                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                        {new Date(m.created_at).toLocaleDateString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                        })}
+                                        {m.created_at
+                                            ? new Date(m.created_at).toLocaleDateString('en-US', {
+                                                  month: 'short',
+                                                  day: 'numeric',
+                                              })
+                                            : 'Pending'}
                                     </span>
                                 </div>
                             );
@@ -207,18 +214,22 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
     );
 }
 // Helper to extract agent information from memory
-function extractAgents(memory: any) {
+function extractAgents(memory: Memory) {
     const agents = [];
     // Try to extract from metadata
-    if (memory.metadata?.participating_agents) {
+    if (
+        memory.metadata?.participating_agents &&
+        Array.isArray(memory.metadata.participating_agents)
+    ) {
         for (const agentId of memory.metadata.participating_agents) {
             const info = getAgentInfo(agentId);
             agents.push(info);
         }
     }
     // Try to extract from content or model_name if available
-    if (memory.model_name) {
-        const info = getAgentInfo(memory.model_name);
+    const modelName = memory.metadata?.model_name;
+    if (modelName) {
+        const info = getAgentInfo(modelName);
         if (!agents.find((a) => a.name === info.name)) {
             agents.push(info);
         }

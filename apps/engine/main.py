@@ -25,6 +25,7 @@ from core.config import (
     COMMAND_BOOTSTRAP_AUTORESEARCH,
     COMMAND_CALENDAR,
     COMMAND_CAUSE_AND_EFFECT,
+    COMMAND_CLEANUP,
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
     COMMAND_POST_ANALYSIS,
@@ -670,7 +671,8 @@ def main():
             COMMAND_CAUSE_AND_EFFECT,
             COMMAND_AUDIT,
             COMMAND_AUTORESEARCH,
-            COMMAND_BOOTSTRAP_AUTORESEARCH
+            COMMAND_BOOTSTRAP_AUTORESEARCH,
+            COMMAND_CLEANUP
         ],
         help="Action to perform"
     )
@@ -713,6 +715,9 @@ def main():
     elif args.command == COMMAND_BOOTSTRAP_AUTORESEARCH:
         from autoresearch.bootstrap import bootstrap
         asyncio.run(bootstrap())
+    elif args.command == COMMAND_CLEANUP:
+        from core.cleanup import run_cleanup
+        asyncio.run(run_cleanup())
 
 
 if __name__ == "__main__":

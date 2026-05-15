@@ -1467,3 +1467,7 @@ Updated `AGENTS.md` and `wiki/SCHEMA.md` to move away from the "Never delete" (s
 ## [2026-05-15] policy | Wiki maintenance rule change: strikethrough → refine synthesis
 
 Updated `AGENTS.md` and `wiki/SCHEMA.md` to replace the "never delete" (strikethrough) policy with a "Refine Synthesis" approach. The wiki now favors replacing or removing stale content to keep pages sharp and context-efficient, relying on Git and `log.md` for history. Cleaned up `wiki/sources/web-design-system-source.md` as a first example of the new policy.
+
+## [2026-05-15] feature | Database cleanup module
+
+Extracted database cleanup logic from CI workflow into a dedicated `core/cleanup.py` module with a new `cleanup` command. The module provides `run_cleanup()` for periodic deletion of stale ingestion logs, resolved audits, and market feeling records. Added unit tests in `tests/test_cleanup.py`.

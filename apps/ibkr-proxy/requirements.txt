@@ -1,8 +1,0 @@
-fastapi
-uvicorn[standard]
-ib-async
-python-jose[cryptography]
-python-dotenv
-httpx
-pydantic
-pydantic-settings

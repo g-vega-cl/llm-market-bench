@@ -1482,8 +1482,30 @@ Extracted database cleanup logic from CI workflow into a dedicated `core/cleanup
 - `AGENTS.md`: Reordered and clarified principles to enforce Search-First, Plan-First, and TDD-First sequence.
 - Added [[concepts/agent-workflow]] wiki page documenting the new mandatory workflow.
 
+## [2026-05-15] removal | IBKR integration and proxy application removed
+
+Removed all IBKR-related components to reduce codebase noise, as FMP and YFinance are the primary providers.
+- **Applications**: Deleted `apps/ibkr-proxy/`.
+- **Engine**: Deleted `ibkr.py` and `proxy_ibkr.py` providers.
+- **Factory**: Removed IBKR imports and factory logic from `factory.py`.
+- **Infrastructure**: Removed IBKR environment variables from `config.py`, `.env.example`, and all GitHub Actions workflows (`ingest.yml`, `update-prices.yml`, `weekend-ingest.yml`).
+- **Tests**: Deleted `test_ibkr_manual.py`, `test_ibkr_concurrency.py`, and `verify_refinement.py`.
+- **Dependencies**: Removed `ib-async` from `requirements.txt`.
+- **Documentation**: Updated `README.md` and sanitized references in `validation.py` and `test_etf_validation.py`.
+
 ## [2026-05-15] update | Agent workflow rules refined
 
 Added Research & Strategy and TDD Requirement sub-bullets under Plan First in AGENTS.md: agents must stay in Default mode for research, wait for explicit 'Go ahead' before execution, and include a reproduction test in every plan.
 
 Updated [[concepts/agent-workflow]] to reflect these changes.
+
+## [2026-05-15] removal | IBKR integration and proxy application removed
+
+Removed all IBKR-related components to reduce codebase noise, as FMP and YFinance are the primary providers.
+- **Applications**: Deleted `apps/ibkr-proxy/`.
+- **Engine**: Deleted `ibkr.py` and `proxy_ibkr.py` providers.
+- **Factory**: Removed IBKR imports and factory logic from `factory.py`.
+- **Infrastructure**: Removed IBKR environment variables from `config.py`, `.env.example`, and all GitHub Actions workflows (`ingest.yml`, `update-prices.yml`, `weekend-ingest.yml`).
+- **Tests**: Deleted `test_ibkr_manual.py`, `test_ibkr_concurrency.py`, and `verify_refinement.py`.
+- **Dependencies**: Removed `ib-async` from `requirements.txt`.
+- **Documentation**: Updated `README.md` and sanitized comments in `validation.py` and `test_etf_validation.py`.

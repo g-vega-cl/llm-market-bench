@@ -18,6 +18,5 @@ pyyaml
 requests
 yfinance
 scikit-learn
-ib-async
 alpaca-py
 ruff

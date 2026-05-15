@@ -9,7 +9,7 @@ from execution.validation import ValidationStatus, validate_decision
 
 @pytest.mark.asyncio
 async def test_etf_liquidity_fix():
-    """Verify that ETFs with 0 market cap (like from IBKR Proxy) are PASSED."""
+    """Verify that ETFs with 0 market cap are PASSED."""
     
     # Mock MarketDataManager.get_quote to return a 0 market cap TickerData (simulating ETF in Proxy)
     mock_data = TickerData(

@@ -81,8 +81,6 @@ DEEPSEEK_API_KEY=your_deepseek_key
 # Market Data
 FMP_API_KEY=your_fmp_key
 FINANCIAL_PROVIDER=fmp
-IBKR_PROXY_URL=your_ibkr_proxy_url
-IBKR_PROXY_TOKEN=your_ibkr_proxy_token
 
 # Web Search (Optional)
 ENABLE_ANTHROPIC_WEB_SEARCH=true
@@ -218,7 +216,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 - **Language**: Python 3.10+
 - **LLM Providers**: OpenAI, Anthropic, Google Gemini, DeepSeek
 - **Database**: Supabase Postgres with pgvector
-- **Market Data**: IBKR Proxy, FMP, YFinance
+- **Market Data**: FMP, YFinance
 - **Embeddings**: Google Gemini (gemini-embedding-001)
 
 ### Frontend (Web)

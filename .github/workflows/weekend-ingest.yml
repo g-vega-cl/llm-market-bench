@@ -46,9 +46,6 @@ jobs:
           GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-          IBKR_PROXY_URL: ${{ secrets.IBKR_PROXY_URL }}
-          IBKR_PROXY_TOKEN: ${{ secrets.IBKR_PROXY_TOKEN }}
-
           # Alpaca Paper Trading (Third-Party Audit Mirror)
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}

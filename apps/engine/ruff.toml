@@ -20,7 +20,6 @@ ignore = ["E501"]
 [lint.per-file-ignores]
 # Scripts and manual tests use sys.path manipulation for imports
 "scripts/*.py" = ["E402"]
-"tests/test_ibkr_manual.py" = ["E402"]
 "tests/test_memory_chains.py" = ["E402"]
 # Nested with in test files — often clearer than combined with long param lists
 "tests/*.py" = ["SIM117"]

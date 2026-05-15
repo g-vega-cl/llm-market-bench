@@ -114,18 +114,7 @@ FINANCIAL_API_THROTTLE_SECONDS = 0.2
 MARKET_DATA_CACHE_TTL_SECONDS = int(os.getenv("MARKET_DATA_CACHE_TTL_SECONDS", 300))  # Default 5-minute cache TTL for market data
 MARKET_DATA_RETRIES = int(os.getenv("MARKET_DATA_RETRIES", 2))
 
-# --- IBKR Configuration ---
-IBKR_HOST = os.getenv("IBKR_HOST", "127.0.0.1")
-IBKR_PORT = int(os.getenv("IBKR_PORT", "7496"))
-IBKR_CLIENT_ID = int(os.getenv("IBKR_CLIENT_ID", "1"))
-
-# --- IBKR Proxy Configuration ---
-IBKR_PROXY_URL = os.getenv("IBKR_PROXY_URL")
-# The engine will use this service role key to sign a JWT for the proxy
-# unless a specific IBKR_PROXY_TOKEN is provided.
-IBKR_PROXY_TOKEN = os.getenv("IBKR_PROXY_TOKEN")
-
-# --- Web Search Configuration ---
+# --- Alpaca Paper Trading Configuration ---
 # Enable web search grounding for LLM agents
 ENABLE_ANTHROPIC_WEB_SEARCH = os.getenv("ENABLE_ANTHROPIC_WEB_SEARCH", "true").lower() == "true"
 ENABLE_GEMINI_WEB_SEARCH = os.getenv("ENABLE_GEMINI_WEB_SEARCH", "true").lower() == "true"

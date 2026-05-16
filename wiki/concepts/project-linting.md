@@ -94,6 +94,7 @@ pnpm biome check --write --unsafe
 
 ## See Also
 
+- [[entities/wiki-linter]] — Detailed wiki linting (structural + LLM)
 - [[entities/ruff-linter]] — Python linter details
 - [[entities/biome-linter]] — TypeScript/JS linter details
 - [[entities/engine]]

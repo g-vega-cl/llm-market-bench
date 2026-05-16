@@ -20,6 +20,9 @@ from pathlib import Path
 
 import requests
 
+# Configure logging using the centralized engine logger
+from apps.engine.core.config import logger
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -95,38 +98,48 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
         "X-Title": "llm-market-bench wiki lint",
     }
 
+    logger.info(f"Calling OpenRouter model: {model}")
     resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=120)
     resp.raise_for_status()
     data = resp.json()
 
     if "error" in data:
-        print(f"OpenRouter error response: {json.dumps(data, indent=2)}", file=sys.stderr)
+        logger.error(f"OpenRouter error response: {json.dumps(data, indent=2)}")
         error_msg = data["error"].get("message", "Unknown OpenRouter error")
         raise requests.RequestException(f"OpenRouter API error: {error_msg}")
 
     if not data.get("choices"):
-        print(f"OpenRouter unexpected response structure: {json.dumps(data, indent=2)}", file=sys.stderr)
+        logger.error(f"OpenRouter unexpected response structure: {json.dumps(data, indent=2)}")
         raise requests.RequestException("OpenRouter returned no choices")
 
     raw = data["choices"][0].get("message", {}).get("content")
 
     if raw is None:
-        print(f"OpenRouter empty content response: {json.dumps(data, indent=2)}", file=sys.stderr)
-        # Check for refusal or other reason
         finish_reason = data["choices"][0].get("finish_reason")
+        logger.error(
+            f"OpenRouter returned empty content. Finish reason: {finish_reason}. Full response: {json.dumps(data)}"
+        )
         raise requests.RequestException(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
 
-    # Try to extract JSON from the response (LLM may wrap in markdown)
+    # Try to extract JSON from the response (LLM may wrap in markdown or add commentary)
     raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1]
-        if raw.endswith("```"):
-            raw = raw[:-3]
-        raw = raw.strip()
-        if raw.startswith("json"):
-            raw = raw[4:].strip()
+    json_str = raw
+    if "```json" in raw:
+        json_str = raw.split("```json")[1].split("```")[0].strip()
+    elif "```" in raw:
+        json_str = raw.split("```")[1].split("```")[0].strip()
+        # If it starts with "json", strip it (some models don't put it on the same line as ```)
+        if json_str.startswith("json"):
+            json_str = json_str[4:].strip()
 
-    return json.loads(raw)
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM response as JSON: {e}")
+        logger.error(f"Raw content received:\n{raw}")
+        if json_str != raw:
+            logger.error(f"Extracted JSON string:\n{json_str}")
+        raise
 
 
 def main():
@@ -138,23 +151,25 @@ def main():
     api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:
-        print("Error: OPENROUTER_API_KEY not set", file=sys.stderr)
+        logger.error("OPENROUTER_API_KEY not set")
         sys.exit(1)
 
-    print(f"Collecting wiki pages from: {WIKI_DIR}", file=sys.stderr)
+    logger.info(f"Collecting wiki pages from: {WIKI_DIR}")
     content = collect_wiki_content()
     total_chars = len(content)
     total_files = len(list(WIKI_DIR.rglob("*.md")))
-    print(f"  {total_files} files, {total_chars} chars", file=sys.stderr)
+    logger.info(f"  {total_files} files, {total_chars} chars")
 
-    print(f"Calling OpenRouter model: {model}", file=sys.stderr)
     try:
         result = call_openrouter(content, model, api_key)
     except requests.RequestException as e:
-        print(f"OpenRouter API error: {e}", file=sys.stderr)
+        logger.error(f"OpenRouter API error: {e}")
         sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"Failed to parse LLM response: {e}", file=sys.stderr)
+    except json.JSONDecodeError:
+        # Already logged the details in call_openrouter
+        sys.exit(1)
+    except Exception as e:
+        logger.exception(f"Unexpected error during wiki lint: {e}")
         sys.exit(1)
 
     findings = result.get("findings", [])

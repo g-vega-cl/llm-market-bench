@@ -9,6 +9,7 @@
 - [[entities/cleanup]] — Database cleanup module for periodic maintenance
 - [[entities/biome-lint-scripts]] — Batch-fix scripts for Biome lint rules (useButtonType, noSvgWithoutTitle)
 - [[entities/biome-linter]] — TypeScript/JS linter and formatter (biome) for the web app and packages
+- [[entities/wiki-linter]] — Structural and LLM-powered wiki quality assurance
 - [[entities/ruff-linter]] — Python linter and formatter (ruff) for the engine
 - [[entities/auto-wiki]] — Auto-wiki documentation generator (pre-commit LLM integration)
 - [[entities/engine]] — Python data engine (pipeline, analysis, execution)

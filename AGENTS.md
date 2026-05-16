@@ -4,12 +4,14 @@
 
 - Test engine: `./apps/engine/.venv/bin/python3 -m pytest`
 - Lint engine: `./apps/engine/.venv/bin/ruff check apps/engine/`
-- Format engine: `./apps/engine/.venv/bin/ruff format apps/engine/`
+- Format engine: `./apps/engine/.venv/bin/python3 -m ruff format apps/engine/`
 - Lint web: `pnpm biome check`
 - Format web: `pnpm biome check --write`
 - Build web: `cd apps/web && pnpm run build`
 - Typecheck web: `cd apps/web && pnpm run typecheck`
 - Test web: `cd apps/web && pnpm test`
+- Structural Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py`
+- LLM Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --model <model_name>`
 - Auto-wiki dry: `./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
 
 ## Linting

@@ -1523,8 +1523,16 @@ Removed all IBKR-related components to reduce codebase noise, as FMP and YFinanc
 
 Added a ROADMAP item questioning yfinance as a backup data source due to reliability issues, with a note to at least log its usage thoroughly.
 
-## [2026-05-16] fix | wiki-lint infrastructure and contradiction resolution
+## [2026-05-16] fix | Wiki Lint pipeline stabilization and documentation
 
-- Fixed `apps/engine/wiki_lint_llm.py` truncation (40k → 100k) and excluded `log.md` from LLM context to prevent hallucinations about missing pages.
-- Updated `.github/workflows/wiki-lint.yml` to ensure the `wiki-lint` label exists before issue creation.
-- Reconciled `wiki/concepts/project-linting.md` with `biome.json` (confirmed `noExplicitAny` is `error`).
+Resolved multiple failures in the LLM-powered wiki linting pipeline, ranging from CI/CD permission issues to LLM parsing errors.
+
+- **Robust JSON Extraction**: Replaced fragile string stripping with a robust regex + `JSONDecoder.raw_decode` strategy in `wiki_lint_llm.py`. This correctly handles models that output duplicate JSON objects or conversational prefaces.
+- **Model Upgrade**: Upgraded the default model to `deepseek/deepseek-v4-pro` for increased reasoning power during semantic analysis.
+- **Context & Truncation Guard**: Implemented a strict **75k character limit** on wiki content collection with explicit `logger.warning` on truncation. This prevents context window saturation and "Unterminated string" errors from truncated LLM responses.
+- **CI/CD Permissions & Labels**: Updated `.github/workflows/wiki-lint.yml` to explicitly grant `contents: read` and `issues: write` permissions (required when using `gh` CLI). Added a check-then-create pattern for the `wiki-lint` label to prevent workflow failures when the label already exists.
+- **Input/Output Management**: Tuned `max_tokens` to 4096 to prevent truncation and "Unterminated string" errors during high-volume linting. Excluded `log.md` from context to avoid hallucinations about missing pages.
+- **Structural Link Resolution**: Confirmed that the structural linter (`wiki_lint.py`) treats all `[[...]]` text as paths. Documentation now uses escaped or modified examples to avoid false-positive broken link reports.
+- **TDD & Regression Fixes**: Restored test suite stability in `test_wiki_lint_llm.py` by ensuring error message assertions match the latest implementation. Added a specific test for truncated JSON handling.
+- **Documentation**: Created [[entities/wiki-linter]] to document the dual-linter architecture and updated [[index]] for discoverability.
+

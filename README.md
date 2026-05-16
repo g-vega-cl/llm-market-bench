@@ -129,6 +129,7 @@ pnpm --filter web dev
 - **Daily Pipeline**: Cron-triggered during US market hours, with a holiday-aware market-hours check. Schedule: `.github/workflows/ingest.yml`.
 - **Price Updates**: Periodic during market hours. Schedule: `.github/workflows/update-prices.yml`.
 - **System Audit**: Weekly anomaly detection and data cleanup. Schedule: `.github/workflows/audit.yml`.
+- **Wiki Linting**: Weekly structural and LLM-powered check for link integrity and logical contradictions. Schedule: `.github/workflows/wiki-lint.yml`.
 
 ## Key Features
 

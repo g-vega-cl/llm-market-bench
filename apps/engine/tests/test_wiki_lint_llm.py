@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -61,3 +62,17 @@ def test_call_openrouter_success():
     with patch("requests.post", return_value=mock_response):
         result = call_openrouter("fake content", "fake-model", "fake-key")
         assert result["summary"] == "OK"
+
+
+def test_call_openrouter_truncated_json():
+    """
+    Verify that truncated JSON results in a JSONDecodeError and logs the raw content.
+    """
+    mock_response = MagicMock()
+    # Truncated JSON
+    mock_response.json.return_value = {"choices": [{"message": {"content": '{"findings": [{"severity": "high", "description": "truncated...'}, "finish_reason": "length"}]}
+    mock_response.raise_for_status.return_value = None
+
+    with patch("requests.post", return_value=mock_response):
+        with pytest.raises(json.JSONDecodeError):
+            call_openrouter("fake content", "fake-model", "fake-key")

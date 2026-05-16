@@ -41,7 +41,7 @@ jobs:
       - name: Run LLM lint
         id: llm_lint
         run: |
-          MODEL="${{ inputs.model || 'deepseek/deepseek-v4-flash' }}"
+          MODEL="${{ inputs.model || 'deepseek/deepseek-v4-pro' }}"
           echo "Using model: $MODEL"
           python apps/engine/wiki_lint_llm.py --model "$MODEL" > /tmp/findings.json
           # Use a more robust way to count findings, handling potential extra data or empty files

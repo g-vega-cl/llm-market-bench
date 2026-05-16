@@ -66,10 +66,10 @@ Output format:
 def collect_wiki_content() -> str:
     """Read wiki pages. Truncates to stay within reasonable context limits."""
     parts = []
-    # Only read the first 80k chars to ensure we don't blow the context window
+    # Only read the first 75k chars to ensure we don't blow the context window
     # and leave room for the model to think and respond.
     current_size = 0
-    max_input_size = 80000
+    max_input_size = 75000
 
     for f in sorted(WIKI_DIR.rglob("*.md")):
         rel = str(f.relative_to(WIKI_DIR))
@@ -78,6 +78,7 @@ def collect_wiki_content() -> str:
         content = f.read_text()
         part = f"=== {rel} ===\n\n{content}\n"
         if current_size + len(part) > max_input_size:
+            logger.warning(f"Truncating wiki content at {current_size} chars (max {max_input_size})")
             break
         parts.append(part)
         current_size += len(part)
@@ -167,7 +168,7 @@ def main():
     parser.add_argument("--model", help="OpenRouter model name (e.g., anthropic/claude-haiku-4-5)")
     args = parser.parse_args()
 
-    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-flash"
+    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-pro"
     api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:
@@ -186,10 +187,11 @@ def main():
         logger.error(f"OpenRouter API error: {e}")
         sys.exit(1)
     except json.JSONDecodeError:
-        # Already logged the details in call_openrouter
+        # call_openrouter already logged raw content
+        logger.error("Failed to parse LLM response after multiple strategies")
         sys.exit(1)
-    except Exception as e:
-        logger.exception(f"Unexpected error during wiki lint: {e}")
+    except Exception:
+        logger.exception("Unexpected error during wiki lint")
         sys.exit(1)
 
     findings = result.get("findings", [])

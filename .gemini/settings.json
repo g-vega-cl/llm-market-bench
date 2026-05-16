@@ -4,5 +4,10 @@
   },
   "context": {
     "fileName": ["GEMINI.md", "AGENTS.md"]
+  },
+  "general": {
+    "plan": {
+      "enabled": false
+    }
   }
 }

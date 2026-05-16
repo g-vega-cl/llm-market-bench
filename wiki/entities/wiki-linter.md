@@ -28,7 +28,7 @@ An LLM-powered auditor (typically using `deepseek/deepseek-v4-pro` via OpenRoute
 The LLM linter follows the project's **Observability Standards**:
 - **Centralized Logging**: Uses the `engine` logger (configured in `apps/engine/core/config.py`).
 - **Robust JSON Extraction**: Uses a combination of `re.finditer(r"\{", raw)` and `json.JSONDecoder().raw_decode` to surgically locate the first valid JSON object. This strategy handles duplicate JSON outputs, conversational prefaces, and trailing garbage that often cause standard `json.loads` or `strip()`-based approaches to fail.
-- **Context Optimization**: LLM input is capped at 80k characters with `max_tokens` tuned to 4096 to prevent truncation and "Unterminated string" errors during high-volume linting.
+- **Context Optimization**: LLM input is capped at 75k characters with `max_tokens` tuned to 4096 to prevent truncation and "Unterminated string" errors during high-volume linting.
 - **Detailed Diagnostics**: On JSON parsing failures, it logs the **raw response content** to stderr. This allows for immediate root-cause analysis of empty responses, model refusals, or structural anomalies in GitHub Actions logs.
 
 ## Execution

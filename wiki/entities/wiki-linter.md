@@ -17,11 +17,11 @@ A fast, rule-based linter that checks for:
 - **Index Coverage**: Ensures all pages are referenced in `wiki/index.md`.
 
 ### 2. LLM Semantic Lint (`apps/engine/wiki_lint_llm.py`)
-An LLM-powered auditor (typically using `deepseek/deepseek-v4-pro` via OpenRouter) that performs deep semantic analysis. It looks for:
-- **Contradictions**: Conflicting claims across different pages.
-- **Data Gaps**: Missing information that the project context implies should exist.
-- **Stale Claims**: Outdated technical or architectural descriptions.
-- **Weak Cross-references**: Semantic relationships that lack explicit links.
+An LLM-powered auditor (typically using `deepseek/deepseek-v4-pro` via OpenRouter) that performs deep semantic analysis. It identifies contradictions, data gaps, stale claims, and weak cross-references.
+
+- **Operational Status**: Fully operational as of 2026-05-16. 
+- **Performance**: Capable of processing ~50 pages (~75k chars) in a single pass.
+- **Reporting**: Automated GitHub Issue creation for any findings.
 
 ## Observability & Debugging
 

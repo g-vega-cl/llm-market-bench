@@ -1202,7 +1202,19 @@ Files where `any` or index keys are genuinely the right call received targeted o
   1144|
   1145|Added two utility scripts: `scripts/fix_button_types.py` adds `type="button"` to all `<button>` elements lacking a type attribute, and `scripts/fix_svg_titles.py` adds `<title>SVG</title>` as the first child of `<svg>` elements without a title. These automate fixing the Biome lint rules `useButtonType` and `noSvgWithoutTitle` across the entire codebase.
   1146|
-  1147|## [2026-05-16] fix | wiki_lint_llm.py AttributeError & observability
+  1147|## [2026-05-16] infra | Wiki Lint CI stabilized — 75k context, DeepSeek V4 Pro, auto-issue creation
+
+Successfully executed the full Wiki Lint GHA workflow after resolving multiple CI/CD and LLM parsing issues.
+- **Milestone**: First successful end-to-end run of `wiki_lint_llm.py` in GitHub Actions.
+- **Findings**: Identified 8 semantic issues (1 high, 3 medium, 4 low) and automatically created GitHub Issue #20 for remediation.
+- **Stabilization**:
+    - Implemented 75k character context cap to prevent window saturation.
+    - Upgraded semantic model to `deepseek/deepseek-v4-pro`.
+    - Resolved CI dependency errors (`python-dotenv`) and `PYTHONPATH` issues.
+    - Hardened JSON extraction from LLM responses to handle duplicate or conversational output.
+- **Documentation**: Created [[entities/wiki-linter]] to document the dual-linter architecture.
+
+## [2026-05-16] fix | wiki_lint_llm.py AttributeError & observability
   1148|
   1149|Fixed `AttributeError: 'NoneType' object has no attribute 'strip'` in `wiki_lint_llm.py` that occurred when OpenRouter returned `None` for message content. Also hardened against `IndexError` on empty choices and improved observability by logging the raw JSON response to `stderr` on any failure.
   1150|

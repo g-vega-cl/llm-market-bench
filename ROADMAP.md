@@ -85,7 +85,14 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Gemini-3.1-flash-lite generated 0 decisions.
 - [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
 - [ ] - Remove yfinance as backup? It's unreliable as well? At least let's log it thoroughly.
-- [ ] - Audit the Wiki Lint to make sure that it works, also we might need a better model to run it. Or maybe simplify it.
+- [x] **Audit the Wiki Lint pipeline.** — Successfully stabilized `wiki_lint_llm.py` with 75k character context cap and DeepSeek V4 Pro. First run identified 8 semantic findings. [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20).
+- [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
+  - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
+  - [ ] [Medium] Standardize Source ID generation (MD5[:8]) between `concepts/ingestion.md` and `entities/pipeline.md`.
+  - [ ] [Medium] Update `concepts/project-linting.md`: Reflect that Biome is now a blocking pre-commit hook.
+  - [ ] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
+  - [ ] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule).
+  - [ ] [Low] Fix weak cross-references: Link `type-safety.md` to `biome-linter.md` and `engine.md` to `correlation-matrix-source`.
 
 ## Under Consideration
 

@@ -35,7 +35,7 @@ jobs:
       - name: Run structural lint
         run: |
           echo "--- Structural Wiki Lint ---"
-          python apps/engine/wiki_lint.py
+          PYTHONPATH=. python apps/engine/wiki_lint.py
         continue-on-error: false
 
       - name: Run LLM lint
@@ -43,7 +43,7 @@ jobs:
         run: |
           MODEL="${{ inputs.model || 'deepseek/deepseek-v4-pro' }}"
           echo "Using model: $MODEL"
-          python apps/engine/wiki_lint_llm.py --model "$MODEL" > /tmp/findings.json
+          PYTHONPATH=. python apps/engine/wiki_lint_llm.py --model "$MODEL" > /tmp/findings.json
           # Use a more robust way to count findings, handling potential extra data or empty files
           FINDINGS_COUNT=$(python -c "
           import json

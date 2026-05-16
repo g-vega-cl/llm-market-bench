@@ -29,54 +29,59 @@ WIKI_DIR = REPO_ROOT / "wiki"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 SYSTEM_PROMPT = """You are performing a quality audit of a project wiki. The wiki is
-a structured, interlinked knowledge base for the "LLM Market Bench" project — an
-automated platform where multiple LLMs compete in a virtual stock market.
+a structured, interlinked knowledge base for the "LLM Market Bench" project.
 
-Your task: read all the wiki pages provided below, then identify issues.
+Your task: read the wiki pages provided, then identify issues.
 
 Look for:
-1. **Contradictions**: Page A says X, Page B says Y, and they conflict.
-2. **Stale claims**: Information that appears outdated or superseded by newer content.
-3. **Missing pages**: Concepts or entities mentioned in passing without their own page.
-4. **Data gaps**: Questions the wiki should answer but doesn't. Information the project
-   clearly needs documented but isn't.
-5. **Weak cross-references**: Related pages that should link to each other but don't.
-6. **Low-quality pages**: Pages that are too thin, vague, or need expansion.
+1. **Contradictions**: Conflicting information between pages.
+2. **Stale claims**: Outdated or superseded content.
+3. **Missing pages**: Referenced concepts/entities that lack a page.
+4. **Data gaps**: Crucial information missing from the project docs.
+5. **Weak cross-references**: Related pages that should link but don't.
+6. **Low-quality pages**: Thin or vague content.
 
-Be specific. For each finding, include:
-- The affected page(s) with file paths (e.g., entities/engine.md)
-- A clear description of the issue
-- A suggested fix
+GUIDELINES:
+- Be concise. Focus on the most critical issues.
+- Limit yourself to a maximum of 10 findings.
+- Output ONLY valid JSON. No conversational text.
+- Do NOT repeat yourself.
 
-Output ONLY valid JSON in this exact format (no markdown, no explanation):
+Output format:
 {
   "findings": [
     {
       "severity": "high|medium|low",
       "type": "contradiction|stale|missing-page|data-gap|weak-link|thin",
       "pages": ["path/to/page.md"],
-      "description": "What's wrong",
-      "suggestion": "How to fix it"
+      "description": "Short, punchy description",
+      "suggestion": "Actionable fix"
     }
   ],
-  "summary": "One-sentence summary of overall wiki health"
+  "summary": "One-sentence overview."
 }
-
-If you find no issues, return {"findings": [], "summary": "Wiki looks clean."}
 """
 
 
 def collect_wiki_content() -> str:
-    """Read all wiki pages and return them as a single formatted string.
-    Excludes log.md to save context for documentation content.
-    """
+    """Read wiki pages. Truncates to stay within reasonable context limits."""
     parts = []
+    # Only read the first 80k chars to ensure we don't blow the context window
+    # and leave room for the model to think and respond.
+    current_size = 0
+    max_input_size = 80000
+
     for f in sorted(WIKI_DIR.rglob("*.md")):
         rel = str(f.relative_to(WIKI_DIR))
         if rel == "log.md":
             continue
         content = f.read_text()
-        parts.append(f"=== {rel} ===\n\n{content}\n")
+        part = f"=== {rel} ===\n\n{content}\n"
+        if current_size + len(part) > max_input_size:
+            break
+        parts.append(part)
+        current_size += len(part)
+
     return "\n".join(parts)
 
 
@@ -86,10 +91,10 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
         "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Lint this wiki:\n\n{content[:100000]}"},
+            {"role": "user", "content": f"Lint these wiki pages:\n\n{content}"},
         ],
-        "temperature": 0.2,
-        "max_tokens": 8192,
+        "temperature": 0.1,  # Lower temperature for more stable JSON
+        "max_tokens": 4096,  # 4k is usually plenty for 10 findings and more stable than 8k on many providers
     }
 
     headers = {
@@ -113,16 +118,18 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
         logger.error(f"OpenRouter unexpected response structure: {json.dumps(data, indent=2)}")
         raise requests.RequestException("OpenRouter returned no choices")
 
-    raw = data["choices"][0].get("message", {}).get("content")
+    choice = data["choices"][0]
+    raw = choice.get("message", {}).get("content")
+    finish_reason = choice.get("finish_reason")
 
     if raw is None:
-        finish_reason = data["choices"][0].get("finish_reason")
-        logger.error(
-            f"OpenRouter returned empty content. Finish reason: {finish_reason}. Full response: {json.dumps(data)}"
-        )
+        logger.error(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
         raise requests.RequestException(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
 
-    # Try to extract JSON from the response (LLM may wrap in markdown or add commentary)
+    if finish_reason == "length":
+        logger.warning("LLM response was truncated due to max_tokens limit.")
+
+    # Try to extract JSON from the response
     raw = raw.strip()
 
     # Strategy 1: Look for ```json ... ``` blocks
@@ -134,22 +141,24 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
             continue
 
     # Strategy 2: Look for anything starting with {
-    # We find all occurrences of { and try to parse using raw_decode
     for match in re.finditer(r"\{", raw):
         start_index = match.start()
         try:
             decoder = json.JSONDecoder()
             obj, end_index = decoder.raw_decode(raw[start_index:])
-            return obj
+            # Basic validation that it's our expected schema
+            if isinstance(obj, dict) and ("findings" in obj or "summary" in obj):
+                return obj
         except json.JSONDecodeError:
             continue
 
-    # Strategy 3: Try to parse the whole string after basic stripping
+    # Strategy 3: Try to parse the whole string
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse LLM response as JSON: {e}")
-        logger.error(f"Raw content received (first 2000 chars):\n{raw[:2000]}")
+        # Log more of the raw content to debug truncation
+        logger.error(f"Raw content (len {len(raw)}):\n{raw}")
         raise
 
 

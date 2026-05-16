@@ -42,7 +42,7 @@ Commands:
 ### Biome (TypeScript — `apps/web/`, `packages/`)
 
 - **Config**: `biome.json` (root)
-- **Rules**: Recommended + organize imports; `noExcessiveCognitiveComplexity`, `noNonNullAssertion`, `noExplicitAny`, `noArrayIndexKey`, `noStaticElementInteractions`, `useKeyWithClickEvents`, `noLabelWithoutControl` all downgraded to `warn`
+- **Rules**: Recommended + organize imports; `noExplicitAny` is set to `error`. `noExcessiveCognitiveComplexity`, `noNonNullAssertion`, `noArrayIndexKey`, `noStaticElementInteractions`, `useKeyWithClickEvents`, `noLabelWithoutControl` are downgraded to `warn`.
 - **Style**: Single quotes, semicolons, trailing commas, 4-space indent, 100 line width
 - **Installed**: Root devDependency (`@biomejs/biome`)
 

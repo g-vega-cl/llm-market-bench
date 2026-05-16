@@ -63,10 +63,14 @@ If you find no issues, return {"findings": [], "summary": "Wiki looks clean."}
 
 
 def collect_wiki_content() -> str:
-    """Read all wiki pages and return them as a single formatted string."""
+    """Read all wiki pages and return them as a single formatted string.
+    Excludes log.md to save context for documentation content.
+    """
     parts = []
     for f in sorted(WIKI_DIR.rglob("*.md")):
         rel = str(f.relative_to(WIKI_DIR))
+        if rel == "log.md":
+            continue
         content = f.read_text()
         parts.append(f"=== {rel} ===\n\n{content}\n")
     return "\n".join(parts)
@@ -78,7 +82,7 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
         "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Lint this wiki:\n\n{content[:40000]}"},
+            {"role": "user", "content": f"Lint this wiki:\n\n{content[:100000]}"},
         ],
         "temperature": 0.2,
         "max_tokens": 4096,

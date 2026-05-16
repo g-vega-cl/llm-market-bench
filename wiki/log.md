@@ -1522,3 +1522,9 @@ Removed all IBKR-related components to reduce codebase noise, as FMP and YFinanc
 ## [2026-05-15] note | yfinance reliability concern flagged
 
 Added a ROADMAP item questioning yfinance as a backup data source due to reliability issues, with a note to at least log its usage thoroughly.
+
+## [2026-05-16] fix | wiki-lint infrastructure and contradiction resolution
+
+- Fixed `apps/engine/wiki_lint_llm.py` truncation (40k → 100k) and excluded `log.md` from LLM context to prevent hallucinations about missing pages.
+- Updated `.github/workflows/wiki-lint.yml` to ensure the `wiki-lint` label exists before issue creation.
+- Reconciled `wiki/concepts/project-linting.md` with `biome.json` (confirmed `noExplicitAny` is `error`).

@@ -76,6 +76,9 @@ jobs:
               fh.write(body)
           "
           
+          # Ensure label exists
+          gh label create "wiki-lint" --color "f29513" --description "Wiki quality findings" || true
+
           gh issue create \
             --title "Wiki Lint — $(date +%Y-%m-%d)" \
             --body-file /tmp/issue-body.md \

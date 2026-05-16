@@ -16,6 +16,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      issues: write
 
     steps:
       - name: Checkout repo

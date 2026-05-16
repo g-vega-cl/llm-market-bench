@@ -15,6 +15,7 @@ Env:
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -88,7 +89,7 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
             {"role": "user", "content": f"Lint this wiki:\n\n{content[:100000]}"},
         ],
         "temperature": 0.2,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
     }
 
     headers = {
@@ -123,22 +124,32 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
 
     # Try to extract JSON from the response (LLM may wrap in markdown or add commentary)
     raw = raw.strip()
-    json_str = raw
-    if "```json" in raw:
-        json_str = raw.split("```json")[1].split("```")[0].strip()
-    elif "```" in raw:
-        json_str = raw.split("```")[1].split("```")[0].strip()
-        # If it starts with "json", strip it (some models don't put it on the same line as ```)
-        if json_str.startswith("json"):
-            json_str = json_str[4:].strip()
 
+    # Strategy 1: Look for ```json ... ``` blocks
+    json_blocks = re.findall(r"```(?:json)?\s*(.*?)\s*```", raw, re.DOTALL)
+    for block in json_blocks:
+        try:
+            return json.loads(block)
+        except json.JSONDecodeError:
+            continue
+
+    # Strategy 2: Look for anything starting with {
+    # We find all occurrences of { and try to parse using raw_decode
+    for match in re.finditer(r"\{", raw):
+        start_index = match.start()
+        try:
+            decoder = json.JSONDecoder()
+            obj, end_index = decoder.raw_decode(raw[start_index:])
+            return obj
+        except json.JSONDecodeError:
+            continue
+
+    # Strategy 3: Try to parse the whole string after basic stripping
     try:
-        return json.loads(json_str)
+        return json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse LLM response as JSON: {e}")
-        logger.error(f"Raw content received:\n{raw}")
-        if json_str != raw:
-            logger.error(f"Extracted JSON string:\n{json_str}")
+        logger.error(f"Raw content received (first 2000 chars):\n{raw[:2000]}")
         raise
 
 

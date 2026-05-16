@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      contents: read
       issues: write
 
     steps:
@@ -43,7 +44,16 @@ jobs:
           MODEL="${{ inputs.model || 'deepseek/deepseek-v4-flash' }}"
           echo "Using model: $MODEL"
           python apps/engine/wiki_lint_llm.py --model "$MODEL" > /tmp/findings.json
-          FINDINGS_COUNT=$(python -c "import json; d=json.load(open('/tmp/findings.json')); print(len(d.get('findings', [])))")
+          # Use a more robust way to count findings, handling potential extra data or empty files
+          FINDINGS_COUNT=$(python -c "
+          import json
+          try:
+              with open('/tmp/findings.json') as f:
+                  data = json.load(f)
+                  print(len(data.get('findings', [])))
+          except Exception:
+              print(0)
+          ")
           echo "findings_count=$FINDINGS_COUNT" >> $GITHUB_OUTPUT
           cat /tmp/findings.json
         env:
@@ -54,16 +64,17 @@ jobs:
         run: |
           python -c "
           import json
-          data = json.load(open('/tmp/findings.json'))
-          findings = data.get('findings', [])
-          summary = data.get('summary', '')
+          try:
+              data = json.load(open('/tmp/findings.json'))
+              findings = data.get('findings', [])
+              summary = data.get('summary', '')
 
-          body = f'## Wiki Lint Report\n\n**Summary**: {summary}\n\n'
-          for i, f in enumerate(findings):
-              sev = f.get('severity', 'low').upper()
-              emoji = {'HIGH': '🔴', 'MEDIUM': '🟡', 'LOW': '🟢'}.get(sev, '⚪')
-              pages = ', '.join(f.get('pages', []))
-              body += f\"\"\"### {i+1}. {emoji} [{sev}] {f.get('type', 'unknown')}
+              body = f'## Wiki Lint Report\n\n**Summary**: {summary}\n\n'
+              for i, f in enumerate(findings):
+                  sev = f.get('severity', 'low').upper()
+                  emoji = {'HIGH': '🔴', 'MEDIUM': '🟡', 'LOW': '🟢'}.get(sev, '⚪')
+                  pages = ', '.join(f.get('pages', []))
+                  body += f\"\"\"### {i+1}. {emoji} [{sev}] {f.get('type', 'unknown')}
 
           **Pages**: {pages}
 
@@ -74,12 +85,17 @@ jobs:
           ---
 
           \"\"\"
-          with open('/tmp/issue-body.md', 'w') as fh:
-              fh.write(body)
+              with open('/tmp/issue-body.md', 'w') as fh:
+                  fh.write(body)
+          except Exception as e:
+              print(f'Error generating issue body: {e}')
+              exit(1)
           "
           
-          # Ensure label exists
-          gh label create "wiki-lint" --color "f29513" --description "Wiki quality findings" || true
+          # Ensure label exists (check first to avoid unnecessary errors)
+          if ! gh label list --json name -q '.[].name' | grep -qx "wiki-lint"; then
+            gh label create "wiki-lint" --color "f29513" --description "Wiki quality findings"
+          fi
 
           gh issue create \
             --title "Wiki Lint — $(date +%Y-%m-%d)" \

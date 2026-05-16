@@ -6,7 +6,8 @@
     "build:web": "pnpm --filter web build",
     "install:all": "pnpm install",
     "test": "vitest",
-    "prepare": "husky"
+    "prepare": "husky",
+    "biome": "biome"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

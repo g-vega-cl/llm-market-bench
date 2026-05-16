@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 DIFF_FILE="$(mktemp /tmp/auto-wiki-diff.XXXXXX)"
-PYTHON="${REPO_ROOT}/apps/engine/venv/bin/python3"
+PYTHON="${REPO_ROOT}/apps/engine/.venv/bin/python3"
 SCRIPT="${REPO_ROOT}/apps/engine/auto_wiki.py"
 
 cleanup() {

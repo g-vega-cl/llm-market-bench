@@ -5,7 +5,7 @@ Decoupled from the engine run lifecycle. Designed to be called as a cron job
 = 'SUBMITTED' and checks their fill status in Alpaca.
 
 Usage:
-    ./apps/engine/venv/bin/python3 apps/engine/scripts/sync_alpaca_orders.py
+    ./apps/engine/.venv/bin/python3 apps/engine/scripts/sync_alpaca_orders.py
 """
 
 import sys

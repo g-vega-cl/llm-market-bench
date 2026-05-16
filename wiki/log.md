@@ -1202,8 +1202,17 @@ Files where `any` or index keys are genuinely the right call received targeted o
   1144|
   1145|Added two utility scripts: `scripts/fix_button_types.py` adds `type="button"` to all `<button>` elements lacking a type attribute, and `scripts/fix_svg_titles.py` adds `<title>SVG</title>` as the first child of `<svg>` elements without a title. These automate fixing the Biome lint rules `useButtonType` and `noSvgWithoutTitle` across the entire codebase.
   1146|
-
-## [2026-05-14] lint | Biome 132→0 warnings — systematic cleanup via overrides, code fixes, and type refinements
+  1147|## [2026-05-16] fix | wiki_lint_llm.py AttributeError & observability
+  1148|
+  1149|Fixed `AttributeError: 'NoneType' object has no attribute 'strip'` in `wiki_lint_llm.py` that occurred when OpenRouter returned `None` for message content. Also hardened against `IndexError` on empty choices and improved observability by logging the raw JSON response to `stderr` on any failure.
+  1150|
+  1151|- **Robust Error Handling**: Added explicit checks for `error` keys, empty `choices`, and `None` content in OpenRouter responses.
+  1152|- **Observability**: Raw response body is now printed to `stderr` before raising `RequestException`, enabling easier debugging in GitHub Actions logs.
+  1153|- **TDD**: Created `apps/engine/tests/test_wiki_lint_llm.py` with 4 test cases mocking various failure modes.
+  1154|- **Gemini Config**: Updated `.gemini/settings.json` to automatically load `AGENTS.md` as a foundational mandate.
+  1155|- **DX**: Installed `ruff` in the engine venv (documented in `AGENTS.md`).
+  1156|
+  1157|## [2026-05-14] lint | Biome 132→0 warnings — systematic cleanup via overrides, code fixes, and type refinements
 
 ### Context
 The project had 132 Biome warnings across 31 web files, accumulated over time. Python (Ruff) was already clean. The user asked for all warnings fixed with root cause analysis first, and tests must still pass.

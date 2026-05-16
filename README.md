@@ -120,7 +120,7 @@ pnpm --filter web dev
 ## Testing
 
 ```bash
-./apps/engine/venv/bin/python3 -m pytest
+./apps/engine/.venv/bin/python3 -m pytest
 ```
 
 ## Automation

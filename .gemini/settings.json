@@ -1,5 +1,8 @@
 {
   "experimental": {
     "autoMemory": true
+  },
+  "context": {
+    "fileName": ["GEMINI.md", "AGENTS.md"]
   }
 }

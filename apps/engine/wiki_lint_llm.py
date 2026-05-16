@@ -95,7 +95,22 @@ def call_openrouter(content: str, model: str, api_key: str) -> dict:
     resp.raise_for_status()
     data = resp.json()
 
-    raw = data["choices"][0]["message"]["content"]
+    if "error" in data:
+        print(f"OpenRouter error response: {json.dumps(data, indent=2)}", file=sys.stderr)
+        error_msg = data["error"].get("message", "Unknown OpenRouter error")
+        raise requests.RequestException(f"OpenRouter API error: {error_msg}")
+
+    if not data.get("choices"):
+        print(f"OpenRouter unexpected response structure: {json.dumps(data, indent=2)}", file=sys.stderr)
+        raise requests.RequestException("OpenRouter returned no choices")
+
+    raw = data["choices"][0].get("message", {}).get("content")
+
+    if raw is None:
+        print(f"OpenRouter empty content response: {json.dumps(data, indent=2)}", file=sys.stderr)
+        # Check for refusal or other reason
+        finish_reason = data["choices"][0].get("finish_reason")
+        raise requests.RequestException(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
 
     # Try to extract JSON from the response (LLM may wrap in markdown)
     raw = raw.strip()

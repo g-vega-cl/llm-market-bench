@@ -12,9 +12,9 @@ The `apps/engine/autoresearch/` module implements the Karpathy-style autonomous 
 The auto-research loop runs weekly:
 1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
 2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
-3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation.
-4. **Research** — LLM proposes a new prompt variant (incremental or radical)
-5. **Deploy** — always activate the new variant. No gate, no skip. Every week gets a new prompt.
+3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation. **Note:** The revert is a distinct step that occurs *before* generating the new prompt.
+4. **Research** — LLM proposes a new prompt variant (incremental or radical) based on the *post-revert baseline*.
+5. **Deploy** — always activate the new variant generated in step 4. No gate, no skip. Every week gets a new prompt.
 6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair).
 
 ## Files

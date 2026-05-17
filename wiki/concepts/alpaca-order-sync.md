@@ -49,13 +49,13 @@ The sync is **decoupled** from the engine run lifecycle — it runs as a daily G
 | `ERROR` | `alpaca_broker.py` on submission failure | Couldn't submit to Alpaca |
 | `SKIPPED_NO_POSITION` | `alpaca_broker.py` SELL guardrail | Blocked — no shares held |
 
-Before 2026-05-14, the initial status was `PENDING` instead of `SUBMITTED`. The sync script handles both for backward compatibility.
+Before 2026-05-14, the initial status was `PENDING` instead of `SUBMITTED`. All legacy `PENDING` orders have reached terminal states and the sync script now only tracks `SUBMITTED` orders.
 
 ## Sync Script
 
 **Location**: `apps/engine/scripts/sync_alpaca_orders.py`
 
-Queries trades with `alpaca_status IN ('SUBMITTED', 'PENDING')` and `alpaca_order_id IS NOT NULL` from the last 24 hours. For each, calls `TradingClient.get_order_by_id()` and updates status when the order reaches a terminal state (filled, rejected, canceled, expired). Also sets `alpaca_filled_at` when filled.
+Queries trades with `alpaca_status = 'SUBMITTED'` and `alpaca_order_id IS NOT NULL` from the last 24 hours. For each, calls `TradingClient.get_order_by_id()` and updates status when the order reaches a terminal state (filled, rejected, canceled, expired). Also sets `alpaca_filled_at` when filled.
 
 **Rate limits**: Alpaca allows 200 requests/minute. The sync makes 1 API call per pending order — well within limits even on the busiest day.
 

@@ -59,11 +59,11 @@ def sync_orders() -> dict:
 
     cutoff = (datetime.now(UTC) - timedelta(hours=MAX_AGE_HOURS)).isoformat()
 
-    # Query SUBMITTED trades (new) and PENDING trades (legacy, from before 2026-05-14 rename)
+    # Query SUBMITTED trades
     result = (
         supabase.table("trades")
         .select("id", "alpaca_order_id", "alpaca_status")
-        .in_("alpaca_status", ["SUBMITTED", "PENDING"])
+        .eq("alpaca_status", "SUBMITTED")
         .not_.is_("alpaca_order_id", "null")
         .gte("alpaca_submitted_at", cutoff)
         .execute()

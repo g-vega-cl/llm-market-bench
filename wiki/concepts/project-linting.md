@@ -64,7 +64,7 @@ pnpm biome check --write --unsafe
 
 - **Subshells for directory isolation** — `( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && ruff check )` instead of `cd apps/engine && ... && cd ../..`. If a command fails, the subshell exits cleanly and the parent CWD is unchanged.
 - **Absolute paths from `$REPO_ROOT`** — `REPO_ROOT="$(git rev-parse --show-toplevel)"` at the top, then reference everything as `$REPO_ROOT/path/to/thing`.
-- **Non-blocking steps use `|| true`** — auto-wiki only. Biome lint was historically non-blocking due to pre-existing errors but those are now resolved (0 warnings as of 2026-05-14).
+- **Non-blocking steps use `|| true`** — auto-wiki only.
 - **`pnpm build:web` is ALWAYS blocking** — `vite build && tsc --noEmit` must pass. Never weaken this with `|| true`.
 - **Tests are blocking** — `pytest` (engine) and `vitest` (web) must pass.
 
@@ -72,7 +72,7 @@ pnpm biome check --write --unsafe
 
 1. `scripts/auto-wiki.sh` (non-blocking)
 2. Ruff lint — engine Python (fail-fast)
-3. Biome lint — web TypeScript (non-blocking for historical reasons; 0 warnings as of 2026-05-14, can be made blocking)
+3. Biome lint — web TypeScript (fail-fast)
 4. Engine tests — pytest (fail-fast)
 5. Web tests — vitest (fail-fast)
 6. Web build — `vite build && tsc --noEmit` (fail-fast, MUST pass)

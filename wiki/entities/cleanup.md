@@ -7,6 +7,10 @@ category: entity
 
 The database cleanup module (`core/cleanup.py`) provides a reusable, testable function for periodic database maintenance. It is invoked via the `cleanup` command in `main.py` and replaces the inline cleanup script previously embedded in the CI workflow.
 
+## Schedule
+
+The cleanup job runs automatically every Friday at 16:00 EST (21:00 UTC) as part of the `audit.yml` GitHub Actions workflow.
+
 ## Operations
 
 The `run_cleanup()` function performs three deletions:

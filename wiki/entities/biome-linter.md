@@ -61,7 +61,7 @@ Overrides go at the ROOT level of `biome.json`, NOT inside `linter`:
 
 ## Pre-commit behavior
 
-Biome runs in the pre-commit hook. With 0 warnings as of 2026-05-14, the `|| true` fallback is no longer needed. Biome lint can (and should) be blocking where possible, though currently remains non-blocking per the hook's historical configuration.
+Biome runs in the pre-commit hook. With 0 warnings as of 2026-05-14, the `|| true` fallback has been removed and Biome linting is now a blocking (fail-fast) step in the CI pipeline.
 
 ## Usage
 

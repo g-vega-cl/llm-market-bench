@@ -39,3 +39,4 @@ executing trades, and running feedback loops.
 - [[concepts/memory-feedback]]
 - [[concepts/auto-research-prompt-improver]]
 - [[entities/autoresearch]]
+- [[sources/correlation-matrix-source]]

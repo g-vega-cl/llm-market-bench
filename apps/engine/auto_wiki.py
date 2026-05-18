@@ -30,6 +30,10 @@ import requests
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from apps.engine.scripts.wiki_log_rotate import rotate_log  # noqa: E402
+
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 WIKI_DIR = REPO_ROOT / "wiki"
@@ -234,11 +238,21 @@ def _parse_llm_response(raw: str) -> dict:
 
 def write_log_entry(entry: str) -> None:
     log_path = WIKI_DIR / "log.md"
-    content = log_path.read_text()
-    if not content.endswith("\n"):
-        content += "\n"
-    content += "\n" + entry.strip() + "\n"
-    log_path.write_text(content)
+    
+    # Ensure it ends with a newline if it exists and has content
+    if log_path.exists() and log_path.stat().st_size > 0:
+        with open(log_path, "rb") as f:
+            f.seek(-1, os.SEEK_END)
+            last_char = f.read(1)
+        if last_char != b"\n":
+            with open(log_path, "a") as f:
+                f.write("\n")
+                
+    with open(log_path, "a") as f:
+        f.write("\n" + entry.strip() + "\n")
+        
+    if log_path.stat().st_size > 30000 and rotate_log(WIKI_DIR):
+        print("  [auto-wiki] rotated log.md to archive", file=sys.stderr)
 
 
 def write_new_page(rel_path: str, content: str) -> None:

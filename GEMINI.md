@@ -140,7 +140,8 @@ qmd embed
 ### Conventions
 
 - **Living Synthesis**: The wiki is a "compiled" state of knowledge, not a graveyard of old claims. When new information supersedes the old, update the pages to reflect the current best understanding. Remove or replace stale content rather than using strikethroughs.
-- **Log for History**: Use `log.md` and Git as the chronological record. Every wiki update should be logged in `log.md` with a brief description.
+- **Log for History**: Use `log.md`, its `log/` archives, and Git as the chronological record. Every wiki update should be logged in `log.md` with a brief description. It automatically rotates monthly when it exceeds 30KB.
 - **Cite Sources**: When adding knowledge, cite the source (e.g., `[[sources/source-name]]`).
 - **Cross-Link**: Maintain referential integrity. Concepts and entities mentioned should link to their respective pages.
 - **Answers become pages**: High-value results from queries or discussions should be filed back into the wiki.
+ the wiki.

@@ -57,6 +57,8 @@ def find_all_pages() -> dict[str, Path]:
     pages = {}
     for f in WIKI_DIR.rglob("*.md"):
         rel = str(f.relative_to(WIKI_DIR))
+        if rel.startswith("log/") or rel.startswith("log\\"):
+            continue
         pages[rel] = f
     return pages
 

@@ -99,7 +99,7 @@ qmd embed                          # regenerate embeddings
 ## Maintenance Rules
 
 1. **Refine Synthesis** — Keep pages sharp and current. Replace or remove stale/superseded content to maintain a clean "current best" understanding. Do not use strikethroughs for old content; rely on Git and `log.md` for history.
-2. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`
+2. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`. The file is automatically rotated into `wiki/log/YYYY-MM.md` buckets when it exceeds 30KB.
 3. **Answers become pages** — good query answers get filed back into the wiki
 4. **Lint weekly** — check for contradictions, orphans, stale claims, gaps
 

@@ -340,7 +340,7 @@ async def _process_single_decision(
 
                     # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
                     # We call this INSIDE the lock to ensure attribution record is final before next trade starts
-                    save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None)
+                    save_decision(sb_client, d, status=status, metadata=meta, trade_id=str(trade_id) if trade_id else None, decision_id=decision_id)
                     logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
                     async with counters["lock"]:
                         counters["saved"] += 1

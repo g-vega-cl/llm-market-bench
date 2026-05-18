@@ -18,13 +18,15 @@ def save_decision(
     decision: DecisionObject,
     status: str = "CREATED",
     metadata: dict[str, Any] | None = None,
-    trade_id: str | None = None
+    trade_id: str | None = None,
+    decision_id: str | None = None
 ) -> dict[str, Any]:
     """Save a trading decision to the database for attribution.
 
     Uses upsert to handle duplicate decisions idempotently. A decision is
     considered duplicate if it has the same source_id, ticker, signal,
-    model_provider, and model_name.
+    model_provider, and model_name. If `decision_id` is provided, updates
+    the existing row exactly instead of relying on the unique constraint.
 
     Args:
         client: The Supabase client instance.
@@ -32,12 +34,13 @@ def save_decision(
         status: The processing status of the decision.
         metadata: Additional context or execution info.
         trade_id: Optional ID of the executed trade (if any).
+        decision_id: Optional ID of an existing decision row to update directly.
 
     Returns:
-        The upserted row data as a dictionary.
+        The upserted or updated row data as a dictionary.
 
     Raises:
-        Exception: If the upsert operation fails.
+        Exception: If the upsert or update operation fails.
     """
     payload = {
         "source_id": decision.source_id,
@@ -61,10 +64,15 @@ def save_decision(
     }
 
     try:
-        response = client.table("decisions").upsert(
-            payload,
-            on_conflict="source_id,ticker,signal,model_provider,model_name"
-        ).execute()
+        if decision_id:
+            # We explicitly want to update an existing row (Step 13 attribution locking)
+            response = client.table("decisions").update(payload).eq("id", decision_id).execute()
+        else:
+            # New decision or idempotent retry relying on unique constraint
+            response = client.table("decisions").upsert(
+                payload,
+                on_conflict="source_id,ticker,signal,model_provider,model_name"
+            ).execute()
 
         if not response.data:
             msg = f"Decision for {decision.ticker} saved but no data returned (status={status})."

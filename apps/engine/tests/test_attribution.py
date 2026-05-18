@@ -1,6 +1,6 @@
 """Tests for the decision attribution service."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 
 import pytest
 
@@ -31,6 +31,18 @@ def mock_supabase():
     upsert_mock.execute.return_value = execute_mock
 
     execute_mock.data = [{"id": "test-id"}]
+
+    # Mock update().eq().execute() chain as well
+    update_mock = MagicMock()
+    eq_mock = MagicMock()
+
+    client.table.return_value.update.return_value = update_mock
+    update_mock.eq.return_value = eq_mock
+    eq_mock.execute.return_value = execute_mock
+
+    # This allows `args` to capture correctly.
+    client.table.return_value.update = MagicMock(return_value=update_mock)
+
     return client
 
 
@@ -100,6 +112,28 @@ def test_save_decision_error(mock_supabase):
 
     with pytest.raises(Exception, match="DB Error"):
         save_decision(mock_supabase, decision)
+
+
+def test_save_decision_with_decision_id(mock_supabase):
+    """Test saving decision with a specific decision_id uses update instead of upsert."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=90,
+        reasoning="Momentum",
+        ticker="NVDA",
+        source_id="news_789",
+        model_provider="gemini",
+        model_name=GEMINI_MODEL
+    )
+
+    decision_id = "11111111-2222-3333-4444-555555555555"
+    save_decision(mock_supabase, decision, decision_id=decision_id)
+
+    mock_supabase.table.assert_called_with("decisions")
+    mock_supabase.table().update.assert_called_once()
+    mock_supabase.table().upsert.assert_not_called()
+    mock_supabase.table().update().eq.assert_called_once_with("id", decision_id)
+
 
 
 def test_save_decision_raises_on_empty_response(mock_supabase):

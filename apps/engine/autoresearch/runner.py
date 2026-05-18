@@ -112,6 +112,8 @@ async def run(dry_run: bool = False):
                     logger.info("Active prompt reverted to baseline: %s", reverted)
             else:
                 logger.info("DRY RUN: Would revert active prompt to baseline.")
+    else:
+        logger.info("RATCHET: No baseline found. Establishing first baseline with score %.4f", score)
 
     # Run the auto-research LLM
     logger.info("Calling auto-research LLM...")

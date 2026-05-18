@@ -1,4 +1,4 @@
-import { Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import type { CorrelationData } from '../api/fetch-market-overview';
 import { etfDescriptions } from '../utils/etf-descriptions';
@@ -188,38 +188,30 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span
-                                                        className="font-mono font-bold text-zinc-800 dark:text-zinc-100"
-                                                        title={etfDescriptions[pair.ticker_a]}
-                                                    >
+                                                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100">
                                                         {pair.ticker_a}
                                                     </span>
                                                     <span className="text-zinc-400">/</span>
-                                                    <span
-                                                        className="font-mono font-bold text-zinc-800 dark:text-zinc-100"
-                                                        title={etfDescriptions[pair.ticker_b]}
-                                                    >
+                                                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100">
                                                         {pair.ticker_b}
                                                     </span>
                                                     {idx === 0 && (
-                                                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-full">
+                                                        <Badge
+                                                            colorScheme="accent"
+                                                            size="sm"
+                                                            variant="soft"
+                                                        >
                                                             BEST
-                                                        </span>
+                                                        </Badge>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 max-w-[200px] sm:max-w-[300px] truncate">
-                                                    <span
-                                                        className="truncate"
-                                                        title={etfDescriptions[pair.ticker_a]}
-                                                    >
+                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 max-w-[200px] sm:max-w-[300px] truncate">
+                                                    <span className="truncate">
                                                         {etfDescriptions[pair.ticker_a] ||
                                                             pair.ticker_a}
                                                     </span>
                                                     <span>•</span>
-                                                    <span
-                                                        className="truncate"
-                                                        title={etfDescriptions[pair.ticker_b]}
-                                                    >
+                                                    <span className="truncate">
                                                         {etfDescriptions[pair.ticker_b] ||
                                                             pair.ticker_b}
                                                     </span>

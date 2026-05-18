@@ -134,31 +134,19 @@ export function CorrelationHeatmap({ correlationData, tickers }: CorrelationHeat
                 <div className="mt-4 p-4 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
                     <div className="flex items-center gap-4 text-sm">
                         <div className="flex flex-col gap-0.5">
-                            <span
-                                className="font-mono font-bold text-zinc-900 dark:text-zinc-100"
-                                title={etfDescriptions[hoveredCell.ticker_a]}
-                            >
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                                 {hoveredCell.ticker_a}
                             </span>
-                            <span
-                                className="text-[10px] text-zinc-500 max-w-[120px] truncate"
-                                title={etfDescriptions[hoveredCell.ticker_a]}
-                            >
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 max-w-[120px] truncate">
                                 {etfDescriptions[hoveredCell.ticker_a] || 'Unknown'}
                             </span>
                         </div>
                         <span className="text-zinc-400">/</span>
                         <div className="flex flex-col gap-0.5">
-                            <span
-                                className="font-mono font-bold text-zinc-900 dark:text-zinc-100"
-                                title={etfDescriptions[hoveredCell.ticker_b]}
-                            >
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                                 {hoveredCell.ticker_b}
                             </span>
-                            <span
-                                className="text-[10px] text-zinc-500 max-w-[120px] truncate"
-                                title={etfDescriptions[hoveredCell.ticker_b]}
-                            >
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 max-w-[120px] truncate">
                                 {etfDescriptions[hoveredCell.ticker_b] || 'Unknown'}
                             </span>
                         </div>
@@ -217,14 +205,7 @@ function FullMatrix({
                 <div className="w-16 shrink-0" />
                 {tickers.map((ticker) => (
                     <div key={ticker} className="w-10 shrink-0 text-center">
-                        <div
-                            className="text-[10px] font-mono font-bold text-zinc-500 truncate"
-                            title={
-                                etfDescriptions[ticker]
-                                    ? `${ticker} - ${etfDescriptions[ticker]}`
-                                    : ticker
-                            }
-                        >
+                        <div className="text-[10px] font-mono font-bold text-zinc-500 truncate">
                             {ticker}
                         </div>
                     </div>
@@ -234,14 +215,7 @@ function FullMatrix({
             {tickers.map((rowTicker) => (
                 <div key={rowTicker} className="flex items-center">
                     <div className="w-16 shrink-0 text-right pr-2">
-                        <span
-                            className="text-[10px] font-mono font-bold text-zinc-500 truncate"
-                            title={
-                                etfDescriptions[rowTicker]
-                                    ? `${rowTicker} - ${etfDescriptions[rowTicker]}`
-                                    : rowTicker
-                            }
-                        >
+                        <span className="text-[10px] font-mono font-bold text-zinc-500 truncate">
                             {rowTicker}
                         </span>
                     </div>
@@ -307,11 +281,6 @@ function SimplifiedMatrix({
                                 alignItems: 'flex-end',
                                 justifyContent: 'center',
                             }}
-                            title={
-                                etfDescriptions[ticker]
-                                    ? `${ticker} - ${etfDescriptions[ticker]}`
-                                    : ticker
-                            }
                         >
                             {ticker}
                         </div>
@@ -324,14 +293,7 @@ function SimplifiedMatrix({
                 return (
                     <div key={rowTicker} className="flex items-center">
                         <div className="w-16 shrink-0 text-right pr-2">
-                            <span
-                                className="text-[10px] font-mono font-bold text-zinc-500 truncate"
-                                title={
-                                    etfDescriptions[rowTicker]
-                                        ? `${rowTicker} - ${etfDescriptions[rowTicker]}`
-                                        : rowTicker
-                                }
-                            >
+                            <span className="text-[10px] font-mono font-bold text-zinc-500 truncate">
                                 {rowTicker}
                             </span>
                         </div>

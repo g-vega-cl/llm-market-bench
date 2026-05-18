@@ -3,7 +3,7 @@
     "autoMemory": true
   },
   "context": {
-    "fileName": ["GEMINI.md", "AGENTS.md"]
+    "fileName": ["GEMINI.md"]
   },
   "general": {
     "plan": {

@@ -18,6 +18,7 @@
 - [[entities/pipeline]] — Full daily pipeline from ingestion to feedback
 - [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop
 - [[entities/macro-tracker]] — 23-ticker global macro regime monitoring
+- [[entities/gemini]] — Project-level mandates, precedence directives, and command reference
 
 ## Concepts
 

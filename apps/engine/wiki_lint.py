@@ -77,7 +77,7 @@ def build_link_graph(pages: dict[str, Path]) -> dict[str, tuple[set[str], set[st
     return graph
 
 
-def lint() -> list[str]:
+def lint(fix: bool = False) -> list[str]:
     issues = []
     pages = find_all_pages()
     graph = build_link_graph(pages)
@@ -113,6 +113,7 @@ def lint() -> list[str]:
     if index_path.is_file():
         index_content = index_path.read_text()
         index_links = set(extract_links(index_content))
+        new_index_content = index_content
 
         # Pages not in index (exclude scaffold)
         for rel in sorted(pages):
@@ -121,8 +122,37 @@ def lint() -> list[str]:
             link_without_ext = rel
             if link_without_ext.endswith(".md"):
                 link_without_ext = link_without_ext[:-3]
+            
             if link_without_ext not in index_links and rel not in index_links:
-                issues.append(f"[index-gap] {rel}: not referenced in index.md")
+                if fix:
+                    # Attempt to auto-fix index-gap
+                    category = rel.split("/")[0].capitalize()
+                    if category.endswith("s"): # Entities, Concepts, etc.
+                        section_header = f"## {category}"
+                        if section_header in new_index_content:
+                            # Simple append to the end of the section
+                            lines = new_index_content.split("\n")
+                            for i, line in enumerate(lines):
+                                if line.strip() == section_header:
+                                    # Insert after header and any following blank lines
+                                    insert_pos = i + 1
+                                    while insert_pos < len(lines) and not lines[insert_pos].strip():
+                                        insert_pos += 1
+                                    lines.insert(insert_pos, f"- [[{link_without_ext}]] — Auto-indexed page")
+                                    new_index_content = "\n".join(lines)
+                                    print(f"  [fix] index.md: added [[{link_without_ext}]] to {category}")
+                                    break
+                        else:
+                            issues.append(f"[index-gap] {rel}: not referenced in index.md (could not find section {section_header})")
+                    else:
+                        issues.append(f"[index-gap] {rel}: not referenced in index.md")
+                else:
+                    issues.append(f"[index-gap] {rel}: not referenced in index.md")
+
+        if fix and new_index_content != index_content:
+            index_path.write_text(new_index_content)
+            # Re-run lint to see remaining issues
+            return lint(fix=False)
 
         # Index links pointing nowhere
         for link in index_links:
@@ -135,9 +165,10 @@ def lint() -> list[str]:
 def main():
     parser = argparse.ArgumentParser(description="Lint wiki/ structure")
     parser.add_argument("--quiet", action="store_true", help="only print errors")
+    parser.add_argument("--fix", action="store_true", help="automatically fix simple issues")
     args = parser.parse_args()
 
-    issues = lint()
+    issues = lint(fix=args.fix)
 
     if not issues:
         if not args.quiet:

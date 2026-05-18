@@ -1547,4 +1547,11 @@ Resolved multiple failures in the LLM-powered wiki linting pipeline, ranging fro
 - **Structural Link Resolution**: Confirmed that the structural linter (`wiki_lint.py`) treats all `[[...]]` text as paths. Documentation now uses escaped or modified examples to avoid false-positive broken link reports.
 - **TDD & Regression Fixes**: Restored test suite stability in `test_wiki_lint_llm.py` by ensuring error message assertions match the latest implementation. Added a specific test for truncated JSON handling.
 - **Documentation**: Created [[entities/wiki-linter]] to document the dual-linter architecture and updated [[index]] for discoverability.
+## [2026-05-18] fix | Resolved entities/gemini wiki lint errors
+
+Fixed `[index-gap]` and `[orphan]` errors for `entities/gemini.md` by:
+- Adding `[[entities/gemini]]` to `wiki/index.md`.
+- Linking to `[[entities/gemini]]` from `[[concepts/agent-workflow]]`.
+
+These issues were leftovers from the `AGENTS.md` → `GEMINI.md` rename session.
 

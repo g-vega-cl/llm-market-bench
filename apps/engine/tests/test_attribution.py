@@ -1,6 +1,6 @@
 """Tests for the decision attribution service."""
 
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 
 import pytest
 

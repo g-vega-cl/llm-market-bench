@@ -3,8 +3,8 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Auto-document code changes in the wiki (non-blocking)
-"$REPO_ROOT/scripts/auto-wiki.sh" || true
+# Auto-document code changes in the wiki (BLOCKING)
+"$REPO_ROOT/scripts/auto-wiki.sh"
 
 # Lint Python (engine)
 ( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && ruff check )

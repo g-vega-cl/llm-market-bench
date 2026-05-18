@@ -37,7 +37,7 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
-DEFAULT_OLLAMA_MODEL = "qwen3.5:latest"
+DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
 
 
 def get_api_key() -> str | None:
@@ -184,6 +184,17 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
     return _parse_llm_response(resp.json()["choices"][0]["message"]["content"])
 
 
+def get_available_ollama_models() -> list[str]:
+    """Fetch list of models available in local Ollama instance."""
+    try:
+        resp = requests.get("http://localhost:11434/api/tags", timeout=5)
+        if resp.status_code == 200:
+            return [m["name"] for m in resp.json().get("models", [])]
+    except requests.RequestException:
+        pass
+    return []
+
+
 def call_ollama(prompt: str, model: str) -> dict:
     system_prompt = SYSTEM_PROMPT + "\n\nIMPORTANT: Output ONLY the JSON. No markdown, no explanation."
     payload = {
@@ -197,6 +208,14 @@ def call_ollama(prompt: str, model: str) -> dict:
     }
 
     resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
+    if resp.status_code == 404:
+        models = get_available_ollama_models()
+        if models:
+            raise requests.RequestException(
+                f"model '{model}' not found. Available: {', '.join(models)}"
+            )
+        else:
+            raise requests.RequestException(f"model '{model}' not found.")
     resp.raise_for_status()
     return _parse_llm_response(resp.json()["message"]["content"])
 
@@ -356,8 +375,8 @@ def main():
             print(f"  [auto-wiki] ollama ({args.ollama_model}) succeeded", file=sys.stderr)
         except (requests.RequestException, json.JSONDecodeError) as e:
             print(f"  [auto-wiki] ollama error: {e}", file=sys.stderr)
-            print("  [auto-wiki] giving up — no documentation generated", file=sys.stderr)
-            sys.exit(0)  # Don't block the commit
+            print("  [auto-wiki] ERROR: No LLM (OpenRouter or Ollama) configured or available. Documentation is required.", file=sys.stderr)
+            sys.exit(1)  # BLOCK the commit
 
     if not result or not result.get("should_update"):
         print("  [auto-wiki] no wiki changes needed", file=sys.stderr)

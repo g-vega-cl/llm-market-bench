@@ -46,10 +46,10 @@ fi
 
 echo "[auto-wiki] analyzing staged changes..."
 
-# Run the auto-wiki script — never block the commit on failure
+# Run the auto-wiki script — BLOCKING
 "$PYTHON" "$SCRIPT" --diff-file "$DIFF_FILE" || {
-    echo "[auto-wiki] documentation generation failed (commit NOT blocked)"
-    exit 0
+    echo "[auto-wiki] documentation generation failed (commit BLOCKED)"
+    exit 1
 }
 
 # Re-stage wiki changes so they're included in the commit

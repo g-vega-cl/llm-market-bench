@@ -19,10 +19,19 @@ The auto-research system is configured via:
 The auto-research loop runs weekly:
 1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
 2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
-3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation. **Note:** The revert is a distinct step that occurs *before* generating the new prompt.
+3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation.
 4. **Research** — LLM proposes a new prompt variant (incremental or radical) based on the *post-revert baseline*.
-5. **Deploy** — always activate the new variant generated in step 4. No gate, no skip. Every week gets a new prompt.
+5. **Deploy** — always activate the new variant generated in step 4.
 6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair).
+
+## System-Heavy Prompt Architecture
+
+As of **2026-05-19**, the system moved to a **System-Heavy** architecture to maximize the surface area of evolution for the meta-researcher.
+
+- **System Prompt (The Rulebook)**: Contains 100% of the trading logic, risk management (SMA rules), SOPs (5-Whys), and tool-usage requirements. This part is stored in the database and is mutated by the meta-researcher.
+- **User Prompt (The Data Case)**: Reduced to a minimal skeleton that only handles dynamic data injection (News snippets, Portfolio status, Historical context). This part is static in the source code.
+
+This split ensures that the "Brain" (System) is decoupled from the "Environment" (User), allowing the Auto-Research engine to iterate on the very rules of the system itself.
 
 ## Files
 
@@ -42,7 +51,7 @@ The auto-research loop runs weekly:
 - **Always deploy**: Every week deploys a new prompt. No gate. The meta-researcher always explores.
 - **Hard ratchet**: When an experiment fails to beat the baseline, `revert_to_baseline()` is called to set the active prompt back to the baseline before the next experiment. Code-level enforcement — not just instructions to the LLM.
 - **Baseline tracking**: The highest score achieved so far (tied to its prompt). The meta-researcher's target. Only moves up.
-- **Only the trading prompt is modified**: Tools, portfolio rules, execution logic remain unchanged.
+- **System-Heavy Evolution**: Moving logic from User to System prompt to ensure 100% of the trading "SOP" can be improved by the LLM.
 - **Control portfolios are reference only**: Shown in the report but not part of the score.
 
 ## Score Formula
@@ -56,7 +65,8 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
-- **2026-05-13**: Hard ratchet — `revert_to_baseline()` enforces Karpathy pattern. When score < baseline, the active prompt is reverted to the baseline before the next experiment. No more trusting the LLM to voluntarily go back to the baseline.
+- **2026-05-19**: **System-Heavy Refactor** — Moved all 16 logic points, SMA rules, and output definitions from the static User prompt to the evolvable System prompt. Reduced User prompt to a data-only skeleton.
+- **2026-05-13**: Hard ratchet — `revert_to_baseline()` enforces Karpathy pattern.
 - **2026-05-12**: Always deploy — removed activation gate. Every week gets a new prompt regardless of score.
 - **2026-05-12**: Baseline tracking — baseline is max historical score, not last week's score. With tests.
 - **2026-05-12**: Major simplification — removed validator.py, decision_quality.py. Replaced 8-dimension composite score with single formula. Dropped VIXY regime queries, concordance, conviction calibration, mistake patterns, sample trades, and stagnation checks.

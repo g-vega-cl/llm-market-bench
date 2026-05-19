@@ -26,9 +26,11 @@ def test_5_whys_integration():
     # Check System Prompt
     assert "5 Whys" in CORE_ANALYSIS_SYSTEM_PROMPT
     assert "**Why** is this news market-moving?" in CORE_ANALYSIS_SYSTEM_PROMPT
-    
-    # Check Analysis User Prompt
-    assert "REASONING RIGOR: THE \"5 WHYS\"" in ANALYSIS_USER_PROMPT_TEMPLATE
+    assert "REASONING RIGOR: THE \"5 WHYS\"" in CORE_ANALYSIS_SYSTEM_PROMPT
+
+    # Analysis User Prompt should now be minimal data injection
+    assert "{news_content}" in ANALYSIS_USER_PROMPT_TEMPLATE
+    assert "{portfolio_context}" in ANALYSIS_USER_PROMPT_TEMPLATE
     
     # Check Manager Post-Mortem
     assert "ROOT CAUSE ANALYSIS (MANDATORY)" in MANAGER_USER_PROMPT_TEMPLATE

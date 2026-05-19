@@ -85,6 +85,16 @@ export type SystemAudit = Omit<Database['public']['Tables']['system_audits']['Ro
     metadata: Record<string, any> | null;
 };
 
+export type PromptExperiment = Omit<
+    Database['public']['Tables']['prompt_experiments']['Row'],
+    'metrics' | 'research_output'
+> & {
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    metrics: Record<string, any> | null;
+    // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
+    research_output: Record<string, any> | null;
+};
+
 export type PositionPnl = Database['public']['Views']['position_pnl']['Row'];
 export type PortfolioPosition = Database['public']['Tables']['portfolio_positions']['Row'];
 

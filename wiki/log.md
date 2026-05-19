@@ -1,111 +1,3 @@
-## [2026-05-19] web | Auto-Research Portfolio Badge & Config Centralization
-
-### Changes
-- **Auto-Research Badge**: Added a distinctive purple "Auto-Research" badge to portfolios in the experiment group on the `PortfoliosPage`.
-- **Config Centralization**: Migrated `AUTORESEARCH_EXPERIMENT_OWNER_IDS` to the shared `packages/config/models.json` file to ensure engine and web app synchronization.
-- **Engine Update**: Updated `apps/engine/core/config.py` to read from the shared JSON source.
-- **Testing**: Added Vitest unit tests for portfolio config and fetching logic.
-- **Documentation**: Updated wiki entities for `autoresearch` and `design-system`.
-
-## [2026-05-19] test | Enforce 70% (engine) / 40% (web) test coverage in pre-commit
-
-### Changes
-- **Coverage Enforcement**: Added a "test-coverage" step to the Husky pre-commit hook. Commits are now blocked if coverage falls below thresholds (70% for engine, 40% for web-app).
-- **Engine Configuration**: Installed `pytest-cov`, added it to `requirements.txt`, and created `apps/engine/.coveragerc` to omit CLI scripts and non-core logic.
-- **Web Configuration**: Installed `@vitest/coverage-v8`, updated `apps/web/vitest.config.ts` with baseline thresholds, and excluded build/node_modules directories.
-- **Project Hygiene**: Updated `.gitignore` to exclude coverage reports and `biome.json` to ignore the `coverage/` directory.
-- **Documentation**: Created [[concepts/test-coverage]] to define the project's coverage policy and "ratchet" philosophy.
-
-### Files changed
-- `.husky/pre-commit`: added coverage check
-- `apps/engine/.coveragerc`: new coverage config
-- `apps/engine/requirements.txt`: added `pytest-cov`
-- `apps/web/vitest.config.ts`: added Vitest coverage config
-- `.gitignore`: added coverage artifacts
-- `biome.json`: excluded `coverage/`
-- `wiki/concepts/test-coverage.md`: new policy page
-- `wiki/index.md`: added link to policy
-
-## [2026-05-19] design-system | Card primitive consolidation & "Today" feature migration
-
-Standardized the `Card` primitive with `rounded-3xl` as default, added `isHoverable` and `radius` props, and migrated five major components in the "Today" feature. Details in [[log/2026-05-19_card-consolidation]].
-
-## [2026-05-14] perf | Parallel newsletter cleaning + snapshot optimization
-
-### Changes
-- **Parallel ad removal**: `ingest_newsletters()` now fetches all Gmail bodies first, then runs `clean_newsletter_content()` on all newsletters concurrently via `asyncio.gather()`. Previously each newsletter was cleaned sequentially (7 newsletters × ~7s = ~49s; now ~13s). Extracted `_fetch_raw_message()` from `_process_message()` to separate Gmail API fetch from LLM cleaning.
-- **Snapshot filtering**: `_stage_snapshots_and_pca()` now only snapshots portfolios that hold actual positions. Empty cash-only portfolios (test_model, gpt-5-mini, etc.) are skipped, reducing 11 snapshots to ~5 per run.
-- **Batch market data**: Snapshot price fetching switched from individual `get_quote()` calls (25+ sequential FMP API calls) to `get_quotes()` batch fetch (single batched API call). Also eliminated the double-call bug where `get_quote()` was called twice per ticker (once for truthiness, once for value).
-
-### Files changed
-- `apps/engine/ingest/newsletter.py`: +import asyncio, +`_fetch_raw_message()`, refactored `ingest_newsletters()` to three-phase (fetch → parallel-clean → assemble)
-- `apps/engine/main.py`: `_stage_snapshots_and_pca()` — filter `if p.positions:`, use `get_quotes()` instead of dict comprehension with `get_quote()`
-- `apps/engine/tests/test_newsletter.py`: +`test_ingest_newsletters_parallel_cleaning`, updated mocks from `_process_message` → `_fetch_raw_message`
-- `apps/engine/tests/test_performance_snapshot.py`: +`test_stage_snapshots_skips_portfolios_without_positions`, +`test_stage_snapshots_uses_batch_get_quotes`
-- `wiki/entities/pipeline.md`: noted parallel ad removal + snapshot filtering + batch fetch
-- `wiki/concepts/ingestion.md`: noted parallel cleaning
-
-### Test results
-589 passed, 0 failed, no regressions.
-
-## [2026-05-14] chore | Add batch-fix scripts for Biome lint rules
-
-Added two utility scripts: `scripts/fix_button_types.py` adds `type="button"` to all `<button>` elements lacking a type attribute, and `scripts/fix_svg_titles.py` adds `<title>SVG</title>` as the first child of `<svg>` elements without a title. These automate fixing the Biome lint rules `useButtonType` and `noSvgWithoutTitle` across the entire codebase.
-
-## [2026-05-16] infra | Wiki Lint CI stabilized — 75k context, DeepSeek V4 Pro, auto-issue creation
-
-Successfully executed the full Wiki Lint GHA workflow after resolving multiple CI/CD and LLM parsing issues.
-- **Milestone**: First successful end-to-end run of `wiki_lint_llm.py` in GitHub Actions.
-- **Findings**: Identified 8 semantic issues (1 high, 3 medium, 4 low) and automatically created GitHub Issue #20 for remediation.
-- **Stabilization**:
-    - Implemented 75k character context cap to prevent window saturation.
-    - Upgraded semantic model to `deepseek/deepseek-v4-pro`.
-    - Resolved CI dependency errors (`python-dotenv`) and `PYTHONPATH` issues.
-    - Hardened JSON extraction from LLM responses to handle duplicate or conversational output.
-- **Documentation**: Created [[entities/wiki-linter]] to document the dual-linter architecture.
-
-## [2026-05-16] fix | wiki_lint_llm.py AttributeError & observability
-
-Fixed `AttributeError: 'NoneType' object has no attribute 'strip'` in `wiki_lint_llm.py` that occurred when OpenRouter returned `None` for message content. Also hardened against `IndexError` on empty choices and improved observability by logging the raw JSON response to `stderr` on any failure.
-
-- **Robust Error Handling**: Added explicit checks for `error` keys, empty `choices`, and `None` content in OpenRouter responses.
-- **Observability**: Raw response body is now printed to `stderr` before raising `RequestException`, enabling easier debugging in GitHub Actions logs.
-- **TDD**: Created `apps/engine/tests/test_wiki_lint_llm.py` with 4 test cases mocking various failure modes.
-- **Gemini Config**: Updated `.gemini/settings.json` to automatically load `AGENTS.md` as a foundational mandate.
-- **DX**: Installed `ruff` in the engine venv (documented in `AGENTS.md`).
-
-## [2026-05-14] design-system | Full design system adoption across all web app pages
-
-### Context
-
-The design system at `packages/ui-design-system/` was well-structured but inconsistently used: 14 files imported from it, but 7 pages used zero DS components, relying entirely on raw Tailwind. MarketOverviewPage had a 60-line raw copy-paste of HeroBackground. ReasoningPage used `gray-*` colors instead of the app's `zinc-*` palette. Five different raw "Load More" button implementations existed across the codebase.
-
-### Changed files
-
-- `apps/web/src/features/market-overview/pages/MarketOverviewPage.tsx` — HeroBackground replaces 60-line raw copy; Card for sentiment; Badge for status/direction; ConfidenceBar for scores; EmptyState for correlation pending; Card for sector grid. **-78 lines.**
-- `apps/web/src/features/reasoning/pages/ReasoningPage.tsx` — 24 `gray-*` → `zinc-*` replacements
-- `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` — Card + MetricTile for equity/cash; SectionHeading for section titles; Badge for "Audit Trail"; Card for empty state
-- `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` — Card replaces raw portfolio cards; MetricTile for equity/cash/buying-power; Badge for active/retired; SectionHeading everywhere
-- `apps/web/src/features/memories/pages/MemoriesPage.tsx` — Button for "Load More"; ErrorCard for errors; LoadingBoundary for loading; SectionHeading for header
-- `apps/web/src/features/audits/pages/AuditsPage.tsx` — Button for "Load More"; ErrorCard; LoadingBoundary; LoadingSpinner for fetch indicator; SectionHeading
-- `apps/web/src/features/cause-and-effect/pages/CauseAndEffectPage.tsx` — SectionHeading replaces raw h1
-- `apps/web/src/routes/__root.tsx` — cn() utility replaces raw string concatenation; bg-white/80 replaces bg-opacity-80
-- `packages/ui-design-system/README.md` — added Adoption section + Usage Patterns reference
-- `wiki/sources/web-design-system-source.md` — updated takeaways with current state
-- `wiki/entities/web-app.md` — removed stale Stack/Cluster/Grid/AgentPills/Timeline; added actual component inventory + cross-cutting conventions
-
-### Before / After
-
-- **Before**: 7 pages with zero DS usage; duplicate HeroBackground; 5 ad-hoc "Load More" implementations; inconsistent color palettes
-- **After**: Every page uses the DS; unified loading/error/button patterns; consistent zinc palette; HeroBackground deduplicated; 86 tests all green; biome + ruff clean
-
-### Key decisions
-
-1. **Fix adoption before aesthetics** — user chose to get the DS consistently used everywhere before rethinking the visual language. This gives a clean foundation for the aesthetic refresh.
-2. **No new DS components added** — existing primitives/patterns covered every use case. No abstraction was needed; just consistent usage.
-3. **cn() utility for clean classNames** — replaced raw string concatenation patterns with the DS's cn utility where it improved readability.
-4. **Patterns page in README** — documents which DS components each page uses, serving as a quick reference for contributors and a living inventory.
-
 ## [2026-05-14] refactor | Design System Consolidation
 
 Consolidated design system usage across all 9 web pages. Migrated all pages to use PageLayout wrapper, replaced raw headings with SectionHeading, fixed ReasoningPage (zero DS usage → full DS adoption), migrated ConceptsPage from gray→zinc color tokens, and updated PageLayout to remove min-h-screen (now handled by page-level divs). Satoshi font import removed in favor of system-ui fallback.
@@ -293,7 +185,6 @@ Fixed `[index-gap]` and `[orphan]` errors for `entities/gemini.md` by:
 
 These issues were leftovers from the `AGENTS.md` → `GEMINI.md` rename session.
 
-
 ## [2026-05-19] design-system | Added SubHeading and Table primitives to the design system
 
 Added new composable design system components:
@@ -306,3 +197,28 @@ All three data tables and two section headers in the web app were migrated to us
 ## [2026-05-19] refactor | Badge primitive expansion and design-system-wide standardization
 
 Expanded the **Badge** primitive with new `xs` size, `dot` variant (colored indicator dot + text), and consistent `text-zinc-950` contrast on solid variants across all color schemes. Replaced dozens of raw inline badge styles across the web app (MemoryCard, TradesTable, HumanFriendlyPrompt, FutureCatalysts, NewsletterFeed, TradeActivity) with the updated Badge component, standardizing on design tokens. Also updated the **Button** primitive's solid variant text color to `text-zinc-950` for matching contrast. Added a TODO roadmap item for portfolio badges with auto-research status.
+
+## [2026-05-19] feature | Auto-Research Arena web page
+
+The feature `apps/web/src/features/autoresearch` has been implemented, adding a dedicated page for the Auto-Research system. This includes:
+
+- **New route**: `/autoresearch` with a server-side loader for fetching experiments.
+- **API layer**: `fetchExperiments()` queries the `prompt_experiments` table from Supabase.
+- **React components**: `AutoresearchPage`, `ExperimentDetails`, `ExperimentList`, and `ScoreCalculation` to visualize experiment history, metrics, research logic, and prompt content.
+- **Data types**: Added `PromptExperiment` type to the shared `@llm-market-bench/database` package, mapping the new `prompt_experiments` table.
+- **Navigation**: Link added to the root layout navigation bar.
+
+The Auto-Research Arena allows users to explore past prompt experiments, view the risk-adjusted scoring formula, and see the meta-researcher's rationale for each prompt iteration.
+
+## [2026-05-19] feature | Auto-Research Arena Web UI & System-Heavy Prompt Architecture
+
+Introduced the **Auto-Research Arena** web UI at `/autoresearch`, allowing exploration of prompt experiment history with scoring methodology, experiment details, and historical progression. Simultaneously refactored the interaction pattern into a **System-Heavy** architecture: all trading logic, risk rules, tool enforcement, and SOPs now reside in the System Prompt (mutated by the meta-researcher), while the User Prompt remains a static data skeleton. This increases the surface area for autonomous prompt evolution. Added bootstrap utility and database type for `prompt_experiments`. Updated auto-wiki with truncation safety and new default model.
+
+
+## [2026-05-19] feature | System-Heavy Prompt Refactor & Auto-Research Arena Web UI
+
+Implemented System-Heavy Prompt architecture: moved all trading logic, calendar strategies, SMA rules, and output format specifications into the System Prompt, leaving a minimal data-only User Prompt. Added bootstrap utility to seed the new baseline. Created Auto-Research Arena web pages with experiment list, detail view, and scoring methodology display. Also improved auto-wiki prompt parsing with regex-based JSON extraction and truncation handling, and updated default Ollama model to qwen3.5:latest.
+
+## [2026-05-19] feature | System-Heavy Prompt Refactor & Auto-Research Arena Web UI
+
+Implemented System-Heavy Prompt architecture: moved all trading logic, calendar strategies, SMA rules, and output format specifications into the System Prompt, leaving a minimal data-only User Prompt. Added bootstrap utility to seed the new baseline. Created Auto-Research Arena web pages with experiment list, detail view, and scoring methodology display. Also improved auto-wiki prompt parsing with regex-based JSON extraction and truncation handling, and updated default Ollama model to qwen3.5:latest.

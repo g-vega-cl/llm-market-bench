@@ -101,6 +101,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         { to: '/concepts', label: 'Concepts' },
         { to: '/portfolios', label: 'Portfolios' },
         { to: '/how-it-works', label: 'How it Works' },
+        { to: '/autoresearch', label: 'Auto-Research' },
         { to: '/reasoning', label: 'Reasoning' },
         { to: '/cause-and-effect', label: 'Cause & Effect' },
         { to: '/audits', label: 'Audits' },

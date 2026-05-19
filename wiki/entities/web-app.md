@@ -59,7 +59,7 @@ Cross-cutting conventions: all "Load More" buttons use Button with isLoading, al
 
 ## Deployment
 
-Netlify (benchify.netlify.app) via `@netlify/vite-plugin-tanstack-start`. Env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+Netlify (autoresearch.netlify.app) via `@netlify/vite-plugin-tanstack-start`. Env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
 ## Testing
 

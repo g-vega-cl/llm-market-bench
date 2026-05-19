@@ -44,6 +44,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
 - [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
 - [x] **Karpathy method for prompt improvement.** — Implemented `apps/engine/autoresearch/`: weekly autonomous meta-researcher LLM evaluates live trading performance across 4 dimensions (Wall Street metrics, decision quality, structural analysis, local minima escape) and iteratively improves the prompt. Gemini + DeepSeek agents are the experiment group; OpenAI + Claude serve as control. See [[entities/autoresearch]] and [[concepts/auto-research-prompt-improver]].
+- [ ] **Mutation Preview CLI** - Add a dry-run mode to the Auto-Research researcher to preview the next prompt mutation without deploying it.
+- [ ] **Auto-Research Diff Viewer** - Implement a color-coded diff viewer in the Web Arena to compare experiment variants against the baseline logic.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
 - [ ] **Make sure we save the historical correlation/returns table/matrix**
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
@@ -99,15 +101,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
 - [ ] -Benchify: check if pre-commit hooks work in Jules (qmd)?
 - [ ] - Benchify: improve doc summarization/deletion, audit auto wiki. I might have too many docs.
-
-Maybe even separate logs into many files to avoid overloading context. It's "immutable" as in we shouldn't delete from it anyways.
-
-Maybe only use a tool to append to the logs?
-
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
-- [ ] - Show badges for the portfolios with auto-research
 - [ ] Benchify: show progression of autoresearch, show the prompt, the score and show historical progress. Show also how we calculate it.
 
 ## Under Consideration

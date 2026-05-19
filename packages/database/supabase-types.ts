@@ -681,6 +681,62 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            prompt_experiments: {
+                Row: {
+                    id: string;
+                    variant_tag: string;
+                    prompt_name: string;
+                    prompt_content: string;
+                    week_start: string;
+                    week_end: string;
+                    metrics: Json | null;
+                    status: string;
+                    experiment_type: string;
+                    parent_tag: string | null;
+                    change_description: string | null;
+                    research_output: Json | null;
+                    created_at: string;
+                };
+                Insert: {
+                    id?: string;
+                    variant_tag: string;
+                    prompt_name?: string;
+                    prompt_content: string;
+                    week_start: string;
+                    week_end: string;
+                    metrics?: Json | null;
+                    status?: string;
+                    experiment_type?: string;
+                    parent_tag?: string | null;
+                    change_description?: string | null;
+                    research_output?: Json | null;
+                    created_at?: string;
+                };
+                Update: {
+                    id?: string;
+                    variant_tag?: string;
+                    prompt_name?: string;
+                    prompt_content?: string;
+                    week_start?: string;
+                    week_end?: string;
+                    metrics?: Json | null;
+                    status?: string;
+                    experiment_type?: string;
+                    parent_tag?: string | null;
+                    change_description?: string | null;
+                    research_output?: Json | null;
+                    created_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'prompt_experiments_parent_tag_fkey';
+                        columns: ['parent_tag'];
+                        isOneToOne: false;
+                        referencedRelation: 'prompt_experiments';
+                        referencedColumns: ['variant_tag'];
+                    },
+                ];
+            };
             trades: {
                 Row: {
                     alpaca_order_id: string | null;

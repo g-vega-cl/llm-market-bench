@@ -1,55 +1,31 @@
 ---
-tags: [analysis, llm, tools, multi-provider]
+tags: [concept, reasoning, logic]
 category: concept
 ---
 
-# Reasoning & Analysis
+# Reasoning Rigor & 5 Whys
 
-Parallel LLM analysis with tool-calling loops across four providers.
+The "LLM Market Bench" engine prioritizes depth of reasoning over simple pattern matching. We enforce this through structured prompt engineering and the **5 Whys** technique.
 
-## Batch Strategy
+## The 5 Whys Technique
 
-News chunks are split into batches to avoid output-token truncation and "Lost
-in the Middle." Each batch gets full portfolio summary + market data + context.
-All batches run in parallel via `asyncio.gather`.
+Originally developed at Toyota, the 5 Whys method involves asking "Why?" repeatedly to drill down to the root cause of a phenomenon. In our trading engine, the agents are instructed to apply this to market-moving news:
 
-## Provider Handlers
+1.  **Event**: Company X announces a major partnership.
+2.  **Why 1**: Because they want to expand their market share.
+3.  **Why 2**: Because their current organic growth is slowing in their primary region.
+4.  **Why 3**: Because a new competitor (Company Y) has captured 15% of the local demographic.
+5.  **Why 4**: Because Company Y's supply chain is more vertically integrated.
+6.  **Why 5 (Root Cause)**: Company X is pivoting to a partnership-heavy model to outsource supply chain risk and remain asset-light.
 
-Each provider has a dedicated handler at `core/llm/handlers/`:
+**Trading Decision**: Instead of just "Buy Company X," the agent might look for the specific partner that provides the vertical integration Company X lacks.
 
-- **OpenAI** — Standard tool loop
-- **Anthropic** — XML-like tool blocks, server-side web search, max_tokens bump
-- **Gemini** — `List[Model]` for multi-function-call, Google Search grounding
-- **DeepSeek** — Thinking mode with `reasoning_content` preservation
+## Parallel Reasoning Loop
 
-## Available Tools
+The engine runs multiple agents in parallel, each utilizing the same **System-Heavy** logic but reacting to different data windows. This creates a "Consensus of Reason," where we look for overlapping root causes rather than just overlapping tickers.
 
-| Tool | Purpose |
-|------|---------|
-| `get_stock_quote` | Verify ticker existence and price |
-| `get_price_history` | Check if news is "priced in" |
-| `calculate_buy_quantity` | Exact shares from % of buying power |
-| `calculate_sell_quantity` | Exact shares from % of position |
-| `web_search` | Real-time news verification |
-| `run_stock_screener` | Find investable assets |
-| `find_uncorrelated_assets` | Diversification pairs |
+## Integration with System-Heavy Prompts
 
-## Discovery Agent
+By placing the **Reasoning SOP** (including the 5 Whys instructions) inside the **System Prompt**, we treat "Thinking Style" as an evolvable trait. The Meta-Researcher can refine the reasoning steps, add new "mental models" (like MECE or First Principles), and observe how these changes impact risk-adjusted returns.
 
-A specialized agent that identifies relevant assets for each market theme before
-main analysis. Uses `run_stock_screener` + optional web search, capped at a
-configurable max candidates.
-
-## Structured Extraction
-
-Instructor + Pydantic enforces strict JSON schema. 3-attempt retry loop with
-corrective prompting. JSON repair handles double-encoded strings, extra quotes,
-embedded JSON.
-
-## Related
-
-- [[entities/pipeline]]
-- [[entities/engine]]
-- [[concepts/consensus]]
-- [[concepts/tool-enforcement]]
-- [[concepts/rag-strategy]]
+See [[concepts/system-heavy-prompt]] for the architectural split and [[entities/autoresearch]] for the evolution loop.

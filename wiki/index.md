@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history and scoring methodology
 - [[entities/design-system]] — Shared UI component library (primitives, patterns, layouts, design tokens)
 - [[entities/cleanup]] — Database cleanup module for periodic maintenance
 - [[entities/biome-lint-scripts]] — Batch-fix scripts for Biome lint rules (useButtonType, noSvgWithoutTitle)
@@ -23,6 +24,7 @@
 
 ## Concepts
 
+- [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector
 - [[concepts/type-safety]] — Strict TypeScript type safety with zero any usage
 - [[concepts/model-anomalies]] - Catalog of observed LLM behavioral anomalies (empty responses, zero decisions)
 - [[concepts/equal-weighted-returns]] — Per-agent percentage returns averaged equally regardless of portfolio size

@@ -41,7 +41,7 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
-DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
+DEFAULT_OLLAMA_MODEL = "qwen3.5:latest"
 
 
 def get_api_key() -> str | None:
@@ -59,6 +59,44 @@ def get_api_key() -> str | None:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return None
+
+
+def filter_diff(diff_content: str) -> str:
+    """Remove noisy files (lockfiles, assets, generated types) from the diff."""
+    EXCLUDE_PATTERNS = [
+        "pnpm-lock.yaml", "package-lock.json", "requirements.lock", "poetry.lock",
+        ".png", ".jpg", ".jpeg", ".svg", ".gif", ".ico", ".pdf",
+        "database.types.ts", ".map", "dist/", "build/"
+    ]
+    
+    # Split the diff into file blocks
+    # git diff format starts each file with 'diff --git '
+    blocks = re.split(r'^(diff --git .*?)$', diff_content, flags=re.MULTILINE)
+    
+    if len(blocks) <= 1:
+        return diff_content
+        
+    filtered_parts = []
+    # The first element is often empty or a header before the first 'diff --git'
+    if blocks[0].strip():
+        filtered_parts.append(blocks[0])
+        
+    # Iterate through pairs of (header, content)
+    for i in range(1, len(blocks), 2):
+        header = blocks[i]
+        # The content is the next block
+        content = blocks[i+1] if i+1 < len(blocks) else ""
+        
+        should_exclude = any(pattern in header for pattern in EXCLUDE_PATTERNS)
+        if not should_exclude:
+            filtered_parts.append(header + content)
+        else:
+            # Just log the exclusion for debugging (stderr)
+            filename_match = re.search(r' a/(.*?) b/', header)
+            filename = filename_match.group(1) if filename_match else "unknown file"
+            print(f"  [auto-wiki] skipping noisy file: {filename}", file=sys.stderr)
+            
+    return "".join(filtered_parts)
 
 
 def collect_wiki_context() -> str:
@@ -226,14 +264,29 @@ def call_ollama(prompt: str, model: str) -> dict:
 
 def _parse_llm_response(raw: str) -> dict:
     raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1]
-        if raw.endswith("```"):
-            raw = raw[:-3]
-        raw = raw.strip()
-        if raw.startswith("json"):
-            raw = raw[4:].strip()
-    return json.loads(raw)
+    
+    # Try to find JSON block via regex if it's wrapped in markdown
+    json_match = re.search(r"(\{.*\})", raw, re.DOTALL)
+    if json_match:
+        raw = json_match.group(1)
+    
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # If it's still failing (likely truncated), try a manual repair for common truncation
+        if raw.endswith('"'):
+            raw += "}"
+        elif not raw.endswith("}"):
+            # Attempt to use raw_decode to get what we can
+            decoder = json.JSONDecoder()
+            try:
+                result, _ = decoder.raw_decode(raw)
+                return result
+            except (json.JSONDecodeError, ValueError):
+                pass
+        
+        # Final fallback: re-try original
+        return json.loads(raw)
 
 
 def write_log_entry(entry: str) -> None:
@@ -350,8 +403,12 @@ def main():
         print("  [auto-wiki] no staged diff to analyze", file=sys.stderr)
         sys.exit(0)
 
+    # 1. Filter out lockfiles and assets
+    diff_content = filter_diff(diff_content)
+    
     wiki_context = collect_wiki_context()
 
+    # 2. Build prompt
     prompt = f"""Analyze this git diff and determine what wiki documentation is needed.
 
 === Wiki Context ===

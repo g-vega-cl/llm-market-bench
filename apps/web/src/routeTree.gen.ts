@@ -21,6 +21,7 @@ import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
 import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
+import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
 import { Route as AuditsIndexRouteImport } from './routes/audits/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -88,6 +89,11 @@ const CauseAndEffectIndexRoute = CauseAndEffectIndexRouteImport.update({
   path: '/cause-and-effect/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutoresearchIndexRoute = AutoresearchIndexRouteImport.update({
+  id: '/autoresearch/',
+  path: '/autoresearch/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditsIndexRoute = AuditsIndexRouteImport.update({
   id: '/audits/',
   path: '/audits/',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/audits/': typeof AuditsIndexRoute
+  '/autoresearch/': typeof AutoresearchIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
   '/market-overview/': typeof MarketOverviewIndexRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/audits': typeof AuditsIndexRoute
+  '/autoresearch': typeof AutoresearchIndexRoute
   '/cause-and-effect': typeof CauseAndEffectIndexRoute
   '/concepts': typeof ConceptsIndexRoute
   '/market-overview': typeof MarketOverviewIndexRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/audits/': typeof AuditsIndexRoute
+  '/autoresearch/': typeof AutoresearchIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
   '/market-overview/': typeof MarketOverviewIndexRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/portfolios/$portfolioId'
     | '/audits/'
+    | '/autoresearch/'
     | '/cause-and-effect/'
     | '/concepts/'
     | '/market-overview/'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/portfolios/$portfolioId'
     | '/audits'
+    | '/autoresearch'
     | '/cause-and-effect'
     | '/concepts'
     | '/market-overview'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/portfolios/$portfolioId'
     | '/audits/'
+    | '/autoresearch/'
     | '/cause-and-effect/'
     | '/concepts/'
     | '/market-overview/'
@@ -258,6 +270,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
+  AutoresearchIndexRoute: typeof AutoresearchIndexRoute
   CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute
   ConceptsIndexRoute: typeof ConceptsIndexRoute
   MarketOverviewIndexRoute: typeof MarketOverviewIndexRoute
@@ -353,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CauseAndEffectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/autoresearch/': {
+      id: '/autoresearch/'
+      path: '/autoresearch'
+      fullPath: '/autoresearch/'
+      preLoaderRoute: typeof AutoresearchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/audits/': {
       id: '/audits/'
       path: '/audits'
@@ -440,6 +460,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   AuditsIndexRoute: AuditsIndexRoute,
+  AutoresearchIndexRoute: AutoresearchIndexRoute,
   CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,
   ConceptsIndexRoute: ConceptsIndexRoute,
   MarketOverviewIndexRoute: MarketOverviewIndexRoute,

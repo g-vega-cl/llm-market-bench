@@ -104,7 +104,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
-- [ ] Benchify: show progression of autoresearch, show the prompt, the score and show historical progress. Show also how we calculate it.
 
 ## Under Consideration
 

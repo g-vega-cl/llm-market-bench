@@ -1,5 +1,5 @@
 import type { Memory } from '@llm-market-bench/database';
-import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
 
@@ -108,8 +108,9 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                 />
 
                                 {/* Card */}
-                                <div
-                                    className="p-6 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-xl hover:shadow-cyber-yellow-500/10 transition-all duration-300 card-lift border-l-4"
+                                <Card
+                                    isHoverable
+                                    className="border-l-4 hover:shadow-cyber-yellow-500/10"
                                     style={{
                                         borderLeftColor:
                                             dateObj && countdown && countdown.days <= 3
@@ -243,7 +244,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                 )}
                                             </div>
                                         )}
-                                </div>
+                                </Card>
                             </div>
                         );
                     })}

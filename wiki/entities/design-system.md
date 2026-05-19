@@ -12,7 +12,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 Composable base components that handle styling, dark mode, and accessibility:
 
 - **Button** — 5 variants (solid, soft, outline, ghost, glass), loading state
-- **Card** — 5 variants (default, elevated, outlined, ghost, glass) with gradient, accent border, and composable sub-components (`CardHeader`, `CardBody`, `CardFooter`)
+- **Card** — 4 variants (default, outlined, ghost, glass) with gradient support, customizable `radius` (xl, 2xl, 3xl, none; default is 3xl), `padding` options, and `isHoverable` toggle for `.card-lift` animation. Supported gradients: electric, success, alert, catalyst, ai. Supports the `group` class for child hover effects.
 - **Badge** — 3 variants (solid, soft, outline, dot) with severity levels (critical, high, medium, low) and radius options
 - **Table** — Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) with built-in dark mode, alignment (`left`/`center`/`right`), optional hover on rows, and `containerClassName` for the wrapper
 - **Input**, **Label**, **ErrorMessage** — Form controls with error state and addon support

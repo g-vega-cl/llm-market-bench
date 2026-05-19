@@ -1,22 +1,27 @@
 import type { Memory } from '@llm-market-bench/database';
-import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface AgentInsightsProps {
     memories: Memory[];
 }
+
 export function AgentInsights({ memories }: AgentInsightsProps) {
     const consensus = memories.filter((m) => m.memory_type === 'MARKET_EVENT');
     const lessons = memories.filter((m) => m.memory_type === 'LESSON_LEARNED');
     const incentives = memories.filter((m) => m.memory_type === 'GOVERNMENT_INCENTIVE');
+
     if (!consensus.length && !lessons.length && !incentives.length) return null;
+
     // Calculate consensus strength
     const consensusStrength =
         consensus.length > 0 ? Math.min(100, (consensus.length / 3) * 100) : 0;
+
     return (
         <section className="space-y-8 animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
+
                 {/* Consensus Meter */}
                 {consensus.length > 0 && (
                     <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-md">
@@ -37,18 +42,22 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     </div>
                 )}
             </div>
+
             <div className="space-y-6">
                 {/* Market Consensus - Priority Display */}
                 {consensus.map((m, idx) => {
                     const agents = extractAgents(m);
                     return (
-                        <div
+                        <Card
                             key={m.id}
-                            className="group relative p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-deep-purple-50/50 via-electric-blue-50/30 to-transparent dark:from-deep-purple-950/20 dark:via-electric-blue-950/10 border-l-4 border-l-deep-purple-500 shadow-sm hover:shadow-xl hover:shadow-deep-purple-500/10 transition-all duration-300 card-lift animate-slide-up"
+                            isHoverable
+                            padding="lg"
+                            className="relative bg-gradient-to-br from-deep-purple-50/50 via-electric-blue-50/30 to-transparent dark:from-deep-purple-950/20 dark:via-electric-blue-950/10 border-l-4 border-l-deep-purple-500 hover:shadow-deep-purple-500/10 animate-slide-up sm:p-8"
                             style={{ animationDelay: `${idx * 100}ms` }}
                         >
                             {/* Glow Effect on Hover */}
                             <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-deep-purple-500/0 via-transparent to-electric-blue-500/0 group-hover:from-deep-purple-500/5 group-hover:to-electric-blue-500/5 transition-all duration-500 pointer-events-none" />
+
                             {/* Agent Participation */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -85,6 +94,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                         : 'Pending'}
                                 </span>
                             </div>
+
                             {/* Content */}
                             <p className="text-lg text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-4 relative">
                                 <span className="absolute -top-3 -left-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
@@ -95,6 +105,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     "
                                 </span>
                             </p>
+
                             {/* Metadata */}
                             {m.metadata?.importance_score && (
                                 <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
@@ -120,14 +131,17 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     )}
                                 </div>
                             )}
-                        </div>
+                        </Card>
                     );
                 })}
+
                 {/* Government Incentives */}
                 {incentives.map((m, idx) => (
-                    <div
+                    <Card
                         key={m.id}
-                        className="group p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 card-lift animate-slide-up"
+                        isHoverable
+                        padding="lg"
+                        className="bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 hover:shadow-emerald-500/10 animate-slide-up sm:p-8"
                         style={{ animationDelay: `${(consensus.length + idx) * 100}ms` }}
                     >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -158,13 +172,16 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 </span>
                             </div>
                         )}
-                    </div>
+                    </Card>
                 ))}
+
                 {/* Lessons Learned */}
                 {lessons.map((m, idx) => (
-                    <div
+                    <Card
                         key={m.id}
-                        className="group p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 shadow-sm hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 card-lift animate-slide-up"
+                        isHoverable
+                        padding="lg"
+                        className="bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 hover:shadow-amber-500/10 animate-slide-up sm:p-8"
                         style={{
                             animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms`,
                         }}
@@ -207,15 +224,17 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 </span>
                             </div>
                         )}
-                    </div>
+                    </Card>
                 ))}
             </div>
         </section>
     );
 }
+
 // Helper to extract agent information from memory
 function extractAgents(memory: Memory) {
     const agents = [];
+
     // Try to extract from metadata
     if (
         memory.metadata?.participating_agents &&
@@ -226,6 +245,7 @@ function extractAgents(memory: Memory) {
             agents.push(info);
         }
     }
+
     // Try to extract from content or model_name if available
     const modelName = memory.metadata?.model_name;
     if (modelName) {
@@ -234,5 +254,6 @@ function extractAgents(memory: Memory) {
             agents.push(info);
         }
     }
+
     return agents;
 }

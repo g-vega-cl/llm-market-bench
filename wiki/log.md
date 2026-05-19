@@ -1,3 +1,7 @@
+## [2026-05-19] design-system | Card primitive consolidation & "Today" feature migration
+
+Standardized the `Card` primitive with `rounded-3xl` as default, added `isHoverable` and `radius` props, and migrated five major components in the "Today" feature. Details in [[log/2026-05-19_card-consolidation]].
+
 ## [2026-05-14] perf | Parallel newsletter cleaning + snapshot optimization
 
 ### Changes

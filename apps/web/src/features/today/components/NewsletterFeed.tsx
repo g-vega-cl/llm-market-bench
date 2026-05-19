@@ -1,5 +1,5 @@
 import type { NewsletterSnapshot } from '@llm-market-bench/database';
-import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 
 interface NewsletterFeedProps {
     newsletters: NewsletterSnapshot[];
@@ -22,9 +22,10 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {newsletters.map((news, idx) => (
-                    <article
+                    <Card
                         key={news.id}
-                        className="group relative p-6 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-xl hover:shadow-electric-blue-500/10 transition-all duration-300 card-lift overflow-hidden animate-slide-up"
+                        isHoverable
+                        className="relative overflow-hidden animate-slide-up hover:shadow-electric-blue-500/10"
                         style={{ animationDelay: `${idx * 100}ms` }}
                     >
                         {/* Gradient Border on Hover */}
@@ -88,7 +89,7 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                 </span>
                             </div>
                         </div>
-                    </article>
+                    </Card>
                 ))}
             </div>
         </section>

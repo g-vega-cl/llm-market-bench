@@ -1,4 +1,4 @@
-import { SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 
 interface PriceUpdate {
     ticker: string;
@@ -51,9 +51,12 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                     const isPositive = priceChange >= 0;
 
                     return (
-                        <div
+                        <Card
                             key={update.ticker}
-                            className="group p-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-lg transition-all duration-300 card-lift text-center relative overflow-hidden animate-slide-up"
+                            isHoverable
+                            radius="2xl"
+                            padding="sm"
+                            className="text-center relative overflow-hidden animate-slide-up"
                             style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             {/* Background Gradient on Hover */}
@@ -99,7 +102,7 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                                     })}
                                 </div>
                             </div>
-                        </div>
+                        </Card>
                     );
                 })}
             </div>

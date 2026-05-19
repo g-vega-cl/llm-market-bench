@@ -130,7 +130,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                     <Card
                         variant="glass"
                         padding="md"
-                        className="rounded-3xl glow-electric shadow-2xl hover:shadow-3xl transition-shadow duration-300"
+                        className="glow-electric shadow-2xl hover:shadow-3xl transition-shadow duration-300"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-xs font-black text-electric-blue-200 uppercase tracking-widest">
@@ -166,7 +166,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                     <Card
                         variant="glass"
                         padding="md"
-                        className="rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-[1.02]"
+                        className="shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-[1.02]"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-xs font-black text-electric-blue-200 uppercase tracking-widest">

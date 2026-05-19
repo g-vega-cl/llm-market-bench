@@ -53,7 +53,6 @@ def test_static_equity_bug():
         previous_sma=0.0
     )
     
-    expected_equity = 1100.0 * 10
     print(f"Equity with valid data:   ${metrics_run_2.total_equity:,.2f}")
     
     if metrics_run_2.total_equity == 11000.0:

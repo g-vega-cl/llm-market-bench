@@ -93,25 +93,60 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
 
     if (decError) throw decError;
 
+    if (!decisions) {
+        return trades.map((trade) => ({
+            ...trade,
+            reasoning: 'Reasoning not linked to this specific trade record.',
+        }));
+    }
+
+    const decisionsById = new Map<string, (typeof decisions)[0]>();
+    const decisionsByTradeId = new Map<string, (typeof decisions)[0]>();
+    const decisionsByTicker = new Map<string, ((typeof decisions)[0] & { timestamp: number })[]>();
+
+    for (const d of decisions) {
+        decisionsById.set(d.id, d);
+        if (d.trade_id) {
+            decisionsByTradeId.set(d.trade_id, d);
+        }
+
+        let arr = decisionsByTicker.get(d.ticker);
+        if (!arr) {
+            arr = [];
+            decisionsByTicker.set(d.ticker, arr);
+        }
+        arr.push({
+            ...d,
+            timestamp: new Date(d.created_at).getTime(),
+        });
+    }
+
     return trades.map((trade) => {
         if (trade.decision_id) {
-            const match = decisions?.find((d) => d.id === trade.decision_id);
+            const match = decisionsById.get(trade.decision_id);
             if (match) return { ...trade, reasoning: match.reasoning };
         }
 
-        const tradePointerMatch = decisions?.find((d) => d.trade_id === trade.id);
+        const tradePointerMatch = decisionsByTradeId.get(trade.id);
         if (tradePointerMatch) return { ...trade, reasoning: tradePointerMatch.reasoning };
 
         const tradeTime = new Date(trade.executed_at).getTime();
-        const proximityMatch = decisions?.find(
-            (d) =>
-                d.ticker === trade.ticker &&
+        const tickerDecisions = decisionsByTicker.get(trade.ticker) || [];
+
+        let proximityMatch = null;
+        for (const d of tickerDecisions) {
+            if (
                 d.signal === trade.signal &&
-                Math.abs(new Date(d.created_at).getTime() - tradeTime) < 24 * 60 * 60 * 1000,
-        );
+                Math.abs(d.timestamp - tradeTime) < 24 * 60 * 60 * 1000
+            ) {
+                proximityMatch = d;
+                break;
+            }
+        }
+
         if (proximityMatch) return { ...trade, reasoning: proximityMatch.reasoning };
 
-        const fallbackMatch = decisions?.find((d) => d.ticker === trade.ticker);
+        const fallbackMatch = tickerDecisions.length > 0 ? tickerDecisions[0] : null;
 
         return {
             ...trade,

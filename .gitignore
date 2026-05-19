@@ -16,5 +16,11 @@ venv/
 # LLM
 .qwen
 
+# Coverage
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+
 # QMD index
 *.sqlite

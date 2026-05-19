@@ -4,26 +4,27 @@
 
 ## Commands
 
-- Test engine: `./apps/engine/.venv/bin/python3 -m pytest`
+- Test engine: `./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc`
 - Lint engine: `./apps/engine/.venv/bin/ruff check apps/engine/`
 - Format engine: `./apps/engine/.venv/bin/python3 -m ruff format apps/engine/`
 - Lint web: `pnpm biome check`
 - Format web: `pnpm biome check --write`
 - Build web: `cd apps/web && pnpm run build`
 - Typecheck web: `cd apps/web && pnpm run typecheck`
-- Test web: `cd apps/web && pnpm test`
+- Test web: `cd apps/web && pnpm test -- --coverage`
 - Structural Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` (use `--fix` to auto-index new pages)
 - LLM Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --model <model_name>`
 - Auto-wiki dry: `./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
 
-## Linting
+## Linting & Testing
 
-- Python (engine): Ruff with rules E, F, I, UP, B, SIM. Config at `apps/engine/ruff.toml`. **Requires `ruff` installed in the engine venv (`./apps/engine/.venv/bin/pip install ruff`)**.
+- Python (engine): Ruff with rules E, F, I, UP, B, SIM. Config at `apps/engine/ruff.toml`.
 - TypeScript (web + packages): Biome with recommended rules + organize imports. Config at `biome.json`.
+- **Test Coverage**: Enforced in `.husky/pre-commit` (70% engine, 40% web).
 - Both run in `.husky/pre-commit` before tests (fail-fast).
 - Format with `ruff format` / `biome check --write`.
 
-**After every code change, verify lint passes before marking work complete.** The pre-commit hook will block commits with lint errors. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint is not done.
+**After every code change, verify lint and coverage pass before marking work complete.** The pre-commit hook will block commits with lint errors or low coverage. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint or low coverage is not done.
 
 ## Principles (MANDATORY)
 

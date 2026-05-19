@@ -13,6 +13,7 @@
             "!**/dist",
             "!**/.netlify",
             "!**/node_modules",
+            "!**/coverage",
             "!**/.vinxi",
             "!**/routeTree.gen.ts",
             "!**/app.css"

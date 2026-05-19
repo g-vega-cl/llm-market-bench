@@ -117,10 +117,22 @@ To run the dashboard locally:
 pnpm --filter web dev
 ```
 
-## Testing
+## Testing & Coverage
+
+The project enforces test coverage thresholds in the pre-commit hook (70% for engine, 40% for web).
+
+### Engine (Python)
 
 ```bash
-./apps/engine/.venv/bin/python3 -m pytest
+# Run tests with coverage
+./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc
+```
+
+### Web (TypeScript)
+
+```bash
+# Run tests with coverage
+cd apps/web && pnpm test -- --coverage
 ```
 
 ## Automation

@@ -5,6 +5,7 @@ import {
     MetricTile,
     PageLayout,
     SectionHeading,
+    SubHeading,
 } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -56,7 +57,7 @@ function PortfolioCard({
                 <div className="flex justify-between items-start mb-4">
                     <h3
                         className={`text-xl font-bold capitalize ${
-                            deprecated ? 'text-zinc-500' : 'text-zinc-900'
+                            deprecated ? 'text-zinc-500' : 'text-zinc-900 dark:text-white'
                         }`}
                     >
                         {portfolio.owner_id.replace(/-/g, ' ')}
@@ -136,7 +137,7 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
             <PageLayout>
                 <header className="mb-12">
                     <SectionHeading gradient="electric">Agent Portfolios</SectionHeading>
-                    <p className="text-zinc-500 text-lg leading-relaxed mt-2">
+                    <p className="text-zinc-500 dark:text-zinc-400 text-lg leading-relaxed mt-2">
                         Live performance and current holdings of our AI trading agents.
                     </p>
                 </header>
@@ -179,15 +180,17 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                 {/* Deprecated / retired agents */}
                 {deprecated.length > 0 && (
                     <section>
-                        <div className="flex items-center gap-3 mb-6">
-                            <h2 className="text-lg font-semibold text-zinc-400 tracking-wide uppercase text-sm">
-                                Retired Agents
-                            </h2>
-                            <div className="flex-1 border-t border-zinc-200 dark:border-zinc-800" />
-                            <Badge variant="soft" size="sm" colorScheme="neutral">
-                                No longer trading
-                            </Badge>
-                        </div>
+                        <SubHeading
+                            uppercase
+                            withDivider
+                            rightElement={
+                                <Badge variant="soft" size="sm" colorScheme="neutral">
+                                    No longer trading
+                                </Badge>
+                            }
+                        >
+                            Retired Agents
+                        </SubHeading>
                         <p className="text-sm text-zinc-400 mb-6">
                             These portfolios are preserved for historical reference. They no longer
                             receive new trade decisions but their full audit trail remains

@@ -228,6 +228,31 @@ Resolved multiple failures in the LLM-powered wiki linting pipeline, ranging fro
 - **TDD & Regression Fixes**: Restored test suite stability in `test_wiki_lint_llm.py` by ensuring error message assertions match the latest implementation. Added a specific test for truncated JSON handling.
 - **Documentation**: Created [[entities/wiki-linter]] to document the dual-linter architecture and updated [[index]] for discoverability.
 
+## [2026-05-19] design-system | Enhanced design system with SubHeading and Table primitives
+
+### Context
+While the design system was adopted, several pages still used raw HTML for subsections and data tables, leading to visibility issues in dark mode and inconsistent styling. The `/portfolios` page was specifically reported to have invisible text in dark mode due to hardcoded `text-zinc-900` without dark mode alternatives.
+
+### Changes
+- **New Primitives**:
+    - `SubHeading`: Standardized component for secondary titles with optional divider and right-side elements.
+    - `Table` Suite: Composable `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, and `TableCell` components with built-in dark mode support and hover states.
+- **Migrations**:
+    - `PortfoliosPage.tsx`: Replaced raw retired agent headers with `SubHeading`; fixed card title dark mode visibility.
+    - `AuditsPage.tsx`: Migrated all section titles to `SubHeading`.
+    - `PositionsTable.tsx` & `TradesTable.tsx`: Fully migrated to the new `Table` primitive.
+    - `UncorrelatedPairs.tsx`: Migrated market overview table to use design system components.
+- **Documentation**: Updated `packages/ui-design-system/README.md` and `wiki/entities/web-app.md` with the new components.
+
+### Before / After
+- **Before**: Invisible text in dark mode on portfolio cards; inconsistent table padding and borders; raw `h2` elements with hardcoded styles.
+- **After**: Perfect dark mode contrast across all portfolios and audit views; unified table styling; semantic usage of `SubHeading`.
+
+### Verification
+- `biome check` passed.
+- `tsc --noEmit` passed for `apps/web`.
+- `PositionsTable.test.tsx` and `TradesTable.test.tsx` both passed (9/9 tests).
+
 ## [2026-05-18] fix | Resolved entities/gemini wiki lint errors
 
 Fixed `[index-gap]` and `[orphan]` errors for `entities/gemini.md` by:
@@ -236,3 +261,12 @@ Fixed `[index-gap]` and `[orphan]` errors for `entities/gemini.md` by:
 
 These issues were leftovers from the `AGENTS.md` → `GEMINI.md` rename session.
 
+
+## [2026-05-19] design-system | Added SubHeading and Table primitives to the design system
+
+Added new composable design system components:
+
+- **SubHeading pattern** — Standardized secondary heading with optional `withDivider`, `uppercase`, and `rightElement` props for consistent section headers across pages.
+- **Table primitive suite** — Composable `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, and `TableCell` components with built-in dark mode, alignment support, hover states, and container styling.
+
+All three data tables and two section headers in the web app were migrated to use these new components: `PositionsTable`, `TradesTable`, `UncorrelatedPairs`, `AuditsPage`, and `PortfoliosPage`. Fixes dark mode visibility issues on portfolio cards.

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/design-system]] — Shared UI component library (primitives, patterns, layouts, design tokens)
 - [[entities/cleanup]] — Database cleanup module for periodic maintenance
 - [[entities/biome-lint-scripts]] — Batch-fix scripts for Biome lint rules (useButtonType, noSvgWithoutTitle)
 - [[entities/biome-linter]] — TypeScript/JS linter and formatter (biome) for the web app and packages

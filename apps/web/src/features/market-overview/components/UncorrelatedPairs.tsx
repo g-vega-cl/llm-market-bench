@@ -1,4 +1,15 @@
-import { Badge, Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import {
+    Badge,
+    Button,
+    Card,
+    SectionHeading,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import type { CorrelationData } from '../api/fetch-market-overview';
 import { etfDescriptions } from '../utils/etf-descriptions';
@@ -155,99 +166,90 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                        Pair
-                                    </th>
-                                    <th className="px-6 py-3 text-center text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                        Pearson
-                                    </th>
-                                    <th className="px-6 py-3 text-center text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                        Spearman
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                        90d Return A
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                        90d Return B
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                        Avg Return
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                                {filteredPairs.slice(0, 50).map((pair, idx) => (
-                                    <tr
-                                        key={`${pair.ticker_a}-${pair.ticker_b}`}
-                                        className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${idx === 0 ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100">
-                                                        {pair.ticker_a}
-                                                    </span>
-                                                    <span className="text-zinc-400">/</span>
-                                                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100">
-                                                        {pair.ticker_b}
-                                                    </span>
-                                                    {idx === 0 && (
-                                                        <Badge
-                                                            colorScheme="accent"
-                                                            size="sm"
-                                                            variant="soft"
-                                                        >
-                                                            BEST
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 max-w-[200px] sm:max-w-[300px] truncate">
-                                                    <span className="truncate">
-                                                        {etfDescriptions[pair.ticker_a] ||
-                                                            pair.ticker_a}
-                                                    </span>
-                                                    <span>•</span>
-                                                    <span className="truncate">
-                                                        {etfDescriptions[pair.ticker_b] ||
-                                                            pair.ticker_b}
-                                                    </span>
-                                                </div>
+                    <Table containerClassName="border-none shadow-none rounded-none">
+                        <TableHeader>
+                            <TableRow isHoverable={false}>
+                                <TableHead>Pair</TableHead>
+                                <TableHead align="center">Pearson</TableHead>
+                                <TableHead align="center">Spearman</TableHead>
+                                <TableHead align="right">90d Return A</TableHead>
+                                <TableHead align="right">90d Return B</TableHead>
+                                <TableHead align="right">Avg Return</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-zinc-200 dark:divide-zinc-800">
+                            {filteredPairs.slice(0, 50).map((pair, idx) => (
+                                <TableRow
+                                    key={`${pair.ticker_a}-${pair.ticker_b}`}
+                                    className={idx === 0 ? 'bg-blue-50 dark:bg-blue-900/10' : ''}
+                                >
+                                    <TableCell className="whitespace-nowrap">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100">
+                                                    {pair.ticker_a}
+                                                </span>
+                                                <span className="text-zinc-400">/</span>
+                                                <span className="font-mono font-bold text-zinc-800 dark:text-zinc-100">
+                                                    {pair.ticker_b}
+                                                </span>
+                                                {idx === 0 && (
+                                                    <Badge
+                                                        colorScheme="accent"
+                                                        size="sm"
+                                                        variant="soft"
+                                                    >
+                                                        BEST
+                                                    </Badge>
+                                                )}
                                             </div>
-                                        </td>
-                                        <td
-                                            className={`px-6 py-4 text-center font-mono font-semibold ${getCorrelationColor(pair.pearson_corr)}`}
-                                        >
-                                            {pair.pearson_corr?.toFixed(4) ?? 'N/A'}
-                                        </td>
-                                        <td
-                                            className={`px-6 py-4 text-center font-mono font-semibold ${getCorrelationColor(pair.spearman_corr)}`}
-                                        >
-                                            {pair.spearman_corr?.toFixed(4) ?? 'N/A'}
-                                        </td>
-                                        <td
-                                            className={`px-6 py-4 text-right font-mono font-semibold ${getReturnColor(pair.returns_a_90d)}`}
-                                        >
-                                            {pair.returns_a_90d?.toFixed(2) ?? 'N/A'}%
-                                        </td>
-                                        <td
-                                            className={`px-6 py-4 text-right font-mono font-semibold ${getReturnColor(pair.returns_b_90d)}`}
-                                        >
-                                            {pair.returns_b_90d?.toFixed(2) ?? 'N/A'}%
-                                        </td>
-                                        <td
-                                            className={`px-6 py-4 text-right font-mono font-semibold ${getReturnColor(pair.avgReturn)}`}
-                                        >
-                                            {pair.avgReturn.toFixed(2)}%
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 max-w-[200px] sm:max-w-[300px] truncate">
+                                                <span className="truncate">
+                                                    {etfDescriptions[pair.ticker_a] ||
+                                                        pair.ticker_a}
+                                                </span>
+                                                <span>•</span>
+                                                <span className="truncate">
+                                                    {etfDescriptions[pair.ticker_b] ||
+                                                        pair.ticker_b}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        className={`font-mono font-semibold ${getCorrelationColor(pair.pearson_corr)}`}
+                                    >
+                                        {pair.pearson_corr?.toFixed(4) ?? 'N/A'}
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        className={`font-mono font-semibold ${getCorrelationColor(pair.spearman_corr)}`}
+                                    >
+                                        {pair.spearman_corr?.toFixed(4) ?? 'N/A'}
+                                    </TableCell>
+                                    <TableCell
+                                        align="right"
+                                        className={`font-mono font-semibold ${getReturnColor(pair.returns_a_90d)}`}
+                                    >
+                                        {pair.returns_a_90d?.toFixed(2) ?? 'N/A'}%
+                                    </TableCell>
+                                    <TableCell
+                                        align="right"
+                                        className={`font-mono font-semibold ${getReturnColor(pair.returns_b_90d)}`}
+                                    >
+                                        {pair.returns_b_90d?.toFixed(2) ?? 'N/A'}%
+                                    </TableCell>
+                                    <TableCell
+                                        align="right"
+                                        className={`font-mono font-semibold ${getReturnColor(pair.avgReturn)}`}
+                                    >
+                                        {pair.avgReturn.toFixed(2)}%
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 )}
 
                 {filteredPairs.length > 50 && (

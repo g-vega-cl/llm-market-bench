@@ -35,6 +35,8 @@ export type { SectionHeadingProps } from './patterns/SectionHeading';
 export { SectionHeading } from './patterns/SectionHeading';
 export type { StatPillProps } from './patterns/StatPill';
 export { StatPill } from './patterns/StatPill';
+export type { SubHeadingProps } from './patterns/SubHeading';
+export { SubHeading } from './patterns/SubHeading';
 export type { BadgeProps } from './primitives/Badge';
 export { Badge } from './primitives/Badge';
 export type { ButtonProps, LoadingSpinnerProps } from './primitives/Button';
@@ -46,3 +48,16 @@ export type { CardProps } from './primitives/Card';
 export { Card } from './primitives/Card';
 export type { InputProps, LabelProps } from './primitives/Input';
 export { Input, Label } from './primitives/Input';
+export type {
+    TableCellProps,
+    TableHeadProps,
+    TableProps,
+} from './primitives/Table';
+export {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from './primitives/Table';

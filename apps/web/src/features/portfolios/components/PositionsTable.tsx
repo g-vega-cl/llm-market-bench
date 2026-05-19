@@ -1,4 +1,12 @@
 import type { PositionWithReasoning } from '@llm-market-bench/database';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { useState } from 'react';
 
@@ -77,172 +85,167 @@ export function PositionsTable({ positions }: PositionsTableProps) {
     }, [positions, sortKey, sortDirection, totalInvestedCash]);
 
     return (
-        <div className="overflow-x-auto border border-zinc-200 rounded-xl bg-white shadow-sm">
-            <table className="w-full text-left border-collapse min-w-[800px]">
-                <thead>
-                    <tr className="bg-zinc-50 border-bottom border-zinc-200">
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500">
-                            Ticker
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">
-                            Qty
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">
-                            Avg Cost
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right">
-                            Price
-                        </th>
-                        <th
-                            className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
-                            onClick={() => handleSort('invested')}
-                            title="Click to sort by invested amount"
+        <Table containerClassName="min-w-[800px]">
+            <TableHeader>
+                <TableRow isHoverable={false}>
+                    <TableHead>Ticker</TableHead>
+                    <TableHead align="right">Qty</TableHead>
+                    <TableHead align="right">Avg Cost</TableHead>
+                    <TableHead align="right">Price</TableHead>
+                    <TableHead
+                        align="right"
+                        className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors select-none"
+                        onClick={() => handleSort('invested')}
+                        title="Click to sort by invested amount"
+                    >
+                        Invested {getSortIcon('invested')}
+                    </TableHead>
+                    <TableHead
+                        align="right"
+                        className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors select-none"
+                        onClick={() => handleSort('portfolio_pct')}
+                        title="Click to sort by portfolio percentage"
+                    >
+                        % {getSortIcon('portfolio_pct')}
+                    </TableHead>
+                    <TableHead
+                        align="right"
+                        className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors select-none"
+                        onClick={() => handleSort('pnl_usd')}
+                        title="Click to sort by profit/loss in USD"
+                    >
+                        P/L (USD) {getSortIcon('pnl_usd')}
+                    </TableHead>
+                    <TableHead
+                        align="right"
+                        className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors select-none"
+                        onClick={() => handleSort('pnl_pct')}
+                        title="Click to sort by profit/loss percentage"
+                    >
+                        P/L (%) {getSortIcon('pnl_pct')}
+                    </TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {sortedPositions?.map((pos) => (
+                    <React.Fragment key={pos.ticker}>
+                        <TableRow
+                            className="cursor-pointer group"
+                            onClick={() =>
+                                setExpandedTicker(expandedTicker === pos.ticker ? null : pos.ticker)
+                            }
+                            data-testid={`position-row-${pos.ticker}`}
                         >
-                            Invested {getSortIcon('invested')}
-                        </th>
-                        <th
-                            className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
-                            onClick={() => handleSort('portfolio_pct')}
-                            title="Click to sort by portfolio percentage"
-                        >
-                            % {getSortIcon('portfolio_pct')}
-                        </th>
-                        <th
-                            className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
-                            onClick={() => handleSort('pnl_usd')}
-                            title="Click to sort by profit/loss in USD"
-                        >
-                            P/L (USD) {getSortIcon('pnl_usd')}
-                        </th>
-                        <th
-                            className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold uppercase tracking-wider text-zinc-500 text-right cursor-pointer hover:bg-zinc-100 transition-colors select-none"
-                            onClick={() => handleSort('pnl_pct')}
-                            title="Click to sort by profit/loss percentage"
-                        >
-                            P/L (%) {getSortIcon('pnl_pct')}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                    {sortedPositions?.map((pos) => (
-                        <React.Fragment key={pos.ticker}>
-                            <tr
-                                className="hover:bg-zinc-50/50 transition-colors cursor-pointer select-none group"
-                                onClick={() =>
-                                    setExpandedTicker(
-                                        expandedTicker === pos.ticker ? null : pos.ticker,
-                                    )
-                                }
-                                data-testid={`position-row-${pos.ticker}`}
-                            >
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-zinc-900 cursor-pointer">
-                                    <div className="flex items-center gap-2">
-                                        <span
-                                            className={`transition-transform duration-200 ${expandedTicker === pos.ticker ? 'rotate-90' : ''}`}
+                            <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={`transition-transform duration-200 ${expandedTicker === pos.ticker ? 'rotate-90' : ''}`}
+                                    >
+                                        <svg
+                                            className="w-4 h-4 text-zinc-400"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
                                         >
-                                            <svg
-                                                className="w-4 h-4 text-zinc-400"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <title>SVG</title>
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 5l7 7-7 7"
-                                                />
-                                            </svg>
-                                        </span>
-                                        {pos.ticker}
-                                    </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
-                                    {pos.quantity}
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
-                                    $
-                                    {Number(pos.average_cost_basis).toLocaleString(undefined, {
+                                            <title>SVG</title>
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 5l7 7-7 7"
+                                            />
+                                        </svg>
+                                    </span>
+                                    {pos.ticker}
+                                </div>
+                            </TableCell>
+                            <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
+                                {pos.quantity}
+                            </TableCell>
+                            <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
+                                $
+                                {Number(pos.average_cost_basis).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </TableCell>
+                            <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
+                                $
+                                {Number(pos.current_price || pos.average_cost_basis).toLocaleString(
+                                    undefined,
+                                    {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
-                                    })}
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
-                                    $
-                                    {Number(
-                                        pos.current_price || pos.average_cost_basis,
-                                    ).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    })}
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
-                                    $
-                                    {(
-                                        (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)
-                                    ).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    })}
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-zinc-700 cursor-pointer">
-                                    {totalInvestedCash
-                                        ? `${(
-                                              (((pos.quantity ?? 0) *
-                                                  (pos.average_cost_basis ?? 0)) /
-                                                  totalInvestedCash) *
-                                                  100
-                                          ).toFixed(2)}%`
-                                        : '0%'}
-                                </td>
-                                <td
-                                    className={`px-3 sm:px-6 py-3 sm:py-4 text-right font-medium cursor-pointer ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
-                                >
-                                    {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}$
-                                    {Number(pos.unrealized_pnl_usd).toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    })}
-                                </td>
-                                <td
-                                    className={`px-3 sm:px-6 py-3 sm:py-4 text-right font-medium cursor-pointer ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
-                                >
-                                    {Number(pos.unrealized_pnl_pct) >= 0 ? '+' : ''}
-                                    {Number(pos.unrealized_pnl_pct).toFixed(2)}%
-                                </td>
-                            </tr>
-                            {expandedTicker === pos.ticker && (
-                                <tr
-                                    className="bg-zinc-50/30"
-                                    data-testid={`reasoning-row-${pos.ticker}`}
-                                >
-                                    <td colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
-                                        <div className="flex flex-col gap-4">
-                                            <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 uppercase tracking-tight">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                                Thinking Process
-                                            </h4>
-                                            <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 shadow-sm">
-                                                <p className="text-zinc-600 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
-                                                    {pos.reasoning}
-                                                </p>
-                                            </div>
+                                    },
+                                )}
+                            </TableCell>
+                            <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
+                                $
+                                {(
+                                    (pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)
+                                ).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </TableCell>
+                            <TableCell align="right" className="text-zinc-700 dark:text-zinc-300">
+                                {totalInvestedCash
+                                    ? `${(
+                                          (((pos.quantity ?? 0) * (pos.average_cost_basis ?? 0)) /
+                                              totalInvestedCash) *
+                                              100
+                                      ).toFixed(2)}%`
+                                    : '0%'}
+                            </TableCell>
+                            <TableCell
+                                align="right"
+                                className={`font-medium ${Number(pos.unrealized_pnl_usd) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
+                            >
+                                {Number(pos.unrealized_pnl_usd) >= 0 ? '+' : ''}$
+                                {Number(pos.unrealized_pnl_usd).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </TableCell>
+                            <TableCell
+                                align="right"
+                                className={`font-medium ${Number(pos.unrealized_pnl_pct) >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}
+                            >
+                                {Number(pos.unrealized_pnl_pct) >= 0 ? '+' : ''}
+                                {Number(pos.unrealized_pnl_pct).toFixed(2)}%
+                            </TableCell>
+                        </TableRow>
+                        {expandedTicker === pos.ticker && (
+                            <TableRow
+                                isHoverable={false}
+                                className="bg-zinc-50/30 dark:bg-zinc-950/30"
+                                data-testid={`reasoning-row-${pos.ticker}`}
+                            >
+                                <TableCell colSpan={8} className="px-4 sm:px-12 py-4 sm:py-6">
+                                    <div className="flex flex-col gap-4">
+                                        <h4 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                            Thinking Process
+                                        </h4>
+                                        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 shadow-sm">
+                                            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                                                {pos.reasoning}
+                                            </p>
                                         </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </React.Fragment>
-                    ))}
-                    {(!positions || positions.length === 0) && (
-                        <tr>
-                            <td colSpan={8} className="px-6 py-12 text-center text-zinc-500">
-                                No active positions in this portfolio.
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </React.Fragment>
+                ))}
+                {(!positions || positions.length === 0) && (
+                    <TableRow isHoverable={false}>
+                        <TableCell colSpan={8} className="py-12 text-center text-zinc-500">
+                            No active positions in this portfolio.
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
     );
 }

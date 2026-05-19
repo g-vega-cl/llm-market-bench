@@ -48,8 +48,8 @@ Features: today (dashboard), portfolios (summary + detail with D3 equity curves)
 - Colors: Electric Blue (primary), Neon Green (BUY), Alert Red (SELL), Deep Purple (AI), Cyber Yellow (catalysts)
 - Typography: Space Grotesk headlines, Satoshi body, JetBrains Mono data
 - Semantic gradients: electric, success, alert, catalyst, ai
-- Primitives: Button (5 variants), Card (5 variants), Badge (3 variants + severity), Input, Select, Skeleton, ErrorBoundary, LoadingSpinner
-- Patterns: SectionHeading, ConfidenceBar, StatPill, MetricTile, EmptyState, LoadingBoundary, ErrorCard
+- Primitives: Button (5 variants), Card (5 variants), Badge (3 variants + severity), Table (composable), Input, Select, Skeleton, ErrorBoundary, LoadingSpinner
+- Patterns: SectionHeading, SubHeading (with divider support), ConfidenceBar, StatPill, MetricTile, EmptyState, LoadingBoundary, ErrorCard
 - Layouts: PageLayout, HeroBackground
 - Utilities: cn (clsx-based className merging)
 - Motion: slide-up, scale-in, staggered delays (100-500ms), float, pulse-glow — all respect prefers-reduced-motion

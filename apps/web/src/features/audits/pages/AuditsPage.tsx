@@ -5,6 +5,7 @@ import {
     LoadingSpinner,
     PageLayout,
     SectionHeading,
+    SubHeading,
 } from '@llm-market-bench/ui-design-system';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
@@ -64,12 +65,15 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
 
                 <div className="space-y-12">
                     <section>
-                        <h2 className="text-xl font-semibold text-zinc-300 mb-6">
+                        <SubHeading
+                            rightElement={
+                                <span className="text-sm font-normal text-zinc-500">
+                                    ({dbAudits.length} findings)
+                                </span>
+                            }
+                        >
                             Database Audits
-                            <span className="ml-3 text-sm font-normal text-zinc-500">
-                                ({dbAudits.length} findings)
-                            </span>
-                        </h2>
+                        </SubHeading>
                         {dbAudits.length === 0 ? (
                             <p className="text-zinc-500 italic">No database anomalies found.</p>
                         ) : (
@@ -82,12 +86,15 @@ export function AuditsPage({ fetchFn }: AuditsPageProps) {
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-semibold text-zinc-300 mb-6">
+                        <SubHeading
+                            rightElement={
+                                <span className="text-sm font-normal text-zinc-500">
+                                    ({logAudits.length} findings)
+                                </span>
+                            }
+                        >
                             System Log Analysis
-                            <span className="ml-3 text-sm font-normal text-zinc-500">
-                                ({logAudits.length} findings)
-                            </span>
-                        </h2>
+                        </SubHeading>
                         {logAudits.length === 0 ? (
                             <p className="text-zinc-500 italic">No system log issues found.</p>
                         ) : (

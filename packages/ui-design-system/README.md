@@ -20,6 +20,7 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 | `Card` | `variant` (default/elevated/outlined/ghost/glass), `padding`, `gradient`, `accentBorder`, `accentBorderColor` |
 | `CardHeader` / `CardBody` / `CardFooter` | Composable sub-components |
 | `Badge` | `variant` (solid/soft/outline/dot), `size`, `colorScheme`, `severity` (critical/high/medium/low), `radius` (full/lg/md) |
+| `Table` | `containerClassName`, composable sub-components (`TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) |
 | `Input` / `Label` / `ErrorMessage` | `isError`, `leftAddon`, `rightAddon` |
 | `Select` | Standard select with design system styling |
 | `Skeleton` | `variant` (rect/circle/text) |
@@ -31,6 +32,7 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 | Component | Purpose |
 |-----------|---------|
 | `SectionHeading` | Section title with gradient decorator bar and gradient text |
+| `SubHeading` | Secondary heading for sections within a page, supports optional divider and rightElement |
 | `ConfidenceBar` | Percentage bar with label, color scheme, hero variant |
 | `StatPill` | Clickable filter pill with colored dot and count |
 | `MetricTile` | Compact stat display with icon, label, and value |

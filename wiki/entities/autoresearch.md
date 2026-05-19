@@ -7,6 +7,13 @@ category: entity
 
 The `apps/engine/autoresearch/` module implements the Karpathy-style autonomous prompt improvement loop. A meta-researcher LLM evaluates weekly live trading performance and iteratively improves the trading prompt.
 
+## Configuration
+
+The auto-research system is configured via:
+- `packages/config/models.json`: Defines `AUTORESEARCH_EXPERIMENT_OWNER_IDS` (the agents in the experiment group).
+- `apps/engine/core/config.py`: Loads the model names and experiment group from `models.json`.
+- `AUTORESEARCH_MODEL`: Environment variable (defaults to DeepSeek) used for the meta-researcher.
+
 ## Architecture
 
 The auto-research loop runs weekly:

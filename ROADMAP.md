@@ -108,7 +108,10 @@ Maybe only use a tool to append to the logs?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
 - [ ] - Show badges for the portfolios with auto-research
+- [ ] Benchify: show progression of autoresearch, show the prompt, the score and show historical progress. Show also how we calculate it.
 
 ## Under Consideration
+
+- [ ] Benchify: Benchify: mark the portfolios that use autoresearch
 
 - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)

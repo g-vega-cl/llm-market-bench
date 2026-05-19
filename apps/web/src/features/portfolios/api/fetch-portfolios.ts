@@ -5,9 +5,11 @@ import type {
     TradeWithReasoning,
 } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
-import { getActiveOwnerIds, normalizeOwnerId } from '../lib/config';
+import { getActiveOwnerIds, isAutoresearchPortfolio, normalizeOwnerId } from '../lib/config';
 
-export async function fetchPortfolios(): Promise<(Portfolio & { is_active: boolean })[]> {
+export async function fetchPortfolios(): Promise<
+    (Portfolio & { is_active: boolean; is_autoresearch: boolean })[]
+> {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
         .from('portfolios')
@@ -20,15 +22,21 @@ export async function fetchPortfolios(): Promise<(Portfolio & { is_active: boole
     return data.map((p) => ({
         ...p,
         is_active: activeIds.has(normalizeOwnerId(p.owner_id)),
+        is_autoresearch: isAutoresearchPortfolio(p.owner_id),
     }));
 }
 
-export async function fetchPortfolioById(id: string): Promise<Portfolio> {
+export async function fetchPortfolioById(
+    id: string,
+): Promise<Portfolio & { is_autoresearch: boolean }> {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase.from('portfolios').select('*').eq('id', id).single();
 
     if (error) throw error;
-    return data;
+    return {
+        ...data,
+        is_autoresearch: isAutoresearchPortfolio(data.owner_id),
+    };
 }
 
 export async function fetchPositions(portfolioId: string): Promise<PositionWithReasoning[]> {

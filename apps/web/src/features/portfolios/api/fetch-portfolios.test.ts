@@ -16,7 +16,15 @@ vi.mock('~/lib/supabase', () => ({
     getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
-import { fetchBenchmarkHistory } from './fetch-portfolios';
+import { fetchBenchmarkHistory, fetchPortfolios } from './fetch-portfolios';
+
+vi.mock('../lib/config', () => ({
+    getActiveOwnerIds: vi.fn(() => ['gemini-3.1-flash-lite', 'deepseek-v4-pro']),
+    isAutoresearchPortfolio: vi.fn((id) =>
+        ['gemini-3.1-flash-lite', 'deepseek-v4-pro'].includes(id),
+    ),
+    normalizeOwnerId: vi.fn((id) => id.toLowerCase().replace(/\s+/g, '-')),
+}));
 
 function createMockSupabaseClient(mockData: PriceHistoryRecord[]): MockSupabaseChain {
     const chain: MockSupabaseChain = {
@@ -72,4 +80,26 @@ test('fetchBenchmarkHistory keeps only last price per day for multiple tickers',
     expect(result.SPY[0].price).toBe(101.0);
     expect(result.QQQ).toHaveLength(1);
     expect(result.QQQ[0].price).toBe(202.0);
+});
+
+test('fetchPortfolios tags portfolios with is_autoresearch correctly', async () => {
+    const mockData = [
+        { id: '1', owner_id: 'gemini-3.1-flash-lite', total_equity: 10000, cash_balance: 5000 },
+        { id: '2', owner_id: 'deepseek-v4-pro', total_equity: 12000, cash_balance: 6000 },
+        { id: '3', owner_id: 'gpt-5.4-nano', total_equity: 8000, cash_balance: 4000 },
+    ];
+
+    const chain = {
+        order: vi.fn(() => Promise.resolve({ data: mockData, error: null })),
+        select: vi.fn(() => chain),
+        from: vi.fn(() => chain),
+    };
+    mockSupabaseClient = chain as unknown as MockSupabaseChain;
+
+    const result = await fetchPortfolios();
+
+    expect(result).toHaveLength(3);
+    expect(result.find((p) => p.owner_id === 'gemini-3.1-flash-lite')?.is_autoresearch).toBe(true);
+    expect(result.find((p) => p.owner_id === 'deepseek-v4-pro')?.is_autoresearch).toBe(true);
+    expect(result.find((p) => p.owner_id === 'gpt-5.4-nano')?.is_autoresearch).toBe(false);
 });

@@ -15,7 +15,7 @@ import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
 import { portfolioQueries } from '../queries/options';
 
-type PortfolioWithActive = Portfolio & { is_active: boolean };
+type PortfolioWithActive = Portfolio & { is_active: boolean; is_autoresearch: boolean };
 
 interface PortfoliosPageProps {
     initialData: PortfolioWithActive[];
@@ -70,6 +70,14 @@ function PortfolioCard({
                         {deprecated ? 'Retired' : 'Active'}
                     </Badge>
                 </div>
+
+                {portfolio.is_autoresearch && !deprecated && (
+                    <div className="mb-4">
+                        <Badge variant="soft" size="xs" colorScheme="info">
+                            Auto-Research
+                        </Badge>
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     <MetricTile

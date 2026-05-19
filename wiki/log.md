@@ -1,3 +1,12 @@
+## [2026-05-19] web | Auto-Research Portfolio Badge & Config Centralization
+
+### Changes
+- **Auto-Research Badge**: Added a distinctive purple "Auto-Research" badge to portfolios in the experiment group on the `PortfoliosPage`.
+- **Config Centralization**: Migrated `AUTORESEARCH_EXPERIMENT_OWNER_IDS` to the shared `packages/config/models.json` file to ensure engine and web app synchronization.
+- **Engine Update**: Updated `apps/engine/core/config.py` to read from the shared JSON source.
+- **Testing**: Added Vitest unit tests for portfolio config and fetching logic.
+- **Documentation**: Updated wiki entities for `autoresearch` and `design-system`.
+
 ## [2026-05-19] test | Enforce 70% (engine) / 40% (web) test coverage in pre-commit
 
 ### Changes

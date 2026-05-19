@@ -134,7 +134,7 @@ AUTORESEARCH_MODEL = os.getenv("AUTORESEARCH_MODEL", DEEPSEEK_MODEL)
 
 # Which agent portfolios receive auto-researched prompts (experiment group).
 # The remaining agents use the hardcoded baseline prompt (control group).
-AUTORESEARCH_EXPERIMENT_OWNER_IDS = frozenset([GEMINI_MODEL, DEEPSEEK_MODEL])
+AUTORESEARCH_EXPERIMENT_OWNER_IDS = frozenset(_models.get("AUTORESEARCH_EXPERIMENT_OWNER_IDS", []))
 
 # --- Alpaca Paper Trading Configuration ---
 # Hardcoded constant — single source of truth for the audit layer.

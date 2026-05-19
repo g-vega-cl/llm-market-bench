@@ -1,0 +1,38 @@
+ WARN  Unsupported engine: wanted: {"node":">=24"} (current: {"node":"v22.22.1","pnpm":"10.15.0"})
+
+> llm-market-bench@ dev:web /app
+> pnpm --filter web dev
+
+.                                        |  WARN  Unsupported engine: wanted: {"node":">=24"} (current: {"node":"v22.22.1","pnpm":"9.15.9"})
+apps/web                                 |  WARN  Unsupported engine: wanted: {"node":">=24"} (current: {"node":"v22.22.1","pnpm":"9.15.9"})
+packages/config                          |  WARN  Unsupported engine: wanted: {"node":">=24"} (current: {"node":"v22.22.1","pnpm":"9.15.9"})
+packages/database                        |  WARN  Unsupported engine: wanted: {"node":">=24"} (current: {"node":"v22.22.1","pnpm":"9.15.9"})
+packages/ui-design-system                |  WARN  Unsupported engine: wanted: {"node":">=24"} (current: {"node":"v22.22.1","pnpm":"9.15.9"})
+
+> web@ dev /app/apps/web
+> vite dev
+
+11:56:06 PM [vite] ⬥ Netlify Environment loaded
+11:56:06 PM [vite] ⬥ Netlify Middleware loaded. Emulating features: aiGateway, blobs, edgeFunctions, environmentVariables, functions, geolocation, headers, images, redirects, static.
+11:56:06 PM [vite] ⬥ Netlify 💭 Linking this project to a Netlify site lets you deploy your site, use any environment variables defined on your team and site and much more. Run npx netlify init to get started.
+Port 3005 is in use, trying another one...
+
+  VITE v7.3.1  ready in 3717 ms
+
+  ➜  Local:   http://localhost:3006/
+  ➜  Network: use --host to expose
+[vite] connected.
+[PostHog.js] No `apiKey` or `client` were provided to `PostHogProvider`. Using default global `window.posthog` instance. You must initialize it manually. This is not recommended behavior.
+Error: Missing Supabase environment variables
+    at getSupabaseServerClient (/app/apps/web/src/lib/supabase.ts:8:15)
+    at Object.email (/app/apps/web/src/routes/__root.tsx:17:22)
+    at server (/app/node_modules/.pnpm/@tanstack+start-client-core@1.167.6/node_modules/@tanstack/start-client-core/src/createServerFn.ts:798:38)
+    at callNextMiddleware (/app/node_modules/.pnpm/@tanstack+start-client-core@1.167.6/node_modules/@tanstack/start-client-core/src/createServerFn.ts:289:30)
+    at executeMiddleware (/app/node_modules/.pnpm/@tanstack+start-client-core@1.167.6/node_modules/@tanstack/start-client-core/src/createServerFn.ts:329:10)
+    at AsyncFunction.__executeServer (/app/node_modules/.pnpm/@tanstack+start-client-core@1.167.6/node_modules/@tanstack/start-client-core/src/createServerFn.ts:171:34)
+    at opts (/app/apps/web/src/routes/__root.tsx:13:58)
+    at Object.fn (/app/node_modules/.pnpm/@tanstack+start-server-core@1.167.6/node_modules/@tanstack/start-server-core/src/createSsrRpc.ts:17:31)
+    at async client (/app/node_modules/.pnpm/@tanstack+start-client-core@1.167.6/node_modules/@tanstack/start-client-core/src/createServerFn.ts:792:21)
+    at async callNextMiddleware (/app/node_modules/.pnpm/@tanstack+start-client-core@1.167.6/node_modules/@tanstack/start-client-core/src/createServerFn.ts:289:24) {
+  routerCode: 'BEFORE_LOAD'
+}

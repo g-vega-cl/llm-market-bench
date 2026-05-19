@@ -77,7 +77,7 @@ function NavLink({ to, label, exact }: { to: string; label: string; exact?: bool
             to={to}
             activeProps={{ className: 'text-accent' }}
             activeOptions={{ exact }}
-            className="hover:text-accent-hover transition-colors relative"
+            className="hover:text-accent-hover transition-colors relative shrink-0"
         >
             {({ isActive }) => (
                 <>
@@ -95,13 +95,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     const { user } = Route.useRouteContext();
 
     const navItems = [
-        { to: '/', label: 'Today', exact: true },
+        { to: '/portfolios', label: 'Portfolios' },
         { to: '/memories', label: 'Memories' },
+        { to: '/autoresearch', label: 'Auto-Research' },
+        { to: '/', label: 'Today', exact: true },
         { to: '/posts', label: 'Posts' },
         { to: '/concepts', label: 'Concepts' },
-        { to: '/portfolios', label: 'Portfolios' },
         { to: '/how-it-works', label: 'How it Works' },
-        { to: '/autoresearch', label: 'Auto-Research' },
         { to: '/reasoning', label: 'Reasoning' },
         { to: '/cause-and-effect', label: 'Cause & Effect' },
         { to: '/audits', label: 'Audits' },
@@ -128,7 +128,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 >
                     <nav
                         className={cn(
-                            'flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4',
+                            'flex flex-nowrap overflow-x-auto whitespace-nowrap items-center gap-x-6 px-6 py-4',
+                            '[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]',
                             'bg-white/80 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800',
                             'sticky top-0 z-50 backdrop-blur-md',
                             'text-sm font-bold uppercase tracking-widest',
@@ -143,7 +144,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                             />
                         ))}
 
-                        <div className="ml-auto flex items-center gap-4">
+                        <div className="ml-auto flex items-center gap-4 shrink-0">
                             {user ? (
                                 <>
                                     <Badge

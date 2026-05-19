@@ -28,19 +28,21 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             {/* Header */}
             <div className="flex flex-wrap items-start gap-3 mb-4">
                 <div className="flex flex-wrap gap-2 items-center">
-                    <span
-                        className={`inline-flex px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wide ${
+                    <Badge
+                        variant="soft"
+                        colorScheme={
                             memory.metadata?.type === 'consensus_event'
-                                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                                ? 'accent'
                                 : memory.metadata?.type === 'decision_reasoning'
-                                  ? 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300'
+                                  ? 'info'
                                   : memory.metadata?.type === 'post_mortem'
-                                    ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
-                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
-                        }`}
+                                    ? 'warning'
+                                    : 'neutral'
+                        }
+                        size="sm"
                     >
                         {(memory.metadata?.type || 'Memory').replace(/_/g, ' ')}
-                    </span>
+                    </Badge>
 
                     {memory.status && memory.status !== 'ACTIVE' && (
                         <Badge
@@ -187,9 +189,15 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                                 .trim()}
                                                         </span>
                                                         {pct && (
-                                                            <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded tabular-nums">
+                                                            <Badge
+                                                                size="xs"
+                                                                variant="soft"
+                                                                colorScheme="accent"
+                                                                radius="md"
+                                                                className="tabular-nums"
+                                                            >
                                                                 {pct}
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                     </div>
                                                     <div className="text-sm leading-relaxed mb-2">

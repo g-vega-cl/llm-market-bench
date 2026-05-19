@@ -150,12 +150,17 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                 },
                                             )}
                                         </span>
-                                        <span
-                                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${trade.realized_pnl >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400'}`}
+                                        <Badge
+                                            size="xs"
+                                            variant="soft"
+                                            colorScheme={
+                                                trade.realized_pnl >= 0 ? 'success' : 'danger'
+                                            }
+                                            radius="md"
                                         >
                                             {trade.realized_pnl >= 0 ? '+' : ''}
                                             {trade.realized_pnl_pct?.toFixed(2)}%
-                                        </span>
+                                        </Badge>
                                     </div>
                                 ) : (
                                     <span className="text-zinc-300 dark:text-zinc-700">—</span>

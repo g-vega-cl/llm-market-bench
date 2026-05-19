@@ -1,4 +1,4 @@
-import { MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
+import { Badge, MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { getAgentInfo } from '../lib/agent-info';
 
@@ -203,18 +203,21 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                             </span>
                                                         </div>
                                                         {item.confidence && (
-                                                            <span
-                                                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                                                            <Badge
+                                                                size="xs"
+                                                                variant="soft"
+                                                                colorScheme={
                                                                     item.confidence > 0.7
-                                                                        ? 'bg-neon-green-100 dark:bg-neon-green-900/30 text-neon-green-600 dark:text-neon-green-400 border-neon-green-200 dark:border-neon-green-800'
+                                                                        ? 'success'
                                                                         : item.confidence > 0.4
-                                                                          ? 'bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-600 dark:text-cyber-yellow-400 border-cyber-yellow-200 dark:border-cyber-yellow-800'
-                                                                          : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
-                                                                }`}
+                                                                          ? 'warning'
+                                                                          : 'accent'
+                                                                }
+                                                                radius="lg"
                                                             >
                                                                 {(item.confidence * 100).toFixed(0)}
                                                                 % conf
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                     </>
                                                 )}

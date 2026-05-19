@@ -1,5 +1,5 @@
 import type { NewsletterSnapshot } from '@llm-market-bench/database';
-import { SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Badge, SectionHeading } from '@llm-market-bench/ui-design-system';
 
 interface NewsletterFeedProps {
     newsletters: NewsletterSnapshot[];
@@ -42,9 +42,9 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                             {/* Header */}
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="px-3 py-1.5 bg-gradient-to-r from-electric-blue-100 to-blue-100 dark:from-electric-blue-900/30 dark:to-blue-900/30 text-electric-blue-700 dark:text-electric-blue-300 text-[9px] font-black uppercase tracking-widest rounded-xl border border-electric-blue-200 dark:border-electric-blue-800 shadow-sm">
+                                    <Badge variant="soft" colorScheme="accent" size="xs">
                                         {news.sender}
-                                    </span>
+                                    </Badge>
                                 </div>
                                 <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5 tabular-nums">
                                     <span className="w-2 h-2 bg-electric-blue-400 rounded-full animate-pulse" />

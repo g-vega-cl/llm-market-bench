@@ -1,4 +1,4 @@
-import { Button } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { FormattedContent } from './FormattedContent';
 
@@ -77,19 +77,16 @@ export function HumanFriendlyPrompt({
                             }`}
                         >
                             <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
-                                <span
-                                    className={`text-[8px] md:text-[9px] font-black uppercase tracking-widest px-1.5 md:px-2 py-0.5 rounded-md ${
-                                        isSystem
-                                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                            : isAssistant
-                                              ? 'bg-blue-500 text-white'
-                                              : isTool
-                                                ? 'bg-emerald-500 text-white'
-                                                : 'bg-gray-800 text-white'
-                                    }`}
+                                <Badge
+                                    size="xs"
+                                    variant={isSystem ? 'soft' : 'solid'}
+                                    colorScheme={
+                                        isAssistant ? 'accent' : isTool ? 'success' : 'neutral'
+                                    }
+                                    radius="md"
                                 >
                                     {msg.role}
-                                </span>
+                                </Badge>
                             </div>
                             <div className="text-[11px] md:text-xs font-mono leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words selection:bg-blue-500/30 overflow-x-hidden">
                                 <FormattedContent content={msg.content || msg.parts || msg} />

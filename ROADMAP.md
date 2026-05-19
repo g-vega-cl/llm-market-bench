@@ -94,18 +94,21 @@ A living document of features and improvements in progress or planned for the pl
   - [ ] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule).
   - [ ] [Low] Fix weak cross-references: Link `type-safety.md` to `biome-linter.md` and `engine.md` to `correlation-matrix-source`.
 - [ ] - Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy. \
-- [ ] -benchify: a second website where the code is managed by AI mostly autonomously?  
-- [ ] -Benchify: audit price fetching and how we pass it to LLMs 
+- [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
+- [ ] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
-- [ ] -Benchify: check if pre-commit hooks work in Jules (qmd)? 
+- [ ] -Benchify: check if pre-commit hooks work in Jules (qmd)?
 - [ ] - Benchify: improve doc summarization/deletion, audit auto wiki. I might have too many docs.
 
-Maybe even separate logs into many files to avoid overloading context. It's "immutable" as in we shouldn't delete from it anyways. 
+Maybe even separate logs into many files to avoid overloading context. It's "immutable" as in we shouldn't delete from it anyways.
 
 Maybe only use a tool to append to the logs?
+
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
+- [ ] - Show badges for the portfolios with auto-research
+
 ## Under Consideration
 
 - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)

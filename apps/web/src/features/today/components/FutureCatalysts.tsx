@@ -132,9 +132,14 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                     </div>
                                                 )}
                                                 {dateNote && (
-                                                    <span className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[9px] font-bold uppercase tracking-wider rounded border border-zinc-200 dark:border-zinc-700">
+                                                    <Badge
+                                                        variant="soft"
+                                                        colorScheme="neutral"
+                                                        size="xs"
+                                                        radius="md"
+                                                    >
                                                         {dateNote}
-                                                    </span>
+                                                    </Badge>
                                                 )}
                                                 <Badge
                                                     severity={
@@ -202,9 +207,15 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                                             className="flex items-start gap-2"
                                                         >
                                                             {line.percentage && (
-                                                                <span className="inline-flex items-center px-1.5 py-0.5 bg-cyber-yellow-100 dark:bg-cyber-yellow-900/30 text-cyber-yellow-700 dark:text-cyber-yellow-300 text-[9px] font-black rounded border border-cyber-yellow-200 dark:border-cyber-yellow-800 tabular-nums mt-0.5">
+                                                                <Badge
+                                                                    size="xs"
+                                                                    variant="soft"
+                                                                    colorScheme="warning"
+                                                                    radius="md"
+                                                                    className="tabular-nums mt-0.5"
+                                                                >
                                                                     {line.percentage}
-                                                                </span>
+                                                                </Badge>
                                                             )}
                                                             <span className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed">
                                                                 {line.text}

@@ -5,6 +5,7 @@ python-dotenv
 supabase~=2.27.0
 pytest
 pytest-asyncio
+pytest-cov
 instructor>=1.13.0
 openai
 anthropic

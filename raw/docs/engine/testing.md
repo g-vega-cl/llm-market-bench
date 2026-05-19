@@ -297,6 +297,22 @@ The `run_ingest` function in `main.py` contains a mandatory check for US Market 
 await run_ingest(force=True)
 ```
 
+## Test Coverage
+
+The engine enforces a minimum test coverage threshold of **70%** via `pytest-cov`. This is enforced locally in the pre-commit hook and in CI.
+
+### Configuration
+Coverage is configured via `apps/engine/.coveragerc`. It excludes:
+- CLI scripts (e.g., `scripts/*.py`, `auto_wiki.py`, `wiki_lint.py`)
+- Migrations and test files
+- Boilerplate code (e.g., `pragma: no cover`)
+
+### Execution
+To run tests with coverage reporting:
+```bash
+./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc
+```
+
 ## CI/CD Integration
 
 Tests are automatically executed on every Push and Pull Request via GitHub Actions. A failure in any test prevents merging to the main branch.

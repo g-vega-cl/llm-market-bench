@@ -12,9 +12,12 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 # Lint TypeScript (web + packages)
 pnpm biome check --no-errors-on-unmatched apps/web packages/database packages/ui-design-system
 
-# Run tests
-( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && python3 -m pytest )
-( cd "$REPO_ROOT/apps/web" && pnpm test )
+# Run tests with coverage enforcement (70% engine, 40% web)
+echo "[coverage] Running engine tests with coverage..."
+( cd "$REPO_ROOT/apps/engine" && source .venv/bin/activate && python3 -m pytest --cov=. --cov-config=.coveragerc --cov-fail-under=70 )
+
+echo "[coverage] Running web tests with coverage..."
+( cd "$REPO_ROOT/apps/web" && pnpm test -- --coverage )
 
 # Build + type-check (BLOCKING — must pass)
 pnpm build:web

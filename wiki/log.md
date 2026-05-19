@@ -1,3 +1,22 @@
+## [2026-05-19] test | Enforce 70% (engine) / 40% (web) test coverage in pre-commit
+
+### Changes
+- **Coverage Enforcement**: Added a "test-coverage" step to the Husky pre-commit hook. Commits are now blocked if coverage falls below thresholds (70% for engine, 40% for web-app).
+- **Engine Configuration**: Installed `pytest-cov`, added it to `requirements.txt`, and created `apps/engine/.coveragerc` to omit CLI scripts and non-core logic.
+- **Web Configuration**: Installed `@vitest/coverage-v8`, updated `apps/web/vitest.config.ts` with baseline thresholds, and excluded build/node_modules directories.
+- **Project Hygiene**: Updated `.gitignore` to exclude coverage reports and `biome.json` to ignore the `coverage/` directory.
+- **Documentation**: Created [[concepts/test-coverage]] to define the project's coverage policy and "ratchet" philosophy.
+
+### Files changed
+- `.husky/pre-commit`: added coverage check
+- `apps/engine/.coveragerc`: new coverage config
+- `apps/engine/requirements.txt`: added `pytest-cov`
+- `apps/web/vitest.config.ts`: added Vitest coverage config
+- `.gitignore`: added coverage artifacts
+- `biome.json`: excluded `coverage/`
+- `wiki/concepts/test-coverage.md`: new policy page
+- `wiki/index.md`: added link to policy
+
 ## [2026-05-19] design-system | Card primitive consolidation & "Today" feature migration
 
 Standardized the `Card` primitive with `rounded-3xl` as default, added `isHoverable` and `radius` props, and migrated five major components in the "Today" feature. Details in [[log/2026-05-19_card-consolidation]].

@@ -104,6 +104,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
+- [ ] Benchify: why are there two baselines on auto research table?
+- [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
 
 ## Under Consideration
 

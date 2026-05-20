@@ -1,3 +1,7 @@
+## [2026-05-20] docs | Standardized Source ID generation format in wiki
+
+Standardized the Source ID generation description between `wiki/concepts/ingestion.md` and `wiki/entities/pipeline.md` to reference the actual Python implementation in `newsletter.py` (`news_{sender_clean}_{MD5[:8]}`).
+
 ## [2026-05-14] refactor | Design System Consolidation
 
 Consolidated design system usage across all 9 web pages. Migrated all pages to use PageLayout wrapper, replaced raw headings with SectionHeading, fixed ReasoningPage (zero DS usage → full DS adoption), migrated ConceptsPage from gray→zinc color tokens, and updated PageLayout to remove min-h-screen (now handled by page-level divs). Satoshi font import removed in favor of system-ui fallback.

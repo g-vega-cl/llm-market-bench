@@ -12,7 +12,7 @@ The daily pipeline runs on a cron schedule during US market hours
 
 Gmail API fetches unread newsletters → BeautifulSoup HTML parsing → Gemini Flash
 removes ads (all newsletters cleaned in parallel via `asyncio.gather`) →
-deterministic source_id (MD5[:8]) + chunk_hash → UPSERT into
+deterministic `source_id` (`news_{sender_clean}_{MD5[:8]}`) + `chunk_hash` → UPSERT into
 `newsletter_snapshots`. Parallel fetching of economic calendar and government
 data.
 

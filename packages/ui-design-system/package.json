@@ -10,7 +10,8 @@
     "main": "src/index.ts",
     "types": "src/index.ts",
     "scripts": {
-        "lint": "tsc --noEmit"
+        "lint": "tsc --noEmit",
+        "test": "vitest run"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.1.18",
@@ -22,7 +23,8 @@
         "@types/react-dom": "^19.2.3",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "typescript": "^5.7.2"
+        "typescript": "^5.7.2",
+        "vitest": "^4.0.18"
     },
     "peerDependencies": {
         "react": "^19.0.0",

@@ -5,7 +5,7 @@ category: concept
 
 # Type Safety
 
-The web app enforces strict TypeScript type safety with zero `any` usage, enforced by Biome's `noExplicitAny` rule set to `error`. This ensures compile-time correctness and maintainability.
+The web app enforces strict TypeScript type safety with zero `any` usage, enforced by [[entities/biome-linter]]'s `noExplicitAny` rule set to `error`. This ensures compile-time correctness and maintainability.
 
 ## Key Conventions
 

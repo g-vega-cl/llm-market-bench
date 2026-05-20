@@ -1,3 +1,7 @@
+## [2026-05-20] docs | Enhance wiki cross-reference linking
+
+Fixed weak/plain-text references in the wiki: changed plain-text mention of `Biome` in `wiki/concepts/type-safety.md` to `[[entities/biome-linter]]`, and plain-text mention of `correlation matrix` in `wiki/entities/engine.md` to `[[sources/correlation-matrix-source]]`. Verified with the structural wiki linter.
+
 ## [2026-05-20] docs | Align linter documentation with Biome rules and pre-commit hook
 
 Aligned `wiki/concepts/project-linting.md` and `wiki/entities/biome-linter.md` with the active codebase rules, documenting that `noExplicitAny` is an error in `biome.json` and that any use of `Record<string, any>` or `as any` requires an inline `// biome-ignore` comment to pass the blocking pre-commit checks.

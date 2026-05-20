@@ -1,3 +1,7 @@
+## [2026-05-20] fix | Upgrade parseScenarioPercentages split logic for single-block text
+
+Upgraded `parseScenarioPercentages` utility in `apps/web/src/lib/parse-scenario-percentages.ts` to support regex-based splitting (`/(Scenario [A-Z][^:]*:)/`) matching the design in `MemoryCard.tsx`. This ensures scenarios in `FutureCatalysts.tsx` are cleanly broken out with their respective badges regardless of database newline formatting, resolving cases where LLM responses output single blocks.
+
 ## [2026-05-20] docs | Enhance wiki cross-reference linking
 
 Fixed weak/plain-text references in the wiki: changed plain-text mention of `Biome` in `wiki/concepts/type-safety.md` to `[[entities/biome-linter]]`, and plain-text mention of `correlation matrix` in `wiki/entities/engine.md` to `[[sources/correlation-matrix-source]]`. Verified with the structural wiki linter.

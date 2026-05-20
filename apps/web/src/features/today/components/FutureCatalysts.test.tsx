@@ -51,4 +51,16 @@ describe('parseScenarioPercentages', () => {
         const result = parseScenarioPercentages('Range is 50% to 80% likely');
         expect(result[0].percentage).toBe('50%');
     });
+
+    it('splits scenarios without newlines using Scenario A style pattern', () => {
+        const input =
+            'Scenario A: Bullish case (70%) - price goes up. Scenario B: Bearish case (30%) - price goes down.';
+        const result = parseScenarioPercentages(input);
+
+        expect(result).toHaveLength(2);
+        expect(result[0].percentage).toBe('70%');
+        expect(result[0].text).toBe('Scenario A: Bullish case (70%) - price goes up.');
+        expect(result[1].percentage).toBe('30%');
+        expect(result[1].text).toBe('Scenario B: Bearish case (30%) - price goes down.');
+    });
 });

@@ -37,11 +37,81 @@ interface PortfolioComparisonChartProps {
 }
 
 export function PortfolioComparisonChart({
-    data,
-    benchmarkData,
+    data: rawData,
+    benchmarkData: rawBenchmarkData,
     selectedBenchmark = 'SPY',
     onReset,
 }: PortfolioComparisonChartProps) {
+    const data = React.useMemo(() => {
+        return rawData.map((portfolio) => {
+            const cleanedPerformance = portfolio.performance
+                .map((p) => ({
+                    date: p.date,
+                    value: p.value,
+                }))
+                .filter((d) => {
+                    const parsedDate = new Date(d.date);
+                    return (
+                        d.date &&
+                        d.date !== 'invalid-date' &&
+                        parsedDate instanceof Date &&
+                        !Number.isNaN(parsedDate.getTime()) &&
+                        d.value !== null &&
+                        !Number.isNaN(d.value)
+                    );
+                });
+
+            const dateMap = new Map<string, { date: string; value: number }>();
+            cleanedPerformance.forEach((pt) => {
+                const parsedDate = new Date(pt.date);
+                const dateKey = parsedDate.toISOString().split('T')[0];
+                dateMap.set(dateKey, pt);
+            });
+
+            const deduplicated = Array.from(dateMap.values()).sort(
+                (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            );
+
+            return {
+                ...portfolio,
+                performance: deduplicated,
+            };
+        });
+    }, [rawData]);
+
+    const benchmarkData = React.useMemo(() => {
+        if (!rawBenchmarkData) return undefined;
+        const result: Record<string, BenchmarkDataPoint[]> = {};
+        for (const ticker of Object.keys(rawBenchmarkData)) {
+            const points = rawBenchmarkData[ticker] || [];
+            const cleanedPoints = points.filter((d) => {
+                const parsedDate = new Date(d.date);
+                return (
+                    d.date &&
+                    d.date !== 'invalid-benchmark-date' &&
+                    parsedDate instanceof Date &&
+                    !Number.isNaN(parsedDate.getTime()) &&
+                    d.price !== null &&
+                    !Number.isNaN(d.price)
+                );
+            });
+
+            const dateMap = new Map<string, BenchmarkDataPoint>();
+            cleanedPoints.forEach((pt) => {
+                const parsedDate = new Date(pt.date);
+                const dateKey = parsedDate.toISOString().split('T')[0];
+                dateMap.set(dateKey, pt);
+            });
+
+            const deduplicated = Array.from(dateMap.values()).sort(
+                (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            );
+
+            result[ticker] = deduplicated;
+        }
+        return result;
+    }, [rawBenchmarkData]);
+
     const svgRef = React.useRef<SVGSVGElement>(null);
     const [clickedData, setClickedData] = React.useState<TooltipData | null>(null);
     const [latestData, setLatestData] = React.useState<TooltipData | null>(null);
@@ -207,6 +277,12 @@ export function PortfolioComparisonChart({
 
         const line = d3
             .line<ChartLine>()
+            .defined(
+                (d) =>
+                    d.date instanceof Date &&
+                    !Number.isNaN(d.date.getTime()) &&
+                    !Number.isNaN(d.value),
+            )
             .x((d) => x(d.date))
             .y((d) => y(d.value))
             .curve(d3.curveMonotoneX);

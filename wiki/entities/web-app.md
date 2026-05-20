@@ -46,6 +46,13 @@ To avoid UI inconsistency when parsing varying LLM scenario outputs, all splitti
 - **Splitting & Sanitization**: Uses a pattern-matching regex `/(Scenario [A-Z][^:]*:)/` to segment scenario blocks (even when newlines are missing), trims the trailing `**Investable Assets` block, and extracts probability percentages. Splits outcomes from trading plans using `/Trading Plan.*?:/`.
 - **Unified Adoption**: Standardized across both `MemoryCard` and `FutureCatalysts` to avoid code duplication and guarantee identical parsing behavior.
 
+### D3 Chart Data Sanitization (2026-05-20)
+
+To resolve spurious rendering artifacts (such as overlapping vertical lines or rendering anomalies) on the D3 performance comparison timelines, defensive input cleaning and boundary controls were implemented:
+- **Pruned Memoization Boundaries**: Wrapped incoming data arrays inside `React.useMemo` blocks to filter out any performance or benchmark indices containing invalid dates, `NaN` prices, or null values. This ensures that downstream scales and layout functions never process malformed coordinates.
+- **Date Deduplication**: Dynamically groups records by unique dates, preventing duplicate time-series indices which would otherwise cause vertical overlapping lines at the same x-axis coordinate.
+- **Defensive Line Generators**: Equipped the D3 line generator with explicit `.defined()` callback boundaries to skip disjoint indices safely and render clean paths.
+
 Features: today (dashboard), portfolios (summary + detail with D3 equity curves), reasoning (LLM audit trail), memories (memory chains), market-overview (correlation heatmap), concepts (PCA concept map), audits (system audit logs).
 
 

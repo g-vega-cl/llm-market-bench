@@ -1,4 +1,13 @@
+## [2026-05-20] fix | Prevent D3 Comparison Chart Spurious Vertical Line Anomalies
+
+Implemented defensive input cleaning, sorting, and boundary checks in `PortfolioComparisonChart.tsx` to handle malformed data points safely:
+- Added `React.useMemo` to filter out invalid dates, missing/NaN prices, and null indices from portfolio and benchmark data props at the component boundary.
+- Deduplicated time-series coordinates by date to enforce a single data point per day, preventing x-axis duplicate coordinate ticks from rendering vertical overlapping segment spikes.
+- Configured the D3 line path generator with `.defined()` checks to omit disjoint segments safely.
+- Added comprehensive Vitest coverage to verify chart resilience against malformed datasets.
+
 ## [2026-05-20] refactor | Consolidate Scenario Analysis Parser Logic (DRY Migration)
+
 
 Consolidated scenario-splitting, percentage-extracting, and outcome/trading-plan parsing logic from both `FutureCatalysts.tsx` and `MemoryCard.tsx` into a single, fully-tested utility `parseScenarios` in `apps/web/src/lib/parse-scenario-percentages.ts`. Refactored `MemoryCard.tsx` to use this consolidated helper. All unit tests, Biome linting, and production builds pass successfully.
 
@@ -247,3 +256,7 @@ Implemented System-Heavy Prompt architecture: moved all trading logic, calendar 
 ## [2026-05-20] refactor | Complete scenario parsing consolidation with structured ParsedScenario interface
 
 Replaced inline scenario-splitting logic in `MemoryCard.tsx` with the consolidated `parseScenarios()` utility. Introduced a structured `ParsedScenario` interface exposing `cleanHeader`, `percentage`, `outcome`, `tradingPlan`, and `fullText` fields. Added comprehensive unit tests covering structured parsing, header cleaning, and fallback behavior. Updated the web-app entity page with a new Scenario Analysis Parsing section documenting the consolidation. This completes the DRY migration started earlier today by unifying both `MemoryCard` and `FutureCatalysts` components onto a single, tested parser.
+
+## [2026-05-20] fix | Add D3 Chart Defensive Sanitization for Malformed Data
+
+Implemented defensive input cleaning and boundary controls in `PortfolioComparisonChart.tsx` to prevent rendering artifacts from invalid dates, NaN values, and duplicate time-series entries. Added `React.useMemo` filters to sanitize portfolio and benchmark data, deduplication by date key, and `.defined()` callbacks on the D3 line generator. Extended test coverage with edge case Vitest test for malformed data inputs.

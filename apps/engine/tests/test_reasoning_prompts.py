@@ -1,28 +1,31 @@
-from apps.engine.core.llm.prompts import SYNTHESIS_USER_PROMPT_TEMPLATE
+from apps.engine.core.llm.prompts import (
+    CAUSE_AND_EFFECT_SYSTEM_PROMPT,
+    MANAGER_SYSTEM_PROMPT,
+    SYNTHESIS_SYSTEM_PROMPT,
+)
 
 
 def test_catalyst_logic_constraints():
-    """Verify that the synthesis prompt contains the negative constraints for catalysts."""
-    assert "CRITICAL: Do NOT mark broad themes" in SYNTHESIS_USER_PROMPT_TEMPLATE
-    assert "ongoing structural shifts, or VAGUE timeframes" in SYNTHESIS_USER_PROMPT_TEMPLATE
-    assert "If you cannot name the specific day or a very tight window" in SYNTHESIS_USER_PROMPT_TEMPLATE
-    assert "it is NOT a future catalyst for Horizon Watch" in SYNTHESIS_USER_PROMPT_TEMPLATE
+    """Verify that the synthesis SYSTEM prompt contains the negative constraints for catalysts."""
+    assert "CRITICAL: Do NOT mark broad themes" in SYNTHESIS_SYSTEM_PROMPT
+    assert "ongoing structural shifts, or VAGUE timeframes" in SYNTHESIS_SYSTEM_PROMPT
+    assert "If you cannot name the specific day or a very tight window" in SYNTHESIS_SYSTEM_PROMPT
+    assert "it is NOT a future catalyst for Horizon Watch" in SYNTHESIS_SYSTEM_PROMPT
+
 
 def test_scenario_probabilities_required():
-    """Verify that the synthesis prompt requires probability percentages for each scenario."""
-    assert "XX% probability" in SYNTHESIS_USER_PROMPT_TEMPLATE or "probability" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower()
-    assert "each scenario" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower() or "probabilities" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower()
-    assert "sum to 100" in SYNTHESIS_USER_PROMPT_TEMPLATE.lower() or "100%" in SYNTHESIS_USER_PROMPT_TEMPLATE
+    """Verify that the synthesis SYSTEM prompt requires probability percentages for each scenario."""
+    assert "XX% probability" in SYNTHESIS_SYSTEM_PROMPT or "probability" in SYNTHESIS_SYSTEM_PROMPT.lower()
+    assert "each scenario" in SYNTHESIS_SYSTEM_PROMPT.lower() or "probabilities" in SYNTHESIS_SYSTEM_PROMPT.lower()
+    assert "sum to 100" in SYNTHESIS_SYSTEM_PROMPT.lower() or "100%" in SYNTHESIS_SYSTEM_PROMPT
 
 def test_5_whys_integration():
     """Verify that the 5 Whys technique is mentioned in relevant prompts."""
     from apps.engine.core.llm.prompts import (
         ANALYSIS_USER_PROMPT_TEMPLATE,
-        CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE,
         CORE_ANALYSIS_SYSTEM_PROMPT,
-        MANAGER_USER_PROMPT_TEMPLATE,
     )
-    
+
     # Check System Prompt
     assert "5 Whys" in CORE_ANALYSIS_SYSTEM_PROMPT
     assert "**Why** is this news market-moving?" in CORE_ANALYSIS_SYSTEM_PROMPT
@@ -31,10 +34,10 @@ def test_5_whys_integration():
     # Analysis User Prompt should now be minimal data injection
     assert "{news_content}" in ANALYSIS_USER_PROMPT_TEMPLATE
     assert "{portfolio_context}" in ANALYSIS_USER_PROMPT_TEMPLATE
-    
-    # Check Manager Post-Mortem
-    assert "ROOT CAUSE ANALYSIS (MANDATORY)" in MANAGER_USER_PROMPT_TEMPLATE
-    assert "5 Whys" in MANAGER_USER_PROMPT_TEMPLATE
-    
-    # Check Cause & Effect Causal Recursion
-    assert "CAUSAL RECURSION (5 WHYS)" in CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE
+
+    # After refactor: Manager 5-Whys lives in system prompt, not user prompt
+    assert "ROOT CAUSE ANALYSIS (MANDATORY)" in MANAGER_SYSTEM_PROMPT
+    assert "5 Whys" in MANAGER_SYSTEM_PROMPT
+
+    # After refactor: Cause & Effect causal recursion lives in system prompt
+    assert "CAUSAL RECURSION (5 WHYS)" in CAUSE_AND_EFFECT_SYSTEM_PROMPT

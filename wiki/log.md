@@ -1,6 +1,11 @@
+## [2026-05-20] refactor | Consolidate Scenario Analysis Parser Logic (DRY Migration)
+
+Consolidated scenario-splitting, percentage-extracting, and outcome/trading-plan parsing logic from both `FutureCatalysts.tsx` and `MemoryCard.tsx` into a single, fully-tested utility `parseScenarios` in `apps/web/src/lib/parse-scenario-percentages.ts`. Refactored `MemoryCard.tsx` to use this consolidated helper. All unit tests, Biome linting, and production builds pass successfully.
+
 ## [2026-05-20] fix | Upgrade parseScenarioPercentages split logic for single-block text
 
 Upgraded `parseScenarioPercentages` utility in `apps/web/src/lib/parse-scenario-percentages.ts` to support regex-based splitting (`/(Scenario [A-Z][^:]*:)/`) matching the design in `MemoryCard.tsx`. This ensures scenarios in `FutureCatalysts.tsx` are cleanly broken out with their respective badges regardless of database newline formatting, resolving cases where LLM responses output single blocks.
+
 
 ## [2026-05-20] docs | Enhance wiki cross-reference linking
 
@@ -238,3 +243,7 @@ Implemented System-Heavy Prompt architecture: moved all trading logic, calendar 
 ## [2026-05-19] feature | System-Heavy Prompt Refactor & Auto-Research Arena Web UI
 
 Implemented System-Heavy Prompt architecture: moved all trading logic, calendar strategies, SMA rules, and output format specifications into the System Prompt, leaving a minimal data-only User Prompt. Added bootstrap utility to seed the new baseline. Created Auto-Research Arena web pages with experiment list, detail view, and scoring methodology display. Also improved auto-wiki prompt parsing with regex-based JSON extraction and truncation handling, and updated default Ollama model to qwen3.5:latest.
+
+## [2026-05-20] refactor | Complete scenario parsing consolidation with structured ParsedScenario interface
+
+Replaced inline scenario-splitting logic in `MemoryCard.tsx` with the consolidated `parseScenarios()` utility. Introduced a structured `ParsedScenario` interface exposing `cleanHeader`, `percentage`, `outcome`, `tradingPlan`, and `fullText` fields. Added comprehensive unit tests covering structured parsing, header cleaning, and fallback behavior. Updated the web-app entity page with a new Scenario Analysis Parsing section documenting the consolidation. This completes the DRY migration started earlier today by unifying both `MemoryCard` and `FutureCatalysts` components onto a single, tested parser.

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { extractPercentage, parseScenarioPercentages } from './parse-scenario-percentages';
+import {
+    extractPercentage,
+    parseScenarioPercentages,
+    parseScenarios,
+} from './parse-scenario-percentages';
 
 describe('parseScenarioPercentages', () => {
     it('extracts basic percentage (40%)', () => {
@@ -88,5 +92,41 @@ describe('extractPercentage', () => {
 
     it('returns first percentage if multiple exist', () => {
         expect(extractPercentage('60% bull case, 40% bear case')).toBe('60%');
+    });
+});
+
+describe('parseScenarios', () => {
+    it('parses structured scenario analysis with outcomes and trading plans', () => {
+        const input =
+            'Scenario A: Bullish case (70%) - price goes up. Trading Plan: Buy SPY calls.';
+        const result = parseScenarios(input);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].rawHeader).toBe('Scenario A:');
+        expect(result[0].cleanHeader).toBe('Scenario A:');
+        expect(result[0].percentage).toBe('70%');
+        expect(result[0].outcome).toBe('Bullish case (70%) - price goes up.');
+        expect(result[0].tradingPlan).toBe('Buy SPY calls.');
+    });
+
+    it('cleans headers with inline probability patterns', () => {
+        const input = 'Scenario A (85% probability): Rally continues.';
+        const result = parseScenarios(input);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].cleanHeader).toBe('Scenario A:');
+        expect(result[0].percentage).toBe('85%');
+        expect(result[0].outcome).toBe('Rally continues.');
+    });
+
+    it('falls back to raw text lines if scenario headers not found', () => {
+        const input = 'General market outlook is positive.\nGrowth expected next quarter.';
+        const result = parseScenarios(input);
+
+        expect(result).toHaveLength(2);
+        expect(result[0].outcome).toBe('General market outlook is positive.');
+        expect(result[0].percentage).toBeNull();
+        expect(result[0].tradingPlan).toBeNull();
+        expect(result[1].outcome).toBe('Growth expected next quarter.');
     });
 });

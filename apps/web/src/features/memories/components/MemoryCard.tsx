@@ -1,7 +1,7 @@
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
-import { extractPercentage } from '~/lib/parse-scenario-percentages';
+import { parseScenarios } from '~/lib/parse-scenario-percentages';
 import type { Memory } from './MemoriesList';
 
 interface MemoryCardProps {
@@ -160,64 +160,48 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             </div>
 
                             <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
-                                {memory.metadata.scenario_analysis
-                                    .split('**Investable Assets (via FMP):**')[0]
-                                    .split(/(Scenario [A-Z][^:]*:)/)
-                                    .filter(Boolean)
-                                    .map((part: string, i: number, arr: string[]) => {
-                                        if (part.match(/Scenario [A-Z][^:]*:/)) {
-                                            const content = arr[i + 1] || '';
-                                            const [outcome, tradingPlan] =
-                                                content.split(/Trading Plan.*?:/);
-
-                                            const pct =
-                                                extractPercentage(content) ||
-                                                extractPercentage(part);
-
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-                                                >
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                                            {part
-                                                                .replace(
-                                                                    /\s*\([^)]*%\s*probability\)/i,
-                                                                    '',
-                                                                )
-                                                                .trim()}
-                                                        </span>
-                                                        {pct && (
-                                                            <Badge
-                                                                size="xs"
-                                                                variant="soft"
-                                                                colorScheme="accent"
-                                                                radius="md"
-                                                                className="tabular-nums"
-                                                            >
-                                                                {pct}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-sm leading-relaxed mb-2">
-                                                        {outcome.replace(/\s*->\s*$/, '').trim()}
-                                                    </div>
-                                                    {tradingPlan && (
-                                                        <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
-                                                                Trading Plan:
-                                                            </span>
-                                                            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                                                {tradingPlan.trim()}
-                                                            </p>
-                                                        </div>
-                                                    )}
+                                {parseScenarios(memory.metadata.scenario_analysis).map(
+                                    (scenario, i) => (
+                                        <div
+                                            key={i}
+                                            className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                                        >
+                                            <div className="flex items-center gap-2 mb-2">
+                                                {scenario.cleanHeader && (
+                                                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                        {scenario.cleanHeader}
+                                                    </span>
+                                                )}
+                                                {scenario.percentage && (
+                                                    <Badge
+                                                        size="xs"
+                                                        variant="soft"
+                                                        colorScheme="accent"
+                                                        radius="md"
+                                                        className="tabular-nums"
+                                                    >
+                                                        {scenario.percentage}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            {scenario.outcome && (
+                                                <div className="text-sm leading-relaxed mb-2">
+                                                    {scenario.outcome}
                                                 </div>
-                                            );
-                                        }
-                                        return null;
-                                    })}
+                                            )}
+                                            {scenario.tradingPlan && (
+                                                <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
+                                                        Trading Plan:
+                                                    </span>
+                                                    <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                                        {scenario.tradingPlan}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ),
+                                )}
                             </div>
 
                             {/* Assets Section */}

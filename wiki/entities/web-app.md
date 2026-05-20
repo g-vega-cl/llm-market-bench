@@ -39,7 +39,15 @@ The application underwent a major type safety consolidation to remove `any` and 
 - **Infinite Queries**: Implement the `extends CursorPage` constraint in all list factories.
 - **Timestamp Handling**: Gracefully handle `string | null` for all database timestamps.
 
+### Scenario Analysis Parsing (2026-05-20)
+
+To avoid UI inconsistency when parsing varying LLM scenario outputs, all splitting and parsing logic is consolidated into a single, fully-tested utility: `parseScenarios` in `src/lib/parse-scenario-percentages.ts`.
+- **Structured Output**: Exposes a unified `ParsedScenario` interface separating `cleanHeader`, `percentage`, `outcome`, `tradingPlan`, and `fullText`.
+- **Splitting & Sanitization**: Uses a pattern-matching regex `/(Scenario [A-Z][^:]*:)/` to segment scenario blocks (even when newlines are missing), trims the trailing `**Investable Assets` block, and extracts probability percentages. Splits outcomes from trading plans using `/Trading Plan.*?:/`.
+- **Unified Adoption**: Standardized across both `MemoryCard` and `FutureCatalysts` to avoid code duplication and guarantee identical parsing behavior.
+
 Features: today (dashboard), portfolios (summary + detail with D3 equity curves), reasoning (LLM audit trail), memories (memory chains), market-overview (correlation heatmap), concepts (PCA concept map), audits (system audit logs).
+
 
 ## Design System
 

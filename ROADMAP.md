@@ -90,17 +90,16 @@ A living document of features and improvements in progress or planned for the pl
 - [x] **Audit the Wiki Lint pipeline.** — Successfully stabilized `wiki_lint_llm.py` with 75k character context cap and DeepSeek V4 Pro. First run identified 8 semantic findings. [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20).
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
-  - [ ] [Medium] Standardize Source ID generation (MD5[:8]) between `concepts/ingestion.md` and `entities/pipeline.md`.
-  - [ ] [Medium] Update `concepts/project-linting.md`: Reflect that Biome is now a blocking pre-commit hook.
+  - [x] [Medium] Standardize Source ID generation (MD5[:8]) between `concepts/ingestion.md` and `entities/pipeline.md`.
+  - [x] [Medium] Update `concepts/project-linting.md`: Reflect that Biome is now a blocking pre-commit hook.
   - [ ] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
   - [ ] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule).
-  - [ ] [Low] Fix weak cross-references: Link `type-safety.md` to `biome-linter.md` and `engine.md` to `correlation-matrix-source`.
+  - [x] [Low] Fix weak cross-references: Link `type-safety.md` to `biome-linter.md` and `engine.md` to `correlation-matrix-source`.
 - [ ] - Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy. \
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [ ] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
 - [ ] -Benchify: check if pre-commit hooks work in Jules (qmd)?
-- [ ] - Benchify: improve doc summarization/deletion, audit auto wiki. I might have too many docs.
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.

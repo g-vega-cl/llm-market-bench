@@ -31,7 +31,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **I don't see percentages in scenarios anymore**
+- [x] **I don't see percentages in scenarios anymore** — Resolved: Consolidated all scenario-splitting, percentage-extracting, and outcome/trading-plan parsing logic from both `FutureCatalysts.tsx` and `MemoryCard.tsx` into a single, fully-tested utility `parseScenarios` in `apps/web/src/lib/parse-scenario-percentages.ts`. Splitting logic uses regex `/Scenario [A-Z][^:]*:/` to correctly segment scenarios even when LLM output formats do not include strict newlines.
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
@@ -51,7 +51,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.
-- [ ] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there**
+- [x] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there** — Resolved: Cleaned up coordinate data in `PortfolioComparisonChart.tsx` by filtering out invalid, missing, and duplicate date data at the component boundary via `React.useMemo`. Deduplicated time-series coordinates and added a `.defined()` check to the D3 line path generator to ignore null/NaN data points and avoid disjoint/overlapping line anomalies.
 - [x] **Add design system code vertical.** — Implemented in `packages/ui-design-system/`. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
   - [x] The design system primitives (Button, Card, Badge) and patterns (SectionHeading, ConfidenceBar, StatPill, etc.) are now used across all feature pages.
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**

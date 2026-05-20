@@ -9,7 +9,52 @@ from scripts.update_prices import (
     BENCHMARK_HISTORY_DAYS,
     BENCHMARK_TICKERS,
     fetch_benchmark_history,
+    initialize_with_retry,
+    update_prices,
 )
+
+
+class TestAsyncSleepOptimization:
+    """Tests to ensure we are using non-blocking asyncio.sleep for retries."""
+
+    @pytest.mark.asyncio
+    @patch("scripts.update_prices.asyncio.sleep", new_callable=AsyncMock)
+    @patch("scripts.update_prices.is_transient_supabase_error", return_value=True)
+    async def test_initialize_with_retry_uses_async_sleep(self, mock_is_transient, mock_sleep):
+        """Should await asyncio.sleep on failure before retrying."""
+        from execution.portfolio import Portfolio
+
+        with patch.object(Portfolio, "initialize", new_callable=AsyncMock) as mock_init:
+            # First attempt fails, second succeeds
+            mock_init.side_effect = [Exception("Transient error"), None]
+
+            portfolio = await initialize_with_retry("test_user")
+
+            assert mock_sleep.call_count == 1
+            mock_sleep.assert_called_with(1)  # wait_time = 2 ** (1 - 1) = 1
+            assert portfolio.owner_id == "test_user"
+
+    @pytest.mark.asyncio
+    @patch("scripts.update_prices.asyncio.sleep", new_callable=AsyncMock)
+    @patch("scripts.update_prices.is_transient_supabase_error", return_value=True)
+    async def test_update_prices_fetch_portfolios_uses_async_sleep(self, mock_is_transient, mock_sleep):
+        """Should await asyncio.sleep if fetching portfolios fails."""
+        with patch("scripts.update_prices.get_supabase_client") as mock_get_client, \
+             patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls:
+
+            mock_mdm = mock_mdm_cls.return_value
+            mock_mdm.is_market_open = AsyncMock(return_value=True)
+
+            mock_client = mock_get_client.return_value
+            mock_execute = mock_client.table.return_value.select.return_value.execute
+
+            # First attempt fails, second returns empty data
+            mock_execute.side_effect = [Exception("Transient DB error"), AsyncMock(data=[])]
+
+            await update_prices()
+
+            assert mock_sleep.call_count == 1
+            mock_sleep.assert_called_with(1)  # wait_time = 2 ** (1 - 1) = 1
 
 
 class TestBenchmarkConstants:

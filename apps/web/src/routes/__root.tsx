@@ -71,7 +71,21 @@ function RootComponent() {
     );
 }
 
-function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
+export const navItems = [
+    { to: '/portfolios', label: 'Portfolios' },
+    { to: '/memories', label: 'Memories' },
+    { to: '/autoresearch', label: 'Auto-Research' },
+    { to: '/', label: 'Today', exact: true },
+    { to: '/posts', label: 'Posts' },
+    { to: '/concepts', label: 'Concepts' },
+    { to: '/how-it-works', label: 'How it Works' },
+    { to: '/reasoning', label: 'Reasoning' },
+    { to: '/cause-and-effect', label: 'Cause & Effect' },
+    { to: '/audits', label: 'Audits' },
+    { to: '/market-overview', label: 'Market Overview' },
+];
+
+export function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {
     return (
         <Link
             to={to}
@@ -93,20 +107,6 @@ function NavLink({ to, label, exact }: { to: string; label: string; exact?: bool
 
 function RootDocument({ children }: { children: React.ReactNode }) {
     const { user } = Route.useRouteContext();
-
-    const navItems = [
-        { to: '/portfolios', label: 'Portfolios' },
-        { to: '/memories', label: 'Memories' },
-        { to: '/autoresearch', label: 'Auto-Research' },
-        { to: '/', label: 'Today', exact: true },
-        { to: '/posts', label: 'Posts' },
-        { to: '/concepts', label: 'Concepts' },
-        { to: '/how-it-works', label: 'How it Works' },
-        { to: '/reasoning', label: 'Reasoning' },
-        { to: '/cause-and-effect', label: 'Cause & Effect' },
-        { to: '/audits', label: 'Audits' },
-        { to: '/market-overview', label: 'Market Overview' },
-    ];
 
     return (
         <html lang="en">

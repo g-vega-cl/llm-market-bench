@@ -1,3 +1,7 @@
+## [2026-05-20] docs | Align linter documentation with Biome rules and pre-commit hook
+
+Aligned `wiki/concepts/project-linting.md` and `wiki/entities/biome-linter.md` with the active codebase rules, documenting that `noExplicitAny` is an error in `biome.json` and that any use of `Record<string, any>` or `as any` requires an inline `// biome-ignore` comment to pass the blocking pre-commit checks.
+
 ## [2026-05-20] docs | Standardized Source ID generation format in wiki
 
 Standardized the Source ID generation description between `wiki/concepts/ingestion.md` and `wiki/entities/pipeline.md` to reference the actual Python implementation in `newsletter.py` (`news_{sender_clean}_{MD5[:8]}`).

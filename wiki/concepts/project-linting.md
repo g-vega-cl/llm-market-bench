@@ -81,6 +81,9 @@ pnpm biome check --write --unsafe
 ## TypeScript type conventions
 
 - **`Record<string, any>`** — preferred for Supabase JSONB/metadata columns. Avoids TanStack Start `createServerFn` deep inference issues AND allows component-level access without `as any` casts.
+  > [!IMPORTANT]
+  > Since `noExplicitAny` is configured as a blocking `error` in `biome.json` with no global/wildcard overrides, using `Record<string, any>` requires an inline suppression comment:
+  > `// biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization`
 - **`Record<string, unknown>`** — acceptable for intermediate types where data is never deeply accessed in JSX, but must be converted to `Record<string, any>` if it flows through a `createServerFn` handler.
 - **`unknown`** — for truly dynamic API response types where the shape is unknowable.
 
@@ -88,9 +91,9 @@ pnpm biome check --write --unsafe
 
 `createServerFn().handler()` applies a serialization type transform that rewrites index signatures deep in the return type, expanding `Record<string, unknown>` → `{ [x: string]: {} }`. This is fundamentally incompatible with database types (like `Memory`, `LLMReasoningLog`, `Decision`) that use `Record<string, unknown>` for JSONB/metadata fields.
 
-**Fix**: Change database JSONB/metadata fields from `Record<string, unknown>` to `Record<string, any>` in `packages/database/index.ts`. This is semantically equivalent for JSON-serializable Supabase data and fixes ALL route files at once.
+**Fix**: Change database JSONB/metadata fields from `Record<string, unknown>` to `Record<string, any>` in `packages/database/index.ts`. This is semantically equivalent for JSON-serializable Supabase data and fixes ALL route files at once. (Requires inline `// biome-ignore lint/suspicious/noExplicitAny` suppressions on the type declarations).
 
-**Workaround** (if type change is undesirable): Use `(createServerFn({ method: 'GET' }) as any)` on the `createServerFn` call, which bypasses the deep type inference entirely. Must be applied to each affected route file.
+**Workaround** (if type change is undesirable): Use `(createServerFn({ method: 'GET' }) as any)` on the `createServerFn` call, which bypasses the deep type inference entirely. Must be applied to each affected route file, accompanied by a `// biome-ignore lint/suspicious/noExplicitAny` inline comment to pass pre-commit checks.
 
 ## See Also
 

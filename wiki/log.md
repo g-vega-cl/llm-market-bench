@@ -1,3 +1,11 @@
+## [2026-05-20] refactor | Implement Standardized yfinance Logging (Observability Standard Alignment)
+
+Standardized Yahoo Finance (`yfinance.py`) logger implementation, fallback handling, and error tracebacks to conform with the project's **Observability Standards** (`[[concepts/observability-standard]]`):
+- Created module-level logger: `engine.execution.providers.yfinance` to support module-based log partitioning.
+- Added explicit, granular warning logs for price fallback logic (resolving missing `currentPrice` using `regularMarketPrice` or `previousClose`) and market cap fallback logic (resolving missing `marketCap` using `totalAssets` or `netAssets`).
+- Hardened exception handling blocks across `get_ticker_data` and `get_history` to leverage `logger.exception()` for full traceback preservation.
+- Added comprehensive TDD integration tests in `apps/engine/tests/test_yfinance_provider.py` to assert correct log names, fallback triggers, and traceback capture under failure states.
+
 ## [2026-05-20] fix | Prevent D3 Comparison Chart Spurious Vertical Line Anomalies
 
 Implemented defensive input cleaning, sorting, and boundary checks in `PortfolioComparisonChart.tsx` to handle malformed data points safely:
@@ -268,3 +276,11 @@ Extended the System-Heavy Prompt Architecture to all 8 agent prompt pairs. Previ
 ## [2026-05-20] refactor | System-Heavy Prompt Architecture — Full Agent Rollout
 
 Extended the System-Heavy Prompt Architecture to all 8 agent prompt pairs in `apps/engine/core/llm/prompts.py`. Previously only `ANALYSIS_USER_PROMPT_TEMPLATE` was a pure data skeleton; the other 7 agents (`CONTRARIAN`, `VERIFIER`, `SYNTHESIS`, `MANAGER`, `RELATIONSHIP`, `CAUSE_AND_EFFECT`, `DE_ADVERTISEMENT`) still embedded personas, SOPs, and task instructions in their user prompts. Moved all static instruction content to their respective system prompts. User prompts now contain only section labels, `{placeholders}`, and a single closing directive. Autoresearch ratchet and DB baseline unaffected. TDD: 30 red-phase tests confirmed failing, all 40 tests green after implementation. Updated `wiki/concepts/system-heavy-prompt.md` to reflect project-wide scope and document the prompt caching motivation (Anthropic/DeepSeek cache from the top down, so static system prompts are cached after the first request).
+
+## [2026-05-20] refactor | Standardized yfinance Logging with Fallback Warnings and Traceback Hardening
+
+Refactored `apps/engine/execution/providers/yfinance.py` to align with the [[concepts/observability-standard]]:
+- Replaced `core.config.logger` with a dedicated module-level logger (`engine.execution.providers.yfinance`).
+- Added explicit warning logs for price fallback chains (`currentPrice` → `regularMarketPrice` → `previousClose`) and market cap fallback chains (`marketCap` → `totalAssets` → `netAssets`).
+- Hardened exception handling in `get_ticker_data` and `get_history` to use `logger.exception()` for full traceback capture.
+- Added comprehensive TDD tests in `test_yfinance_provider.py` verifying logger naming, fallback warning triggers, and traceback preservation under failure states.

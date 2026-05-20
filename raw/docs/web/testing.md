@@ -38,6 +38,9 @@ pnpm test
 
 # Run tests in watch mode
 pnpm test:watch
+
+# Run tests across shared packages via the web setup
+pnpm vitest run --dir ../../packages/ui-design-system
 ```
 
 ## 5. Writing Tests

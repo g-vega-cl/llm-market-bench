@@ -47,7 +47,7 @@ class TestAnalyzeChunksStreaming:
 
         # Track call order
         call_times = []
-        
+
         async def slow_analyze(*args, **kwargs):
             """Simulate a slow model that takes time to complete."""
             call_times.append(("start", asyncio.current_task().get_name()))
@@ -55,21 +55,19 @@ class TestAnalyzeChunksStreaming:
             call_times.append(("end", asyncio.current_task().get_name()))
             return DecisionsResponse(
                 decisions=[
-                    DecisionObject(
-                        signal="BUY", confidence=80, reasoning="Test",
-                        ticker="AAPL", source_id="src_1"
-                    )
+                    DecisionObject(signal="BUY", confidence=80, reasoning="Test", ticker="AAPL", source_id="src_1")
                 ],
-                macro_events=[]
+                macro_events=[],
             )
 
         mock_llm_analyze.side_effect = slow_analyze
 
         chunks = [{"source_id": "src_1", "content": "Test content"}]
 
-        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-             patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
-            
+        with (
+            patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+            patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+        ):
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
             mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -77,7 +75,7 @@ class TestAnalyzeChunksStreaming:
             mock_portfolio.save_metrics = AsyncMock(return_value=None)
             mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
             mock_portfolio_class.return_value = mock_portfolio
-            
+
             mock_market_data = MagicMock()
             mock_market_data.get_quote = AsyncMock(return_value=None)
             mock_market_data.get_quotes = AsyncMock(return_value={})
@@ -86,7 +84,7 @@ class TestAnalyzeChunksStreaming:
 
             # Collect results as they stream in
             results = []
-            async for (model_decisions, _model_events, config) in analyze_chunks_streaming(chunks):
+            async for model_decisions, _model_events, config in analyze_chunks_streaming(chunks):
                 results.append((model_decisions, config))
                 # If we got at least one result, we can already start execution
 
@@ -102,33 +100,31 @@ class TestAnalyzeChunksStreaming:
         from analysis.analyze import analyze_chunks_streaming
 
         call_count = 0
-        
+
         async def mixed_analyze(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             model_name = kwargs.get("model_name", "unknown")
-            
+
             if "fail" in model_name.lower():
                 raise Exception(f"Model {model_name} failed")
-            
+
             await asyncio.sleep(0.05)
             return DecisionsResponse(
                 decisions=[
-                    DecisionObject(
-                        signal="BUY", confidence=80, reasoning="Test",
-                        ticker="AAPL", source_id="src_1"
-                    )
+                    DecisionObject(signal="BUY", confidence=80, reasoning="Test", ticker="AAPL", source_id="src_1")
                 ],
-                macro_events=[]
+                macro_events=[],
             )
 
         mock_llm_analyze.side_effect = mixed_analyze
 
         chunks = [{"source_id": "src_1", "content": "Test content"}]
 
-        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-             patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
-            
+        with (
+            patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+            patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+        ):
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
             mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -136,7 +132,7 @@ class TestAnalyzeChunksStreaming:
             mock_portfolio.save_metrics = AsyncMock(return_value=None)
             mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
             mock_portfolio_class.return_value = mock_portfolio
-            
+
             mock_market_data = MagicMock()
             mock_market_data.get_quote = AsyncMock(return_value=None)
             mock_market_data.get_quotes = AsyncMock(return_value={})
@@ -144,12 +140,12 @@ class TestAnalyzeChunksStreaming:
             mock_market_data_class.return_value = mock_market_data
 
             results = []
-            async for (model_decisions, model_events, config) in analyze_chunks_streaming(chunks):
+            async for model_decisions, model_events, config in analyze_chunks_streaming(chunks):
                 results.append((model_decisions, model_events, config))
 
             # Should still get results from working models
             assert len(results) >= 3, f"Expected at least 3 successful models, got {len(results)}"
-            
+
             # Total call count should be 4 (all models attempted)
             assert call_count == 4, f"Expected 4 model calls, got {call_count}"
 
@@ -160,7 +156,7 @@ class TestEarlyContrarianStart:
     @pytest.mark.asyncio
     async def test_contrarian_starts_with_partial_decisions(self):
         """Contrarian can start analysis with partial decisions from first model.
-        
+
         This test verifies that:
         1. run_contrarian_analysis accepts dependencies via DI
         2. It works with partial decisions (not all models needed)
@@ -187,15 +183,19 @@ class TestEarlyContrarianStart:
         mock_retrieve_context = MagicMock(return_value=[])
 
         from analysis.contrarian import run_contrarian_analysis
-        
+
         result_decisions, result_events = await run_contrarian_analysis(
             [{"source_id": "src_1", "content": "test"}],
-            [DecisionObject(signal="BUY", confidence=80, reasoning="First model done", ticker="AAPL", source_id="src_1")],
+            [
+                DecisionObject(
+                    signal="BUY", confidence=80, reasoning="First model done", ticker="AAPL", source_id="src_1"
+                )
+            ],
             context="test context",
             portfolio=mock_portfolio,
             market_data=mock_market_data,
             llm_client=mock_gemini_client,
-            retrieve_context_fn=mock_retrieve_context
+            retrieve_context_fn=mock_retrieve_context,
         )
 
         assert isinstance(result_decisions, list)
@@ -212,37 +212,33 @@ class TestDecisionCallback:
     async def test_callback_invoked_for_each_model(self):
         """Test that callback is invoked as each model completes."""
         from analysis.analyze import analyze_chunks_streaming
-        
+
         callback_invocations = []
-        
+
         async def decision_callback(decision, config):
             callback_invocations.append((decision, config))
-        
+
         mock_decisions = [
-            DecisionObject(
-                signal="BUY", confidence=80, reasoning="Test",
-                ticker="AAPL", source_id="src_1"
-            )
+            DecisionObject(signal="BUY", confidence=80, reasoning="Test", ticker="AAPL", source_id="src_1")
         ]
 
         async def mock_analyze(*args, **kwargs):
             await asyncio.sleep(0.05)
-            return DecisionsResponse(
-                decisions=mock_decisions,
-                macro_events=[]
-            )
+            return DecisionsResponse(decisions=mock_decisions, macro_events=[])
 
-        with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm, \
-             patch("analysis.analyze.retrieve_top_memories") as mock_context:
-            
+        with (
+            patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm,
+            patch("analysis.analyze.retrieve_top_memories") as mock_context,
+        ):
             mock_llm.side_effect = mock_analyze
             mock_context.return_value = "[MARKET EVENT] context"
-            
+
             chunks = [{"source_id": "src_1", "content": "Test"}]
-            
-            with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-                 patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
-                
+
+            with (
+                patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+                patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            ):
                 mock_portfolio = MagicMock()
                 mock_portfolio.positions = {}
                 mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -250,7 +246,7 @@ class TestDecisionCallback:
                 mock_portfolio.save_metrics = AsyncMock(return_value=None)
                 mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
                 mock_portfolio_class.return_value = mock_portfolio
-                
+
                 mock_market_data = MagicMock()
                 mock_market_data.get_quote = AsyncMock(return_value=None)
                 mock_market_data.get_quotes = AsyncMock(return_value={})
@@ -258,7 +254,7 @@ class TestDecisionCallback:
                 mock_market_data_class.return_value = mock_market_data
 
                 results = []
-                async for (model_decisions, _model_events, config) in analyze_chunks_streaming(chunks):
+                async for model_decisions, _model_events, config in analyze_chunks_streaming(chunks):
                     results.append((model_decisions, config))
                     # Simulate callback for each model's decisions
                     for d in model_decisions:
@@ -274,31 +270,31 @@ class TestParallelStages:
     @pytest.mark.asyncio
     async def test_background_tasks_can_run_in_parallel(self):
         """Test that background tasks can run in parallel with main execution.
-        
+
         This is a basic test that asyncio.create_task can run tasks in parallel.
         """
         started = []
         completed = []
-        
+
         async def slow_task(name, delay):
             started.append(name)
             await asyncio.sleep(delay)
             completed.append(name)
-        
+
         # Start multiple tasks
         task1 = asyncio.create_task(slow_task("task1", 0.2))
         task2 = asyncio.create_task(slow_task("task2", 0.1))
-        
+
         # Both should start
         await asyncio.sleep(0.05)
         assert "task1" in started
         assert "task2" in started
-        
+
         # Task2 should complete first
         await asyncio.sleep(0.2)
         assert "task2" in completed
         assert "task1" in completed
-        
+
         await task1
         await task2
 
@@ -310,35 +306,35 @@ class TestLoggingTiming:
     async def test_model_completion_is_logged(self, caplog):
         """Test that model completion is logged with timing information."""
         import logging
+
         caplog.set_level(logging.INFO)
-        
+
         from analysis.analyze import analyze_chunks_streaming
-        
+
         async def mock_analyze(*args, **kwargs):
             kwargs.get("model_name", "unknown")
             await asyncio.sleep(0.05)
             return DecisionsResponse(
                 decisions=[
-                    DecisionObject(
-                        signal="BUY", confidence=80, reasoning="Test",
-                        ticker="AAPL", source_id="src_1"
-                    )
+                    DecisionObject(signal="BUY", confidence=80, reasoning="Test", ticker="AAPL", source_id="src_1")
                 ],
-                macro_events=[]
+                macro_events=[],
             )
 
-        with patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm, \
-             patch("analysis.analyze.retrieve_top_memories") as mock_context, \
-             patch("analysis.analyze.logger") as mock_logger:
-            
+        with (
+            patch("core.llm.analyze_with_provider", new_callable=AsyncMock) as mock_llm,
+            patch("analysis.analyze.retrieve_top_memories") as mock_context,
+            patch("analysis.analyze.logger") as mock_logger,
+        ):
             mock_llm.side_effect = mock_analyze
             mock_context.return_value = "[MARKET EVENT] context"
-            
+
             chunks = [{"source_id": "src_1", "content": "Test"}]
-            
-            with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-                 patch("analysis.analyze.MarketDataManager") as mock_market_data_class:
-                
+
+            with (
+                patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+                patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            ):
                 mock_portfolio = MagicMock()
                 mock_portfolio.positions = {}
                 mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -346,7 +342,7 @@ class TestLoggingTiming:
                 mock_portfolio.save_metrics = AsyncMock(return_value=None)
                 mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
                 mock_portfolio_class.return_value = mock_portfolio
-                
+
                 mock_market_data = MagicMock()
                 mock_market_data.get_quote = AsyncMock(return_value=None)
                 mock_market_data.get_quotes = AsyncMock(return_value={})
@@ -368,7 +364,7 @@ class TestClientCleanup:
     async def test_close_client_handles_none(self):
         """Test that close_client handles None client without error."""
         from core.llm.clients import close_client
-        
+
         # Should not raise any exceptions
         await close_client(None, "gemini")
         await close_client(None, "openai")
@@ -380,11 +376,11 @@ class TestClientCleanup:
         """Test that close_client handles client with None underlying without error."""
 
         from core.llm.clients import close_client
-        
+
         # Create a mock client with client.client = None
         mock_client = MagicMock()
         mock_client.client = None
-        
+
         # Should not raise any exceptions
         await close_client(mock_client, "gemini")
 
@@ -392,19 +388,20 @@ class TestClientCleanup:
     async def test_close_client_does_not_log_on_success(self, caplog):
         """Test that close_client does not log errors on successful close."""
         import logging
+
         caplog.set_level(logging.DEBUG)
-        
+
         from core.llm.clients import close_client
-        
+
         # Create a mock client that can be closed successfully
         mock_underlying = MagicMock()
         mock_underlying.close = AsyncMock()
-        
+
         mock_client = MagicMock()
         mock_client.client = mock_underlying
-        
+
         await close_client(mock_client, "test_provider")
-        
+
         # Should not have logged any errors
         error_calls = [c for c in caplog.records if c.levelno >= logging.ERROR]
         assert len(error_calls) == 0, f"Unexpected error logs: {error_calls}"
@@ -413,56 +410,62 @@ class TestClientCleanup:
     async def test_close_client_logs_when_underlying_is_none(self, caplog):
         """Test that close_client logs debug message when underlying client is None."""
         import logging
+
         caplog.set_level(logging.DEBUG)
-        
+
         from core.llm.clients import close_client
-        
+
         mock_client = MagicMock()
         mock_client.client = None
-        
+
         await close_client(mock_client, "gemini")
-        
+
         # Should log debug message about None underlying
         debug_calls = [(c.levelno, c.message) for c in caplog.records if c.levelno == logging.DEBUG]
-        assert any("underlying client is None" in msg for _, msg in debug_calls), \
+        assert any("underlying client is None" in msg for _, msg in debug_calls), (
             f"Expected debug log about None underlying, got: {debug_calls}"
+        )
 
     @pytest.mark.asyncio
     async def test_close_client_logs_when_no_close_method(self, caplog):
         """Test that close_client logs debug message when no close method is found."""
         import logging
+
         caplog.set_level(logging.DEBUG)
-        
+
         from core.llm.clients import close_client
-        
+
         mock_underlying = MagicMock(spec=["__class__"])  # No close method
         mock_client = MagicMock()
         mock_client.client = mock_underlying
-        
+
         await close_client(mock_client, "gemini")
-        
+
         # Should log debug message about no close method
         debug_calls = [(c.levelno, c.message) for c in caplog.records if c.levelno == logging.DEBUG]
-        assert any("No close method found" in msg for _, msg in debug_calls), \
+        assert any("No close method found" in msg for _, msg in debug_calls), (
             f"Expected debug log about no close method, got: {debug_calls}"
+        )
 
     @pytest.mark.asyncio
     async def test_close_client_logs_warning_on_exception(self, caplog):
         """Test that close_client logs warning with repr when exception occurs."""
         import logging
+
         caplog.set_level(logging.WARNING)
-        
+
         from core.llm.clients import close_client
-        
+
         mock_underlying = MagicMock()
         mock_underlying.close = AsyncMock(side_effect=RuntimeError("Close failed"))
         mock_client = MagicMock()
         mock_client.client = mock_underlying
-        
+
         await close_client(mock_client, "gemini")
-        
+
         # Should log warning with exception details
         warning_calls = [(c.levelno, c.message) for c in caplog.records if c.levelno == logging.WARNING]
         assert len(warning_calls) > 0, "Expected warning log on exception"
-        assert any("RuntimeError" in msg for _, msg in warning_calls), \
+        assert any("RuntimeError" in msg for _, msg in warning_calls), (
             f"Expected warning to contain RuntimeError, got: {warning_calls}"
+        )

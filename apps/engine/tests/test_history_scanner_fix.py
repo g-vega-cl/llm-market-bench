@@ -14,11 +14,11 @@ def test_history_scanner_with_objects():
     mock_tool_call = MagicMock()
     mock_tool_call.function.name = "get_stock_quote"
     mock_tool_call.function.arguments = json.dumps({"ticker": "AAPL"})
-    
+
     # Message with tool call as object
     message_obj = MagicMock(spec=["tool_calls"])
     message_obj.tool_calls = [mock_tool_call]
-    
+
     # Message with tool call as dict
     message_dict = {
         "role": "assistant",
@@ -27,23 +27,24 @@ def test_history_scanner_with_objects():
                 "id": "1",
                 "function": {
                     "name": "calculate_sell_quantity",
-                    "arguments": json.dumps({"ticker": "AAPL", "percentage": 50})
-                }
+                    "arguments": json.dumps({"ticker": "AAPL", "percentage": 50}),
+                },
             }
-        ]
+        ],
     }
-    
+
     history = [message_obj, message_dict]
-    
+
     print(f"DEBUG: message_obj tool_calls: {message_obj.tool_calls}")
     print(f"DEBUG: first tool call name: {message_obj.tool_calls[0].function.name}")
-    
+
     results = _scan_history_for_tools(history, "AAPL")
-    
+
     print(f"Results: {results}")
     assert results["sell_tool_found"] is True
     assert results["buy_tool_found"] is False
     print("Test Passed!")
+
 
 if __name__ == "__main__":
     try:

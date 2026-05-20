@@ -93,7 +93,7 @@ class TestInsertAudit:
             "description": "Decisions with invalid trade_id",
             "severity": "HIGH",
             "source_table": "decisions",
-            "analysis_method": "SQL_CHECK"
+            "analysis_method": "SQL_CHECK",
         }
         mock_metadata = {"id": "abc-123"}
 
@@ -102,7 +102,7 @@ class TestInsertAudit:
             audit_run_id="audit-20260409-120000",
             check=mock_check,
             source_id="abc-123",
-            metadata=mock_metadata
+            metadata=mock_metadata,
         )
 
         mock_supabase.table.assert_called_with("system_audits")
@@ -134,7 +134,7 @@ class TestInsertLogAudit:
             supabase=mock_supabase,
             audit_run_id="audit-20260409-120000",
             description="Analyzed 6 log files",
-            suggestions="[]"
+            suggestions="[]",
         )
 
         mock_supabase.table.assert_called_with("system_audits")
@@ -161,5 +161,6 @@ class TestConfigure:
         configure("https://example.supabase.co", "test-key-123")
 
         from core.audit import runner
+
         assert runner.SUPABASE_URL == "https://example.supabase.co"
         assert runner.SUPABASE_SERVICE_ROLE_KEY == "test-key-123"

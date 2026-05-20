@@ -24,10 +24,12 @@ async def test_fmp_provider_get_history_date_parameters():
 
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = {"historical": [
-        {"date": "2026-04-10", "close": 150.0, "volume": 1000},
-        {"date": "2026-04-11", "close": 155.0, "volume": 1100}
-    ]}
+    mock_resp.json.return_value = {
+        "historical": [
+            {"date": "2026-04-10", "close": 150.0, "volume": 1000},
+            {"date": "2026-04-11", "close": 155.0, "volume": 1100},
+        ]
+    }
     mock_resp.raise_for_status = MagicMock()
 
     # Mock the AsyncClient.get method
@@ -50,6 +52,7 @@ async def test_fmp_provider_get_history_date_parameters():
         assert params["apikey"] == "test_api_key"
         assert "timeseries" not in params
 
+
 @pytest.mark.asyncio
 async def test_fmp_provider_get_history_empty_response():
     """Test FMPProvider.get_history with empty response."""
@@ -65,6 +68,7 @@ async def test_fmp_provider_get_history_empty_response():
         mock_get.return_value = mock_resp
         history = await provider.get_history("AAPL", days=30)
         assert history == []
+
 
 @pytest.mark.asyncio
 async def test_fmp_provider_get_history_http_error():

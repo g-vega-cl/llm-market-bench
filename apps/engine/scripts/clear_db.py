@@ -10,15 +10,16 @@ from core.db import get_supabase_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("clear_db")
 
+
 async def clear_database():
     """Clear all tables except price_history and market_data_cache."""
     supabase = get_supabase_client()
-    
+
     # Order matters due to foreign key constraints:
     # 1. decisions depends on trades
     # 2. trades depends on portfolios
     # 3. portfolio_positions and portfolio_performance depend on portfolios
-    
+
     tables_to_clear = [
         "decisions",
         "trades",
@@ -27,11 +28,11 @@ async def clear_database():
         "portfolios",
         "newsletter_snapshots",
         "memories",
-        "concept_metrics"
+        "concept_metrics",
     ]
-    
+
     logger.info("Starting database clear...")
-    
+
     for table in tables_to_clear:
         try:
             logger.info(f"Clearing table: {table}...")
@@ -41,11 +42,12 @@ async def clear_database():
             logger.info(f"Successfully cleared {table}")
         except Exception as e:
             logger.error(f"Failed to clear table {table}: {e}")
-            # We don't raise here to allow other tables to be cleared, 
+            # We don't raise here to allow other tables to be cleared,
             # but in a script like this, failure usually means constraint issues.
 
     logger.info("Database clear operation finished.")
     logger.info("Note: price_history and market_data_cache were NOT cleared.")
+
 
 if __name__ == "__main__":
     asyncio.run(clear_database())

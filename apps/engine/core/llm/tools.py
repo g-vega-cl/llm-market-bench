@@ -5,7 +5,6 @@ function-tool schema). Handlers translate to provider-specific formats via
 ``to_anthropic`` / ``to_gemini`` at the boundary.
 """
 
-
 from core.db import get_supabase_client
 from execution.market_data import MarketDataManager
 from memory.embeddings import get_embedding
@@ -14,23 +13,19 @@ from memory.embeddings import get_embedding
 # FORMAT ADAPTERS
 # =============================================================================
 
+
 def _validate_canonical_tool(tool_def: dict) -> dict:
     """Validates a canonical tool definition and extracts its ``function`` dict."""
     fn = tool_def.get("function")
     if fn is None:
         raise KeyError(
-            f"Tool definition missing 'function' key "
-            f"(expected canonical OpenAI format): {list(tool_def.keys())!r}"
+            f"Tool definition missing 'function' key (expected canonical OpenAI format): {list(tool_def.keys())!r}"
         )
     if not isinstance(fn, dict):
-        raise TypeError(
-            f"'function' must be a dict, got {type(fn).__name__}: {fn!r}"
-        )
+        raise TypeError(f"'function' must be a dict, got {type(fn).__name__}: {fn!r}")
     missing = [k for k in ("name", "description", "parameters") if k not in fn]
     if missing:
-        raise KeyError(
-            f"'function' dict missing required keys {missing}: {list(fn.keys())!r}"
-        )
+        raise KeyError(f"'function' dict missing required keys {missing}: {list(fn.keys())!r}")
     return fn
 
 
@@ -91,10 +86,7 @@ STOCK_TOOL = {
     "type": "function",
     "function": {
         "name": "get_stock_quote",
-        "description": (
-            "Get real-time price and market cap for a stock ticker to verify "
-            "its existence and liquidity."
-        ),
+        "description": ("Get real-time price and market cap for a stock ticker to verify its existence and liquidity."),
         "parameters": {
             "type": "object",
             "properties": {
@@ -260,7 +252,10 @@ RUN_STOCK_SCREENER_TOOL = {
         "parameters": {
             "type": "object",
             "properties": {
-                "market_cap_more_than": {"type": "number", "description": "Minimum market cap in USD (e.g., 1000000000 for 1B)."},
+                "market_cap_more_than": {
+                    "type": "number",
+                    "description": "Minimum market cap in USD (e.g., 1000000000 for 1B).",
+                },
                 "market_cap_lower_than": {"type": "number", "description": "Maximum market cap in USD."},
                 "price_more_than": {"type": "number", "description": "Minimum stock price."},
                 "price_lower_than": {"type": "number", "description": "Maximum stock price."},
@@ -270,9 +265,18 @@ RUN_STOCK_SCREENER_TOOL = {
                 "volume_lower_than": {"type": "number", "description": "Maximum average daily volume."},
                 "dividend_more_than": {"type": "number", "description": "Minimum dividend yield (e.g., 0.02 for 2%)."},
                 "dividend_lower_than": {"type": "number", "description": "Maximum dividend yield."},
-                "sector": {"type": "string", "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services')."},
-                "industry": {"type": "string", "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors')."},
-                "exchange": {"type": "string", "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage."},
+                "sector": {
+                    "type": "string",
+                    "description": "Filter by sector (e.g., 'Technology', 'Healthcare', 'Energy', 'Financial Services').",
+                },
+                "industry": {
+                    "type": "string",
+                    "description": "Filter by specific industry (e.g., 'Software—Infrastructure', 'Semiconductors').",
+                },
+                "exchange": {
+                    "type": "string",
+                    "description": "Filter by exchange (default: 'NYSE,NASDAQ'). Use 'NYSE,NASDAQ,AMEX' for broad US coverage.",
+                },
                 "limit": {"type": "integer", "description": "Maximum number of results (default 10, max 15)."},
             },
         },
@@ -284,8 +288,7 @@ SEARCH_RELATED_TICKERS_TOOL = {
     "function": {
         "name": "search_related_tickers",
         "description": (
-            "Given a market theme or event, identify relevant stock tickers or ETFs "
-            "that would be most impacted."
+            "Given a market theme or event, identify relevant stock tickers or ETFs that would be most impacted."
         ),
         "parameters": {
             "type": "object",
@@ -335,6 +338,7 @@ FIND_UNCORRELATED_ASSETS_TOOL = {
 # TOOL EXECUTION
 # =============================================================================
 
+
 async def execute_stock_tool(ticker: str) -> str:
     """Executes the stock tool and returns a stringified result for the LLM.
 
@@ -382,11 +386,7 @@ async def execute_position_pnl_tool(ticker: str, owner_id: str) -> str:
     client = get_supabase_client()
     try:
         ticker = ticker.upper()
-        res = client.table("position_pnl") \
-            .select("*") \
-            .eq("ticker", ticker) \
-            .eq("owner_id", owner_id) \
-            .execute()
+        res = client.table("position_pnl").select("*").eq("ticker", ticker).eq("owner_id", owner_id).execute()
 
         if not res.data:
             return f"You do not currently own a position in {ticker}."
@@ -416,6 +416,7 @@ async def execute_volatility_metrics_tool(ticker: str, days: int = 14) -> str:
         prices = [p["price"] for p in data]
 
         import statistics
+
         avg = statistics.mean(prices)
         stdev = statistics.stdev(prices)
         p_min = min(prices)
@@ -473,7 +474,7 @@ async def execute_stock_screener_tool(
     industry: str | None = None,
     exchange: str | None = "NYSE,NASDAQ",
     limit: int = 10,
-    is_actively_trading: bool = True
+    is_actively_trading: bool = True,
 ) -> str:
     """Executes the stock screener tool and returns a formatted list of candidates with volume context."""
     manager = MarketDataManager()
@@ -493,7 +494,7 @@ async def execute_stock_screener_tool(
             industry=industry,
             exchange=exchange,
             limit=limit,
-            is_actively_trading=is_actively_trading
+            is_actively_trading=is_actively_trading,
         )
 
         if not results:
@@ -501,7 +502,7 @@ async def execute_stock_screener_tool(
 
         enriched_results = []
         for item in results:
-            ticker = item.get('symbol')
+            ticker = item.get("symbol")
             if ticker:
                 history = await manager.get_history(ticker, days=20)
                 vol_context = compute_volume_context(history) if history else "no volume data"
@@ -533,7 +534,7 @@ async def execute_sector_alternatives_tool(ticker: str) -> str:
         embedding = get_embedding(query_text)
 
         if not embedding:
-             return f"Could not generate embedding for {ticker} to find alternatives."
+            return f"Could not generate embedding for {ticker} to find alternatives."
 
         res = client.rpc(
             "match_decisions",
@@ -541,7 +542,7 @@ async def execute_sector_alternatives_tool(ticker: str) -> str:
                 "query_embedding": embedding,
                 "match_threshold": 0.5,
                 "match_count": 10,
-            }
+            },
         ).execute()
 
         related_tickers = set()
@@ -552,14 +553,10 @@ async def execute_sector_alternatives_tool(ticker: str) -> str:
                     related_tickers.add(t)
 
         if not related_tickers:
-            mem_res = client.table("memories") \
-                .select("content") \
-                .ilike("content", f"%{ticker}%") \
-                .limit(5) \
-                .execute()
+            mem_res = client.table("memories").select("content").ilike("content", f"%{ticker}%").limit(5).execute()
 
             if mem_res.data:
-                 return f"No direct competitors found in decision history, but {ticker} appears in recent market events. Consider searching for standard competitors manually."
+                return f"No direct competitors found in decision history, but {ticker} appears in recent market events. Consider searching for standard competitors manually."
 
             return f"No alternative plays found for {ticker}."
 
@@ -581,7 +578,7 @@ async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int)
     try:
         quote = await manager.get_quote(ticker)
         if not quote or not quote.exists:
-             return f"Error: Ticker '{ticker}' not found."
+            return f"Error: Ticker '{ticker}' not found."
 
         price = quote.price
 
@@ -606,13 +603,13 @@ async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int)
             )
 
         if final_target_usd > metrics.buying_power:
-             final_target_usd = metrics.buying_power
-             compliance_note += f"\nWARNING: Insufficient Buying Power to meet the preferred allocation. Capped at ${metrics.buying_power:,.2f}."
+            final_target_usd = metrics.buying_power
+            compliance_note += f"\nWARNING: Insufficient Buying Power to meet the preferred allocation. Capped at ${metrics.buying_power:,.2f}."
 
         quantity = int(final_target_usd / price)
 
         if quantity == 0 and final_target_usd > 0:
-             quantity = 1
+            quantity = 1
 
         actual_cost = quantity * price
 
@@ -635,6 +632,7 @@ async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int)
 async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int) -> str:
     """Calculates sell quantity with 10% equity 'dust' check."""
     from execution.portfolio import Portfolio
+
     client = get_supabase_client()
 
     ticker = ticker.upper()
@@ -644,18 +642,14 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
     MarketDataManager()
 
     try:
-        res = client.table("position_pnl") \
-            .select("*") \
-            .eq("ticker", ticker) \
-            .eq("owner_id", owner_id) \
-            .execute()
+        res = client.table("position_pnl").select("*").eq("ticker", ticker).eq("owner_id", owner_id).execute()
 
         if not res.data:
             return f"Error: You do not currently own a position in {ticker}."
 
         pos_data = res.data[0]
-        total_shares = int(pos_data['quantity'])
-        price = float(pos_data['current_price'])
+        total_shares = int(pos_data["quantity"])
+        price = float(pos_data["current_price"])
 
         current_prices = {t: p.average_cost_basis for t, p in portfolio.positions.items()}
         current_prices[ticker] = price
@@ -668,16 +662,16 @@ async def execute_sell_quantity_tool(ticker: str, owner_id: str, percentage: int
 
         compliance_note = ""
         if remaining_shares > 0 and remaining_value < equity_floor_usd:
-             sell_shares = total_shares
-             remaining_shares = 0
-             compliance_note = (
-                 f"\nWARNING: Selling {percentage}% would leave a position worth ${remaining_value:,.2f}, "
-                 f"which is below your 10% Equity Floor (${equity_floor_usd:,.2f}). "
-                 f"To prevent 'dust' positions, this tool has mandated a 100% (FULL) sell."
-             )
+            sell_shares = total_shares
+            remaining_shares = 0
+            compliance_note = (
+                f"\nWARNING: Selling {percentage}% would leave a position worth ${remaining_value:,.2f}, "
+                f"which is below your 10% Equity Floor (${equity_floor_usd:,.2f}). "
+                f"To prevent 'dust' positions, this tool has mandated a 100% (FULL) sell."
+            )
 
         if sell_shares == 0 and percentage > 0:
-             sell_shares = 1
+            sell_shares = 1
 
         sell_shares = min(sell_shares, total_shares)
 
@@ -703,32 +697,21 @@ async def execute_search_related_tickers_tool(theme: str) -> str:
 
     client = get_gemini_client()
     try:
-        messages = PromptFactory.build_ticker_suggestion_messages(
-            provider="gemini",
-            event_summary=theme
-        )
+        messages = PromptFactory.build_ticker_suggestion_messages(provider="gemini", event_summary=theme)
 
-        resp = client.chat.completions.create(
-            model=GEMINI_MODEL,
-            response_model=TickerSuggestion,
-            messages=messages
-        )
+        resp = client.chat.completions.create(model=GEMINI_MODEL, response_model=TickerSuggestion, messages=messages)
         import asyncio
+
         if asyncio.iscoroutine(resp):
             resp = await resp
 
-        return (
-            f"Suggested Tickers for '{theme}': {', '.join(resp.tickers)}\n"
-            f"Reasoning: {resp.reasoning}"
-        )
+        return f"Suggested Tickers for '{theme}': {', '.join(resp.tickers)}\nReasoning: {resp.reasoning}"
     except Exception as e:
         return f"Error suggesting tickers for '{theme}': {str(e)}"
 
 
 async def execute_find_uncorrelated_assets_tool(
-    max_correlation: float = 0.3,
-    min_return: float = 0.0,
-    method: str = "pearson"
+    max_correlation: float = 0.3, min_return: float = 0.0, method: str = "pearson"
 ) -> str:
     """Find asset pairs with low correlation and positive 90-day momentum.
 
@@ -771,11 +754,13 @@ async def execute_find_uncorrelated_assets_tool(
             ret_b = row.get("returns_b_90d") or 0
             if ret_a < min_return or ret_b < min_return:
                 continue
-            filtered.append({
-                **row,
-                "abs_corr": abs(corr),
-                "avg_return": (ret_a + ret_b) / 2,
-            })
+            filtered.append(
+                {
+                    **row,
+                    "abs_corr": abs(corr),
+                    "avg_return": (ret_a + ret_b) / 2,
+                }
+            )
 
         filtered.sort(key=lambda x: x["abs_corr"])
 

@@ -19,7 +19,7 @@ def sample_events():
             reasoning="Fed signaled aggressive stance",
             source_id="source1",
             model_provider="openai",
-            model_name="gpt-4"
+            model_name="gpt-4",
         ),
         MacroEvent(
             event_name="Fed Rate Hike",
@@ -28,7 +28,7 @@ def sample_events():
             reasoning="Inflation remains high, expecting hike",
             source_id="source1",
             model_provider="anthropic",
-            model_name="claude-3"
+            model_name="claude-3",
         ),
         MacroEvent(
             event_name="AI Boom",
@@ -37,7 +37,7 @@ def sample_events():
             reasoning="NVIDIA earnings validate thesis",
             source_id="source2",
             model_provider="openai",
-            model_name="gpt-4"
+            model_name="gpt-4",
         ),
         MacroEvent(
             event_name="Crypto Crash",
@@ -46,101 +46,111 @@ def sample_events():
             reasoning="Regulatory pressure increasing",
             source_id="source3",
             model_provider="gemini",
-            model_name=GEMINI_MODEL
-        )
+            model_name=GEMINI_MODEL,
+        ),
     ]
+
 
 @patch("analysis.consensus.DiscoveryService")
 @patch("analysis.consensus.synthesize_event")
 @patch("analysis.consensus.get_embeddings_batch")
 @patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_reaches_consensus(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
+async def test_process_consensus_reaches_consensus(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events
+):
     # Mock return values
     mock_add_memory.return_value = "new-uuid"
     mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
     mock_synthesize.return_value = {
-        "name": "Synthesized Event", 
+        "name": "Synthesized Event",
         "summary": "Synthesized Summary",
-        "future_date": "June 2026"
+        "future_date": "June 2026",
     }
-    
+
     # Mock embeddings: 0 and 1 are same (Fed), 2 and 3 are different
     mock_get_embeddings.return_value = [
-        [1.0, 0.0, 0.0], # Fed
-        [1.0, 0.0, 0.0], # Fed
-        [0.0, 1.0, 0.0], # AI Boom
-        [0.0, 0.0, 1.0], # Crypto Crash
+        [1.0, 0.0, 0.0],  # Fed
+        [1.0, 0.0, 0.0],  # Fed
+        [0.0, 1.0, 0.0],  # AI Boom
+        [0.0, 0.0, 1.0],  # Crypto Crash
     ]
-    
+
     # Process with threshold of 2
     consensus_events = await process_consensus(sample_events, threshold=2)
-    
+
     # Assertions
     assert len(consensus_events) == 1
     assert consensus_events[0]["event_name"] == "Synthesized Event"
-    assert len(consensus_events[0]["models_involved"]) == 2 # openai_gpt-4 and anthropic_claude-3
-    
+    assert len(consensus_events[0]["models_involved"]) == 2  # openai_gpt-4 and anthropic_claude-3
+
     # Verify add_memory was called with target_date
     mock_add_memory.assert_called_once()
     kwargs = mock_add_memory.call_args.kwargs
     assert kwargs["target_date"] == "June 2026"
 
-@patch("analysis.consensus.DiscoveryService")
-@patch("analysis.consensus.synthesize_event")
-@patch("analysis.consensus.get_embeddings_batch")
-@patch("analysis.consensus.add_memory")
-@pytest.mark.asyncio
-async def test_process_consensus_with_date_note(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
-    mock_add_memory.return_value = "new-uuid"
-    mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
-    mock_synthesize.return_value = {
-        "name": "Tentative Event", 
-        "summary": "Tentative Summary",
-        "future_date": "2026-02-21",
-        "future_date_note": "tentative"
-    }
-    
-    mock_get_embeddings.return_value = [
-        [1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 0.0, 1.0],
-    ]
-    
-    await process_consensus(sample_events, threshold=2)
-    
-    mock_add_memory.assert_called_once()
-    kwargs = mock_add_memory.call_args.kwargs
-    assert kwargs["target_date"] == "2026-02-21"
-    assert kwargs["metadata"]["future_date_note"] == "tentative"
 
 @patch("analysis.consensus.DiscoveryService")
 @patch("analysis.consensus.synthesize_event")
 @patch("analysis.consensus.get_embeddings_batch")
 @patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
-    mock_add_memory.return_value = None # Simulate deduplication (returns None if skip)
+async def test_process_consensus_with_date_note(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events
+):
+    mock_add_memory.return_value = "new-uuid"
     mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
     mock_synthesize.return_value = {
-        "name": "Fed Rate Hike",
-        "summary": "The Fed is likely to hike rates soon due to persistent inflation.",
-        "scenario_analysis": "Outcome A: Fed hikes by 25bps. Trading Plan: Long USD."
+        "name": "Tentative Event",
+        "summary": "Tentative Summary",
+        "future_date": "2026-02-21",
+        "future_date_note": "tentative",
     }
-    
+
     mock_get_embeddings.return_value = [
         [1.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0],
     ]
-    
+
+    await process_consensus(sample_events, threshold=2)
+
+    mock_add_memory.assert_called_once()
+    kwargs = mock_add_memory.call_args.kwargs
+    assert kwargs["target_date"] == "2026-02-21"
+    assert kwargs["metadata"]["future_date_note"] == "tentative"
+
+
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
+@pytest.mark.asyncio
+async def test_process_consensus_deduplication(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events
+):
+    mock_add_memory.return_value = None  # Simulate deduplication (returns None if skip)
+    mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
+    mock_synthesize.return_value = {
+        "name": "Fed Rate Hike",
+        "summary": "The Fed is likely to hike rates soon due to persistent inflation.",
+        "scenario_analysis": "Outcome A: Fed hikes by 25bps. Trading Plan: Long USD.",
+    }
+
+    mock_get_embeddings.return_value = [
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ]
+
     consensus_events = await process_consensus(sample_events, threshold=2)
-    
+
     # Threshold met but deduplicated
     assert len(consensus_events) == 0
     assert mock_add_memory.called
+
 
 @patch("analysis.consensus.DiscoveryService")
 @patch("analysis.consensus.get_embeddings_batch")
@@ -149,7 +159,7 @@ async def test_process_consensus_deduplication(mock_add_memory, mock_get_embeddi
 async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddings, mock_discovery, sample_events):
     mock_add_memory.return_value = "new-id"
     mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
-    
+
     # All different
     mock_get_embeddings.return_value = [
         [1.0, 0.0, 0.0],
@@ -157,24 +167,27 @@ async def test_process_consensus_no_consensus(mock_add_memory, mock_get_embeddin
         [0.0, 0.1, 0.9],
         [0.5, 0.5, 0.0],
     ]
-    
+
     # Process with threshold of 2
     consensus_events = await process_consensus(sample_events, threshold=2)
-    
+
     # Assertions
     assert len(consensus_events) == 0
     assert not mock_add_memory.called
+
 
 @patch("analysis.consensus.DiscoveryService")
 @patch("analysis.consensus.synthesize_event")
 @patch("analysis.consensus.get_embeddings_batch")
 @patch("analysis.consensus.add_memory")
 @pytest.mark.asyncio
-async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events):
+async def test_process_consensus_semantic_grouping(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery, sample_events
+):
     mock_add_memory.return_value = "new-id"
     mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
     mock_synthesize.return_value = {"name": "Semantic Synthesized", "summary": "Semantic Summary"}
-    
+
     # Mock embeddings for semantic similarity
     # Event 0: Fed Rate Hike
     # Event 1: Fed Rate Hike (same)
@@ -187,18 +200,18 @@ async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_emb
             reasoning="Market expecting higher rates",
             source_id="source1",
             model_provider="gemini",
-            model_name=GEMINI_MODEL
+            model_name=GEMINI_MODEL,
         )
     ]
-    
+
     mock_get_embeddings.return_value = [
         [1.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0],
-        [0.95, 0.05, 0.0]
+        [0.95, 0.05, 0.0],
     ]
-    
+
     consensus_events = await process_consensus(events, threshold=3)
 
     assert len(consensus_events) == 1
@@ -208,6 +221,7 @@ async def test_process_consensus_semantic_grouping(mock_add_memory, mock_get_emb
 
 
 # --- Tests for _resolve_impact_tie helper ---
+
 
 def test_resolve_impact_tie_clear_winner():
     """Test that a clear winner is returned when one impact has most votes."""

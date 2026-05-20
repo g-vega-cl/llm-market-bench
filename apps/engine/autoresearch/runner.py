@@ -105,7 +105,9 @@ async def run(dry_run: bool = False):
         if score > baseline_score:
             logger.info("RATCHET: New score %.4f BEATS baseline %.4f. New baseline established.", score, baseline_score)
         else:
-            logger.info("RATCHET: New score %.4f failed to beat baseline %.4f. Reverting to baseline.", score, baseline_score)
+            logger.info(
+                "RATCHET: New score %.4f failed to beat baseline %.4f. Reverting to baseline.", score, baseline_score
+            )
             if not dry_run:
                 reverted = await revert_to_baseline()
                 if reverted:
@@ -130,7 +132,9 @@ async def run(dry_run: bool = False):
 
     logger.info(
         "Auto-research result: type=%s, confidence=%d, description=%s",
-        result.experiment_type, result.confidence, result.change_description,
+        result.experiment_type,
+        result.confidence,
+        result.change_description,
     )
 
     score = metrics["score"]
@@ -163,5 +167,4 @@ async def run(dry_run: bool = False):
 
     logger.info("=== Auto-Research Cycle Complete ===")
     logger.info("Next week's prompt: %s (%s)", tag, result.experiment_type)
-    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | score=%.4f",
-                tag, result.experiment_type, score)
+    logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | score=%.4f", tag, result.experiment_type, score)

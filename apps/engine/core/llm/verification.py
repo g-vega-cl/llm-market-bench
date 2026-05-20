@@ -61,9 +61,7 @@ async def verify_trading_decision(
 
     factory = clients.CLIENT_FACTORIES.get(provider)
     if not factory:
-        logger.error(
-            f"Provider {provider} not found for verification. Falling back to openai."
-        )
+        logger.error(f"Provider {provider} not found for verification. Falling back to openai.")
         provider = "openai"
         model_name = "gpt-4o"
         factory = clients.CLIENT_FACTORIES.get(provider)
@@ -79,9 +77,7 @@ async def verify_trading_decision(
         full_context = aggregated_context
         if targeted_context:
             if full_context:
-                full_context += (
-                    "\n\n=== TARGETED TRADE MEMORY CHECK ===\n" + targeted_context
-                )
+                full_context += "\n\n=== TARGETED TRADE MEMORY CHECK ===\n" + targeted_context
             else:
                 full_context = "=== TRADE MEMORY CHECK ===\n" + targeted_context
 
@@ -146,15 +142,11 @@ async def verify_trading_decision(
         elif provider == "anthropic":
             from core.llm.handlers.anthropic import run_tool_loop
 
-            await run_tool_loop(
-                client.client, model_name, messages, max_tool_steps, verifier_tools
-            )
+            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
         elif provider == "gemini":
             from core.llm.handlers.gemini import run_tool_loop
 
-            await run_tool_loop(
-                client.client, model_name, messages, max_tool_steps, verifier_tools
-            )
+            await run_tool_loop(client.client, model_name, messages, max_tool_steps, verifier_tools)
 
         # DeepSeek-specific: Prepare messages for Instructor extraction
         # DeepSeek with thinking mode may return empty content with reasoning_content.
@@ -200,14 +192,8 @@ async def verify_trading_decision(
                         if isinstance(part, dict) and "text" in part:
                             flat_content += part["text"]
                         elif isinstance(part, dict) and "input" in part:
-                            flat_content += (
-                                f"\n[Tool Call: {part['name']}({part['input']})]"
-                            )
-                        elif (
-                            isinstance(part, dict)
-                            and "content" in part
-                            and "tool_use_id" in part
-                        ):
+                            flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                        elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
                             flat_content += f"\n[Tool Result: {part['content']}]"
                     content = flat_content
                 instructor_messages.append({"role": m["role"], "content": str(content)})
@@ -220,9 +206,7 @@ async def verify_trading_decision(
                     elif getattr(part, "function_call", None):
                         content_text += f"\n[Tool Call: {part.function_call.name}({part.function_call.args})]"
                     elif getattr(part, "function_response", None):
-                        content_text += (
-                            f"\n[Tool Result: {part.function_response.response}]"
-                        )
+                        content_text += f"\n[Tool Result: {part.function_response.response}]"
 
                 role = "model" if m.role == "model" else "user"
                 instructor_messages.append({"role": role, "content": content_text})
@@ -230,9 +214,7 @@ async def verify_trading_decision(
         # Anthropic calls via instructor require max_tokens
         create_args = {
             "model": model_name,
-            "response_model": list[
-                VerificationResult
-            ],  # Use List to handle Gemini multi-block tool calls
+            "response_model": list[VerificationResult],  # Use List to handle Gemini multi-block tool calls
             "messages": copy.deepcopy(instructor_messages),
             "max_retries": 2,
         }
@@ -246,9 +228,7 @@ async def verify_trading_decision(
         for attempt in range(3):
             try:
                 resp_awaitable = client.chat.completions.create(**create_args)
-                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(
-                    resp_awaitable
-                ):
+                if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
                     wrapper = await resp_awaitable
                 else:
                     wrapper = resp_awaitable

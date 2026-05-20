@@ -25,7 +25,7 @@ class TestDecisionObject:
             "is_priced_in_reasoning": "News just broke",
             "profit_potential_reasoning": "First mover advantage",
             "strategy_reasoning": "Bullish on Apple due to new AI chips.",
-            "advance_planning_notes": "None"
+            "advance_planning_notes": "None",
         }
         obj = DecisionObject(**data)
         assert obj.signal == "BUY"
@@ -42,7 +42,7 @@ class TestDecisionObject:
             "source_id": "news_123",
             "is_priced_in": False,
             "is_priced_in_reasoning": "Logic",
-            "profit_potential_reasoning": "Profit"
+            "profit_potential_reasoning": "Profit",
         }
         with pytest.raises(ValidationError):
             DecisionObject(**data)
@@ -57,7 +57,7 @@ class TestDecisionObject:
             "source_id": "news_123",
             "is_priced_in": False,
             "is_priced_in_reasoning": "Logic",
-            "profit_potential_reasoning": "Profit"
+            "profit_potential_reasoning": "Profit",
         }
         with pytest.raises(ValidationError):
             DecisionObject(**data)
@@ -72,7 +72,7 @@ class TestDecisionObject:
             "source_id": "news_123",
             "is_priced_in": False,
             "is_priced_in_reasoning": "Logic",
-            "profit_potential_reasoning": "Profit"
+            "profit_potential_reasoning": "Profit",
         }
         obj = DecisionObject(**data)
         assert obj.ticker == "AAPL"
@@ -88,7 +88,7 @@ class TestAnalysisOrchestration:
         from unittest.mock import MagicMock, patch
 
         from core.models import DecisionsResponse
-        
+
         async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
             # Return a DecisionsResponse object
             decisions = [
@@ -102,8 +102,9 @@ class TestAnalysisOrchestration:
                     is_priced_in_reasoning="Logic",
                     profit_potential_reasoning="Profit",
                     strategy_reasoning="Mock strategy",
-                    advance_planning_notes="Mock notes"
-                ) for chunk in chunks
+                    advance_planning_notes="Mock notes",
+                )
+                for chunk in chunks
             ]
             return DecisionsResponse(decisions=decisions, macro_events=[])
 
@@ -112,14 +113,16 @@ class TestAnalysisOrchestration:
         chunks = [{"source_id": "chunk_1", "content": "Apple is doing great."}]
 
         # Mock Portfolio and MarketDataManager to avoid Supabase dependency
-        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-             patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
-             patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
-
+        with (
+            patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+            patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings,
+        ):
             mock_get_embeddings.return_value = [[0.1] * 768]
-            
+
             # Mock portfolio instance
             from unittest.mock import AsyncMock
+
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
             mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -127,7 +130,7 @@ class TestAnalysisOrchestration:
             mock_portfolio.save_metrics = AsyncMock(return_value=None)
             mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000 cash")
             mock_portfolio_class.return_value = mock_portfolio
-            
+
             # Mock market data manager
             mock_market_data = MagicMock()
             mock_market_data.get_quote = AsyncMock(return_value=None)
@@ -147,7 +150,7 @@ class TestAnalysisOrchestration:
         from unittest.mock import MagicMock, patch
 
         from core.models import DecisionsResponse
-        
+
         async def mock_analyze(provider, model_name, chunks, context=None, portfolio_context=None, **kwargs):
             decisions = [
                 DecisionObject(
@@ -160,8 +163,9 @@ class TestAnalysisOrchestration:
                     is_priced_in_reasoning="Logic",
                     profit_potential_reasoning="Profit",
                     strategy_reasoning="Mock strategy",
-                    advance_planning_notes="Mock notes"
-                ) for chunk in chunks
+                    advance_planning_notes="Mock notes",
+                )
+                for chunk in chunks
             ]
             return DecisionsResponse(decisions=decisions, macro_events=[])
 
@@ -173,13 +177,15 @@ class TestAnalysisOrchestration:
         ]
 
         # Mock Portfolio and MarketDataManager to avoid Supabase dependency
-        with patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-             patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
-             patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings:
-
+        with (
+            patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+            patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings,
+        ):
             mock_get_embeddings.return_value = [[0.1] * 768]
-            
+
             from unittest.mock import AsyncMock
+
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
             mock_portfolio.initialize = AsyncMock(return_value=None)
@@ -187,7 +193,7 @@ class TestAnalysisOrchestration:
             mock_portfolio.save_metrics = AsyncMock(return_value=None)
             mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000 cash")
             mock_portfolio_class.return_value = mock_portfolio
-            
+
             mock_market_data = MagicMock()
             mock_market_data.get_quote = AsyncMock(return_value=None)
             mock_market_data.get_quotes = AsyncMock(return_value={})
@@ -207,26 +213,26 @@ class TestRepairJsonString:
         """Test that double-encoded JSON strings are repaired."""
         double_encoded = '"{\\"decisions\\": [], \\"macro_events\\": []}"'
         result = _repair_json_string(double_encoded)
-        assert result.startswith('{') or result.startswith('[')
+        assert result.startswith("{") or result.startswith("[")
 
     def test_repair_json_string_with_extra_quotes(self):
         """Test that JSON wrapped in extra quotes is repaired."""
         quoted = '"{\\"key\\": \\"value\\"}"'
         result = _repair_json_string(quoted)
-        assert result.startswith('{')
+        assert result.startswith("{")
         assert not result.startswith('""')
 
     def test_repair_json_string_with_leading_text(self):
         """Test that JSON with leading text is trimmed correctly."""
         with_leading = 'Here is the JSON: {"key": "value"}'
         result = _repair_json_string(with_leading)
-        assert result.startswith('{')
+        assert result.startswith("{")
 
     def test_repair_json_string_with_trailing_text(self):
         """Test that JSON with trailing text is trimmed correctly."""
         with_trailing = '{"key": "value"} is the result'
         result = _repair_json_string(with_trailing)
-        assert result.endswith('}')
+        assert result.endswith("}")
 
     def test_repair_json_string_valid_json_unchanged(self):
         """Test that valid JSON is not modified."""
@@ -266,7 +272,7 @@ class TestTryParseDecisionsResponse:
                     "advance_planning_notes": "",
                 }
             ],
-            "macro_events": []
+            "macro_events": [],
         }
         result = _try_parse_decisions_response(data)
         assert result is not None
@@ -277,7 +283,7 @@ class TestTryParseDecisionsResponse:
         """Test parsing when decisions field is a stringified JSON."""
         data = {
             "decisions": '[{"ticker": "TSM", "signal": "HOLD", "confidence": 70, "reasoning": "Test", "source_id": "test_2", "is_priced_in": false, "is_priced_in_reasoning": "", "profit_potential_reasoning": "", "strategy_reasoning": "", "advance_planning_notes": ""}]',
-            "macro_events": []
+            "macro_events": [],
         }
         result = _try_parse_decisions_response(data)
         assert result is not None
@@ -301,7 +307,7 @@ class TestTryParseDecisionsResponse:
         """Test that partial repair of stringified fields works."""
         data = {
             "decisions": '[{"ticker": "META", "signal": "BUY", "confidence": 75, "reasoning": "Test", "source_id": "test_3", "is_priced_in": false, "is_priced_in_reasoning": "", "profit_potential_reasoning": "", "strategy_reasoning": "", "advance_planning_notes": ""}]',
-            "macro_events": "[]"
+            "macro_events": "[]",
         }
         result = _try_parse_decisions_response(data)
         assert result is not None
@@ -329,7 +335,7 @@ class TestTryParseDecisionsResponse:
                     "model_provider": None,
                     "model_name": None,
                 }
-            ]
+            ],
         }
         result = _try_parse_decisions_response(data)
         assert result is not None
@@ -355,6 +361,7 @@ class TestAnalyzeWithProviderRetryLogic:
             if call_count == 1:
                 # First call raises validation error (simulating stringified JSON issue)
                 from pydantic import ValidationError
+
                 raise ValidationError.from_exception_data(
                     title="DecisionsResponse",
                     line_errors=[
@@ -362,9 +369,9 @@ class TestAnalyzeWithProviderRetryLogic:
                             "type": "list_type",
                             "loc": ("decisions",),
                             "msg": "Input should be a valid array",
-                            "input": '[\n  {\n    "ticker": "T...'
+                            "input": '[\n  {\n    "ticker": "T...',
                         }
-                    ]
+                    ],
                 )
             else:
                 # Second call succeeds
@@ -377,17 +384,14 @@ class TestAnalyzeWithProviderRetryLogic:
 
         chunks = [{"source_id": "test_1", "content": "Test content"}]
 
-        with patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}), \
-             patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock):
-
+        with (
+            patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}),
+            patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock),
+        ):
             from core.llm.analysis import analyze_with_provider
 
             # Should not raise - should succeed on retry
-            result = await analyze_with_provider(
-                provider="anthropic",
-                model_name="claude-haiku-4-5",
-                chunks=chunks
-            )
+            result = await analyze_with_provider(provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks)
 
             assert call_count == 2  # First failed, second succeeded
             assert result is not None
@@ -395,15 +399,18 @@ class TestAnalyzeWithProviderRetryLogic:
 
     async def test_all_retries_fail_returns_empty_response(self, monkeypatch):
         """Test that all retries failing returns an empty response instead of raising."""
+
         async def mock_create(**kwargs):
             raise ValidationError.from_exception_data(
                 title="DecisionsResponse",
-                line_errors=[{
-                    "type": "list_type",
-                    "loc": ("decisions",),
-                    "msg": "Input should be a valid array",
-                    "input": "invalid"
-                }]
+                line_errors=[
+                    {
+                        "type": "list_type",
+                        "loc": ("decisions",),
+                        "msg": "Input should be a valid array",
+                        "input": "invalid",
+                    }
+                ],
             )
 
         mock_client = MagicMock()
@@ -413,17 +420,14 @@ class TestAnalyzeWithProviderRetryLogic:
 
         chunks = [{"source_id": "test_1", "content": "Test content"}]
 
-        with patch("core.llm.clients.CLIENT_FACTORIES", {"openai": mock_factory}), \
-             patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock):
-
+        with (
+            patch("core.llm.clients.CLIENT_FACTORIES", {"openai": mock_factory}),
+            patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+        ):
             from core.llm.analysis import analyze_with_provider
 
             # Should return empty response instead of raising
-            result = await analyze_with_provider(
-                provider="openai",
-                model_name="gpt-4",
-                chunks=chunks
-            )
+            result = await analyze_with_provider(provider="openai", model_name="gpt-4", chunks=chunks)
 
             assert result is not None
             assert len(result.decisions) == 0
@@ -437,6 +441,7 @@ class TestAnthropicMessageFlattening:
         """Helper: run analyze_with_provider's flattening on messages by
         tracing what gets passed to the mocked LLM client."""
         from core.llm.analysis import analyze_with_provider
+
         captured = {}
 
         async def mock_create(**kwargs):
@@ -449,13 +454,12 @@ class TestAnthropicMessageFlattening:
         mock_factory = MagicMock(return_value=mock_client)
         chunks = [{"source_id": "test_1", "content": "test"}]
 
-        with patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}), \
-             patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock), \
-             patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages_in):
-
-            await analyze_with_provider(
-                provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks
-            )
+        with (
+            patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}),
+            patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages_in),
+        ):
+            await analyze_with_provider(provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks)
             return captured.get("messages", [])
 
     @pytest.mark.asyncio
@@ -474,10 +478,13 @@ class TestAnthropicMessageFlattening:
         """Tool call blocks are rendered as [Tool Call: ...] strings."""
         messages = [
             {"role": "system", "content": "system prompt"},
-            {"role": "assistant", "content": [
-                {"type": "text", "text": "Let me check that."},
-                {"name": "web_search", "input": {"query": "NVDA price"}, "type": "tool_use", "id": "abc123"},
-            ]},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "text": "Let me check that."},
+                    {"name": "web_search", "input": {"query": "NVDA price"}, "type": "tool_use", "id": "abc123"},
+                ],
+            },
         ]
         flat = await self._run_flattening(messages)
         assert "[Tool Call: web_search({'query': 'NVDA price'})]" in flat[-1]["content"]
@@ -490,6 +497,7 @@ class TestAnthropicMessageFlattening:
             {"role": "user", "content": "plain text"},
         ]
         captured = {}
+
         async def mock_create(**kwargs):
             captured["system"] = kwargs.get("system")
             captured["messages"] = kwargs.get("messages", [])
@@ -500,14 +508,14 @@ class TestAnthropicMessageFlattening:
         mock_factory = MagicMock(return_value=mock_client)
         chunks = [{"source_id": "test_1", "content": "test"}]
 
-        with patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}), \
-             patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock), \
-             patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages):
-
+        with (
+            patch("core.llm.clients.CLIENT_FACTORIES", {"anthropic": mock_factory}),
+            patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.analysis.PromptFactory.build_analysis_messages", return_value=messages),
+        ):
             from core.llm.analysis import analyze_with_provider
-            await analyze_with_provider(
-                provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks
-            )
+
+            await analyze_with_provider(provider="anthropic", model_name="claude-haiku-4-5", chunks=chunks)
         assert captured["system"] == "You are a helpful trading assistant."
         # System removed from messages list; only user message remains
         roles = [m["role"] for m in captured["messages"]]

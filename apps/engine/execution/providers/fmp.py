@@ -14,6 +14,7 @@ from .base import FinancialProvider, TickerData
 
 class HistoryEntry(TypedDict):
     """Historical price entry with volume data."""
+
     price: float
     volume: int | None
     fetched_at: str
@@ -36,13 +37,14 @@ class FMPProvider(FinancialProvider):
 
         # Throttling logic
         from core.config import FINANCIAL_API_THROTTLE_SECONDS
+
         if FINANCIAL_API_THROTTLE_SECONDS > 0:
             elapsed = time.time() - FMPProvider._last_call_time
             wait_time = FINANCIAL_API_THROTTLE_SECONDS - elapsed
             if wait_time > 0:
                 logger.debug(f"Throttling FMP call for {ticker}: waiting {wait_time:.2f}s")
                 await asyncio.sleep(wait_time)
-        
+
         # Update last call time just before the request
         FMPProvider._last_call_time = time.time()
 
@@ -50,8 +52,7 @@ class FMPProvider(FinancialProvider):
             async with httpx.AsyncClient() as client:
                 # 1. Get Consolidated Quote (Price + Market Cap)
                 quote_resp = await client.get(
-                    f"{self.BASE_URL}/quote",
-                    params={"symbol": ticker, "apikey": self.api_key}
+                    f"{self.BASE_URL}/quote", params={"symbol": ticker, "apikey": self.api_key}
                 )
                 quote_resp.raise_for_status()
                 quote_data = quote_resp.json()
@@ -66,9 +67,11 @@ class FMPProvider(FinancialProvider):
                     if str(candidate.get("symbol")).upper() == ticker.upper():
                         q = candidate
                         break
-                
+
                 if q is None:
-                    logger.warning(f"FMP returned data but none matched requested ticker {ticker}. Response: {quote_data[:1]}")
+                    logger.warning(
+                        f"FMP returned data but none matched requested ticker {ticker}. Response: {quote_data[:1]}"
+                    )
                     return None
 
                 return TickerData(
@@ -77,7 +80,7 @@ class FMPProvider(FinancialProvider):
                     market_cap=float(q.get("marketCap", 0)),
                     exists=True,
                     currency=q.get("currency", "USD"),
-                    exchange=q.get("exchange")
+                    exchange=q.get("exchange"),
                 )
 
         except httpx.HTTPStatusError as e:
@@ -98,9 +101,9 @@ class FMPProvider(FinancialProvider):
 
     async def get_ticker_data_batch(self, tickers: list[str]) -> dict[str, TickerData]:
         """Fetch real-time/delayed ticker data for multiple symbols.
-        
-        Since stable/batch-quote is restricted on some plans (402), 
-        we use parallel individual calls for guaranteed compatibility 
+
+        Since stable/batch-quote is restricted on some plans (402),
+        we use parallel individual calls for guaranteed compatibility
         while maintaining high performance.
         """
         if not self.api_key or not tickers:
@@ -122,7 +125,7 @@ class FMPProvider(FinancialProvider):
         for ticker, data in batch_results:
             if data:
                 results[ticker] = data
-        
+
         return results
 
     async def get_history(self, ticker: str, days: int = 14) -> list[HistoryEntry]:
@@ -141,12 +144,7 @@ class FMPProvider(FinancialProvider):
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{self.BASE_URL}/historical-price-eod/full",
-                    params={
-                        "symbol": ticker,
-                        "from": from_str,
-                        "to": to_str,
-                        "apikey": self.api_key
-                    }
+                    params={"symbol": ticker, "from": from_str, "to": to_str, "apikey": self.api_key},
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -159,12 +157,10 @@ class FMPProvider(FinancialProvider):
 
                 results = []
                 for entry in historical_data:
-                    results.append(HistoryEntry(
-                        price=float(entry["close"]),
-                        volume=entry.get("volume"),
-                        fetched_at=entry["date"]
-                    ))
-                
+                    results.append(
+                        HistoryEntry(price=float(entry["close"]), volume=entry.get("volume"), fetched_at=entry["date"])
+                    )
+
                 return results
 
         except Exception as e:
@@ -180,8 +176,7 @@ class FMPProvider(FinancialProvider):
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
-                    f"{self.BASE_URL}/search-symbol",
-                    params={"query": query, "limit": limit, "apikey": self.api_key}
+                    f"{self.BASE_URL}/search-symbol", params={"query": query, "limit": limit, "apikey": self.api_key}
                 )
                 resp.raise_for_status()
                 return resp.json()
@@ -191,8 +186,8 @@ class FMPProvider(FinancialProvider):
             return []
 
     async def screen_stocks(
-        self, 
-        market_cap_more_than: float | None = None, 
+        self,
+        market_cap_more_than: float | None = None,
         market_cap_lower_than: float | None = None,
         price_more_than: float | None = None,
         price_lower_than: float | None = None,
@@ -202,11 +197,11 @@ class FMPProvider(FinancialProvider):
         volume_lower_than: float | None = None,
         dividend_more_than: float | None = None,
         dividend_lower_than: float | None = None,
-        sector: str | None = None, 
-        industry: str | None = None, 
+        sector: str | None = None,
+        industry: str | None = None,
         exchange: str | None = "NYSE,NASDAQ",
         limit: int = 10,
-        is_actively_trading: bool = True
+        is_actively_trading: bool = True,
     ) -> list[dict]:
         """Screen stocks using FMP /company-screener with advanced filters."""
         if not self.api_key:
@@ -215,9 +210,9 @@ class FMPProvider(FinancialProvider):
         # Construction of parameters for FMP API
         # Mapping our snake_case snake_case to FMP's camelCase
         params = {
-            "limit": min(limit, 15), # Cap at 15 for context efficiency
+            "limit": min(limit, 15),  # Cap at 15 for context efficiency
             "apikey": self.api_key,
-            "isActivelyTrading": str(is_actively_trading).lower()
+            "isActivelyTrading": str(is_actively_trading).lower(),
         }
 
         if exchange:
@@ -226,14 +221,14 @@ class FMPProvider(FinancialProvider):
             params["sector"] = sector
         if industry:
             params["industry"] = industry
-        
+
         # Numeric filters
         if market_cap_more_than is not None:
             params["marketCapMoreThan"] = market_cap_more_than
         elif not sector and not industry:
             # Default to 1B+ if no specific sector/industry to ensure baseline liquidity
             params["marketCapMoreThan"] = 1000000000
-            
+
         if market_cap_lower_than is not None:
             params["marketCapLowerThan"] = market_cap_lower_than
         if price_more_than is not None:
@@ -255,10 +250,7 @@ class FMPProvider(FinancialProvider):
 
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{self.BASE_URL}/company-screener",
-                    params=params
-                )
+                resp = await client.get(f"{self.BASE_URL}/company-screener", params=params)
                 resp.raise_for_status()
                 return resp.json()
         except Exception as e:

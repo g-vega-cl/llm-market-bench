@@ -13,7 +13,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "HIGH",
         "source_table": "decisions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "orphan_portfolio_trades",
@@ -28,7 +28,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "CRITICAL",
         "source_table": "trades",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "orphan_portfolio_positions",
@@ -43,7 +43,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "HIGH",
         "source_table": "portfolio_positions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "executed_without_trade",
@@ -59,7 +59,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "CRITICAL",
         "source_table": "decisions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "invalid_decision_status",
@@ -74,7 +74,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "MEDIUM",
         "source_table": "decisions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "stale_created_decisions",
@@ -90,7 +90,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "MEDIUM",
         "source_table": "decisions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "duplicate_positions",
@@ -106,7 +106,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "HIGH",
         "source_table": "portfolio_positions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "future_catalyst_past_date",
@@ -123,7 +123,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "MEDIUM",
         "source_table": "memories",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "empty_reasoning",
@@ -138,7 +138,7 @@ AUDIT_CHECKS = [
         """,
         "severity": "LOW",
         "source_table": "decisions",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
     {
         "id": "null_embeddings",
@@ -153,6 +153,6 @@ AUDIT_CHECKS = [
         """,
         "severity": "LOW",
         "source_table": "memories",
-        "analysis_method": "SQL_CHECK"
+        "analysis_method": "SQL_CHECK",
     },
 ]

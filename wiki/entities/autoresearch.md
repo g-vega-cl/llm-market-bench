@@ -57,14 +57,22 @@ This split ensures that the "Brain" (System) is decoupled from the "Environment"
 ## Score Formula
 
 ```
-score = (portfolio_return_pct - spy_return_pct) - (max_drawdown_pct × 0.3)
+hurdle_pct = bond_return_pct
+penalty_opp = max(0.0, hurdle_pct - portfolio_return_pct)
+score = (portfolio_return_pct - spy_return_pct) - penalty_opp - (max_drawdown_pct × 0.3)
 
 Baseline = max(all previous scores) — the bar to beat. Only moves up.
 The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs baseline)"
 ```
 
+- **Dynamic Treasury Bond Hurdle**: Annually-reported 10-year Treasury yield (`year10`) fetched from FMP and compounded to the exact duration of the evaluation window. This serves as the active risk-free rate hurdle.
+- **Dynamic USD Index Return (Context Only)**: Actual weekly return percentage of `UUP` (US Dollar Index ETF proxy for DXY) fetched from FMP, displayed in the report for macroeconomic context only (no active penalty).
+- **Asymmetric Penalty**: Applied only if the portfolio returns fail to clear the active Treasury Bond hurdle.
+
 ## Recent Changes
 
+- **2026-05-20**: **USD Strength Decoupling** — Decoupled the USD Index return from the opportunity cost penalty calculation (retaining it in the weekly report and database payload for macroeconomic context only) and set the Treasury Bond yield as the sole active hurdle.
+- **2026-05-20**: **Dynamic Hurdles Integration** — Integrated actual Treasury Bond yields and actual USD strength returns (via `UUP` ETF proxy) fetched dynamically from the FMP API into the scoring formula as an asymmetric opportunity cost penalty.
 - **2026-05-19**: **System-Heavy Refactor** — Moved all 16 logic points, SMA rules, and output definitions from the static User prompt to the evolvable System prompt. Reduced User prompt to a data-only skeleton.
 - **2026-05-13**: Hard ratchet — `revert_to_baseline()` enforces Karpathy pattern.
 - **2026-05-12**: Always deploy — removed activation gate. Every week gets a new prompt regardless of score.

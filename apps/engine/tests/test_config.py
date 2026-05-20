@@ -1,6 +1,5 @@
 """Tests for core.config module."""
 
-
 import core.config
 
 

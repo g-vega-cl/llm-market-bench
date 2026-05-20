@@ -25,6 +25,7 @@ from execution.alpaca_broker import AlpacaBroker
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_trading_client():
     """Provides a mocked Alpaca TradingClient instance."""
@@ -56,13 +57,15 @@ def mock_supabase_table():
 # Initialization
 # ---------------------------------------------------------------------------
 
-class TestAlpacaBrokerInit:
 
+class TestAlpacaBrokerInit:
     def test_init_success_when_enabled_and_keys_present(self):
         """Broker initializes TradingClient when ALPACA_ENABLED=True and keys exist."""
-        with patch("execution.alpaca_broker.ALPACA_ENABLED", True), \
-             patch("execution.alpaca_broker.ALPACA_API_KEY", "test-key"), \
-             patch("execution.alpaca_broker.ALPACA_SECRET_KEY", "test-secret"):
+        with (
+            patch("execution.alpaca_broker.ALPACA_ENABLED", True),
+            patch("execution.alpaca_broker.ALPACA_API_KEY", "test-key"),
+            patch("execution.alpaca_broker.ALPACA_SECRET_KEY", "test-secret"),
+        ):
             with patch("execution.alpaca_broker.TradingClient") as MockTC:
                 broker = AlpacaBroker()
                 assert broker._client is not None
@@ -81,17 +84,21 @@ class TestAlpacaBrokerInit:
 
     def test_init_disabled_when_api_key_missing(self):
         """Broker skips initialization when API key env var is missing."""
-        with patch("execution.alpaca_broker.ALPACA_ENABLED", True), \
-             patch("execution.alpaca_broker.ALPACA_API_KEY", None), \
-             patch("execution.alpaca_broker.ALPACA_SECRET_KEY", "test-secret"):
+        with (
+            patch("execution.alpaca_broker.ALPACA_ENABLED", True),
+            patch("execution.alpaca_broker.ALPACA_API_KEY", None),
+            patch("execution.alpaca_broker.ALPACA_SECRET_KEY", "test-secret"),
+        ):
             broker = AlpacaBroker()
             assert broker._client is None
 
     def test_init_disabled_when_secret_key_missing(self):
         """Broker skips initialization when Secret key env var is missing."""
-        with patch("execution.alpaca_broker.ALPACA_ENABLED", True), \
-             patch("execution.alpaca_broker.ALPACA_API_KEY", "test-key"), \
-             patch("execution.alpaca_broker.ALPACA_SECRET_KEY", None):
+        with (
+            patch("execution.alpaca_broker.ALPACA_ENABLED", True),
+            patch("execution.alpaca_broker.ALPACA_API_KEY", "test-key"),
+            patch("execution.alpaca_broker.ALPACA_SECRET_KEY", None),
+        ):
             broker = AlpacaBroker()
             assert broker._client is None
 
@@ -100,9 +107,9 @@ class TestAlpacaBrokerInit:
 # Order Submission
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestSubmitLimitOrder:
-
     async def test_buy_limit_order_params(self, mock_trading_client):
         """Verify BUY limit order is constructed with correct agent-tagged metadata."""
         broker = AlpacaBroker()
@@ -204,19 +211,19 @@ class TestSubmitLimitOrder:
 # SELL Guardrails — prevent shorting in Alpaca
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestSellGuardrails:
-
     async def test_sell_skipped_when_no_alpaca_position(self, mock_trading_client):
         """SELL order is skipped when Alpaca holds 0 shares and Supabase also shows 0."""
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
-        with patch.object(
-            broker, "get_alpaca_position", return_value=0.0
-        ) as mock_pos, \
-             patch.object(broker, "_get_supabase_position", return_value=0) as mock_sup, \
-             patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update:
+        with (
+            patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos,
+            patch.object(broker, "_get_supabase_position", return_value=0) as mock_sup,
+            patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
+        ):
             trade_id = uuid4()
             await broker.submit_limit_order(
                 trade_id=trade_id,
@@ -232,17 +239,15 @@ class TestSellGuardrails:
             mock_trading_client.submit_order.assert_not_called()
             mock_update.assert_awaited_once_with(trade_id, None, "SKIPPED_NO_POSITION")
 
-    async def test_sell_proceeds_when_supabase_has_position_but_alpaca_does_not(
-        self, mock_trading_client
-    ):
+    async def test_sell_proceeds_when_supabase_has_position_but_alpaca_does_not(self, mock_trading_client):
         """SELL order proceeds when Alpaca shows 0 but Supabase ledger shows the position."""
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
-        with patch.object(
-            broker, "get_alpaca_position", return_value=0.0
-        ) as mock_pos, \
-             patch.object(broker, "_get_supabase_position", return_value=15) as mock_sup:
+        with (
+            patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos,
+            patch.object(broker, "_get_supabase_position", return_value=15) as mock_sup,
+        ):
             trade_id = uuid4()
             await broker.submit_limit_order(
                 trade_id=trade_id,
@@ -264,9 +269,7 @@ class TestSellGuardrails:
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
-        with patch.object(
-            broker, "get_alpaca_position", return_value=7.0
-        ) as mock_pos:
+        with patch.object(broker, "get_alpaca_position", return_value=7.0) as mock_pos:
             trade_id = uuid4()
             await broker.submit_limit_order(
                 trade_id=trade_id,
@@ -287,9 +290,7 @@ class TestSellGuardrails:
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
-        with patch.object(
-            broker, "get_alpaca_position", return_value=15.0
-        ) as mock_pos:
+        with patch.object(broker, "get_alpaca_position", return_value=15.0) as mock_pos:
             trade_id = uuid4()
             await broker.submit_limit_order(
                 trade_id=trade_id,
@@ -310,9 +311,7 @@ class TestSellGuardrails:
         broker = AlpacaBroker()
         broker._client = mock_trading_client
 
-        with patch.object(
-            broker, "get_alpaca_position", return_value=0.0
-        ) as mock_pos:
+        with patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos:
             await broker.submit_limit_order(
                 trade_id=uuid4(),
                 ticker="AAPL",
@@ -331,8 +330,8 @@ class TestSellGuardrails:
 # Position Query (get_alpaca_position)
 # ---------------------------------------------------------------------------
 
-class TestGetAlpacaPosition:
 
+class TestGetAlpacaPosition:
     def test_returns_quantity_for_existing_position(self):
         """get_alpaca_position returns the quantity when a position exists."""
         broker = AlpacaBroker()
@@ -349,6 +348,7 @@ class TestGetAlpacaPosition:
     def test_returns_zero_for_404_api_error(self):
         """get_alpaca_position returns 0.0 when Alpaca raises a 404 APIError."""
         from alpaca.common.exceptions import APIError
+
         broker = AlpacaBroker()
         mock_client = MagicMock()
         # APIError reads status_code from http_error.response.status_code
@@ -384,8 +384,8 @@ class TestGetAlpacaPosition:
 # Supabase Position Lookup (_get_supabase_position)
 # ---------------------------------------------------------------------------
 
-class TestGetSupabasePosition:
 
+class TestGetSupabasePosition:
     def test_returns_quantity_when_position_exists(self):
         """_get_supabase_position returns the quantity from Supabase ledger."""
         broker = AlpacaBroker()
@@ -487,9 +487,9 @@ class TestGetSupabasePosition:
 # Supabase Update (_update_trade)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestUpdateTrade:
-
     async def test_update_trade_with_order_id(self, mock_supabase_table):
         """Supabase row is updated with string order_id and PENDING status."""
         mock_table, mock_eq, mock_execute = mock_supabase_table
@@ -543,9 +543,9 @@ class TestUpdateTrade:
 # End-to-End Smoke (asyncio.create_task behavior)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestFireAndForget:
-
     async def test_submit_is_fire_and_forget_compatible(self, mock_trading_client):
         """The broker method can be wrapped in asyncio.create_task without blocking."""
         broker = AlpacaBroker()

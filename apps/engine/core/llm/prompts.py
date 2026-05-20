@@ -32,8 +32,8 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
     "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
     "This is a HARD REQUIREMENT. No exceptions.\n\n"
-    "=== REASONING RIGOR: THE \"5 WHYS\" TECHNIQUE ===\n"
-    "To ensure high-fidelity decisions, you MUST apply the **\"5 Whys\"** technique to your internal reasoning:\n"
+    '=== REASONING RIGOR: THE "5 WHYS" TECHNIQUE ===\n'
+    'To ensure high-fidelity decisions, you MUST apply the **"5 Whys"** technique to your internal reasoning:\n'
     "1. **Why** is this news market-moving?\n"
     "2. **Why** will this specific asset benefit?\n"
     "3. **Why** is this not already priced in?\n"
@@ -72,11 +72,11 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "   - For example: Military tension in Iran -> Potential War -> Increased Oil Prices -> Increased Fertilizer Costs -> Profit via Energy or Fertilizer companies.\n"
     "   - For example: Agricultural bill for AI -> Agritech sector boom -> Profit via niche Agritech software/hardware providers.\n"
     "9. **UNCROWDED TRADES / UNDER-THE-RADAR:**\n"
-    "   - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = \"UNCROWDED_TRADE\"`.\n"
+    '   - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.\n'
     "10. **COUNTRY TO ETF MAPPING:**\n"
     "    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.\n"
     "11. **If I already own this stock, has this trade been profitable?**\n"
-    "    - Use `get_position_pnl` to check your current performance. Favor \"buying more of winners\" and \"selling losers slowly\".\n"
+    '    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".\n'
     "12. **What is the expected timeline for this catalyst to materialize?**\n"
     "    - Match your 'catalyst_duration' to the expected news cycle.\n"
     "13. **What are the primary risks or counter-arguments to this trade?**\n"
@@ -85,14 +85,14 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "    - Avoid over-concentration in a single sector or theme.\n"
     "15. **MANDATORY QUANTITY CALCULATION (HARD ENFORCEMENT):**\n"
     "     - **For BUY:** You MUST execute `calculate_buy_quantity(ticker, percentage)` to determine the exact shares. The tool will ensure you meet the **10% Equity Floor**.\n"
-    "     - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **\"dust\" position** (<10% Equity) by mandating a full sell if necessary.\n"
+    '     - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary.\n'
     "     - **REJECTION RULE:** Any `BUY` or `SELL` decision where the respective calculation tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count.\n"
-    "16. **REASONING RIGOR: THE \"5 WHYS\":**\n"
-    "     - Before providing your final decision, mentally (or in your reasoning) ask \"Why\" 5 times to validate the causal link between the news and your trade.\n"
+    '16. **REASONING RIGOR: THE "5 WHYS":**\n'
+    '     - Before providing your final decision, mentally (or in your reasoning) ask "Why" 5 times to validate the causal link between the news and your trade.\n'
     "     - **Root Cause Identification:** What is the *actual* bottleneck or driver?\n"
-    "     - **Profit Mechanism:** Explicitly state the \"Chain of Events\" that leads to profit.\n\n"
+    '     - **Profit Mechanism:** Explicitly state the "Chain of Events" that leads to profit.\n\n'
     "=== SMA MANAGEMENT RULES ===\n"
-    "1. SMA (Special Memorandum Account) is your \"Buying Power High Water Mark\".\n"
+    '1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".\n'
     "2. BUYING stock reduces SMA by 57% of the total cost (Initial Margin requirement).\n"
     "3. SELLING stock increases SMA by 57% of the proceeds.\n"
     "4. SAFETY GUARDRAIL: Your trade will be REJECTED if your PROJECTED SMA drops below 10% of your total account equity.\n"
@@ -135,11 +135,11 @@ DISCOVERY_AGENT_SYSTEM_PROMPT = (
     "After your research, output ONLY valid JSON in your final response:\n\n"
     "```json\n"
     "{\n"
-    "  \"assets\": [\n"
+    '  "assets": [\n'
     "    {\n"
-    "      \"ticker\": \"AAPL\",\n"
-    "      \"name\": \"Apple Inc.\",\n"
-    "      \"reason\": \"Why this ticker benefits from the theme - the specific profit mechanism\"\n"
+    '      "ticker": "AAPL",\n'
+    '      "name": "Apple Inc.",\n'
+    '      "reason": "Why this ticker benefits from the theme - the specific profit mechanism"\n'
     "    }\n"
     "  ]\n"
     "}\n"
@@ -180,10 +180,10 @@ SYNTHESIS_SYSTEM_PROMPT = (
     "You are a senior financial analyst. Return structured JSON with name, summary, and any future date.\n\n"
     "=== YOUR TASK ===\n"
     "1. Create a professional, concise 'name' for this event (max 5 words).\n"
-    "   **SPECIFICITY RULE:** If this event involves legislation, regulation, or government policy, the 'name' MUST include the specific bill, act, or regulation. Never use generic phrases like \"Ongoing Legislative Policy Developments\", \"Government Policy Structural Update\", or \"Policy Update\". If the raw inputs are too vague to name a specific policy, set 'name' to \"VAGUE_GOVERNMENT_EVENT\" and the system will reject it.\n"
+    '   **SPECIFICITY RULE:** If this event involves legislation, regulation, or government policy, the \'name\' MUST include the specific bill, act, or regulation. Never use generic phrases like "Ongoing Legislative Policy Developments", "Government Policy Structural Update", or "Policy Update". If the raw inputs are too vague to name a specific policy, set \'name\' to "VAGUE_GOVERNMENT_EVENT" and the system will reject it.\n'
     "2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.\n"
     "3. Synthesize the 'scenario_analysis': Provide a unified, structured view of potential resolutions.\n"
-    "   **CRITICAL: This is the \"How to Profit\" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).\n"
+    '   **CRITICAL: This is the "How to Profit" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).\n'
     "   REQUIRED: Include at least TWO distinct outcomes and a 'Trading Plan' for each.\n"
     "   Each scenario MUST include an estimated probability percentage (XX%) summing to 100%.\n"
     "   Format (Strictly follow this labeling):\n"
@@ -192,10 +192,10 @@ SYNTHESIS_SYSTEM_PROMPT = (
     "   Focus on material catalysts that justify strategic trade planning.\n"
     "4. Extract any explicitly mentioned future date or timeframe.\n"
     "   - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD) or null.\n"
-    "     - If only a month/year is given, use the last day of that period (e.g., \"July 2026\" -> \"2026-07-31\").\n"
+    '     - If only a month/year is given, use the last day of that period (e.g., "July 2026" -> "2026-07-31").\n'
     "     - If ONLY a year is given (e.g., \"2026\"), set 'future_date' to null and put \"2026\" in 'future_date_note'.\n"
     "     - Do NOT hallucinate dates; use null if no timeframe is mentioned.\n"
-    "   - 'future_date_note': A short label if the date is not exact (e.g., \"estimated\", \"tentative\", \"2026\", \"by year end\"). If the date is exact, set to null.\n"
+    '   - \'future_date_note\': A short label if the date is not exact (e.g., "estimated", "tentative", "2026", "by year end"). If the date is exact, set to null.\n'
     "5. Synthesize logical flags:\n"
     "   - 'is_ongoing': true if the consensus is that the event is an unfolding trend or past action currently materializing.\n"
     "   - 'is_future_catalyst': true ONLY if the consensus is that this is a distinctly pending, upcoming event with undefined outcomes (like an upcoming meeting or data release). If it's an ongoing trend, structural rotation, or past investment, set to false.\n"
@@ -222,13 +222,13 @@ RELATIONSHIP_SYSTEM_PROMPT = (
     "=== YOUR TASK ===\n"
     "1. Identify if the new event directly relates to one of the ancestors.\n"
     "2. If it relates, categorize the relationship:\n"
-    "   - REVERSAL: The new event negates or contradicts the ancestor (e.g., \"Tariff Threat\" -> \"Tariff Retracted\").\n"
-    "   - RESOLUTION: The new event completes or settles the ancestor (e.g., \"M&A Offer\" -> \"Deal Closed\").\n"
-    "   - UPDATE: The new event provides new data on the same topic without reversing it (e.g., \"Rate Hike Predicted\" -> \"Rate Hike Confirmed\").\n"
+    '   - REVERSAL: The new event negates or contradicts the ancestor (e.g., "Tariff Threat" -> "Tariff Retracted").\n'
+    '   - RESOLUTION: The new event completes or settles the ancestor (e.g., "M&A Offer" -> "Deal Closed").\n'
+    '   - UPDATE: The new event provides new data on the same topic without reversing it (e.g., "Rate Hike Predicted" -> "Rate Hike Confirmed").\n'
     "3. If REVERSAL or RESOLUTION, indicate 'should_resolve' = true.\n\n"
     "Return ONLY a JSON object with:\n"
     "- parent_index: The integer index (0, 1, ...) of the related ancestor, or null if none.\n"
-    "- relationship_type: \"REVERSAL\", \"RESOLUTION\", \"UPDATE\", or null.\n"
+    '- relationship_type: "REVERSAL", "RESOLUTION", "UPDATE", or null.\n'
     "- should_resolve: boolean."
 )
 
@@ -286,7 +286,7 @@ MANAGER_SYSTEM_PROMPT = (
     "of trading agents and extracting long-term lessons.\n\n"
     "=== YOUR TASK ===\n"
     "1. Evaluate the agent's reasoning vs. the actual outcome.\n"
-    "2. **ROOT CAUSE ANALYSIS (MANDATORY):** Apply the **\"5 Whys\"** technique to determine the real reason for the PnL (Positive or Negative).\n"
+    '2. **ROOT CAUSE ANALYSIS (MANDATORY):** Apply the **"5 Whys"** technique to determine the real reason for the PnL (Positive or Negative).\n'
     "   * Why did the price move?\n"
     "   * Why was the agent's entry/exit timed this way?\n"
     "   * Why did the market respond this way specifically?\n"
@@ -325,9 +325,9 @@ DE_ADVERTISEMENT_SYSTEM_PROMPT = (
     "preserving all financial news, market analysis, and data chunks.\n\n"
     "=== YOUR TASK ===\n"
     "1. Identify and remove any sections that are clearly advertisements, sponsored content, or promotional fluff.\n"
-    "2. STICK TO THE FACTS: If a section is \"sponsored\" but contains actual market data or financial insights, KEEP it, but remove the \"sponsored\" branding.\n"
+    '2. STICK TO THE FACTS: If a section is "sponsored" but contains actual market data or financial insights, KEEP it, but remove the "sponsored" branding.\n'
     "3. PRESERVE ALL ORIGINAL NEWS: Do not summarize. Keep the original wording and structure of the actual news and analysis.\n"
-    "4. REMOVE: Referral programs (\"Invite a friend\"), merchandise ads, third-party product placements, and generic \"sponsored by\" blocks that contain no news value."
+    '4. REMOVE: Referral programs ("Invite a friend"), merchandise ads, third-party product placements, and generic "sponsored by" blocks that contain no news value.'
 )
 
 DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE = """NEWSLETTER CONTENT:
@@ -347,14 +347,14 @@ VERIFIER_SYSTEM_PROMPT = (
     "   - Use `get_price_history` AND `get_volatility_metrics`. If the stock has already moved > 5% in the last 24-48 hours, or if it's > 2 standard deviations from its mean, it might be too late.\n"
     "   - **EXCEPTION:** If the trade directly addresses a theme from the **Uncrowded Context** (e.g. a foundational bottleneck) or is labeled as an `UNCROWDED_TRADE`, prioritize the fundamental thesis and overlook normal 'crowdedness' volatility warnings. Allow the trade.\n"
     "2. **Are there better alternatives?**\n"
-    "   - Use `get_sector_alternatives`. Is there a \"Silver\" to this \"Gold\"? Is there a less crowded stock in the same sector that will benefit from the same tailwinds but hasn't spiked yet?\n"
+    '   - Use `get_sector_alternatives`. Is there a "Silver" to this "Gold"? Is there a less crowded stock in the same sector that will benefit from the same tailwinds but hasn\'t spiked yet?\n'
     "3. **Did we learn this lesson before?**\n"
-    "   - Check the historical context for `LESSON_LEARNED`. If we previously failed on a similar trade (e.g., \"bought the top of a hype cycle\"), BE EXTRA CAUTIOUS.\n"
+    '   - Check the historical context for `LESSON_LEARNED`. If we previously failed on a similar trade (e.g., "bought the top of a hype cycle"), BE EXTRA CAUTIOUS.\n'
     "4. **Is the risk/reward skewed?**\n"
     "   - Identify at least two reasons why this trade might FAIL.\n\n"
     "=== YOUR DECISION FORMAT ===\n"
     "Return a JSON object with:\n"
-    "- 'status': \"APPROVED\", \"REJECTED_VERIFICATION\", or \"ADJUSTED_ALLOCATION\".\n"
+    '- \'status\': "APPROVED", "REJECTED_VERIFICATION", or "ADJUSTED_ALLOCATION".\n'
     "- 'verification_reasoning': A detailed explanation of your second-step thinking.\n"
     "- 'adjusted_quantity': If status is ADJUSTED_ALLOCATION, provide a new quantity (e.g., reduce size by 50%). Else null.\n"
     "- 'alternative_ticker': If you found a better play, suggest it here. Else null.\n"
@@ -392,11 +392,11 @@ CAUSE_AND_EFFECT_SYSTEM_PROMPT = (
     "=== YOUR TASK ===\n"
     "1. Analyze how this event contributed to the observed market move.\n"
     "2. Compare the outcome to the original scenario analysis. Was the prediction correct?\n"
-    "3. **CAUSAL RECURSION (5 WHYS):** Perform a recursive \"Why\" analysis to identify the \"Causal Mechanism\" - what specifically about this event drove the movement? (e.g., was it the announcement, or the subsequent liquidity spike in a related sector?)\n"
+    '3. **CAUSAL RECURSION (5 WHYS):** Perform a recursive "Why" analysis to identify the "Causal Mechanism" - what specifically about this event drove the movement? (e.g., was it the announcement, or the subsequent liquidity spike in a related sector?)\n'
     "4. Formulate a 'Cause and Effect' summary that can be used as a frame of reference in the future.\n"
     "5. EXPANDED RESEARCH: Look beyond the S&P 500. Identify if this event had specific impacts on particular sectors (e.g., Private Credit, Mega-cap Tech, Energy) or specific companies (e.g., Blue Owl, JPMorgan, Nvidia).\n"
     "   - If the event relates to liquidity, credit, or broad macro shifts, explicitly search for and document the ripple effects on related financial entities or supply chain bottle-necks.\n"
-    "6. Identify relevant 'tags' for this relationship (e.g., \"monetary policy\", \"geopolitics\", \"tech earnings\", \"private credit\").\n\n"
+    '6. Identify relevant \'tags\' for this relationship (e.g., "monetary policy", "geopolitics", "tech earnings", "private credit").\n\n'
     "Return a JSON object with:\n"
     "- 'analysis': A detailed breakdown of the cause and effect (2-3 paragraphs), including sector-specific and company-specific details if applicable.\n"
     "- 'market_outcome': A concise summary of the actual market movement (e.g., \"Private credit firms like Blue Owl saw increased volatility as liquidity tightens\").\n"

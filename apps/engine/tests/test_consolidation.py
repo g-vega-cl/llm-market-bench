@@ -18,7 +18,7 @@ def sample_decisions():
             reasoning="Strong iPhone sales expected.",
             source_id="news_1",
             model_provider="openai",
-            model_name="gpt-4"
+            model_name="gpt-4",
         ),
         DecisionObject(
             ticker="AAPL",
@@ -27,7 +27,7 @@ def sample_decisions():
             reasoning="Apple Intelligence is a major catalyst.",
             source_id="news_1",
             model_provider="anthropic",
-            model_name="claude-3"
+            model_name="claude-3",
         ),
         DecisionObject(
             ticker="TSLA",
@@ -36,9 +36,10 @@ def sample_decisions():
             reasoning="Margins are compression due to price cuts.",
             source_id="news_2",
             model_provider="openai",
-            model_name="gpt-4"
-        )
+            model_name="gpt-4",
+        ),
     ]
+
 
 @patch("analysis.consensus.synthesize_event")
 @pytest.mark.asyncio
@@ -46,14 +47,14 @@ async def test_process_decision_consensus_groups_correctly(mock_synthesize, samp
     # Mock synthesis return
     mock_synthesize.side_effect = [
         {"name": "Consensus BUY on AAPL", "summary": "Synthesized AAPL reasoning"},
-        {"name": "Consensus SELL on TSLA", "summary": "Synthesized TSLA reasoning"}
+        {"name": "Consensus SELL on TSLA", "summary": "Synthesized TSLA reasoning"},
     ]
-    
+
     consolidated = await process_decision_consensus(sample_decisions)
-    
+
     # We should have 2 groups: AAPL BUY and TSLA SELL
     assert len(consolidated) == 2
-    
+
     # Check AAPL group
     aapl = next(c for c in consolidated if c["ticker"] == "AAPL")
     assert aapl["signal"] == "BUY"
@@ -61,12 +62,13 @@ async def test_process_decision_consensus_groups_correctly(mock_synthesize, samp
     assert "openai_gpt-4" in aapl["models_involved"]
     assert "anthropic_claude-3" in aapl["models_involved"]
     assert len(aapl["original_reasonings"]) == 2
-    
+
     # Check TSLA group
     tsla = next(c for c in consolidated if c["ticker"] == "TSLA")
     assert tsla["signal"] == "SELL"
     assert len(tsla["models_involved"]) == 1
     assert "openai_gpt-4" in tsla["models_involved"]
+
 
 @patch("analysis.consensus.synthesize_event")
 @pytest.mark.asyncio
@@ -79,10 +81,10 @@ async def test_process_decision_consensus_skips_hold(mock_synthesize):
             reasoning="No clear trend.",
             source_id="news_3",
             model_provider="openai",
-            model_name="gpt-4"
+            model_name="gpt-4",
         )
     ]
-    
+
     consolidated = await process_decision_consensus(decisions)
     assert len(consolidated) == 0
     assert not mock_synthesize.called

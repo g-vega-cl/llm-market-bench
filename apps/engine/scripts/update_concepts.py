@@ -16,6 +16,7 @@ from core.db import get_supabase_client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("engine")
 
+
 def main():
     """Main entry point."""
     try:
@@ -24,6 +25,7 @@ def main():
         logger.info("PCA update completed successfully.")
     except Exception as e:
         logger.error(f"Script failed: {e}")
+
 
 if __name__ == "__main__":
     main()

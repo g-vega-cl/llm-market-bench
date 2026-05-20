@@ -21,16 +21,25 @@ async def test_discovery_agent_invokes_gemini_handler_submodule():
     dummy_client = MagicMock()
 
     async def fake_run_tool_loop(raw_client, model_name, messages, **kwargs):
-        messages.append({"role": "assistant", "content": """```json
+        messages.append(
+            {
+                "role": "assistant",
+                "content": """```json
 {
   "assets": [
     {"ticker": "NVDA", "name": "NVIDIA", "reason": "Primary GPU supplier for AI workloads"}
   ]
 }
-```"""})
+```""",
+            }
+        )
 
-    with patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"gemini": lambda: dummy_client}), \
-         patch("analysis.discovery_agent.gemini.run_tool_loop", new=AsyncMock(side_effect=fake_run_tool_loop)) as mock_loop:
+    with (
+        patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"gemini": lambda: dummy_client}),
+        patch(
+            "analysis.discovery_agent.gemini.run_tool_loop", new=AsyncMock(side_effect=fake_run_tool_loop)
+        ) as mock_loop,
+    ):
         from analysis.discovery_agent import DiscoveryAgent
 
         agent = DiscoveryAgent(model_name="gemini-2.0-flash")
@@ -52,8 +61,12 @@ async def test_discovery_agent_returns_empty_when_tool_loop_stalls():
     async def stalled_run_tool_loop(raw_client, model_name, messages, **kwargs):
         messages.append({"role": "tool", "content": "partial tool output"})
 
-    with patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"openai": lambda: dummy_client}), \
-         patch("analysis.discovery_agent.openai.run_tool_loop", new=AsyncMock(side_effect=stalled_run_tool_loop)) as mock_loop:
+    with (
+        patch("analysis.discovery_agent.clients.CLIENT_FACTORIES", {"openai": lambda: dummy_client}),
+        patch(
+            "analysis.discovery_agent.openai.run_tool_loop", new=AsyncMock(side_effect=stalled_run_tool_loop)
+        ) as mock_loop,
+    ):
         from analysis.discovery_agent import DiscoveryAgent
 
         agent = DiscoveryAgent(model_name="gpt-4o-mini")
@@ -63,6 +76,7 @@ async def test_discovery_agent_returns_empty_when_tool_loop_stalls():
     assert result == []
     assert mock_loop.await_count == 1
 
+
 @pytest.mark.asyncio
 async def test_deepseek_reasoning_preservation_regression():
     """
@@ -70,7 +84,7 @@ async def test_deepseek_reasoning_preservation_regression():
     Ensures reasoning_content is not cleared when tool_calls are present.
     """
     mock_client = AsyncMock()
-    
+
     # Simulate two-step response
     msg1 = MagicMock()
     msg1.role = "assistant"
@@ -79,37 +93,36 @@ async def test_deepseek_reasoning_preservation_regression():
     msg1.tool_calls = [
         MagicMock(id="call_1", function=MagicMock(name="get_stock_quote", arguments='{"ticker": "AAPL"}'))
     ]
-    
+
     msg2 = MagicMock()
     msg2.role = "assistant"
     msg2.content = "AAPL is $180. Buy."
     msg2.reasoning_content = "Price is good."
     msg2.tool_calls = None
-    
+
     resp1 = MagicMock()
     resp1.choices = [MagicMock(message=msg1)]
     resp2 = MagicMock()
     resp2.choices = [MagicMock(message=msg2)]
-    
+
     mock_client.chat.completions.create.side_effect = [resp1, resp2]
-    
+
     messages = [{"role": "user", "content": "Buy AAPL?"}]
-    
+
     await run_tool_loop(
-        mock_client,
-        model_name="deepseek-v4-pro",
-        messages=messages,
-        provider="deepseek",
-        max_tool_steps=2
+        mock_client, model_name="deepseek-v4-pro", messages=messages, provider="deepseek", max_tool_steps=2
     )
-    
+
     # Verify that the second request sent to deepseek included the reasoning_content from the first step
     call_args = mock_client.chat.completions.create.call_args_list
     assert len(call_args) > 1, "Loop did not reach second call"
-    
-    sent_messages = call_args[1].kwargs['messages']
+
+    sent_messages = call_args[1].kwargs["messages"]
     asst_msg = sent_messages[1]
-    assert asst_msg.get('reasoning_content') == "I should check the price of AAPL.", "Reasoning content was lost/cleared"
+    assert asst_msg.get("reasoning_content") == "I should check the price of AAPL.", (
+        "Reasoning content was lost/cleared"
+    )
+
 
 @pytest.mark.asyncio
 async def test_market_data_fallback_logic_regression():
@@ -129,29 +142,31 @@ async def test_market_data_fallback_logic_regression():
 
         # Initialize manager - it will load the configured provider
         manager = MarketDataManager()
-        
+
         # Mock the provider inside the manager
         primary = AsyncMock()
         primary.provider_name = "mock_primary"
         primary.get_ticker_data.return_value = TickerData(ticker="AMZN", price=150.0, market_cap=1e12, exists=True)
         manager.provider = primary
-        
+
         # Execute
         quote = await manager.get_quote("AMZN")
-        
+
         # Verify
         assert quote is not None
         assert quote.price == 150.0
         assert primary.get_ticker_data.called
         assert mock_db.table("market_data_cache").upsert.called, "Should have saved provider result to cache"
 
+
 def test_config_fmp_key_resolution():
     """
     Verifies that the engine is looking for FMP_API_KEY in the environment.
-    In CI, this might be empty unless secrets are provided, but we check 
+    In CI, this might be empty unless secrets are provided, but we check
     that the logic is searching for the correct key name.
     """
     from core import config
-    # We just verify the attribute exists. 
+
+    # We just verify the attribute exists.
     # Whether it has a value depends on CI secrets config.
     assert hasattr(config, "FMP_API_KEY")

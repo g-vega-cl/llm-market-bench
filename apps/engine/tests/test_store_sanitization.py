@@ -151,9 +151,7 @@ class TestRetrieveForDecisionModelFilter:
 
     @patch("memory.store.get_embedding")
     @patch("memory.store.get_supabase_client")
-    def test_passes_model_name_to_match_decisions(
-        self, mock_get_supabase, mock_get_embedding
-    ):
+    def test_passes_model_name_to_match_decisions(self, mock_get_supabase, mock_get_embedding):
         mock_get_embedding.return_value = [0.1] * 768
         mock_client = MagicMock()
         mock_rpc = MagicMock()
@@ -167,9 +165,7 @@ class TestRetrieveForDecisionModelFilter:
 
         mock_rpc.side_effect = [mock_mem_response, mock_dec_response]
 
-        retrieve_for_decision(
-            ticker="NVDA", reasoning="test", model_name="deepseek-reasoner"
-        )
+        retrieve_for_decision(ticker="NVDA", reasoning="test", model_name="deepseek-reasoner")
 
         # match_memories - no model_name filter
         mem_call = mock_rpc.call_args_list[0]
@@ -182,9 +178,7 @@ class TestRetrieveForDecisionModelFilter:
 
     @patch("memory.store.get_embedding")
     @patch("memory.store.get_supabase_client")
-    def test_no_model_name_defaults_to_none(
-        self, mock_get_supabase, mock_get_embedding
-    ):
+    def test_no_model_name_defaults_to_none(self, mock_get_supabase, mock_get_embedding):
         mock_get_embedding.return_value = [0.1] * 768
         mock_client = MagicMock()
         mock_rpc = MagicMock()
@@ -205,9 +199,7 @@ class TestRetrieveForDecisionModelFilter:
 
     @patch("memory.store.get_embedding")
     @patch("memory.store.get_supabase_client")
-    def test_match_memories_never_gets_model_filter(
-        self, mock_get_supabase, mock_get_embedding
-    ):
+    def test_match_memories_never_gets_model_filter(self, mock_get_supabase, mock_get_embedding):
         mock_get_embedding.return_value = [0.1] * 768
         mock_client = MagicMock()
         mock_rpc = MagicMock()
@@ -221,9 +213,7 @@ class TestRetrieveForDecisionModelFilter:
 
         mock_rpc.side_effect = [mock_mem_response, mock_dec_response]
 
-        retrieve_for_decision(
-            ticker="NVDA", reasoning="test", model_name="deepseek-reasoner"
-        )
+        retrieve_for_decision(ticker="NVDA", reasoning="test", model_name="deepseek-reasoner")
 
         mem_call = mock_rpc.call_args_list[0]
         assert "filter_model_name" not in mem_call[1]

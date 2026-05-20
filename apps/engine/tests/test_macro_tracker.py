@@ -70,7 +70,7 @@ class TestMacroTickers:
         all_tickers = []
         for category_dict in MACRO_TICKERS.values():
             all_tickers.extend(category_dict.keys())
-        
+
         for ticker in all_tickers:
             assert not ticker.startswith("^"), f"Yahoo-style ticker {ticker} found (starts with ^)"
             assert "-Y." not in ticker, f"Yahoo-style ticker {ticker} found (contains -Y.)"
@@ -90,18 +90,22 @@ class TestGetGlobalMacroContext:
     async def test_returns_formatted_context(self):
         """Test that function returns a formatted string with macro environment."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=True, price=450.0),
-            "IEF": MagicMock(exists=True, price=95.0),
-        })
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 448.0, "fetched_at": "2024-01-02"},
-            {"price": 445.0, "fetched_at": "2024-01-03"},
-            {"price": 446.0, "fetched_at": "2024-01-04"},
-        ])
-        
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=True, price=450.0),
+                "IEF": MagicMock(exists=True, price=95.0),
+            }
+        )
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 448.0, "fetched_at": "2024-01-02"},
+                {"price": 445.0, "fetched_at": "2024-01-03"},
+                {"price": 446.0, "fetched_at": "2024-01-04"},
+            ]
+        )
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert isinstance(result, str)
         assert "GLOBAL MACRO ENVIRONMENT" in result
         assert "SPY" in result
@@ -113,9 +117,9 @@ class TestGetGlobalMacroContext:
         mock_mdm = MagicMock()
         mock_mdm.get_quotes = AsyncMock(return_value={})
         mock_mdm.get_history = AsyncMock(return_value=[])
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert isinstance(result, str)
         assert "GLOBAL MACRO ENVIRONMENT" in result
 
@@ -123,13 +127,15 @@ class TestGetGlobalMacroContext:
     async def test_skips_tickers_with_nan_price(self):
         """Test that function skips tickers where price is NaN."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=True, price=float('nan')),
-        })
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=True, price=float("nan")),
+            }
+        )
         mock_mdm.get_history = AsyncMock(return_value=[])
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert isinstance(result, str)
         assert "SPY" not in result
 
@@ -137,15 +143,19 @@ class TestGetGlobalMacroContext:
     async def test_handles_history_with_insufficient_data(self):
         """Test that function handles tickers with less than 2 history points."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=True, price=450.0),
-        })
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 448.0, "fetched_at": "2024-01-02"},
-        ])
-        
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=True, price=450.0),
+            }
+        )
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 448.0, "fetched_at": "2024-01-02"},
+            ]
+        )
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert isinstance(result, str)
         assert "No history available" in result
 
@@ -153,7 +163,7 @@ class TestGetGlobalMacroContext:
     async def test_calculates_regime_flags_correctly(self):
         """Test that regime flags are calculated based on volatility thresholds."""
         mock_mdm = MagicMock()
-        
+
         quote_price = 460.0
         history = [
             {"price": 450.0, "fetched_at": "2024-01-01"},
@@ -162,14 +172,16 @@ class TestGetGlobalMacroContext:
             {"price": 435.0, "fetched_at": "2024-01-04"},
             {"price": 430.0, "fetched_at": "2024-01-05"},
         ]
-        
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=True, price=quote_price),
-        })
+
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=True, price=quote_price),
+            }
+        )
         mock_mdm.get_history = AsyncMock(return_value=history)
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert isinstance(result, str)
         assert "Normal" in result or "UNUSUAL" in result or "Regime Shift" in result
 
@@ -196,9 +208,9 @@ class TestGetGlobalMacroContext:
         mock_mdm = MagicMock()
         mock_mdm.get_quotes = AsyncMock(return_value={})
         mock_mdm.get_history = AsyncMock(return_value=[])
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert result.endswith("catalyst.")
 
     @pytest.mark.asyncio
@@ -212,13 +224,15 @@ class TestGetGlobalMacroContext:
             {"price": 97.0, "fetched_at": "2024-01-04"},
             {"price": 98.0, "fetched_at": "2024-01-05"},
         ]
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "GLD": MagicMock(exists=True, price=100.0),
-        })
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "GLD": MagicMock(exists=True, price=100.0),
+            }
+        )
         mock_mdm.get_history = AsyncMock(return_value=history)
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert "+" in result, "Expected + sign for positive price change"
 
     @pytest.mark.asyncio
@@ -232,45 +246,53 @@ class TestGetGlobalMacroContext:
             {"price": 97.0, "fetched_at": "2024-01-04"},
             {"price": 98.0, "fetched_at": "2024-01-05"},
         ]
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "GLD": MagicMock(exists=True, price=90.0),
-        })
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "GLD": MagicMock(exists=True, price=90.0),
+            }
+        )
         mock_mdm.get_history = AsyncMock(return_value=history)
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert "-" in result, "Expected - sign for negative price change"
 
     @pytest.mark.asyncio
     async def test_get_history_called_for_each_valid_ticker(self):
         """Test that get_history is called for each ticker with a valid quote."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=True, price=450.0),
-            "QQQ": MagicMock(exists=True, price=380.0),
-            "GLD": MagicMock(exists=True, price=180.0),
-        })
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 445.0, "fetched_at": "2024-01-01"},
-            {"price": 440.0, "fetched_at": "2024-01-02"},
-        ])
-        
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=True, price=450.0),
+                "QQQ": MagicMock(exists=True, price=380.0),
+                "GLD": MagicMock(exists=True, price=180.0),
+            }
+        )
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 445.0, "fetched_at": "2024-01-01"},
+                {"price": 440.0, "fetched_at": "2024-01-02"},
+            ]
+        )
+
         await get_global_macro_context(mock_mdm)
-        
+
         assert mock_mdm.get_history.call_count == 3
 
     @pytest.mark.asyncio
     async def test_skips_ticker_when_quote_not_exists(self):
         """Test that tickers with exists=False are skipped."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=False, price=450.0),
-            "QQQ": MagicMock(exists=True, price=380.0),
-        })
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=False, price=450.0),
+                "QQQ": MagicMock(exists=True, price=380.0),
+            }
+        )
         mock_mdm.get_history = AsyncMock(return_value=[])
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert "SPY" not in result
         assert "QQQ" in result
 
@@ -283,13 +305,15 @@ class TestGetGlobalMacroContext:
             {"price": 0.0, "fetched_at": "2024-01-02"},
             {"price": 50.0, "fetched_at": "2024-01-03"},
         ]
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "GLD": MagicMock(exists=True, price=100.0),
-        })
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "GLD": MagicMock(exists=True, price=100.0),
+            }
+        )
         mock_mdm.get_history = AsyncMock(return_value=history)
-        
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert isinstance(result, str)
         assert "GLD" in result
 
@@ -297,22 +321,26 @@ class TestGetGlobalMacroContext:
     async def test_all_six_categories_present(self):
         """Test that all six ticker categories are present in output."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={
-            "SPY": MagicMock(exists=True, price=450.0),
-            "EWJ": MagicMock(exists=True, price=80.0),
-            "GLD": MagicMock(exists=True, price=180.0),
-            "IEF": MagicMock(exists=True, price=95.0),
-            "UUP": MagicMock(exists=True, price=28.0),
-            "BTCUSD": MagicMock(exists=True, price=87000.0),
-        })
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 445.0, "fetched_at": "2024-01-01"},
-            {"price": 440.0, "fetched_at": "2024-01-02"},
-            {"price": 442.0, "fetched_at": "2024-01-03"},
-        ])
-        
+        mock_mdm.get_quotes = AsyncMock(
+            return_value={
+                "SPY": MagicMock(exists=True, price=450.0),
+                "EWJ": MagicMock(exists=True, price=80.0),
+                "GLD": MagicMock(exists=True, price=180.0),
+                "IEF": MagicMock(exists=True, price=95.0),
+                "UUP": MagicMock(exists=True, price=28.0),
+                "BTCUSD": MagicMock(exists=True, price=87000.0),
+            }
+        )
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 445.0, "fetched_at": "2024-01-01"},
+                {"price": 440.0, "fetched_at": "2024-01-02"},
+                {"price": 442.0, "fetched_at": "2024-01-03"},
+            ]
+        )
+
         result = await get_global_macro_context(mock_mdm)
-        
+
         assert "[ EQUITIES ]" in result
         assert "[ INTERNATIONAL ]" in result
         assert "[ COMMODITIES ]" in result

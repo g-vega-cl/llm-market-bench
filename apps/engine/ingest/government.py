@@ -4,7 +4,6 @@ This module performs monthly checks for government budgets, objectives,
 and incentives to inform the trading agents.
 """
 
-
 from core.config import GEMINI_MODEL, logger
 from core.db import get_supabase_client
 from core.llm import get_gemini_client
@@ -44,9 +43,12 @@ class GovernmentPipeline:
                 model=GEMINI_MODEL,
                 response_model=DecisionsResponse,
                 messages=[
-                    {"role": "system", "content": "You are a government policy analyst for a hedge fund. Return structured JSON."},
-                    {"role": "user", "content": prompt}
-                ]
+                    {
+                        "role": "system",
+                        "content": "You are a government policy analyst for a hedge fund. Return structured JSON.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
             )
 
             count = 0
@@ -61,11 +63,8 @@ class GovernmentPipeline:
                     content=memory_content,
                     memory_type="GOVERNMENT_INCENTIVE",
                     target_date=event.expiry_date,
-                    metadata={
-                        "expiry_date": event.expiry_date,
-                        "impact": event.impact
-                    },
-                    check_similarity=True
+                    metadata={"expiry_date": event.expiry_date, "impact": event.impact},
+                    check_similarity=True,
                 )
                 if success:
                     count += 1
@@ -76,6 +75,7 @@ class GovernmentPipeline:
         except Exception as e:
             logger.error(f"Government pipeline failed: {e}")
             return 0
+
 
 async def run_government_pipeline():
     """Entry point for the government pipeline."""

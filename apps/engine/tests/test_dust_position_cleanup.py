@@ -25,14 +25,14 @@ def mock_supabase():
                 "buying_power": 20000.0,
                 "excess_liquidity": 7000.0,
                 "maintenance_margin": 3000.0,
-                "realized": 5000.0
+                "realized": 5000.0,
             }
         ]
 
         # Mock positions fetch
         positions_data = [
             {"ticker": "AAPL", "quantity": 10, "average_cost_basis": 150.0},
-            {"ticker": "XYZ", "quantity": 5, "average_cost_basis": 100.0}
+            {"ticker": "XYZ", "quantity": 5, "average_cost_basis": 100.0},
         ]
 
         # Use side_effect to return different data based on table name
@@ -60,7 +60,7 @@ async def test_dust_position_cleanup_after_partial_sell(mock_supabase):
     # Both are below 10% threshold ($1,000)
     portfolio.positions = {
         "AAPL": MagicMock(ticker="AAPL", quantity=3, average_cost_basis=150.0),  # $450 value (below 10%)
-        "XYZ": MagicMock(ticker="XYZ", quantity=5, average_cost_basis=100.0)  # $500 value (below 10%)
+        "XYZ": MagicMock(ticker="XYZ", quantity=5, average_cost_basis=100.0),  # $500 value (below 10%)
     }
     portfolio.metrics = MagicMock(total_equity=10000.0, sma=5000.0, buying_power=20000.0)
     portfolio.cash_balance = 5000.0
@@ -174,9 +174,7 @@ async def test_dust_cleanup_handles_exceptions_gracefully(mock_supabase):
     await portfolio.initialize()
 
     # Setup: Position that will cause an error
-    portfolio.positions = {
-        "ERROR": MagicMock(ticker="ERROR", quantity=5, average_cost_basis=100.0)
-    }
+    portfolio.positions = {"ERROR": MagicMock(ticker="ERROR", quantity=5, average_cost_basis=100.0)}
     portfolio.metrics = MagicMock(total_equity=10000.0, sma=5000.0, buying_power=20000.0)
     portfolio.cash_balance = 5000.0
     portfolio.id = "test-portfolio-id"

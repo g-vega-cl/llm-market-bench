@@ -89,11 +89,7 @@ class TestWithRetry:
         mock_sleep.assert_called_once_with(1)
 
     def test_exponential_backoff_increases(self):
-        operation = MagicMock(side_effect=[
-            Exception("502 Bad Gateway"),
-            Exception("502 Bad Gateway"),
-            "success"
-        ])
+        operation = MagicMock(side_effect=[Exception("502 Bad Gateway"), Exception("502 Bad Gateway"), "success"])
         with patch("time.sleep") as mock_sleep:
             result = with_retry(operation, "test_op")
         assert result == "success"

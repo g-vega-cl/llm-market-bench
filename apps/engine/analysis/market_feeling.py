@@ -92,6 +92,7 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
 
     if weekend_mode:
         from datetime import timedelta
+
         week_start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
         start_date = f"{week_start}T00:00:00"
         date_label = "this week"
@@ -100,9 +101,12 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
         date_label = "today"
 
     # 1. Fetch trades
-    trades_res = sb_client.table("trades").select(
-        "id, ticker, signal, quantity, price, total_cost, executed_at, portfolios(owner_id)"
-    ).gte("executed_at", start_date).execute()
+    trades_res = (
+        sb_client.table("trades")
+        .select("id, ticker, signal, quantity, price, total_cost, executed_at, portfolios(owner_id)")
+        .gte("executed_at", start_date)
+        .execute()
+    )
     trades = trades_res.data or []
 
     # 2. Fetch memories (events, lessons, incentives)
@@ -114,9 +118,12 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
     events = [m for m in memories if m.get("memory_type") in ("MARKET_EVENT", "GOVERNMENT_INCENTIVE")]
 
     # 3. Fetch decisions for reasoning context and separate executed vs rejected
-    decisions_res = sb_client.table("decisions").select(
-        "id, ticker, signal, confidence, reasoning, model_name, status"
-    ).gte("created_at", start_date).execute()
+    decisions_res = (
+        sb_client.table("decisions")
+        .select("id, ticker, signal, confidence, reasoning, model_name, status")
+        .gte("created_at", start_date)
+        .execute()
+    )
     decisions = decisions_res.data or []
 
     # Separate executed trades (from decisions table) vs rejected attempts
@@ -130,7 +137,9 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
     # Use all decisions for reasoning context (includes executed, rejected, and validated)
     all_decisions = decisions
 
-    logger.info(f"Gathered {date_label} data: {len(executed_trades)} executed, {len(rejected_attempts)} rejected, {len(lessons)} lessons, {len(events)} events")
+    logger.info(
+        f"Gathered {date_label} data: {len(executed_trades)} executed, {len(rejected_attempts)} rejected, {len(lessons)} lessons, {len(events)} events"
+    )
 
     return {
         "trades": executed_trades,
@@ -191,11 +200,15 @@ def build_attempts_summary(rejected_decisions: list[dict], weekend_mode: bool = 
 
     if rejected_buys:
         tickers = [d["ticker"] for d in rejected_buys[:3]]
-        parts.append(f"Rejected buys: {len(rejected_buys)} ({', '.join(tickers)}{'...' if len(rejected_buys) > 3 else ''})")
+        parts.append(
+            f"Rejected buys: {len(rejected_buys)} ({', '.join(tickers)}{'...' if len(rejected_buys) > 3 else ''})"
+        )
 
     if rejected_sells:
         tickers = [d["ticker"] for d in rejected_sells[:3]]
-        parts.append(f"Rejected sells: {len(rejected_sells)} ({', '.join(tickers)}{'...' if len(rejected_sells) > 3 else ''})")
+        parts.append(
+            f"Rejected sells: {len(rejected_sells)} ({', '.join(tickers)}{'...' if len(rejected_sells) > 3 else ''})"
+        )
 
     if by_reason:
         reasons = ", ".join([f"{r}={c}" for r, c in by_reason.items()])
@@ -244,9 +257,7 @@ def build_reasoning_summary(decisions: list[dict], weekend_mode: bool = False) -
         confidence = decision.get("confidence", 0)
         reasoning = decision.get("reasoning", "No reasoning")[:150]
 
-        reasoning_parts.append(
-            f"- {ticker}: {signal} (conf: {confidence}%) - {reasoning}..."
-        )
+        reasoning_parts.append(f"- {ticker}: {signal} (conf: {confidence}%) - {reasoning}...")
 
     return "\n".join(reasoning_parts) if reasoning_parts else f"No decisions made {date_label}."
 
@@ -345,8 +356,14 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
         logger.info(f"MiniMax response: {json.dumps(result, indent=2)[:500]}")
 
         # 5. Validate response structure
-        required_fields = ["sentiment_label", "sentiment_emoji", "confidence_score",
-                          "why_explanation", "market_direction", "primary_concern"]
+        required_fields = [
+            "sentiment_label",
+            "sentiment_emoji",
+            "confidence_score",
+            "why_explanation",
+            "market_direction",
+            "primary_concern",
+        ]
         for field in required_fields:
             if field not in result:
                 logger.error(f"MiniMax response missing required field: {field}")
@@ -418,9 +435,7 @@ async def get_latest_market_feeling() -> dict[str, Any] | None:
         The latest market_feeling record, or None if not found.
     """
     sb_client = get_supabase_client()
-    res = sb_client.table("market_feeling").select("*").order(
-        "created_at", desc=True
-    ).limit(1).execute()
+    res = sb_client.table("market_feeling").select("*").order("created_at", desc=True).limit(1).execute()
 
     return res.data[0] if res.data else None
 

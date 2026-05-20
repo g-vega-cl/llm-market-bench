@@ -47,7 +47,7 @@ async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") ->
         logger.warning(
             "Supabase returned None for active prompt query (prompt_name=%s). "
             "This usually means the table is empty or the row was deleted.",
-            prompt_name
+            prompt_name,
         )
         return None
 
@@ -91,9 +91,14 @@ async def save_variant(
 
     # NOW demote the previous active variants.
     # neq() ensures we don't demote the row we just inserted.
-    await sb_client.table("prompt_experiments").update({"status": "kept"}).eq(
-        "status", "active"
-    ).eq("prompt_name", prompt_name).neq("variant_tag", tag).execute()
+    await (
+        sb_client.table("prompt_experiments")
+        .update({"status": "kept"})
+        .eq("status", "active")
+        .eq("prompt_name", prompt_name)
+        .neq("variant_tag", tag)
+        .execute()
+    )
 
     clear_active_prompt_cache()
     logger.info("Saved prompt variant %s (type=%s)", tag, experiment_type)
@@ -120,12 +125,7 @@ async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT"
     sb_client = await get_async_supabase_client()
     # Fetch all variants for this prompt name. Since it's a weekly loop,
     # the number of rows will remain small (e.g., 52 per year).
-    res = await (
-        sb_client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", prompt_name)
-        .execute()
-    )
+    res = await sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).execute()
 
     if not res or not res.data:
         return None
@@ -137,6 +137,7 @@ async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT"
         m = v.get("metrics", {})
         if isinstance(m, str):
             import json
+
             try:
                 m = json.loads(m)
             except (json.JSONDecodeError, TypeError):
@@ -157,9 +158,13 @@ async def get_baseline_metrics(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT")
 
 async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> str | None:
     sb_client = await get_async_supabase_client()
-    await sb_client.table("prompt_experiments").update({"status": "crashed"}).eq(
-        "status", "active"
-    ).eq("prompt_name", prompt_name).execute()
+    await (
+        sb_client.table("prompt_experiments")
+        .update({"status": "crashed"})
+        .eq("status", "active")
+        .eq("prompt_name", prompt_name)
+        .execute()
+    )
 
     kept = await (
         sb_client.table("prompt_experiments")
@@ -174,9 +179,13 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
 
     if kept and kept.data:
         tag = kept.data["variant_tag"]
-        await sb_client.table("prompt_experiments").update({"status": "active"}).eq(
-            "prompt_name", prompt_name
-        ).eq("variant_tag", tag).execute()
+        await (
+            sb_client.table("prompt_experiments")
+            .update({"status": "active"})
+            .eq("prompt_name", prompt_name)
+            .eq("variant_tag", tag)
+            .execute()
+        )
         clear_active_prompt_cache()
         logger.info("Reverted to previous prompt variant: %s", tag)
         return tag
@@ -218,14 +227,22 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
 
     # Demote current active (if any) to 'kept' — it wasn't a crash, just
     # an experiment that failed to beat the baseline.
-    await sb_client.table("prompt_experiments").update({"status": "kept"}).eq(
-        "status", "active"
-    ).eq("prompt_name", prompt_name).execute()
+    await (
+        sb_client.table("prompt_experiments")
+        .update({"status": "kept"})
+        .eq("status", "active")
+        .eq("prompt_name", prompt_name)
+        .execute()
+    )
 
     # Promote the baseline to active.
-    await sb_client.table("prompt_experiments").update({"status": "active"}).eq(
-        "prompt_name", prompt_name
-    ).eq("variant_tag", baseline_tag).execute()
+    await (
+        sb_client.table("prompt_experiments")
+        .update({"status": "active"})
+        .eq("prompt_name", prompt_name)
+        .eq("variant_tag", baseline_tag)
+        .execute()
+    )
 
     clear_active_prompt_cache()
     logger.info("Reverted to baseline prompt variant: %s", baseline_tag)

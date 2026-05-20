@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -10,7 +9,7 @@ from core.llm.prompt_factory import PromptFactory
 
 def test_prompt_factory_refinements():
     print("Testing PromptFactory refinements...")
-    
+
     # Standard analysis args
     kwargs = {
         "calendar_knowledge": "Test Calendar",
@@ -20,15 +19,15 @@ def test_prompt_factory_refinements():
         "macro_context": "Bullish",
         "context": "History",
         "news_content": "News",
-        "min_trade_value": 1000.0
+        "min_trade_value": 1000.0,
     }
-    
+
     try:
         # 1. Test Grammar Fix: Leading period in stripped system prompt
         # We need a provider that triggers stripping (e.g., openai)
         openai_msgs = PromptFactory.build_analysis_messages("openai", **kwargs)
         system_content = openai_msgs[0]["content"]
-        
+
         # Check for ". Use tools"
         assert ". Use tools to verify market data" in system_content, "Grammar fix: Leading period must be present"
         print("✅ Grammar Fix: System prompt has correct sentence boundary.")
@@ -61,8 +60,10 @@ def test_prompt_factory_refinements():
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     test_prompt_factory_refinements()

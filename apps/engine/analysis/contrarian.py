@@ -21,8 +21,8 @@ async def run_contrarian_analysis(
     context: str = "",
     portfolio: Portfolio = None,
     market_data: MarketDataManager = None,
-    llm_client = None,
-    retrieve_context_fn: Callable = None
+    llm_client=None,
+    retrieve_context_fn: Callable = None,
 ) -> tuple[list[DecisionObject], list[MacroEvent]]:
     """Runs the contrarian analysis using Gemini Flash 3.
 
@@ -54,7 +54,9 @@ async def run_contrarian_analysis(
 
     current_prices = {}
     if portfolio.positions:
-        logger.info(f"Fetching current prices for {len(portfolio.positions)} contrarian portfolio tickers in parallel...")
+        logger.info(
+            f"Fetching current prices for {len(portfolio.positions)} contrarian portfolio tickers in parallel..."
+        )
         tickers = list(portfolio.positions.keys())
         quotes = await market_data.get_quotes(tickers, force_refresh=True)
         current_prices = {ticker: data.price for ticker, data in quotes.items()}
@@ -73,13 +75,13 @@ async def run_contrarian_analysis(
             lesson_context = retrieve_context_fn(queries, limit=2, memory_types=["LESSON_LEARNED"])
             all_contexts = context_results + gov_context + lesson_context
             context = "\n".join(list(set([c for c in all_contexts if c])))
-    news_content = "".join([
-        f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n"
-        for chunk in chunks
-    ])
+    news_content = "".join(
+        [f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n" for chunk in chunks]
+    )
 
     # Pre-fetch market data for contrarian analysis
     from core.llm.analysis import _extract_tickers_from_chunks
+
     portfolio_tickers = list(portfolio.positions.keys())
     tickers_to_fetch = _extract_tickers_from_chunks(chunks, portfolio_tickers)
     quotes = await market_data.get_quotes(list(tickers_to_fetch), force_refresh=True)
@@ -94,8 +96,7 @@ async def run_contrarian_analysis(
     decisions_context = ""
     for d in other_decisions:
         decisions_context += (
-            f"- [{d.model_name}] {d.ticker}: {d.signal} (Conf: {d.confidence}%)\n"
-            f"  Reasoning: {d.reasoning}\n"
+            f"- [{d.model_name}] {d.ticker}: {d.signal} (Conf: {d.confidence}%)\n  Reasoning: {d.reasoning}\n"
         )
 
     if not decisions_context:
@@ -105,7 +106,6 @@ async def run_contrarian_analysis(
     client = llm_client
 
     try:
-
         from core.llm.prompt_factory import PromptFactory
         from core.models import DecisionsResponse
 
@@ -115,16 +115,13 @@ async def run_contrarian_analysis(
             decisions_context=decisions_context,
             context=context,
             portfolio_context=portfolio_ctx,
-            market_data_block=market_data_block
+            market_data_block=market_data_block,
         )
 
         # Use List[DecisionsResponse] to handle Gemini emitting multiple tool call blocks
         # This is expected behavior with instructor.Mode.GENAI_TOOLS and multiple news chunks
         resp_awaitable = client.chat.completions.create(
-            model=GEMINI_MODEL,
-            response_model=list[DecisionsResponse],
-            messages=messages,
-            max_retries=2
+            model=GEMINI_MODEL, response_model=list[DecisionsResponse], messages=messages, max_retries=2
         )
 
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
@@ -133,7 +130,7 @@ async def run_contrarian_analysis(
             wrapper = resp_awaitable
 
         if not wrapper:
-             return [], []
+            return [], []
 
         # Aggregate all decisions and macro events from all response blocks
         all_decisions = []
@@ -151,7 +148,9 @@ async def run_contrarian_analysis(
             e.model_provider = "gemini"
             e.model_name = "contrarian_agent"
 
-        logger.info(f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper)} response blocks.")
+        logger.info(
+            f"Contrarian analysis complete. Generated {len(all_decisions)} decisions from {len(wrapper)} response blocks."
+        )
         return all_decisions, all_events
 
     except Exception as e:

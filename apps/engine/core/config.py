@@ -74,7 +74,7 @@ NEWSLETTER_SENDERS = [
     "daily@chartr.co",
     "brewmarkets@morningbrew.com",
     "contact@stockanalysis.com",
-    "themacrocompass@substack.com"
+    "themacrocompass@substack.com",
 ]
 # --- Memory Retention & Decay (Step 15+) ---
 MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS = 30  # Memories lose 50% relevance every 30 days
@@ -111,14 +111,18 @@ MIN_MARKET_CAP_BILLIONS = 2.0
 MAX_PRICE_DEVIATION_PCT = 5.0
 MIN_TRADE_VALUE = 1000.0  # Minimum purchase/sell value for LLM-driven trades
 FINANCIAL_API_THROTTLE_SECONDS = 0.2
-MARKET_DATA_CACHE_TTL_SECONDS = int(os.getenv("MARKET_DATA_CACHE_TTL_SECONDS", 300))  # Default 5-minute cache TTL for market data
+MARKET_DATA_CACHE_TTL_SECONDS = int(
+    os.getenv("MARKET_DATA_CACHE_TTL_SECONDS", 300)
+)  # Default 5-minute cache TTL for market data
 MARKET_DATA_RETRIES = int(os.getenv("MARKET_DATA_RETRIES", 2))
 
 # --- Alpaca Paper Trading Configuration ---
 # Enable web search grounding for LLM agents
 ENABLE_ANTHROPIC_WEB_SEARCH = os.getenv("ENABLE_ANTHROPIC_WEB_SEARCH", "true").lower() == "true"
 ENABLE_GEMINI_WEB_SEARCH = os.getenv("ENABLE_GEMINI_WEB_SEARCH", "true").lower() == "true"
-ENABLE_OPENAI_WEB_SEARCH = os.getenv("ENABLE_OPENAI_WEB_SEARCH", "false").lower() == "true"  # Limited support in Chat API
+ENABLE_OPENAI_WEB_SEARCH = (
+    os.getenv("ENABLE_OPENAI_WEB_SEARCH", "false").lower() == "true"
+)  # Limited support in Chat API
 
 # Anthropic web search tool version
 # Use 'web_search_20250305' for ZDR compliance, 'web_search_20260209' for dynamic filtering

@@ -72,7 +72,7 @@ async def run_tool_loop(
     messages: list,
     max_tool_steps: int = 5,
     override_tools: list | None = None,
-    enable_web_search: bool = False
+    enable_web_search: bool = False,
 ) -> None:
     """Runs the tool execution loop for Anthropic.
 
@@ -130,12 +130,14 @@ async def run_tool_loop(
                     assistant_content.append({"type": "text", "text": text})
             elif content_block.type == "tool_use":
                 # Only include function tool calls (client-side tools)
-                assistant_content.append({
-                    "type": "tool_use",
-                    "id": content_block.id,
-                    "name": content_block.name,
-                    "input": content_block.input,
-                })
+                assistant_content.append(
+                    {
+                        "type": "tool_use",
+                        "id": content_block.id,
+                        "name": content_block.name,
+                        "input": content_block.input,
+                    }
+                )
             # Skip server_tool_use blocks - they are internal to Anthropic's server
 
         # Ensure assistant content is never empty to avoid 400 errors from API
@@ -154,14 +156,18 @@ async def run_tool_loop(
         # Handle function tool calls
         for tool_use in tool_uses:
             result = await base.execute_tool(tool_use.name, tool_use.input, model_name)
-            tool_results_content.append({
-                "type": "tool_result",
-                "tool_use_id": tool_use.id,
-                "content": result,
-            })
+            tool_results_content.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_use.id,
+                    "content": result,
+                }
+            )
 
         if tool_results_content:
-            messages.append({
-                "role": "user",
-                "content": tool_results_content,
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": tool_results_content,
+                }
+            )

@@ -28,7 +28,7 @@ async def bootstrap():
         week_end=week_end,
         metrics={"score": 0, "excess_return": 0, "max_drawdown": 0, "note": "System-Heavy Baseline"},
         change_description="Refactored System-Heavy architecture: moved trading logic from User to System message.",
-        experiment_type="baseline"
+        experiment_type="baseline",
     )
 
     logger.info("Successfully bootstrapped with variant: %s", tag)

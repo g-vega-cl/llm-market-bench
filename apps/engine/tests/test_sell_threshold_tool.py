@@ -33,13 +33,13 @@ def mock_supabase():
                 "buying_power": 20000.0,
                 "excess_liquidity": 7000.0,
                 "maintenance_margin": 3000.0,
-                "realized": 5000.0
+                "realized": 5000.0,
             }
         ]
 
         positions_data = [
             {"ticker": "AAPL", "quantity": 10, "average_cost_basis": 150.0},
-            {"ticker": "XYZ", "quantity": 5, "average_cost_basis": 100.0}
+            {"ticker": "XYZ", "quantity": 5, "average_cost_basis": 100.0},
         ]
 
         def table_side_effect(table_name):
@@ -61,9 +61,7 @@ async def test_automatic_dust_cleanup_below_threshold(mock_supabase):
     await portfolio.initialize()
 
     # Setup: $10,000 equity, 5 shares @ $100 = $500 (below 10% = $1,000)
-    portfolio.positions = {
-        "AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)
-    }
+    portfolio.positions = {"AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)}
     portfolio.metrics = MagicMock(total_equity=10000.0)
     portfolio.cash_balance = 5000.0
     portfolio.id = "test-portfolio-id"
@@ -85,9 +83,7 @@ async def test_no_cleanup_for_positions_above_threshold(mock_supabase):
     await portfolio.initialize()
 
     # Setup: $10,000 equity, 100 shares @ $150 = $15,000 (above 10% = $1,000)
-    portfolio.positions = {
-        "AAPL": MagicMock(ticker="AAPL", quantity=100, average_cost_basis=150.0)
-    }
+    portfolio.positions = {"AAPL": MagicMock(ticker="AAPL", quantity=100, average_cost_basis=150.0)}
     portfolio.metrics = MagicMock(total_equity=10000.0)
     portfolio.cash_balance = 5000.0
     portfolio.id = "test-portfolio-id"
@@ -111,9 +107,7 @@ async def test_handles_zero_quantity_position(mock_supabase):
     portfolio = Portfolio(owner_id="test-agent")
     await portfolio.initialize()
 
-    portfolio.positions = {
-        "DEAD": MagicMock(ticker="DEAD", quantity=0, average_cost_basis=50.0)
-    }
+    portfolio.positions = {"DEAD": MagicMock(ticker="DEAD", quantity=0, average_cost_basis=50.0)}
     portfolio.metrics = MagicMock(total_equity=10000.0)
     portfolio.cash_balance = 5000.0
     portfolio.id = "test-portfolio-id"
@@ -134,9 +128,7 @@ async def test_handles_market_data_error_gracefully(mock_supabase):
     portfolio = Portfolio(owner_id="test-agent")
     await portfolio.initialize()
 
-    portfolio.positions = {
-        "AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)
-    }
+    portfolio.positions = {"AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)}
     portfolio.metrics = MagicMock(total_equity=10000.0)
     portfolio.cash_balance = 5000.0
     portfolio.id = "test-portfolio-id"
@@ -160,9 +152,7 @@ async def test_exact_threshold_boundary(mock_supabase):
     await portfolio.initialize()
 
     # 10 shares @ $100 = $1,000 (exactly 10% of $10,000)
-    portfolio.positions = {
-        "AAPL": MagicMock(ticker="AAPL", quantity=10, average_cost_basis=100.0)
-    }
+    portfolio.positions = {"AAPL": MagicMock(ticker="AAPL", quantity=10, average_cost_basis=100.0)}
     portfolio.metrics = MagicMock(total_equity=10000.0)
     portfolio.cash_balance = 5000.0
     portfolio.id = "test-portfolio-id"

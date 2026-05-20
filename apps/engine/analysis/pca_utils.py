@@ -13,6 +13,7 @@ from supabase import Client
 
 logger = logging.getLogger("engine")
 
+
 def update_pca_coordinates(sb_client: Client):
     """Fetches all concept vectors, calculates PCA, and updates the DB."""
     logger.info("Starting PCA update for concept metrics...")
@@ -21,7 +22,7 @@ def update_pca_coordinates(sb_client: Client):
         # 1. Fetch all concepts with their vectors
         # Limit to 10,000 to be safe, though likely much fewer
         response = sb_client.table("concept_metrics").select("*").limit(10000).execute()
-        
+
         if not response.data:
             logger.info("No concepts found to update.")
             return
@@ -36,7 +37,7 @@ def update_pca_coordinates(sb_client: Client):
                 # concept_vector is stored as a JSON string or list in DB
                 vec_data = c["concept_vector"]
                 vec = json.loads(vec_data) if isinstance(vec_data, str) else vec_data
-                
+
                 vectors.append(vec)
                 ids.append(c["id"])
             except Exception as e:
@@ -59,21 +60,21 @@ def update_pca_coordinates(sb_client: Client):
         logger.info(f"PCA explained variance ratio: {pca.explained_variance_ratio_}")
 
         # 4. Update Database
-        # We can't do a bulk update easily with different values for diff rows in Supabase 
+        # We can't do a bulk update easily with different values for diff rows in Supabase
         # without a custom RPC or complex query. For < 1000 items, sequential updates are acceptable but slow.
         # Check if we can upsert. concept_metrics has 'id' as primary key.
-        
+
         updates = []
         for i, _concept_id in enumerate(ids):
             # Find the original row data
             # Optimization: We could map ID to row, but order is preserved in our lists
             # We iterate through 'vectors' and 'ids' which came from 'concepts' list in order.
             # So concepts[i] corresponds to ids[i]
-            
+
             row = concepts[i].copy()
             row["pca_x"] = float(X_pca[i, 0])
             row["pca_y"] = float(X_pca[i, 1])
-            
+
             # Remove any potentially problematic auto-generated columns if necessary
             # e.g. 'created_at' usually fine to upsert back if it matches
             updates.append(row)
@@ -81,7 +82,7 @@ def update_pca_coordinates(sb_client: Client):
         # Process in batches of 100 to respect potential payload size limits
         batch_size = 100
         for i in range(0, len(updates), batch_size):
-            batch = updates[i:i+batch_size]
+            batch = updates[i : i + batch_size]
             sb_client.table("concept_metrics").upsert(batch).execute()
 
         logger.info(f"Successfully updated PCA coordinates for {len(updates)} concepts.")

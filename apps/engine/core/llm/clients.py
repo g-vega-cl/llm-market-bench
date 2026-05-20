@@ -14,20 +14,15 @@ logger = logging.getLogger("engine")
 
 TIMEOUT = 180
 
+
 def get_openai_client():
     """Creates an async OpenAI client wrapped with Instructor."""
-    return instructor.from_openai(AsyncOpenAI(
-        api_key=config.OPENAI_API_KEY,
-        timeout=TIMEOUT
-    ))
+    return instructor.from_openai(AsyncOpenAI(api_key=config.OPENAI_API_KEY, timeout=TIMEOUT))
 
 
 def get_anthropic_client():
     """Creates an async Anthropic client wrapped with Instructor."""
-    return instructor.from_anthropic(AsyncAnthropic(
-        api_key=config.ANTHROPIC_API_KEY,
-        timeout=TIMEOUT
-    ))
+    return instructor.from_anthropic(AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY, timeout=TIMEOUT))
 
 
 def get_deepseek_client():
@@ -36,12 +31,8 @@ def get_deepseek_client():
     Uses the OpenAI SDK to interact with DeepSeek's API.
     """
     return instructor.from_openai(
-        AsyncOpenAI(
-            api_key=config.DEEPSEEK_API_KEY,
-            base_url="https://api.deepseek.com",
-            timeout=TIMEOUT
-        ),
-        mode=instructor.Mode.JSON
+        AsyncOpenAI(api_key=config.DEEPSEEK_API_KEY, base_url="https://api.deepseek.com", timeout=TIMEOUT),
+        mode=instructor.Mode.JSON,
     )
 
 
@@ -72,7 +63,7 @@ async def close_client(client, provider: str):
     """
     if client is None:
         return
-        
+
     try:
         # Instructor wraps clients but preserves the underlying client reference
         if hasattr(client, "client"):

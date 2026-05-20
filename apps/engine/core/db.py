@@ -27,10 +27,7 @@ _supabase_async_client: AsyncClient | None = None
 def _validate_config():
     """Raise if Supabase configuration is missing."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        error_msg = (
-            "Supabase configuration missing: ensure SUPABASE_PROJECT_URL "
-            "and SUPABASE_SERVICE_ROLE_KEY are set."
-        )
+        error_msg = "Supabase configuration missing: ensure SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY are set."
         logger.error(error_msg)
         raise ValueError(error_msg)
 
@@ -119,24 +116,22 @@ async def get_async_supabase_client() -> AsyncClient:
 
     _validate_config()
     options = _build_async_client_options()
-    _supabase_async_client = await create_async_client(
-        SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options
-    )
+    _supabase_async_client = await create_async_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, options=options)
     return _supabase_async_client
 
 
 def is_transient_supabase_error(exc: Exception) -> bool:
     """Check if an exception is a transient Supabase error worth retrying."""
     error_str = str(exc).lower()
-    
+
     transient_codes = {"502", "503", "504", "429"}
     for code in transient_codes:
         if code in error_str:
             return True
-    
+
     transient_keywords = [
         "bad gateway",
-        "service unavailable", 
+        "service unavailable",
         "gateway timeout",
         "too many requests",
         "connection error",
@@ -152,31 +147,31 @@ def is_transient_supabase_error(exc: Exception) -> bool:
 
 def with_retry[T](operation: Callable[[], T], operation_name: str = "operation") -> T:
     """Execute a Supabase operation with retry logic and exponential backoff.
-    
+
     Retries on transient errors (502, 503, 504, timeouts, connection errors).
-    
+
     Args:
         operation: A callable that performs the Supabase operation.
         operation_name: Human-readable name for logging purposes.
-        
+
     Returns:
         The result of the operation.
-        
+
     Raises:
         The last exception if all retries are exhausted.
     """
     last_exception = None
-    
+
     for attempt in range(1, SUPABASE_RETRIES + 1):
         try:
             return operation()
         except Exception as exc:
             last_exception = exc
-            
+
             if not is_transient_supabase_error(exc):
                 logger.exception(f"{operation_name} failed with non-transient error")
                 raise
-            
+
             if attempt < SUPABASE_RETRIES:
                 wait_time = 2 ** (attempt - 1)
                 logger.warning(
@@ -185,17 +180,12 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
                 )
                 time.sleep(wait_time)
             else:
-                logger.exception(
-                    f"{operation_name} failed after {SUPABASE_RETRIES} attempts"
-                )
-    
+                logger.exception(f"{operation_name} failed after {SUPABASE_RETRIES} attempts")
+
     raise last_exception
 
 
-def upsert_newsletter_snapshot(
-    client: Client,
-    data: dict[str, Any]
-) -> dict[str, Any]:
+def upsert_newsletter_snapshot(client: Client, data: dict[str, Any]) -> dict[str, Any]:
     """Upsert a newsletter snapshot into the database.
 
     Uses the composite unique constraint (date, source_id) for idempotency,
@@ -227,10 +217,7 @@ def upsert_newsletter_snapshot(
     }
 
     try:
-        response = client.table("newsletter_snapshots").upsert(
-            payload,
-            on_conflict="date,source_id"
-        ).execute()
+        response = client.table("newsletter_snapshots").upsert(payload, on_conflict="date,source_id").execute()
 
         return response.data[0] if response.data else {}
     except Exception as e:

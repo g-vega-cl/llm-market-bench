@@ -21,9 +21,9 @@ class TestComputeVolumeContext:
             {"price": 151.0, "volume": 10000000, "fetched_at": "2024-01-01"},
             {"price": 152.0, "volume": 10000000, "fetched_at": "2024-01-03"},
         ] * 7  # 21 entries to test 20-day lookback
-        
+
         result = compute_volume_context(history)
-        
+
         assert "1.0x" in result
         assert "20-day average" in result
         assert "th percentile" in result
@@ -37,13 +37,10 @@ class TestComputeVolumeContext:
         history = [
             {"price": 150.0, "volume": 50000000, "fetched_at": "2024-01-02"},  # highest
             {"price": 151.0, "volume": 10000000, "fetched_at": "2024-01-01"},
-        ] + [
-            {"price": 152.0, "volume": 10000000, "fetched_at": f"2024-01-{i:02d}"}
-            for i in range(3, 22)
-        ]
-        
+        ] + [{"price": 152.0, "volume": 10000000, "fetched_at": f"2024-01-{i:02d}"} for i in range(3, 22)]
+
         result = compute_volume_context(history)
-        
+
         assert "4." in result  # Approximately 4.2x
         assert "20-day average" in result  # Capped at 20
         assert "95th percentile" in result
@@ -55,9 +52,9 @@ class TestComputeVolumeContext:
             {"price": 151.0, "volume": 10000000, "fetched_at": "2024-01-01"},
             {"price": 152.0, "volume": 10000000, "fetched_at": "2024-01-03"},
         ] * 7
-        
+
         result = compute_volume_context(history)
-        
+
         assert "0.1x" in result
         assert "0th percentile" in result
 
@@ -67,9 +64,9 @@ class TestComputeVolumeContext:
             {"price": 150.0, "volume": 10000000, "fetched_at": "2024-01-02"},
             {"price": 151.0, "volume": 10000000, "fetched_at": "2024-01-01"},
         ]
-        
+
         result = compute_volume_context(history)
-        
+
         assert result == "insufficient volume data"
 
     def test_compute_volume_context_missing_volume(self):
@@ -78,9 +75,9 @@ class TestComputeVolumeContext:
             {"price": 150.0, "fetched_at": "2024-01-02"},  # No volume
             {"price": 151.0, "volume": 10000000, "fetched_at": "2024-01-01"},
         ]
-        
+
         result = compute_volume_context(history)
-        
+
         assert result == "insufficient volume data"
 
     def test_compute_volume_context_dynamic_lookback(self):
@@ -96,16 +93,16 @@ class TestComputeVolumeContext:
             {"price": 153.0, "volume": 10000000, "fetched_at": "2024-01-04"},
             {"price": 154.0, "volume": 10000000, "fetched_at": "2024-01-05"},
         ]
-        
+
         result = compute_volume_context(history)
-        
+
         assert "1.7x" in result
         assert "5-day average" in result
 
     def test_compute_volume_context_empty_history(self):
         """Test with empty history."""
         result = compute_volume_context([])
-        
+
         assert result == "insufficient volume data"
 
     def test_compute_volume_context_none_values_filtered(self):
@@ -114,19 +111,16 @@ class TestComputeVolumeContext:
         # None values are filtered out, so they don't affect the average
         history = [
             {"price": 150.0, "volume": 50000000, "fetched_at": "2024-01-02"},
-        ] + [
-            {"price": 151.0, "volume": 10000000, "fetched_at": f"2024-01-{i:02d}"}
-            for i in range(3, 22)
-        ]
+        ] + [{"price": 151.0, "volume": 10000000, "fetched_at": f"2024-01-{i:02d}"} for i in range(3, 22)]
         # Add some None values interspersed
         history_with_none = []
         for i, entry in enumerate(history):
             history_with_none.append(entry)
             if i > 0 and i < 20:
                 history_with_none.append({"price": 999.0, "volume": None, "fetched_at": "2024-01-00"})
-        
+
         result = compute_volume_context(history_with_none)
-        
+
         # Should still be around 4.2x (same as elevated test) since None values are filtered
         assert "4." in result
 
@@ -140,17 +134,14 @@ class TestExecuteVolatilityMetricsTool:
         # Build 20 entries: latest is 50000000, others are 10000000
         mock_history = [
             {"price": 150.0, "volume": 50000000, "fetched_at": "2024-01-02"},  # latest
-        ] + [
-            {"price": 151.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i+3:02d}"}
-            for i in range(19)
-        ]
-        
+        ] + [{"price": 151.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i + 3:02d}"} for i in range(19)]
+
         with patch("core.llm.tools.MarketDataManager") as mock_manager_cls:
             mock_manager = mock_manager_cls.return_value
             mock_manager.get_history = AsyncMock(return_value=mock_history)
-            
+
             result = await execute_volatility_metrics_tool("AAPL", days=20)
-            
+
             assert "Volume Context:" in result
             assert "4." in result  # Approximately 4.2x
             assert "20-day average" in result
@@ -161,9 +152,9 @@ class TestExecuteVolatilityMetricsTool:
         with patch("core.llm.tools.MarketDataManager") as mock_manager_cls:
             mock_manager = mock_manager_cls.return_value
             mock_manager.get_history = AsyncMock(return_value=[])
-            
+
             result = await execute_volatility_metrics_tool("AAPL")
-            
+
             assert "Insufficient historical data" in result
 
 
@@ -177,22 +168,16 @@ class TestExecuteStockScreenerTool:
             {"symbol": "AAPL", "companyName": "Apple Inc", "price": 150.0, "marketCap": 2500000000000},
             {"symbol": "MSFT", "companyName": "Microsoft Corp", "price": 350.0, "marketCap": 2800000000000},
         ]
-        
+
         # AAPL: latest is 50000000, others 10000000 -> ~4.2x
         mock_history_aapl = [
             {"price": 150.0, "volume": 50000000, "fetched_at": "2024-01-02"},
-        ] + [
-            {"price": 151.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i+3:02d}"}
-            for i in range(19)
-        ]
-        
+        ] + [{"price": 151.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i + 3:02d}"} for i in range(19)]
+
         # MSFT: all volumes are 10000000 -> 1.0x
         mock_history_msft = [
             {"price": 350.0, "volume": 10000000, "fetched_at": "2024-01-02"},
-        ] + [
-            {"price": 351.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i+3:02d}"}
-            for i in range(19)
-        ]
+        ] + [{"price": 351.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i + 3:02d}"} for i in range(19)]
 
         async def mock_get_history(ticker, days=20):
             if ticker == "AAPL":
@@ -205,9 +190,9 @@ class TestExecuteStockScreenerTool:
             mock_manager = mock_manager_cls.return_value
             mock_manager.screen_stocks = AsyncMock(return_value=mock_screener_results)
             mock_manager.get_history = mock_get_history
-            
+
             result = await execute_stock_screener_tool(sector="Technology", limit=2)
-            
+
             assert "AAPL" in result
             assert "MSFT" in result
             assert "Volume Context:" in result
@@ -220,9 +205,9 @@ class TestExecuteStockScreenerTool:
         with patch("core.llm.tools.MarketDataManager") as mock_manager_cls:
             mock_manager = mock_manager_cls.return_value
             mock_manager.screen_stocks = AsyncMock(return_value=[])
-            
+
             result = await execute_stock_screener_tool(sector="Nonexistent")
-            
+
             assert "No stocks found" in result
 
     @pytest.mark.asyncio
@@ -232,13 +217,10 @@ class TestExecuteStockScreenerTool:
             {"symbol": None, "companyName": "Unknown", "price": 0, "marketCap": 0},
             {"symbol": "AAPL", "companyName": "Apple Inc", "price": 150.0, "marketCap": 2500000000000},
         ]
-        
+
         mock_history = [
             {"price": 150.0, "volume": 10000000, "fetched_at": "2024-01-02"},
-        ] + [
-            {"price": 151.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i+3:02d}"}
-            for i in range(19)
-        ]
+        ] + [{"price": 151.0 + i * 0.1, "volume": 10000000, "fetched_at": f"2024-01-{i + 3:02d}"} for i in range(19)]
 
         async def mock_get_history(ticker, days=20):
             if ticker == "AAPL":
@@ -249,8 +231,8 @@ class TestExecuteStockScreenerTool:
             mock_manager = mock_manager_cls.return_value
             mock_manager.screen_stocks = AsyncMock(return_value=mock_screener_results)
             mock_manager.get_history = mock_get_history
-            
+
             result = await execute_stock_screener_tool(sector="Technology", limit=2)
-            
+
             assert "AAPL" in result
             assert "Volume Context:" in result

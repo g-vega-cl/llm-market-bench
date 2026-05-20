@@ -1,6 +1,7 @@
 """
 Tests for scripts.update_prices.py script, specifically the benchmark history fetching functionality.
 """
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -39,9 +40,10 @@ class TestAsyncSleepOptimization:
     @patch("scripts.update_prices.is_transient_supabase_error", return_value=True)
     async def test_update_prices_fetch_portfolios_uses_async_sleep(self, mock_is_transient, mock_sleep):
         """Should await asyncio.sleep if fetching portfolios fails."""
-        with patch("scripts.update_prices.get_supabase_client") as mock_get_client, \
-             patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls:
-
+        with (
+            patch("scripts.update_prices.get_supabase_client") as mock_get_client,
+            patch("scripts.update_prices.MarketDataManager") as mock_mdm_cls,
+        ):
             mock_mdm = mock_mdm_cls.return_value
             mock_mdm.is_market_open = AsyncMock(return_value=True)
 
@@ -75,8 +77,24 @@ class TestBenchmarkConstants:
 
     def test_expected_benchmark_tickers_present(self):
         """Common benchmark tickers should be present in the list."""
-        expected = ['SPY', 'QQQ', 'GLD', 'VGK', 'EWJ', 'EEM', 'IWM', 'DIA', 'URTH',
-                     'TLT', 'TIP', 'UNG', 'BTCUSD', 'EWU', 'EWC', 'CPER']
+        expected = [
+            "SPY",
+            "QQQ",
+            "GLD",
+            "VGK",
+            "EWJ",
+            "EEM",
+            "IWM",
+            "DIA",
+            "URTH",
+            "TLT",
+            "TIP",
+            "UNG",
+            "BTCUSD",
+            "EWU",
+            "EWC",
+            "CPER",
+        ]
         for ticker in expected:
             assert ticker in BENCHMARK_TICKERS, f"Expected benchmark {ticker} not found"
 
@@ -94,11 +112,13 @@ class TestFetchBenchmarkHistory:
     async def test_fetch_benchmark_history_success(self):
         """Should fetch and store history for all benchmark tickers successfully."""
         mock_mdm = AsyncMock()
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 450.00, "fetched_at": "2026-04-15"},
-            {"price": 448.50, "fetched_at": "2026-04-14"},
-            {"price": 447.00, "fetched_at": "2026-04-11"},
-        ])
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 450.00, "fetched_at": "2026-04-15"},
+                {"price": 448.50, "fetched_at": "2026-04-14"},
+                {"price": 447.00, "fetched_at": "2026-04-11"},
+            ]
+        )
 
         await fetch_benchmark_history(mock_mdm)
 
@@ -115,7 +135,7 @@ class TestFetchBenchmarkHistory:
         async def mock_get_history(ticker, days):
             nonlocal call_count
             call_count += 1
-            if ticker == 'QQQ':
+            if ticker == "QQQ":
                 raise Exception("FMP API error")
             return [{"price": 450.00, "fetched_at": "2026-04-15"}] * 30
 
@@ -130,12 +150,14 @@ class TestFetchBenchmarkHistory:
     async def test_fetch_benchmark_history_insufficient_data_warning(self):
         """Should log warning when ticker has insufficient data points."""
         mock_mdm = AsyncMock()
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 450.00, "fetched_at": "2026-04-15"},
-            {"price": 448.50, "fetched_at": "2026-04-14"},
-        ])
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 450.00, "fetched_at": "2026-04-15"},
+                {"price": 448.50, "fetched_at": "2026-04-14"},
+            ]
+        )
 
-        with patch('scripts.update_prices.logger') as mock_logger:
+        with patch("scripts.update_prices.logger") as mock_logger:
             await fetch_benchmark_history(mock_mdm)
             mock_logger.warning.assert_called()
 
@@ -143,11 +165,14 @@ class TestFetchBenchmarkHistory:
     async def test_fetch_benchmark_history_success_log(self):
         """Should log success message when benchmark data is stored."""
         mock_mdm = AsyncMock()
-        mock_mdm.get_history = AsyncMock(return_value=[
-            {"price": 450.00, "fetched_at": "2026-04-15"},
-        ] * 30)
+        mock_mdm.get_history = AsyncMock(
+            return_value=[
+                {"price": 450.00, "fetched_at": "2026-04-15"},
+            ]
+            * 30
+        )
 
-        with patch('scripts.update_prices.logger') as mock_logger:
+        with patch("scripts.update_prices.logger") as mock_logger:
             await fetch_benchmark_history(mock_mdm)
             mock_logger.info.assert_called()
 
@@ -161,10 +186,25 @@ class TestBenchmarkTickerConsistency:
         Frontend selector is defined in:
         apps/web/src/features/portfolios/components/BenchmarkSelector.tsx
         """
-        frontend_tickers = ['SPY', 'QQQ', 'URTH', 'GLD', 'CPER', 'UNG', 'TLT', 'TIP',
-                            'BTCUSD', 'VGK', 'EWJ', 'EWU', 'EWC', 'EEM', 'IWM', 'DIA']
+        frontend_tickers = [
+            "SPY",
+            "QQQ",
+            "URTH",
+            "GLD",
+            "CPER",
+            "UNG",
+            "TLT",
+            "TIP",
+            "BTCUSD",
+            "VGK",
+            "EWJ",
+            "EWU",
+            "EWC",
+            "EEM",
+            "IWM",
+            "DIA",
+        ]
 
         assert set(BENCHMARK_TICKERS) == set(frontend_tickers), (
-            f"BENCHMARK_TICKERS {BENCHMARK_TICKERS} does not match "
-            f"frontend tickers {frontend_tickers}"
+            f"BENCHMARK_TICKERS {BENCHMARK_TICKERS} does not match frontend tickers {frontend_tickers}"
         )

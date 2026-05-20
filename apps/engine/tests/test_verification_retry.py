@@ -19,13 +19,11 @@ async def test_verification_accepts_rejected_as_is():
         source_id="src_1",
         price=180.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-pro"
+        model_name="deepseek-v4-pro",
     )
 
     empty_response = VerificationResult(
-        status="REJECTED_VERIFICATION",
-        verification_reasoning="No verification returned",
-        confidence_score=0
+        status="REJECTED_VERIFICATION", verification_reasoning="No verification returned", confidence_score=0
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
@@ -50,9 +48,7 @@ async def test_verification_accepts_rejected_as_is():
 
         with patch("core.llm.clients.close_client", new_callable=AsyncMock):
             result = await verify_trading_decision(
-                decision=decision,
-                portfolio_context="Cash: $10,000",
-                aggregated_context="Historical context"
+                decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
             )
 
     # Valid Rejected result is accepted immediately — no retry
@@ -74,13 +70,11 @@ async def test_verification_no_retry_on_valid_response():
         source_id="src_2",
         price=120.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-pro"
+        model_name="deepseek-v4-pro",
     )
 
     valid_response = VerificationResult(
-        status="APPROVED",
-        verification_reasoning="Strong momentum confirmed",
-        confidence_score=90
+        status="APPROVED", verification_reasoning="Strong momentum confirmed", confidence_score=90
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
@@ -104,9 +98,7 @@ async def test_verification_no_retry_on_valid_response():
 
         with patch("core.llm.clients.close_client", new_callable=AsyncMock):
             result = await verify_trading_decision(
-                decision=decision,
-                portfolio_context="Cash: $10,000",
-                aggregated_context="Historical context"
+                decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
             )
 
     assert result.status == "APPROVED"
@@ -126,7 +118,7 @@ async def test_verification_none_response_fallback():
         source_id="src_3",
         price=50.0,
         model_provider="deepseek",
-        model_name="deepseek-v4-pro"
+        model_name="deepseek-v4-pro",
     )
 
     with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
@@ -150,9 +142,7 @@ async def test_verification_none_response_fallback():
 
         with patch("core.llm.clients.close_client", new_callable=AsyncMock):
             result = await verify_trading_decision(
-                decision=decision,
-                portfolio_context="Cash: $10,000",
-                aggregated_context="Historical context"
+                decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
             )
 
     assert result.status == "REJECTED_VERIFICATION"
@@ -162,6 +152,7 @@ async def test_verification_none_response_fallback():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(test_verification_accepts_rejected_as_is())
     asyncio.run(test_verification_no_retry_on_valid_response())
     asyncio.run(test_verification_none_response_fallback())

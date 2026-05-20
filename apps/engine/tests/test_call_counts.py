@@ -10,7 +10,7 @@ from core.models import DecisionsResponse
 @pytest.mark.asyncio
 async def test_consolidated_call_counts():
     """Verify that we only make one embedding call and one analysis call per LLM."""
-    
+
     # Dummy chunks
     chunks = [
         {"source_id": "1", "content": "Apple releases new iPhone."},
@@ -20,35 +20,41 @@ async def test_consolidated_call_counts():
 
     mock_response = DecisionsResponse(decisions=[])
 
-    with patch("core.config.GEMINI_API_KEY", "fake-key"), \
-         patch("core.llm.clients.AsyncOpenAI"), \
-         patch("core.llm.clients.AsyncAnthropic"), \
-         patch("google.genai.Client"), \
-         patch("instructor.from_openai") as mock_openai, \
-         patch("instructor.from_anthropic") as mock_anthropic, \
-         patch("instructor.from_genai") as mock_from_genai, \
-         patch("memory.store.get_supabase_client") as mock_sb, \
-         patch("analysis.analyze.Portfolio") as mock_portfolio_class, \
-         patch("analysis.analyze.MarketDataManager") as mock_market_data_class, \
-         patch("analysis.analyze.get_supabase_client") as mock_analyze_sb, \
-         patch("autoresearch.prompt_store.get_active_prompt", AsyncMock(return_value="FAKE_PROMPT")):
-
+    with (
+        patch("core.config.GEMINI_API_KEY", "fake-key"),
+        patch("core.llm.clients.AsyncOpenAI"),
+        patch("core.llm.clients.AsyncAnthropic"),
+        patch("google.genai.Client"),
+        patch("instructor.from_openai") as mock_openai,
+        patch("instructor.from_anthropic") as mock_anthropic,
+        patch("instructor.from_genai") as mock_from_genai,
+        patch("memory.store.get_supabase_client") as mock_sb,
+        patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+        patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+        patch("analysis.analyze.get_supabase_client") as mock_analyze_sb,
+        patch("autoresearch.prompt_store.get_active_prompt", AsyncMock(return_value="FAKE_PROMPT")),
+    ):
         memory.embeddings._client = None
-
 
         mock_wrapped_openai = MagicMock()
         mock_wrapped_anthropic = MagicMock()
         mock_wrapped_gemini = MagicMock()
 
         mock_raw_openai = MagicMock()
-        mock_raw_openai.chat.completions.create = AsyncMock(return_value=MagicMock(
-            choices=[MagicMock(message=MagicMock(tool_calls=None, model_dump=lambda: {"role": "assistant", "content": "done"}))]
-        ))
+        mock_raw_openai.chat.completions.create = AsyncMock(
+            return_value=MagicMock(
+                choices=[
+                    MagicMock(
+                        message=MagicMock(tool_calls=None, model_dump=lambda: {"role": "assistant", "content": "done"})
+                    )
+                ]
+            )
+        )
 
         mock_raw_anthropic = MagicMock()
-        mock_raw_anthropic.messages.create = AsyncMock(return_value=MagicMock(
-            content=[MagicMock(type="text", text="done")]
-        ))
+        mock_raw_anthropic.messages.create = AsyncMock(
+            return_value=MagicMock(content=[MagicMock(type="text", text="done")])
+        )
 
         mock_wrapped_openai.client = mock_raw_openai
         mock_wrapped_openai.chat.completions.create = AsyncMock(return_value=mock_response)
@@ -99,6 +105,8 @@ async def test_consolidated_call_counts():
 
         assert mock_wrapped_gemini.chat.completions.create.call_count == 1
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(test_consolidated_call_counts())

@@ -45,6 +45,7 @@ async def test_record_performance_snapshot():
         assert call_args["available_funds"] == 5860.00
         assert call_args["excess_liquidity"] == 6340.00
         from datetime import date
+
         today = date.today().isoformat()
         assert call_args["date"] == today
 
@@ -100,11 +101,12 @@ async def test_stage_snapshots_skips_portfolios_without_positions():
         data=[{"owner_id": "active_trader"}, {"owner_id": "idle_cash"}]
     )
 
-    with patch("main.get_supabase_client", return_value=mock_db), \
-         patch("main.Portfolio", side_effect=[p1, p2]), \
-         patch("execution.market_data.MarketDataManager") as MockMDM, \
-         patch("main.update_pca_coordinates"):
-
+    with (
+        patch("main.get_supabase_client", return_value=mock_db),
+        patch("main.Portfolio", side_effect=[p1, p2]),
+        patch("execution.market_data.MarketDataManager") as MockMDM,
+        patch("main.update_pca_coordinates"),
+    ):
         mock_mdm = MockMDM.return_value
         mock_mdm.get_quotes = AsyncMock(return_value={"AAPL": MagicMock(price=150.0)})
 
@@ -139,21 +141,18 @@ async def test_stage_snapshots_uses_batch_get_quotes():
     p.save_metrics = AsyncMock()
 
     mock_db = MagicMock()
-    mock_db.table.return_value.select.return_value.execute.return_value = MagicMock(
-        data=[{"owner_id": "trader"}]
-    )
+    mock_db.table.return_value.select.return_value.execute.return_value = MagicMock(data=[{"owner_id": "trader"}])
 
-    with patch("main.get_supabase_client", return_value=mock_db), \
-         patch("main.Portfolio", return_value=p), \
-         patch("execution.market_data.MarketDataManager") as MockMDM, \
-         patch("main.update_pca_coordinates"):
-
+    with (
+        patch("main.get_supabase_client", return_value=mock_db),
+        patch("main.Portfolio", return_value=p),
+        patch("execution.market_data.MarketDataManager") as MockMDM,
+        patch("main.update_pca_coordinates"),
+    ):
         mock_mdm = MockMDM.return_value
         mock_quote_data = MagicMock(price=150.0)
         mock_mdm.get_quote = AsyncMock(return_value=mock_quote_data)
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={"AAPL": mock_quote_data, "GOOGL": mock_quote_data}
-        )
+        mock_mdm.get_quotes = AsyncMock(return_value={"AAPL": mock_quote_data, "GOOGL": mock_quote_data})
 
         await _stage_snapshots_and_pca(mock_db)
 
@@ -161,8 +160,7 @@ async def test_stage_snapshots_uses_batch_get_quotes():
         mock_mdm.get_quotes.assert_awaited_once()
         # Should be called with both tickers at once
         args = mock_mdm.get_quotes.await_args[0][0]
-        assert sorted(args) == ["AAPL", "GOOGL"], \
-            f"Expected ['AAPL', 'GOOGL'], got {args}"
+        assert sorted(args) == ["AAPL", "GOOGL"], f"Expected ['AAPL', 'GOOGL'], got {args}"
 
         # Individual get_quote should NOT be called
         mock_mdm.get_quote.assert_not_awaited()

@@ -9,6 +9,7 @@ logger = logging.getLogger("engine")
 
 DEEPSEEK_API_KEY = None
 
+
 def configure(api_key: str):
     global DEEPSEEK_API_KEY
     DEEPSEEK_API_KEY = api_key
@@ -33,15 +34,10 @@ Log blob:
 Return a JSON array of findings with keys: title, severity, suggestion. Return only the JSON array, no other text."""
 
     try:
-        client = AsyncOpenAI(
-            api_key=DEEPSEEK_API_KEY,
-            base_url="https://api.deepseek.com"
-        )
+        client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
         response = await client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
+            model=DEEPSEEK_MODEL, messages=[{"role": "user", "content": prompt}], temperature=0.1
         )
 
         content = response.choices[0].message.content.strip()

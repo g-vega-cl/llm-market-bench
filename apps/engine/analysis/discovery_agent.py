@@ -11,6 +11,7 @@ from core.llm.handlers import anthropic, gemini, openai
 
 logger = logging.getLogger("engine")
 
+
 def get_provider_from_model(model_name: str) -> str:
     """Detects provider from model name string."""
     model_name = model_name.lower()
@@ -22,7 +23,8 @@ def get_provider_from_model(model_name: str) -> str:
         return "openai"
     if "deepseek" in model_name:
         return "deepseek"
-    return "openai" # Default
+    return "openai"  # Default
+
 
 class DiscoveryAgent:
     """Agent that uses reasoning and tools to find thematic stock beneficiaries."""
@@ -37,19 +39,19 @@ class DiscoveryAgent:
 
     async def discover_assets(self, theme: str, context: str | None = None) -> list[dict]:
         """Executes a single-call tool-calling mission to find ~5 assets for a given theme.
-        
+
         Args:
             theme: The market theme or macro event (e.g., "AI infrastructure demand").
             context: Optional additional context or past events.
-            
+
         Returns:
             A list of dicts with ticker, name, and reason keys.
         """
         logger.info(f"DiscoveryAgent starting mission for theme: {theme}")
-        
+
         messages = [
             {"role": "system", "content": prompts.DISCOVERY_AGENT_SYSTEM_PROMPT},
-            {"role": "user", "content": f"THEME: {theme}\n\nCONTEXT: {context or 'None'}"}
+            {"role": "user", "content": f"THEME: {theme}\n\nCONTEXT: {context or 'None'}"},
         ]
 
         if self.provider == "gemini":
@@ -59,7 +61,7 @@ class DiscoveryAgent:
                 messages=messages,
                 override_tools=self.discovery_tools,
                 enable_google_search=True,
-                max_tool_steps=3
+                max_tool_steps=3,
             )
         elif self.provider == "anthropic":
             await anthropic.run_tool_loop(
@@ -68,7 +70,7 @@ class DiscoveryAgent:
                 messages=messages,
                 override_tools=self.discovery_tools,
                 enable_web_search=True,
-                max_tool_steps=3
+                max_tool_steps=3,
             )
         else:
             await openai.run_tool_loop(
@@ -77,26 +79,26 @@ class DiscoveryAgent:
                 messages=messages,
                 override_tools=self.discovery_tools,
                 enable_web_search=True,
-                max_tool_steps=3
+                max_tool_steps=3,
             )
 
         final_text = self._extract_final_text(messages)
-        
+
         if not final_text:
             messages.append({"role": "user", "content": "Please output your top 5 stock picks as a JSON array now."})
             await self._force_text_completion(messages)
             final_text = self._extract_final_text(messages)
-        
+
         if not final_text:
             logger.warning("DiscoveryAgent: No text content in final response")
             return []
-        
+
         assets = self._parse_json_response(final_text)
-        
+
         if not assets:
             logger.warning("DiscoveryAgent: Failed to parse JSON from response")
             return []
-        
+
         logger.info(f"DiscoveryAgent: Successfully extracted {len(assets)} assets")
         return assets[:5]
 
@@ -109,13 +111,12 @@ class DiscoveryAgent:
                 content = msg.get("content", "")
                 if isinstance(content, list):
                     content = " ".join(
-                        block.get("text", "") for block in content
+                        block.get("text", "")
+                        for block in content
                         if isinstance(block, dict) and block.get("type") == "text"
                     )
             elif getattr(msg, "role", None) in {"assistant", "model"}:
-                content = " ".join(
-                    part.text for part in getattr(msg, "parts", []) if getattr(part, "text", None)
-                )
+                content = " ".join(part.text for part in getattr(msg, "parts", []) if getattr(part, "text", None))
             else:
                 continue
             if content and isinstance(content, str) and content.strip():
@@ -134,6 +135,7 @@ class DiscoveryAgent:
                     messages.append(resp.choices[0].message.model_dump())
             elif self.provider == "gemini":
                 from google import genai as google_genai
+
                 contents = []
                 system_instruction = None
                 for m in messages:
@@ -166,7 +168,8 @@ class DiscoveryAgent:
                             content = m.get("content", "")
                             if isinstance(content, list):
                                 text = " ".join(
-                                    b.get("text", "") for b in content
+                                    b.get("text", "")
+                                    for b in content
                                     if isinstance(b, dict) and b.get("type") == "text"
                                 )
                                 anthropic_msgs.append({"role": m["role"], "content": text})
@@ -186,31 +189,31 @@ class DiscoveryAgent:
     def _parse_json_response(self, text: str) -> list[dict]:
         """Extract and parse JSON from the response text."""
         json_match = None
-        
-        json_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', text, re.DOTALL)
+
+        json_block_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text, re.DOTALL)
         if json_block_match:
             try:
                 parsed = json.loads(json_block_match.group(1))
                 json_match = parsed
             except json.JSONDecodeError:
                 pass
-        
+
         if not json_match:
-            json_array_match = re.search(r'\[[\s\S]*\]', text)
+            json_array_match = re.search(r"\[[\s\S]*\]", text)
             if json_array_match:
                 with contextlib.suppress(json.JSONDecodeError):
                     json_match = json.loads(json_array_match.group(0))
-        
+
         if not json_match:
-            json_obj_match = re.search(r'\{[\s\S]*\}', text)
+            json_obj_match = re.search(r"\{[\s\S]*\}", text)
             if json_obj_match:
                 with contextlib.suppress(json.JSONDecodeError):
                     json_match = json.loads(json_obj_match.group(0))
-        
+
         if not json_match:
             logger.warning("DiscoveryAgent: No JSON found in response")
             return []
-        
+
         if isinstance(json_match, dict) and "assets" in json_match:
             assets = json_match["assets"]
         elif isinstance(json_match, list):
@@ -218,16 +221,18 @@ class DiscoveryAgent:
         else:
             logger.warning("DiscoveryAgent: JSON does not contain assets array")
             return []
-        
+
         validated = []
         for asset in assets:
             if isinstance(asset, dict) and "ticker" in asset:
-                validated.append({
-                    "ticker": str(asset.get("ticker", "")).upper(),
-                    "name": asset.get("name", ""),
-                    "reason": asset.get("reason", "")
-                })
-        
+                validated.append(
+                    {
+                        "ticker": str(asset.get("ticker", "")).upper(),
+                        "name": asset.get("name", ""),
+                        "reason": asset.get("reason", ""),
+                    }
+                )
+
         return validated
 
     async def close(self):

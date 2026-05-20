@@ -1,5 +1,6 @@
 """Utility functions for LLM response handling."""
 
+
 def ensure_list(obj):
     """Ensures that the input object is wrapped in a list if it is not already a list or tuple.
 

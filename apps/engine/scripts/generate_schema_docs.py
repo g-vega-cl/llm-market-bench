@@ -20,24 +20,10 @@ OUTPUT_FILE = DOCS_DIR / "database-schema.md"
 
 # --- Tables to Document (Ordered by Section) ---
 SECTIONS = {
-    "1. Trading & Portfolios": [
-        "portfolios",
-        "portfolio_positions",
-        "trades",
-        "portfolio_performance"
-    ],
-    "2. Ingestion & Snapshotting": [
-        "newsletter_snapshots"
-    ],
-    "3. Memory & Decisions (pgvector)": [
-        "memories",
-        "decisions",
-        "concept_metrics"
-    ],
-    "4. Market Data": [
-        "market_data_cache",
-        "price_history"
-    ]
+    "1. Trading & Portfolios": ["portfolios", "portfolio_positions", "trades", "portfolio_performance"],
+    "2. Ingestion & Snapshotting": ["newsletter_snapshots"],
+    "3. Memory & Decisions (pgvector)": ["memories", "decisions", "concept_metrics"],
+    "4. Market Data": ["market_data_cache", "price_history"],
 }
 
 TABLE_DESCRIPTIONS = {
@@ -50,14 +36,16 @@ TABLE_DESCRIPTIONS = {
     "decisions": "Stores reasoning and attribution for every LLM signal. Valid status values: `CREATED`, `EXECUTED`, `VALIDATED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_PRICE_DEVIATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`, `ERROR_PROVIDER`.",
     "concept_metrics": "Tracks momentum and frequency of semantic concepts.",
     "market_data_cache": "Temporary storage to minimize external API calls.",
-    "price_history": "Permanent record of every price fetch for backtesting and analysis."
+    "price_history": "Permanent record of every price fetch for backtesting and analysis.",
 }
+
 
 def get_db_connection():
     """Establishes a connection to the database."""
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL environment variable is not set.")
     return psycopg2.connect(DATABASE_URL)
+
 
 def get_table_schema(conn, table_name):
     """Fetches column details for a given table."""
@@ -70,6 +58,7 @@ def get_table_schema(conn, table_name):
     with conn.cursor() as cur:
         cur.execute(query, (table_name,))
         return cur.fetchall()
+
 
 def format_type(data_type):
     """Formats PostgreSQL data types for Markdown."""
@@ -84,9 +73,10 @@ def format_type(data_type):
         "boolean": "BOOLEAN",
         "double precision": "FLOAT",
         "jsonb": "JSONB",
-        "USER-DEFINED": "VECTOR(768)" # Assumption for vector types
+        "USER-DEFINED": "VECTOR(768)",  # Assumption for vector types
     }
     return type_map.get(data_type, data_type.upper())
+
 
 def generate_markdown(conn):
     """Generates the Markdown content."""
@@ -104,18 +94,18 @@ def generate_markdown(conn):
         "4.  **Trading & Portfolios:** Agent balances, positions, and execution ledger.",
         "",
         "---",
-        ""
+        "",
     ]
 
     for section_name, tables in SECTIONS.items():
         md_lines.append(f"## {section_name}")
         md_lines.append("")
-        
+
         for table in tables:
             md_lines.append(f"### `{table}`")
             description = TABLE_DESCRIPTIONS.get(table, "Table description pending.")
             md_lines.append(description)
-            
+
             columns = get_table_schema(conn, table)
             if not columns:
                 md_lines.append("- *Table not found or no columns.*")
@@ -124,39 +114,41 @@ def generate_markdown(conn):
                     fmt_type = format_type(data_type)
                     # Helper for primary key identification (basic heuristic)
                     pk_info = "Primary key." if col_name == "id" else ""
-                    
+
                     # Specific column descriptions can be added here if we want to hardcode them or fetch from DB comments
                     # For now, we'll keep it simple as a generated list
-                    
+
                     line = f"- `{col_name}` ({fmt_type})"
                     if pk_info:
                         line += f": {pk_info}"
                     md_lines.append(line)
-            
+
             md_lines.append("")
-        
+
         md_lines.append("---")
         md_lines.append("")
 
     return "\n".join(md_lines)
 
+
 def main():
     try:
         conn = get_db_connection()
         print("Connected to database.")
-        
+
         markdown_content = generate_markdown(conn)
-        
+
         with open(OUTPUT_FILE, "w") as f:
             f.write(markdown_content)
-            
+
         print(f"Successfully generated documentation at: {OUTPUT_FILE}")
-        
+
     except Exception as e:
         print(f"Error: {e}")
     finally:
-        if 'conn' in locals() and conn:
+        if "conn" in locals() and conn:
             conn.close()
+
 
 if __name__ == "__main__":
     main()

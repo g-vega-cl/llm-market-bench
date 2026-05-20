@@ -34,7 +34,7 @@ async def bootstrap():
         week_end=week_end,
         metrics={"score": 0, "excess_return": 0, "max_drawdown": 0, "note": "Initial baseline"},
         change_description="Initial baseline prompt from source code.",
-        experiment_type="baseline"
+        experiment_type="baseline",
     )
 
     logger.info("Successfully bootstrapped with variant: %s", tag)

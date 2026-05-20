@@ -55,11 +55,11 @@ def test_save_decision_success(mock_supabase):
         ticker="AAPL",
         source_id="news_123",
         model_provider="openai",
-        model_name="gpt-4o"
+        model_name="gpt-4o",
     )
-    
+
     result = save_decision(mock_supabase, decision)
-    
+
     assert result == {"id": "test-id"}
     mock_supabase.table.assert_called_once_with("decisions")
     mock_supabase.table().upsert.assert_called_once()
@@ -85,15 +85,15 @@ def test_save_decision_with_trade_id(mock_supabase):
         ticker="NVDA",
         source_id="news_789",
         model_provider="gemini",
-        model_name=GEMINI_MODEL
+        model_name=GEMINI_MODEL,
     )
-    
+
     trade_id = "550e8400-e29b-41d4-a716-446655440000"
     save_decision(mock_supabase, decision, trade_id=trade_id)
-    
+
     args, kwargs = mock_supabase.table().upsert.call_args
     payload = args[0]
-    
+
     assert payload["ticker"] == "NVDA"
     assert payload["trade_id"] == trade_id
 
@@ -103,11 +103,7 @@ def test_save_decision_error(mock_supabase):
     mock_supabase.table().upsert().execute.side_effect = Exception("DB Error")
 
     decision = DecisionObject(
-        signal="SELL",
-        confidence=50,
-        reasoning="Market volatility",
-        ticker="TSLA",
-        source_id="news_456"
+        signal="SELL", confidence=50, reasoning="Market volatility", ticker="TSLA", source_id="news_456"
     )
 
     with pytest.raises(Exception, match="DB Error"):
@@ -123,7 +119,7 @@ def test_save_decision_with_decision_id(mock_supabase):
         ticker="NVDA",
         source_id="news_789",
         model_provider="gemini",
-        model_name=GEMINI_MODEL
+        model_name=GEMINI_MODEL,
     )
 
     decision_id = "11111111-2222-3333-4444-555555555555"
@@ -133,7 +129,6 @@ def test_save_decision_with_decision_id(mock_supabase):
     mock_supabase.table().update.assert_called_once()
     mock_supabase.table().upsert.assert_not_called()
     mock_supabase.table().update().eq.assert_called_once_with("id", decision_id)
-
 
 
 def test_save_decision_raises_on_empty_response(mock_supabase):
@@ -147,7 +142,7 @@ def test_save_decision_raises_on_empty_response(mock_supabase):
         ticker="MSFT",
         source_id="news_empty",
         model_provider="openai",
-        model_name="gpt-4o"
+        model_name="gpt-4o",
     )
 
     with pytest.raises(RuntimeError, match="no data returned"):

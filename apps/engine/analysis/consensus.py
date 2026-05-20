@@ -19,6 +19,7 @@ from memory.store import add_memory, find_potential_ancestors, update_memory_sta
 
 logger = logging.getLogger("engine")
 
+
 def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     """Computes the cosine similarity between two vectors."""
     if not v1 or not v2:
@@ -77,11 +78,14 @@ def _is_vague_government_event(name: str, summary: str = "") -> bool:
     if name_lower in ("government policy update", "policy update", "vague_government_event"):
         return True
 
-    has_gov_indicator = any(kw in summary_lower for kw in ("government", "legislat", "regulat", "subsid", "bill", "act", "policy"))
+    has_gov_indicator = any(
+        kw in summary_lower for kw in ("government", "legislat", "regulat", "subsid", "bill", "act", "policy")
+    )
     if not has_gov_indicator:
         return False
 
     return False
+
 
 async def _get_event_embeddings(event_names: list[str]) -> list[Any]:
     """Fetch embeddings for a list of event names."""
@@ -92,7 +96,9 @@ async def _get_event_embeddings(event_names: list[str]) -> list[Any]:
         return [None] * len(event_names)
 
 
-def _group_events_semantically(events: list[MacroEvent], embeddings: list[Any], sim_threshold: float) -> list[list[MacroEvent]]:
+def _group_events_semantically(
+    events: list[MacroEvent], embeddings: list[Any], sim_threshold: float
+) -> list[list[MacroEvent]]:
     """Group events based on semantic similarity of their names."""
     visited = [False] * len(events)
     groups = []
@@ -100,21 +106,21 @@ def _group_events_semantically(events: list[MacroEvent], embeddings: list[Any], 
     for i in range(len(events)):
         if visited[i]:
             continue
-        
+
         current_group = [events[i]]
         visited[i] = True
-        
+
         for j in range(i + 1, len(events)):
             if visited[j]:
                 continue
-            
+
             is_similar = False
             if embeddings[i] and embeddings[j]:
                 if cosine_similarity(embeddings[i], embeddings[j]) >= sim_threshold:
                     is_similar = True
             elif events[i].event_name.lower().strip() == events[j].event_name.lower().strip():
                 is_similar = True
-            
+
             if is_similar:
                 current_group.append(events[j])
                 visited[j] = True
@@ -122,7 +128,9 @@ def _group_events_semantically(events: list[MacroEvent], embeddings: list[Any], 
     return groups
 
 
-async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery_service: DiscoveryService, sim_threshold: float):
+async def _synthesize_and_promote_group(
+    occurrences: list[MacroEvent], discovery_service: DiscoveryService, sim_threshold: float
+):
     """Synthesize a group of events and promote to memory if consensus is reached."""
     unique_models = set()
     cumulative_weight = 0.0
@@ -136,19 +144,19 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
             models_seen_for_weight.add(occ.model_name)
 
     representative_name = occurrences[0].event_name
-    
+
     # Combine reasoning and votes
     impact_weights = defaultdict(float)
     ongoing_votes, catalyst_votes = 0.0, 0.0
     parallels, scenarios, reasonings, source_ids, importance_scores = [], [], [], set(), []
-    
+
     for occ in occurrences:
         weight = MODEL_WEIGHTS.get(occ.model_name, 1.0)
         impact_weights[occ.impact] += weight
         reasonings.append(occ.reasoning)
         source_ids.add(occ.source_id)
         importance_scores.append(occ.importance_score)
-        
+
         if occ.is_ongoing:
             ongoing_votes += weight
         if occ.is_future_catalyst:
@@ -159,13 +167,10 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
             scenarios.append(occ.scenario_analysis)
 
     majority_impact = _resolve_impact_tie(impact_weights)
-    
+
     # --- LLM Synthesis ---
     synthesis = await synthesize_event(
-        event_name=representative_name,
-        impact=majority_impact,
-        reasonings=reasonings,
-        scenarios=scenarios
+        event_name=representative_name, impact=majority_impact, reasonings=reasonings, scenarios=scenarios
     )
 
     # Reject vague government events — they lack actionable specificity
@@ -203,13 +208,15 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
         "future_date_note": synthesis.get("future_date_note"),
         "scenario_analysis": scenario_analysis.strip() if scenario_analysis else None,
         "discovered_assets": discovered_assets,
-        "importance_score": synthesis.get("importance_score", int(sum(importance_scores)/len(importance_scores)) if importance_scores else 5)
+        "importance_score": synthesis.get(
+            "importance_score", int(sum(importance_scores) / len(importance_scores)) if importance_scores else 5
+        ),
     }
 
     # Analyze Relationship & Link Memory
     potential_parents = find_potential_ancestors(synthesis["summary"], threshold=0.4)
     relationship = await analyze_event_relationship(synthesis["summary"], potential_parents)
-    
+
     parent_id = relationship.get("parent_id")
     rel_type = relationship.get("relationship_type")
     should_resolve = relationship.get("should_resolve", False)
@@ -218,14 +225,14 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
     parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
     ongoing_str = " [ONGOING]" if is_ongoing else ""
     memory_content = f"MARKET EVENT: {consensus_data['event_name']}{ongoing_str} | IMPACT: {consensus_data['impact']} | SUMMARY: {consensus_data['reasoning']}{parallel_str}"
-    
+
     new_memory_id = add_memory(
         content=memory_content,
         metadata={
             "type": "consensus_event",
-            "event_name": consensus_data['event_name'],
-            "impact": consensus_data['impact'],
-            "source_ids": consensus_data['source_ids'],
+            "event_name": consensus_data["event_name"],
+            "impact": consensus_data["impact"],
+            "source_ids": consensus_data["source_ids"],
             "raw_name": representative_name,
             "cumulative_weight": cumulative_weight,
             "is_ongoing": is_ongoing,
@@ -234,14 +241,14 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
             "future_date_note": consensus_data.get("future_date_note"),
             "scenario_analysis": consensus_data.get("scenario_analysis"),
             "discovered_assets": consensus_data.get("discovered_assets"),
-            "importance_score": consensus_data['importance_score']
+            "importance_score": consensus_data["importance_score"],
         },
         parent_id=parent_id,
         relationship_type=rel_type,
         target_date=consensus_data.get("future_date"),
         check_similarity=True,
         similarity_threshold=sim_threshold,
-        lookback_hours=24
+        lookback_hours=24,
     )
 
     if new_memory_id:
@@ -255,7 +262,9 @@ async def _synthesize_and_promote_group(occurrences: list[MacroEvent], discovery
     return None
 
 
-async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, sim_threshold: float = 0.85) -> list[dict]:
+async def process_consensus(
+    events: list[MacroEvent], threshold: float = 2.0, sim_threshold: float = 0.85
+) -> list[dict]:
     """Process a list of macro events and identify consensus using semantic grouping,
     deduplication, weighted voting, and LLM synthesis.
 
@@ -272,7 +281,7 @@ async def process_consensus(events: list[MacroEvent], threshold: float = 2.0, si
         return []
 
     discovery_service = DiscoveryService()
-    
+
     # 1. Batch generate embeddings for all event names
     embeddings = await _get_event_embeddings([e.event_name for e in events])
 
@@ -337,7 +346,7 @@ async def process_decision_consensus(decisions: list[DecisionObject]) -> list[di
         strategies = []
         plannings = []
         source_ids = set()
-        
+
         for occ in occurrences:
             model_key = f"{occ.model_provider}_{occ.model_name}"
             unique_models.add(model_key)
@@ -351,25 +360,26 @@ async def process_decision_consensus(decisions: list[DecisionObject]) -> list[di
         # Use the synthesis logic to create a unified reasoning for this decision
         # We include strategic intent and planning in the reasoning pool
         combined_perspectives = reasonings + strategies + plannings
-        
+
         synthesis = await synthesize_event(
             event_name=f"{signal} signal for {ticker}",
             impact="BULLISH" if signal == "BUY" else "BEARISH",
-            reasonings=combined_perspectives
+            reasonings=combined_perspectives,
         )
 
-        consolidated_results.append({
-            "ticker": ticker,
-            "signal": signal,
-            "models_involved": list(unique_models),
-            "original_reasonings": reasonings,
-            "synthesized_name": synthesis["name"],
-            "synthesized_summary": synthesis["summary"],
-            "source_ids": list(source_ids)
-        })
+        consolidated_results.append(
+            {
+                "ticker": ticker,
+                "signal": signal,
+                "models_involved": list(unique_models),
+                "original_reasonings": reasonings,
+                "synthesized_name": synthesis["name"],
+                "synthesized_summary": synthesis["summary"],
+                "source_ids": list(source_ids),
+            }
+        )
 
     return consolidated_results
-
 
 
 if __name__ == "__main__":

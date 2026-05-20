@@ -1,3 +1,25 @@
+## [2026-05-20] docs | Update auto-research concept page score formula
+
+Updated `[[concepts/auto-research-prompt-improver]]` to reflect the current score formula including the Treasury Bond hurdle and opportunity cost penalty. The previous formula was stale (missing bond hurdle and DXY context-only note). Wiki lint: 57 pages clean. Dry run confirmed: score 0.5881 beats baseline 0.4271, ratchet advances, DXY fetched as context only.
+
+## [2026-05-20] refactor | Decouple USD Index Strength from Auto-Research Opportunity Cost Penalty
+
+Decoupled the US Dollar Index (`UUP`/DXY) return from the active Opportunity Cost Penalty calculation within the Benchify Auto-Research evaluation loop (`[[entities/autoresearch]]`):
+- Updated `compute_score` in `metrics.py` to use the compounded 10-year Treasury yield (`bond_return_pct`) as the sole active hurdle for the asymmetric opportunity cost penalty, ignoring USD index returns.
+- Preserved the USD Index return percentage (`dollar_return_pct`) in the database metrics payload and the evaluator markdown report as context-only (`[Context Only]`) for macroeconomic visibility.
+- Modified weekly performance report layout in `evaluator.py` to remove the combined maximum hurdle line and cleanly label the Treasury Bond rate as the active hurdle.
+- Refactored `apps/engine/tests/test_autoresearch.py` unit tests, including updating our TDD reproduction test to assert a strong dollar regime results in `0.0` opportunity cost penalty. All 41 tests pass cleanly.
+
+## [2026-05-20] feature | Integrate Dynamic Bond Yield and USD Strength Hurdles into Auto-Research Scoring
+
+
+Integrated live, actual risk-free rate hurdles and currency index strength metrics into the Benchify Auto-Research evaluation loop and portfolio scoring formula (`[[entities/autoresearch]]`):
+- Added actual U.S. 10-year Treasury Bond yields (`stable/treasury-rates`) and actual US Dollar strength returns (via `UUP` ETF proxy in `stable/historical-price-eod/full`) fetched dynamically from the Financial Modeling Prep (FMP) API.
+- Implemented compounding scaling logic to convert annualized bond yield rates into exact compounded rates matching the evaluation window length.
+- Refactored `compute_score` in `metrics.py` to calculate an asymmetric `Opportunity Cost Penalty`: $\max(0, \max(R_{\text{bond}}, R_{\text{dollar}}) - R_{\text{portfolio}})$.
+- Updated `evaluate_week` in `evaluator.py` to perform the dynamic fetches, pass them to the scoring engine, and format all hurdle details in the meta-researcher markdown performance report.
+- Added thorough TDD unit tests to `apps/engine/tests/test_autoresearch.py` validating correct scoring math, asymmetric penalty boundaries, and strong-dollar regime handling. All tests pass cleanly.
+
 ## [2026-05-20] refactor | Implement Standardized yfinance Logging (Observability Standard Alignment)
 
 Standardized Yahoo Finance (`yfinance.py`) logger implementation, fallback handling, and error tracebacks to conform with the project's **Observability Standards** (`[[concepts/observability-standard]]`):

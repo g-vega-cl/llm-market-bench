@@ -80,14 +80,16 @@ async def run_research(report: str) -> PromptResearchResult | None:
                     AUTORESEARCH_MODEL,
                     attempt_num,
                 )
-                instructor_messages.append({
-                    "role": "user",
-                    "content": (
-                        "Your response was empty. You MUST output a valid JSON object with "
-                        "new_prompt_text, change_description, experiment_type, research_reasoning, "
-                        "and confidence fields. No other text."
-                    ),
-                })
+                instructor_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your response was empty. You MUST output a valid JSON object with "
+                            "new_prompt_text, change_description, experiment_type, research_reasoning, "
+                            "and confidence fields. No other text."
+                        ),
+                    }
+                )
                 create_args["messages"] = copy.deepcopy(instructor_messages)
             except Exception as e:
                 last_error = e
@@ -101,14 +103,16 @@ async def run_research(report: str) -> PromptResearchResult | None:
                         attempt_num,
                         str(e)[:200],
                     )
-                    instructor_messages.append({
-                        "role": "user",
-                        "content": (
-                            "Your response must be valid JSON matching the schema exactly. "
-                            "Ensure new_prompt_text is the complete prompt, experiment_type is "
-                            "'incremental' or 'radical', and confidence is 0-100."
-                        ),
-                    })
+                    instructor_messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Your response must be valid JSON matching the schema exactly. "
+                                "Ensure new_prompt_text is the complete prompt, experiment_type is "
+                                "'incremental' or 'radical', and confidence is 0-100."
+                            ),
+                        }
+                    )
                     create_args["messages"] = copy.deepcopy(instructor_messages)
                 else:
                     logger.error(

@@ -19,7 +19,7 @@ def save_decision(
     status: str = "CREATED",
     metadata: dict[str, Any] | None = None,
     trade_id: str | None = None,
-    decision_id: str | None = None
+    decision_id: str | None = None,
 ) -> dict[str, Any]:
     """Save a trading decision to the database for attribution.
 
@@ -60,7 +60,7 @@ def save_decision(
             "injected_market_price": getattr(decision, "injected_market_price", None),
         },
         "trade_id": trade_id,
-        "embedding": get_embedding(decision.reasoning) if decision.reasoning else None
+        "embedding": get_embedding(decision.reasoning) if decision.reasoning else None,
     }
 
     try:
@@ -69,10 +69,11 @@ def save_decision(
             response = client.table("decisions").update(payload).eq("id", decision_id).execute()
         else:
             # New decision or idempotent retry relying on unique constraint
-            response = client.table("decisions").upsert(
-                payload,
-                on_conflict="source_id,ticker,signal,model_provider,model_name"
-            ).execute()
+            response = (
+                client.table("decisions")
+                .upsert(payload, on_conflict="source_id,ticker,signal,model_provider,model_name")
+                .execute()
+            )
 
         if not response.data:
             msg = f"Decision for {decision.ticker} saved but no data returned (status={status})."

@@ -28,7 +28,7 @@ class TestMiniMaxClient:
         """Test that MiniMaxClient raises ValueError without API key."""
         from core.llm import minimax
 
-        with patch.object(minimax, 'config', MagicMock()):
+        with patch.object(minimax, "config", MagicMock()):
             minimax.config.MINIMAX_API_KEY = None
             with pytest.raises(ValueError, match="MINIMAX_API_KEY is required"):
                 minimax.MiniMaxClient()
@@ -43,18 +43,17 @@ class TestMiniMaxChatParsing:
         from core.llm.minimax import MiniMaxClient
 
         mock_response_data = {
-            "choices": [{
-                "finish_reason": "stop",
-                "message": {
-                    "content": '{"sentiment_label": "Cautiously Optimistic", "confidence_score": 75}',
-                    "role": "assistant"
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "content": '{"sentiment_label": "Cautiously Optimistic", "confidence_score": 75}',
+                        "role": "assistant",
+                    },
                 }
-            }],
+            ],
             "model": MINIMAX_MODEL,
-            "usage": {
-                "prompt_tokens": 100,
-                "completion_tokens": 50
-            }
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50},
         }
 
         mock_client = MagicMock()
@@ -64,11 +63,10 @@ class TestMiniMaxChatParsing:
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client.is_closed = False
 
-        with patch.object(MiniMaxClient, '_get_client', return_value=mock_client):
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
             client = MiniMaxClient(api_key="test-key")
             result = await client.chat_with_json_response(
-                messages=[{"role": "user", "content": "test"}],
-                temperature=0.4
+                messages=[{"role": "user", "content": "test"}], temperature=0.4
             )
 
             assert result["sentiment_label"] == "Cautiously Optimistic"
@@ -80,15 +78,17 @@ class TestMiniMaxChatParsing:
         from core.llm.minimax import MiniMaxClient
 
         mock_response_data = {
-            "choices": [{
-                "finish_reason": "stop",
-                "message": {
-                    "content": '```json\n{"sentiment_label": "Risk-Off", "confidence_score": 85}\n```',
-                    "role": "assistant"
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "content": '```json\n{"sentiment_label": "Risk-Off", "confidence_score": 85}\n```',
+                        "role": "assistant",
+                    },
                 }
-            }],
+            ],
             "model": MINIMAX_MODEL,
-            "usage": {"prompt_tokens": 100, "completion_tokens": 50}
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50},
         }
 
         mock_response = MagicMock()
@@ -98,11 +98,9 @@ class TestMiniMaxChatParsing:
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client.is_closed = False
 
-        with patch.object(MiniMaxClient, '_get_client', return_value=mock_client):
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
             client = MiniMaxClient(api_key="test-key")
-            result = await client.chat_with_json_response(
-                messages=[{"role": "user", "content": "test"}]
-            )
+            result = await client.chat_with_json_response(messages=[{"role": "user", "content": "test"}])
 
             assert result["sentiment_label"] == "Risk-Off"
 
@@ -112,13 +110,8 @@ class TestMiniMaxChatParsing:
         from core.llm.minimax import MiniMaxClient
 
         mock_response_data = {
-            "choices": [{
-                "message": {
-                    "content": "This is not JSON at all",
-                    "role": "assistant"
-                }
-            }],
-            "model": MINIMAX_MODEL
+            "choices": [{"message": {"content": "This is not JSON at all", "role": "assistant"}}],
+            "model": MINIMAX_MODEL,
         }
 
         mock_response = MagicMock()
@@ -128,12 +121,10 @@ class TestMiniMaxChatParsing:
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client.is_closed = False
 
-        with patch.object(MiniMaxClient, '_get_client', return_value=mock_client):
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
             client = MiniMaxClient(api_key="test-key")
             with pytest.raises(ValueError, match="Invalid JSON response"):
-                await client.chat_with_json_response(
-                    messages=[{"role": "user", "content": "test"}]
-                )
+                await client.chat_with_json_response(messages=[{"role": "user", "content": "test"}])
 
     @pytest.mark.asyncio
     async def test_chat_returns_processing_time(self):
@@ -141,18 +132,9 @@ class TestMiniMaxChatParsing:
         from core.llm.minimax import MiniMaxClient
 
         mock_response_data = {
-            "choices": [{
-                "finish_reason": "stop",
-                "message": {
-                    "content": "Hello",
-                    "role": "assistant"
-                }
-            }],
+            "choices": [{"finish_reason": "stop", "message": {"content": "Hello", "role": "assistant"}}],
             "model": MINIMAX_MODEL,
-            "usage": {
-                "prompt_tokens": 50,
-                "completion_tokens": 10
-            }
+            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
         }
 
         mock_response = MagicMock()
@@ -162,7 +144,7 @@ class TestMiniMaxChatParsing:
         mock_client.post = AsyncMock(return_value=mock_response)
         mock_client.is_closed = False
 
-        with patch.object(MiniMaxClient, '_get_client', return_value=mock_client):
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
             client = MiniMaxClient(api_key="test-key")
             result = await client.chat(messages=[{"role": "user", "content": "test"}])
 
@@ -195,7 +177,7 @@ class TestMiniMaxContextManager:
         """Test that async with statement works correctly."""
         from core.llm.minimax import MiniMaxClient
 
-        with patch.object(MiniMaxClient, 'close', new=AsyncMock()) as mock_close:
+        with patch.object(MiniMaxClient, "close", new=AsyncMock()) as mock_close:
             async with MiniMaxClient(api_key="test-key") as client:
                 assert client.api_key == "test-key"
 

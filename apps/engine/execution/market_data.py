@@ -49,13 +49,14 @@ def _validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]
 
     return True, f"valid cache with {distinct_count} distinct dates"
 
+
 class MarketDataManager:
     """Manages market data retrieval with a database-backed cache."""
 
     _market_status_cache: dict = {
         "is_open": None,
         "fetched_at": None,
-        "ttl_seconds": 300  # 5 minutes
+        "ttl_seconds": 300,  # 5 minutes
     }
 
     # In-memory cache for screener results to avoid redundant API hits within a session
@@ -63,8 +64,11 @@ class MarketDataManager:
 
     def __init__(self, cache_ttl_seconds: int | None = None):
         import core.config as cfg
+
         self.client = get_supabase_client()
-        self.cache_ttl_seconds = cache_ttl_seconds if cache_ttl_seconds is not None else cfg.MARKET_DATA_CACHE_TTL_SECONDS
+        self.cache_ttl_seconds = (
+            cache_ttl_seconds if cache_ttl_seconds is not None else cfg.MARKET_DATA_CACHE_TTL_SECONDS
+        )
         self.providers = [get_financial_provider(cfg.FINANCIAL_PROVIDER)]
 
     @property
@@ -87,19 +91,20 @@ class MarketDataManager:
         Uses a class-level cache to avoid repeated API calls within the same pipeline run.
         """
         import datetime
-        
+
         # Check class-level cache first to avoid repeated API calls
         now = datetime.datetime.now(datetime.UTC)
         cache = MarketDataManager._market_status_cache
-        
+
         if cache["fetched_at"] is not None:
             elapsed = (now - cache["fetched_at"]).total_seconds()
             if elapsed < cache["ttl_seconds"]:
                 logger.debug(f"Using cached market status: {'OPEN' if cache['is_open'] else 'CLOSED'}")
                 return cache["is_open"]
-        
+
         try:
             from zoneinfo import ZoneInfo
+
             now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
         except ImportError:
             # Fallback for environments without zoneinfo
@@ -112,6 +117,7 @@ class MarketDataManager:
         if FMP_API_KEY:
             try:
                 import httpx
+
                 async with httpx.AsyncClient() as client:
                     # Use NASDAQ as the proxy for US Market status
                     url = "https://financialmodelingprep.com/stable/exchange-market-hours"
@@ -123,37 +129,37 @@ class MarketDataManager:
                     if data and isinstance(data, list):
                         is_open = data[0].get("isMarketOpen", False)
                         logger.info(f"FMP Market Status (NASDAQ): {'OPEN' if is_open else 'CLOSED'}")
-                        
+
                         # Cache the result
                         cache["is_open"] = is_open
                         cache["fetched_at"] = now
-                        
+
                         return is_open
             except Exception as e:
                 logger.warning(f"Failed to fetch market status from FMP: {e}. Falling back to time-based check.")
 
         # 2. Fallback Check: Time-based (Mon-Fri, 09:30-16:00 ET)
         # Weekends
-        if now_et.weekday() >= 5: # 5=Sat, 6=Sun
+        if now_et.weekday() >= 5:  # 5=Sat, 6=Sun
             result = False
         else:
             market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
             market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
             result = market_start <= now_et <= market_end
-        
+
         # Cache the fallback result as well
         cache["is_open"] = result
         cache["fetched_at"] = now
-        
+
         return result
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> TickerData | None:
         """Fetch stock quote, checking cache first unless force_refresh is True.
-        
+
         Args:
             ticker: The stock ticker symbol.
             force_refresh: Whether to bypass the cache and fetch fresh data.
-            
+
         Returns:
             TickerData if found, None otherwise.
         """
@@ -185,15 +191,15 @@ class MarketDataManager:
         # 4. Last Resort: Last Known Price from History
         last_known = self._get_last_known_price(ticker)
         if last_known:
-             logger.info(f"All online retrieval failed for {ticker}. Using last known price: ${last_known.price}")
-             return last_known
+            logger.info(f"All online retrieval failed for {ticker}. Using last known price: ${last_known.price}")
+            return last_known
 
         logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
 
     async def screen_stocks(
-        self, 
-        market_cap_more_than: float | None = None, 
+        self,
+        market_cap_more_than: float | None = None,
         market_cap_lower_than: float | None = None,
         price_more_than: float | None = None,
         price_lower_than: float | None = None,
@@ -203,23 +209,23 @@ class MarketDataManager:
         volume_lower_than: float | None = None,
         dividend_more_than: float | None = None,
         dividend_lower_than: float | None = None,
-        sector: str | None = None, 
-        industry: str | None = None, 
+        sector: str | None = None,
+        industry: str | None = None,
         exchange: str | None = "NYSE,NASDAQ",
         limit: int = 10,
-        is_actively_trading: bool = True
+        is_actively_trading: bool = True,
     ) -> list[dict]:
         """Exposes stock screening capabilities, checking cache first."""
-        
+
         # Create a cache key from the parameters
         cache_key = f"{market_cap_more_than}-{market_cap_lower_than}-{price_more_than}-{price_lower_than}-{beta_more_than}-{beta_lower_than}-{volume_more_than}-{volume_lower_than}-{dividend_more_than}-{dividend_lower_than}-{sector}-{industry}-{exchange}-{limit}-{is_actively_trading}"
-        
+
         if cache_key in MarketDataManager._screener_cache:
             logger.debug(f"Returning cached screener results for key: {cache_key[:30]}...")
             return MarketDataManager._screener_cache[cache_key]
 
         # Currently only FMP supports direct screening tool
-        provider = self.provider # Primary provider
+        provider = self.provider  # Primary provider
         if not hasattr(provider, "screen_stocks"):
             logger.error(f"Primary provider {provider.provider_name} does not support screening.")
             return []
@@ -240,24 +246,24 @@ class MarketDataManager:
                 industry=industry,
                 exchange=exchange,
                 limit=limit,
-                is_actively_trading=is_actively_trading
+                is_actively_trading=is_actively_trading,
             )
-            
+
             # Save to cache
             MarketDataManager._screener_cache[cache_key] = results
             return results
-            
+
         except Exception as e:
             logger.error(f"Error executing stock screen via {provider.provider_name}: {e}")
             return []
 
     async def get_quotes(self, tickers: list[str], force_refresh: bool = False) -> dict[str, TickerData]:
         """Fetch multiple stock quotes, checking cache first where possible.
-        
+
         Args:
             tickers: List of stock ticker symbols.
             force_refresh: Whether to bypass the cache and fetch fresh data for all.
-            
+
         Returns:
             Dict mapping ticker symbol to TickerData for all successfully retrieved stocks.
         """
@@ -285,7 +291,9 @@ class MarketDataManager:
             logger.error("No financial provider configured for batch quote retrieval.")
             return results
 
-        logger.info(f"Batch fetching {len(missing_tickers)} tickers from configured provider ({provider.provider_name})...")
+        logger.info(
+            f"Batch fetching {len(missing_tickers)} tickers from configured provider ({provider.provider_name})..."
+        )
 
         try:
             batch_results = await provider.get_ticker_data_batch(missing_tickers)
@@ -306,7 +314,9 @@ class MarketDataManager:
 
         # 3. Final pass: resolve anything still missing individually.
         if missing_tickers:
-            logger.info(f"Still missing {len(missing_tickers)} tickers after batch fetch. Trying individual retrieval...")
+            logger.info(
+                f"Still missing {len(missing_tickers)} tickers after batch fetch. Trying individual retrieval..."
+            )
             for ticker in list(missing_tickers):
                 data = await self.get_quote(ticker, force_refresh=force_refresh)
                 if data:
@@ -320,20 +330,24 @@ class MarketDataManager:
         import asyncio
 
         from core.config import MARKET_DATA_RETRIES
-        
+
         for attempt in range(1, MARKET_DATA_RETRIES + 1):
             try:
                 data = await provider.get_ticker_data(ticker)
-                
+
                 if data and data.exists:
                     if math.isnan(data.price):
-                        logger.warning(f"Provider {provider.provider_name} returned NaN price for {ticker}. Proceeding...")
+                        logger.warning(
+                            f"Provider {provider.provider_name} returned NaN price for {ticker}. Proceeding..."
+                        )
                         continue
                     return data
             except Exception as e:
                 # Reduce noise: don't log full stack trace for common timeouts/connection errors
-                logger.debug(f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed for {ticker} via {provider.provider_name}: {e}")
-            
+                logger.debug(
+                    f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed for {ticker} via {provider.provider_name}: {e}"
+                )
+
             if attempt < MARKET_DATA_RETRIES:
                 wait_time = 2 ** (attempt - 1)
                 await asyncio.sleep(wait_time)
@@ -342,70 +356,70 @@ class MarketDataManager:
     def _get_last_known_price(self, ticker: str) -> TickerData | None:
         """Retrieves the most recent price from the history table with a 24h staleness check."""
         try:
-             # We want the latest entry from price_history
-             response = self.client.table("price_history") \
-                .select("*") \
-                .eq("ticker", ticker) \
-                .order("fetched_at", desc=True) \
-                .limit(1) \
+            # We want the latest entry from price_history
+            response = (
+                self.client.table("price_history")
+                .select("*")
+                .eq("ticker", ticker)
+                .order("fetched_at", desc=True)
+                .limit(1)
                 .execute()
-             
-             if response.data:
-                  record = response.data[0]
-                  fetched_at_str = record.get("fetched_at", "")
-                  if fetched_at_str:
-                      try:
-                          from dateutil import parser
-                          fetched_at = parser.isoparse(fetched_at_str)
-                          if fetched_at.tzinfo is None:
-                              fetched_at = fetched_at.replace(tzinfo=datetime.UTC)
-                          
-                          now = datetime.datetime.now(datetime.UTC)
-                          age_hours = (now - fetched_at).total_seconds() / 3600
-                          
-                          if age_hours > 24:
-                              logger.warning(f"Last known price for {ticker} is stale ({age_hours:.1f}h old). Rejecting.")
-                              return None
-                      except Exception as parse_err:
-                          logger.error(f"Error parsing fetched_at for {ticker}: {parse_err}")
-                          return None
+            )
 
-                  return TickerData(
-                      ticker=record["ticker"],
-                      price=float(record["price"]),
-                      market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
-                      exists=True
-                  )
+            if response.data:
+                record = response.data[0]
+                fetched_at_str = record.get("fetched_at", "")
+                if fetched_at_str:
+                    try:
+                        from dateutil import parser
+
+                        fetched_at = parser.isoparse(fetched_at_str)
+                        if fetched_at.tzinfo is None:
+                            fetched_at = fetched_at.replace(tzinfo=datetime.UTC)
+
+                        now = datetime.datetime.now(datetime.UTC)
+                        age_hours = (now - fetched_at).total_seconds() / 3600
+
+                        if age_hours > 24:
+                            logger.warning(f"Last known price for {ticker} is stale ({age_hours:.1f}h old). Rejecting.")
+                            return None
+                    except Exception as parse_err:
+                        logger.error(f"Error parsing fetched_at for {ticker}: {parse_err}")
+                        return None
+
+                return TickerData(
+                    ticker=record["ticker"],
+                    price=float(record["price"]),
+                    market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
+                    exists=True,
+                )
         except Exception as e:
-             logger.error(f"Error fetching last known price for {ticker}: {e}")
-        
+            logger.error(f"Error fetching last known price for {ticker}: {e}")
+
         return None
 
     def _get_from_cache(self, ticker: str) -> TickerData | None:
         """Internal helper to retrieve and validate cached data."""
         try:
-            response = self.client.table("market_data_cache") \
-                .select("*") \
-                .eq("ticker", ticker) \
-                .execute()
-            
+            response = self.client.table("market_data_cache").select("*").eq("ticker", ticker).execute()
+
             if not response.data:
                 return None
-            
+
             record = response.data[0]
             fetched_at = datetime.datetime.fromisoformat(record["fetched_at"].replace("Z", "+00:00"))
             now = datetime.datetime.now(datetime.UTC)
-            
+
             # Check if cache is stale
             if (now - fetched_at).total_seconds() > self.cache_ttl_seconds:
                 logger.debug(f"Cache entry for {ticker} is stale.")
                 return None
-            
+
             return TickerData(
                 ticker=record["ticker"],
                 price=float(record["price"]),
                 market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
-                exists=True
+                exists=True,
             )
         except Exception as e:
             logger.error(f"Error reading market data cache for {ticker}: {e}")
@@ -434,7 +448,7 @@ class MarketDataManager:
                     "ticker": data.ticker.strip(),
                     "price": data.price,
                     "market_cap": data.market_cap,
-                    "fetched_at": now_iso
+                    "fetched_at": now_iso,
                 }
                 cache_payloads.append(payload)
 
@@ -448,33 +462,32 @@ class MarketDataManager:
 
     async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
         """Fetch historical price data, checking local DB first.
-        
+
         Args:
             ticker: The stock ticker symbol.
             days: Number of days of history to retrieve.
-            
+
         Returns:
             List of dicts with 'price' and 'fetched_at'.
         """
         ticker = ticker.strip().upper()
-        
+
         # 1. Check local DB
         try:
-            res = self.client.table("price_history") \
-                .select("price, fetched_at") \
-                .eq("ticker", ticker) \
-                .order("fetched_at", desc=True) \
-                .limit(days) \
+            res = (
+                self.client.table("price_history")
+                .select("price, fetched_at")
+                .eq("ticker", ticker)
+                .order("fetched_at", desc=True)
+                .limit(days)
                 .execute()
+            )
 
             if res.data and len(res.data) >= (days * 0.7):
                 is_valid, reason = _validate_date_coverage(res.data, days)
                 if is_valid:
                     logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples, {reason}).")
-                    return [{
-                        "price": float(row["price"]),
-                        "fetched_at": row["fetched_at"]
-                    } for row in res.data]
+                    return [{"price": float(row["price"]), "fetched_at": row["fetched_at"]} for row in res.data]
                 else:
                     logger.debug(f"Skipping local cache for {ticker}: {reason}. Fetching from provider.")
         except Exception as e:
@@ -496,22 +509,18 @@ class MarketDataManager:
                 for entry in history:
                     # Note: We don't have market_cap in history responses usually
                     # but we can insert what we have.
-                    payload = {
-                        "ticker": ticker,
-                        "price": float(entry["price"]),
-                        "fetched_at": entry["fetched_at"]
-                    }
+                    payload = {"ticker": ticker, "price": float(entry["price"]), "fetched_at": entry["fetched_at"]}
                     if "market_cap" in entry:
                         payload["market_cap"] = entry["market_cap"]
                     else:
-                        payload["market_cap"] = 0 # Fallback for non-null column if migration not applied
+                        payload["market_cap"] = 0  # Fallback for non-null column if migration not applied
                     payloads.append(payload)
-                
+
                 if payloads:
                     # Batch upsert into price_history
                     self.client.table("price_history").upsert(payloads, on_conflict="ticker, fetched_at").execute()
             except Exception as e:
                 logger.warning(f"Error saving historical data for {ticker} to cache: {e}")
             return history
-            
+
         return []

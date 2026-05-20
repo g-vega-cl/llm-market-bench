@@ -9,16 +9,17 @@ from core.db import get_supabase_client
 
 logger = logging.getLogger("engine.llm_logger")
 
+
 async def log_reasoning_trace(
     task_type: str,
     model_provider: str,
     model_name: str,
     prompt: list[dict],
     response: Any,
-    metadata: dict | None = None
+    metadata: dict | None = None,
 ) -> None:
     """Asynchronously logs an LLM reasoning trace to Supabase.
-    
+
     Args:
         task_type: The category of the LLM task (e.g. 'INGESTION', 'VERIFICATION').
         model_provider: The LLM provider (openai, anthropic, etc).
@@ -48,7 +49,7 @@ async def log_reasoning_trace(
                 return sterilize_data(obj.dict())
             elif hasattr(obj, "__dict__"):
                 # Handle generic objects by taking their dict representation
-                return {k: sterilize_data(v) for k, v in obj.__dict__.items() if not k.startswith('_')}
+                return {k: sterilize_data(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
             elif hasattr(obj, "role") and hasattr(obj, "parts"):
                 # Handle Google GenAI Content objects explicitly if needed, but the logic above should cover most
                 return str(obj)
@@ -66,17 +67,17 @@ async def log_reasoning_trace(
             "prompt": serializable_prompt,
             "response": processed_response,
             "metadata": metadata or {},
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
-        # Initialize Supabase inside the call to avoid stale connections 
+        # Initialize Supabase inside the call to avoid stale connections
         # or use a singleton if appropriate. For simplicity, we get a new client.
         client = get_supabase_client()
-        
-        # We don't want to block the main pipeline indefinitely, 
+
+        # We don't want to block the main pipeline indefinitely,
         # but we want to ensure the log is attempted.
         client.table("llm_reasoning_logs").insert(payload).execute()
-        
+
     except Exception as e:
         # We log the error but don't re-raise to avoid crashing the main pipeline
         pipeline_logger.error(f"Failed to log reasoning trace for {task_type}: {e}")

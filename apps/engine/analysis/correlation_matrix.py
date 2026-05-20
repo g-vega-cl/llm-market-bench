@@ -30,30 +30,75 @@ from execution.providers.fmp import FMPProvider
 
 TICKER_UNIVERSE = [
     # US Sectors (14)
-    "XLK", "SMH", "XLE", "XLF", "XLV", "XLY", "XLI", "XLB", "XLU", "XLRE", "XLC",
-    "XOP", "XME", "XBI",
+    "XLK",
+    "SMH",
+    "XLE",
+    "XLF",
+    "XLV",
+    "XLY",
+    "XLI",
+    "XLB",
+    "XLU",
+    "XLRE",
+    "XLC",
+    "XOP",
+    "XME",
+    "XBI",
     # US Sub-Sectors (3)
-    "KRE", "XRT", "XHB",
+    "KRE",
+    "XRT",
+    "XHB",
     # US Broad (4)
-    "QQQ", "VIG", "IWM", "SPY",
+    "QQQ",
+    "VIG",
+    "IWM",
+    "SPY",
     # International Developed (8)
-    "EFA", "EWJ", "EWG", "EWL", "EWP", "SCZ", "BWX", "EWA",
+    "EFA",
+    "EWJ",
+    "EWG",
+    "EWL",
+    "EWP",
+    "SCZ",
+    "BWX",
+    "EWA",
     # Emerging Markets (6)
-    "EEM", "MCHI", "EWZ", "EIDO", "EPI", "INDA",
+    "EEM",
+    "MCHI",
+    "EWZ",
+    "EIDO",
+    "EPI",
+    "INDA",
     # Commodities (7)
-    "GLD", "SLV", "PDBC", "USO", "CPER", "UNG", "DBA",
+    "GLD",
+    "SLV",
+    "PDBC",
+    "USO",
+    "CPER",
+    "UNG",
+    "DBA",
     # Bonds (6)
-    "TLT", "IEF", "LQD", "EMB", "HYG", "AGG",
+    "TLT",
+    "IEF",
+    "LQD",
+    "EMB",
+    "HYG",
+    "AGG",
     # International Bonds (3)
-    "BNDX", "IAGG", "EMLC",
+    "BNDX",
+    "IAGG",
+    "EMLC",
     # Real Assets (2)
-    "VNQ", "ICF",
+    "VNQ",
+    "ICF",
     # Dollar (1)
     "UUP",
     # Crypto (2) - FMP uses BTCUSD/ETHUSD format
-    "BTCUSD", "ETHUSD",
+    "BTCUSD",
+    "ETHUSD",
     # Volatility (2)
-    "VIXY", "VIXM",
+    "VIXY",
+    "VIXM",
 ]
 
 WINDOW_DAYS = 90
@@ -63,6 +108,7 @@ SMA_WINDOW = 5  # days for smoothing endpoints in 90d return calc
 # =============================================================================
 # DATA FETCHING
 # =============================================================================
+
 
 async def fetch_ticker_history(provider: FMPProvider, ticker: str, days: int) -> list[float] | None:
     """Fetch historical close prices for a ticker.
@@ -118,6 +164,7 @@ async def fetch_all_prices(tickers: list[str], days: int) -> dict[str, list[floa
 # CORRELATION CALCULATION
 # =============================================================================
 
+
 def compute_returns(prices: list[float]) -> np.ndarray:
     """Calculate daily percentage returns.
 
@@ -130,9 +177,7 @@ def compute_returns(prices: list[float]) -> np.ndarray:
     return np.diff(prices) / np.array(prices[:-1])
 
 
-def compute_correlation_matrices(
-    returns_dict: dict[str, list[float]]
-) -> tuple[dict, dict]:
+def compute_correlation_matrices(returns_dict: dict[str, list[float]]) -> tuple[dict, dict]:
     """Compute Pearson and Spearman correlation matrices.
 
     Args:
@@ -218,13 +263,9 @@ def compute_90d_returns(prices_dict: dict[str, list[float]]) -> dict[str, float]
 # DATABASE STORAGE
 # =============================================================================
 
+
 def store_correlation_results(
-    client,
-    tickers: list[str],
-    pearson_corrs: dict,
-    spearman_corrs: dict,
-    returns_90d: dict,
-    window_days: int = 90
+    client, tickers: list[str], pearson_corrs: dict, spearman_corrs: dict, returns_90d: dict, window_days: int = 90
 ) -> str:
     """Store correlation results to Supabase.
 
@@ -270,23 +311,25 @@ def store_correlation_results(
         returns_a = returns_90d.get(ticker_a)
         returns_b = returns_90d.get(ticker_b)
 
-        correlation_records.append({
-            "run_id": run_id,
-            "ticker_a": ticker_a,
-            "ticker_b": ticker_b,
-            "pearson_corr": pearson_corr,
-            "spearman_corr": spearman_corr,
-            "returns_a_90d": returns_a,
-            "returns_b_90d": returns_b,
-            "data_points": window_days,
-        })
+        correlation_records.append(
+            {
+                "run_id": run_id,
+                "ticker_a": ticker_a,
+                "ticker_b": ticker_b,
+                "pearson_corr": pearson_corr,
+                "spearman_corr": spearman_corr,
+                "returns_a_90d": returns_a,
+                "returns_b_90d": returns_b,
+                "data_points": window_days,
+            }
+        )
 
     # Batch insert correlation data
     if correlation_records:
         # Insert in batches of 500
         batch_size = 500
         for i in range(0, len(correlation_records), batch_size):
-            batch = correlation_records[i:i + batch_size]
+            batch = correlation_records[i : i + batch_size]
             client.table("correlation_data").insert(batch).execute()
             logger.info(f"Inserted batch {i // batch_size + 1} ({len(batch)} records)")
 
@@ -298,6 +341,7 @@ def store_correlation_results(
 # =============================================================================
 # TICKER VERIFICATION
 # =============================================================================
+
 
 async def verify_tickers(provider: FMPProvider, tickers: list[str]) -> tuple[list[str], list[str]]:
     """Verify which tickers are available on FMP.
@@ -327,6 +371,7 @@ async def verify_tickers(provider: FMPProvider, tickers: list[str]) -> tuple[lis
 # =============================================================================
 # MAIN
 # =============================================================================
+
 
 async def main():
     """Main correlation matrix computation."""
@@ -406,17 +451,14 @@ async def main():
     # Store results
     logger.info("\nStoring results to Supabase...")
     run_id = store_correlation_results(
-        client,
-        list(returns_dict.keys()),
-        pearson_corrs,
-        spearman_corrs,
-        returns_90d,
-        window_days=WINDOW_DAYS
+        client, list(returns_dict.keys()), pearson_corrs, spearman_corrs, returns_90d, window_days=WINDOW_DAYS
     )
 
     # Verify storage integrity
     try:
-        stored_count_response = client.table("correlation_data").select("id", count="exact").eq("run_id", run_id).execute()
+        stored_count_response = (
+            client.table("correlation_data").select("id", count="exact").eq("run_id", run_id).execute()
+        )
         stored_count = stored_count_response.count
         expected_count = len(pearson_corrs)
 

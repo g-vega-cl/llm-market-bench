@@ -112,7 +112,7 @@ async def compute_wall_street_metrics(
         peak = 1.0
         max_dd = 0.0
         for r in returns:
-            cumulative *= (1 + r)
+            cumulative *= 1 + r
             if cumulative > peak:
                 peak = cumulative
             dd = (cumulative - peak) / peak
@@ -134,21 +134,31 @@ def compute_score(
     portfolio_return_pct: float,
     spy_return_pct: float,
     max_drawdown_pct: float,
+    bond_return_pct: float = 0.0,
+    dollar_return_pct: float = 0.0,
 ) -> dict:
     """Compute the single auto-research score.
 
-    Formula: score = (portfolio_return - SPY_return) - (max_drawdown × penalty_weight)
+    Formula:
+      hurdle = bond_return_pct
+      penalty_opp = max(0.0, hurdle - portfolio_return_pct)
+      score = (portfolio_return - SPY_return) - penalty_opp - (max_drawdown × penalty_weight)
 
-    Positive score = beating SPY after risk penalty.
+    Positive score = beating benchmarks and hurdles after risk penalty.
     Zero = treading water.
-    Negative = losing to SPY or too volatile.
+    Negative = losing to SPY, hurdles, or too volatile.
     """
     excess_return = portfolio_return_pct - spy_return_pct
+    hurdle = bond_return_pct
+    opportunity_cost = max(0.0, hurdle - portfolio_return_pct)
     penalty = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT
-    score = round(excess_return - penalty, 4)
+    score = round(excess_return - opportunity_cost - penalty, 4)
 
     return {
         "score": score,
         "excess_return": round(excess_return, 4),
         "max_drawdown": max_drawdown_pct,
+        "bond_return_pct": round(bond_return_pct, 4),
+        "dollar_return_pct": round(dollar_return_pct, 4),
+        "opportunity_cost_penalty": round(opportunity_cost, 4),
     }

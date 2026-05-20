@@ -20,10 +20,14 @@ The auto-research loop runs weekly:
 ## Score
 
 ```
-score = (portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)
+hurdle_pct     = bond_return_pct  (compounded 10-year Treasury yield)
+opp_cost       = max(0.0, hurdle_pct - portfolio_return%)
+score          = (portfolio_return% - SPY_return%) - opp_cost - (max_drawdown% × 0.3)
 ```
 
-A single transparent number. The meta-researcher sees the components (portfolio return, SPY return, max drawdown) plus the baseline and Δ.
+A single transparent number. The meta-researcher sees all components (portfolio return, SPY return, bond hurdle, opportunity cost penalty, drawdown) plus the baseline and Δ.
+
+The 10-year Treasury yield is the sole active risk-free hurdle — the portfolio must clear it to avoid an opportunity cost penalty. The US Dollar Index (DXY/UUP) return is fetched and shown in the weekly report for macroeconomic context but does **not** affect the score.
 
 ## Baseline
 

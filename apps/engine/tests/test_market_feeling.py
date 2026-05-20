@@ -25,12 +25,7 @@ class TestBuildTradesSummary:
         """Test trades summary with a single BUY trade."""
         from analysis.market_feeling import build_trades_summary
 
-        trades = [{
-            "ticker": "AAPL",
-            "signal": "BUY",
-            "quantity": 10,
-            "total_cost": 1500.00
-        }]
+        trades = [{"ticker": "AAPL", "signal": "BUY", "quantity": 10, "total_cost": 1500.00}]
         result = build_trades_summary(trades)
         assert "Total trades: 1 (1 buys, 0 sells)" in result
         assert "Total value: $1,500.00" in result
@@ -43,7 +38,7 @@ class TestBuildTradesSummary:
         trades = [
             {"ticker": "AAPL", "signal": "BUY", "quantity": 10, "total_cost": 1500.00},
             {"ticker": "GOOGL", "signal": "BUY", "quantity": 5, "total_cost": 750.00},
-            {"ticker": "TSLA", "signal": "SELL", "quantity": 3, "total_cost": 600.00}
+            {"ticker": "TSLA", "signal": "SELL", "quantity": 3, "total_cost": 600.00},
         ]
         result = build_trades_summary(trades)
         assert "Total trades: 3 (2 buys, 1 sells)" in result
@@ -55,10 +50,7 @@ class TestBuildTradesSummary:
         """Test that ticker list is truncated at 5."""
         from analysis.market_feeling import build_trades_summary
 
-        trades = [
-            {"ticker": f"STOCK{i}", "signal": "BUY", "quantity": 1, "total_cost": 100.00}
-            for i in range(8)
-        ]
+        trades = [{"ticker": f"STOCK{i}", "signal": "BUY", "quantity": 1, "total_cost": 100.00} for i in range(8)]
         result = build_trades_summary(trades)
         assert "..." in result  # Should have ellipsis for truncated tickers
 
@@ -114,10 +106,7 @@ class TestBuildAttemptsSummary:
         """Test that ticker list is truncated at 3."""
         from analysis.market_feeling import build_attempts_summary
 
-        rejected = [
-            {"ticker": f"STOCK{i}", "signal": "BUY", "status": "REJECTED_MARGIN"}
-            for i in range(5)
-        ]
+        rejected = [{"ticker": f"STOCK{i}", "signal": "BUY", "status": "REJECTED_MARGIN"} for i in range(5)]
         result = build_attempts_summary(rejected)
         assert "..." in result
 
@@ -172,10 +161,7 @@ class TestBuildEventsSummary:
         """Test events summary with market events."""
         from analysis.market_feeling import build_events_summary
 
-        events = [
-            {"content": "Fed announced rate pause"},
-            {"content": "Oil supplies tightening"}
-        ]
+        events = [{"content": "Fed announced rate pause"}, {"content": "Oil supplies tightening"}]
         result = build_events_summary(events)
         assert "Fed announced rate pause" in result
         assert "Oil supplies tightening" in result
@@ -195,12 +181,7 @@ class TestBuildReasoningSummary:
         """Test reasoning summary with a single decision."""
         from analysis.market_feeling import build_reasoning_summary
 
-        decisions = [{
-            "ticker": "AAPL",
-            "signal": "BUY",
-            "confidence": 85,
-            "reasoning": "Strong earnings report"
-        }]
+        decisions = [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Strong earnings report"}]
         result = build_reasoning_summary(decisions)
         assert "AAPL" in result
         assert "BUY" in result
@@ -211,12 +192,9 @@ class TestBuildReasoningSummary:
         """Test that decisions are truncated at 10."""
         from analysis.market_feeling import build_reasoning_summary
 
-        decisions = [{
-            "ticker": f"T{i}",
-            "signal": "BUY",
-            "confidence": 50,
-            "reasoning": f"Reason {i}"
-        } for i in range(15)]
+        decisions = [
+            {"ticker": f"T{i}", "signal": "BUY", "confidence": 50, "reasoning": f"Reason {i}"} for i in range(15)
+        ]
 
         result = build_reasoning_summary(decisions)
         lines = result.split("\n")
@@ -236,7 +214,7 @@ class TestBuildPrompt:
             "rejected_attempts": [{"ticker": "NVDA", "signal": "BUY", "status": "REJECTED_MARGIN"}],
             "lessons": [{"content": "Test lesson"}],
             "events": [{"content": "Test event"}],
-            "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}]
+            "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}],
         }
 
         prompt = build_prompt(data)
@@ -252,13 +230,7 @@ class TestBuildPrompt:
         """Test that prompt contains expected sections."""
         from analysis.market_feeling import build_prompt
 
-        data = {
-            "trades": [],
-            "rejected_attempts": [],
-            "lessons": [],
-            "events": [],
-            "decisions": []
-        }
+        data = {"trades": [], "rejected_attempts": [], "lessons": [], "events": [], "decisions": []}
 
         prompt = build_prompt(data)
 
@@ -281,7 +253,7 @@ class TestBuildPrompt:
             "rejected_attempts": [],
             "lessons": [{"content": "Test lesson"}],
             "events": [{"content": "Test event"}],
-            "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}]
+            "decisions": [{"ticker": "AAPL", "signal": "BUY", "confidence": 85, "reasoning": "Test reasoning"}],
         }
 
         prompt = build_prompt(data, weekend_mode=True)
@@ -293,13 +265,7 @@ class TestBuildPrompt:
         """Test that weekday (default) prompt uses 'today'."""
         from analysis.market_feeling import build_prompt
 
-        data = {
-            "trades": [],
-            "rejected_attempts": [],
-            "lessons": [],
-            "events": [],
-            "decisions": []
-        }
+        data = {"trades": [], "rejected_attempts": [], "lessons": [], "events": [], "decisions": []}
 
         prompt = build_prompt(data, weekend_mode=False)
 
@@ -325,9 +291,7 @@ class TestIsMarketFeelingStale:
         """Test that recent feeling (1 hour old) is not stale."""
         from analysis.market_feeling import is_market_feeling_stale
 
-        recent = {
-            "created_at": datetime.now(UTC).isoformat()
-        }
+        recent = {"created_at": datetime.now(UTC).isoformat()}
         assert is_market_feeling_stale(recent, stale_threshold_hours=4) is False
 
     def test_old_feeling_is_stale(self):
@@ -402,8 +366,10 @@ class TestAnalyzeMarketFeeling:
         ]
         mock_sb.table.return_value.select.return_value.execute.return_value.data = []
 
-        with patch("analysis.market_feeling.get_supabase_client", return_value=mock_sb), \
-             patch("analysis.market_feeling.MINIMAX_API_KEY", None):
+        with (
+            patch("analysis.market_feeling.get_supabase_client", return_value=mock_sb),
+            patch("analysis.market_feeling.MINIMAX_API_KEY", None),
+        ):
             result = await analyze_market_feeling()
 
             # Should return None because no API key
@@ -421,9 +387,11 @@ class TestAnalyzeMarketFeeling:
         ]
         mock_sb.table.return_value.select.return_value.execute.return_value.data = []
 
-        with patch("analysis.market_feeling.get_supabase_client", return_value=mock_sb), \
-             patch("analysis.market_feeling.MINIMAX_API_KEY", "fake-key"), \
-             patch("analysis.market_feeling.MiniMaxClient") as MockClient:
+        with (
+            patch("analysis.market_feeling.get_supabase_client", return_value=mock_sb),
+            patch("analysis.market_feeling.MINIMAX_API_KEY", "fake-key"),
+            patch("analysis.market_feeling.MiniMaxClient") as MockClient,
+        ):
             mock_client_instance = MagicMock()
             mock_client_instance.chat_with_json_response = AsyncMock(side_effect=Exception("API Error"))
             mock_client_instance.close = AsyncMock()

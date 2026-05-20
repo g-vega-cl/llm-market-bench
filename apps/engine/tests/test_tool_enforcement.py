@@ -20,16 +20,13 @@ def mock_clients():
         mock_client = MagicMock()
         mock_factory.return_value = mock_client
         mock_factories.get.return_value = mock_factory
-        
+
         # Mock Instructor-wrapped client
         MagicMock()
         mock_client.chat.completions.create = AsyncMock()
-        
-        yield {
-            "factory": mock_factory,
-            "client": mock_client,
-            "instructor": mock_client.chat.completions
-        }
+
+        yield {"factory": mock_factory, "client": mock_client, "instructor": mock_client.chat.completions}
+
 
 def test_scan_history_openai_format():
     """Verify scanning OpenAI-style message history for quantity tools."""
@@ -39,24 +36,28 @@ def test_scan_history_openai_format():
             "role": "assistant",
             "tool_calls": [
                 {
-                    "function": {"name": "calculate_sell_quantity", "arguments": '{"ticker": "AAPL", "percentage": 50}'},
-                    "id": "call_1"
+                    "function": {
+                        "name": "calculate_sell_quantity",
+                        "arguments": '{"ticker": "AAPL", "percentage": 50}',
+                    },
+                    "id": "call_1",
                 },
                 {
                     "function": {"name": "calculate_buy_quantity", "arguments": '{"ticker": "AAPL", "percentage": 20}'},
-                    "id": "call_2"
-                }
-            ]
-        }
+                    "id": "call_2",
+                },
+            ],
+        },
     ]
-    
+
     res = _scan_history_for_tools(messages, "AAPL")
     assert res["sell_tool_found"] is True
     assert res["buy_tool_found"] is True
-    
+
     res_msft = _scan_history_for_tools(messages, "MSFT")
     assert res_msft["sell_tool_found"] is False
     assert res_msft["buy_tool_found"] is False
+
 
 def test_scan_history_anthropic_format():
     """Verify scanning Anthropic-style message history for quantity tools."""
@@ -66,17 +67,24 @@ def test_scan_history_anthropic_format():
             "role": "assistant",
             "content": [
                 {"type": "text", "text": "Let me check..."},
-                {"type": "tool_use", "name": "calculate_sell_quantity", "input": {"ticker": "TSLA", "percentage": 100}, "id": "u1"}
-            ]
-        }
+                {
+                    "type": "tool_use",
+                    "name": "calculate_sell_quantity",
+                    "input": {"ticker": "TSLA", "percentage": 100},
+                    "id": "u1",
+                },
+            ],
+        },
     ]
-    
+
     res = _scan_history_for_tools(messages, "TSLA")
     assert res["sell_tool_found"] is True
     assert res["buy_tool_found"] is False
 
+
 def test_scan_history_gemini_format():
     """Verify scanning Gemini-style native content history."""
+
     class MockFunctionCall:
         def __init__(self, name, args):
             self.name = name
@@ -85,21 +93,24 @@ def test_scan_history_gemini_format():
     class MockPart:
         def __init__(self, name, args):
             self.function_call = MockFunctionCall(name, args)
-            
+
     class MockContent:
         def __init__(self, parts):
             self.parts = parts
-            
+
     messages = [
-        MockContent([
-            MockPart("calculate_buy_quantity", {"ticker": "GOOG", "percentage": 50}),
-            MockPart("calculate_sell_quantity", {"ticker": "GOOG", "percentage": 100})
-        ])
+        MockContent(
+            [
+                MockPart("calculate_buy_quantity", {"ticker": "GOOG", "percentage": 50}),
+                MockPart("calculate_sell_quantity", {"ticker": "GOOG", "percentage": 100}),
+            ]
+        )
     ]
-    
+
     res = _scan_history_for_tools(messages, "GOOG")
     assert res["buy_tool_found"] is True
     assert res["sell_tool_found"] is True
+
 
 def test_scan_history_robust_matching():
     """Verify that ticker matching is robust to spaces and casing."""
@@ -108,47 +119,53 @@ def test_scan_history_robust_matching():
             "role": "assistant",
             "tool_calls": [
                 {
-                    "function": {"name": "calculate_buy_quantity", "arguments": '{"ticker": "  aapl  ", "percentage": 10}'},
-                    "id": "c1"
+                    "function": {
+                        "name": "calculate_buy_quantity",
+                        "arguments": '{"ticker": "  aapl  ", "percentage": 10}',
+                    },
+                    "id": "c1",
                 }
-            ]
+            ],
         }
     ]
-    
+
     res = _scan_history_for_tools(messages, "AAPL")
     assert res["buy_tool_found"] is True
-    
+
     res_messy = _scan_history_for_tools(messages, " aapl ")
     assert res_messy["buy_tool_found"] is True
+
 
 @pytest.mark.asyncio
 async def test_analyze_with_provider_hard_enforcement(mock_clients):
     """Verify that analyze_with_provider correctly updates sell_tool_called."""
     mock_instructor = mock_clients["instructor"]
-    
-    mock_instructor.create.return_value = [DecisionsResponse(
-        decisions=[
-            DecisionObject(
-                signal="SELL",
-                ticker="AAPL",
-                confidence=90,
-                reasoning="Test",
-                source_id="s1",
-                sell_tool_called=True,
-                quantity=10
-            )
-        ],
-        macro_events=[]
-    )]
-    
-    with patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock), \
-         patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock):
-        resp = await analyze_with_provider(
-            provider="openai",
-            model_name="gpt-4",
-            chunks=[{"source_id": "s1", "content": "..."}]
+
+    mock_instructor.create.return_value = [
+        DecisionsResponse(
+            decisions=[
+                DecisionObject(
+                    signal="SELL",
+                    ticker="AAPL",
+                    confidence=90,
+                    reasoning="Test",
+                    source_id="s1",
+                    sell_tool_called=True,
+                    quantity=10,
+                )
+            ],
+            macro_events=[],
         )
-        
+    ]
+
+    with (
+        patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+        patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock),
+    ):
+        resp = await analyze_with_provider(
+            provider="openai", model_name="gpt-4", chunks=[{"source_id": "s1", "content": "..."}]
+        )
+
     assert resp.decisions[0].ticker == "AAPL"
     assert resp.decisions[0].sell_tool_called is False
 

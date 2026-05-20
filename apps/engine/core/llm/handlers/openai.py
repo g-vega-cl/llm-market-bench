@@ -21,7 +21,7 @@ DEFAULT_OPENAI_TOOLS = [
 # OpenAI web search tool (native tool, not a function)
 # Note: OpenAI web search requires search-enabled models in Chat Completions API:
 # - gpt-5-search-api
-# - gpt-4o-search-preview  
+# - gpt-4o-search-preview
 # - gpt-4o-mini-search-preview
 # Or use the Responses API with any supported model.
 # See: https://developers.openai.com/api/docs/models/gpt-5
@@ -33,10 +33,10 @@ WEB_SEARCH_TOOL_OPENAI = {
 
 def _build_tool_list(enable_web_search: bool = False) -> list:
     """Builds the tool list for OpenAI API.
-    
+
     Args:
         enable_web_search: Whether to include web search tool.
-        
+
     Returns:
         List of tool definitions.
     """
@@ -52,7 +52,7 @@ async def run_tool_loop(
     provider: str = "openai",
     max_tool_steps: int = 5,
     override_tools: list | None = None,
-    enable_web_search: bool = False
+    enable_web_search: bool = False,
 ) -> None:
     """Runs the tool execution loop for OpenAI.
 
@@ -66,6 +66,7 @@ async def run_tool_loop(
         enable_web_search: Whether to enable native web search tool.
     """
     import typing
+
     for _ in range(max_tool_steps):
         args: dict[str, typing.Any] = {
             "model": model_name,
@@ -89,8 +90,10 @@ async def run_tool_loop(
             call_args = json.loads(tool_call.function.arguments)
             result = await base.execute_tool(tool_call.function.name, call_args, model_name)
 
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": result,
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result,
+                }
+            )

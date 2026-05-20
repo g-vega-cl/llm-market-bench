@@ -12,18 +12,20 @@ class TestAnalyzeLogBlob:
     @pytest.fixture
     def mock_deepseek_response(self):
         """Sample valid DeepSeek response."""
-        return json.dumps([
-            {
-                "title": "Connection Timeout",
-                "severity": "HIGH",
-                "suggestion": "Increase timeout threshold or check network connectivity"
-            },
-            {
-                "title": "Missing Configuration",
-                "severity": "MEDIUM",
-                "suggestion": "Add the missing config file to the deployment"
-            }
-        ])
+        return json.dumps(
+            [
+                {
+                    "title": "Connection Timeout",
+                    "severity": "HIGH",
+                    "suggestion": "Increase timeout threshold or check network connectivity",
+                },
+                {
+                    "title": "Missing Configuration",
+                    "severity": "MEDIUM",
+                    "suggestion": "Add the missing config file to the deployment",
+                },
+            ]
+        )
 
     def test_configure_sets_api_key(self):
         """Verify configure function sets the API key."""
@@ -31,6 +33,7 @@ class TestAnalyzeLogBlob:
 
         configure("test-key-123")
         from core.audit import analyzer
+
         assert analyzer.DEEPSEEK_API_KEY == "test-key-123"
 
     @pytest.mark.asyncio
@@ -43,13 +46,7 @@ class TestAnalyzeLogBlob:
         with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
-                return_value=AsyncMock(
-                    choices=[
-                        AsyncMock(
-                            message=AsyncMock(content=mock_deepseek_response)
-                        )
-                    ]
-                )
+                return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content=mock_deepseek_response))])
             )
             mock_client.return_value = mock_instance
 
@@ -67,20 +64,16 @@ class TestAnalyzeLogBlob:
 
         configure("test-key")
 
-        markdown_json = '''```json
+        markdown_json = """```json
 [
   {"title": "Error 1", "severity": "HIGH", "suggestion": "Fix it"}
 ]
-```'''
+```"""
 
         with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
-                return_value=AsyncMock(
-                    choices=[
-                        AsyncMock(message=AsyncMock(content=markdown_json))
-                    ]
-                )
+                return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content=markdown_json))])
             )
             mock_client.return_value = mock_instance
 
@@ -103,11 +96,7 @@ class TestAnalyzeLogBlob:
         with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
-                return_value=AsyncMock(
-                    choices=[
-                        AsyncMock(message=AsyncMock(content="[]"))
-                    ]
-                )
+                return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content="[]"))])
             )
             mock_client.return_value = mock_instance
 
@@ -128,11 +117,7 @@ class TestAnalyzeLogBlob:
         with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.chat.completions.create = AsyncMock(
-                return_value=AsyncMock(
-                    choices=[
-                        AsyncMock(message=AsyncMock(content="This is not valid JSON"))
-                    ]
-                )
+                return_value=AsyncMock(choices=[AsyncMock(message=AsyncMock(content="This is not valid JSON"))])
             )
             mock_client.return_value = mock_instance
 
@@ -150,9 +135,7 @@ class TestAnalyzeLogBlob:
 
         with patch("core.audit.analyzer.AsyncOpenAI") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.chat.completions.create = AsyncMock(
-                side_effect=Exception("API Error")
-            )
+            mock_instance.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
             mock_client.return_value = mock_instance
 
             result = await analyze_log_blob("test")

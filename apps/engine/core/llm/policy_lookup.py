@@ -19,6 +19,7 @@ logger = logging.getLogger("engine")
 
 class PolicyLookupResult(BaseModel):
     """Result of a policy lookup operation."""
+
     policy_name: str = Field(..., description="Specific name of the bill, act, or regulation")
     status: str = Field(..., description="Current status (e.g., 'in committee', 'passed House', 'signed into law')")
     description: str = Field(..., description="1-sentence description of what the policy does and market relevance")
@@ -39,10 +40,7 @@ Return ONLY a JSON object with:
 Do NOT include any text outside the JSON object."""
 
 
-async def lookup_policy(
-    chunk_content: str,
-    existing_event_name: str | None = None
-) -> PolicyLookupResult | None:
+async def lookup_policy(chunk_content: str, existing_event_name: str | None = None) -> PolicyLookupResult | None:
     """Looks up a specific government policy from vague text using Gemini + Google Search.
 
     Args:
@@ -98,9 +96,7 @@ async def lookup_policy(
 
         confidence = int(data.get("confidence", 0))
         if confidence < 50:
-            logger.info(
-                f"PolicyLookup: Low confidence ({confidence}) for '{policy_name}', rejecting."
-            )
+            logger.info(f"PolicyLookup: Low confidence ({confidence}) for '{policy_name}', rejecting.")
             return None
 
         result = PolicyLookupResult(
@@ -110,9 +106,7 @@ async def lookup_policy(
             confidence=confidence,
         )
 
-        logger.info(
-            f"PolicyLookup: Identified '{policy_name}' [{result.status}] with confidence {confidence}%"
-        )
+        logger.info(f"PolicyLookup: Identified '{policy_name}' [{result.status}] with confidence {confidence}%")
         return result
 
     except Exception as e:

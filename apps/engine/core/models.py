@@ -27,83 +27,56 @@ class DecisionObject(BaseModel):
     """
 
     signal: Literal["BUY", "SELL", "HOLD"]
-    confidence: int = Field(
-        ...,
-        ge=0,
-        le=100,
-        description="Confidence score between 0 and 100"
-    )
-    reasoning: str = Field(
-        ...,
-        description="Explanation of the decision based on the text"
-    )
+    confidence: int = Field(..., ge=0, le=100, description="Confidence score between 0 and 100")
+    reasoning: str = Field(..., description="Explanation of the decision based on the text")
     ticker: str = Field(..., description="Stock ticker symbol")
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "UNCROWDED_TRADE", "OTHER"] = Field(
+    catalyst_type: Literal[
+        "MACRO",
+        "EARNINGS",
+        "M_A",
+        "PRODUCT",
+        "REGULATORY",
+        "EVENT",
+        "INNOVATION",
+        "TECHNICAL",
+        "UNCROWDED_TRADE",
         "OTHER",
-        description="The primary driver for this decision"
-    )
+    ] = Field("OTHER", description="The primary driver for this decision")
     catalyst_duration: Literal["INTRADAY", "SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"] = Field(
-        "SHORT_TERM",
-        description="The expected market impact timeframe"
+        "SHORT_TERM", description="The expected market impact timeframe"
     )
-    source_id: str = Field(
-        ...,
-        description="ID of the source newsletter chunk"
-    )
-    model_provider: str | None = Field(
-        None,
-        description="LLM provider that generated the decision"
-    )
-    model_name: str | None = Field(
-        None,
-        description="Specific model name that generated the decision"
-    )
+    source_id: str = Field(..., description="ID of the source newsletter chunk")
+    model_provider: str | None = Field(None, description="LLM provider that generated the decision")
+    model_name: str | None = Field(None, description="Specific model name that generated the decision")
     allocation_percentage: int | None = Field(
-        None,
-        ge=0,
-        le=100,
-        description="Percentage of portfolio buying power to allocate to this trade (0-100)"
+        None, ge=0, le=100, description="Percentage of portfolio buying power to allocate to this trade (0-100)"
     )
-    is_priced_in: bool = Field(
-        False,
-        description="Whether the news is already priced into the stock price"
-    )
+    is_priced_in: bool = Field(False, description="Whether the news is already priced into the stock price")
     is_priced_in_reasoning: str = Field(
-        "No explicit priced-in reasoning provided.",
-        description="Detailed reasoning for why this is or isn't priced in"
+        "No explicit priced-in reasoning provided.", description="Detailed reasoning for why this is or isn't priced in"
     )
     profit_potential_reasoning: str = Field(
         "No explicit profit potential reasoning provided.",
-        description="Reasoning on why it's possible to make a profitable trade based on this"
+        description="Reasoning on why it's possible to make a profitable trade based on this",
     )
-    strategy_reasoning: str | None = Field(
-        None,
-        description="Detailed strategic reasoning for the trade"
-    )
+    strategy_reasoning: str | None = Field(None, description="Detailed strategic reasoning for the trade")
     advance_planning_notes: str | None = Field(
-        None,
-        description="Notes for planning decisions in advance (e.g., selling X for Y)"
+        None, description="Notes for planning decisions in advance (e.g., selling X for Y)"
     )
     buy_tool_called: bool = Field(
-        False,
-        description="MANDATORY for BUY: Whether the buy quantity tool was called to verify position size"
+        False, description="MANDATORY for BUY: Whether the buy quantity tool was called to verify position size"
     )
     sell_tool_called: bool = Field(
-        False,
-        description="MANDATORY for SELL: Whether the sell quantity tool was called to verify position size"
+        False, description="MANDATORY for SELL: Whether the sell quantity tool was called to verify position size"
     )
     quantity: int | None = Field(
-        None,
-        ge=0,
-        description="The exact quantity of shares to trade (mandatory if sell_tool_called is true)"
+        None, ge=0, description="The exact quantity of shares to trade (mandatory if sell_tool_called is true)"
     )
     injected_market_price: float | None = Field(
-        None,
-        description="Market price injected into the prompt for this ticker (set by the system, not the LLM)"
+        None, description="Market price injected into the prompt for this ticker (set by the system, not the LLM)"
     )
     original_index: int | None = Field(
-        None,
-        description="Stable sequence number preserving the model's original reasoning order"
+        None, description="Stable sequence number preserving the model's original reasoning order"
     )
 
     @field_validator("ticker")
@@ -127,37 +100,38 @@ class MacroEvent(BaseModel):
 
     event_name: str = Field(..., description="Short name for the event")
     impact: Literal["BULLISH", "BEARISH", "NEUTRAL"]
-    catalyst_type: Literal["MACRO", "EARNINGS", "M_A", "PRODUCT", "REGULATORY", "EVENT", "INNOVATION", "TECHNICAL", "UNCROWDED_TRADE", "OTHER"] = Field(
+    catalyst_type: Literal[
         "MACRO",
-        description="The category of market event"
-    )
+        "EARNINGS",
+        "M_A",
+        "PRODUCT",
+        "REGULATORY",
+        "EVENT",
+        "INNOVATION",
+        "TECHNICAL",
+        "UNCROWDED_TRADE",
+        "OTHER",
+    ] = Field("MACRO", description="The category of market event")
     is_ongoing: bool | None = Field(
-        False, 
-        description="Whether the event is a currently unfolding trend, rotation, or unresolved past action (e.g. 'Structural Rotation into HALO', 'Nvidia Photonics Investment')"
+        False,
+        description="Whether the event is a currently unfolding trend, rotation, or unresolved past action (e.g. 'Structural Rotation into HALO', 'Nvidia Photonics Investment')",
     )
     is_future_catalyst: bool | None = Field(
         False,
-        description="Whether this is strictly a PENDING, UPCOMING event with multiple possible future outcomes (e.g. 'OPEC meeting', 'Elections', 'Data release'). Do NOT mark past investments or ongoing trends as future catalysts."
+        description="Whether this is strictly a PENDING, UPCOMING event with multiple possible future outcomes (e.g. 'OPEC meeting', 'Elections', 'Data release'). Do NOT mark past investments or ongoing trends as future catalysts.",
     )
     historical_parallel: str | None = Field(
-        None,
-        description="A historical comparison mentioned (e.g. 'Like the 1970s stagflation')"
+        None, description="A historical comparison mentioned (e.g. 'Like the 1970s stagflation')"
     )
     expiry_date: str | None = Field(
-        None,
-        description="The date or timeframe when this incentive or policy expires (e.g., '2027')"
+        None, description="The date or timeframe when this incentive or policy expires (e.g., '2027')"
     )
-    importance_score: int = Field(
-        5,
-        ge=1,
-        le=10,
-        description="Intrinsic importance of the event (1-10)"
-    )
+    importance_score: int = Field(5, ge=1, le=10, description="Intrinsic importance of the event (1-10)")
     confidence: int = Field(..., ge=0, le=100)
     reasoning: str = Field(..., description="Explanation of the event's significance")
     scenario_analysis: str | None = Field(
         None,
-        description="Analysis of potential resolutions. REQUIRED for Future Catalysts: Include at least two distinct outcomes (scenarios) AND a specific 'Trading Plan' for each (e.g., 'Scenario A: [Outcome] -> Trading Plan: [Action]')."
+        description="Analysis of potential resolutions. REQUIRED for Future Catalysts: Include at least two distinct outcomes (scenarios) AND a specific 'Trading Plan' for each (e.g., 'Scenario A: [Outcome] -> Trading Plan: [Action]').",
     )
     source_id: str = Field("unknown", description="ID of the source newsletter chunk")
     model_provider: str | None = Field(None)
@@ -166,13 +140,12 @@ class MacroEvent(BaseModel):
 
 class DecisionsResponse(BaseModel):
     """Container for trading decisions and macro events from a batch analysis."""
+
     decisions: list[DecisionObject] = Field(
-        default_factory=list,
-        description="List of trading decisions generated from the batch of news"
+        default_factory=list, description="List of trading decisions generated from the batch of news"
     )
     macro_events: list[MacroEvent] = Field(
-        default_factory=list,
-        description="List of broad market events or themes identified"
+        default_factory=list, description="List of broad market events or themes identified"
     )
 
     @field_validator("decisions", "macro_events", mode="before")
@@ -182,6 +155,7 @@ class DecisionsResponse(BaseModel):
         if isinstance(v, str):
             try:
                 import json
+
                 return json.loads(v)
             except Exception:
                 return v
@@ -190,10 +164,8 @@ class DecisionsResponse(BaseModel):
 
 class ContrarianAgentResponse(BaseModel):
     """Wrapper for multiple response blocks from the Contrarian Agent."""
-    responses: list[DecisionsResponse] = Field(
-        ...,
-        description="List of response blocks generated by the agent"
-    )
+
+    responses: list[DecisionsResponse] = Field(..., description="List of response blocks generated by the agent")
 
 
 class NewsletterCleaningResponse(BaseModel):
@@ -249,6 +221,7 @@ class TickerSuggestion(BaseModel):
         tickers: List of stock/ETF ticker symbols.
         reasoning: Brief explanation of why these tickers are relevant.
     """
+
     tickers: list[str] = Field(..., description="List of stock or ETF ticker symbols")
     reasoning: str = Field(..., description="Brief explanation of relevance")
 
@@ -261,6 +234,7 @@ class TickerSuggestion(BaseModel):
 
 class DiscoveryThemes(BaseModel):
     """Sectors, industries, and keywords for asset discovery."""
+
     sectors: list[str] = Field(default_factory=list, description="List of FMP-compatible sectors")
     industries: list[str] = Field(default_factory=list, description="List of FMP-compatible industries")
     keywords: list[str] = Field(default_factory=list, description="Keywords for ticker search")
@@ -270,6 +244,7 @@ class DiscoveryThemes(BaseModel):
 
 class RankedAsset(BaseModel):
     """A ticker that has been ranked for relevance to a specific event."""
+
     ticker: str = Field(..., description="Stock ticker symbol")
     name: str = Field(..., description="Company or ETF name")
     relevance_score: int = Field(..., ge=0, le=100, description="How well this asset matches the theme (0-100)")
@@ -283,4 +258,7 @@ class RankedAsset(BaseModel):
 
 class DiscoveryRankingResponse(BaseModel):
     """Container for the re-ranking step of discovery."""
-    ranked_assets: list[RankedAsset] = Field(default_factory=list, description="List of assets ranked by thematic relevance")
+
+    ranked_assets: list[RankedAsset] = Field(
+        default_factory=list, description="List of assets ranked by thematic relevance"
+    )

@@ -28,8 +28,7 @@ def test_severity_values_valid():
     valid_severities = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
 
     for check in AUDIT_CHECKS:
-        assert check["severity"] in valid_severities, \
-            f"Check {check['id']} has invalid severity: {check['severity']}"
+        assert check["severity"] in valid_severities, f"Check {check['id']} has invalid severity: {check['severity']}"
 
 
 def test_analysis_method_values_valid():
@@ -37,8 +36,9 @@ def test_analysis_method_values_valid():
     valid_methods = {"SQL_CHECK", "LLM_ANALYSIS"}
 
     for check in AUDIT_CHECKS:
-        assert check["analysis_method"] in valid_methods, \
+        assert check["analysis_method"] in valid_methods, (
             f"Check {check['id']} has invalid analysis_method: {check['analysis_method']}"
+        )
 
 
 def test_queries_are_non_empty():
@@ -51,8 +51,7 @@ def test_queries_end_with_valid_sql():
     """Verify queries look like valid SELECT statements (basic check)."""
     for check in AUDIT_CHECKS:
         query = check["query"].strip().upper()
-        assert query.startswith("SELECT"), \
-            f"Check {check['id']} query doesn't start with SELECT: {query[:50]}"
+        assert query.startswith("SELECT"), f"Check {check['id']} query doesn't start with SELECT: {query[:50]}"
 
 
 def test_source_tables_are_valid():
@@ -71,8 +70,9 @@ def test_source_tables_are_valid():
     }
 
     for check in AUDIT_CHECKS:
-        assert check["source_table"] in valid_tables, \
+        assert check["source_table"] in valid_tables, (
             f"Check {check['id']} has unknown source_table: {check['source_table']}"
+        )
 
 
 def test_no_orphan_trade_refs_check_exists():

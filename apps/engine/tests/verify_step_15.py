@@ -9,9 +9,10 @@ from memory.store import add_memory, retrieve_context
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("verify")
 
+
 async def verify_step_15():
     """Verify that decision reasoning can be embedded and retrieved."""
-    
+
     # Simulate a decision
     decision = DecisionObject(
         ticker="AAPL",
@@ -20,14 +21,11 @@ async def verify_step_15():
         reasoning="Apple's new AI features are driving strong iPhone demand.",
         source_id="news_test_123",
         model_provider="openai",
-        model_name="gpt-4o"
+        model_name="gpt-4o",
     )
-    
-    memory_content = (
-        f"DECISION REASONING: {decision.ticker} {decision.signal} | "
-        f"REASONING: {decision.reasoning}"
-    )
-    
+
+    memory_content = f"DECISION REASONING: {decision.ticker} {decision.signal} | REASONING: {decision.reasoning}"
+
     print(f"\n1. Adding decision reasoning to memory: '{memory_content}'")
     success = add_memory(
         content=memory_content,
@@ -35,10 +33,10 @@ async def verify_step_15():
             "type": "decision_reasoning",
             "ticker": decision.ticker,
             "signal": decision.signal,
-            "decision_id": "test_id_999"
-        }
+            "decision_id": "test_id_999",
+        },
     )
-    
+
     if success:
         print("✅ Decision reasoning embedded successfully.")
     else:
@@ -47,11 +45,12 @@ async def verify_step_15():
 
     print("\n2. Retrieving context for query: 'Apple iPhone demand'")
     context = retrieve_context("Apple iPhone demand")
-    
+
     if decision.reasoning in context:
         print(f"✅ Context retrieved correctly:\n{context}")
     else:
         print(f"❌ Context retrieval failed. Result was: '{context}'")
+
 
 if __name__ == "__main__":
     asyncio.run(verify_step_15())

@@ -21,6 +21,7 @@ class ValidationStatus(Enum):
 
 class ValidationResult(BaseModel):
     """Result of a trade validation check."""
+
     ticker: str
     status: ValidationStatus
     reason: str | None = None
@@ -30,35 +31,34 @@ class ValidationResult(BaseModel):
 
 async def validate_decision(ticker: str) -> ValidationResult:
     """Validate a single trade decision against market guardrails.
-    
+
     Guardrail A: Ticker Existence
     Guardrail C: Liquidity
     """
     # Defensive check: Reject "N/A" or obviously invalid tickers early
     if not ticker or ticker.upper() in ["N/A", "NONE", "NULL", "UNKNOWN"]:
         return ValidationResult(
-            ticker=ticker,
-            status=ValidationStatus.REJECTED_HALLUCINATION,
-            reason=f"Invalid ticker symbol: '{ticker}'"
+            ticker=ticker, status=ValidationStatus.REJECTED_HALLUCINATION, reason=f"Invalid ticker symbol: '{ticker}'"
         )
-    
+
     # Check for invalid characters (tickers should usually be alphanumeric)
     import re
+
     if not re.match(r"^[A-Z0-9.\-]+$", ticker.upper()):
         return ValidationResult(
             ticker=ticker,
             status=ValidationStatus.REJECTED_HALLUCINATION,
-            reason=f"Ticker '{ticker}' contains invalid characters."
+            reason=f"Ticker '{ticker}' contains invalid characters.",
         )
 
     manager = MarketDataManager()
-    
+
     # Guardrail 0: Market Hours
     if not await manager.is_market_open():
         return ValidationResult(
             ticker=ticker,
             status=ValidationStatus.REJECTED_MARKET_CLOSED,
-            reason="Market is currently closed. Trading is only allowed during US market hours (09:30-16:00 ET, Mon-Fri, non-holidays)."
+            reason="Market is currently closed. Trading is only allowed during US market hours (09:30-16:00 ET, Mon-Fri, non-holidays).",
         )
 
     try:
@@ -66,9 +66,7 @@ async def validate_decision(ticker: str) -> ValidationResult:
     except Exception as e:
         logger.error(f"Error while validating {ticker}: {e}")
         return ValidationResult(
-            ticker=ticker,
-            status=ValidationStatus.ERROR_PROVIDER,
-            reason=f"Processing error: {str(e)}"
+            ticker=ticker, status=ValidationStatus.ERROR_PROVIDER, reason=f"Processing error: {str(e)}"
         )
 
     # Guardrail A: Existence
@@ -76,11 +74,11 @@ async def validate_decision(ticker: str) -> ValidationResult:
         return ValidationResult(
             ticker=ticker,
             status=ValidationStatus.REJECTED_HALLUCINATION,
-            reason=f"Ticker '{ticker}' not found in market data cache or providers."
+            reason=f"Ticker '{ticker}' not found in market data cache or providers.",
         )
 
     # Guardrail C: Liquidity (Market Cap)
-    # Special Case: Some providers don't return market cap for ETFs, 
+    # Special Case: Some providers don't return market cap for ETFs,
     # resulting in 0. We allow 0 to pass to avoid blocking liquid ETFs,
     # but still enforce the minimum for stocks where a positive market cap is reported.
     market_cap_billions = data.market_cap / 1_000_000_000
@@ -90,18 +88,17 @@ async def validate_decision(ticker: str) -> ValidationResult:
             status=ValidationStatus.REJECTED_LIQUIDITY,
             reason=f"Insufficient liquidity: Market Cap ${market_cap_billions:.2f}B < ${MIN_MARKET_CAP_BILLIONS}B",
             market_price=data.price,
-            market_cap=data.market_cap
+            market_cap=data.market_cap,
         )
 
     return ValidationResult(
-        ticker=ticker,
-        status=ValidationStatus.PASSED,
-        market_price=data.price,
-        market_cap=data.market_cap
+        ticker=ticker, status=ValidationStatus.PASSED, market_price=data.price, market_cap=data.market_cap
     )
 
 
-async def validate_semantic_overlap(ticker: str, reasoning: str, model_name: str | None = None, threshold: float = 0.90) -> str | None:
+async def validate_semantic_overlap(
+    ticker: str, reasoning: str, model_name: str | None = None, threshold: float = 0.90
+) -> str | None:
     """Checks if this trade is redundant based on recent similar reasoning.
 
     Args:
@@ -122,8 +119,8 @@ async def validate_semantic_overlap(ticker: str, reasoning: str, model_name: str
         ticker=ticker,
         content=reasoning,
         threshold=threshold,
-        hours=24, # Look back 24 hours
-        model_name=model_name
+        hours=24,  # Look back 24 hours
+        model_name=model_name,
     )
 
     if similar:

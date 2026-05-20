@@ -32,6 +32,7 @@ def _format_variants(variants: list[dict], baseline_score: float | None = None) 
         m = v.get("metrics", {})
         if isinstance(m, str):
             import json
+
             try:
                 m = json.loads(m)
             except (json.JSONDecodeError, TypeError):
@@ -48,6 +49,81 @@ def _format_variants(variants: list[dict], baseline_score: float | None = None) 
 
         lines.append(f"  - {tag} ({exp_type}): {desc} | Score: {score_str}{status}")
     return "\n".join(lines)
+
+
+async def _fetch_actual_bond_yield(week_start: date, week_end: date) -> float:
+    """Fetch the latest 10-year Treasury rate for the evaluation week from FMP.
+
+    Returns the annualized rate (e.g., 4.59 for 4.59%).
+    Falls back to 4.5 if API fails or is not available.
+    """
+    from core.config import FMP_API_KEY
+
+    if not FMP_API_KEY:
+        logger.warning("FMP_API_KEY not set. Using fallback bond yield of 4.50%")
+        return 4.50
+
+    try:
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            url = "https://financialmodelingprep.com/stable/treasury-rates"
+            params = {"from": week_start.isoformat(), "to": week_end.isoformat(), "apikey": FMP_API_KEY}
+            resp = await client.get(url, params=params)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data and isinstance(data, list):
+                    # Data is sorted descending (newest first). Extract 'year10' from the newest row.
+                    newest_row = data[0]
+                    # Also try other maturities if year10 is missing
+                    rate = newest_row.get("year10") or newest_row.get("year5") or newest_row.get("month3")
+                    if rate is not None:
+                        return float(rate)
+            logger.warning(f"Failed to fetch treasury rates from FMP (status={resp.status_code}). Using fallback 4.50%")
+    except Exception as e:
+        logger.warning(f"Error fetching treasury rates from FMP: {e}. Using fallback 4.50%")
+
+    return 4.50
+
+
+async def _fetch_dollar_index_return(week_start: date, week_end: date) -> float:
+    """Fetch UUP (US Dollar Index ETF) history from FMP and compute weekly return %.
+
+    Returns return % (e.g., 1.25 for 1.25% gain).
+    Falls back to 0.0 if API fails or is not available.
+    """
+    from core.config import FMP_API_KEY
+
+    if not FMP_API_KEY:
+        logger.warning("FMP_API_KEY not set. Using fallback dollar return of 0.00%")
+        return 0.0
+
+    try:
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            url = "https://financialmodelingprep.com/stable/historical-price-eod/full"
+            params = {
+                "symbol": "UUP",
+                "from": week_start.isoformat(),
+                "to": week_end.isoformat(),
+                "apikey": FMP_API_KEY,
+            }
+            resp = await client.get(url, params=params)
+            if resp.status_code == 200:
+                data = resp.json()
+                historical = data.get("historical", []) if isinstance(data, dict) else data
+                if historical and len(historical) >= 2:
+                    # historical is sorted descending (newest first).
+                    newest_close = float(historical[0]["close"])
+                    oldest_close = float(historical[-1]["close"])
+                    if oldest_close > 0:
+                        return ((newest_close - oldest_close) / oldest_close) * 100
+            logger.warning(f"Failed to fetch UUP history from FMP (status={resp.status_code}). Using fallback 0.00%")
+    except Exception as e:
+        logger.warning(f"Error fetching UUP history from FMP: {e}. Using fallback 0.00%")
+
+    return 0.0
 
 
 async def evaluate_week(
@@ -71,6 +147,7 @@ async def evaluate_week(
     current_prompt = await get_active_prompt()
     if not current_prompt:
         from core.llm import prompts
+
         current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 
     # Fetch SPY returns once — benchmark for the score.
@@ -82,24 +159,38 @@ async def evaluate_week(
     if spy_returns:
         cumulative = 1.0
         for r in spy_returns:
-            cumulative *= (1 + r)
+            cumulative *= 1 + r
         spy_return_pct = (cumulative - 1) * 100
 
     # Experiment group metrics.
     exp_metrics = await compute_wall_street_metrics(
-        AUTORESEARCH_EXPERIMENT_OWNER_IDS, week_start, week_end,
+        AUTORESEARCH_EXPERIMENT_OWNER_IDS,
+        week_start,
+        week_end,
     )
 
     # Control group metrics (reference only).
     ctrl_metrics = await compute_wall_street_metrics(
-        CONTROL_OWNER_IDS, week_start, week_end,
+        CONTROL_OWNER_IDS,
+        week_start,
+        week_end,
     )
+
+    # Fetch actual bond yield and DXY (UUP) return from FMP
+    bond_annual_rate = await _fetch_actual_bond_yield(week_start, week_end)
+    dollar_return_pct = await _fetch_dollar_index_return(week_start, week_end)
+
+    days_in_period = (week_end - week_start).days + 1
+    # Compound the annualized bond yield to the weekly period
+    bond_return_pct = ((1 + (bond_annual_rate / 100)) ** (days_in_period / 365.25) - 1) * 100
 
     # Compute the single score.
     score_result = compute_score(
         portfolio_return_pct=exp_metrics.get("total_return_pct", 0),
         spy_return_pct=spy_return_pct,
         max_drawdown_pct=exp_metrics.get("max_drawdown", 0) * 100,
+        bond_return_pct=bond_return_pct,
+        dollar_return_pct=dollar_return_pct,
     )
 
     previous = await get_previous_variants(limit=5)
@@ -112,6 +203,7 @@ async def evaluate_week(
         m = baseline_variant.get("metrics", {})
         if isinstance(m, str):
             import json
+
             try:
                 m = json.loads(m)
             except (json.JSONDecodeError, TypeError):
@@ -122,28 +214,34 @@ async def evaluate_week(
     baseline_line = ""
     if baseline_score is not None:
         delta = score_result["score"] - baseline_score
-        baseline_line = (
-            f"Baseline: {baseline_score} (best so far)  "
-            f"(Δ: {delta:+.4f} vs baseline)"
-        )
+        baseline_line = f"Baseline: {baseline_score} (best so far)  (Δ: {delta:+.4f} vs baseline)"
     else:
         baseline_line = "Baseline: N/A (first week, no baseline yet)"
+
+    portfolio_ret = exp_metrics.get("total_return_pct", 0)
+    max_drawdown = score_result["max_drawdown"]
+    opp_penalty = score_result["opportunity_cost_penalty"]
 
     report_parts = [
         "# Weekly Performance",
         f"Score: {score_result['score']}  "
-        f"(portfolio: {exp_metrics.get('total_return_pct', 0):+.1f}% | "
-        f"SPY: {spy_return_pct:+.1f}% | "
-        f"drawdown: -{score_result['max_drawdown']:.1f}%)",
+        f"(portfolio: {portfolio_ret:+.2f}% | "
+        f"SPY: {spy_return_pct:+.2f}% | "
+        f"drawdown: -{max_drawdown:.2f}%)",
+        f"Opportunity Cost Hurdle (compounded to {days_in_period} days):",
+        f"  - Actual 10-year Treasury Bond Yield (Active Hurdle): {bond_annual_rate:.2f}% annual ({bond_return_pct:+.4f}% compounded)",
+        f"  - Actual US Dollar Index Return (DXY/UUP) [Context Only]: {dollar_return_pct:+.4f}%",
+        f"  - Opportunity Cost Penalty: {opp_penalty:+.4f}%",
         baseline_line,
-        f"Formula: ({exp_metrics.get('total_return_pct', 0):.1f} - {spy_return_pct:.1f}) - "
-        f"({score_result['max_drawdown']:.1f} × 0.3) = {exp_metrics.get('total_return_pct', 0) - spy_return_pct:.1f} - "
-        f"{score_result['max_drawdown'] * 0.3:.1f} = {score_result['score']}",
+        f"Formula: (Portfolio_Return - SPY_Return) - Opportunity_Cost_Penalty - (Drawdown × 0.3) = "
+        f"({portfolio_ret:.2f} - {spy_return_pct:.2f}) - {opp_penalty:.2f} - ({max_drawdown:.2f} × 0.3) = "
+        f"{portfolio_ret - spy_return_pct:.2f} - {opp_penalty:.2f} - {max_drawdown * 0.3:.2f} = "
+        f"{score_result['score']}",
         "",
         "# Control Reference",
         f"Control agents (OpenAI + Claude on baseline): "
-        f"{ctrl_metrics.get('total_return_pct', 0):+.1f}% return, "
-        f"-{ctrl_metrics.get('max_drawdown', 0) * 100:.1f}% drawdown",
+        f"{ctrl_metrics.get('total_return_pct', 0):+.2f}% return, "
+        f"-{ctrl_metrics.get('max_drawdown', 0) * 100:.2f}% drawdown",
         "",
         _format_variants(previous, baseline_score=baseline_score),
         "",

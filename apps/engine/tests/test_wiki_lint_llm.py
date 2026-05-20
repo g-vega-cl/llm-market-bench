@@ -70,7 +70,14 @@ def test_call_openrouter_truncated_json():
     """
     mock_response = MagicMock()
     # Truncated JSON
-    mock_response.json.return_value = {"choices": [{"message": {"content": '{"findings": [{"severity": "high", "description": "truncated...'}, "finish_reason": "length"}]}
+    mock_response.json.return_value = {
+        "choices": [
+            {
+                "message": {"content": '{"findings": [{"severity": "high", "description": "truncated...'},
+                "finish_reason": "length",
+            }
+        ]
+    }
     mock_response.raise_for_status.return_value = None
 
     with patch("requests.post", return_value=mock_response):

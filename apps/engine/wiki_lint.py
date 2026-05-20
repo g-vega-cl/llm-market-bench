@@ -124,12 +124,12 @@ def lint(fix: bool = False) -> list[str]:
             link_without_ext = rel
             if link_without_ext.endswith(".md"):
                 link_without_ext = link_without_ext[:-3]
-            
+
             if link_without_ext not in index_links and rel not in index_links:
                 if fix:
                     # Attempt to auto-fix index-gap
                     category = rel.split("/")[0].capitalize()
-                    if category.endswith("s"): # Entities, Concepts, etc.
+                    if category.endswith("s"):  # Entities, Concepts, etc.
                         section_header = f"## {category}"
                         if section_header in new_index_content:
                             # Simple append to the end of the section
@@ -145,7 +145,9 @@ def lint(fix: bool = False) -> list[str]:
                                     print(f"  [fix] index.md: added [[{link_without_ext}]] to {category}")
                                     break
                         else:
-                            issues.append(f"[index-gap] {rel}: not referenced in index.md (could not find section {section_header})")
+                            issues.append(
+                                f"[index-gap] {rel}: not referenced in index.md (could not find section {section_header})"
+                            )
                     else:
                         issues.append(f"[index-gap] {rel}: not referenced in index.md")
                 else:

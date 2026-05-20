@@ -45,48 +45,48 @@ class Portfolio:
     async def initialize(self):
         """Loads from DB or creates a new portfolio if none exists."""
         supabase = get_supabase_client()
-        
+
         # Reset cached state to ensure JIT refresh integrity
         self.metrics = None
         self.positions = {}
 
         # Try to fetch existing
         res = supabase.table("portfolios").select("*").eq("owner_id", self.owner_id).execute()
-        
+
         if res.data:
             data = res.data[0]
             self.id = data["id"]
             self.cash_balance = float(data["cash_balance"])
             self.sma = float(data.get("sma", 0.0))
-            
+
             # Reconstruct metrics if available in DB
             if data.get("buying_power") is not None:
                 self.metrics = RegTMetrics(
                     total_equity=float(data.get("total_equity", 0.0)),
                     initial_margin_req=0.0,  # Not stored in DB
                     maintenance_margin_req=float(data.get("maintenance_margin", 0.0)),
-                    available_funds=0.0,     # Not stored in DB
+                    available_funds=0.0,  # Not stored in DB
                     excess_liquidity=float(data.get("excess_liquidity", 0.0)),
                     sma=self.sma,
                     realized=float(data.get("realized", self.cash_balance)),
-                    buying_power=float(data["buying_power"])
+                    buying_power=float(data["buying_power"]),
                 )
-            
+
             # Load positions
             self._await_load_positions(supabase)
         else:
             # Create new
-            # For a new $10k account, SMA starts equal to Cash? 
+            # For a new $10k account, SMA starts equal to Cash?
             # Or 0? Usually SMA starts at 0 and grows with income/interest or is created by excess equity?
             # Reg T: SMA = Cash on deposit. if 10k cash dep, SMA=10k.
             # Let's start with 10k default if cash is 10k
             self.sma = 10000.00
-            
-            res = supabase.table("portfolios").insert({
-                "owner_id": self.owner_id,
-                "cash_balance": 10000.00,
-                "sma": 10000.00
-            }).execute()
+
+            res = (
+                supabase.table("portfolios")
+                .insert({"owner_id": self.owner_id, "cash_balance": 10000.00, "sma": 10000.00})
+                .execute()
+            )
             if res.data:
                 self.id = res.data[0]["id"]
                 logger.info(f"Initialized new portfolio for {self.owner_id} with $10,000.")
@@ -96,7 +96,7 @@ class Portfolio:
     def _await_load_positions(self, supabase):
         """Helper to load positions synchronously (since called from async init)."""
         # Note: In a real async flow we'd await this. Supabase python client is synchronous?
-        # The 'supabase-py' client is technically synchronous wrapping postgrest, 
+        # The 'supabase-py' client is technically synchronous wrapping postgrest,
         # but if we are in an async function we should verify usage.
         # Assuming standard usage here.
         pos_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", self.id).execute()
@@ -104,44 +104,36 @@ class Portfolio:
         for p in pos_res.data:
             ticker = p["ticker"].upper()
             self.positions[ticker] = Position(
-                ticker=ticker,
-                quantity=p["quantity"],
-                average_cost_basis=float(p["average_cost_basis"])
+                ticker=ticker, quantity=p["quantity"], average_cost_basis=float(p["average_cost_basis"])
             )
 
     def calculate_reg_t_metrics(self, current_prices: dict[str, float]) -> RegTMetrics:
         """Calculates Reg T margin metrics based on current market prices.
-        
+
         Delegates to the granular logic in reg_t_validation.py.
         """
         # Convert to format needed by Reg T module: list or dict of raw values
         # The module expects dict[str, dict] where dict has 'quantity'
         # We have dict[str, Position]
-        
+
         pos_for_calc = {}
         for t, p in self.positions.items():
-            pos_for_calc[t] = {
-                "quantity": p.quantity,
-                "average_cost_basis": p.average_cost_basis
-            }
-            
+            pos_for_calc[t] = {"quantity": p.quantity, "average_cost_basis": p.average_cost_basis}
+
         self.metrics = calculate_reg_t_metrics(
-            cash_balance=self.cash_balance,
-            positions=pos_for_calc,
-            current_prices=current_prices,
-            previous_sma=self.sma
+            cash_balance=self.cash_balance, positions=pos_for_calc, current_prices=current_prices, previous_sma=self.sma
         )
         # Update our internal state SMA to the result of the calculation (Ratchet Up)
         # BUT: calculate_metrics doesn't include todays trades effects on SMA yet (spend).
         # It calculates the state based on "Current Holdings".
-        self.sma = self.metrics.sma 
-        
+        self.sma = self.metrics.sma
+
         return self.metrics
 
     async def get_portfolio_summary(self, current_prices: dict[str, float]) -> str:
         """Generates a text summary for the LLM prompt."""
         metrics = self.calculate_reg_t_metrics(current_prices)
-        
+
         summary = [
             f"Cash Balance: ${self.cash_balance:,.2f}",
             f"Total Equity: ${metrics.total_equity:,.2f}",
@@ -149,9 +141,9 @@ class Portfolio:
             f"SMA: ${metrics.sma:,.2f}",
             f"Realized Value (Cash + Cost Basis): ${metrics.realized:,.2f}",
             f"Maintenance Margin: ${metrics.maintenance_margin_req:,.2f}",
-            "\nCurrent Positions:"
+            "\nCurrent Positions:",
         ]
-        
+
         if not self.positions:
             summary.append("- None")
         else:
@@ -163,7 +155,7 @@ class Portfolio:
                     f"- {ticker}: {pos.quantity} shares @ ${pos.average_cost_basis:.2f} "
                     f"(Curr: ${curr_price:.2f}, P/L: ${pl:.2f} / {pl_pct:.1f}%)"
                 )
-        
+
         # Add Recent Trades Section
         recent_trades = await self.get_recent_trades(hours=48)
         if recent_trades:
@@ -173,7 +165,7 @@ class Portfolio:
                 # Format: SIGNAL ticker: qty @ price (Time Ago) - Reason: ...
                 executed_at_str = t.get("executed_at", "")
                 reason = t.get("reasoning", "No reasoning stored.")
-                
+
                 # Calculate Time Ago
                 time_ago = "recently"
                 if executed_at_str:
@@ -181,12 +173,13 @@ class Portfolio:
                         # executed_at is usually ISO format with TZ
                         # 2024-03-24T12:00:00+00:00
                         from dateutil import parser
+
                         exec_time = parser.isoparse(executed_at_str)
                         if exec_time.tzinfo is None:
                             exec_time = exec_time.replace(tzinfo=UTC)
-                            
+
                         diff = now - exec_time
-                        
+
                         if diff.total_seconds() < 3600:
                             mins = int(diff.total_seconds() / 60)
                             time_ago = f"{mins}m ago"
@@ -198,40 +191,54 @@ class Portfolio:
                             time_ago = f"{days}d ago"
                     except Exception as e:
                         logger.warning(f"Error parsing executed_at '{executed_at_str}': {e}")
-                
+
                 if len(reason) > 100:
                     reason = reason[:97] + "..."
-                
+
                 summary.append(
                     f"- {t['signal']} {t['ticker']}: {t['quantity']} @ ${float(t['price']):.2f} "
                     f"({time_ago}) - Reason: {reason}"
                 )
-                
+
         return "\n".join(summary)
 
     async def get_recent_trades(self, hours: int = 48) -> list[dict[str, Any]]:
         """Fetches the actual trade ledger for the portfolio from the DB.
-        
+
         Args:
             hours: How far back to look.
-            
+
         Returns:
             List of trade records with associated reasoning.
         """
         if not self.id:
             return []
-            
+
         try:
             client = get_supabase_client()
             cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
-            
+
             # Fetch trades for this portfolio
-            response = client.table("trades").select(
-                "ticker", "signal", "quantity", "price", "executed_at", "decision_id", "realized_pnl", "realized_pnl_pct"
-            ).eq("portfolio_id", self.id).gte("executed_at", cutoff).order("executed_at", desc=True).execute()
-            
+            response = (
+                client.table("trades")
+                .select(
+                    "ticker",
+                    "signal",
+                    "quantity",
+                    "price",
+                    "executed_at",
+                    "decision_id",
+                    "realized_pnl",
+                    "realized_pnl_pct",
+                )
+                .eq("portfolio_id", self.id)
+                .gte("executed_at", cutoff)
+                .order("executed_at", desc=True)
+                .execute()
+            )
+
             trades = response.data or []
-            
+
             # Enrich with reasoning from decisions table
             for trade in trades:
                 d_id = trade.get("decision_id")
@@ -239,7 +246,7 @@ class Portfolio:
                     d_res = client.table("decisions").select("reasoning").eq("id", d_id).execute()
                     if d_res.data:
                         trade["reasoning"] = d_res.data[0].get("reasoning")
-            
+
             return trades
         except Exception as e:
             logger.error(f"Error fetching recent trades for {self.owner_id}: {e}")
@@ -251,19 +258,23 @@ class Portfolio:
             return
 
         supabase = get_supabase_client()
-        supabase.table("portfolios").update({
-            "total_equity": self.metrics.total_equity,
-            "buying_power": self.metrics.buying_power,
-            "excess_liquidity": self.metrics.excess_liquidity,
-            "maintenance_margin": self.metrics.maintenance_margin_req,
-            "sma": self.metrics.sma,
-            "realized": self.metrics.realized,
-            "last_updated_at": "now()"
-        }).eq("id", self.id).execute()
-        
+        supabase.table("portfolios").update(
+            {
+                "total_equity": self.metrics.total_equity,
+                "buying_power": self.metrics.buying_power,
+                "excess_liquidity": self.metrics.excess_liquidity,
+                "maintenance_margin": self.metrics.maintenance_margin_req,
+                "sma": self.metrics.sma,
+                "realized": self.metrics.realized,
+                "last_updated_at": "now()",
+            }
+        ).eq("id", self.id).execute()
+
         logger.info(f"Updated portfolios summary table for {self.owner_id}.")
 
-    def validate_trade(self, ticker: str, quantity: int, price: float, signal: str = "BUY", is_sell_tool_used: bool = False) -> ValidationResult:
+    def validate_trade(
+        self, ticker: str, quantity: int, price: float, signal: str = "BUY", is_sell_tool_used: bool = False
+    ) -> ValidationResult:
         """Validates a potential trade against current Reg T buying power."""
         if not self.metrics:
             # Should imply we need to calculate
@@ -279,12 +290,20 @@ class Portfolio:
             ticker=ticker,
             price=price,
             signal=signal,
-            is_sell_tool_used=is_sell_tool_used
+            is_sell_tool_used=is_sell_tool_used,
         )
 
-    async def execute_trade(self, ticker: str, quantity: int, price: float, signal: str, decision_id: str | None = None, current_prices: dict[str, float] = None) -> UUID | None:
+    async def execute_trade(
+        self,
+        ticker: str,
+        quantity: int,
+        price: float,
+        signal: str,
+        decision_id: str | None = None,
+        current_prices: dict[str, float] = None,
+    ) -> UUID | None:
         """Executes the trade by updating cash, positions, and ledger.
-        
+
         Args:
             ticker: Symbol.
             quantity: Number of shares (always positive).
@@ -292,7 +311,7 @@ class Portfolio:
             signal: "BUY" or "SELL".
             decision_id: Optional ID of the decision that triggered this trade.
             current_prices: Optional map of all portfolio prices to avoid re-fetching.
-            
+
         Returns:
             The UUID of the generated trade record, or None if failed.
         """
@@ -303,7 +322,7 @@ class Portfolio:
         ticker = ticker.upper()
         total_cost = price * quantity
         supabase = get_supabase_client()
-        
+
         # Capture current average cost context for PnL calculation (for SELL signals)
         # We need the cost basis BEFORE it might be updated/deleted by the sell
         old_avg_cost = None
@@ -313,7 +332,7 @@ class Portfolio:
         # Update local state first
         if signal.upper() == "BUY":
             self.cash_balance -= total_cost
-            
+
             # Update Position
             if ticker in self.positions:
                 pos = self.positions[ticker]
@@ -322,21 +341,17 @@ class Portfolio:
                 pos.quantity += quantity
                 pos.average_cost_basis = new_cost / pos.quantity
             else:
-                self.positions[ticker] = Position(
-                    ticker=ticker,
-                    quantity=quantity,
-                    average_cost_basis=price
-                )
+                self.positions[ticker] = Position(ticker=ticker, quantity=quantity, average_cost_basis=price)
             # Update SMA: Buying reduces SMA by 57% of the trade value (Since Reg T IM is 57%)
             # Reg T Rule: SMA is reduced by the Margin Requirement of the new trade.
             margin_req = total_cost * 0.57
             self.sma -= margin_req
-                
+
         elif signal.upper() == "SELL":
             # Update Position
             if ticker in self.positions:
                 pos = self.positions[ticker]
-                
+
                 # Guardrail: Cannot sell more than owned
                 if quantity > pos.quantity:
                     logger.warning(
@@ -344,7 +359,7 @@ class Portfolio:
                         "Capping sell to owned quantity."
                     )
                     quantity = pos.quantity
-                
+
                 # Recalculate total_cost based on potentially capped quantity
                 total_cost = price * quantity
                 self.cash_balance += total_cost
@@ -356,7 +371,6 @@ class Portfolio:
                 logger.warning(f"REJECTED: Selling {ticker} but not held in portfolio.")
                 return None
 
-            
             # Update SMA: Selling releases margin. SMA increases by 57% of proceeds?
             # Or rather, SMA state is recalculated?
             # If we sell, Cash increases.
@@ -364,25 +378,27 @@ class Portfolio:
             # Let's simplify: SMA += 57% of Proceeds (since we got cash back and released 57% req).
             margin_released = total_cost * 0.57
             self.sma += margin_released
-        
+
         # Persist changes
         try:
             # 1. Update/Insert/Delete Position
             current_pos = self.positions.get(ticker)
             if current_pos:
-                supabase.table("portfolio_positions").upsert({
-                    "portfolio_id": str(self.id),
-                    "ticker": ticker,
-                    "quantity": current_pos.quantity,
-                    "average_cost_basis": current_pos.average_cost_basis
-                }, on_conflict="portfolio_id,ticker").execute()
+                supabase.table("portfolio_positions").upsert(
+                    {
+                        "portfolio_id": str(self.id),
+                        "ticker": ticker,
+                        "quantity": current_pos.quantity,
+                        "average_cost_basis": current_pos.average_cost_basis,
+                    },
+                    on_conflict="portfolio_id,ticker",
+                ).execute()
             else:
-                 # It was deleted (position closed)
-                 supabase.table("portfolio_positions").delete().match({
-                     "portfolio_id": str(self.id),
-                     "ticker": ticker
-                 }).execute()
-            
+                # It was deleted (position closed)
+                supabase.table("portfolio_positions").delete().match(
+                    {"portfolio_id": str(self.id), "ticker": ticker}
+                ).execute()
+
             # 2. Insert into Trades Ledger
             trade_data = {
                 "portfolio_id": str(self.id),
@@ -392,9 +408,9 @@ class Portfolio:
                 "price": price,
                 "total_cost": total_cost,
                 "executed_at": "now()",
-                "decision_id": decision_id
+                "decision_id": decision_id,
             }
-            
+
             # Enrich with PnL for SELL trades
             if signal.upper() == "SELL" and old_avg_cost is not None:
                 realized_pnl = (price - old_avg_cost) * quantity
@@ -403,20 +419,18 @@ class Portfolio:
                 trade_data["realized_pnl_pct"] = realized_pnl_pct
 
             trade_res = supabase.table("trades").insert(trade_data).execute()
-            
+
             trade_id = trade_res.data[0]["id"] if trade_res.data else None
-            
+
             # 3. ONLY NOW update Portfolio Cash & SMA (The "Commit" step)
             # This ensures we don't deduct cash if the ledger or positions failed
-            supabase.table("portfolios").update({
-                "cash_balance": self.cash_balance,
-                "sma": self.sma,
-                "last_updated_at": "now()"
-            }).eq("id", self.id).execute()
-            
+            supabase.table("portfolios").update(
+                {"cash_balance": self.cash_balance, "sma": self.sma, "last_updated_at": "now()"}
+            ).eq("id", self.id).execute()
+
             logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
             logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
-            
+
             # 4. Update and save metrics to ensure table consistency
             # Use provided prices or fallback to cost basis for other positions
             if current_prices is None:
@@ -429,6 +443,7 @@ class Portfolio:
 
             # 5. Mirror to Alpaca for third-party audit (fire-and-forget)
             from execution.alpaca_broker import AlpacaBroker
+
             broker = AlpacaBroker()
             # Server-side limit price: slightly above market for BUY, below for SELL to ensure fill
             alpaca_limit = round(price * 1.005, 2) if signal.upper() == "BUY" else round(price * 0.995, 2)
@@ -452,58 +467,57 @@ class Portfolio:
 
     async def _check_and_sell_dust_positions(self, current_prices: dict[str, float]):
         """Check all positions and automatically sell any that are below 10% of portfolio equity.
-        
+
         This prevents portfolio pollution from small 'dust' positions after partial sells.
-        
+
         Args:
             current_prices: Current market prices for all held positions.
         """
         if not self.metrics or not self.id:
             return
-        
+
         total_equity = self.metrics.total_equity
         threshold = total_equity * 0.10  # 10% of portfolio equity
         supabase = get_supabase_client()
-        
+
         dust_positions_to_sell = []
-        
+
         # Check each position
         for pos_ticker, pos in self.positions.items():
             pos_value = current_prices.get(pos_ticker, 0.0) * pos.quantity
-            
+
             if pos_value < threshold and pos_value > 0:
                 dust_positions_to_sell.append((pos_ticker, pos.quantity, current_prices.get(pos_ticker, 0.0)))
-        
+
         # Sell all dust positions
         for dust_ticker, dust_qty, dust_price in dust_positions_to_sell:
             if dust_qty <= 0 or dust_price <= 0:
                 continue
-                
+
             logger.info(
                 f"[DUST CLEANUP] Automatically selling {dust_ticker} position: "
                 f"{dust_qty} shares @ ${dust_price:.2f} = ${dust_qty * dust_price:,.2f} "
                 f"(below 10% threshold of ${threshold:,.2f} for ${total_equity:,.2f} portfolio)"
             )
-            
+
             try:
                 # Capture cost basis for PnL
                 old_avg_cost = self.positions[dust_ticker].average_cost_basis if dust_ticker in self.positions else None
-                
+
                 # Update local state
-                self.cash_balance += (dust_price * dust_qty)
+                self.cash_balance += dust_price * dust_qty
                 if dust_ticker in self.positions:
                     del self.positions[dust_ticker]
-                
+
                 # Update SMA
                 margin_released = (dust_price * dust_qty) * 0.57
                 self.sma += margin_released
-                
+
                 # Delete position from DB
-                supabase.table("portfolio_positions").delete().match({
-                    "portfolio_id": str(self.id),
-                    "ticker": dust_ticker
-                }).execute()
-                
+                supabase.table("portfolio_positions").delete().match(
+                    {"portfolio_id": str(self.id), "ticker": dust_ticker}
+                ).execute()
+
                 # Insert trade ledger entry
                 trade_data = {
                     "portfolio_id": str(self.id),
@@ -514,30 +528,30 @@ class Portfolio:
                     "total_cost": dust_price * dust_qty,
                     "executed_at": "now()",
                     "decision_id": None,  # System-generated, not from LLM decision
-                    "reasoning": "Automatic dust position cleanup: Position value below 10% of portfolio equity"
+                    "reasoning": "Automatic dust position cleanup: Position value below 10% of portfolio equity",
                 }
-                
+
                 # Add PnL info
                 if old_avg_cost is not None:
                     realized_pnl = (dust_price - old_avg_cost) * dust_qty
                     realized_pnl_pct = ((dust_price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
                     trade_data["realized_pnl"] = realized_pnl
                     trade_data["realized_pnl_pct"] = realized_pnl_pct
-                
+
                 trade_res = supabase.table("trades").insert(trade_data).execute()
-                logger.info(f"[DUST CLEANUP] Sold {dust_ticker}. TradeID: {trade_res.data[0]['id'] if trade_res.data else 'N/A'}")
-                
+                logger.info(
+                    f"[DUST CLEANUP] Sold {dust_ticker}. TradeID: {trade_res.data[0]['id'] if trade_res.data else 'N/A'}"
+                )
+
             except Exception as e:
                 logger.error(f"[DUST CLEANUP] Failed to sell dust position {dust_ticker}: {e}")
-        
+
         # Update portfolio cash and SMA if we sold any dust
         if dust_positions_to_sell:
-            supabase.table("portfolios").update({
-                "cash_balance": self.cash_balance,
-                "sma": self.sma,
-                "last_updated_at": "now()"
-            }).eq("id", self.id).execute()
-            
+            supabase.table("portfolios").update(
+                {"cash_balance": self.cash_balance, "sma": self.sma, "last_updated_at": "now()"}
+            ).eq("id", self.id).execute()
+
             # Recalculate metrics after dust cleanup
             updated_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
             self.calculate_reg_t_metrics(updated_prices)
@@ -551,32 +565,36 @@ class Portfolio:
 
         # Ensure we have the latest metrics
         metrics = self.calculate_reg_t_metrics(current_prices)
-        
+
         supabase = get_supabase_client()
         try:
             # We use an explicit date and on_conflict to ensure idempotency.
             from datetime import date
+
             today = date.today().isoformat()
 
-            res = supabase.table("portfolio_performance").upsert({
-                "portfolio_id": str(self.id),
-                "total_equity": metrics.total_equity,
-                "cash_balance": self.cash_balance,
-                "buying_power": metrics.buying_power,
-                "sma": metrics.sma,
-                "initial_margin_req": metrics.initial_margin_req,
-                "maintenance_margin_req": metrics.maintenance_margin_req,
-                "available_funds": metrics.available_funds,
-                "excess_liquidity": metrics.excess_liquidity,
-                "realized": metrics.realized,
-                "date": today
-            }, on_conflict="portfolio_id,date").execute()
-            
-            if res.data:
-                logger.info(
-                    f"Performance snapshot saved for {self.owner_id}. "
-                    f"Equity: ${metrics.total_equity:,.2f}"
+            res = (
+                supabase.table("portfolio_performance")
+                .upsert(
+                    {
+                        "portfolio_id": str(self.id),
+                        "total_equity": metrics.total_equity,
+                        "cash_balance": self.cash_balance,
+                        "buying_power": metrics.buying_power,
+                        "sma": metrics.sma,
+                        "initial_margin_req": metrics.initial_margin_req,
+                        "maintenance_margin_req": metrics.maintenance_margin_req,
+                        "available_funds": metrics.available_funds,
+                        "excess_liquidity": metrics.excess_liquidity,
+                        "realized": metrics.realized,
+                        "date": today,
+                    },
+                    on_conflict="portfolio_id,date",
                 )
+                .execute()
+            )
+
+            if res.data:
+                logger.info(f"Performance snapshot saved for {self.owner_id}. Equity: ${metrics.total_equity:,.2f}")
         except Exception as e:
             logger.error(f"Failed to save performance snapshot for {self.owner_id}: {e}")
-

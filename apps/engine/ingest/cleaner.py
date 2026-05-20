@@ -10,6 +10,7 @@ from core.models import NewsletterCleaningResponse
 
 logger = logging.getLogger("engine")
 
+
 async def clean_newsletter_content(content: str) -> str:
     """Uses a fast LLM to remove advertisements from the newsletter content.
 
@@ -23,36 +24,30 @@ async def clean_newsletter_content(content: str) -> str:
         return content
 
     logger.info("Starting advertisement removal pass...")
-    
-    # We use Gemini Flash for this pass as it's fast and cost-effective for 
+
+    # We use Gemini Flash for this pass as it's fast and cost-effective for
     # large batches of text processing like de-advertisement.
     client = clients.get_gemini_client()
-    
+
     try:
-        messages = PromptFactory.build_de_advertisement_messages(
-            provider="gemini",
-            content=content
-        )
-        
+        messages = PromptFactory.build_de_advertisement_messages(provider="gemini", content=content)
+
         resp_awaitable = client.chat.completions.create(
-            model=config.GEMINI_MODEL,
-            response_model=NewsletterCleaningResponse,
-            messages=messages,
-            max_retries=2
+            model=config.GEMINI_MODEL, response_model=NewsletterCleaningResponse, messages=messages, max_retries=2
         )
-        
+
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
             response = await resp_awaitable
         else:
             response = resp_awaitable
-        
+
         if response.ads_removed_count > 0:
             logger.info(f"Successfully cleaned newsletter. Removed {response.ads_removed_count} advertisement blocks.")
         else:
             logger.info("No advertisement blocks detected in the newsletter.")
-            
+
         return response.cleaned_content
-        
+
     except Exception as e:
         logger.error(f"Error during de-advertisement pass: {e}. Falling back to original content.")
         return content

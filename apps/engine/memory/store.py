@@ -62,18 +62,10 @@ def prune_context(items: list[dict], max_tokens: int = MAX_RAG_TOKENS) -> str:
             content = first_sentence
 
         if ticker:
-            tag = (
-                f"[{signal_type}] {ticker}: {content}"
-                if signal_type
-                else f"[PAST REASONING] {ticker}: {content}"
-            )
+            tag = f"[{signal_type}] {ticker}: {content}" if signal_type else f"[PAST REASONING] {ticker}: {content}"
         else:
             imp = int(score) if score > 0 else 5
-            tag = (
-                f"[{signal_type}] (Importance: {imp}/10) {content}"
-                if signal_type
-                else f"[MEMORY] {content}"
-            )
+            tag = f"[{signal_type}] (Importance: {imp}/10) {content}" if signal_type else f"[MEMORY] {content}"
 
         line_tokens = _estimate_tokens(tag)
         if tokens_used + line_tokens > max_tokens:
@@ -285,9 +277,7 @@ def retrieve_context_batch(
                     content = item.get("content", "")
                     importance = item.get("importance_score", 5)
                     if content:
-                        context_parts.append(
-                            f"- [MARKET EVENT] (Importance: {importance}/10) {content}"
-                        )
+                        context_parts.append(f"- [MARKET EVENT] (Importance: {importance}/10) {content}")
 
             # Process Decisions
             if dec_response.data:
@@ -296,9 +286,7 @@ def retrieve_context_batch(
                     signal = item.get("signal", "UNKNOWN")
                     reasoning = item.get("reasoning", "")
                     if reasoning:
-                        context_parts.append(
-                            f"- [PAST REASONING (HISTORICAL)] {ticker} {signal}: {reasoning}"
-                        )
+                        context_parts.append(f"- [PAST REASONING (HISTORICAL)] {ticker} {signal}: {reasoning}")
 
             if not context_parts:
                 results.append("")
@@ -313,9 +301,7 @@ def retrieve_context_batch(
         return ["" for _ in queries]
 
 
-def find_potential_ancestors(
-    query_text: str, limit: int = 5, threshold: float = 0.5
-) -> list[dict]:
+def find_potential_ancestors(query_text: str, limit: int = 5, threshold: float = 0.5) -> list[dict]:
     """Finds candidate memories that could be ancestors of a new event.
 
     Args:
@@ -450,9 +436,7 @@ def find_similar_vector(
                 sim = cosine_similarity(embedding, recent_vector)
 
                 if sim >= threshold:
-                    logger.info(
-                        f"Similar {table_name} found (ID: {row['id']}, Sim: {sim:.2f})"
-                    )
+                    logger.info(f"Similar {table_name} found (ID: {row['id']}, Sim: {sim:.2f})")
                     return row
 
         return None
@@ -473,9 +457,7 @@ def update_memory_status(memory_id: str, status: str) -> bool:
     """
     try:
         client = get_supabase_client()
-        client.table("memories").update({"status": status}).eq(
-            "id", memory_id
-        ).execute()
+        client.table("memories").update({"status": status}).eq("id", memory_id).execute()
         return True
     except Exception as e:
         logger.error(f"Error updating memory status: {e}")
@@ -517,13 +499,9 @@ def add_memory(
             return None
 
         if check_similarity:
-            similar_id = find_similar_memory(
-                content, similarity_threshold, lookback_hours, embedding=embedding
-            )
+            similar_id = find_similar_memory(content, similarity_threshold, lookback_hours, embedding=embedding)
             if similar_id:
-                logger.warning(
-                    f"Skipping memory insertion: Semantic duplicate of {similar_id}"
-                )
+                logger.warning(f"Skipping memory insertion: Semantic duplicate of {similar_id}")
                 return None
 
         client = get_supabase_client()
@@ -602,9 +580,7 @@ def decay_memories(sb_client: Client, decay_days: int = None):
         decay_count = 0
         for memory in response.data:
             new_relevance = memory["relevance_score"] * 0.5
-            sb_client.table("memories").update({"relevance_score": new_relevance}).eq(
-                "id", memory["id"]
-            ).execute()
+            sb_client.table("memories").update({"relevance_score": new_relevance}).eq("id", memory["id"]).execute()
             decay_count += 1
 
         logger.info(f"Decayed relevance for {decay_count} stale memories.")

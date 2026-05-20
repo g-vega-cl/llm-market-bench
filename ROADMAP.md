@@ -43,7 +43,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Also check alternative plays function**
 - [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
 - [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
-- [x] **Karpathy method for prompt improvement.** — Implemented `apps/engine/autoresearch/`: weekly autonomous meta-researcher LLM evaluates live trading performance across 4 dimensions (Wall Street metrics, decision quality, structural analysis, local minima escape) and iteratively improves the prompt. Gemini + DeepSeek agents are the experiment group; OpenAI + Claude serve as control. See [[entities/autoresearch]] and [[concepts/auto-research-prompt-improver]].
 - [ ] **Mutation Preview CLI** - Add a dry-run mode to the Auto-Research researcher to preview the next prompt mutation without deploying it.
 - [ ] **Auto-Research Diff Viewer** - Implement a color-coded diff viewer in the Web Arena to compare experiment variants against the baseline logic.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
@@ -51,15 +50,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.
-- [x] **In my comparision chart, the dotted line had some weird vertical lines that shouldn't be there** — Resolved: Cleaned up coordinate data in `PortfolioComparisonChart.tsx` by filtering out invalid, missing, and duplicate date data at the component boundary via `React.useMemo`. Deduplicated time-series coordinates and added a `.defined()` check to the D3 line path generator to ignore null/NaN data points and avoid disjoint/overlapping line anomalies.
-- [x] **Add design system code vertical.** — Implemented in `packages/ui-design-system/`. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
-  - [x] The design system primitives (Button, Card, Badge) and patterns (SectionHeading, ConfidenceBar, StatPill, etc.) are now used across all feature pages.
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
 - [ ] **Add past market events and their resolution? Like the resolution of the market events you showed before**
 - [ ] **Set up a 'global' agent hook/env for my projects?**
 - [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too. - Maybe add a button that adds suggestion.
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
-- [x] **Supabase push/migrate programmatically?** - Resolved: remote DB is source of truth. Use `npx supabase db push --linked` for new migrations. See `AGENTS.md`.
 - [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
 - [ ] manage prompt size with increasing memory/lessons learned database.
 - [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
@@ -78,7 +73,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - can I add how much I have spent in each provider? Would be fun to visualize
 - [ ] - Benchify: improve get sector alternatives tool
 - [ ] - Benchify: use html for documentation?
-- [x] **Prompt Caching Structure Adjustment.** — Implemented System-Heavy Prompt Architecture across all 8 agent prompt pairs. Moved all trading logic, rules, and SOPs into the System Prompt and reduced User Prompts to pure-data skeletons `{placeholders}`. This optimizes prompt caching for Anthropic/DeepSeek. Verified via `test_prompts_refactor.py` and documented in [[concepts/system-heavy-prompt]].
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
 - [ ] - Benchify: include copper in sector analysis.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
@@ -87,14 +81,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Gemini-3.1-flash-lite generated 0 decisions.
 - [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
 - [x] **Standardized yfinance Logging.** — Standardized Yahoo Finance (`yfinance.py`) logger implementation, fallback warnings (`currentPrice`/`marketCap` chains), and exception tracebacks using `logger.exception()` to align with the project's [[concepts/observability-standard]]. Added comprehensive TDD integration tests in `test_yfinance_provider.py`.
-- [x] **Audit the Wiki Lint pipeline.** — Successfully stabilized `wiki_lint_llm.py` with 75k character context cap and DeepSeek V4 Pro. First run identified 8 semantic findings. [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20).
+- [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
-  - [x] [Medium] Standardize Source ID generation (MD5[:8]) between `concepts/ingestion.md` and `entities/pipeline.md`.
-  - [x] [Medium] Update `concepts/project-linting.md`: Reflect that Biome is now a blocking pre-commit hook.
   - [ ] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
   - [ ] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule).
-  - [x] [Low] Fix weak cross-references: Link `type-safety.md` to `biome-linter.md` and `engine.md` to `correlation-matrix-source`.
 - [ ] - Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy. \
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [ ] -Benchify: audit price fetching and how we pass it to LLMs

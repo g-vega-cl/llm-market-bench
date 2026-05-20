@@ -8,6 +8,7 @@ from core.llm.handlers.openai import _build_tool_list
 
 logger = logging.getLogger("engine")
 
+
 async def run_tool_loop(
     raw_client,
     model_name: str,
@@ -15,7 +16,7 @@ async def run_tool_loop(
     provider: str = "deepseek",
     max_tool_steps: int = 5,
     override_tools: list | None = None,
-    enable_web_search: bool = False
+    enable_web_search: bool = False,
 ) -> None:
     """Runs the tool execution loop for DeepSeek.
 
@@ -29,6 +30,7 @@ async def run_tool_loop(
         enable_web_search: Whether to enable native web search tool.
     """
     import typing
+
     for _ in range(max_tool_steps):
         args: dict[str, typing.Any] = {
             "model": model_name,
@@ -63,12 +65,16 @@ async def run_tool_loop(
 
         # Append the raw response object or dict correctly preserving reasoning_content
         if hasattr(msg, "reasoning_content"):
-            messages.append({
-                "role": "assistant",
-                "content": msg.content or "",
-                "reasoning_content": msg.reasoning_content,
-                "tool_calls": [tc.model_dump() for tc in msg.tool_calls] if getattr(msg, "tool_calls", None) else None
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": msg.content or "",
+                    "reasoning_content": msg.reasoning_content,
+                    "tool_calls": [tc.model_dump() for tc in msg.tool_calls]
+                    if getattr(msg, "tool_calls", None)
+                    else None,
+                }
+            )
         else:
             # model_dump() usually strips reasoning_content if it's not in the official OpenAI schema
             messages.append(msg.model_dump())
@@ -80,22 +86,24 @@ async def run_tool_loop(
             call_args = json.loads(tool_call.function.arguments)
             result = await base.execute_tool(tool_call.function.name, call_args, model_name)
 
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": result,
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result,
+                }
+            )
 
 
 def prepare_messages_for_instructor(messages: list) -> list:
     """Prepares DeepSeek messages for final Instructor extraction.
-    
+
     DeepSeek with thinking mode returns reasoning_content but may leave content empty.
     This function ensures all messages are properly formatted for Instructor.
-    
+
     Args:
         messages: The message history from the tool loop.
-        
+
     Returns:
         Cleaned message list with reasoning_content cleared for non-tool-call messages.
     """
@@ -119,10 +127,10 @@ def prepare_messages_for_instructor(messages: list) -> list:
 
 def has_valid_content(messages: list) -> bool:
     """Checks if the last assistant message has valid (non-empty) content.
-    
+
     Args:
         messages: The message history.
-        
+
     Returns:
         True if the last assistant message has non-empty content.
     """

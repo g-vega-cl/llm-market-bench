@@ -52,7 +52,9 @@ def get_api_key() -> str | None:
     try:
         result = subprocess.run(
             ["security", "find-generic-password", "-s", "openrouter-api-key", "-w"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
@@ -64,38 +66,50 @@ def get_api_key() -> str | None:
 def filter_diff(diff_content: str) -> str:
     """Remove noisy files (lockfiles, assets, generated types) from the diff."""
     EXCLUDE_PATTERNS = [
-        "pnpm-lock.yaml", "package-lock.json", "requirements.lock", "poetry.lock",
-        ".png", ".jpg", ".jpeg", ".svg", ".gif", ".ico", ".pdf",
-        "database.types.ts", ".map", "dist/", "build/"
+        "pnpm-lock.yaml",
+        "package-lock.json",
+        "requirements.lock",
+        "poetry.lock",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".svg",
+        ".gif",
+        ".ico",
+        ".pdf",
+        "database.types.ts",
+        ".map",
+        "dist/",
+        "build/",
     ]
-    
+
     # Split the diff into file blocks
     # git diff format starts each file with 'diff --git '
-    blocks = re.split(r'^(diff --git .*?)$', diff_content, flags=re.MULTILINE)
-    
+    blocks = re.split(r"^(diff --git .*?)$", diff_content, flags=re.MULTILINE)
+
     if len(blocks) <= 1:
         return diff_content
-        
+
     filtered_parts = []
     # The first element is often empty or a header before the first 'diff --git'
     if blocks[0].strip():
         filtered_parts.append(blocks[0])
-        
+
     # Iterate through pairs of (header, content)
     for i in range(1, len(blocks), 2):
         header = blocks[i]
         # The content is the next block
-        content = blocks[i+1] if i+1 < len(blocks) else ""
-        
+        content = blocks[i + 1] if i + 1 < len(blocks) else ""
+
         should_exclude = any(pattern in header for pattern in EXCLUDE_PATTERNS)
         if not should_exclude:
             filtered_parts.append(header + content)
         else:
             # Just log the exclusion for debugging (stderr)
-            filename_match = re.search(r' a/(.*?) b/', header)
+            filename_match = re.search(r" a/(.*?) b/", header)
             filename = filename_match.group(1) if filename_match else "unknown file"
             print(f"  [auto-wiki] skipping noisy file: {filename}", file=sys.stderr)
-            
+
     return "".join(filtered_parts)
 
 
@@ -116,7 +130,10 @@ def collect_wiki_context() -> str:
     try:
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "--", "raw/"],
-            capture_output=True, text=True, timeout=5, cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=REPO_ROOT,
         )
         if result.returncode == 0 and result.stdout.strip():
             raw_files = result.stdout.strip().split("\n")
@@ -126,7 +143,9 @@ def collect_wiki_context() -> str:
                 if full_path.is_file():
                     raw_context.append(f"=== staged: {rel_path} ===\n\n{full_path.read_text()}\n")
             if raw_context:
-                parts.append("=== Staged raw/ documents (human-written design context) ===\n\n" + "\n".join(raw_context))
+                parts.append(
+                    "=== Staged raw/ documents (human-written design context) ===\n\n" + "\n".join(raw_context)
+                )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return "\n".join(parts)
@@ -253,9 +272,7 @@ def call_ollama(prompt: str, model: str) -> dict:
     if resp.status_code == 404:
         models = get_available_ollama_models()
         if models:
-            raise requests.RequestException(
-                f"model '{model}' not found. Available: {', '.join(models)}"
-            )
+            raise requests.RequestException(f"model '{model}' not found. Available: {', '.join(models)}")
         else:
             raise requests.RequestException(f"model '{model}' not found.")
     resp.raise_for_status()
@@ -264,12 +281,12 @@ def call_ollama(prompt: str, model: str) -> dict:
 
 def _parse_llm_response(raw: str) -> dict:
     raw = raw.strip()
-    
+
     # Try to find JSON block via regex if it's wrapped in markdown
     json_match = re.search(r"(\{.*\})", raw, re.DOTALL)
     if json_match:
         raw = json_match.group(1)
-    
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -284,14 +301,14 @@ def _parse_llm_response(raw: str) -> dict:
                 return result
             except (json.JSONDecodeError, ValueError):
                 pass
-        
+
         # Final fallback: re-try original
         return json.loads(raw)
 
 
 def write_log_entry(entry: str) -> None:
     log_path = WIKI_DIR / "log.md"
-    
+
     # Ensure it ends with a newline if it exists and has content
     if log_path.exists() and log_path.stat().st_size > 0:
         with open(log_path, "rb") as f:
@@ -300,10 +317,10 @@ def write_log_entry(entry: str) -> None:
         if last_char != b"\n":
             with open(log_path, "a") as f:
                 f.write("\n")
-                
+
     with open(log_path, "a") as f:
         f.write("\n" + entry.strip() + "\n")
-        
+
     if log_path.stat().st_size > 30000 and rotate_log(WIKI_DIR):
         print("  [auto-wiki] rotated log.md to archive", file=sys.stderr)
 
@@ -359,7 +376,9 @@ def add_index_entries(entries: list[dict]) -> None:
             lines = new_lines
             print(f"  [auto-wiki] index.md: added to {section}", file=sys.stderr)
         else:
-            print(f"  [auto-wiki] index.md: could not find section '{section}' or entry already exists", file=sys.stderr)
+            print(
+                f"  [auto-wiki] index.md: could not find section '{section}' or entry already exists", file=sys.stderr
+            )
 
     if new_lines:
         index_path.write_text("\n".join(new_lines))
@@ -405,7 +424,7 @@ def main():
 
     # 1. Filter out lockfiles and assets
     diff_content = filter_diff(diff_content)
-    
+
     wiki_context = collect_wiki_context()
 
     # 2. Build prompt
@@ -446,7 +465,10 @@ def main():
             print(f"  [auto-wiki] ollama ({args.ollama_model}) succeeded", file=sys.stderr)
         except (requests.RequestException, json.JSONDecodeError) as e:
             print(f"  [auto-wiki] ollama error: {e}", file=sys.stderr)
-            print("  [auto-wiki] ERROR: No LLM (OpenRouter or Ollama) configured or available. Documentation is required.", file=sys.stderr)
+            print(
+                "  [auto-wiki] ERROR: No LLM (OpenRouter or Ollama) configured or available. Documentation is required.",
+                file=sys.stderr,
+            )
             sys.exit(1)  # BLOCK the commit
 
     if not result or not result.get("should_update"):

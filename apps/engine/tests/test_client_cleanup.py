@@ -19,11 +19,11 @@ async def test_client_cleanup_single_provider(monkeypatch):
     """Test that a single API call properly cleans up the HTTP client.
 
     This test verifies that the system doesn't crash during cleanup.
-    We mock analyze_with_provider to avoid real API calls and 
+    We mock analyze_with_provider to avoid real API calls and
     instructor parsing issues in tests.
     """
     from core.models import DecisionsResponse
-    
+
     async def mock_analyze(*args, **kwargs):
         return DecisionsResponse(decisions=[], macro_events=[])
 
@@ -31,22 +31,14 @@ async def test_client_cleanup_single_provider(monkeypatch):
     monkeypatch.setattr("tests.test_client_cleanup.analyze_with_provider", mock_analyze)
 
     # Minimal test data
-    test_chunks = [{
-        "source_id": "test_cleanup_001",
-        "content": "Apple announces Q4 earnings beat expectations by 5%."
-    }]
+    test_chunks = [{"source_id": "test_cleanup_001", "content": "Apple announces Q4 earnings beat expectations by 5%."}]
 
     # Make a single call
-    result = await analyze_with_provider(
-        provider="openai",
-        model_name=OPENAI_MODEL,
-        chunks=test_chunks,
-        context=""
-    )
+    result = await analyze_with_provider(provider="openai", model_name=OPENAI_MODEL, chunks=test_chunks, context="")
 
     # Verify we got a valid response
     assert result is not None
-    assert hasattr(result, 'decisions')
+    assert hasattr(result, "decisions")
 
     # If we get here without errors, cleanup worked!
     print("✓ Client cleanup successful - no event loop errors")
@@ -62,17 +54,9 @@ def test_client_cleanup_with_asyncio_run(monkeypatch):
     monkeypatch.setattr("tests.test_client_cleanup.analyze_with_provider", mock_analyze)
 
     async def run_test():
-        test_chunks = [{
-            "source_id": "test_cleanup_002",
-            "content": "Tesla stock rises 3% on delivery numbers."
-        }]
+        test_chunks = [{"source_id": "test_cleanup_002", "content": "Tesla stock rises 3% on delivery numbers."}]
 
-        result = await analyze_with_provider(
-            provider="openai",
-            model_name=OPENAI_MODEL,
-            chunks=test_chunks,
-            context=""
-        )
+        result = await analyze_with_provider(provider="openai", model_name=OPENAI_MODEL, chunks=test_chunks, context="")
 
         return result
 

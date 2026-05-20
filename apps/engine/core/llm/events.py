@@ -37,10 +37,10 @@ def _normalize_future_date(date_str: str | None, note_str: str | None) -> tuple[
     # or append it if note exists.
     if not note_str:
         return None, date_str.strip()
-    
+
     if date_str.strip() not in note_str:
         return None, f"{note_str} ({date_str.strip()})"
-    
+
     return None, note_str
 
 
@@ -61,7 +61,9 @@ async def synthesize_event(
 
     try:
         combined_reasonings = "\n".join([f"- {r}" for r in reasonings])
-        combined_scenarios = "\n".join([f"- {s}" for s in scenarios]) if scenarios else "No explicit scenario analysis provided."
+        combined_scenarios = (
+            "\n".join([f"- {s}" for s in scenarios]) if scenarios else "No explicit scenario analysis provided."
+        )
 
         messages = PromptFactory.build_synthesis_messages(
             provider="gemini",
@@ -79,23 +81,27 @@ async def synthesize_event(
             is_ongoing: bool = False
             is_future_catalyst: bool = False
             historical_parallel: str | None = None
-            scenario_analysis: str | None = Field(None, description="Unified view of material resolutions. REQUIRED: At least two outcomes with estimated probability percentages summing to 100%, AND a 'Trading Plan' for each.")
+            scenario_analysis: str | None = Field(
+                None,
+                description="Unified view of material resolutions. REQUIRED: At least two outcomes with estimated probability percentages summing to 100%, AND a 'Trading Plan' for each.",
+            )
             importance_score: int = 5
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
             # Use List to handle Gemini's tendency to emit multiple tool calls for the schema
-            response_model=list[SynthesisResponse], 
+            response_model=list[SynthesisResponse],
             messages=messages,
             max_retries=2,
         )
 
         import asyncio
+
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
             wrapper = await resp_awaitable
         else:
             wrapper = resp_awaitable
-        
+
         # Take the last synthesis result if multiple were returned
         resp = wrapper[-1] if wrapper else SynthesisResponse(name=event_name, summary="Synthesis failed")
 
@@ -105,53 +111,48 @@ async def synthesize_event(
         # Log completion
         await log_reasoning_trace(
             task_type="CONSENSUS",
-            model_provider="gemini", # Hardcoded since synthesize_event uses gemini client
+            model_provider="gemini",  # Hardcoded since synthesize_event uses gemini client
             model_name=config.GEMINI_MODEL,
             prompt=messages,
             response=resp,
             metadata={
-                "event_name": event_name, 
+                "event_name": event_name,
                 "impact": impact,
                 "normalized_date": normalized_date,
-                "normalized_note": normalized_note
-            }
+                "normalized_note": normalized_note,
+            },
         )
 
         return {
-            "name": resp.name, 
-            "summary": resp.summary, 
+            "name": resp.name,
+            "summary": resp.summary,
             "future_date": normalized_date,
             "future_date_note": normalized_note,
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
             "historical_parallel": resp.historical_parallel,
             "scenario_analysis": resp.scenario_analysis,
-            "importance_score": resp.importance_score
+            "importance_score": resp.importance_score,
         }
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)
         # Fallback to original if synthesis fails
         return {
             "name": event_name,
-            "summary": (
-                f"Consensus reached on {event_name} with {impact} impact "
-                "based on model observations."
-            ),
+            "summary": (f"Consensus reached on {event_name} with {impact} impact based on model observations."),
             "future_date": None,
             "future_date_note": None,
             "is_ongoing": False,
             "is_future_catalyst": False,
             "historical_parallel": None,
-            "scenario_analysis": None
+            "scenario_analysis": None,
         }
     finally:
         # Ensure client is properly closed
         await clients.close_client(client, "openai")
 
 
-async def analyze_event_relationship(
-    new_event: str, potential_ancestors: list[dict]
-) -> dict[str, Any]:
+async def analyze_event_relationship(new_event: str, potential_ancestors: list[dict]) -> dict[str, Any]:
     """Analyzes the relationship between a new event and potential past events.
 
     Args:
@@ -192,11 +193,11 @@ async def analyze_event_relationship(
         # Log completion
         await log_reasoning_trace(
             task_type="CONSENSUS_RELATIONSHIP",
-            model_provider="openai", # Hardcoded since analyze_event_relationship uses openai client
+            model_provider="openai",  # Hardcoded since analyze_event_relationship uses openai client
             model_name=config.OPENAI_MODEL,
             prompt=messages,
             response=resp,
-            metadata={"new_event_preview": new_event[:100]}
+            metadata={"new_event_preview": new_event[:100]},
         )
 
         result = {
@@ -204,9 +205,7 @@ async def analyze_event_relationship(
             "relationship_type": resp.relationship_type,
             "should_resolve": resp.should_resolve,
         }
-        if resp.parent_index is not None and 0 <= resp.parent_index < len(
-            potential_ancestors
-        ):
+        if resp.parent_index is not None and 0 <= resp.parent_index < len(potential_ancestors):
             result["parent_id"] = potential_ancestors[resp.parent_index]["id"]
 
         return result

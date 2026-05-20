@@ -40,10 +40,7 @@ def _generate_content_config_supports(field_name: str) -> bool:
         return False
 
 
-def _build_gemini_tools(
-    function_tools: list | None = None,
-    enable_google_search: bool = False
-) -> list:
+def _build_gemini_tools(function_tools: list | None = None, enable_google_search: bool = False) -> list:
     """Builds the tool list for Gemini API.
 
     Args:
@@ -77,10 +74,10 @@ async def run_tool_loop(
     messages: list,
     max_tool_steps: int = 5,
     override_tools: list | None = None,
-    enable_google_search: bool = False
+    enable_google_search: bool = False,
 ) -> None:
     """Runs the tool execution loop for Gemini.
-    
+
     Args:
         raw_client: The underlying async Gemini client.
         model_name: The model identifier.
@@ -116,19 +113,21 @@ async def run_tool_loop(
                         if part.get("type") == "text":
                             parts.append({"text": part["text"]})
                         elif part.get("type") == "tool_result":
-                            parts.append({
-                                "function_response": {
-                                    "name": part["tool_use_id"].split("-")[0],
-                                    "response": {"result": part["content"]}
+                            parts.append(
+                                {
+                                    "function_response": {
+                                        "name": part["tool_use_id"].split("-")[0],
+                                        "response": {"result": part["content"]},
+                                    }
                                 }
-                            })
+                            )
 
             if m.get("tool_calls"):
                 for tc in m["tool_calls"]:
                     part = {
                         "function_call": {
                             "name": tc["function"]["name"],
-                            "args": json.loads(tc["function"]["arguments"])
+                            "args": json.loads(tc["function"]["arguments"]),
                         }
                     }
                     if "thought" in tc:
@@ -146,12 +145,7 @@ async def run_tool_loop(
                                 tool_name = ptc["function"]["name"]
                                 break
 
-                parts.append({
-                    "function_response": {
-                        "name": tool_name,
-                        "response": {"result": m["content"]}
-                    }
-                })
+                parts.append({"function_response": {"name": tool_name, "response": {"result": m["content"]}}})
                 role = "user"
 
             if parts:
@@ -160,7 +154,7 @@ async def run_tool_loop(
         try:
             # Build tools list with Google Search if enabled
             gemini_tools = _build_gemini_tools(tool_defs, enable_google_search)
-            
+
             config_kwargs = {
                 "system_instruction": system_instruction,
                 "tools": gemini_tools,
@@ -170,22 +164,16 @@ async def run_tool_loop(
                     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE"),
-                ]
+                ],
             }
-            
+
             # Disable AFC when using google_search with function declarations
             if enable_google_search:
-                config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(
-                    disable=True
-                )
-            
+                config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
+
             config = types.GenerateContentConfig(**config_kwargs)
-            
-            resp = await raw_client.aio.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config
-            )
+
+            resp = await raw_client.aio.models.generate_content(model=model_name, contents=contents, config=config)
         except Exception as e:
             logger.warning(f"Tool execution failed for gemini/{model_name}, falling back to basic analysis: {e}")
             break
@@ -193,11 +181,11 @@ async def run_tool_loop(
             break
 
         candidate = resp.candidates[0]
-        
+
         # Check if this is a multi-function-call response (Gemini sometimes splits responses)
         # Count function calls in this response
         sum(1 for part in candidate.content.parts if part.function_call)
-        
+
         # Append native Content object to history to preserve thought_signature
         messages.append(candidate.content)
 
@@ -206,12 +194,9 @@ async def run_tool_loop(
         for part in candidate.content.parts:
             if part.function_call:
                 has_tool_call = True
-                tool_calls.append({
-                    "name": part.function_call.name,
-                    "args": part.function_call.args
-                })
+                tool_calls.append({"name": part.function_call.name, "args": part.function_call.args})
 
-        # If Gemini returned multiple function calls in one response, 
+        # If Gemini returned multiple function calls in one response,
         # we need to execute all of them before breaking
         if not has_tool_call:
             break
@@ -220,11 +205,6 @@ async def run_tool_loop(
         response_parts = []
         for tc in tool_calls:
             result = await base.execute_tool(tc["name"], tc["args"], model_name)
-            response_parts.append(
-                types.Part.from_function_response(
-                    name=tc["name"],
-                    response={"result": result}
-                )
-            )
+            response_parts.append(types.Part.from_function_response(name=tc["name"], response={"result": result}))
 
         messages.append(types.Content(role="user", parts=response_parts))

@@ -17,33 +17,18 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
     if name == "get_stock_quote":
         return await tools.execute_stock_tool(args["ticker"])
     elif name == "get_price_history":
-        return await tools.execute_price_history_tool(
-            args["ticker"], 
-            args.get("days", 7)
-        )
+        return await tools.execute_price_history_tool(args["ticker"], args.get("days", 7))
     elif name == "get_position_pnl":
-        return await tools.execute_position_pnl_tool(
-            args["ticker"], 
-            owner_id=model_name
-        )
+        return await tools.execute_position_pnl_tool(args["ticker"], owner_id=model_name)
     elif name == "get_volatility_metrics":
-        return await tools.execute_volatility_metrics_tool(
-            args["ticker"],
-            args.get("days", 14)
-        )
+        return await tools.execute_volatility_metrics_tool(args["ticker"], args.get("days", 14))
     elif name == "get_sector_alternatives":
         return await tools.execute_sector_alternatives_tool(args["ticker"])
     elif name == "calculate_buy_quantity":
-        return await tools.execute_buy_quantity_tool(
-            args["ticker"], 
-            owner_id=model_name,
-            percentage=args["percentage"]
-        )
+        return await tools.execute_buy_quantity_tool(args["ticker"], owner_id=model_name, percentage=args["percentage"])
     elif name == "calculate_sell_quantity":
         return await tools.execute_sell_quantity_tool(
-            args["ticker"], 
-            owner_id=model_name,
-            percentage=args["percentage"]
+            args["ticker"], owner_id=model_name, percentage=args["percentage"]
         )
     elif name == "search_related_tickers":
         return await tools.execute_search_related_tickers_tool(args["theme"])
@@ -53,6 +38,6 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_find_uncorrelated_assets_tool(
             max_correlation=args.get("max_correlation", 0.3),
             min_return=args.get("min_return", 0.0),
-            method=args.get("method", "pearson")
+            method=args.get("method", "pearson"),
         )
     return "Unknown tool"

@@ -28,12 +28,7 @@ class CalendarPipeline:
         """Fetches HTML from Trading Economics using curl."""
         logger.info(f"Fetching calendar data from {self.url} using curl...")
         try:
-            result = subprocess.run(
-                ["curl", "-L", self.url],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            result = subprocess.run(["curl", "-L", self.url], capture_output=True, text=True, check=True)
             return result.stdout
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to fetch calendar HTML: {e}")
@@ -59,7 +54,10 @@ class CalendarPipeline:
         for row in rows:
             # Check for date header - usually in a parent thead or a tr with a th
             header = row.find("th")
-            if header and any(day in header.get_text() for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]):
+            if header and any(
+                day in header.get_text()
+                for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            ):
                 date_text = header.get_text(strip=True)
                 # Remove any extra text like "Actual Previous Consensus Forecast" if it's in the same header
                 # We only want the date part which is usually at the start.
@@ -71,7 +69,7 @@ class CalendarPipeline:
                         parts = date_text.split()
                         if len(parts) >= 4:
                             date_text = " ".join(parts[:4])
-                    
+
                     current_date = datetime.strptime(date_text, "%A %B %d %Y").date().isoformat()
                 except (ValueError, IndexError):
                     continue
@@ -113,12 +111,14 @@ class CalendarPipeline:
         logger.info(f"Parsed {len(events)} events. Sending to DeepSeek for relevance analysis...")
 
         # DeepSeek to identify high-importance events
-        # We'll batch the events to stay within context limits if needed, 
+        # We'll batch the events to stay within context limits if needed,
         # but for a weekly calendar it should fit.
-        events_text = "\n".join([
-            f"- [{e['date']} {e['time']}] {e['country']}: {e['event']} (Forecast: {e['forecast']}, Previous: {e['previous']})"
-            for e in events
-        ])
+        events_text = "\n".join(
+            [
+                f"- [{e['date']} {e['time']}] {e['country']}: {e['event']} (Forecast: {e['forecast']}, Previous: {e['previous']})"
+                for e in events
+            ]
+        )
 
         prompt = f"""Analyze the following economic calendar events and identify the most RELEVANT ones 
         (Importance Score >= 8) or those that match specific CALENDAR STRATEGIES.
@@ -144,15 +144,17 @@ class CalendarPipeline:
         {events_text}
         """
 
-
         try:
             res = await self.client.chat.completions.create(
                 model=DEEPSEEK_MODEL,
                 response_model=DecisionsResponse,
                 messages=[
-                    {"role": "system", "content": "You are a macro-economic analyst for a hedge fund. Return structured JSON."},
-                    {"role": "user", "content": prompt}
-                ]
+                    {
+                        "role": "system",
+                        "content": "You are a macro-economic analyst for a hedge fund. Return structured JSON.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
             )
 
             count = 0
@@ -163,19 +165,18 @@ class CalendarPipeline:
                 # Map relevant date back - DeepSeek should have put it in target_date or similar
                 # We'll use event.expiry_date as a proxy if it's set, or the date we parsed
                 target_date = event.expiry_date if event.expiry_date else None
-                
+
                 # Check if we can find the original time and exact date from our parsed events
                 # Matches by fuzzy event name
                 original_time = "N/A"
                 source_date = None
                 for e in events:
                     # Fuzzy match: one is contained in the other
-                    if (e["event"].lower() in event.event_name.lower() or 
-                        event.event_name.lower() in e["event"].lower()):
+                    if e["event"].lower() in event.event_name.lower() or event.event_name.lower() in e["event"].lower():
                         original_time = e["time"]
                         source_date = e["date"]
                         break
-                
+
                 # Critical Fix: If target_date is missing or unknown, use the source_date we parsed from HTML
                 if (not target_date or target_date == "unknown") and source_date:
                     target_date = source_date
@@ -202,9 +203,9 @@ class CalendarPipeline:
                         "event_time": original_time,
                         "country": getattr(event, "country", "Global"),
                         "reach": "Global" if event.importance_score > 8 else "Regional",
-                        "impact": event.impact
+                        "impact": event.impact,
                     },
-                    check_similarity=True # Prevents semantic duplicates
+                    check_similarity=True,  # Prevents semantic duplicates
                 )
                 if success:
                     count += 1
@@ -215,6 +216,7 @@ class CalendarPipeline:
         except Exception as e:
             logger.error(f"Calendar pipeline failed: {e}")
             return 0
+
 
 async def run_calendar_pipeline():
     """Entry point for the calendar pipeline."""

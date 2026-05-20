@@ -26,33 +26,33 @@ MODELS = [
 
 def _process_single_result(res, config, task_index):
     """Process a single model result and return decisions and events.
-    
+
     Args:
         res: The result from analyze_with_provider (DecisionsResponse or Exception)
         config: The model config dict
         task_index: The index of this task for ordering
-        
+
     Returns:
         Tuple of (list of DecisionObject, list of MacroEvent) - may be empty if failed
     """
     if isinstance(res, Exception):
         logger.error(f"Batch analysis task failed for {config['provider']} ({config['model']}): {res}")
         return [], []
-    
+
     valid_decisions = []
     valid_events = []
-    
+
     for j, decision in enumerate(res.decisions):
         decision.model_provider = config["provider"]
         decision.model_name = config["model"]
         decision.original_index = (task_index * 1000) + j
         valid_decisions.append(decision)
-    
+
     for event in res.macro_events:
         event.model_provider = config["provider"]
         event.model_name = config["model"]
         valid_events.append(event)
-    
+
     return valid_decisions, valid_events
 
 
@@ -72,11 +72,8 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         return [], [], "", ""
 
     # 1. Filter malformed chunks and aggregate historical context
-    valid_chunks = [
-        c for c in chunks 
-        if c.get("source_id") and c.get("content")
-    ]
-    
+    valid_chunks = [c for c in chunks if c.get("source_id") and c.get("content")]
+
     if len(valid_chunks) < len(chunks):
         logger.warning(f"Skipped {len(chunks) - len(valid_chunks)} malformed chunks.")
 
@@ -85,7 +82,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         return [], [], "", ""
 
     queries = [chunk["content"] for chunk in valid_chunks]
-    
+
     if queries:
         historical_context = retrieve_top_memories(limit=5)
         trending_concepts = get_top_trending_concepts(limit=5)
@@ -109,21 +106,22 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         await portfolio.initialize()
         portfolios[model] = portfolio
         all_tickers.update(portfolio.positions.keys())
-    
+
     # 2. Batch fetch prices for all unique holdings
     market_data = MarketDataManager()
-    
+
     from core.macro_tracker import get_global_macro_context
+
     macro_context_str = await get_global_macro_context(market_data)
-    
+
     price_map = {}
     if all_tickers:
         logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
         quotes = await market_data.get_quotes(list(all_tickers))
         price_map = {ticker: data.price for ticker, data in quotes.items()}
-    
+
     tasks = []
-    task_configs = [] # NEW: Keep track of which model is associated with each task
+    task_configs = []  # NEW: Keep track of which model is associated with each task
     for config in MODELS:
         provider = config["provider"]
         model = config["model"]
@@ -132,7 +130,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         portfolio = portfolios[model]
         portfolio.calculate_reg_t_metrics(price_map)
         await portfolio.save_metrics()
-        
+
         portfolio_ctx = await portfolio.get_portfolio_summary(price_map)
 
         # Idempotency Filter: Skip chunks that this model has already analyzed
@@ -141,29 +139,35 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         try:
             sb_client = get_supabase_client()
             source_ids = [c["source_id"] for c in valid_chunks]
-            
+
             # Query for existing decisions for this model and these source_ids
-            existing_res = sb_client.table("decisions").select("source_id").eq("model_name", model).in_("source_id", source_ids).execute()
-            
+            existing_res = (
+                sb_client.table("decisions")
+                .select("source_id")
+                .eq("model_name", model)
+                .in_("source_id", source_ids)
+                .execute()
+            )
+
             analyzed_ids = set([r["source_id"] for r in existing_res.data or []])
             chunks_to_analyze = [c for c in valid_chunks if c["source_id"] not in analyzed_ids]
-            
+
             if len(chunks_to_analyze) < len(valid_chunks):
                 logger.info(f"[{model}] Skipping {len(valid_chunks) - len(chunks_to_analyze)} chunks already analyzed.")
-                
+
         except Exception:
             logger.exception(f"Error filtering idempotent chunks for {model}")
-            chunks_to_analyze = valid_chunks # Fallback to all if DB fails
+            chunks_to_analyze = valid_chunks  # Fallback to all if DB fails
 
         if not chunks_to_analyze:
             logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
             continue
 
         import calendar
-        
+
         now = datetime.now()
         day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
-        
+
         # Check Month Boundaries (ToM)
         last_day = calendar.monthrange(now.year, now.month)[1]
         days_to_end = last_day - now.day
@@ -173,15 +177,15 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             day_info += " Today is the LAST trading day of the month (ToM Start)."
         else:
             day_info += f" {days_to_end} days until month-end."
-            
+
         # Check Payday Anomaly
         if now.day == 15:
             day_info += " Today is mid-month (Payday Anomaly)."
         elif now.day == 14:
             day_info += " Tomorrow is mid-month payday."
-            
+
         from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
-        
+
         # --- Chunk Batching (Best Practice) ---
         # We split news chunks into batches of 20 to ensure:
         # 1. Output Token Safety: Prevents exceeding the 16k output limit (esp. Claude-Haiku 4.5).
@@ -189,20 +193,22 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         # 3. Parallelism: Multiple smaller calls finish faster than one giant call.
         BATCH_SIZE = 20
         for i in range(0, len(chunks_to_analyze), BATCH_SIZE):
-            batch = chunks_to_analyze[i:i + BATCH_SIZE]
-            
+            batch = chunks_to_analyze[i : i + BATCH_SIZE]
+
             # Store metadata about the chunk list to reconstruct results later
-            tasks.append(llm.analyze_with_provider(
-                provider=provider,
-                model_name=model,
-                chunks=batch,
-                context=aggregated_context,
-                portfolio_context=portfolio_ctx,
-                current_day_info=day_info,
-                calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
-                macro_context=macro_context_str
-            ))
-            task_configs.append(config) # Track this task's model info
+            tasks.append(
+                llm.analyze_with_provider(
+                    provider=provider,
+                    model_name=model,
+                    chunks=batch,
+                    context=aggregated_context,
+                    portfolio_context=portfolio_ctx,
+                    current_day_info=day_info,
+                    calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
+                    macro_context=macro_context_str,
+                )
+            )
+            task_configs.append(config)  # Track this task's model info
 
     logger.info(
         f"Starting {len(tasks)} parallel model calls (batched) across "
@@ -215,10 +221,10 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
 
         valid_decisions = []
         valid_events = []
-        
+
         # 4. Process results
         for i, res in enumerate(results):
-            config = task_configs[i] # Use the tracked config for this specific task
+            config = task_configs[i]  # Use the tracked config for this specific task
 
             if isinstance(res, Exception):
                 logger.exception(f"Batch analysis task failed for {config['provider']} ({config['model']})")
@@ -246,17 +252,21 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                             # Ticker not in pre-fetched price_map — LLM discovered it via a tool
                             # call (get_stock_quote). Fall back to a fresh fetch as best effort.
                             try:
-                                logger.info(f"[{config['model']}] Price missing for {ticker} (tool-called). Backfilling from market data...")
+                                logger.info(
+                                    f"[{config['model']}] Price missing for {ticker} (tool-called). Backfilling from market data..."
+                                )
                                 mdm = MarketDataManager()
                                 quote = await mdm.get_quote(ticker)
                                 if quote and quote.exists:
                                     decision.injected_market_price = quote.price
-                                    logger.info(f"[{config['model']}] Backfilled {ticker} price: ${decision.injected_market_price:.2f}")
+                                    logger.info(
+                                        f"[{config['model']}] Backfilled {ticker} price: ${decision.injected_market_price:.2f}"
+                                    )
                             except Exception as bp_err:
                                 logger.warning(f"Failed to backfill price for {ticker}: {bp_err}")
 
                     valid_decisions.append(decision)
-                
+
                 # Process macro events
                 for event in res.macro_events:
                     event.model_provider = config["provider"]
@@ -284,21 +294,22 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         return valid_decisions, valid_events, aggregated_context, uncrowded_context
     finally:
         from execution.providers.factory import get_active_provider_class
+
         provider_cls = get_active_provider_class()
         await provider_cls.disconnect_all()
 
 
 async def analyze_chunks_streaming(chunks: list[dict]):
     """Streaming version of analyze_chunks that yields results as each model completes.
-    
+
     This is an async generator that yields (decisions, events, config) tuples
     as each model finishes analysis, allowing decision execution to start
     before all models have completed.
-    
+
     Args:
         chunks: List of newsletter chunk dictionaries, each containing
             'source_id' and 'content' keys.
-            
+
     Yields:
         Tuple of (list of DecisionObject, list of MacroEvent, config dict)
         for each model as it completes. Multiple yields per model are possible
@@ -308,11 +319,8 @@ async def analyze_chunks_streaming(chunks: list[dict]):
         logger.warning("No chunks to analyze.")
         return
 
-    valid_chunks = [
-        c for c in chunks 
-        if c.get("source_id") and c.get("content")
-    ]
-    
+    valid_chunks = [c for c in chunks if c.get("source_id") and c.get("content")]
+
     if len(valid_chunks) < len(chunks):
         logger.warning(f"Skipped {len(chunks) - len(valid_chunks)} malformed chunks.")
 
@@ -321,7 +329,7 @@ async def analyze_chunks_streaming(chunks: list[dict]):
         return
 
     queries = [chunk["content"] for chunk in valid_chunks]
-    
+
     if queries:
         historical_context = retrieve_top_memories(limit=5)
         trending_concepts = get_top_trending_concepts(limit=5)
@@ -342,21 +350,22 @@ async def analyze_chunks_streaming(chunks: list[dict]):
         await portfolio.initialize()
         portfolios[model] = portfolio
         all_tickers.update(portfolio.positions.keys())
-    
+
     market_data = MarketDataManager()
-    
+
     from core.macro_tracker import get_global_macro_context
+
     macro_context_str = await get_global_macro_context(market_data)
-    
+
     price_map = {}
     if all_tickers:
         logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
         quotes = await market_data.get_quotes(list(all_tickers))
         price_map = {ticker: data.price for ticker, data in quotes.items()}
-    
+
     tasks = []
     task_configs = []
-    
+
     for config in MODELS:
         provider = config["provider"]
         model = config["model"]
@@ -364,22 +373,28 @@ async def analyze_chunks_streaming(chunks: list[dict]):
         portfolio = portfolios[model]
         portfolio.calculate_reg_t_metrics(price_map)
         await portfolio.save_metrics()
-        
+
         portfolio_ctx = await portfolio.get_portfolio_summary(price_map)
 
         chunks_to_analyze = []
         try:
             sb_client = get_supabase_client()
             source_ids = [c["source_id"] for c in valid_chunks]
-            
-            existing_res = sb_client.table("decisions").select("source_id").eq("model_name", model).in_("source_id", source_ids).execute()
-            
+
+            existing_res = (
+                sb_client.table("decisions")
+                .select("source_id")
+                .eq("model_name", model)
+                .in_("source_id", source_ids)
+                .execute()
+            )
+
             analyzed_ids = set([r["source_id"] for r in existing_res.data or []])
             chunks_to_analyze = [c for c in valid_chunks if c["source_id"] not in analyzed_ids]
-            
+
             if len(chunks_to_analyze) < len(valid_chunks):
                 logger.info(f"[{model}] Skipping {len(valid_chunks) - len(chunks_to_analyze)} chunks already analyzed.")
-                
+
         except Exception as filter_err:
             logger.error(f"Error filtering idempotent chunks for {model}: {filter_err}")
             chunks_to_analyze = valid_chunks
@@ -389,10 +404,10 @@ async def analyze_chunks_streaming(chunks: list[dict]):
             continue
 
         import calendar
-        
+
         now = datetime.now()
         day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
-        
+
         last_day = calendar.monthrange(now.year, now.month)[1]
         days_to_end = last_day - now.day
         if now.day in [1, 2, 3]:
@@ -401,28 +416,30 @@ async def analyze_chunks_streaming(chunks: list[dict]):
             day_info += " Today is the LAST trading day of the month (ToM Start)."
         else:
             day_info += f" {days_to_end} days until month-end."
-            
+
         if now.day == 15:
             day_info += " Today is mid-month (Payday Anomaly)."
         elif now.day == 14:
             day_info += " Tomorrow is mid-month payday."
-            
+
         from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
-        
+
         BATCH_SIZE = 20
         for i in range(0, len(chunks_to_analyze), BATCH_SIZE):
-            batch = chunks_to_analyze[i:i + BATCH_SIZE]
-            
-            tasks.append(llm.analyze_with_provider(
-                provider=provider,
-                model_name=model,
-                chunks=batch,
-                context=aggregated_context,
-                portfolio_context=portfolio_ctx,
-                current_day_info=day_info,
-                calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
-                macro_context=macro_context_str
-            ))
+            batch = chunks_to_analyze[i : i + BATCH_SIZE]
+
+            tasks.append(
+                llm.analyze_with_provider(
+                    provider=provider,
+                    model_name=model,
+                    chunks=batch,
+                    context=aggregated_context,
+                    portfolio_context=portfolio_ctx,
+                    current_day_info=day_info,
+                    calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
+                    macro_context=macro_context_str,
+                )
+            )
             task_configs.append(config)
 
     logger.info(
@@ -436,13 +453,13 @@ async def analyze_chunks_streaming(chunks: list[dict]):
         for i, t in enumerate(tasks):
             future = asyncio.create_task(t)
             futures_with_meta.append((future, i, task_configs[i]))
-        
+
         # Wait for all to complete
         pending = set(f for f, _, _ in futures_with_meta)
-        
+
         while pending:
             done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-            
+
             for future in done:
                 # Find the metadata for this future
                 for f, idx, cfg in futures_with_meta:
@@ -450,20 +467,21 @@ async def analyze_chunks_streaming(chunks: list[dict]):
                         try:
                             res = await future
                             decisions, events = _process_single_result(res, cfg, idx)
-                            
+
                             if decisions or events:
                                 logger.info(
                                     f"[{cfg['model']}] Model completed. "
                                     f"Generated {len(decisions)} decisions and {len(events)} events."
                                 )
                                 yield (decisions, events, cfg)
-                                
+
                         except Exception as e:
                             logger.error(f"Error processing result for {cfg['model']}: {e}")
                             yield ([], [], cfg)
                         break
-                
+
     finally:
         from execution.providers.factory import get_active_provider_class
+
         provider_cls = get_active_provider_class()
         await provider_cls.disconnect_all()

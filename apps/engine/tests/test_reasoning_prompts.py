@@ -19,6 +19,7 @@ def test_scenario_probabilities_required():
     assert "each scenario" in SYNTHESIS_SYSTEM_PROMPT.lower() or "probabilities" in SYNTHESIS_SYSTEM_PROMPT.lower()
     assert "sum to 100" in SYNTHESIS_SYSTEM_PROMPT.lower() or "100%" in SYNTHESIS_SYSTEM_PROMPT
 
+
 def test_5_whys_integration():
     """Verify that the 5 Whys technique is mentioned in relevant prompts."""
     from apps.engine.core.llm.prompts import (
@@ -29,7 +30,7 @@ def test_5_whys_integration():
     # Check System Prompt
     assert "5 Whys" in CORE_ANALYSIS_SYSTEM_PROMPT
     assert "**Why** is this news market-moving?" in CORE_ANALYSIS_SYSTEM_PROMPT
-    assert "REASONING RIGOR: THE \"5 WHYS\"" in CORE_ANALYSIS_SYSTEM_PROMPT
+    assert 'REASONING RIGOR: THE "5 WHYS"' in CORE_ANALYSIS_SYSTEM_PROMPT
 
     # Analysis User Prompt should now be minimal data injection
     assert "{news_content}" in ANALYSIS_USER_PROMPT_TEMPLATE

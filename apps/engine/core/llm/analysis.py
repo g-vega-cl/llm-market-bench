@@ -17,16 +17,70 @@ from .utils import ensure_list
 logger = logging.getLogger("engine")
 
 # Common words that look like tickers but aren't (for $SYMB extraction)
-_TICKER_FALSE_POSITIVES = frozenset({
-    "THE", "AND", "CEO", "CFO", "ETF", "IPO", "FOR", "ARE", "NEW",
-    "YEAR", "MARKET", "STOCK", "TRADE", "FUND", "DOWN", "OVER", "FROM",
-    "THAT", "THIS", "WITH", "WILL", "HAVE", "MORE", "LESS", "WHEN",
-    "THAN", "ALSO", "INTO", "JUST", "LIKE", "SOME", "MUCH", "SUCH",
-    "ONLY", "VERY", "MAKE", "HUGE", "BULL", "BEAR", "SELL", "BUY",
-    "HOLD", "CALL", "PUT", "NOTE", "HERE", "MUST", "NEED", "WELL",
-    "HIGH", "LOW", "LONG", "SHORT", "BIG", "SEE", "USE", "US",
-    "TOP", "OUT", "END",
-})
+_TICKER_FALSE_POSITIVES = frozenset(
+    {
+        "THE",
+        "AND",
+        "CEO",
+        "CFO",
+        "ETF",
+        "IPO",
+        "FOR",
+        "ARE",
+        "NEW",
+        "YEAR",
+        "MARKET",
+        "STOCK",
+        "TRADE",
+        "FUND",
+        "DOWN",
+        "OVER",
+        "FROM",
+        "THAT",
+        "THIS",
+        "WITH",
+        "WILL",
+        "HAVE",
+        "MORE",
+        "LESS",
+        "WHEN",
+        "THAN",
+        "ALSO",
+        "INTO",
+        "JUST",
+        "LIKE",
+        "SOME",
+        "MUCH",
+        "SUCH",
+        "ONLY",
+        "VERY",
+        "MAKE",
+        "HUGE",
+        "BULL",
+        "BEAR",
+        "SELL",
+        "BUY",
+        "HOLD",
+        "CALL",
+        "PUT",
+        "NOTE",
+        "HERE",
+        "MUST",
+        "NEED",
+        "WELL",
+        "HIGH",
+        "LOW",
+        "LONG",
+        "SHORT",
+        "BIG",
+        "SEE",
+        "USE",
+        "US",
+        "TOP",
+        "OUT",
+        "END",
+    }
+)
 
 _MAJOR_INDICES = frozenset({"SPY", "QQQ", "DIA", "IWM"})
 
@@ -49,33 +103,33 @@ def _repair_json_string(json_str: str) -> str:
         if json_str.startswith('"') and json_str.endswith('"'):
             json_str = json_str[1:-1]
 
-        json_str = json_str.replace('\\"', '"').replace('\\n', '\n').replace('\\r', '\r')
+        json_str = json_str.replace('\\"', '"').replace("\\n", "\n").replace("\\r", "\r")
 
         # Always trim trailing text after JSON object/array
-        if json_str.startswith('{'):
-            end_idx = json_str.rfind('}')
+        if json_str.startswith("{"):
+            end_idx = json_str.rfind("}")
             if end_idx != -1:
-                json_str = json_str[:end_idx + 1]
-        elif json_str.startswith('['):
-            end_idx = json_str.rfind(']')
+                json_str = json_str[: end_idx + 1]
+        elif json_str.startswith("["):
+            end_idx = json_str.rfind("]")
             if end_idx != -1:
-                json_str = json_str[:end_idx + 1]
+                json_str = json_str[: end_idx + 1]
         else:
             # JSON doesn't start at beginning, find and extract it
-            start_idx = json_str.find('{')
+            start_idx = json_str.find("{")
             if start_idx == -1:
-                start_idx = json_str.find('[')
+                start_idx = json_str.find("[")
             if start_idx != -1:
                 json_str = json_str[start_idx:]
                 # Now trim trailing
-                if json_str.startswith('{'):
-                    end_idx = json_str.rfind('}')
+                if json_str.startswith("{"):
+                    end_idx = json_str.rfind("}")
                     if end_idx != -1:
-                        json_str = json_str[:end_idx + 1]
-                elif json_str.startswith('['):
-                    end_idx = json_str.rfind(']')
+                        json_str = json_str[: end_idx + 1]
+                elif json_str.startswith("["):
+                    end_idx = json_str.rfind("]")
                     if end_idx != -1:
-                        json_str = json_str[:end_idx + 1]
+                        json_str = json_str[: end_idx + 1]
 
     return json_str
 
@@ -121,7 +175,9 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
 
         try:
             json.loads(repaired)
-            strategies.append(lambda d: DecisionsResponse.model_validate_json(d) if isinstance(d, dict) else DecisionsResponse(**d))
+            strategies.append(
+                lambda d: DecisionsResponse.model_validate_json(d) if isinstance(d, dict) else DecisionsResponse(**d)
+            )
         except Exception:
             pass
 
@@ -142,7 +198,7 @@ async def analyze_with_provider(
     portfolio_context: str = "",
     current_day_info: str = "No date context available.",
     calendar_knowledge: str = "",
-    macro_context: str = ""
+    macro_context: str = "",
 ) -> DecisionsResponse:
     """Analyzes a batch of newsletter chunks using the specified provider.
 
@@ -171,10 +227,9 @@ async def analyze_with_provider(
 
     try:
         # Construct batch prompt
-        news_content = "".join([
-            f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n"
-            for chunk in chunks
-        ])
+        news_content = "".join(
+            [f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n" for chunk in chunks]
+        )
 
         # Extract held tickers from portfolio context for quick reference
         held_tickers = _extract_held_tickers(portfolio_context)
@@ -184,12 +239,15 @@ async def analyze_with_provider(
         enable_web_search = False
         if provider == "anthropic":
             from core.config import ENABLE_ANTHROPIC_WEB_SEARCH
+
             enable_web_search = ENABLE_ANTHROPIC_WEB_SEARCH
         elif provider == "gemini":
             from core.config import ENABLE_GEMINI_WEB_SEARCH
+
             enable_web_search = ENABLE_GEMINI_WEB_SEARCH
         elif provider == "openai":
             from core.config import ENABLE_OPENAI_WEB_SEARCH
+
             enable_web_search = ENABLE_OPENAI_WEB_SEARCH
 
         messages = await PromptFactory.build_analysis_messages(
@@ -203,22 +261,28 @@ async def analyze_with_provider(
             calendar_knowledge=calendar_knowledge,
             macro_context=macro_context if macro_context else "No macro data available.",
             held_tickers_list=held_tickers_list,
-            enable_web_search=enable_web_search
+            enable_web_search=enable_web_search,
         )
 
         # Tool execution loop (delegated to provider-specific handlers)
         raw_client = client.client
         if provider == "openai":
             from .handlers import openai
+
             await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
         elif provider == "deepseek":
             from .handlers import deepseek
-            await deepseek.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
+
+            await deepseek.run_tool_loop(
+                raw_client, model_name, messages, provider, enable_web_search=enable_web_search
+            )
         elif provider == "anthropic":
             from .handlers import anthropic
+
             await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=enable_web_search)
         elif provider == "gemini":
             from .handlers import gemini
+
             await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=enable_web_search)
 
         # Final structured extraction using Instructor
@@ -228,20 +292,23 @@ async def analyze_with_provider(
         # DeepSeek with thinking mode may return empty content with reasoning_content
         if provider == "deepseek":
             from .handlers import deepseek
+
             messages = deepseek.prepare_messages_for_instructor(messages)
 
             # If content is empty/whitespace, add a user prompt requesting JSON output
             if not deepseek.has_valid_content(messages):
                 logger.info("[%s/%s] DeepSeek returned empty content. Requesting JSON output.", provider, model_name)
-                messages.append({
-                    "role": "user",
-                    "content": (
-                        "Your previous output was empty or only contains reasoning. "
-                        "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
-                        "No more reasoning, no explanations. Just the raw JSON object. "
-                        "Example: {\"decisions\": [], \"macro_events\": []}"
-                    )
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous output was empty or only contains reasoning. "
+                            "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
+                            "No more reasoning, no explanations. Just the raw JSON object. "
+                            'Example: {"decisions": [], "macro_events": []}'
+                        ),
+                    }
+                )
 
         # Anthropic-specific: flatten nested content blocks for Instructor compatibility
         if provider == "anthropic":
@@ -264,7 +331,9 @@ async def analyze_with_provider(
 
         final_args = {
             "model": model_name,
-            "response_model": DecisionsResponse if provider != "gemini" else list[DecisionsResponse], # Use List to handle Gemini multi-block tool calls
+            "response_model": DecisionsResponse
+            if provider != "gemini"
+            else list[DecisionsResponse],  # Use List to handle Gemini multi-block tool calls
             "messages": copy.deepcopy(messages),
             "max_retries": 2,
         }
@@ -289,26 +358,35 @@ async def analyze_with_provider(
             except Exception as e:
                 last_error = e
                 error_str = str(e).lower()
-                
+
                 # Check if it's a validation error that might be fixed with JSON repair
-                if "validation error" in error_str or "input should be a valid" in error_str or "list_type" in error_str:
+                if (
+                    "validation error" in error_str
+                    or "input should be a valid" in error_str
+                    or "list_type" in error_str
+                ):
                     logger.warning(
                         "[%s/%s] Instructor validation error (attempt %d/3): %s. Attempting JSON repair...",
-                        provider, model_name, attempt + 1, str(e)[:200]
+                        provider,
+                        model_name,
+                        attempt + 1,
+                        str(e)[:200],
                     )
-                    
+
                     # Add a user message requesting clean JSON output
-                    messages.append({
-                        "role": "user",
-                        "content": (
-                            "Your last response failed schema validation. Error details:\n"
-                            f"{str(e)[:500]}\n\n"
-                            "Your response must be a valid JSON object matching this schema exactly:\n"
-                            '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
-                            "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "
-                            "Return the raw JSON object directly with no additional text."
-                        )
-                    })
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Your last response failed schema validation. Error details:\n"
+                                f"{str(e)[:500]}\n\n"
+                                "Your response must be a valid JSON object matching this schema exactly:\n"
+                                '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
+                                "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "
+                                "Return the raw JSON object directly with no additional text."
+                            ),
+                        }
+                    )
                     final_args["messages"] = copy.deepcopy(messages)
                 else:
                     # Non-validation error, re-raise
@@ -316,8 +394,7 @@ async def analyze_with_provider(
 
         if wrapper is None:
             logger.error(
-                "[%s/%s] All Instructor extraction attempts failed. Last error: %s",
-                provider, model_name, last_error
+                "[%s/%s] All Instructor extraction attempts failed. Last error: %s", provider, model_name, last_error
             )
             wrapper = [DecisionsResponse(decisions=[], macro_events=[])]
 
@@ -338,7 +415,10 @@ async def analyze_with_provider(
         # Diagnostic logging for raw Instructor responses
         logger.debug(
             "[%s/%s] Instructor extraction complete: %d decisions, %d macro_events",
-            provider, model_name, len(final_resp.decisions), len(final_resp.macro_events)
+            provider,
+            model_name,
+            len(final_resp.decisions),
+            len(final_resp.macro_events),
         )
 
         # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
@@ -354,12 +434,16 @@ async def analyze_with_provider(
                     if was_self_reported and not results["buy_tool_found"]:
                         logger.warning(
                             "[%s/%s] HARD ENFORCEMENT: Agent claimed buy tool was called for %s but it was NOT found in history. Rejecting trade.",
-                            provider, model_name, decision.ticker
+                            provider,
+                            model_name,
+                            decision.ticker,
                         )
                     elif not results["buy_tool_found"]:
                         logger.warning(
                             "[%s/%s] HARD ENFORCEMENT: Agent recommended BUY for %s without executing 'calculate_buy_quantity' tool. Rejecting trade.",
-                            provider, model_name, decision.ticker
+                            provider,
+                            model_name,
+                            decision.ticker,
                         )
 
                 elif decision.signal == "SELL":
@@ -369,12 +453,16 @@ async def analyze_with_provider(
                     if was_self_reported and not results["sell_tool_found"]:
                         logger.warning(
                             "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. Rejecting trade.",
-                            provider, model_name, decision.ticker
+                            provider,
+                            model_name,
+                            decision.ticker,
                         )
                     elif not results["sell_tool_found"]:
                         logger.warning(
                             "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing 'calculate_sell_quantity' tool. Rejecting trade.",
-                            provider, model_name, decision.ticker
+                            provider,
+                            model_name,
+                            decision.ticker,
                         )
 
         # PRE-ANALYSIS PORTFOLIO VALIDATION: Filter out SELL decisions for tickers not held
@@ -385,7 +473,10 @@ async def analyze_with_provider(
             if decision.signal == "SELL" and decision.ticker.upper() not in [t.upper() for t in held_tickers]:
                 logger.warning(
                     "[%s/%s] PRE-ANALYSIS VALIDATION: SELL signal for %s rejected - ticker not in portfolio. Held: %s",
-                    provider, model_name, decision.ticker, held_tickers
+                    provider,
+                    model_name,
+                    decision.ticker,
+                    held_tickers,
                 )
                 # Mark as rejected but keep for audit trail
                 decision.signal = "HOLD"  # Convert to HOLD to preserve audit trail
@@ -402,8 +493,8 @@ async def analyze_with_provider(
             response=final_resp,
             metadata={
                 "chunk_ids": [c.get("source_id") for c in chunks],
-                "portfolio_status": "injected" if portfolio_context else "none"
-            }
+                "portfolio_status": "injected" if portfolio_context else "none",
+            },
         )
 
         return final_resp
@@ -509,10 +600,17 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
             for part in parts:
                 f_call = getattr(part, "function_call", None)
                 if f_call is not None:
-                    calls.append((getattr(f_call, "name", None), getattr(f_call, "args", getattr(f_call, "arguments", {}))))
+                    calls.append(
+                        (getattr(f_call, "name", None), getattr(f_call, "args", getattr(f_call, "arguments", {})))
+                    )
                 tool_call = getattr(part, "tool_call", None)
                 if tool_call is not None:
-                    calls.append((getattr(tool_call, "name", None), getattr(tool_call, "args", getattr(tool_call, "arguments", {}))))
+                    calls.append(
+                        (
+                            getattr(tool_call, "name", None),
+                            getattr(tool_call, "args", getattr(tool_call, "arguments", {})),
+                        )
+                    )
 
         content = getattr(value, "content", None)
         if isinstance(content, list):
@@ -531,55 +629,53 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
         for name, args in _extract_calls(message):
             _record_call(name, args)
 
-    return {
-        "buy_tool_found": buy_tool_found,
-        "sell_tool_found": sell_tool_found
-    }
+    return {"buy_tool_found": buy_tool_found, "sell_tool_found": sell_tool_found}
 
 
 def _extract_held_tickers(portfolio_context: str) -> list[str]:
     """Extracts held ticker symbols from portfolio context string.
-    
+
     Parses the portfolio context to find all tickers the agent currently owns.
-    
+
     Args:
         portfolio_context: The portfolio summary text.
-        
+
     Returns:
         List of ticker symbols held in the portfolio.
     """
     held_tickers = []
     if not portfolio_context:
         return held_tickers
-    
+
     # Look for pattern like "- NVDA: 100 shares" or "- {TICKER}:"
     import re
+
     # Match lines like "- NVDA: 100 shares @ $500.00"
-    pattern = r'^-\s+([A-Z]{1,5}):'
-    for line in portfolio_context.split('\n'):
+    pattern = r"^-\s+([A-Z]{1,5}):"
+    for line in portfolio_context.split("\n"):
         match = re.match(pattern, line.strip())
         if match:
             ticker = match.group(1)
             # Skip common non-ticker matches
-            if ticker not in ['None', 'Cash', 'Total', 'Buying', 'SMA', 'Realized', 'Maintenance']:
+            if ticker not in ["None", "Cash", "Total", "Buying", "SMA", "Realized", "Maintenance"]:
                 held_tickers.append(ticker)
-    
+
     return held_tickers
 
 
-_DOLLAR_TICKER_PATTERN = re.compile(r'\$([A-Z]{1,5})\b')
+_DOLLAR_TICKER_PATTERN = re.compile(r"\$([A-Z]{1,5})\b")
 
 
 def _extract_tickers_from_chunks(chunks: list[dict], portfolio_tickers: list[str]) -> frozenset[str]:
     """Extract ticker candidates from newsletter chunks for pre-fetching market data.
-    
+
     Scans chunks for $SYMB patterns (reliable in financial text) and unions with
     portfolio tickers plus major market indices.
-    
+
     Args:
         chunks: List of dicts with 'content' keys containing newsletter text.
         portfolio_tickers: List of tickers currently held in portfolio.
-        
+
     Returns:
         Frozen set of uppercase ticker symbols.
     """

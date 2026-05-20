@@ -137,9 +137,7 @@ class AlpacaBroker:
             logger.exception(f"[Alpaca] Failed to submit order for {ticker}")
             await self._update_trade(trade_id, None, "ERROR")
 
-    async def _update_trade(
-        self, trade_id: UUID, order_id: str | None, status: str
-    ) -> None:
+    async def _update_trade(self, trade_id: UUID, order_id: str | None, status: str) -> None:
         """Update the trades row with Alpaca metadata."""
         try:
             supabase = get_supabase_client()
@@ -163,12 +161,7 @@ class AlpacaBroker:
         """
         try:
             supabase = get_supabase_client()
-            portfolio_res = (
-                supabase.table("portfolios")
-                .select("id")
-                .eq("owner_id", agent_id)
-                .execute()
-            )
+            portfolio_res = supabase.table("portfolios").select("id").eq("owner_id", agent_id).execute()
             if not portfolio_res.data:
                 logger.debug(f"[Alpaca] No portfolio found for agent '{agent_id}'")
                 return 0

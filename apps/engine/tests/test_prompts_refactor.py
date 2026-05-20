@@ -226,9 +226,7 @@ class TestPureDataInjectionUserPrompts:
         )
 
     def test_manager_system_owns_5_whys(self):
-        assert "5 Whys" in prompts.MANAGER_SYSTEM_PROMPT, (
-            "MANAGER_SYSTEM_PROMPT must own the 5 Whys technique."
-        )
+        assert "5 Whys" in prompts.MANAGER_SYSTEM_PROMPT, "MANAGER_SYSTEM_PROMPT must own the 5 Whys technique."
 
     # ------------------------------------------------------------------ #
     # RELATIONSHIP                                                         #
@@ -285,9 +283,9 @@ class TestPureDataInjectionUserPrompts:
     # ------------------------------------------------------------------ #
 
     def test_de_advertisement_user_no_persona(self):
-        assert "You are an expert editor for a financial news service" not in prompts.DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE, (
-            "Persona belongs in DE_ADVERTISEMENT_SYSTEM_PROMPT."
-        )
+        assert (
+            "You are an expert editor for a financial news service" not in prompts.DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE
+        ), "Persona belongs in DE_ADVERTISEMENT_SYSTEM_PROMPT."
 
     def test_de_advertisement_user_no_task_instructions(self):
         assert "YOUR TASK:\n1. Identify and remove" not in prompts.DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE, (

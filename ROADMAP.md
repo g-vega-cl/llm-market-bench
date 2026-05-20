@@ -78,7 +78,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - can I add how much I have spent in each provider? Would be fun to visualize
 - [ ] - Benchify: improve get sector alternatives tool
 - [ ] - Benchify: use html for documentation?
-- [ ] - Always keep constant/steady instructions in the beginning of prompts, that way they get cached better. Keep the changing parts at the bottom.
+- [x] **Prompt Caching Structure Adjustment.** — Implemented System-Heavy Prompt Architecture across all 8 agent prompt pairs. Moved all trading logic, rules, and SOPs into the System Prompt and reduced User Prompts to pure-data skeletons `{placeholders}`. This optimizes prompt caching for Anthropic/DeepSeek. Verified via `test_prompts_refactor.py` and documented in [[concepts/system-heavy-prompt]].
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
 - [ ] - Benchify: include copper in sector analysis.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
@@ -86,7 +86,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
 - [ ] - Gemini-3.1-flash-lite generated 0 decisions.
 - [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
-- [ ] - Remove yfinance as backup? It's unreliable as well? At least let's log it thoroughly.
+- [x] **Standardized yfinance Logging.** — Standardized Yahoo Finance (`yfinance.py`) logger implementation, fallback warnings (`currentPrice`/`marketCap` chains), and exception tracebacks using `logger.exception()` to align with the project's [[concepts/observability-standard]]. Added comprehensive TDD integration tests in `test_yfinance_provider.py`.
 - [x] **Audit the Wiki Lint pipeline.** — Successfully stabilized `wiki_lint_llm.py` with 75k character context cap and DeepSeek V4 Pro. First run identified 8 semantic findings. [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20).
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.

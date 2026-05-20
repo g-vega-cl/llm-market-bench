@@ -6,7 +6,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
-import time
 
 from core.config import logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
@@ -37,7 +36,7 @@ async def initialize_with_retry(owner: str) -> Portfolio:
                     f"initialize_portfolio({owner}) failed (attempt {attempt}/{SUPABASE_RETRIES}), "
                     f"retrying in {wait_time}s. Error: {exc}"
                 )
-                time.sleep(wait_time)
+                await asyncio.sleep(wait_time)
             else:
                 logger.error(f"initialize_portfolio({owner}) failed after {SUPABASE_RETRIES} attempts: {exc}")
                 raise
@@ -74,7 +73,7 @@ async def update_prices():
                 wait_time = 2 ** (attempt - 1)
                 logger.warning(f"fetch_portfolios failed (attempt {attempt}/{SUPABASE_RETRIES}), "
                              f"retrying in {wait_time}s. Error: {exc}")
-                time.sleep(wait_time)
+                await asyncio.sleep(wait_time)
             else:
                 logger.error(f"Failed to fetch portfolios after {SUPABASE_RETRIES} attempts: {exc}")
                 return

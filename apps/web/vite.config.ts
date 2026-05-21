@@ -9,10 +9,22 @@ export default defineConfig({
     server: {
         port: 3005,
         proxy: {
-            '/ingest': {
+            '/p/static': {
+                target: 'https://us-assets.i.posthog.com',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/p\/static/, '/static'),
+                secure: false,
+            },
+            '/p/array': {
+                target: 'https://us-assets.i.posthog.com',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/p\/array/, '/array'),
+                secure: false,
+            },
+            '/p': {
                 target: 'https://us.i.posthog.com',
                 changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/ingest/, ''),
+                rewrite: (path) => path.replace(/^\/p/, ''),
                 secure: false,
             },
         },

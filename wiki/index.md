@@ -24,6 +24,7 @@
 
 ## Concepts
 
+- [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics
 - [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector
 - [[concepts/type-safety]] — Strict TypeScript type safety with zero any usage
 - [[concepts/model-anomalies]] - Catalog of observed LLM behavioral anomalies (empty responses, zero decisions)

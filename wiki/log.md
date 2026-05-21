@@ -1,3 +1,7 @@
+## [2026-05-21] fix | PostHog Stealthy Same-Origin Reverse Proxy Implementation
+
+Configured a secure same-origin reverse proxy for PostHog to bypass browser ad blockers on client-side tracking and telemetry. Client api_host in the `PostHogProvider` is now routed through `/p` on the same domain, with local development proxying managed in `vite.config.ts` and production Edge routing handled server-side in `netlify.toml` via `status = 200` rewrites. Server-side tracking client continues to connect directly to official endpoints since server-to-server traffic is immune to ad blockers. Added a failing TDD unit test in `-__root.test.tsx` verifying correct client configuration and verified all 122 frontend tests pass with clean formatting and no lint warnings under Biome.
+
 ## [2026-05-21] fix | Auto-Research Ratchet Baseline Schema Migration and Testing
 
 Demoted the older prompt variant `v20260517-221731`'s score metric to `old_score` to prevent it from hijacking the ratchet baseline system and overwriting the new System-Heavy prompt architecture. Added unit tests in `test_autoresearch.py` verifying that `get_all_time_baseline()` correctly ignores prompt variants that do not contain a `"score"` key (handling both older composite metrics and demoted/archived schemas).
@@ -216,3 +220,7 @@ Refactored `apps/engine/execution/providers/yfinance.py` to align with the [[con
 ## [2026-05-21] test | Supabase client missing-config test coverage
 
 Added tests for `get_supabase_client()` and `get_async_supabase_client()` to verify they raise `ValueError` when Supabase configuration (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) is missing and the singleton client is not already cached. Covers a gap in error-handling coverage for the database client layer.
+
+## [2026-05-21] feature | PostHog Stealthy Same-Origin Reverse Proxy
+
+Implemented a stealthy reverse proxy for PostHog to prevent ad blockers from blocking client-side analytics and error tracking. The PostHogProvider now routes all telemetry through the same-origin path `/p`. Local development uses Vite proxy rules in `vite.config.ts`, while production uses Netlify Edge CDN redirects in `netlify.toml` with `status=200` rewrites. Server-side tracking continues to call PostHog directly. Added a unit test verifying the `/p` api_host configuration.

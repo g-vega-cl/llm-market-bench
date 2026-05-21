@@ -105,7 +105,7 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
     );
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+export function RootDocument({ children }: { children: React.ReactNode }) {
     const { user } = Route.useRouteContext();
 
     return (
@@ -118,9 +118,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || ''}
                     options={{
                         api_host:
-                            import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-                        ui_host:
-                            import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.posthog.com',
+                            typeof window !== 'undefined'
+                                ? '/p'
+                                : import.meta.env.VITE_PUBLIC_POSTHOG_HOST ||
+                                  'https://us.i.posthog.com',
+                        ui_host: 'https://us.posthog.com',
                         defaults: '2025-05-24',
                         capture_exceptions: true,
                         debug: import.meta.env.DEV,

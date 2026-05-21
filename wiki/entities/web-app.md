@@ -55,6 +55,14 @@ To resolve spurious rendering artifacts (such as overlapping vertical lines or r
 
 Features: today (dashboard), portfolios (summary + detail with D3 equity curves), reasoning (LLM audit trail), memories (memory chains), market-overview (correlation heatmap), concepts (PCA concept map), audits (system audit logs).
 
+### PostHog Stealthy Reverse Proxy (2026-05-21)
+
+To prevent client-side analytics and error tracking from being blocked by browser-level ad blockers, a custom same-origin stealthy reverse proxy is configured:
+- **Client Route Proxy (`/p`)**: The client-side `PostHogProvider` (in [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx)) routes all telemetry through the relative path `/p`.
+- **Local Dev Proxy**: `apps/web/vite.config.ts` proxies `/p/static` and `/p/array` to `https://us-assets.i.posthog.com`, and `/p` to `https://us.i.posthog.com` with origin rewrite.
+- **Production Edge Proxy**: `apps/web/netlify.toml` maps matching `/p/*` rules on Netlify Edge CDN with `status = 200` to serve as a server-side rewrite, maintaining full first-party stealth and cookie compliance.
+- **Direct Server SDK**: Server-side Node tracking (`apps/web/src/utils/posthog-server.ts`) directly targets `https://us.i.posthog.com` safely, bypassing the CDN rewrite since serverless traffic is immune to ad blockers.
+
 
 ## Design System
 

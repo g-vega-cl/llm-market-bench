@@ -110,7 +110,7 @@ export function PortfolioDetailPage({
                 <div className="flex flex-col space-y-12">
                     {/* Performance Chart */}
                     <section>
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                             <BenchmarkSelector
                                 selected={selectedBenchmark}
                                 onChange={setSelectedBenchmark}

@@ -10,7 +10,7 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 ## Features
 - **Experiment List**: Sortable table showing each variant’s tag, type (baseline/radical), score, active period, and status.
 - **Experiment Details**: Deep-dive view with portfolio vs. SPY returns, max drawdown, change description, meta-researcher hypothesis, and the full prompt text.
-- **Score Calculation Card**: Static explanation of the risk-adjusted formula `(Portfolio% - SPY%) - (Max Drawdown% × 0.3)` with excess return, risk penalty, and ratchet logic.
+- **Score Calculation Card**: Static explanation of the risk-adjusted formula `(Portfolio% - SPY%) - Opportunity Cost% - (Max Drawdown% × 0.3)` with excess return, risk penalty, and ratchet logic.
 - **Server‑side Data Fetching**: Uses `createServerFn` and React Query to load `prompt_experiments` from Supabase with 10‑minute stale time.
 
 ## Implementation

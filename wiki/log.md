@@ -1,3 +1,7 @@
+## [2026-05-21] doc | Align Score Calculation Page and Wiki with Backend Formula
+
+Updated the `/autoresearch` web page's score calculation component ([ScoreCalculation.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.tsx)) and its test ([ScoreCalculation.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.test.tsx)) to display the actual risk-adjusted formula which includes the Opportunity Cost penalty and the Treasury Bond yield hurdle. Additionally, aligned the project wiki by updating outdated formulas on [[entities/autoresearch]] and [[entities/autoresearch-arena]].
+
 ## [2026-05-21] audit | TanStack Query Codebase Audit & Centralized Factory Deletion
 
 Audited the project's use of TanStack Query across the `apps/web` frontend. Identified two parallel query options factory implementations: the active, vertical feature-specific factories in `features/*/queries/` and the duplicate centralized factory in `src/lib/queries.ts`. Deleted the dead centralized files `apps/web/src/lib/queries.ts` and `apps/web/src/lib/query-keys.ts` to preserve a clean vertical codebase structure. Documented type safety conventions, generic `CursorPage` constraints for infinite scroll queries, and SSR-safe `QueryClient` initialization inside a new wiki page [[concepts/tanstack-query]].

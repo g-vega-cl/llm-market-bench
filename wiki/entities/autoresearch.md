@@ -18,7 +18,7 @@ The auto-research system is configured via:
 
 The auto-research loop runs weekly:
 1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
-2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
+2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - Opportunity Cost% - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
 3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation.
 4. **Research** — LLM proposes a new prompt variant (incremental or radical) based on the *post-revert baseline*.
 5. **Deploy** — always activate the new variant generated in step 4.

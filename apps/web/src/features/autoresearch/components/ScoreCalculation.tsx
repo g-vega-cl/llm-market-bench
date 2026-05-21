@@ -17,16 +17,27 @@ export function ScoreCalculation() {
                     Risk-Adjusted Score Formula
                 </div>
                 <div className="text-2xl md:text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-100 text-center leading-relaxed">
-                    (Portfolio% - SPY%) - (Max Drawdown% × 0.3)
+                    (Portfolio% - SPY%) - Opportunity Cost% - (Max Drawdown% × 0.3)
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pt-4">
                 <div className="space-y-2">
                     <SubHeading>Excess Return</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                         The primary goal: outperform the S&P 500 benchmark. We calculate the
                         percentage return of the experiment group minus SPY.
+                    </p>
+                </div>
+                <div className="space-y-2">
+                    <SubHeading>Opportunity Cost</SubHeading>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        If the portfolio returns fail to clear the active Treasury Bond yield hurdle
+                        compounded for the week, an asymmetric penalty is applied:{' '}
+                        <span className="font-mono text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-200/50 dark:bg-zinc-800 px-1 py-0.5 rounded">
+                            max(0, Bond Yield% - Portfolio%)
+                        </span>
+                        .
                     </p>
                 </div>
                 <div className="space-y-2">

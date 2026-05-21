@@ -89,6 +89,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
 - [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
+- [ ] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
 
 ## Under Consideration
 

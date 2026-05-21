@@ -1,3 +1,100 @@
+## [2026-05-20] docs | Update auto-research concept page score formula
+
+Updated `[[concepts/auto-research-prompt-improver]]` to reflect the current score formula including the Treasury Bond hurdle and opportunity cost penalty. The previous formula was stale (missing bond hurdle and DXY context-only note). Wiki lint: 57 pages clean. Dry run confirmed: score 0.5881 beats baseline 0.4271, ratchet advances, DXY fetched as context only.
+
+## [2026-05-20] refactor | Decouple USD Index Strength from Auto-Research Opportunity Cost Penalty
+
+Decoupled the US Dollar Index (`UUP`/DXY) return from the active Opportunity Cost Penalty calculation within the Benchify Auto-Research evaluation loop (`[[entities/autoresearch]]`):
+- Updated `compute_score` in `metrics.py` to use the compounded 10-year Treasury yield (`bond_return_pct`) as the sole active hurdle for the asymmetric opportunity cost penalty, ignoring USD index returns.
+- Preserved the USD Index return percentage (`dollar_return_pct`) in the database metrics payload and the evaluator markdown report as context-only (`[Context Only]`) for macroeconomic visibility.
+- Modified weekly performance report layout in `evaluator.py` to remove the combined maximum hurdle line and cleanly label the Treasury Bond rate as the active hurdle.
+- Refactored `apps/engine/tests/test_autoresearch.py` unit tests, including updating our TDD reproduction test to assert a strong dollar regime results in `0.0` opportunity cost penalty. All 41 tests pass cleanly.
+
+## [2026-05-20] feature | Integrate Dynamic Bond Yield and USD Strength Hurdles into Auto-Research Scoring
+
+
+Integrated live, actual risk-free rate hurdles and currency index strength metrics into the Benchify Auto-Research evaluation loop and portfolio scoring formula (`[[entities/autoresearch]]`):
+- Added actual U.S. 10-year Treasury Bond yields (`stable/treasury-rates`) and actual US Dollar strength returns (via `UUP` ETF proxy in `stable/historical-price-eod/full`) fetched dynamically from the Financial Modeling Prep (FMP) API.
+- Implemented compounding scaling logic to convert annualized bond yield rates into exact compounded rates matching the evaluation window length.
+- Refactored `compute_score` in `metrics.py` to calculate an asymmetric `Opportunity Cost Penalty`: $\max(0, \max(R_{\text{bond}}, R_{\text{dollar}}) - R_{\text{portfolio}})$.
+- Updated `evaluate_week` in `evaluator.py` to perform the dynamic fetches, pass them to the scoring engine, and format all hurdle details in the meta-researcher markdown performance report.
+- Added thorough TDD unit tests to `apps/engine/tests/test_autoresearch.py` validating correct scoring math, asymmetric penalty boundaries, and strong-dollar regime handling. All tests pass cleanly.
+
+## [2026-05-20] refactor | Implement Standardized yfinance Logging (Observability Standard Alignment)
+
+Standardized Yahoo Finance (`yfinance.py`) logger implementation, fallback handling, and error tracebacks to conform with the project's **Observability Standards** (`[[concepts/observability-standard]]`):
+- Created module-level logger: `engine.execution.providers.yfinance` to support module-based log partitioning.
+- Added explicit, granular warning logs for price fallback logic (resolving missing `currentPrice` using `regularMarketPrice` or `previousClose`) and market cap fallback logic (resolving missing `marketCap` using `totalAssets` or `netAssets`).
+- Hardened exception handling blocks across `get_ticker_data` and `get_history` to leverage `logger.exception()` for full traceback preservation.
+- Added comprehensive TDD integration tests in `apps/engine/tests/test_yfinance_provider.py` to assert correct log names, fallback triggers, and traceback capture under failure states.
+
+## [2026-05-20] fix | Prevent D3 Comparison Chart Spurious Vertical Line Anomalies
+
+Implemented defensive input cleaning, sorting, and boundary checks in `PortfolioComparisonChart.tsx` to handle malformed data points safely:
+- Added `React.useMemo` to filter out invalid dates, missing/NaN prices, and null indices from portfolio and benchmark data props at the component boundary.
+- Deduplicated time-series coordinates by date to enforce a single data point per day, preventing x-axis duplicate coordinate ticks from rendering vertical overlapping segment spikes.
+- Configured the D3 line path generator with `.defined()` checks to omit disjoint segments safely.
+- Added comprehensive Vitest coverage to verify chart resilience against malformed datasets.
+
+## [2026-05-20] refactor | Consolidate Scenario Analysis Parser Logic (DRY Migration)
+
+
+Consolidated scenario-splitting, percentage-extracting, and outcome/trading-plan parsing logic from both `FutureCatalysts.tsx` and `MemoryCard.tsx` into a single, fully-tested utility `parseScenarios` in `apps/web/src/lib/parse-scenario-percentages.ts`. Refactored `MemoryCard.tsx` to use this consolidated helper. All unit tests, Biome linting, and production builds pass successfully.
+
+## [2026-05-20] fix | Upgrade parseScenarioPercentages split logic for single-block text
+
+Upgraded `parseScenarioPercentages` utility in `apps/web/src/lib/parse-scenario-percentages.ts` to support regex-based splitting (`/(Scenario [A-Z][^:]*:)/`) matching the design in `MemoryCard.tsx`. This ensures scenarios in `FutureCatalysts.tsx` are cleanly broken out with their respective badges regardless of database newline formatting, resolving cases where LLM responses output single blocks.
+
+
+## [2026-05-20] docs | Enhance wiki cross-reference linking
+
+Fixed weak/plain-text references in the wiki: changed plain-text mention of `Biome` in `wiki/concepts/type-safety.md` to `[[entities/biome-linter]]`, and plain-text mention of `correlation matrix` in `wiki/entities/engine.md` to `[[sources/correlation-matrix-source]]`. Verified with the structural wiki linter.
+
+## [2026-05-20] docs | Align linter documentation with Biome rules and pre-commit hook
+
+Aligned `wiki/concepts/project-linting.md` and `wiki/entities/biome-linter.md` with the active codebase rules, documenting that `noExplicitAny` is an error in `biome.json` and that any use of `Record<string, any>` or `as any` requires an inline `// biome-ignore` comment to pass the blocking pre-commit checks.
+
+## [2026-05-20] docs | Standardized Source ID generation format in wiki
+
+Standardized the Source ID generation description between `wiki/concepts/ingestion.md` and `wiki/entities/pipeline.md` to reference the actual Python implementation in `newsletter.py` (`news_{sender_clean}_{MD5[:8]}`).
+
+## [2026-05-14] refactor | Design System Consolidation
+
+Consolidated design system usage across all 9 web pages. Migrated all pages to use PageLayout wrapper, replaced raw headings with SectionHeading, fixed ReasoningPage (zero DS usage → full DS adoption), migrated ConceptsPage from gray→zinc color tokens, and updated PageLayout to remove min-h-screen (now handled by page-level divs). Satoshi font import removed in favor of system-ui fallback.
+
+## [2026-05-14] refactor | EventChainPage UI refactor to use design system components
+
+Refactored `EventChainPage.tsx` to use `Badge`, `Button`, `PageLayout`, and `SectionHeading` from the shared `@llm-market-bench/ui-design-system` package. Replaced inline styling and conditional class logic with centralized `getTypeBadgeColor` and `getImpactBadgeColor` helper functions. This improves consistency with the rest of the web app and reduces duplication.
+
+## [2026-05-14] refactor | Design system Button migration & primitive cleanup
+
+Replaced raw `<button>` elements with the design system's `Button` primitive across 10 components: ThoughtProcessFlow, DefaultCatchBoundary, NotFound, MemoriesList, PortfolioComparisonChart, HumanFriendlyPrompt, HumanFriendlyResponse, Auth, Login. Also removed unused primitives from `ui-design-system`: ErrorBoundary, Skeleton, CardHeader/CardBody/CardFooter, ErrorMessage. The Auth component additionally adopted `Input` and `Label` primitives. Added test coverage to verify DS component usage.
+
+## [2026-05-14] refactor | Design system simplification
+
+Removed Select primitive entirely, reduced Badge variants (removed `dot` variant, stripped `critical` and `low` severity), trimmed LoadingSpinner sizes (removed `xs` and `lg`), removed `elevated` Card variant and `accentBorder` props, eliminated `alert` gradient from HeroBackground and SectionHeading, and simplified severity mappings in AuditCard/FutureCatalysts severity mapping simplified to only `high`/`medium`. This is a>
+
+## [2026-05-14] refactor | Design system simplification
+
+Removed Select primitive entirely, reduced Badge variants (removed `dot` variant, stripped `critical` and `low` severity), trimmed LoadingSpinner sizes (removed `xs` and `lg`), removed `elevated` Card variant and `accentBorder` props, eliminated `alert` gradient from HeroBackground and SectionHeading, and simplified severity mappings in AuditCard/FutureCatalysts to only `high`/`medium`.
+
+## [2026-05-14] investigation | MiniMax empty response & Gemini-3.1-flash-lite zero decisions
+
+Added two investigation items to ROADMAP to ROADMAP.md:
+- MiniMax market feeling analysis returning empty JSON responses, and Gemini-3.1-flash-lite generating zero trading decisions. These are non-trivial behavioral anomalies that may indicate model-specific issues requiring deeper analysis.
+
+## [2026-05-14] investigation | MiniMax empty response & Gemini-3.1-flash-lite zero decisions
+
+Added two investigation items to ROADMAP.md documenting behavioral anomalies: MiniMax market feeling analysis returning empty JSON responses, and Gemini-3.1-flash-lite generating zero trading decisions. These are non-trivial model-specific issues that may indicate reliability problems requiring deeper analysis.
+
+## [2026-05-15] removal | Government incentive tracking removed; model upgraded to deepseek-v4-pro
+
+- Removed `is_government_incentive` field from MacroEvent model and all related validation/enrichment logic (`_validate_and_enrich_government_events()`).
+- Removed government incentive prompt instructions from the analysis prompt.
+- The consensus `_is_vague_government_event()` helper remains for synthesis quality control.
+- Upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki linting.
+- Updated raw/docs/reference/government-incentive-quick-ref.md to a removal notice.
+
 ## [2026-05-15] removal | Government incentive tracking feature removed
 
 Removed the `is_government_incentive` field from `MacroEvent` model, the `_validate_and_enrich_government_events()` function from analysis.py, and all related GOV-DETECT keyword matching and UNFLAGGED POLICY EVENT warnings. The model-level flag was unreliable and produced noise. The consensus `_is_vague_government_event()` helper remains for synthesis quality control. Also upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki lint configurations.
@@ -177,6 +274,7 @@ The Auto-Research Arena allows users to explore past prompt experiments, view th
 
 Introduced the **Auto-Research Arena** web UI at `/autoresearch`, allowing exploration of prompt experiment history with scoring methodology, experiment details, and historical progression. Simultaneously refactored the interaction pattern into a **System-Heavy** architecture: all trading logic, risk rules, tool enforcement, and SOPs now reside in the System Prompt (mutated by the meta-researcher), while the User Prompt remains a static data skeleton. This increases the surface area for autonomous prompt evolution. Added bootstrap utility and database type for `prompt_experiments`. Updated auto-wiki with truncation safety and new default model.
 
+
 ## [2026-05-19] feature | System-Heavy Prompt Refactor & Auto-Research Arena Web UI
 
 Implemented System-Heavy Prompt architecture: moved all trading logic, calendar strategies, SMA rules, and output format specifications into the System Prompt, leaving a minimal data-only User Prompt. Added bootstrap utility to seed the new baseline. Created Auto-Research Arena web pages with experiment list, detail view, and scoring methodology display. Also improved auto-wiki prompt parsing with regex-based JSON extraction and truncation handling, and updated default Ollama model to qwen3.5:latest.
@@ -208,18 +306,3 @@ Refactored `apps/engine/execution/providers/yfinance.py` to align with the [[con
 - Added explicit warning logs for price fallback chains (`currentPrice` → `regularMarketPrice` → `previousClose`) and market cap fallback chains (`marketCap` → `totalAssets` → `netAssets`).
 - Hardened exception handling in `get_ticker_data` and `get_history` to use `logger.exception()` for full traceback capture.
 - Added comprehensive TDD tests in `test_yfinance_provider.py` verifying logger naming, fallback warning triggers, and traceback preservation under failure states.
-
-## [2026-05-21] improvement | Harden getAgentInfo against whitespace-only agent IDs
-
-Added a guard in `getAgentInfo` to handle whitespace-only `ownerId` strings
-(before: `'   '.trim()` produced `''` which wasn't caught; now: explicit check
-returns fallback). Extended test coverage with 5 new test cases including
-falsy inputs, exact matching, fuzzy matching, and unrecognized strings.
-
-
-## [2026-05-21] improvement | Harden getAgentInfo against whitespace-only agent IDs
-
-Added a guard in `getAgentInfo` to handle whitespace-only `ownerId` strings
-(before: `'   '.trim()` produced `''` which wasn't caught; now: explicit check
-returns fallback). Extended test coverage with 5 new test cases including
-falsy inputs, exact matching, fuzzy matching, and unrecognized strings.

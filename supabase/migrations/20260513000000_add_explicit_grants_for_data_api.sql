@@ -51,8 +51,3 @@ GRANT ALL ON public.market_feeling TO service_role;
 GRANT ALL ON public.correlation_runs TO service_role;
 GRANT ALL ON public.correlation_data TO service_role;
 GRANT ALL ON public.prompt_experiments TO service_role;
-
--- ────────────────────────────────────────────────────────────────────
--- TODO: When creating NEW tables after October 30, 2026, add GRANTs
--- in the same migration. See wiki/concepts/supabase-grant-convention.md
--- ────────────────────────────────────────────────────────────────────

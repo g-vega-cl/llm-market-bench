@@ -76,6 +76,10 @@ A one-time migration (`20260513000000_add_explicit_grants_for_data_api.sql`)
 backfills explicit grants for all 18 existing tables. This migration is
 idempotent — `GRANT` statements are safe to re-run.
 
+## Automated Enforcement
+
+This convention is strictly enforced via CI. The test `apps/engine/tests/test_migration_grants.py` automatically scans all migration files created after October 30, 2026 (`20261030`), and raises an error if it finds a `CREATE TABLE` command that lacks an explicit `GRANT` statement.
+
 ## Verification
 
 After applying grants, verify a table is accessible:

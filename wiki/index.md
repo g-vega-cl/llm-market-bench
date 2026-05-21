@@ -27,6 +27,7 @@
 - [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics
 - [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector
 - [[concepts/type-safety]] — Strict TypeScript type safety with zero any usage
+- [[concepts/tanstack-query]] — TanStack Query patterns, active/unused factories, and SSR-safe QueryClient setup
 - [[concepts/model-anomalies]] - Catalog of observed LLM behavioral anomalies (empty responses, zero decisions)
 - [[concepts/equal-weighted-returns]] — Per-agent percentage returns averaged equally regardless of portfolio size
 - [[concepts/observability-standard]] — Traceback hardening and granular pipeline tracking for LLM audits

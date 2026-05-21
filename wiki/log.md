@@ -1,3 +1,7 @@
+## [2026-05-21] audit | TanStack Query Codebase Audit & Centralized Factory Deletion
+
+Audited the project's use of TanStack Query across the `apps/web` frontend. Identified two parallel query options factory implementations: the active, vertical feature-specific factories in `features/*/queries/` and the duplicate centralized factory in `src/lib/queries.ts`. Deleted the dead centralized files `apps/web/src/lib/queries.ts` and `apps/web/src/lib/query-keys.ts` to preserve a clean vertical codebase structure. Documented type safety conventions, generic `CursorPage` constraints for infinite scroll queries, and SSR-safe `QueryClient` initialization inside a new wiki page [[concepts/tanstack-query]].
+
 ## [2026-05-21] fix | PostHog Stealthy Same-Origin Reverse Proxy Implementation
 
 Configured a secure same-origin reverse proxy for PostHog to bypass browser ad blockers on client-side tracking and telemetry. Client api_host in the `PostHogProvider` is now routed through `/p` on the same domain, with local development proxying managed in `vite.config.ts` and production Edge routing handled server-side in `netlify.toml` via `status = 200` rewrites. Server-side tracking client continues to connect directly to official endpoints since server-to-server traffic is immune to ad blockers. Added a failing TDD unit test in `-__root.test.tsx` verifying correct client configuration and verified all 122 frontend tests pass with clean formatting and no lint warnings under Biome.

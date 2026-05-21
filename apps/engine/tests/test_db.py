@@ -4,7 +4,32 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.db import SUPABASE_RETRIES, is_transient_supabase_error, with_retry
+from core.db import (
+    SUPABASE_RETRIES,
+    get_async_supabase_client,
+    get_supabase_client,
+    is_transient_supabase_error,
+    with_retry,
+)
+
+
+class TestSupabaseClients:
+    """Tests for Supabase client creation and configuration."""
+
+    def test_get_supabase_client_missing_config(self):
+        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
+            with patch("core.db._supabase_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    get_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_get_async_supabase_client_missing_config(self):
+        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
+            with patch("core.db._supabase_async_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    await get_async_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
 
 
 class TestIsTransientSupabaseError:

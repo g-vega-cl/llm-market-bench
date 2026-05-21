@@ -50,7 +50,7 @@ This split ensures that the "Brain" (System) is decoupled from the "Environment"
 - **No validator**: Removed. The safety checker (< 2 trades → revert) is the only guardrail. Trust the process.
 - **Always deploy**: Every week deploys a new prompt. No gate. The meta-researcher always explores.
 - **Hard ratchet**: When an experiment fails to beat the baseline, `revert_to_baseline()` is called to set the active prompt back to the baseline before the next experiment. Code-level enforcement — not just instructions to the LLM.
-- **Baseline tracking**: The highest score achieved so far (tied to its prompt). The meta-researcher's target. Only moves up.
+- **Baseline tracking**: The highest score achieved so far (tied to its prompt). The meta-researcher's target. Only moves up. *Note: Variants without a `"score"` key in their metrics (such as the pre-May-12 composite metrics or explicitly demoted variants using `"old_score"`) are ignored by `get_all_time_baseline()`.*
 - **System-Heavy Evolution**: Moving logic from User to System prompt to ensure 100% of the trading "SOP" can be improved by the LLM.
 - **Control portfolios are reference only**: Shown in the report but not part of the score.
 

@@ -972,6 +972,30 @@ class TestBaselineMetricsOrdering:
         assert result["variant_tag"] == "v2"
         assert result["metrics"]["score"] == 3.0
 
+    @pytest.mark.asyncio
+    async def test_all_time_baseline_ignores_missing_score(self, monkeypatch):
+        """get_all_time_baseline must ignore variants without a score key in metrics."""
+        from autoresearch import prompt_store
+
+        variants = [
+            {"variant_tag": "v_old", "metrics": {"composite": 0.5}},
+            {"variant_tag": "v_demoted", "metrics": {"old_score": 0.4271}},
+            {"variant_tag": "v_baseline", "metrics": {"score": 0.0}},
+        ]
+
+        client, recorder = _make_async_client(data=variants)
+        monkeypatch.setattr(prompt_store, "get_async_supabase_client", lambda: asyncio.Future())
+
+        async def fake_client():
+            return client
+
+        monkeypatch.setattr(prompt_store, "get_async_supabase_client", fake_client)
+
+        result = await prompt_store.get_all_time_baseline()
+        assert result is not None
+        assert result["variant_tag"] == "v_baseline"
+        assert result["metrics"]["score"] == 0.0
+
 
 # ==============================================================================
 # PHASE 2: New single-score formula — RED tests.

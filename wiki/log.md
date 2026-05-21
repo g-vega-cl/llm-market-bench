@@ -1,3 +1,7 @@
+## [2026-05-21] fix | Auto-Research Ratchet Baseline Schema Migration and Testing
+
+Demoted the older prompt variant `v20260517-221731`'s score metric to `old_score` to prevent it from hijacking the ratchet baseline system and overwriting the new System-Heavy prompt architecture. Added unit tests in `test_autoresearch.py` verifying that `get_all_time_baseline()` correctly ignores prompt variants that do not contain a `"score"` key (handling both older composite metrics and demoted/archived schemas).
+
 ## [2026-05-15] removal | Government incentive tracking feature removed
 
 Removed the `is_government_incentive` field from `MacroEvent` model, the `_validate_and_enrich_government_events()` function from analysis.py, and all related GOV-DETECT keyword matching and UNFLAGGED POLICY EVENT warnings. The model-level flag was unreliable and produced noise. The consensus `_is_vague_government_event()` helper remains for synthesis quality control. Also upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki lint configurations.

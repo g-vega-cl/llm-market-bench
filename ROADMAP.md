@@ -31,7 +31,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [x] **I don't see percentages in scenarios anymore** — Resolved: Consolidated all scenario-splitting, percentage-extracting, and outcome/trading-plan parsing logic from both `FutureCatalysts.tsx` and `MemoryCard.tsx` into a single, fully-tested utility `parseScenarios` in `apps/web/src/lib/parse-scenario-percentages.ts`. Splitting logic uses regex `/Scenario [A-Z][^:]*:/` to correctly segment scenarios even when LLM output formats do not include strict newlines.
 - [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Improve investable assets again?**
@@ -63,12 +62,10 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Retry server errors?
 - [ ] - Benchify: focus on making good tool-calling, stock researching agents. Rather than an info dump.
 - [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
-- [x] - Set up a linter for web app
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
 - [ ] - check if this repo would help: https://github.com/anthropics/financial-services
 - [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
 - [ ] - add a local model?
-- [x] **Comprehensive Logging Audit & Traceback Hardening.** — Refactored engine, proxy, and provider logging to use `logger.exception` for full traceback capture. Enhanced log format with module names and added granular pipeline progress tracking. This enables the automated LLM log analyzer to perform root-cause analysis on ingestion and execution failures.
 - [ ] - scenario analysis still empty
 - [ ] - can I add how much I have spent in each provider? Would be fun to visualize
 - [ ] - Benchify: improve get sector alternatives tool
@@ -80,7 +77,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
 - [ ] - Gemini-3.1-flash-lite generated 0 decisions.
 - [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
-- [x] **Standardized yfinance Logging.** — Standardized Yahoo Finance (`yfinance.py`) logger implementation, fallback warnings (`currentPrice`/`marketCap` chains), and exception tracebacks using `logger.exception()` to align with the project's [[concepts/observability-standard]]. Added comprehensive TDD integration tests in `test_yfinance_provider.py`.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
@@ -94,7 +90,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
-- [ ] Benchify: why are there two baselines on auto research table?
 - [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
 
 ## Under Consideration

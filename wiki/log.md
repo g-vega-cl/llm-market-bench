@@ -1,3 +1,7 @@
+## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
+
+Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
+
 ## [2026-05-21] doc | Align Score Calculation Page and Wiki with Backend Formula
 
 Updated the `/autoresearch` web page's score calculation component ([ScoreCalculation.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.tsx)) and its test ([ScoreCalculation.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.test.tsx)) to display the actual risk-adjusted formula which includes the Opportunity Cost penalty and the Treasury Bond yield hurdle. Additionally, aligned the project wiki by updating outdated formulas on [[entities/autoresearch]] and [[entities/autoresearch-arena]].
@@ -232,3 +236,7 @@ Added tests for `get_supabase_client()` and `get_async_supabase_client()` to ver
 ## [2026-05-21] feature | PostHog Stealthy Same-Origin Reverse Proxy
 
 Implemented a stealthy reverse proxy for PostHog to prevent ad blockers from blocking client-side analytics and error tracking. The PostHogProvider now routes all telemetry through the same-origin path `/p`. Local development uses Vite proxy rules in `vite.config.ts`, while production uses Netlify Edge CDN redirects in `netlify.toml` with `status=200` rewrites. Server-side tracking continues to call PostHog directly. Added a unit test verifying the `/p` api_host configuration.
+
+## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
+
+Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).

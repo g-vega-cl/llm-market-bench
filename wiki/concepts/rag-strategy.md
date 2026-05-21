@@ -20,6 +20,7 @@ Targeted per-trade RAG via `retrieve_for_decision()`:
 - Past decisions scoped to the current agent's `model_name` (prevents
   cross-contamination)
 - Shared memories (market events, lessons) remain cross-agent
+- Empirical foundational knowledge seeded as high-importance `LESSON_LEARNED` memories (e.g., Fama-French factor models, behavioral anomalies).
 - Content sanitized (HTML stripped) before prompt injection
 - Items ranked by importance × similarity, capped at token budget
 

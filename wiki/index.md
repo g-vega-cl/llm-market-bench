@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/academic-paper-seeding]] — Seeds top 10 empirical asset pricing papers into pgvector memory store for RAG grounding
 - [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history and scoring methodology
 - [[entities/design-system]] — Shared UI component library (primitives, patterns, layouts, design tokens)
 - [[entities/cleanup]] — Database cleanup module for periodic maintenance

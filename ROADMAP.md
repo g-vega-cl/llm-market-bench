@@ -72,8 +72,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: include copper in sector analysis. — CPER added to Commodities grid in MarketOverviewPage.tsx.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 - [ ] - Revisit alpaca trades.
-- [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
-- [ ] - Gemini-3.1-flash-lite generated 0 decisions.
+- [x] - Gemini-3.1-flash-lite generated 0 decisions. — Resolved by enabling include_server_side_tool_invocations and propagating function call IDs.
 - [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)

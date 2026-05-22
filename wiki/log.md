@@ -1,3 +1,11 @@
+## [2026-05-22] fix | Resolve Gemini 3 Multi-Tool 400 API Error & Enable Tool Context Circulation
+
+Resolved the `400 INVALID_ARGUMENT` error when running Gemini 3 models with both custom function calling and Google Search grounding tools:
+- **API Circulation**: Enabled `include_server_side_tool_invocations = True` in the `GenerateContentConfig` constructor (SDK-version-guarded to preserve backward compatibility).
+- **ID Echoing**: Ensured the unique function call `id` assigned by Gemini 3 is preserved and echoed back within the `FunctionResponse` part of multi-turn user messages. This prevents agent recommendations from getting rejected by the platform's `HARD ENFORCEMENT` guardrail when web search is enabled.
+- **Verification**: Added TDD unit tests (`test_gemini_tool_loop_sets_include_server_side_tool_invocations`, `test_gemini_tool_loop_afc_fallback_when_sdk_lacks_flag`, and `test_gemini_tool_loop_echoes_function_call_id`) and verified the entire `test_gemini_tools.py` suite passes successfully.
+- **Documentation**: Updated [[concepts/model-anomalies]] and [[sources/web-search-source]] to reflect the resolution and the new multi-tool configuration capabilities of the engine.
+
 ## [2026-05-22] doc | Remediate "Thin" Wiki Pages & Add Model Anomalies & Cleanup Schedule
 
 Enhanced the concepts page [[concepts/model-anomalies]] and database maintenance page [[entities/cleanup]] to resolve structural knowledge gaps flagged in the project's documentation audit. Aligned the descriptions directly with the codebase and recent ingestion logs:

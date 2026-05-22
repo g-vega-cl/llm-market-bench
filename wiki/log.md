@@ -1,3 +1,11 @@
+## [2026-05-22] feature | Historical Progression Explorer & Selector Clarity Refinements
+
+Implemented the new **Historical Progression Explorer** tab / page and D3 progression chart on the Market Overview page:
+- **Resilient Bidirectional Queries**: The Supabase data engine queries the chronological weekly records using a bidirectional `.or` filter (`ticker_a`/`ticker_b` match check), mapping and aligning the `returns_a_90d` and `returns_b_90d` values in-memory to perfectly match the user's selected ticker display order.
+- **Interactive Cursor Metrics Status Board**: Plotted using a custom D3 line chart displaying Pearson/Spearman coefficients and 90D returns with vibrant HSL design system tokens. Instead of using high, obstructive floating HTML tooltips, active hover states are driven through a clean **Cursor Metrics Board** positioned directly above the chart, which falls back to the latest weekly data point upon pointer exit.
+- **ETF Description Clarity**: Integrates descriptive ETF names (e.g. `QQQ — Invesco QQQ Trust (NASDAQ 100)`) next to bare tickers inside searchable select dropdown elements for increased readability.
+- **Verification**: Verified using Biome check, Vite build, and 156/156 green Vitest test suites. Added dedicated TDD tests verifying the bidirectional logic, order independence, and selector rendering.
+
 ## [2026-05-22] fix | Resolve Gemini 3 Multi-Tool 400 API Error & Enable Tool Context Circulation
 
 Resolved the `400 INVALID_ARGUMENT` error when running Gemini 3 models with both custom function calling and Google Search grounding tools:

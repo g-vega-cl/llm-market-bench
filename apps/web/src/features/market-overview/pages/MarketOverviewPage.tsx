@@ -268,7 +268,7 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: Correlati
             'US Broad': ['QQQ', 'VIG', 'IWM', 'SPY'],
             'Intl Dev': ['EFA', 'EWJ', 'EWG', 'EWL', 'EWP', 'IFAD', 'BWX'],
             'Emerging Markets': ['EEM', 'MCHI', 'EWZ', 'EIDO', 'EPI'],
-            Commodities: ['GLD', 'SLV', 'PDBC', 'USO'],
+            Commodities: ['GLD', 'SLV', 'CPER', 'PDBC', 'USO'],
             Bonds: ['TLT', 'IEF', 'LQD', 'EMB', 'BNDX', 'IAGG'],
             'Real Assets': ['VNQ', 'ICF'],
             Crypto: ['BTCUSD', 'ETHUSD'],

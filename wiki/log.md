@@ -1,3 +1,7 @@
+## [2026-05-22] feature | Include CPER in Commodities Sector Analysis
+
+Added `'CPER'` (United States Copper Index Fund) to the Commodities sector performance grid on the market overview dashboard, allowing users to view trailing 90-day copper performance. The ETF's descriptions and metadata are fully integrated via `etf-descriptions.ts`. Added a robust frontend unit test in `MarketOverviewPage.test.tsx` (TDD-first) to prevent regressions, formatted and verified the changes against the Biome linter, and confirmed that the full test suite passes.
+
 ## [2026-05-21] feature | Wiki Page Deletion on Scope Removal
 
 Added explicit page-deletion enforcement to the wiki system. When a subsystem, entity, or concept is fully removed from the codebase, its wiki page must now be deleted (not struck through). Two layers of enforcement:
@@ -253,3 +257,7 @@ Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction te
 ## [2026-05-22] refactor | auto_wiki.py: extract apply_changes() and add page deletion enforcement
 
 Extracted the inline write-changes block from `main()` into a testable `apply_changes()` function. Added `apply_page_deletions()` to physically delete wiki pages whose scope has been removed from the codebase, strip their `[[link]]` entries from `index.md`, and validate against path traversal. The LLM diff agent can now emit `deleted_pages` in its JSON output. Updated `wiki/SCHEMA.md` Maintenance Rule 5 to document the deletion policy and required log format. Covered by 7 new tests in `apps/engine/tests/test_wiki_schema.py`.
+
+## [2026-05-22] feature | Added CPER to Commodities sector and frontend test coverage
+
+Added `'CPER'` (United States Copper Index Fund) to the Commodities sector performance grid in `MarketOverviewPage.tsx`, and introduced `MarketOverviewPage.test.tsx` with a targeted regression test for CPER rendering. Updated vitest config formatting for multi-line include arrays.

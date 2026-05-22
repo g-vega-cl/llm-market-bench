@@ -8,7 +8,10 @@ export default defineConfig({
         globals: true,
         environment: 'jsdom',
         setupFiles: ['./src/test/setup.ts'],
-        include: ['src/**/*.{test,spec}.{ts,tsx}', '../../packages/ui-design-system/src/**/*.{test,spec}.{ts,tsx}'],
+        include: [
+            'src/**/*.{test,spec}.{ts,tsx}',
+            '../../packages/ui-design-system/src/**/*.{test,spec}.{ts,tsx}',
+        ],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'json', 'html'],

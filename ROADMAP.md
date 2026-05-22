@@ -90,6 +90,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
 - [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
 - [ ] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
+- [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.
+- [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
+- [ ] - Benchify : audit that memories are still being correlated to each other
 
 ## Under Consideration
 

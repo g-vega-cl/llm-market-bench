@@ -40,7 +40,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Mutation Preview CLI** - Add a dry-run mode to the Auto-Research researcher to preview the next prompt mutation without deploying it.
 - [ ] **Auto-Research Diff Viewer** - Implement a color-coded diff viewer in the Web Arena to compare experiment variants against the baseline logic.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
-- [ ] **Make sure we save the historical correlation/returns table/matrix**
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.

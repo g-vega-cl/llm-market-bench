@@ -23,7 +23,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const colorSchemeMap: Record<string, Record<string, string>> = {
     accent: {
-        solid: 'bg-accent text-zinc-950 hover:bg-accent-hover focus:ring-accent/40',
+        solid: 'bg-accent text-white hover:bg-accent-hover focus:ring-accent/40',
         outline: 'border-2 border-accent text-accent hover:bg-accent/10 focus:ring-accent/40',
         ghost: 'text-accent hover:bg-accent/10 focus:ring-accent/40',
         soft: 'bg-accent-light text-accent-dark hover:bg-accent/20 focus:ring-accent/40',
@@ -34,28 +34,28 @@ const colorSchemeMap: Record<string, Record<string, string>> = {
         outline: 'border-2 border-success text-success hover:bg-success/10 focus:ring-success/40',
         ghost: 'text-success hover:bg-success/10 focus:ring-success/40',
         soft: 'bg-success-light text-success-dark hover:bg-success/20 focus:ring-success/40',
-        glass: 'bg-success/10 dark:bg-success/5 backdrop-blur-md border border-success/20 text-success hover:bg-success/20 dark:hover:bg-accent/10 focus:ring-success/40',
+        glass: 'bg-success/10 dark:bg-success/5 backdrop-blur-md border border-success/20 text-success hover:bg-success/20 dark:hover:bg-success/10 focus:ring-success/40',
     },
     danger: {
-        solid: 'bg-danger text-zinc-950 hover:bg-danger/80 focus:ring-danger/40',
+        solid: 'bg-danger text-white hover:bg-danger/80 focus:ring-danger/40',
         outline: 'border-2 border-danger text-danger hover:bg-danger/10 focus:ring-danger/40',
         ghost: 'text-danger hover:bg-danger/10 focus:ring-danger/40',
         soft: 'bg-danger-light text-danger-dark hover:bg-danger/20 focus:ring-danger/40',
-        glass: 'bg-danger/10 dark:bg-danger/5 backdrop-blur-md border border-danger/20 text-danger hover:bg-danger/20 dark:hover:bg-accent/10 focus:ring-danger/40',
+        glass: 'bg-danger/10 dark:bg-danger/5 backdrop-blur-md border border-danger/20 text-danger hover:bg-danger/20 dark:hover:bg-danger/10 focus:ring-danger/40',
     },
     info: {
-        solid: 'bg-info text-zinc-950 hover:bg-info/80 focus:ring-info/40',
+        solid: 'bg-info text-white hover:bg-info/80 focus:ring-info/40',
         outline: 'border-2 border-info text-info hover:bg-info/10 focus:ring-info/40',
         ghost: 'text-info hover:bg-info/10 focus:ring-info/40',
         soft: 'bg-info-light text-info-dark hover:bg-info/20 focus:ring-info/40',
-        glass: 'bg-info/10 dark:bg-info/5 backdrop-blur-md border border-info/20 text-info hover:bg-info/20 dark:hover:bg-accent/10 focus:ring-info/40',
+        glass: 'bg-info/10 dark:bg-info/5 backdrop-blur-md border border-info/20 text-info hover:bg-info/20 dark:hover:bg-info/10 focus:ring-info/40',
     },
     warning: {
         solid: 'bg-warning text-zinc-950 hover:bg-warning/80 focus:ring-warning/40',
         outline: 'border-2 border-warning text-warning hover:bg-warning/10 focus:ring-warning/40',
         ghost: 'text-warning hover:bg-warning/10 focus:ring-warning/40',
         soft: 'bg-warning-light text-warning-dark hover:bg-warning/20 focus:ring-warning/40',
-        glass: 'bg-warning/10 dark:bg-warning/5 backdrop-blur-md border border-warning/20 text-warning hover:bg-warning/20 dark:hover:bg-accent/10 focus:ring-warning/40',
+        glass: 'bg-warning/10 dark:bg-warning/5 backdrop-blur-md border border-warning/20 text-warning hover:bg-warning/20 dark:hover:bg-warning/10 focus:ring-warning/40',
     },
     neutral: {
         solid: 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 focus:ring-zinc-500/40',

@@ -21,7 +21,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const badgeColors: Record<string, Record<string, string>> = {
     accent: {
-        solid: 'bg-accent text-zinc-950',
+        solid: 'bg-accent text-white',
         soft: 'bg-accent-light dark:bg-accent/20 text-accent-dark dark:text-accent',
         outline: 'border border-accent/30 dark:border-accent/30 text-accent dark:text-accent',
         dot: 'text-zinc-600 dark:text-zinc-400',
@@ -33,13 +33,13 @@ const badgeColors: Record<string, Record<string, string>> = {
         dot: 'text-zinc-600 dark:text-zinc-400',
     },
     danger: {
-        solid: 'bg-danger text-zinc-950',
+        solid: 'bg-danger text-white',
         soft: 'bg-danger-light dark:bg-danger/20 text-danger-dark dark:text-danger',
         outline: 'border border-danger/30 dark:border-danger/30 text-danger dark:text-danger',
         dot: 'text-zinc-600 dark:text-zinc-400',
     },
     info: {
-        solid: 'bg-info text-zinc-950',
+        solid: 'bg-info text-white',
         soft: 'bg-info-light dark:bg-info/20 text-info-dark dark:text-info',
         outline: 'border border-info/30 dark:border-info/30 text-info dark:text-info',
         dot: 'text-zinc-600 dark:text-zinc-400',
@@ -63,7 +63,7 @@ const badgeColors: Record<string, Record<string, string>> = {
         dot: 'text-zinc-600 dark:text-zinc-400',
     },
     medium: {
-        solid: 'bg-info text-zinc-950',
+        solid: 'bg-info text-white',
         soft: 'bg-info/10 dark:bg-info/20 text-info-dark dark:text-info',
         outline: 'border border-info/20 dark:border-info/30 text-info dark:text-info',
         dot: 'text-zinc-600 dark:text-zinc-400',

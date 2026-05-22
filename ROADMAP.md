@@ -21,17 +21,14 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [ ] **Find trading papers not just investing** - But low sell high?
-- [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 - [ ] **Make sure CI/CD tests behave same as local tests**
 - [ ] **Use frontend skills to improve frontend**
 - [ ] **Sector leaderboard**
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it's closed:** -goes along with papers
-- [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
+- [ ] **and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
-- [ ] **Improve investable assets again?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
@@ -92,6 +89,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other
+- [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
 
 ## Under Consideration
 

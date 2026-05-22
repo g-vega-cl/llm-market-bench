@@ -1,6 +1,6 @@
 """Tests for core.db module."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -9,6 +9,7 @@ from core.db import (
     get_async_supabase_client,
     get_supabase_client,
     is_transient_supabase_error,
+    upsert_newsletter_snapshot,
     with_retry,
 )
 
@@ -17,11 +18,56 @@ class TestSupabaseClients:
     """Tests for Supabase client creation and configuration."""
 
     def test_get_supabase_client_missing_config(self):
+        # Missing both
         with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
             with patch("core.db._supabase_client", None):
                 with pytest.raises(ValueError) as exc_info:
                     get_supabase_client()
                 assert "Supabase configuration missing" in str(exc_info.value)
+
+        # Missing URL only
+        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "key"):
+            with patch("core.db._supabase_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    get_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
+        # Missing Key only
+        with patch("core.db.SUPABASE_URL", "url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
+            with patch("core.db._supabase_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    get_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
+    def test_get_supabase_client_success_and_caching(self):
+        with patch("core.db.SUPABASE_URL", "url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "key"):
+            with patch("core.db._supabase_client", None):
+                with patch("core.db.create_client") as mock_create_client:
+                    mock_client = MagicMock()
+                    mock_create_client.return_value = mock_client
+
+                    client1 = get_supabase_client()
+                    client2 = get_supabase_client()
+
+                    assert client1 is mock_client
+                    assert client2 is mock_client
+                    mock_create_client.assert_called_once()
+
+    def test_get_supabase_client_coroutine_resolution(self):
+        with patch("core.db.SUPABASE_URL", "url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "key"):
+            with patch("core.db._supabase_client", None):
+                with patch("core.db.create_client") as mock_create_client:
+                    mock_client = MagicMock()
+
+                    async def mock_coro():
+                        return mock_client
+
+                    mock_create_client.return_value = mock_coro()
+
+                    client = get_supabase_client()
+
+                    assert client is mock_client
+                    mock_create_client.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_async_supabase_client_missing_config(self):
@@ -30,6 +76,21 @@ class TestSupabaseClients:
                 with pytest.raises(ValueError) as exc_info:
                     await get_async_supabase_client()
                 assert "Supabase configuration missing" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_get_async_supabase_client_success_and_caching(self):
+        with patch("core.db.SUPABASE_URL", "url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "key"):
+            with patch("core.db._supabase_async_client", None):
+                with patch("core.db.create_async_client", new_callable=AsyncMock) as mock_create_async_client:
+                    mock_client = MagicMock()
+                    mock_create_async_client.return_value = mock_client
+
+                    client1 = await get_async_supabase_client()
+                    client2 = await get_async_supabase_client()
+
+                    assert client1 is mock_client
+                    assert client2 is mock_client
+                    mock_create_async_client.assert_called_once()
 
 
 class TestIsTransientSupabaseError:
@@ -142,3 +203,65 @@ class TestWithRetry:
         with patch("time.sleep"), pytest.raises(RuntimeError):
             with_retry(operation, "test_op")
         assert operation.call_count == 3
+
+
+class TestUpsertNewsletterSnapshot:
+    """Tests for upsert_newsletter_snapshot function."""
+
+    def test_upsert_success(self):
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.data = [{"id": 1, "source_id": "test_123"}]
+        mock_client.table.return_value.upsert.return_value.execute.return_value = mock_response
+
+        data = {
+            "source_id": "test_123",
+            "chunk_hash": "hash123",
+            "sender": "test@example.com",
+            "subject": "Test Subject",
+            "content": "Test content",
+            "date": "2023-01-01T00:00:00Z",
+        }
+
+        result = upsert_newsletter_snapshot(mock_client, data)
+
+        assert result == {"id": 1, "source_id": "test_123"}
+        mock_client.table.assert_called_once_with("newsletter_snapshots")
+        mock_client.table.return_value.upsert.assert_called_once_with(data, on_conflict="date,source_id")
+
+    def test_upsert_empty_data(self):
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.data = []
+        mock_client.table.return_value.upsert.return_value.execute.return_value = mock_response
+
+        data = {
+            "source_id": "test_123",
+            "chunk_hash": "hash123",
+            "sender": "test@example.com",
+            "subject": "Test Subject",
+            "content": "Test content",
+            "date": "2023-01-01T00:00:00Z",
+        }
+
+        result = upsert_newsletter_snapshot(mock_client, data)
+
+        assert result == {}
+
+    def test_upsert_failure(self):
+        mock_client = MagicMock()
+        mock_client.table.return_value.upsert.return_value.execute.side_effect = Exception("DB Error")
+
+        data = {
+            "source_id": "test_123",
+            "chunk_hash": "hash123",
+            "sender": "test@example.com",
+            "subject": "Test Subject",
+            "content": "Test content",
+            "date": "2023-01-01T00:00:00Z",
+        }
+
+        with pytest.raises(Exception) as exc_info:
+            upsert_newsletter_snapshot(mock_client, data)
+
+        assert "DB Error" in str(exc_info.value)

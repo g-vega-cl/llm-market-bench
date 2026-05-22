@@ -51,3 +51,9 @@ GRANT ALL ON public.market_feeling TO service_role;
 GRANT ALL ON public.correlation_runs TO service_role;
 GRANT ALL ON public.correlation_data TO service_role;
 GRANT ALL ON public.prompt_experiments TO service_role;
+
+-- ────────────────────────────────────────────────────────────────────
+-- Note: When creating NEW tables after October 30, 2026, GRANTs must be
+-- added in the same migration. See wiki/concepts/supabase-grant-convention.md
+-- This convention is programmatically enforced by apps/engine/tests/test_migration_grants.py.
+-- ────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import os
+import re
 
 
 def test_new_tables_have_grants():
@@ -22,6 +23,10 @@ def test_new_tables_have_grants():
             with open(filepath) as f:
                 content = f.read()
 
-            # naive check for CREATE TABLE
-            if "CREATE TABLE" in content.upper() and "GRANT " not in content.upper():
-                raise AssertionError(f"Migration {filename} creates a table but is missing explicit GRANTs (required after {cutoff_date_str}).")
+            table_pattern = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-zA-Z0-9_]+)", re.IGNORECASE)
+            tables = table_pattern.findall(content)
+
+            for table in tables:
+                grant_pattern = re.compile(rf"GRANT\s+ALL\s+ON\s+public\.{table}\s+TO\s+service_role", re.IGNORECASE)
+                if not grant_pattern.search(content):
+                    raise AssertionError(f"Migration {filename} creates a table but is missing explicit GRANTs (required after {cutoff_date_str}).")

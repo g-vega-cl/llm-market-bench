@@ -1,3 +1,7 @@
+## [2026-05-22] feature | Add South Korea's ETF (EWY) to correlation matrix
+
+Added South Korea's ETF (EWY) to the correlation matrix engine's TICKER_UNIVERSE and the web dashboard's "Emerging Markets" categories. Updated ETF descriptions and correlation-matrix-source documentation.
+
 ## [2026-05-15] fix | Fix price backfill to use pre-injected price_map for consistency
 
 Changed the `injected_market_price` backfill logic in `analyze.py` to first use the price from the `price_map` that was injected into the LLM's prompt. Previously, it always fetched a fresh price from the market, which could cause false drift detections when compared to the JIT execution price. Now it stamps the price the LLM actually saw, falling back to a fresh fetch only for tickers discovered via tool calls.
@@ -194,3 +198,7 @@ Adjusted the styling configurations in the `@llm-market-bench/ui-design-system` 
 
 Removed the task "Make sure we save the historical correlation/returns table/matrix" from the project roadmap. No code changes, just deprioritization of a planned feature.
 
+
+## [2026-05-22] feature | Add South Korea ETF (EWY) to correlation matrix
+
+Added EWY (iShares MSCI South Korea ETF) to the correlation matrix TICKER_UNIVERSE in the engine, expanding the Emerging Markets category from 6 to 7 tickers. Updated the web dashboard's SectorPerformanceGrid and etf-descriptions to include EWY. Updated correlation-matrix-source wiki page to reflect the new 71-asset universe.

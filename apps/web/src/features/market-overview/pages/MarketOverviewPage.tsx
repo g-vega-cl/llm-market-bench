@@ -312,7 +312,7 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: Correlati
             ],
             'US Broad': ['QQQ', 'VIG', 'IWM', 'SPY'],
             'Intl Dev': ['EFA', 'EWJ', 'EWG', 'EWL', 'EWP', 'IFAD', 'BWX'],
-            'Emerging Markets': ['EEM', 'MCHI', 'EWZ', 'EIDO', 'EPI'],
+            'Emerging Markets': ['EEM', 'MCHI', 'EWZ', 'EIDO', 'EPI', 'EWY'],
             Commodities: ['GLD', 'SLV', 'CPER', 'PDBC', 'USO'],
             Bonds: ['TLT', 'IEF', 'LQD', 'EMB', 'BNDX', 'IAGG'],
             'Real Assets': ['VNQ', 'ICF'],

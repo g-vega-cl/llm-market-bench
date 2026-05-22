@@ -29,15 +29,14 @@ Targeted per-trade RAG via `retrieve_for_decision()`:
 Batch pgvector search via `retrieve_context_batch()` for non-time-critical deep
 analysis.
 
-## Memory Types
+| Type | Source | Table | Scope | Decay Rate |
+|------|--------|-------|-------|------------|
+| MARKET_EVENT | Consensus synthesis | `memories` | Cross-agent | Standard (50% per half-life) |
+| GOVERNMENT_INCENTIVE | Gov tracking | `memories` | Cross-agent | Mild (25% per half-life) |
+| LESSON_LEARNED | Manager Agent | `memories` | Cross-agent | Persistent (0% decay) |
+| UNCROWDED_TRADE | Discovery Agent | `memories` | Cross-agent | Persistent (0% decay) |
+| PAST_REASONING | Agent decisions | `decisions` | Per-agent | N/A |
 
-| Type | Source | Table | Scope |
-|------|--------|-------|-------|
-| MARKET_EVENT | Consensus synthesis | `memories` | Cross-agent |
-| GOVERNMENT_INCENTIVE | Gov tracking | `memories` | Cross-agent |
-| LESSON_LEARNED | Manager Agent | `memories` | Cross-agent |
-| UNCROWDED_TRADE | Discovery Agent | `memories` | Cross-agent |
-| PAST_REASONING | Agent decisions | `decisions` | Per-agent |
 
 ## Related
 

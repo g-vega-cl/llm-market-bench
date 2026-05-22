@@ -1,3 +1,11 @@
+## [2026-05-22] feature | Advanced memory reinforcement, tiered decay, and sleep consolidation
+
+Implemented a robust and advanced LLM memory management system to prevent context pollution and reasoning degradation:
+- **Memory Reinforcement**: Semantically similar duplicate records now reset `relevance_score` to `1.0` and bump `created_at` timestamp rather than being silently ignored. The duplicate check window is extended to **168 hours (7 days)** to capture repeating signals across weekends.
+- **Tiered Decay & Purging**: Custom decay rates applied to memories based on their type during weekly cleanup (`MARKET_EVENT` decays standardly by 50%, `GOVERNMENT_INCENTIVE` decays mildly by 25%, and `LESSON_LEARNED`/`UNCROWDED_TRADE` never decay). Added a step to hard-delete `SUPERSEDED` memories older than **180 days** to prevent pgvector size bloat.
+- **Sleep Cycle Consolidation**: An offline weekly consolidation loop that clusters active memories using cosine similarity `>= 0.85`, synthesizes them using instructor-wrapped DeepSeek into canonical consolidated entries (`ACTIVE`, `UPDATE` relationship, parent-linked), and marks original entries as `SUPERSEDED`. Added a scale-safety cap of the **500 most recent active memories** for DFS clustering.
+- **TDD & Verifications**: Implemented comprehensive unit tests (`test_memory_reinforce.py`, `test_tiered_decay.py`, and `test_memory_consolidation.py`) to verify the behaviors in TDD style. Ruff checks and formatting fully completed.
+
 ## [2026-05-22] refactor | Unify dark theme and enforce design system default primitives
 
 Fixed badge legibility and design system compliance globally. Eliminated all light/dark mode distinctions and `dark:` conditional classes from `Badge` and `Button` primitives to standardize on a single, high-contrast premium theme. Refactored application pages (Today, Market Overview, and Auto-Research status lists) to consume standard component properties (`colorScheme` and `variant`) without custom utility overrides. Updated wiki entities accordingly.

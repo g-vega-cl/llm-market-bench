@@ -1,3 +1,12 @@
+## [2026-05-21] feature | Wiki Page Deletion on Scope Removal
+
+Added explicit page-deletion enforcement to the wiki system. When a subsystem, entity, or concept is fully removed from the codebase, its wiki page must now be deleted (not struck through). Two layers of enforcement:
+
+1. **`wiki/SCHEMA.md`** — new Maintenance Rule 5 documents the policy, required log-entry format (`## [YYYY-MM-DD] delete | <path> — scope removed: <reason>`), and the expectation that `index.md` entries are cleaned up.
+2. **`apps/engine/auto_wiki.py`** — the LLM diff agent can now emit `deleted_pages` in its JSON output. The new `apply_page_deletions()` function physically deletes the files, strips their `[[link]]` lines from `index.md`, and validates against path traversal. The inline write-changes block was extracted into a testable `apply_changes()` function.
+
+Covered by 7 new tests in `apps/engine/tests/test_wiki_schema.py`.
+
 ## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
 
 Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
@@ -240,3 +249,7 @@ Implemented a stealthy reverse proxy for PostHog to prevent ad blockers from blo
 ## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
 
 Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
+
+## [2026-05-22] refactor | auto_wiki.py: extract apply_changes() and add page deletion enforcement
+
+Extracted the inline write-changes block from `main()` into a testable `apply_changes()` function. Added `apply_page_deletions()` to physically delete wiki pages whose scope has been removed from the codebase, strip their `[[link]]` entries from `index.md`, and validate against path traversal. The LLM diff agent can now emit `deleted_pages` in its JSON output. Updated `wiki/SCHEMA.md` Maintenance Rule 5 to document the deletion policy and required log format. Covered by 7 new tests in `apps/engine/tests/test_wiki_schema.py`.

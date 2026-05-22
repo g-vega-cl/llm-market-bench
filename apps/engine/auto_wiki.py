@@ -179,7 +179,11 @@ Cross-references use [[entities/page-name]] style. Naming is kebab-case.
 
 Log entries use format: ## [YYYY-MM-DD] type | Title
 
-Never delete content — strike through or mark superseded instead.
+Pages must always reflect the current state of the codebase. Do not use strikethroughs
+or "mark superseded" — remove or rewrite outdated content directly. The log.md and Git
+history are the record of what changed and when.
+For pages whose scope (subsystem, entity, concept) has been fully removed from the codebase,
+the page itself must be deleted — add it to `deleted_pages` in your response.
 
 ## What to Document
 
@@ -209,10 +213,15 @@ Output ONLY valid JSON (no markdown, no explanation, no code fences):
       "content": "---\\ntags: [...]\\ncategory: entity\\n---\\n\\n# My Feature\\n\\n..."
     }
   ],
+  "deleted_pages": ["entities/removed-module.md"],
   "index_additions": [
     {"section": "Entities", "entry": "- [[entities/my-feature]] — one-line description"}
   ]
 }
+
+Include `deleted_pages` only when the staged diff fully removes a subsystem or component
+that has a corresponding wiki page. Do not list pages for refactors or renames — only
+permanent scope removal (the code no longer exists anywhere in the project).
 
 If no documentation is needed, return:
 {"should_update": false}
@@ -325,6 +334,47 @@ def write_log_entry(entry: str) -> None:
         print("  [auto-wiki] rotated log.md to archive", file=sys.stderr)
 
 
+def apply_page_deletions(paths: list[str]) -> None:
+    """Delete wiki pages whose scope has been removed from the codebase.
+
+    For each path in *paths*:
+    - Validates the resolved path is inside WIKI_DIR (guards against traversal).
+    - Deletes the file if it exists (no-op if already gone).
+    - Removes any index.md line that references the page via [[link]] notation.
+    - Prints a stderr diagnostic for each action taken.
+    """
+    index_path = WIKI_DIR / "index.md"
+
+    for rel_path in paths:
+        target = (WIKI_DIR / rel_path).resolve()
+        if not str(target).startswith(str(WIKI_DIR.resolve())):
+            print(
+                f"  [auto-wiki] ERROR: path traversal attempt blocked: {rel_path}",
+                file=sys.stderr,
+            )
+            continue
+
+        if target.exists():
+            target.unlink()
+            print(f"  [auto-wiki] deleted wiki/{rel_path}", file=sys.stderr)
+        else:
+            print(f"  [auto-wiki] skip (already gone): wiki/{rel_path}", file=sys.stderr)
+
+        # Remove matching entry from index.md
+        if index_path.exists():
+            # Build a stem for matching [[entities/old-module]] style links
+            stem = rel_path.removesuffix(".md")
+            original = index_path.read_text()
+            filtered_lines = [
+                line
+                for line in original.splitlines(keepends=True)
+                if f"[[{stem}]]" not in line
+            ]
+            if len(filtered_lines) != len(original.splitlines(keepends=True)):
+                index_path.write_text("".join(filtered_lines))
+                print(f"  [auto-wiki] index.md: removed entry for {rel_path}", file=sys.stderr)
+
+
 def write_new_page(rel_path: str, content: str) -> None:
     target = (WIKI_DIR / rel_path).resolve()
     if not str(target).startswith(str(WIKI_DIR.resolve())):
@@ -386,6 +436,39 @@ def add_index_entries(entries: list[dict]) -> None:
 
 def format_date_for_log() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
+
+
+def apply_changes(result: dict) -> None:
+    """Apply all wiki mutations described in *result* (from the LLM).
+
+    Handles:
+    - Appending a log entry to log.md
+    - Writing new pages
+    - Deleting pages whose scope was removed (via apply_page_deletions)
+    - Adding entries to index.md
+    """
+    today = format_date_for_log()
+
+    log_entry = result.get("log_entry", "")
+    if log_entry:
+        # Replace placeholder date with actual date
+        log_entry = re.sub(r"## \[\d{4}-\d{2}-\d{2}\]", f"## [{today}]", log_entry)
+        write_log_entry(log_entry)
+        print("  [auto-wiki] appended to log.md", file=sys.stderr)
+
+    for page in result.get("new_pages", []):
+        path = page.get("path", "")
+        content = page.get("content", "")
+        if path and content:
+            write_new_page(path, content)
+
+    deleted = result.get("deleted_pages", [])
+    if deleted:
+        apply_page_deletions(deleted)
+
+    index_additions = result.get("index_additions", [])
+    if index_additions:
+        add_index_entries(index_additions)
 
 
 def main():
@@ -481,25 +564,7 @@ def main():
         print(json.dumps(result, indent=2))
         sys.exit(0)
 
-    # Write changes
-    today = format_date_for_log()
-
-    log_entry = result.get("log_entry", "")
-    if log_entry:
-        # Replace placeholder date with actual date
-        log_entry = re.sub(r"## \[\d{4}-\d{2}-\d{2}\]", f"## [{today}]", log_entry)
-        write_log_entry(log_entry)
-        print("  [auto-wiki] appended to log.md", file=sys.stderr)
-
-    for page in result.get("new_pages", []):
-        path = page.get("path", "")
-        content = page.get("content", "")
-        if path and content:
-            write_new_page(path, content)
-
-    index_additions = result.get("index_additions", [])
-    if index_additions:
-        add_index_entries(index_additions)
+    apply_changes(result)
 
     print("  [auto-wiki] done", file=sys.stderr)
     sys.exit(0)

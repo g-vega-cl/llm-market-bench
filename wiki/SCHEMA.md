@@ -98,10 +98,15 @@ qmd embed                          # regenerate embeddings
 
 ## Maintenance Rules
 
-1. **Refine Synthesis** — Keep pages sharp and current. Replace or remove stale/superseded content to maintain a clean "current best" understanding. Do not use strikethroughs for old content; rely on Git and `log.md` for history.
+1. **Pages are always current** — A wiki page must reflect the *present* state of the codebase, nothing more. When information changes, rewrite or remove the outdated content directly. Never use strikethroughs, "~~old text~~", or phrases like "previously" / "as of X, this was superseded". The log.md and Git history are the chronological record; the wiki pages are the living truth.
 2. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`. The file is automatically rotated into `wiki/log/YYYY-MM.md` buckets when it exceeds 30KB.
 3. **Answers become pages** — good query answers get filed back into the wiki
 4. **Lint weekly** — check for contradictions, orphans, stale claims, gaps
+5. **Page Deletion on Scope Removal** — When a subsystem, entity, or concept is fully removed from the codebase, its wiki page **must** be deleted. Do **not** strike through or mark it superseded — delete the file entirely. Removing a stale page is cleaner than leaving dead documentation. The deletion must be recorded in `log.md` using the format:
+   ```
+   ## [YYYY-MM-DD] delete | <wiki-relative-path> — scope removed: <brief reason>
+   ```
+   The corresponding entry in `index.md` must also be removed. This is enforced automatically by `auto_wiki.py` via the `deleted_pages` field in its JSON output.
 
 ## Automated Lint
 

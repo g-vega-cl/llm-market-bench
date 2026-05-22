@@ -12,11 +12,15 @@ The platform continuously monitors LLM analysis output for anomalous behavior, i
 Anomalies are flagged when model behavior violates expected output invariants. Common patterns include:
 
 - **Empty JSON / Malformed Output**: The model returns unparseable JSON or empty objects `{}` when structured data is required.
-  - *Example*: MiniMax 01 model returning empty JSON arrays for Market Feeling analysis.
-  - *Detection*: Schema validation failure at the handler level (e.g., Pydantic validation errors).
-- **Zero Decision Generation**: The model consistently produces zero trading decisions on high-volatility days where action is statistically expected, indicating over-alignment or prompt misalignment.
-  - *Example*: Gemini-3.1-flash-lite returning zero trades during major macro shifts.
-  - *Detection*: Post-analysis audit flagged when `len(decisions) == 0` for 3+ consecutive high-volatility days.
+  - *DeepSeek Empty Content Anomaly*: When DeepSeek v4 models run with thinking mode enabled (`"thinking": {"type": "enabled"}`), they sometimes generate rich internal reasoning inside `reasoning_content` but return a completely empty or whitespace-only main `content` string.
+  - *DeepSeek Mitigation*: The platform's analysis and verification pipelines use `prepare_messages_for_instructor()` to strip `reasoning_content` from non-tool-call messages, saving context window and avoiding Instructor parser confusion. If the `has_valid_content()` check fails, a corrective JSON recovery prompt is automatically triggered.
+  - *MiniMax 01 Example*: Returning empty JSON arrays for Market Feeling analysis.
+  - *Detection*: Schema validation failure or missing content at the handler level (e.g., Pydantic validation errors).
+- **Zero Decision Generation / Tool Violations**: The model consistently produces zero trading decisions on high-volatility days where action is statistically expected, indicating over-alignment, or recommends actions without performing the required pre-requisite tool calls.
+  - *Gemini-3.1-flash-lite Zero Decision Anomaly*: Consistently returning zero trades or failing to execute necessary calculations during major macro shifts.
+  - *Gemini-3.1-flash-lite Built-in Tool Anomaly*: The Gemini API throws a `400 INVALID_ARGUMENT` error when attempting to use Google's built-in tools (such as web search) in combination with client-side function calling, complaining: *"Please enable tool_config.include_server_side_tool_invocations to use Built-in tools with Function calling"*. This triggers an immediate fallback to basic (non-tool) analysis.
+  - *Guardrail Hard Enforcement*: When falling back to basic analysis or failing to use tools, models may still output trade recommendations. The engine enforces safety guardrails (e.g., `HARD ENFORCEMENT: Agent recommended BUY for <ticker> without executing 'calculate_buy_quantity' tool`) and automatically rejects these trades to prevent ungrounded or improperly sized transactions.
+  - *Detection*: Post-analysis audit flagged when `len(decisions) == 0` for 3+ consecutive high-volatility days, or hard enforcement violations in the analysis log stream.
 
 ## Standard Operating Procedure (SOP)
 

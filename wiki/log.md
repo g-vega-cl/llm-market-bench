@@ -1,3 +1,11 @@
+## [2026-05-22] doc | Remediate "Thin" Wiki Pages & Add Model Anomalies & Cleanup Schedule
+
+Enhanced the concepts page [[concepts/model-anomalies]] and database maintenance page [[entities/cleanup]] to resolve structural knowledge gaps flagged in the project's documentation audit. Aligned the descriptions directly with the codebase and recent ingestion logs:
+- **Model Anomalies**: Documented the DeepSeek empty content anomaly (thinking mode populated `reasoning_content` while returning empty main `content`) and its mitigation via `prepare_messages_for_instructor()` and JSON recovery prompts. Also documented the Gemini-3.1-flash-lite built-in search tool calling conflict (API error 400 with function calling) and the corresponding hard enforcement safety guardrail rejections (e.g., BUY recommended without executing buy quantity calculations).
+- **Database Cleanup**: Specified the precise schedule (runs automatically every Friday at 16:00 EST / 21:00 UTC as part of the `audit.yml` GHA workflow, immediately following the audit execution) and the exact PostgreSQL interval retention policies for `ingestion_logs` (>48 hours), resolved/ignored `system_audits` (>30 days), and `market_feeling` (>30 days).
+
+Verified that the wiki is clean and passes all structural checks via the wiki linter `wiki_lint.py`.
+
 ## [2026-05-22] feature | Include CPER in Commodities Sector Analysis
 
 Added `'CPER'` (United States Copper Index Fund) to the Commodities sector performance grid on the market overview dashboard, allowing users to view trailing 90-day copper performance. The ETF's descriptions and metadata are fully integrated via `etf-descriptions.ts`. Added a robust frontend unit test in `MarketOverviewPage.test.tsx` (TDD-first) to prevent regressions, formatted and verified the changes against the Biome linter, and confirmed that the full test suite passes.

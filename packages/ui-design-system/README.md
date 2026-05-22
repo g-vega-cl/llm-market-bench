@@ -77,8 +77,10 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 
 ## Principles
 
-- **Simplicity over abstraction.** A small inline hex map in a component beats a shared token system that fights the build tool.
-- **Use what works.** If `bg-neon-green-500` is provably in the built CSS, use it — no generators, safelists, or duplicate token systems needed.
+- **Prefer Default System Styles**: Always favor using standard props (like `colorScheme`, `variant`, `size`, `radius`) to achieve the desired styling rather than passing custom `className` override utility classes. Centralized styles prevent visual fragmentation, guarantee correct contrast/accessibility natively, and simplify future styling adjustments.
+- **Single Unified Theme**: The system is fully standardized under a single premium high-contrast dark theme ("Bloomberg Terminal meets Wired"). Primitives do not include any light/dark state conditional logic (`dark:`, media queries, or root class overrides).
+- **Simplicity over abstraction**: A small inline hex map in a component beats a shared token system that fights the build tool.
+- **Use what works**: If `bg-neon-green-500` is provably in the built CSS, use it — no generators, safelists, or duplicate token systems needed.
 
 ## Usage
 
@@ -86,7 +88,7 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 import { Button, Card, Badge, SectionHeading, cn } from "@llm-market-bench/ui-design-system"
 ```
 
-Components accept a `className` prop for overrides.
+While components accept a `className` prop for occasional layout/positional adjustments (e.g. margin, spacing), it should not be used to override base styling tokens like text colors, background colors, borders, or hover styles.
 
 ## Key Files
 

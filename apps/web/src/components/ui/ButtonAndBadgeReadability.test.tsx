@@ -138,4 +138,45 @@ describe('Button and Badge Contrast/Readability Tests', () => {
             expect(badge.className).not.toContain('text-white');
         });
     });
+
+    describe('Unified Component Colors (No Light/Dark Distinction)', () => {
+        it('should use translucent styling directly for success soft badge without dark prefix', () => {
+            const { getByText } = render(
+                <Badge variant="soft" colorScheme="success">
+                    Success Soft Badge
+                </Badge>,
+            );
+            const badge = getByText('Success Soft Badge');
+            expect(badge.className).toContain('bg-success/20');
+            expect(badge.className).toContain('text-success');
+            expect(badge.className).not.toContain('bg-success-light');
+            expect(badge.className).not.toContain('text-success-dark');
+        });
+
+        it('should use translucent styling directly for accent soft badge without dark prefix', () => {
+            const { getByText } = render(
+                <Badge variant="soft" colorScheme="accent">
+                    Accent Soft Badge
+                </Badge>,
+            );
+            const badge = getByText('Accent Soft Badge');
+            expect(badge.className).toContain('bg-accent/20');
+            expect(badge.className).toContain('text-accent');
+            expect(badge.className).not.toContain('bg-accent-light');
+            expect(badge.className).not.toContain('text-accent-dark');
+        });
+
+        it('should use translucent styling directly for success soft button without dark prefix', () => {
+            const { getByRole } = render(
+                <Button variant="soft" colorScheme="success">
+                    Success Soft Button
+                </Button>,
+            );
+            const button = getByRole('button');
+            expect(button.className).toContain('bg-success/20');
+            expect(button.className).toContain('text-success');
+            expect(button.className).not.toContain('bg-success-light');
+            expect(button.className).not.toContain('text-success-dark');
+        });
+    });
 });

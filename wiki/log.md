@@ -1,3 +1,7 @@
+## [2026-05-22] refactor | Unify dark theme and enforce design system default primitives
+
+Fixed badge legibility and design system compliance globally. Eliminated all light/dark mode distinctions and `dark:` conditional classes from `Badge` and `Button` primitives to standardize on a single, high-contrast premium theme. Refactored application pages (Today, Market Overview, and Auto-Research status lists) to consume standard component properties (`colorScheme` and `variant`) without custom utility overrides. Updated wiki entities accordingly.
+
 ## [2026-05-22] feature | Add South Korea's ETF (EWY) to correlation matrix
 
 Added South Korea's ETF (EWY) to the correlation matrix engine's TICKER_UNIVERSE and the web dashboard's "Emerging Markets" categories. Updated ETF descriptions and correlation-matrix-source documentation.

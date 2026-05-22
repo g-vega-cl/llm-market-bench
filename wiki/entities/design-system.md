@@ -52,7 +52,12 @@ Higher-level compound components for specific UI patterns:
 
 ## Usage
 
-All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Audits) import from this package. Components handle their own dark mode via Tailwind's `dark:` variants, assuming the `dark` class is on the root `<html>` element.
+All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Audits) import from this package. 
+
+### Unified Theme & Conventions
+
+1. **Unified Theme (No Light/Dark Toggle)**: The application is standardized on a single premium high-contrast theme ("Bloomberg Terminal meets Wired"). Primitives like `Badge` and `Button` render their high-contrast dark styles directly without relying on custom `dark:` classes, toggles, or fallback media queries.
+2. **Prefer Default Styles**: Developers MUST always favor default styles provided by the design system primitives (e.g. using standard `colorScheme` and `variant` properties) rather than writing custom `className` override styles. This prevents visual inconsistency, ensures correct contrast automatically, and simplifies maintenance.
 
 ## Related
 

@@ -160,14 +160,14 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         <h1 className="text-5xl sm:text-6xl font-black text-white tracking-tighter text-display drop-shadow-lg">
                             MARKET OVERVIEW
                         </h1>
-                        <div className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-bold rounded-full border border-white/30 shadow-lg">
+                        <Badge variant="outline" colorScheme="neutral">
                             {now.toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 month: 'long',
                                 day: 'numeric',
                                 year: 'numeric',
                             })}
-                        </div>
+                        </Badge>
                     </div>
 
                     <p className="text-lg text-electric-blue-100 font-light leading-relaxed max-w-2xl drop-shadow">

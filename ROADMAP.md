@@ -69,7 +69,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: improve get sector alternatives tool
 - [ ] - Benchify: use html for documentation?
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
-- [ ] - Benchify: include copper in sector analysis.
+- [x] - Benchify: include copper in sector analysis. — CPER added to Commodities grid in MarketOverviewPage.tsx.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 - [ ] - Revisit alpaca trades.
 - [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
@@ -79,7 +79,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
   - [ ] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
-  - [ ] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule).
+  - [x] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule). — model-anomalies.md expanded with Gemini, DeepSeek, and hard-enforcement details; entities/cleanup.md updated with complete schedule/retention policy.
 - [ ] - Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy. \
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [ ] -Benchify: audit price fetching and how we pass it to LLMs

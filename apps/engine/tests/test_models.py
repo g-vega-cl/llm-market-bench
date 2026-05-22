@@ -6,10 +6,13 @@ import pytest
 from pydantic import ValidationError
 
 from core.models import (
+    CauseAndEffectResult,
     DecisionObject,
     DecisionsResponse,
+    MacroEvent,
     RankedAsset,
     TickerSuggestion,
+    VerificationResult,
 )
 
 
@@ -79,6 +82,82 @@ def test_decision_object_allocation_percentage_bounds():
     assert "allocation_percentage" in str(exc_info.value)
 
 
+def test_decision_object_confidence_bounds():
+    """Test that DecisionObject enforces confidence bounds (0-100)."""
+    # Valid
+    DecisionObject(
+        signal="BUY",
+        confidence=0,
+        reasoning="test",
+        ticker="AAPL",
+        catalyst_type="MACRO",
+        catalyst_duration="INTRADAY",
+        source_id="test_source",
+    )
+    DecisionObject(
+        signal="BUY",
+        confidence=100,
+        reasoning="test",
+        ticker="AAPL",
+        catalyst_type="MACRO",
+        catalyst_duration="INTRADAY",
+        source_id="test_source",
+    )
+
+    # Invalid
+    with pytest.raises(ValidationError) as exc_info:
+        DecisionObject(
+            signal="BUY",
+            confidence=-1,
+            reasoning="test",
+            ticker="AAPL",
+            catalyst_type="MACRO",
+            catalyst_duration="INTRADAY",
+            source_id="test_source",
+        )
+    assert "confidence" in str(exc_info.value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        DecisionObject(
+            signal="BUY",
+            confidence=101,
+            reasoning="test",
+            ticker="AAPL",
+            catalyst_type="MACRO",
+            catalyst_duration="INTRADAY",
+            source_id="test_source",
+        )
+    assert "confidence" in str(exc_info.value)
+
+
+def test_decision_object_injected_market_price():
+    """Test that injected_market_price can be assigned and defaults to None."""
+    # Default is None
+    decision1 = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="test",
+        ticker="AAPL",
+        catalyst_type="MACRO",
+        catalyst_duration="INTRADAY",
+        source_id="test_source",
+    )
+    assert decision1.injected_market_price is None
+
+    # Can be assigned
+    decision2 = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="test",
+        ticker="AAPL",
+        catalyst_type="MACRO",
+        catalyst_duration="INTRADAY",
+        source_id="test_source",
+        injected_market_price=150.5,
+    )
+    assert decision2.injected_market_price == 150.5
+
+
 def test_decisions_response_parse_json_string():
     """Test that DecisionsResponse correctly parses a JSON string of decisions."""
     json_str = json.dumps(
@@ -134,3 +213,140 @@ def test_ranked_asset_relevance_score_bounds():
     with pytest.raises(ValidationError) as exc_info:
         RankedAsset(ticker="AAPL", name="Apple", relevance_score=101, reason="test")
     assert "relevance_score" in str(exc_info.value)
+
+
+def test_macro_event_bounds():
+    """Test bounds on MacroEvent fields importance_score and confidence."""
+    # Valid importance_score and confidence
+    MacroEvent(
+        event_name="Test Event",
+        impact="BULLISH",
+        catalyst_type="MACRO",
+        importance_score=1,
+        confidence=0,
+        reasoning="test",
+        source_id="test_source",
+    )
+    MacroEvent(
+        event_name="Test Event",
+        impact="BULLISH",
+        catalyst_type="MACRO",
+        importance_score=10,
+        confidence=100,
+        reasoning="test",
+        source_id="test_source",
+    )
+
+    # Invalid importance_score
+    with pytest.raises(ValidationError) as exc_info:
+        MacroEvent(
+            event_name="Test Event",
+            impact="BULLISH",
+            catalyst_type="MACRO",
+            importance_score=0,
+            confidence=50,
+            reasoning="test",
+            source_id="test_source",
+        )
+    assert "importance_score" in str(exc_info.value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        MacroEvent(
+            event_name="Test Event",
+            impact="BULLISH",
+            catalyst_type="MACRO",
+            importance_score=11,
+            confidence=50,
+            reasoning="test",
+            source_id="test_source",
+        )
+    assert "importance_score" in str(exc_info.value)
+
+    # Invalid confidence
+    with pytest.raises(ValidationError) as exc_info:
+        MacroEvent(
+            event_name="Test Event",
+            impact="BULLISH",
+            catalyst_type="MACRO",
+            importance_score=5,
+            confidence=-1,
+            reasoning="test",
+            source_id="test_source",
+        )
+    assert "confidence" in str(exc_info.value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        MacroEvent(
+            event_name="Test Event",
+            impact="BULLISH",
+            catalyst_type="MACRO",
+            importance_score=5,
+            confidence=101,
+            reasoning="test",
+            source_id="test_source",
+        )
+    assert "confidence" in str(exc_info.value)
+
+
+def test_verification_result_confidence_score_bounds():
+    """Test that VerificationResult enforces confidence_score bounds (0-100)."""
+    # Valid
+    VerificationResult(
+        status="APPROVED",
+        verification_reasoning="test",
+        confidence_score=0,
+    )
+    VerificationResult(
+        status="APPROVED",
+        verification_reasoning="test",
+        confidence_score=100,
+    )
+
+    # Invalid
+    with pytest.raises(ValidationError) as exc_info:
+        VerificationResult(
+            status="APPROVED",
+            verification_reasoning="test",
+            confidence_score=-1,
+        )
+    assert "confidence_score" in str(exc_info.value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        VerificationResult(
+            status="APPROVED",
+            verification_reasoning="test",
+            confidence_score=101,
+        )
+    assert "confidence_score" in str(exc_info.value)
+
+
+def test_cause_and_effect_confidence_bounds():
+    """Test that CauseAndEffectResult enforces confidence bounds (0-100)."""
+    # Valid
+    CauseAndEffectResult(
+        analysis="test analysis",
+        market_outcome="test outcome",
+        confidence=0,
+    )
+    CauseAndEffectResult(
+        analysis="test analysis",
+        market_outcome="test outcome",
+        confidence=100,
+    )
+
+    # Invalid
+    with pytest.raises(ValidationError) as exc_info:
+        CauseAndEffectResult(
+            analysis="test analysis",
+            market_outcome="test outcome",
+            confidence=-1,
+        )
+    assert "confidence" in str(exc_info.value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CauseAndEffectResult(
+            analysis="test analysis",
+            market_outcome="test outcome",
+            confidence=101,
+        )
+    assert "confidence" in str(exc_info.value)

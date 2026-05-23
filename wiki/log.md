@@ -1,3 +1,86 @@
+## [2026-05-22] doc | Remediate "Thin" Wiki Pages & Add Model Anomalies & Cleanup Schedule
+
+Enhanced the concepts page [[concepts/model-anomalies]] and database maintenance page [[entities/cleanup]] to resolve structural knowledge gaps flagged in the project's documentation audit. Aligned the descriptions directly with the codebase and recent ingestion logs:
+- **Model Anomalies**: Documented the DeepSeek empty content anomaly (thinking mode populated `reasoning_content` while returning empty main `content`) and its mitigation via `prepare_messages_for_instructor()` and JSON recovery prompts. Also documented the Gemini-3.1-flash-lite built-in search tool calling conflict (API error 400 with function calling) and the corresponding hard enforcement safety guardrail rejections (e.g., BUY recommended without executing buy quantity calculations).
+- **Database Cleanup**: Specified the precise schedule (runs automatically every Friday at 16:00 EST / 21:00 UTC as part of the `audit.yml` GHA workflow, immediately following the audit execution) and the exact PostgreSQL interval retention policies for `ingestion_logs` (>48 hours), resolved/ignored `system_audits` (>30 days), and `market_feeling` (>30 days).
+
+Verified that the wiki is clean and passes all structural checks via the wiki linter `wiki_lint.py`.
+
+## [2026-05-22] feature | Include CPER in Commodities Sector Analysis
+
+Added `'CPER'` (United States Copper Index Fund) to the Commodities sector performance grid on the market overview dashboard, allowing users to view trailing 90-day copper performance. The ETF's descriptions and metadata are fully integrated via `etf-descriptions.ts`. Added a robust frontend unit test in `MarketOverviewPage.test.tsx` (TDD-first) to prevent regressions, formatted and verified the changes against the Biome linter, and confirmed that the full test suite passes.
+
+## [2026-05-21] feature | Wiki Page Deletion on Scope Removal
+
+Added explicit page-deletion enforcement to the wiki system. When a subsystem, entity, or concept is fully removed from the codebase, its wiki page must now be deleted (not struck through). Two layers of enforcement:
+
+1. **`wiki/SCHEMA.md`** — new Maintenance Rule 5 documents the policy, required log-entry format (`## [YYYY-MM-DD] delete | <path> — scope removed: <reason>`), and the expectation that `index.md` entries are cleaned up.
+2. **`apps/engine/auto_wiki.py`** — the LLM diff agent can now emit `deleted_pages` in its JSON output. The new `apply_page_deletions()` function physically deletes the files, strips their `[[link]]` lines from `index.md`, and validates against path traversal. The inline write-changes block was extracted into a testable `apply_changes()` function.
+
+Covered by 7 new tests in `apps/engine/tests/test_wiki_schema.py`.
+
+## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
+
+Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
+
+## [2026-05-21] doc | Align Score Calculation Page and Wiki with Backend Formula
+
+Updated the `/autoresearch` web page's score calculation component ([ScoreCalculation.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.tsx)) and its test ([ScoreCalculation.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/ScoreCalculation.test.tsx)) to display the actual risk-adjusted formula which includes the Opportunity Cost penalty and the Treasury Bond yield hurdle. Additionally, aligned the project wiki by updating outdated formulas on [[entities/autoresearch]] and [[entities/autoresearch-arena]].
+
+## [2026-05-21] audit | TanStack Query Codebase Audit & Centralized Factory Deletion
+
+Audited the project's use of TanStack Query across the `apps/web` frontend. Identified two parallel query options factory implementations: the active, vertical feature-specific factories in `features/*/queries/` and the duplicate centralized factory in `src/lib/queries.ts`. Deleted the dead centralized files `apps/web/src/lib/queries.ts` and `apps/web/src/lib/query-keys.ts` to preserve a clean vertical codebase structure. Documented type safety conventions, generic `CursorPage` constraints for infinite scroll queries, and SSR-safe `QueryClient` initialization inside a new wiki page [[concepts/tanstack-query]].
+
+## [2026-05-21] fix | PostHog Stealthy Same-Origin Reverse Proxy Implementation
+
+Configured a secure same-origin reverse proxy for PostHog to bypass browser ad blockers on client-side tracking and telemetry. Client api_host in the `PostHogProvider` is now routed through `/p` on the same domain, with local development proxying managed in `vite.config.ts` and production Edge routing handled server-side in `netlify.toml` via `status = 200` rewrites. Server-side tracking client continues to connect directly to official endpoints since server-to-server traffic is immune to ad blockers. Added a failing TDD unit test in `-__root.test.tsx` verifying correct client configuration and verified all 122 frontend tests pass with clean formatting and no lint warnings under Biome.
+
+## [2026-05-21] fix | Auto-Research Ratchet Baseline Schema Migration and Testing
+
+Demoted the older prompt variant `v20260517-221731`'s score metric to `old_score` to prevent it from hijacking the ratchet baseline system and overwriting the new System-Heavy prompt architecture. Added unit tests in `test_autoresearch.py` verifying that `get_all_time_baseline()` correctly ignores prompt variants that do not contain a `"score"` key (handling both older composite metrics and demoted/archived schemas).
+
+## [2026-05-15] removal | Government incentive tracking feature removed
+
+Removed the `is_government_incentive` field from `MacroEvent` model, the `_validate_and_enrich_government_events()` function from analysis.py, and all related GOV-DETECT keyword matching and UNFLAGGED POLICY EVENT warnings. The model-level flag was unreliable and produced noise. The consensus `_is_vague_government_event()` helper remains for synthesis quality control. Also upgraded default model from `deepseek-v4-flash` to `deepseek-v4-pro` across engine, web, and wiki lint configurations.
+
+## [2026-05-15] config | Update default model from deepseek-v4-pro to deepseek-v4-flash
+
+Changed the default OpenRouter model in `auto_wiki.py` and `wiki_lint_llm.py` from `deepseek/deepseek-v4-pro` to `deepseek/deepseek-v4-flash`. This is a non-trivial configuration change affecting both the auto-wiki documentation generator and the LLM wiki lint runner.
+
+## 2025-04-07 refactor | Eliminated `any` types across web app
+
+Replaced all remaining `any` type annotations with proper TypeScript types across the web app codebase. This includes:
+- Replacing `any` with `Record<string, unknown>`, `unknown`, and specific interfaces in components, pages, and API functions
+- Adding explicit type definitions for `StratifyData`, `PriceUpdate`, `TradeItem`, `DecisionItem`, `ChainMemory`, `EventChainData`, `DiscoveredAsset`, `TodayData`, `CursorPage`, `SignupVariables`, `AuthResult`, `LoginVariables`, and `MockSupabaseChain`
+- Updating `biome.json` to promote `noExplicitAny` from `warn` to `error` and removing all override exemptions for this rule
+- Updating `packages/database/index.ts` to use `Record<string, unknown>` instead of `Record<string, any>`
+- Fixing route handler type assertions for `createServerFn` and `useServerFn`
+- Fixing `d3` type usage in `ConceptMap.tsx` and `MemoryFlow.tsx`
+
+This completes the migration to a fully typed frontend with zero `any` usage.
+
+## [2026-05-15] refactor | Eliminated any types across web app and consolidated database types
+
+Replaced all remaining `any` type annotations with proper TypeScript types across the web app codebase, promoted `noExplicitAny` from `warn` to `error` in Biome, and rewrote `packages/database/index.ts` to use Supabase generated types with `Omit` for flexible JSON fields. Route handlers were updated to use `createServerFn` with `.inputValidator()` pattern. Infinite query factories now enforce `extends CursorPage` constraint for safe `getNextPageParam` access. Three D3 components (`ConceptMap`, `MemoryFlow`) received proper type annotations. All `any` overrides removed from `biome.json` except where genuinely required.
+
+## [2026-05-15] refactor | Replace array index keys with stable content-hash keys
+
+Changed `FormattedContent.tsx` to use a deterministic `partKey()` hash function instead of array index as React key. This improves React reconciliation stability when list order changes. Also removed the `noArrayIndexKey` Biome lint rule from `biome.json` since the codebase no longer uses array index keys.
+
+## [2026-05-15] audit | Comprehensive Logging Audit & Traceback Hardening
+
+Performed a system-wide audit of logging practices and implemented improvements to ensure rich, audit-ready observability data.
+
+### Changes
+- **Core Engine**: Updated `apps/engine/core/config.py` with an enhanced `LOG_FORMAT` that includes module names (`[%(name)s]`).
+- **Traceback Hardening**: Replaced 100+ `logger.error()` calls with `logger.exception()` across the engine, providers (FMP, IBKR), and proxy. This ensures that the automated LLM log analyzer (DeepSeek) can perform root-cause analysis on the full stack trace.
+- **Pipeline Observability**: Added granular success/total tracking to ingestion, snapshotting, and decision stages in `main.py`.
+- **IBKR Proxy**: Hardened error handling and logging to match engine standards.
+- **Documentation**: Established [[concepts/observability-standard]] as the project's canonical logging convention. Updated `AGENTS.md`, `ROADMAP.md`, and `apps/ibkr-proxy/README.md`.
+
+### Result
+The system now provides deterministic tracebacks for all critical failures, enabling the "anomaly detector" audit layer to accurately identify and suggest fixes for ingestion or execution errors without manual log mining.
+
 ## [2026-05-15] fix | Fix price backfill to use pre-injected price_map for consistency
 
 Changed the `injected_market_price` backfill logic in `analyze.py` to first use the price from the `price_map` that was injected into the LLM's prompt. Previously, it always fetched a fresh price from the market, which could cause false drift detections when compared to the JIT execution price. Now it stamps the price the LLM actually saw, falling back to a fresh fetch only for tickers discovered via tool calls.
@@ -186,12 +269,3 @@ Extracted the inline write-changes block from `main()` into a testable `apply_ch
 ## [2026-05-22] feature | Added CPER to Commodities sector and frontend test coverage
 
 Added `'CPER'` (United States Copper Index Fund) to the Commodities sector performance grid in `MarketOverviewPage.tsx`, and introduced `MarketOverviewPage.test.tsx` with a targeted regression test for CPER rendering. Updated vitest config formatting for multi-line include arrays.
-
-## [2026-05-22] improvement | Grant convention test hardened with regex
-
-The `test_migration_grants.py` test now uses regex to extract table names from SQL migrations and verify corresponding GRANT statements, instead of a naive substring check. A note was added to migration `20260513000000` documenting the convention and referencing [[concepts/supabase-grant-convention]].
-
-
-## [2026-05-22] improvement | Grant convention test hardened with regex
-
-The `test_migration_grants.py` test now uses regex to extract table names from SQL migrations and verify corresponding GRANT statements, instead of a naive substring check. A note was added to migration `20260513000000` documenting the convention and referencing [[concepts/supabase-grant-convention]].

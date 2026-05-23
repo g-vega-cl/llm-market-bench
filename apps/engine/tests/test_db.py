@@ -23,9 +23,39 @@ class TestSupabaseClients:
                     get_supabase_client()
                 assert "Supabase configuration missing" in str(exc_info.value)
 
+    def test_get_supabase_client_missing_url(self):
+        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "some-key"):
+            with patch("core.db._supabase_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    get_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
+    def test_get_supabase_client_missing_key(self):
+        with patch("core.db.SUPABASE_URL", "some-url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
+            with patch("core.db._supabase_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    get_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
     @pytest.mark.asyncio
     async def test_get_async_supabase_client_missing_config(self):
         with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
+            with patch("core.db._supabase_async_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    await get_async_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_get_async_supabase_client_missing_url(self):
+        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "some-key"):
+            with patch("core.db._supabase_async_client", None):
+                with pytest.raises(ValueError) as exc_info:
+                    await get_async_supabase_client()
+                assert "Supabase configuration missing" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_get_async_supabase_client_missing_key(self):
+        with patch("core.db.SUPABASE_URL", "some-url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
             with patch("core.db._supabase_async_client", None):
                 with pytest.raises(ValueError) as exc_info:
                     await get_async_supabase_client()

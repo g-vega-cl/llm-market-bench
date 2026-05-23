@@ -25,7 +25,6 @@ async def test_run_cleanup_calls_correct_deletes():
     mock_table.delete.return_value = mock_delete
     mock_delete.lt.return_value = mock_lt
     mock_delete.in_.return_value = mock_in
-    mock_delete.eq.return_value = mock_delete
     mock_in.lt.return_value = mock_lt
     mock_lt.execute.return_value = MagicMock()  # Final result doesn't matter for this test
 
@@ -38,8 +37,6 @@ async def test_run_cleanup_calls_correct_deletes():
     mock_client.table.assert_any_call("system_audits")
     # Verify market_feeling cleanup
     mock_client.table.assert_any_call("market_feeling")
-    # Verify memories cleanup
-    mock_client.table.assert_any_call("memories")
 
-    # Check that delete was called 4 times
-    assert mock_table.delete.call_count == 4
+    # Check that delete was called at least 3 times
+    assert mock_table.delete.call_count == 3

@@ -100,14 +100,14 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         <h1 className="text-6xl sm:text-7xl md:text-8xl font-black text-white tracking-tighter text-display drop-shadow-lg">
                             TODAY
                         </h1>
-                        <Badge variant="outline" colorScheme="neutral">
+                        <div className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-bold rounded-full border border-white/30 shadow-lg">
                             {now.toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 month: 'long',
                                 day: 'numeric',
                                 year: 'numeric',
                             })}
-                        </Badge>
+                        </div>
                     </div>
 
                     <p className="text-lg sm:text-xl text-electric-blue-100 font-light leading-relaxed max-w-2xl drop-shadow">

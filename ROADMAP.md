@@ -21,14 +21,17 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [ ] **Find trading papers not just investing** - But low sell high?
+- [ ] **Fix asset discovery.** Go step by step, dedicated agent maybe
 - [ ] **Make sure CI/CD tests behave same as local tests**
 - [ ] **Use frontend skills to improve frontend**
 - [ ] **Sector leaderboard**
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it's closed:** -goes along with papers
+- [ ] **Re-check asset discovery**
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **and make sure you highlight which investable assets belong to each scenario.**
+- [ ] **Fix investable assets title as well..and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
+- [ ] **Improve investable assets again?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
@@ -40,6 +43,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Mutation Preview CLI** - Add a dry-run mode to the Auto-Research researcher to preview the next prompt mutation without deploying it.
 - [ ] **Auto-Research Diff Viewer** - Implement a color-coded diff viewer in the Web Arena to compare experiment variants against the baseline logic.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
+- [ ] **Make sure we save the historical correlation/returns table/matrix**
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **A tracker of your chats with LLMs to track productivity. Enterprise Software?** Openrouter might already have this.
@@ -65,16 +69,17 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: improve get sector alternatives tool
 - [ ] - Benchify: use html for documentation?
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
-- [x] - Benchify: include copper in sector analysis. — CPER added to Commodities grid in MarketOverviewPage.tsx.
+- [ ] - Benchify: include copper in sector analysis.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 - [ ] - Revisit alpaca trades.
-- [x] - Gemini-3.1-flash-lite generated 0 decisions. — Resolved by enabling include_server_side_tool_invocations and propagating function call IDs.
+- [ ] - INVESTIGATE: MiniMax market feeling analysis — empty JSON response
+- [ ] - Gemini-3.1-flash-lite generated 0 decisions.
 - [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
   - [ ] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
-  - [x] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule). — model-anomalies.md expanded with Gemini, DeepSeek, and hard-enforcement details; entities/cleanup.md updated with complete schedule/retention policy.
+  - [ ] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule).
 - [ ] - Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy. \
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [ ] -Benchify: audit price fetching and how we pass it to LLMs
@@ -88,7 +93,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other
-- [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
 
 ## Under Consideration
 

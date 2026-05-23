@@ -167,17 +167,9 @@ async def run_tool_loop(
                 ],
             }
 
+            # Disable AFC when using google_search with function declarations
             if enable_google_search:
-                # Gemini 3 requires this flag to mix built-in tools (google_search) with
-                # client-side function calling. Enabling it locks tool mode to VALIDATED
-                # and activates tool context circulation across turns.
-                # Without it the API throws 400 INVALID_ARGUMENT, the loop falls back to
-                # basic analysis, and HARD ENFORCEMENT discards all trade signals.
-                if _generate_content_config_supports("include_server_side_tool_invocations"):
-                    config_kwargs["include_server_side_tool_invocations"] = True
-                else:
-                    # Older google-genai SDK: fall back to disabling AFC only.
-                    config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
+                config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
 
             config = types.GenerateContentConfig(**config_kwargs)
 
@@ -202,16 +194,7 @@ async def run_tool_loop(
         for part in candidate.content.parts:
             if part.function_call:
                 has_tool_call = True
-                tool_calls.append(
-                    {
-                        "name": part.function_call.name,
-                        "args": part.function_call.args,
-                        # Gemini 3 assigns a unique id per function_call that must be echoed
-                        # back in the function_response for tool context circulation to work.
-                        # getattr guards against older SDK versions that don't have this field.
-                        "id": getattr(part.function_call, "id", None),
-                    }
-                )
+                tool_calls.append({"name": part.function_call.name, "args": part.function_call.args})
 
         # If Gemini returned multiple function calls in one response,
         # we need to execute all of them before breaking
@@ -222,15 +205,6 @@ async def run_tool_loop(
         response_parts = []
         for tc in tool_calls:
             result = await base.execute_tool(tc["name"], tc["args"], model_name)
-            # Construct FunctionResponse. Older google-genai versions might not have 'id'
-            # in FunctionResponse's attributes, so we check annotations.
-            fr_kwargs = {
-                "name": tc["name"],
-                "response": {"result": result},
-            }
-            if tc.get("id") and isinstance(tc["id"], str) and "id" in types.FunctionResponse.__annotations__:
-                fr_kwargs["id"] = tc["id"]
-
-            response_parts.append(types.Part(function_response=types.FunctionResponse(**fr_kwargs)))
+            response_parts.append(types.Part.from_function_response(name=tc["name"], response={"result": result}))
 
         messages.append(types.Content(role="user", parts=response_parts))

@@ -144,13 +144,6 @@ class PromptFactory:
         )
 
     @classmethod
-    def build_memory_consolidation_messages(cls, provider: str, **kwargs) -> list[dict[str, Any]]:
-        """Builds messages for consolidating overlapping memories."""
-        return cls._build_messages(
-            provider, prompts.CONSOLIDATION_SYSTEM_PROMPT, prompts.CONSOLIDATION_USER_PROMPT_TEMPLATE, **kwargs
-        )
-
-    @classmethod
     def build_relationship_messages(cls, provider: str, **kwargs) -> list[dict[str, Any]]:
         """Builds messages for determining relationships."""
         return cls._build_messages(

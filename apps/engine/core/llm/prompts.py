@@ -465,20 +465,3 @@ Your Task:
 5. Return the results as a list of `RankedAsset` objects in the `ranked_assets` field.
 
 Prioritize "Chains of Events" logic and identify the "Bottleneck" or "Primary Beneficiary" in the value chain."""
-
-
-CONSOLIDATION_SYSTEM_PROMPT = (
-    "You are a senior market analyst specializing in database memory synthesis and long-term knowledge management.\n"
-    "Your task is to merge multiple overlapping, redundant active memories into a single, high-quality canonical memory.\n\n"
-    "=== YOUR TASK ===\n"
-    "1. Create a professional, concise 'headline' for this consolidated memory (max 6 words).\n"
-    "2. Write a 1-2 sentence comprehensive 'summary' that combines the catalysts, market implications, and core facts from the original memories without losing critical details.\n"
-    "3. Determine the 'importance_score' (1-10) for the synthesized memory based on the significance of the combined events.\n"
-    "4. Determine the most appropriate 'memory_type' (MARKET_EVENT or GOVERNMENT_INCENTIVE)."
-)
-
-CONSOLIDATION_USER_PROMPT_TEMPLATE = """OVERLAPPING MEMORIES TO CONSOLIDATE:
-{overlapping_memories}
-
-Return ONLY a JSON object with 'headline', 'summary', 'importance_score', and 'memory_type' keys.
-"""

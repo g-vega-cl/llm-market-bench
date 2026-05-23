@@ -62,14 +62,13 @@ TICKER_UNIVERSE = [
     "SCZ",
     "BWX",
     "EWA",
-    # Emerging Markets (7)
+    # Emerging Markets (6)
     "EEM",
     "MCHI",
     "EWZ",
     "EIDO",
     "EPI",
     "INDA",
-    "EWY",
     # Commodities (7)
     "GLD",
     "SLV",

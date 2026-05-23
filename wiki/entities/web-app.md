@@ -63,13 +63,6 @@ To prevent client-side analytics and error tracking from being blocked by browse
 - **Production Edge Proxy**: `apps/web/netlify.toml` maps matching `/p/*` rules on Netlify Edge CDN with `status = 200` to serve as a server-side rewrite, maintaining full first-party stealth and cookie compliance.
 - **Direct Server SDK**: Server-side Node tracking (`apps/web/src/utils/posthog-server.ts`) directly targets `https://us.i.posthog.com` safely, bypassing the CDN rewrite since serverless traffic is immune to ad blockers.
 
-### Historical Progression Explorer & D3 Chart Refinements (2026-05-22)
-
-To unlock historical correlation data and trailing returns timeline exploration, a dedicated tabbed explorer page was introduced:
-- **Resilient Bidirectional Queries**: The Supabase data engine queries the chronological weekly records using a bidirectional `.or` filter (`ticker_a`/`ticker_b` match check), mapping and aligning the `returns_a_90d` and `returns_b_90d` values in-memory to perfectly match the user's selected ticker display order.
-- **Interactive Cursor Metrics status board**: Plotted using a custom D3 line chart displaying Pearson/Spearman coefficients and 90D returns with vibrant HSL design system tokens. Instead of using high, obstructive floating HTML tooltips, active hover states are driven through a clean **Cursor Metrics Board** positioned directly above the chart, which falls back to the latest weekly data point upon pointer exit.
-- **ETF Description Clarity**: Integrates descriptive ETF names (e.g. `QQQ — Invesco QQQ Trust (NASDAQ 100)`) next to bare tickers inside searchable select dropdown elements for increased readability.
-
 
 ## Design System
 

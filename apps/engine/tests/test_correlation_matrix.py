@@ -51,7 +51,6 @@ class TestTickerUniverse:
         assert "EFA" in tickers  # Developed markets
         assert "EEM" in tickers  # Emerging markets
         assert "EWJ" in tickers  # Japan
-        assert "EWY" in tickers  # South Korea
 
     def test_ticker_universe_contains_commodities(self):
         """Verify ticker universe contains commodity ETFs."""

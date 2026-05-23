@@ -88,15 +88,9 @@ def test_add_memory_duplicates_blocked(mock_embedding, mock_supabase):
     with patch("apps.engine.memory.store.find_similar_memory") as mock_find:
         mock_find.return_value = "existing-uuid"
 
-        # Mock the update call execution
-        mock_update_chain = mock_supabase.table.return_value.update.return_value.eq.return_value.execute
-        mock_update_chain.return_value = MagicMock(data=[{"id": "existing-uuid"}])
-
         result = add_memory("test content", check_similarity=True)
 
-        assert result == "existing-uuid"
-        # Verify DB update was called
-        mock_supabase.table.return_value.update.assert_called_once()
+        assert result is None
         # Verify DB insert was NOT called
         mock_supabase.table.return_value.insert.assert_not_called()
 

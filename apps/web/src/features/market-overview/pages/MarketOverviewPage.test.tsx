@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MarketOverviewData } from '../api/fetch-market-overview';
@@ -27,38 +27,7 @@ vi.mock('../components/CorrelationHeatmap', () => ({
     CorrelationHeatmap: () => <div data-testid="correlation-heatmap">Mock Heatmap</div>,
 }));
 vi.mock('../components/UncorrelatedPairs', () => ({
-    UncorrelatedPairs: ({ onSelectPair }: { onSelectPair?: (a: string, b: string) => void }) => (
-        <div data-testid="uncorrelated-pairs">
-            Mock Uncorrelated Pairs
-            {onSelectPair && (
-                <button
-                    type="button"
-                    data-testid="mock-history-btn"
-                    onClick={() => onSelectPair('BTCUSD', 'ETHUSD')}
-                >
-                    View History
-                </button>
-            )}
-        </div>
-    ),
-}));
-vi.mock('../components/CorrelationHistoryExplorer', () => ({
-    CorrelationHistoryExplorer: ({
-        tickers,
-        initialPair,
-    }: {
-        tickers: string[];
-        initialPair?: { tickerA: string; tickerB: string } | null;
-    }) => (
-        <div data-testid="history-explorer">
-            Mock History Explorer: {tickers.join(',')}
-            {initialPair && (
-                <span data-testid="initial-pair">
-                    {initialPair.tickerA}/{initialPair.tickerB}
-                </span>
-            )}
-        </div>
-    ),
+    UncorrelatedPairs: () => <div data-testid="uncorrelated-pairs">Mock Uncorrelated Pairs</div>,
 }));
 
 describe('MarketOverviewPage', () => {
@@ -148,72 +117,5 @@ describe('MarketOverviewPage', () => {
 
         // Expect CPER to be rendered on the page in the Commodities section
         expect(screen.getByText('CPER')).toBeInTheDocument();
-    });
-
-    it('supports tabbed navigation between current regime and historical progression', () => {
-        const mockData = {
-            correlationRun: {
-                id: 'run-123',
-                run_date: '2026-05-18T16:00:00Z',
-                created_at: '2026-05-18T16:00:00Z',
-                window_days: 90,
-                num_assets: 2,
-                tickers: ['BTCUSD', 'ETHUSD'],
-            },
-            correlationData: [],
-            marketFeeling: null,
-        } as unknown as MarketOverviewData;
-
-        render(<MarketOverviewPage initialData={mockData} fetchFn={async () => mockData} />);
-
-        // By default, current regime components are rendered (e.g. heatmap and uncorrelated pairs)
-        expect(screen.getByTestId('correlation-heatmap')).toBeInTheDocument();
-        expect(screen.getByTestId('uncorrelated-pairs')).toBeInTheDocument();
-        expect(screen.queryByTestId('history-explorer')).not.toBeInTheDocument();
-
-        // Switch to history tab
-        const historyTabButton = screen.getByRole('button', { name: /historical progression/i });
-        fireEvent.click(historyTabButton);
-
-        // Now, history explorer is rendered and current regime is hidden
-        expect(screen.queryByTestId('correlation-heatmap')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('uncorrelated-pairs')).not.toBeInTheDocument();
-        expect(screen.getByTestId('history-explorer')).toBeInTheDocument();
-        expect(screen.getByTestId('history-explorer')).toHaveTextContent('BTCUSD,ETHUSD');
-
-        // Switch back to current regime
-        const currentTabButton = screen.getByRole('button', { name: /current regime/i });
-        fireEvent.click(currentTabButton);
-
-        expect(screen.getByTestId('correlation-heatmap')).toBeInTheDocument();
-        expect(screen.queryByTestId('history-explorer')).not.toBeInTheDocument();
-    });
-
-    it('navigates and deep-links to history tab when View History is clicked in UncorrelatedPairs', () => {
-        const mockData = {
-            correlationRun: {
-                id: 'run-123',
-                run_date: '2026-05-18T16:00:00Z',
-                created_at: '2026-05-18T16:00:00Z',
-                window_days: 90,
-                num_assets: 2,
-                tickers: ['BTCUSD', 'ETHUSD'],
-            },
-            correlationData: [],
-            marketFeeling: null,
-        } as unknown as MarketOverviewData;
-
-        render(<MarketOverviewPage initialData={mockData} fetchFn={async () => mockData} />);
-
-        // Trigger onSelectPair callback in mocked UncorrelatedPairs
-        const viewHistoryBtn = screen.getByTestId('mock-history-btn');
-        fireEvent.click(viewHistoryBtn);
-
-        // Active tab should automatically switch to history explorer
-        expect(screen.queryByTestId('correlation-heatmap')).not.toBeInTheDocument();
-        expect(screen.getByTestId('history-explorer')).toBeInTheDocument();
-
-        // The selected pair should be passed down
-        expect(screen.getByTestId('initial-pair')).toHaveTextContent('BTCUSD/ETHUSD');
     });
 });

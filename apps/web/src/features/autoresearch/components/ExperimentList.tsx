@@ -74,25 +74,25 @@ function StatusBadge({ status }: { status: string }) {
     switch (status) {
         case 'active':
             return (
-                <Badge colorScheme="success" variant="soft">
+                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200">
                     Active
                 </Badge>
             );
         case 'kept':
             return (
-                <Badge colorScheme="info" variant="soft">
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200">
                     Kept
                 </Badge>
             );
         case 'discarded':
             return (
-                <Badge colorScheme="neutral" variant="soft">
+                <Badge className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200">
                     Discarded
                 </Badge>
             );
         case 'crashed':
             return (
-                <Badge colorScheme="danger" variant="soft">
+                <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200">
                     Crashed
                 </Badge>
             );

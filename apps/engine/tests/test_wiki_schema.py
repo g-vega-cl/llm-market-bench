@@ -27,7 +27,8 @@ def test_schema_deletion_log_format():
     """SCHEMA.md must document the required log-entry format for deletions."""
     content = SCHEMA_PATH.read_text()
     assert "scope removed" in content.lower(), (
-        "wiki/SCHEMA.md must include the required log format ('scope removed') for page deletions."
+        "wiki/SCHEMA.md must include the required log format "
+        "('scope removed') for page deletions."
     )
 
 
@@ -44,7 +45,9 @@ def _make_wiki(tmp_path: pathlib.Path) -> pathlib.Path:
     # Create a page to be deleted
     (wiki / "entities").mkdir()
     page = wiki / "entities" / "old-module.md"
-    page.write_text("---\ntags: [old]\ncategory: entity\n---\n\n# Old Module\n\nStale page.\n")
+    page.write_text(
+        "---\ntags: [old]\ncategory: entity\n---\n\n# Old Module\n\nStale page.\n"
+    )
 
     # Create index.md referencing the page
     (wiki / "index.md").write_text(
@@ -81,9 +84,13 @@ def test_apply_page_deletions_removes_index_entry(tmp_path, monkeypatch):
     aw.apply_page_deletions(["entities/old-module.md"])
 
     index_content = (wiki / "index.md").read_text()
-    assert "old-module" not in index_content, "apply_page_deletions must remove the deleted page's entry from index.md"
+    assert "old-module" not in index_content, (
+        "apply_page_deletions must remove the deleted page's entry from index.md"
+    )
     # Active entry must be preserved
-    assert "[[entities/active]]" in index_content, "apply_page_deletions must not remove other index entries"
+    assert "[[entities/active]]" in index_content, (
+        "apply_page_deletions must not remove other index entries"
+    )
 
 
 def test_apply_page_deletions_rejects_path_traversal(tmp_path, monkeypatch, capsys):
@@ -140,4 +147,6 @@ def test_main_calls_apply_page_deletions(tmp_path, monkeypatch, result):
 
     aw.apply_changes(result)
 
-    assert "entities/old-module.md" in called_with, "apply_changes must forward deleted_pages to apply_page_deletions"
+    assert "entities/old-module.md" in called_with, (
+        "apply_changes must forward deleted_pages to apply_page_deletions"
+    )

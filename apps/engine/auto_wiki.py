@@ -365,7 +365,11 @@ def apply_page_deletions(paths: list[str]) -> None:
             # Build a stem for matching [[entities/old-module]] style links
             stem = rel_path.removesuffix(".md")
             original = index_path.read_text()
-            filtered_lines = [line for line in original.splitlines(keepends=True) if f"[[{stem}]]" not in line]
+            filtered_lines = [
+                line
+                for line in original.splitlines(keepends=True)
+                if f"[[{stem}]]" not in line
+            ]
             if len(filtered_lines) != len(original.splitlines(keepends=True)):
                 index_path.write_text("".join(filtered_lines))
                 print(f"  [auto-wiki] index.md: removed entry for {rel_path}", file=sys.stderr)

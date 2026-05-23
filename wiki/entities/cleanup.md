@@ -29,16 +29,6 @@ The `run_cleanup()` function in `apps/engine/core/cleanup.py` connects to Supaba
    - **Retention**: 30 days
    - **Operator**: `.delete().lt("created_at", 'now() - interval "30 days"')`
    - **Rationale**: Purges outdated market sentiment and classification logs that are older than 30 days, as trailing analysis displays only require recent metrics.
-4. **Superseded Memories (`memories` table)**:
-   - **Retention**: 180 days
-   - **Operator**: `.delete().eq("status", "SUPERSEDED").lt("created_at", 'now() - interval "180 days"')`
-   - **Rationale**: Purges historical superseded memory fragments older than 180 days to prevent pgvector table bloat, maintaining referential integrity for newer consolidated entries.
-5. **Tiered Memory Decay**:
-   - **Retention**: Variable based on memory type.
-   - **Action**: Integrates memory decay on each cleanup run, applying adaptive multipliers to `MARKET_EVENT` (decreased by 50%) and `GOVERNMENT_INCENTIVE` (decreased by 25%), while completely protecting core strategic insights like `LESSON_LEARNED` and `UNCROWDED_TRADE` (0% decay).
-6. **Memory Consolidation ("Sleep" Cycle)**:
-   - **Retention**: Ongoing consolidation of active entries.
-   - **Action**: Caps active memories retrieval to the 500 most recent records (for $O(N^2)$ scaling safety), groups entries with cosine similarity `>= 0.85` using a DFS adjacency graph, synthesizes clusters using instructor-wrapped DeepSeek (`DEEPSEEK_MODEL` from `core.config`), inserts the single canonical consolidated record as `ACTIVE`, and updates the parent records to `SUPERSEDED`.
 
 ## Usage
 

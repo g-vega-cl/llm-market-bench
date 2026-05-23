@@ -66,8 +66,8 @@ describe('TradesTable', () => {
         const buyBadge = screen.getByText('BUY');
         const sellBadge = screen.getByText('SELL');
 
-        expect(buyBadge).toHaveClass('bg-success-light');
-        expect(sellBadge).toHaveClass('bg-danger-light');
+        expect(buyBadge).toHaveClass('bg-success/20');
+        expect(sellBadge).toHaveClass('bg-danger/20');
     });
 
     it('renders alpaca status badges with correct colors and links', () => {
@@ -75,7 +75,7 @@ describe('TradesTable', () => {
 
         const filledText = screen.getByText('FILLED');
         expect(filledText).toBeInTheDocument();
-        expect(filledText).toHaveClass('bg-success-light');
+        expect(filledText).toHaveClass('bg-success/20');
 
         const filledLink = filledText.closest('a');
         expect(filledLink).toHaveAttribute('href', 'https://paper.alpaca.markets/orders');

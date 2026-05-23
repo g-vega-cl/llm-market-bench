@@ -43,6 +43,7 @@ export const etfDescriptions: Record<string, string> = {
     EIDO: 'iShares MSCI Indonesia ETF',
     EPI: 'WisdomTree India Earnings Fund',
     INDA: 'iShares MSCI India ETF',
+    EWY: 'iShares MSCI South Korea ETF',
 
     // Commodities
     GLD: 'SPDR Gold Shares',

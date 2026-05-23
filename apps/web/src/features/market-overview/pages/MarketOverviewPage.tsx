@@ -1,6 +1,7 @@
 import type { MarketFeeling } from '@llm-market-bench/database';
 import {
     Badge,
+    Button,
     Card,
     ConfidenceBar,
     EmptyState,
@@ -13,6 +14,7 @@ import { Link } from '@tanstack/react-router';
 import * as React from 'react';
 import type { CorrelationData, MarketOverviewData } from '../api/fetch-market-overview';
 import { CorrelationHeatmap } from '../components/CorrelationHeatmap';
+import { CorrelationHistoryExplorer } from '../components/CorrelationHistoryExplorer';
 import { UncorrelatedPairs } from '../components/UncorrelatedPairs';
 import { marketOverviewQueries } from '../queries/options';
 
@@ -27,22 +29,65 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
         initialData,
     });
 
+    const [activeTab, setActiveTab] = React.useState<'current' | 'history'>('current');
+    const [selectedPair, setSelectedPair] = React.useState<{
+        tickerA: string;
+        tickerB: string;
+    } | null>(null);
+
+    const handleSelectPairForHistory = (tickerA: string, tickerB: string) => {
+        setSelectedPair({ tickerA, tickerB });
+        setActiveTab('history');
+    };
+
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             <MarketOverviewHero marketFeeling={data.marketFeeling} />
 
-            <PageLayout className="space-y-24 pb-24">
-                {data.correlationRun ? (
-                    <div className="space-y-24 animate-slide-up">
-                        <CorrelationHeatmap
-                            correlationData={data.correlationData}
-                            tickers={data.correlationRun.tickers}
-                        />
-                        <UncorrelatedPairs correlationData={data.correlationData} />
-                        <SectorPerformanceGrid correlationData={data.correlationData} />
+            <PageLayout className="space-y-16 pb-24">
+                {/* Modern Premium Sub-Navigation Tabs */}
+                <div className="flex justify-center animate-slide-up">
+                    <div className="flex gap-1.5 p-1.5 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md rounded-2xl border border-zinc-200/60 dark:border-zinc-800/80 shadow-md">
+                        <Button
+                            variant={activeTab === 'current' ? 'solid' : 'ghost'}
+                            colorScheme={activeTab === 'current' ? 'accent' : 'neutral'}
+                            onClick={() => setActiveTab('current')}
+                            className="px-6 py-2.5 rounded-xl font-bold transition-all duration-200"
+                        >
+                            📊 Current Regime
+                        </Button>
+                        <Button
+                            variant={activeTab === 'history' ? 'solid' : 'ghost'}
+                            colorScheme={activeTab === 'history' ? 'accent' : 'neutral'}
+                            onClick={() => setActiveTab('history')}
+                            className="px-6 py-2.5 rounded-xl font-bold transition-all duration-200"
+                        >
+                            📈 Historical Progression
+                        </Button>
                     </div>
+                </div>
+
+                {activeTab === 'current' ? (
+                    data.correlationRun ? (
+                        <div className="space-y-24 animate-slide-up">
+                            <CorrelationHeatmap
+                                correlationData={data.correlationData}
+                                tickers={data.correlationRun.tickers}
+                            />
+                            <UncorrelatedPairs
+                                correlationData={data.correlationData}
+                                onSelectPair={handleSelectPairForHistory}
+                            />
+                            <SectorPerformanceGrid correlationData={data.correlationData} />
+                        </div>
+                    ) : (
+                        <EmptyCorrelationState />
+                    )
                 ) : (
-                    <EmptyCorrelationState />
+                    <CorrelationHistoryExplorer
+                        tickers={data.correlationRun?.tickers ?? []}
+                        initialPair={selectedPair}
+                    />
                 )}
             </PageLayout>
         </div>
@@ -115,14 +160,14 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         <h1 className="text-5xl sm:text-6xl font-black text-white tracking-tighter text-display drop-shadow-lg">
                             MARKET OVERVIEW
                         </h1>
-                        <div className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-bold rounded-full border border-white/30 shadow-lg">
+                        <Badge variant="outline" colorScheme="neutral">
                             {now.toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 month: 'long',
                                 day: 'numeric',
                                 year: 'numeric',
                             })}
-                        </div>
+                        </Badge>
                     </div>
 
                     <p className="text-lg text-electric-blue-100 font-light leading-relaxed max-w-2xl drop-shadow">
@@ -267,7 +312,7 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: Correlati
             ],
             'US Broad': ['QQQ', 'VIG', 'IWM', 'SPY'],
             'Intl Dev': ['EFA', 'EWJ', 'EWG', 'EWL', 'EWP', 'IFAD', 'BWX'],
-            'Emerging Markets': ['EEM', 'MCHI', 'EWZ', 'EIDO', 'EPI'],
+            'Emerging Markets': ['EEM', 'MCHI', 'EWZ', 'EIDO', 'EPI', 'EWY'],
             Commodities: ['GLD', 'SLV', 'CPER', 'PDBC', 'USO'],
             Bonds: ['TLT', 'IEF', 'LQD', 'EMB', 'BNDX', 'IAGG'],
             'Real Assets': ['VNQ', 'ICF'],

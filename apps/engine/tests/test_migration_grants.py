@@ -24,4 +24,6 @@ def test_new_tables_have_grants():
 
             # naive check for CREATE TABLE
             if "CREATE TABLE" in content.upper() and "GRANT " not in content.upper():
-                raise AssertionError(f"Migration {filename} creates a table but is missing explicit GRANTs (required after {cutoff_date_str}).")
+                raise AssertionError(
+                    f"Migration {filename} creates a table but is missing explicit GRANTs (required after {cutoff_date_str})."
+                )

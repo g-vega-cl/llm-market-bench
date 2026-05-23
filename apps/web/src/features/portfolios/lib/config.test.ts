@@ -36,10 +36,16 @@ describe('Portfolio Config Utils', () => {
             );
             expect(configModule.normalizeOwnerId('DeepSeek_V4_Pro')).toBe('deepseek-v4-pro');
             expect(configModule.normalizeOwnerId('  GPT-5.4 Nano  ')).toBe('gpt-5.4-nano');
+            expect(configModule.normalizeOwnerId('---TEST_model---')).toBe('test-model');
+            expect(configModule.normalizeOwnerId('model-with  spaces_and_dashes')).toBe('model-with-spaces-and-dashes');
         });
 
         it('returns empty string for null', () => {
             expect(configModule.normalizeOwnerId(null)).toBe('');
+        });
+
+        it('returns empty string for empty string', () => {
+            expect(configModule.normalizeOwnerId('')).toBe('');
         });
     });
 
@@ -155,10 +161,16 @@ describe('Portfolio Config Utils Error Handling', () => {
         consoleSpy.mockRestore();
     });
 
-    it('getAutoresearchOwnerIds covers line 54 when mapped array is falsy somehow', async () => {
+    it('getAutoresearchOwnerIds covers fallback empty array return when mapped somehow null', async () => {
+        // Here we mock the behavior of line 54 where cachedAutoresearchOwnerIds could evaluate to something falsy like null after the assignment
+        // Actually, since it's `const ids = ... as string[]; cachedAutoresearchOwnerIds = (ids || []).map(...)`,
+        // The array `.map` method will always return an array (truthy).
+        // However, we can mock `AUTORESEARCH_EXPERIMENT_OWNER_IDS` to an object that has a custom `map` method returning `undefined`.
         vi.doMock('@repo/config/models.json', () => ({
             default: {
-                AUTORESEARCH_EXPERIMENT_OWNER_IDS: [],
+                AUTORESEARCH_EXPERIMENT_OWNER_IDS: {
+                    map: () => undefined
+                },
             },
         }));
 
@@ -166,22 +178,5 @@ describe('Portfolio Config Utils Error Handling', () => {
 
         const result = getAutoresearchOwnerIds();
         expect(result).toEqual([]);
-    });
-
-    it('getAutoresearchOwnerIds covers fallback empty array return', async () => {
-        // Need to trick TypeScript/runtime to make cachedAutoresearchOwnerIds nullish but not throw
-        vi.doMock('@repo/config/models.json', () => ({
-            default: {
-                // If we make ids something that .map returns nullish for, wait, map always returns an array
-                // The only way to hit `return cachedAutoresearchOwnerIds || []` where it's falsy
-                // is if map returns null, which it doesn't.
-                // Or if we can force cachedAutoresearchOwnerIds to be falsy...
-            },
-        }));
-        // Actually line 54 is `return cachedAutoresearchOwnerIds || []`
-        // Since we do `cachedAutoresearchOwnerIds = (...).map(...)`, it will ALWAYS be an array (truthy).
-        // So `|| []` is essentially unreachable code in pure JS/TS unless `map` is overwritten or something crazy.
-        // It's acceptable to have 91% branch coverage if that's the only uncovered branch.
-        expect(true).toBe(true);
     });
 });

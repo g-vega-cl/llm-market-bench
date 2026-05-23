@@ -34,9 +34,14 @@ def mock_cosine():
         with patch(target) as mock:
             yield mock
 
+@pytest.fixture
+def mock_add_memory():
+    with patch("apps.engine.memory.store.add_memory") as mock:
+        mock.return_value = "uuid-consolidated"
+        yield mock
 
 @pytest.mark.asyncio
-async def test_consolidate_overlapping_memories(mock_supabase, mock_deepseek, mock_cosine):
+async def test_consolidate_overlapping_memories(mock_supabase, mock_deepseek, mock_cosine, mock_add_memory):
     # Setup mock active memories
     memories = [
         {
@@ -90,11 +95,11 @@ async def test_consolidate_overlapping_memories(mock_supabase, mock_deepseek, mo
     statuses_updated = [call[0][0]["status"] for call in update_calls]
     assert "SUPERSEDED" in statuses_updated
 
-    # 2. It should insert the new consolidated memory
-    mock_supabase.table.return_value.insert.assert_called_once()
-    insert_payload = mock_supabase.table.return_value.insert.call_args[0][0]
-    assert insert_payload["status"] == "ACTIVE"
-    assert "Federal Reserve rate cut of 25bps in May 2026" in insert_payload["content"]
-    assert insert_payload["parent_id"] == "uuid-1" or insert_payload["parent_id"] == "uuid-2"
-    assert insert_payload["relationship_type"] == "UPDATE"
-    assert "uuid-1" in insert_payload["metadata"]["consolidated_ids"]
+    # 2. It should insert the new consolidated memory using add_memory
+    mock_add_memory.assert_called_once()
+    kwargs = mock_add_memory.call_args[1]
+    assert kwargs["status"] == "ACTIVE"
+    assert "Federal Reserve rate cut of 25bps in May 2026" in kwargs["content"]
+    assert kwargs["parent_id"] == "uuid-1" or kwargs["parent_id"] == "uuid-2"
+    assert kwargs["relationship_type"] == "UPDATE"
+    assert "uuid-1" in kwargs["metadata"]["consolidated_ids"]

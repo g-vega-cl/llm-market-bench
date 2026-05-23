@@ -24,18 +24,66 @@ class TestSupabaseClients:
                 assert "Supabase configuration missing" in str(exc_info.value)
 
     def test_get_supabase_client_missing_url(self):
-        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "some-key"):
+        with patch("core.db.SUPABASE_URL", ""), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "dummy"):
             with patch("core.db._supabase_client", None):
                 with pytest.raises(ValueError) as exc_info:
                     get_supabase_client()
                 assert "Supabase configuration missing" in str(exc_info.value)
 
     def test_get_supabase_client_missing_key(self):
-        with patch("core.db.SUPABASE_URL", "some-url"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
+        with patch("core.db.SUPABASE_URL", "dummy"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", ""):
             with patch("core.db._supabase_client", None):
                 with pytest.raises(ValueError) as exc_info:
                     get_supabase_client()
                 assert "Supabase configuration missing" in str(exc_info.value)
+
+    def test_get_supabase_client_success(self):
+        mock_client = MagicMock()
+        with patch("core.db.SUPABASE_URL", "http://dummy"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "dummy_key"):
+            with patch("core.db._supabase_client", None):
+                with patch("core.db.create_client", return_value=mock_client) as mock_create:
+                    client = get_supabase_client()
+                    assert client is mock_client
+                    mock_create.assert_called_once()
+                    assert mock_create.call_args[0] == ("http://dummy", "dummy_key")
+
+    def test_get_supabase_client_cached(self):
+        mock_client = MagicMock()
+        with patch("core.db._supabase_client", mock_client):
+            client = get_supabase_client()
+            assert client is mock_client
+
+    def test_get_supabase_client_iscoroutine(self):
+        async def dummy_coro():
+            return "resolved_client"
+
+        with patch("core.db.SUPABASE_URL", "http://dummy"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "dummy_key"):
+            with patch("core.db._supabase_client", None):
+                with patch("core.db.create_client", return_value=dummy_coro()):
+                    with patch("core.db.logger.warning") as mock_logger:
+                        client = get_supabase_client()
+                        assert client == "resolved_client"
+                        mock_logger.assert_called_once()
+                        assert "returned a coroutine" in mock_logger.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_get_async_supabase_client_success(self):
+        mock_client = MagicMock()
+        with patch("core.db.SUPABASE_URL", "http://dummy"), patch("core.db.SUPABASE_SERVICE_ROLE_KEY", "dummy_key"):
+            with patch("core.db._supabase_async_client", None):
+                with patch("core.db.create_async_client", return_value=mock_client) as mock_create:
+                    client = await get_async_supabase_client()
+                    assert client is mock_client
+                    mock_create.assert_called_once()
+                    assert mock_create.call_args[0] == ("http://dummy", "dummy_key")
+
+    @pytest.mark.asyncio
+    async def test_get_async_supabase_client_cached(self):
+        mock_client = MagicMock()
+        with patch("core.db._supabase_async_client", mock_client):
+            client = await get_async_supabase_client()
+            assert client is mock_client
+
 
     @pytest.mark.asyncio
     async def test_get_async_supabase_client_missing_config(self):

@@ -13,7 +13,7 @@ Synthesized from `raw/docs/engine/CORRELATION_MATRIX.md`.
 - **SMA Smoothing**: Uses 5-day SMA at window endpoints to reduce noise from single-day volatility spikes.
 - **Agent Discovery**: Provides the `find_uncorrelated_assets` tool, allowing agents to proactively find diversification opportunities.
 
-## Ticker Universe (70 assets)
+## Ticker Universe (71 assets)
 
 | Category | Count | Tickers |
 |---|---|---|
@@ -21,7 +21,7 @@ Synthesized from `raw/docs/engine/CORRELATION_MATRIX.md`.
 | US Sub-Sectors | 3 | KRE (regional banks), XRT (retail), XHB (homebuilders) |
 | US Broad | 4 | QQQ, VIG, IWM, SPY |
 | Intl Developed | 8 | EFA, EWJ, EWG, EWL, EWP, SCZ, BWX, EWA |
-| Emerging Markets | 6 | EEM, MCHI, EWZ, EIDO, EPI, INDA |
+| Emerging Markets | 7 | EEM, MCHI, EWZ, EIDO, EPI, INDA, EWY |
 | Commodities | 7 | GLD, SLV, PDBC, USO, CPER, UNG, DBA |
 | Bonds | 6 | TLT, IEF, LQD, EMB, HYG, AGG |
 | Intl Bonds | 3 | BNDX, IAGG, EMLC |
@@ -29,6 +29,8 @@ Synthesized from `raw/docs/engine/CORRELATION_MATRIX.md`.
 | Dollar | 1 | UUP |
 | Crypto | 2 | BTCUSD, ETHUSD |
 | Volatility | 2 | VIXY, VIXM |
+
+Added 2026-05-22: South Korea (EWY).
 
 Added 2026-05-13: copper (CPER), natural gas (UNG), agriculture (DBA), high-yield bonds (HYG), aggregate bonds (AGG), EM local currency bonds (EMLC), biotech (XBI), metals/mining (XME), oil E&P (XOP), regional banks (KRE), retail (XRT), homebuilders (XHB), India (INDA), Australia (EWA).
 

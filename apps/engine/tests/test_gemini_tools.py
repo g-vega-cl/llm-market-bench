@@ -22,43 +22,147 @@ def test_build_gemini_tools_includes_search_with_function_tools():
 
 
 @pytest.mark.asyncio
-async def test_gemini_tool_loop_configures_afc_for_google_search():
-    """When google_search is enabled with function tools, AFC should be disabled.
+async def test_gemini_tool_loop_sets_include_server_side_tool_invocations():
+    """When google_search is enabled, include_server_side_tool_invocations must be True.
 
-    This tests that our handler correctly configures automatic_function_calling
-    when enable_google_search=True.
+    This is the TDD reproduction test for the Gemini 400 INVALID_ARGUMENT bug.
+    The Gemini 3 API requires this flag to mix built-in tools with function calling.
+    Without it, the API throws 400, the loop falls back to basic analysis, and
+    HARD ENFORCEMENT silently discards all Gemini trade signals.
+
+    MUST FAIL before the fix, MUST PASS after.
     """
-    from unittest.mock import AsyncMock, MagicMock
-
     from core.llm.handlers import gemini
 
-    # Mock the raw client's async generate_content method
     raw_client = MagicMock()
     mock_aio = raw_client.aio
     mock_aio.models.generate_content = AsyncMock(return_value=MagicMock(candidates=[MagicMock(content=None)]))
 
-    # Simple message history
+    messages = [{"role": "user", "content": "analyse markets"}]
+
+    mock_config = MagicMock()
+    with (
+        patch.object(gemini, "_generate_content_config_supports", return_value=True),
+        patch("google.genai.types.GenerateContentConfig", return_value=mock_config) as mock_config_class,
+    ):
+        await gemini.run_tool_loop(
+            raw_client=raw_client,
+            model_name="gemini-3.1-flash-lite",
+            messages=messages,
+            override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
+            enable_google_search=True,
+        )
+
+    assert mock_aio.models.generate_content.called
+    assert mock_config_class.called
+    kwargs = mock_config_class.call_args.kwargs
+
+    # The flag must be set to True — this is what fixes the 400 error
+    assert kwargs.get("include_server_side_tool_invocations") is True
+    # automatic_function_calling must NOT be set — the two are mutually exclusive
+    assert kwargs.get("automatic_function_calling") is None
+
+
+@pytest.mark.asyncio
+async def test_gemini_tool_loop_afc_fallback_when_sdk_lacks_flag():
+    """When the SDK does not support include_server_side_tool_invocations, fall back to AFC disable.
+
+    This covers older google-genai SDK versions that don't have the field yet.
+    """
+    from core.llm.handlers import gemini
+
+    raw_client = MagicMock()
+    mock_aio = raw_client.aio
+    mock_aio.models.generate_content = AsyncMock(return_value=MagicMock(candidates=[MagicMock(content=None)]))
+
     messages = [{"role": "user", "content": "hi"}]
 
-    # Run tool loop with google search enabled
-    await gemini.run_tool_loop(
-        raw_client=raw_client,
-        model_name="gemini-1.5-flash",
-        messages=messages,
-        override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
-        enable_google_search=True,
-    )
+    with patch.object(gemini, "_generate_content_config_supports", return_value=False):
+        await gemini.run_tool_loop(
+            raw_client=raw_client,
+            model_name="gemini-3.1-flash-lite",
+            messages=messages,
+            override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
+            enable_google_search=True,
+        )
 
-    # Verify generate_content was called
-    assert mock_aio.models.generate_content.called
-
-    # Extract the config passed to generate_content
-    call_kwargs = mock_aio.models.generate_content.call_args.kwargs
-    config = call_kwargs["config"]
-
-    # Verify automatic_function_calling is set and disabled
+    config = mock_aio.models.generate_content.call_args.kwargs["config"]
+    # Old SDK path: AFC should be disabled as before
     assert config.automatic_function_calling is not None
     assert config.automatic_function_calling.disable is True
+
+
+@pytest.mark.asyncio
+async def test_gemini_tool_loop_echoes_function_call_id():
+    """Function call ids from Gemini 3 responses must be echoed in function_response parts.
+
+    When include_server_side_tool_invocations is active, the Gemini 3 API assigns a unique
+    id to every function_call and requires that exact id in the corresponding function_response
+    for tool context circulation to work. Dropping the id silently breaks multi-turn context.
+
+    MUST FAIL before the fix, MUST PASS after.
+    """
+    from unittest.mock import patch
+
+    from google.genai import types
+
+    from core.llm.handlers import gemini
+
+    # Build a mock response where the function_call has an id
+    mock_fc = MagicMock()
+    mock_fc.name = "calculate_buy_quantity"
+    mock_fc.args = {"ticker": "AAPL", "percentage": 10}
+    mock_fc.id = "fc-abc-123"  # Gemini 3 assigns this
+
+    mock_part_with_call = MagicMock()
+    mock_part_with_call.function_call = mock_fc
+
+    mock_content_with_call = MagicMock()
+    mock_content_with_call.parts = [mock_part_with_call]
+
+    mock_candidate_with_call = MagicMock()
+    mock_candidate_with_call.content = mock_content_with_call
+
+    # Second response: no tool call, ends loop
+    mock_part_final = MagicMock()
+    mock_part_final.function_call = None
+    mock_content_final = MagicMock()
+    mock_content_final.parts = [mock_part_final]
+    mock_candidate_final = MagicMock()
+    mock_candidate_final.content = mock_content_final
+
+    raw_client = MagicMock()
+    raw_client.aio.models.generate_content = AsyncMock(
+        side_effect=[
+            MagicMock(candidates=[mock_candidate_with_call]),
+            MagicMock(candidates=[mock_candidate_final]),
+        ]
+    )
+
+    messages = [{"role": "user", "content": "buy something"}]
+
+    with patch("core.llm.handlers.base.execute_tool", AsyncMock(return_value="result")):
+        await gemini.run_tool_loop(
+            raw_client=raw_client,
+            model_name="gemini-3.1-flash-lite",
+            messages=messages,
+        )
+
+    # Let's find the tool response message in history
+    tool_resp_msg = None
+    for m in messages:
+        if (
+            isinstance(m, types.Content)
+            and m.role == "user"
+            and any(getattr(p, "function_response", None) for p in m.parts)
+        ):
+            tool_resp_msg = m
+            break
+
+    assert tool_resp_msg is not None
+    part = next(p for p in tool_resp_msg.parts if getattr(p, "function_response", None))
+    # The id from the function_call must be echoed in the function_response
+    assert part.function_response.id == "fc-abc-123"
 
 
 @pytest.mark.asyncio

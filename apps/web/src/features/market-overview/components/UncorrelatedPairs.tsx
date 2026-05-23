@@ -16,9 +16,10 @@ import { etfDescriptions } from '../utils/etf-descriptions';
 
 interface UncorrelatedPairsProps {
     correlationData: CorrelationData[];
+    onSelectPair?: (tickerA: string, tickerB: string) => void;
 }
 
-export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
+export function UncorrelatedPairs({ correlationData, onSelectPair }: UncorrelatedPairsProps) {
     const [maxCorrelation, setMaxCorrelation] = React.useState(0.3);
     const [minReturn, setMinReturn] = React.useState(0);
     const [method, setMethod] = React.useState<'pearson' | 'spearman'>('pearson');
@@ -175,6 +176,7 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
                                 <TableHead align="right">90d Return A</TableHead>
                                 <TableHead align="right">90d Return B</TableHead>
                                 <TableHead align="right">Avg Return</TableHead>
+                                <TableHead align="center">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody className="divide-zinc-200 dark:divide-zinc-800">
@@ -245,6 +247,21 @@ export function UncorrelatedPairs({ correlationData }: UncorrelatedPairsProps) {
                                         className={`font-mono font-semibold ${getReturnColor(pair.avgReturn)}`}
                                     >
                                         {pair.avgReturn.toFixed(2)}%
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {onSelectPair && (
+                                            <Button
+                                                size="sm"
+                                                variant="soft"
+                                                colorScheme="accent"
+                                                onClick={() =>
+                                                    onSelectPair(pair.ticker_a, pair.ticker_b)
+                                                }
+                                                className="cursor-pointer"
+                                            >
+                                                📈 History
+                                            </Button>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}

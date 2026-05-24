@@ -10,11 +10,12 @@ The daily pipeline runs on a cron schedule during US market hours
 
 ## Phase 1: Ingestion
 
-Gmail API fetches unread newsletters → BeautifulSoup HTML parsing → Gemini Flash
-removes ads (all newsletters cleaned in parallel via `asyncio.gather`) →
-deterministic `source_id` (`news_{sender_clean}_{MD5[:8]}`) + `chunk_hash` → UPSERT into
-`newsletter_snapshots`. Parallel fetching of economic calendar and government
-data.
+Feeds the platform's multi-agent decision path through three concurrent, idempotent pipelines:
+1. **Newsletters**: Gmail API fetches unread newsletters → sanitizes layout and content using BeautifulSoup → parallel ad removal and text cleaning via Gemini Flash under `asyncio.gather` → computes deterministic `source_id` (`news_{sender_clean}_{MD5[:8]}`) and SHA-256 `chunk_hash` → idempotent `UPSERT` into the `newsletter_snapshots` database. This deterministic hashing prevents duplicate ingestion on rerun.
+2. **Economic Calendar**: Periodic schedules scan and fetch macro events, injecting them as `CALENDAR_EVENT` memories marked with `is_future_catalyst = true` for high-importance horizons.
+3. **Government Tracking**: Continuously monitors G7/G20 governmental policy announcements, subsidy bills, and regulatory shifts, persisting them as high-importance `GOVERNMENT_INCENTIVE` memories.
+
+For more details on ingestion mechanics, see [[concepts/ingestion]].
 
 ## Phase 2: Pre-Analysis
 
@@ -41,10 +42,18 @@ with concept velocity (intensity × growth), PCA visualization, half-life decay.
 
 ## Phase 5: Execution
 
-Pre-market validation (existence, liquidity, staleness ≤2%, buying power, min
-value, SMA floor) → Reg T margin check → "Commit at the End" settlement
-(decision_id → position UPSERT → trade INSERT → cash/save) → Alpaca paper
-mirror. Attribution locking creates bidirectional Decision ↔ Trade links.
+Settles trades in the market using a multi-layered verification and database preservation process:
+1. **Pre-Market Validation**: Before placement, trades must pass rigorous checks:
+   - **Existence**: Ticker is validated and resolved via FMP.
+   - **Liquidity**: Verifies the asset's market cap exceeds the minimum floor.
+   - **Staleness**: Ensures JIT (Just-In-Time) quote prices do not deviate by > 2% compared to model prompt prices.
+   - **SMA Floor**: Checks if projected 50-day/200-day SMA is above safety parameters.
+2. **Reg T Margin Checks**: Validates Initial Margin, Maintenance Margin, and active Buying Power under a 10% minimum position constraint.
+3. **Commit at the End**: Settles trades in the database using an atomic two-phase write (`decision_id` saved → position `UPSERT` → trade `INSERT` → updates cash/SMA balances). This prevents phantom balance deductions in the event of query failure.
+4. **Alpaca Broker Mirroring**: Executes paper-trading limit orders via the Alpaca API. Statuses are decoupled and tracked dynamically via the daily cron sync script.
+5. **Performance Snapshots**: Compiles daily equity curves for all active portfolios (cash-only, inactive portfolios are skipped), fetching market data in a single optimized batch `get_quotes()` call.
+
+For more details on execution safeguards and order settlement, see [[concepts/execution]].
 
 After execution, a daily performance snapshot records equity curves for all
 active portfolios (those holding positions — empty cash-only portfolios are

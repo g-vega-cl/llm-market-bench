@@ -66,6 +66,18 @@ Queries trades with `alpaca_status = 'SUBMITTED'` and `alpaca_order_id IS NOT NU
 - **Manual**: `workflow_dispatch` for ad-hoc runs
 - **Secrets required**: `ALPACA_API_KEY`, `ALPACA_SECRET_KEY`, `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
+## Failure Recovery & Idempotency
+
+### 96-Hour Lookback Window
+To survive potential GitHub Actions runner outages, API timeouts, or holiday weekend gaps, the sync script queries orders with a **96-hour (4 days) lookback window** (`MAX_AGE_HOURS = 96`). 
+This means that if a weekday cron fails or if the market is closed over a multi-day weekend, the very next successful run of the cron will automatically scan back and capture all pending `SUBMITTED` orders submitted during the outage window.
+
+### Idempotency Invariants
+The sync process is fully **idempotent** by design:
+1. **Target Filtering**: The script only queries trades in the `SUBMITTED` state that possess a valid `alpaca_order_id`. Trades that have already reached a terminal status (e.g. `FILLED`, `REJECTED`, `CANCELED`, `EXPIRED`) are ignored.
+2. **Terminal Transitions**: Updates are only written to Supabase once an order reaches a terminal state inside Alpaca. If an order remains in a non-terminal state (e.g. `PARTIALLY_FILLED` or `ACCEPTED`), it is skipped and will be checked again on the next cron run.
+3. **Manual Retries**: If needed, the GitHub Actions workflow can be triggered manually via `workflow_dispatch` at any time to execute an ad-hoc sync without any risk of double-counting or duplicating trades.
+
 ## Why Decoupled?
 
 The original design was "fire-and-forget" — Alpaca was treated as an audit mirror with no sync back, so `alpaca_status` stayed permanently at `PENDING`. An in-process polling approach (background asyncio tasks) was rejected because `asyncio.run()` cancels pending tasks when the main pipeline completes, making it unreliable.

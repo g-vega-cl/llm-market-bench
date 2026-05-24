@@ -27,8 +27,8 @@ from core.config import (
 )
 from core.db import get_supabase_client
 
-# Only sync orders submitted in the last 24 hours (DAY orders expire end of day)
-MAX_AGE_HOURS = 24
+# Only sync orders submitted in the last 96 hours (handles weekends and cron failures)
+MAX_AGE_HOURS = 96
 
 # Terminal Alpaca statuses that mean "done, don't poll again"
 TERMINAL_STATUSES = {

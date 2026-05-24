@@ -45,4 +45,6 @@ Configured via `apps/web/vitest.config.ts`.
 
 ## Increasing Thresholds
 
-Thresholds should be periodically reviewed and increased as the codebase matures. The goal is to reach a uniform 80% across all core components.
+Thresholds are periodically reviewed and ratcheted upward as the codebase matures.
+- **Ratchet Mechanism**: When a component's actual test coverage consistently exceeds the baseline threshold by a significant margin (e.g., 5%+), a task is scheduled to increase the minimum threshold inside `.husky/pre-commit` and update this document accordingly. This prevents coverage regression and drives gradual code quality improvements.
+- **Ultimate Goal**: The long-term target is to reach a uniform 80% coverage across all core business-logic components.

@@ -223,3 +223,12 @@ Added EWY (iShares MSCI South Korea ETF) to the correlation matrix TICKER_UNIVER
 - **Default Ollama model**: Changed from `qwen3.5:latest` to `gemma4:31b`.
 - **Tests**: Added `test_prepare_messages_for_instructor`, `test_has_valid_content`, and `test_get_deepseek_client_mode` to `test_deepseek_handler.py`.
 - **Wiki model-anomalies.md**: Updated DeepSeek mitigation description to document the MD_JSON root resolution alongside the existing fail-safe recovery logic.
+
+## [2026-05-24] docs | Alpaca sync resilience, new agents concept page, and wiki enhancements
+
+- Increased MAX_AGE_HOURS to 96 for weekend/cron failure resilience
+- Added comprehensive test suite for Alpaca order sync
+- Created new concept page for multi-agent system overview
+- Expanded equal-weighted returns documentation with rationale and edge cases
+- Updated pipeline and autoresearch pages with execution details
+- Added cross-references between system-heavy prompt and agents pages

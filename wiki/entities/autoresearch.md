@@ -19,14 +19,14 @@ The auto-research system is configured via:
 The auto-research loop runs weekly:
 1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
 2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - Opportunity Cost% - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
-3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation.
-4. **Research** — LLM proposes a new prompt variant (incremental or radical) based on the *post-revert baseline*.
+3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This revert happens **before** generating the new prompt in Step 4. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation, never from a failed experiment.
+4. **Research** — LLM proposes a new prompt variant (incremental or radical) building on top of the **post-revert baseline**.
 5. **Deploy** — always activate the new variant generated in step 4.
 6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair).
 
 ## System-Heavy Prompt Architecture
 
-As of **2026-05-19**, the system moved to a **System-Heavy** architecture to maximize the surface area of evolution for the meta-researcher.
+As of **2026-05-24**, the system is built on a **System-Heavy** architecture to maximize the surface area of evolution for the meta-researcher.
 
 - **System Prompt (The Rulebook)**: Contains 100% of the trading logic, risk management (SMA rules), SOPs (5-Whys), and tool-usage requirements. This part is stored in the database and is mutated by the meta-researcher.
 - **User Prompt (The Data Case)**: Reduced to a minimal skeleton that only handles dynamic data injection (News snippets, Portfolio status, Historical context). This part is static in the source code.
@@ -71,6 +71,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-05-24**: **Resilience & Execution Alignment** — Documented multi-agent system overview and verified overall pipeline integrity, ensuring zero-warning enforcement and clean wiki links.
 - **2026-05-20**: **USD Strength Decoupling** — Decoupled the USD Index return from the opportunity cost penalty calculation (retaining it in the weekly report and database payload for macroeconomic context only) and set the Treasury Bond yield as the sole active hurdle.
 - **2026-05-20**: **Dynamic Hurdles Integration** — Integrated actual Treasury Bond yields and actual USD strength returns (via `UUP` ETF proxy) fetched dynamically from the FMP API into the scoring formula as an asymmetric opportunity cost penalty.
 - **2026-05-19**: **System-Heavy Refactor** — Moved all 16 logic points, SMA rules, and output definitions from the static User prompt to the evolvable System prompt. Reduced User prompt to a data-only skeleton.

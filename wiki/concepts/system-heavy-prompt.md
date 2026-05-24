@@ -36,14 +36,14 @@ As of **2026-05-20**, this pattern is enforced across every agent in the system:
 
 | Agent | System Prompt | User Prompt (data only) |
 |---|---|---|
-| Analysis | `CORE_ANALYSIS_SYSTEM_PROMPT` | `ANALYSIS_USER_PROMPT_TEMPLATE` |
-| Contrarian | `CONTRARIAN_SYSTEM_PROMPT` | `CONTRARIAN_USER_PROMPT_TEMPLATE` |
-| Verifier | `VERIFIER_SYSTEM_PROMPT` | `VERIFIER_USER_PROMPT_TEMPLATE` |
-| Synthesis | `SYNTHESIS_SYSTEM_PROMPT` | `SYNTHESIS_USER_PROMPT_TEMPLATE` |
-| Manager | `MANAGER_SYSTEM_PROMPT` | `MANAGER_USER_PROMPT_TEMPLATE` |
-| Relationship | `RELATIONSHIP_SYSTEM_PROMPT` | `RELATIONSHIP_USER_PROMPT_TEMPLATE` |
-| Cause & Effect | `CAUSE_AND_EFFECT_SYSTEM_PROMPT` | `CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE` |
-| De-Advertisement | `DE_ADVERTISEMENT_SYSTEM_PROMPT` | `DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Analysis) | `CORE_ANALYSIS_SYSTEM_PROMPT` | `ANALYSIS_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Contrarian) | `CONTRARIAN_SYSTEM_PROMPT` | `CONTRARIAN_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Verifier) | `VERIFIER_SYSTEM_PROMPT` | `VERIFIER_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Synthesis) | `SYNTHESIS_SYSTEM_PROMPT` | `SYNTHESIS_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Manager) | `MANAGER_SYSTEM_PROMPT` | `MANAGER_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Relationship) | `RELATIONSHIP_SYSTEM_PROMPT` | `RELATIONSHIP_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (Cause & Effect) | `CAUSE_AND_EFFECT_SYSTEM_PROMPT` | `CAUSE_AND_EFFECT_USER_PROMPT_TEMPLATE` |
+| [[concepts/agents]] (De-Advertisement) | `DE_ADVERTISEMENT_SYSTEM_PROMPT` | `DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE` |
 
 ## Invariants (Enforced by Tests)
 
@@ -55,6 +55,7 @@ The `TestPureDataInjectionUserPrompts` class in `test_prompts_refactor.py` enfor
 
 ## Related
 
+- [[concepts/agents]] — detailed role and tool definitions for all 8 agents
 - [[entities/autoresearch]] — module implementation and the Karpathy Ratchet
 - [[entities/engine]] — how prompts are invoked in the daily pipeline
 - [[concepts/auto-research-prompt-improver]] — the evolutionary loop

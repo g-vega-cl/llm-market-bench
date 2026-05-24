@@ -67,3 +67,98 @@ async def test_run_tool_loop_serialization():
     assert isinstance(assistant_msg["tool_calls"], list)
     assert isinstance(assistant_msg["tool_calls"][0], dict), "Tool call was not serialized into a dictionary!"
     assert assistant_msg["tool_calls"][0]["id"] == "call_abc123"
+
+
+def test_prepare_messages_for_instructor():
+    """Test that DeepSeek message cleanup strips reasoning_content appropriately."""
+    messages = [
+        {
+            "role": "user",
+            "content": "Perform research.",
+        },
+        {
+            "role": "assistant",
+            "content": "Here is the result.",
+            "reasoning_content": "<think>Thinking trace...</think>",
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": "<think>Thinking trace 2...</think>",
+            "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "test_tool"}}],
+        },
+    ]
+
+    cleaned = deepseek.prepare_messages_for_instructor(messages)
+
+    assert len(cleaned) == 3
+    # User message untouched
+    assert cleaned[0]["role"] == "user"
+    assert cleaned[0]["content"] == "Perform research."
+
+    # Assistant non-tool message: reasoning_content must be cleared to None
+    assert cleaned[1]["role"] == "assistant"
+    assert cleaned[1]["content"] == "Here is the result."
+    assert cleaned[1]["reasoning_content"] is None
+
+    # Assistant tool message: reasoning_content must NOT be cleared (required by some API structures)
+    assert cleaned[2]["role"] == "assistant"
+    assert cleaned[2]["reasoning_content"] == "<think>Thinking trace 2...</think>"
+    assert len(cleaned[2]["tool_calls"]) == 1
+
+
+def test_has_valid_content():
+    """Test the detection of empty/whitespace content in assistant messages."""
+    # Valid content
+    assert (
+        deepseek.has_valid_content(
+            [
+                {"role": "user", "content": "hello"},
+                {"role": "assistant", "content": "I am here."},
+            ]
+        )
+        is True
+    )
+
+    # Empty content
+    assert (
+        deepseek.has_valid_content(
+            [
+                {"role": "user", "content": "hello"},
+                {"role": "assistant", "content": ""},
+            ]
+        )
+        is False
+    )
+
+    # Whitespace content
+    assert (
+        deepseek.has_valid_content(
+            [
+                {"role": "user", "content": "hello"},
+                {"role": "assistant", "content": "   \n  "},
+            ]
+        )
+        is False
+    )
+
+    # Non-assistant last message with previous assistant empty
+    assert (
+        deepseek.has_valid_content(
+            [
+                {"role": "assistant", "content": "I am here."},
+                {"role": "user", "content": "hello"},
+            ]
+        )
+        is True
+    )
+
+
+def test_get_deepseek_client_mode():
+    """Verify that get_deepseek_client returns a client configured with Mode.MD_JSON."""
+    import instructor
+
+    from core.llm.clients import get_deepseek_client
+
+    client = get_deepseek_client()
+    assert client.mode == instructor.Mode.MD_JSON

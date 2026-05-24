@@ -69,7 +69,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 - [ ] - Revisit alpaca trades.
 - [x] - Gemini-3.1-flash-lite generated 0 decisions. — Resolved by enabling include_server_side_tool_invocations and propagating function call IDs.
-- [ ] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt.
+- [x] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt. — Resolved by stripping reasoning_content from non-tool calls for Instructor, implementing a 3-attempt JSON recovery prompt, and verifying with 100% test coverage. Found 57 production instances in logs successfully resolved via this method.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.

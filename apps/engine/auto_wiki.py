@@ -41,7 +41,7 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
-DEFAULT_OLLAMA_MODEL = "qwen3.5:latest"
+DEFAULT_OLLAMA_MODEL = "gemma4:31b"
 
 
 def get_api_key() -> str | None:
@@ -267,23 +267,52 @@ def get_available_ollama_models() -> list[str]:
 
 def call_ollama(prompt: str, model: str) -> dict:
     system_prompt = SYSTEM_PROMPT + "\n\nIMPORTANT: Output ONLY the JSON. No markdown, no explanation."
+
+    # Check if the requested model is installed. If not, try to resolve fallback before sending request.
+    available_models = get_available_ollama_models()
+    resolved_model = model
+
+    if available_models and model not in available_models:
+        # Check if the model with ':latest' stripped or suffix differences exists, or use preferred list
+        fallback_preferences = ["gemma4:31b", "qwen3.6:35b", "llama3.1:8b"]
+        found_fallback = False
+
+        for pref in fallback_preferences:
+            if pref in available_models:
+                print(
+                    f"  [auto-wiki] model '{model}' not found. Falling back to installed model: {pref}", file=sys.stderr
+                )
+                resolved_model = pref
+                found_fallback = True
+                break
+
+        if not found_fallback:
+            # Fall back to the first available local model
+            fallback = available_models[0]
+            print(
+                f"  [auto-wiki] model '{model}' not found. Falling back to first available model: {fallback}",
+                file=sys.stderr,
+            )
+            resolved_model = fallback
+
     payload = {
-        "model": model,
+        "model": resolved_model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ],
         "format": "json",
         "stream": False,
+        "keep_alive": "10s",  # Keep model warm for 10s to speed up rapid sequential queries
     }
 
     resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
     if resp.status_code == 404:
         models = get_available_ollama_models()
         if models:
-            raise requests.RequestException(f"model '{model}' not found. Available: {', '.join(models)}")
+            raise requests.RequestException(f"model '{resolved_model}' not found. Available: {', '.join(models)}")
         else:
-            raise requests.RequestException(f"model '{model}' not found.")
+            raise requests.RequestException(f"model '{resolved_model}' not found.")
     resp.raise_for_status()
     return _parse_llm_response(resp.json()["message"]["content"])
 

@@ -37,7 +37,9 @@ describe('Portfolio Config Utils', () => {
             expect(configModule.normalizeOwnerId('DeepSeek_V4_Pro')).toBe('deepseek-v4-pro');
             expect(configModule.normalizeOwnerId('  GPT-5.4 Nano  ')).toBe('gpt-5.4-nano');
             expect(configModule.normalizeOwnerId('---TEST_model---')).toBe('test-model');
-            expect(configModule.normalizeOwnerId('model-with  spaces_and_dashes')).toBe('model-with-spaces-and-dashes');
+            expect(configModule.normalizeOwnerId('model-with  spaces_and_dashes')).toBe(
+                'model-with-spaces-and-dashes',
+            );
         });
 
         it('returns empty string for null', () => {
@@ -169,7 +171,7 @@ describe('Portfolio Config Utils Error Handling', () => {
         vi.doMock('@repo/config/models.json', () => ({
             default: {
                 AUTORESEARCH_EXPERIMENT_OWNER_IDS: {
-                    map: () => undefined
+                    map: () => undefined,
                 },
             },
         }));

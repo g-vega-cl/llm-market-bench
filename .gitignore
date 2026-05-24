@@ -24,3 +24,5 @@ htmlcov/
 
 # QMD index
 *.sqlite
+
+.antigravitycli

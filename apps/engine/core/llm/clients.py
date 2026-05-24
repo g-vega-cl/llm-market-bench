@@ -32,7 +32,7 @@ def get_deepseek_client():
     """
     return instructor.from_openai(
         AsyncOpenAI(api_key=config.DEEPSEEK_API_KEY, base_url="https://api.deepseek.com", timeout=TIMEOUT),
-        mode=instructor.Mode.JSON,
+        mode=instructor.Mode.MD_JSON,
     )
 
 

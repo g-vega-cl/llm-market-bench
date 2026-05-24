@@ -1,0 +1,18 @@
+
+> llm-market-bench@ dev:web /app
+> pnpm --filter web dev
+
+
+> web@ dev /app/apps/web
+> vite dev
+
+1:03:18 AM [vite] ⬥ Netlify Environment loaded
+1:03:18 AM [vite] ⬥ Netlify Middleware loaded. Emulating features: aiGateway, blobs, edgeFunctions, environmentVariables, functions, geolocation, headers, images, redirects, static.
+1:03:18 AM [vite] ⬥ Netlify 💭 Linking this project to a Netlify site lets you deploy your site, use any environment variables defined on your team and site and much more. Run npx netlify init to get started.
+
+  VITE v7.3.1  ready in 2591 ms
+
+  ➜  Local:   http://localhost:3005/
+  ➜  Network: use --host to expose
+[vite] connected.
+[PostHog.js] No `apiKey` or `client` were provided to `PostHogProvider`. Using default global `window.posthog` instance. You must initialize it manually. This is not recommended behavior.

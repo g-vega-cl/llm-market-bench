@@ -59,6 +59,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             {memory.relationship_type || 'Related'}
                         </Badge>
                     )}
+
+                    {memory.importance_score != null && (
+                        <Badge variant="soft" colorScheme="neutral" size="sm">
+                            Score: {memory.importance_score}/10
+                        </Badge>
+                    )}
                 </div>
 
                 <span className="text-xs text-zinc-400 font-mono">

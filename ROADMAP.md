@@ -99,6 +99,6 @@ A living document of features and improvements in progress or planned for the pl
 
 ## Under Consideration
 
-- [ ] Benchify: Benchify: mark the portfolios that use autoresearch
+- [x] Benchify: Benchify: mark the portfolios that use autoresearch
 
 - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)

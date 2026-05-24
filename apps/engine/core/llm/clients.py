@@ -15,33 +15,37 @@ logger = logging.getLogger("engine")
 TIMEOUT = 180
 
 
-def get_openai_client():
+def get_openai_client(api_key: str | None = None):
     """Creates an async OpenAI client wrapped with Instructor."""
-    return instructor.from_openai(AsyncOpenAI(api_key=config.OPENAI_API_KEY, timeout=TIMEOUT))
+    key = api_key or config.OPENAI_API_KEY
+    return instructor.from_openai(AsyncOpenAI(api_key=key, timeout=TIMEOUT))
 
 
-def get_anthropic_client():
+def get_anthropic_client(api_key: str | None = None):
     """Creates an async Anthropic client wrapped with Instructor."""
-    return instructor.from_anthropic(AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY, timeout=TIMEOUT))
+    key = api_key or config.ANTHROPIC_API_KEY
+    return instructor.from_anthropic(AsyncAnthropic(api_key=key, timeout=TIMEOUT))
 
 
-def get_deepseek_client():
+def get_deepseek_client(api_key: str | None = None):
     """Creates an async DeepSeek client wrapped with Instructor.
 
     Uses the OpenAI SDK to interact with DeepSeek's API.
     """
+    key = api_key or config.DEEPSEEK_API_KEY
     return instructor.from_openai(
-        AsyncOpenAI(api_key=config.DEEPSEEK_API_KEY, base_url="https://api.deepseek.com", timeout=TIMEOUT),
+        AsyncOpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=TIMEOUT),
         mode=instructor.Mode.MD_JSON,
     )
 
 
-def get_gemini_client():
+def get_gemini_client(api_key: str | None = None):
     """Creates a Google Gemini client wrapped with Instructor.
 
     Uses mode=GENAI_TOOLS to properly handle Gemini's function calling.
     """
-    client = genai.Client(api_key=config.GEMINI_API_KEY)
+    key = api_key or config.GEMINI_API_KEY
+    client = genai.Client(api_key=key)
     return instructor.from_genai(client, mode=instructor.Mode.GENAI_TOOLS)
 
 

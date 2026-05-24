@@ -160,5 +160,5 @@ def test_get_deepseek_client_mode():
 
     from core.llm.clients import get_deepseek_client
 
-    client = get_deepseek_client()
+    client = get_deepseek_client(api_key="mock-deepseek-key")
     assert client.mode == instructor.Mode.MD_JSON

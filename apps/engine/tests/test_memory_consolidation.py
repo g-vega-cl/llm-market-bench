@@ -34,11 +34,13 @@ def mock_cosine():
         with patch(target) as mock:
             yield mock
 
+
 @pytest.fixture
 def mock_add_memory():
     with patch("apps.engine.memory.store.add_memory") as mock:
         mock.return_value = "uuid-consolidated"
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_consolidate_overlapping_memories(mock_supabase, mock_deepseek, mock_cosine, mock_add_memory):

@@ -1,4 +1,12 @@
+## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
+
+Refactored the LLM client factories to follow clean Dependency Injection best practices, resolving a credentials dependency blocker in CI/CD unit testing environments:
+- **Parameterized factories**: Updated `get_openai_client`, `get_anthropic_client`, `get_deepseek_client`, and `get_gemini_client` to support an optional `api_key: str | None = None` parameter, falling back dynamically to global `core.config` attributes if unset.
+- **Isolated Testing**: Simplified `test_get_deepseek_client_mode` to pass dummy/mock credentials directly, eliminating global state manipulation (`monkeypatch` or env var overrides) and achieving 100% test isolation.
+- **Documentation**: Updated `wiki/sources/engine-testing-source.md` to reflect the new dependency injection and client testing paradigms.
+
 ## [2026-05-22] feature | Advanced memory reinforcement, tiered decay, and sleep consolidation
+
 
 Implemented a robust and advanced LLM memory management system to prevent context pollution and reasoning degradation:
 - **Memory Reinforcement**: Semantically similar duplicate records now reset `relevance_score` to `1.0` and bump `created_at` timestamp rather than being silently ignored. The duplicate check window is extended to **168 hours (7 days)** to capture repeating signals across weekends.
@@ -232,3 +240,7 @@ Added EWY (iShares MSCI South Korea ETF) to the correlation matrix TICKER_UNIVER
 - Expanded equal-weighted returns documentation with rationale and edge cases
 - Updated pipeline and autoresearch pages with execution details
 - Added cross-references between system-heavy prompt and agents pages
+
+## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
+
+Updated `apps/engine/core/llm/clients.py` to parameterize the four LLM client factories (`get_openai_client`, `get_anthropic_client`, `get_deepseek_client`, `get_gemini_client`) with an optional `api_key: str | None = None` parameter. This enables clean dependency injection for unit tests, eliminating the need for `monkeypatch` or environment variable manipulation in CI/CD. Tests updated: `test_deepseek_handler.py`, `test_models.py`, `test_memory_consolidation.py`.

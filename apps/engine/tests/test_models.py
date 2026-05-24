@@ -102,10 +102,12 @@ def test_decisions_response_parse_json_string():
     assert isinstance(response.decisions[0], DecisionObject)
     assert response.decisions[0].ticker == "MSFT"  # Checking validator worked
 
+
 def test_decisions_response_parse_invalid_json_string():
     """Test that DecisionsResponse returns the string if it's invalid JSON, which then fails validation."""
     with pytest.raises(ValidationError):
         DecisionsResponse(decisions="invalid json")
+
 
 def test_ticker_suggestion_upper_case_tickers():
     """Test that TickerSuggestion normalizes all tickers in the list to uppercase."""
@@ -134,10 +136,12 @@ def test_ranked_asset_relevance_score_bounds():
         RankedAsset(ticker="AAPL", name="Apple", relevance_score=101, reason="test")
     assert "relevance_score" in str(exc_info.value)
 
+
 def test_decisions_response_parse_json_string_non_string():
     """Test that DecisionsResponse returns the original value if it's not a string."""
     response = DecisionsResponse(decisions=[])
     assert response.decisions == []
+
 
 def test_decision_object_injected_market_price():
     """Test that DecisionObject accepts injected_market_price."""

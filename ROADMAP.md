@@ -89,6 +89,13 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other
 - [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
+- [ ] - Benchify: add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because bias
+- [ ] - Benchify: audit that memories are still being correlated to each other
+- [ ] - Benchify: make sure quantum 2b push is in memories and why not if it isn't
+- [ ] - Benchify: ratchet is affected by previous weeks' decisions
+- [ ] - Benchify: uncorrelated high return sectors this week do well for next week check
+- [ ] - Benchify: search bar for memories
+- [ ] - Benchify: memories importance to card. Do not remove importance from papers memory. Memories filter
 
 ## Under Consideration
 

@@ -6,7 +6,7 @@ import {
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import {
     getMemoryCategory,
@@ -26,42 +26,84 @@ import {
     saveCachedMemories,
 } from '../lib/cache';
 
+/**
+ * Fetches the first page of memories immediately for display.
+ * Returns the first page and a cursor the caller can use to continue
+ * fetching subsequent pages in the background.
+ *
+ * Production path (fetchFn provided): uses the server function wrapper,
+ * which returns 50 items per page — cursor-based pagination handles the rest.
+ *
+ * Test/fallback path (no fetchFn): fetches up to MAX_CACHE_SIZE in one shot.
+ */
 async function performFullBackfill(
     fetchFn?: (cursor: string | undefined, category?: string) => Promise<PaginatedMemories>,
-): Promise<Memory[]> {
-    const res = fetchFn
-        ? await fetchFn(undefined, undefined)
-        : await fetchMemories(undefined, MAX_CACHE_SIZE);
+): Promise<{ memories: Memory[]; nextCursor: string | null }> {
+    if (fetchFn) {
+        const res = await fetchFn(undefined, undefined);
+        const merged = mergeAndDeduplicate(res?.data || [], []);
+        saveCachedMemories(merged);
+        return { memories: merged, nextCursor: res?.nextCursor ?? null };
+    }
+
+    // Fallback when no fetchFn — used in unit tests that bypass the server fn
+    const res = await fetchMemories(undefined, MAX_CACHE_SIZE);
     const merged = mergeAndDeduplicate(res?.data || [], []);
     saveCachedMemories(merged);
-    return merged;
+    return { memories: merged, nextCursor: null };
 }
 
-async function fetchDeltaOrBackfill(
-    cached: Memory[],
-    latestCachedTimestamp: string,
-    fetchFn?: (cursor: string | undefined, category?: string) => Promise<PaginatedMemories>,
-): Promise<Memory[]> {
-    if (cached.length >= MAX_CACHE_SIZE) {
-        return fetchNewMemories(latestCachedTimestamp);
+/**
+ * Walks cursor pages via fetchFn until the cache is full or there are no more pages.
+ * Saves each merged page to localStorage and updates the live React Query cache
+ * silently — no loading state is shown to the user.
+ */
+async function runProgressiveFill(
+    startCursor: string,
+    fetchFn: (cursor: string | undefined, category?: string) => Promise<PaginatedMemories>,
+    setQueryData: (data: Memory[]) => void,
+): Promise<void> {
+    let currentCursor: string | null = startCursor;
+
+    while (currentCursor) {
+        const accumulated = getCachedMemories();
+        if (accumulated.length >= MAX_CACHE_SIZE) break;
+
+        const res = await fetchFn(currentCursor, undefined);
+        if (!res?.data?.length) break;
+
+        const merged = mergeAndDeduplicate(res.data, accumulated);
+        saveCachedMemories(merged);
+        setQueryData(merged);
+
+        currentCursor = res.hasMore ? (res.nextCursor ?? null) : null;
     }
-    const res = fetchFn
-        ? await fetchFn(undefined, undefined)
-        : await fetchMemories(undefined, MAX_CACHE_SIZE);
-    return res?.data || [];
 }
 
+/**
+ * Decides whether to run a full backfill or an incremental delta-sync.
+ *
+ * - Empty cache or partial cache (< MAX_CACHE_SIZE): always backfill.
+ *   The first page is returned immediately; the caller is responsible for
+ *   fetching subsequent pages in the background via the returned nextCursor.
+ *
+ * - Full cache (>= MAX_CACHE_SIZE): validate the cache head against the DB,
+ *   then delta-sync only the new records since the last cached timestamp.
+ *   A cache-bust (missing ID or DB rollback) triggers a fresh backfill.
+ */
 async function syncMemoriesCache(
     cached: Memory[],
     fetchFn?: (cursor: string | undefined, category?: string) => Promise<PaginatedMemories>,
-): Promise<Memory[]> {
+): Promise<{ memories: Memory[]; nextCursor: string | null }> {
     const latestCachedTimestamp = cached.length > 0 ? cached[0].created_at : null;
     const latestCachedId = cached.length > 0 ? cached[0].id : null;
 
-    if (!latestCachedTimestamp || !latestCachedId) {
+    // No cache or partial cache — run a full backfill
+    if (!latestCachedTimestamp || !latestCachedId || cached.length < MAX_CACHE_SIZE) {
         return performFullBackfill(fetchFn);
     }
 
+    // Full cache — validate and delta-sync
     try {
         const validation = await validateCacheState(latestCachedId);
 
@@ -75,16 +117,16 @@ async function syncMemoriesCache(
             return performFullBackfill(fetchFn);
         }
 
-        const newMemories = await fetchDeltaOrBackfill(cached, latestCachedTimestamp, fetchFn);
+        const newMemories = await fetchNewMemories(latestCachedTimestamp);
         const merged = mergeAndDeduplicate(newMemories, cached);
         saveCachedMemories(merged);
-        return merged;
+        return { memories: merged, nextCursor: null };
     } catch (e) {
-        console.error('Failed cache validation, falling back to safe delta/full fetch:', e);
-        const newMemories = await fetchDeltaOrBackfill(cached, latestCachedTimestamp, fetchFn);
+        console.error('Failed cache validation, falling back to safe delta fetch:', e);
+        const newMemories = await fetchNewMemories(latestCachedTimestamp);
         const merged = mergeAndDeduplicate(newMemories, cached);
         saveCachedMemories(merged);
-        return merged;
+        return { memories: merged, nextCursor: null };
     }
 }
 
@@ -95,9 +137,16 @@ interface MemoriesPageProps {
 const PAGE_SIZE = 50;
 
 export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
+    const queryClient = useQueryClient();
     const posthog = usePostHog();
     const [filter, setFilter] = React.useState<string>('all');
     const [displayLimit, setDisplayLimit] = React.useState<number>(PAGE_SIZE);
+
+    // Cursor to continue a progressive backfill after the first page loads.
+    // Set by the queryFn; consumed and cleared by the fill effect.
+    const [pendingCursor, setPendingCursor] = React.useState<string | null>(null);
+    // Prevents multiple concurrent background fill loops
+    const isFillingRef = React.useRef(false);
 
     const handleFilterChange = (newFilter: string) => {
         setFilter(newFilter);
@@ -112,7 +161,10 @@ export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
         queryKey: ['benchify', 'memories', 'list'],
         queryFn: async () => {
             const cached = getCachedMemories();
-            return syncMemoriesCache(cached, fetchFn);
+            const { memories: firstPage, nextCursor } = await syncMemoriesCache(cached, fetchFn);
+            // Signal the fill effect with the cursor (or clear it if no fill needed)
+            setPendingCursor(nextCursor);
+            return firstPage;
         },
         initialData: () => {
             return getCachedMemories();
@@ -121,6 +173,26 @@ export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
         staleTime: 1000 * 30, // 30 seconds
         refetchOnWindowFocus: false,
     });
+
+    // Invisible background progressive fill
+    // Fires when the queryFn sets a pendingCursor after the first page loads.
+    // Continues paging through remaining records and silently updates the displayed list.
+    // No loading state is shown to the user.
+    React.useEffect(() => {
+        if (!pendingCursor || isFillingRef.current || !fetchFn) return;
+
+        isFillingRef.current = true;
+        // Clear immediately to prevent re-entrancy if the component re-renders
+        setPendingCursor(null);
+
+        runProgressiveFill(pendingCursor, fetchFn, (data) =>
+            queryClient.setQueryData<Memory[]>(['benchify', 'memories', 'list'], data),
+        )
+            .catch((e) => console.error('Background progressive fill failed:', e))
+            .finally(() => {
+                isFillingRef.current = false;
+            });
+    }, [pendingCursor, fetchFn, queryClient]);
 
     // 100% Instantaneous Client-Side Filtering
     const filteredMemories = React.useMemo(() => {

@@ -137,21 +137,29 @@ describe('MemoriesPage (Solution B Cache + Delta Sync)', () => {
 
     it('filters memories 100% client-side without making new fetch calls', async () => {
         localStorage.setItem('benchify_memories_v1', JSON.stringify(mockMemories));
-        vi.mocked(fetchNewMemories).mockResolvedValue([]);
+
+        // Provide a real resolved value so the backfill does not wipe the displayed list
+        const fetchFnMock = vi.fn().mockResolvedValue({
+            data: mockMemories,
+            hasMore: false,
+            nextCursor: null,
+        });
 
         render(
             <QueryClientProvider client={queryClient}>
-                <MemoriesPage fetchFn={vi.fn()} />
+                <MemoriesPage fetchFn={fetchFnMock} />
             </QueryClientProvider>,
         );
 
-        // Initial render lists all
-        expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
-        expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
+        // Wait for both memories to be visible (queryFn may overwrite initialData)
+        await waitFor(() => {
+            expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
+            expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
+        });
 
-        // Clear mock calls to verify tab changes trigger NO requests
+        // Clear mock call counts — subsequent tab changes must trigger ZERO requests
+        fetchFnMock.mockClear();
         vi.mocked(fetchNewMemories).mockClear();
-        const fetchFnMock = vi.fn();
 
         // Click "Events" tab
         const eventsBtn = screen.getByText('Events');
@@ -169,32 +177,106 @@ describe('MemoriesPage (Solution B Cache + Delta Sync)', () => {
         expect(screen.queryByText('Market event consensus description')).not.toBeInTheDocument();
         expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
 
-        // Assert 0 network/fetch requests were triggered by these tab changes!
+        // Assert 0 network/fetch requests were triggered by these tab changes
         expect(fetchNewMemories).not.toHaveBeenCalled();
         expect(fetchFnMock).not.toHaveBeenCalled();
     });
 
-    it('backfills cache to 500 if cached size is less than 500', async () => {
+    it('progressively backfills cache via fetchFn when cache is smaller than MAX_CACHE_SIZE', async () => {
         // Seed localStorage with only 1 memory (less than MAX_CACHE_SIZE)
         const smallMockMemories = mockMemories.slice(0, 1);
         localStorage.setItem('benchify_memories_v1', JSON.stringify(smallMockMemories));
 
-        const mockFetchMemories = vi.mocked(fetchMemories);
-        mockFetchMemories.mockResolvedValue({
-            data: mockMemories,
-            hasMore: false,
-            nextCursor: null,
-        });
+        const page1Memory = {
+            ...mockMemories[0],
+            id: 'p1',
+            created_at: '2026-05-25T10:00:00.000Z',
+        };
+        const page2Memory = {
+            ...mockMemories[1],
+            id: 'p2',
+            created_at: '2026-05-24T10:00:00.000Z',
+        };
+
+        // fetchFn returns page 1 with a cursor, then page 2 with no more pages
+        const fetchFnMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                data: [page1Memory],
+                hasMore: true,
+                nextCursor: '2026-05-25T10:00:00.000Z',
+            })
+            .mockResolvedValueOnce({
+                data: [page2Memory],
+                hasMore: false,
+                nextCursor: null,
+            });
 
         render(
             <QueryClientProvider client={queryClient}>
-                <MemoriesPage />
+                <MemoriesPage fetchFn={fetchFnMock} />
             </QueryClientProvider>,
         );
 
-        // It should call fetchMemories with 500 limit to backfill the cache
+        // queryFn fires the first page fetch
         await waitFor(() => {
-            expect(mockFetchMemories).toHaveBeenCalledWith(undefined, 500);
+            expect(fetchFnMock).toHaveBeenCalledWith(undefined, undefined);
+        });
+
+        // Background fill fires the second page fetch using the cursor from page 1
+        await waitFor(() => {
+            expect(fetchFnMock).toHaveBeenCalledWith('2026-05-25T10:00:00.000Z', undefined);
+        });
+
+        // Both pages should be persisted to localStorage after the background fill
+        await waitFor(() => {
+            const saved = JSON.parse(localStorage.getItem('benchify_memories_v1') || '[]');
+            expect(saved.some((m: { id: string }) => m.id === 'p2')).toBe(true);
+        });
+    });
+
+    it('progressive backfill updates the displayed list as background pages arrive', async () => {
+        // Empty cache — forces full backfill
+        localStorage.clear();
+
+        const page1Memory = {
+            ...mockMemories[0],
+            id: 'p1',
+            created_at: '2026-05-25T10:00:00.000Z',
+        };
+        const page2Memory = {
+            ...mockMemories[1],
+            id: 'p2',
+            created_at: '2026-05-24T10:00:00.000Z',
+        };
+
+        const fetchFnMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                data: [page1Memory],
+                hasMore: true,
+                nextCursor: '2026-05-25T10:00:00.000Z',
+            })
+            .mockResolvedValueOnce({
+                data: [page2Memory],
+                hasMore: false,
+                nextCursor: null,
+            });
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage fetchFn={fetchFnMock} />
+            </QueryClientProvider>,
+        );
+
+        // Page 1 appears first — no loading spinner between pages
+        await waitFor(() => {
+            expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
+        });
+
+        // After background fill, page 2 content also appears — no full reload
+        await waitFor(() => {
+            expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
         });
     });
 

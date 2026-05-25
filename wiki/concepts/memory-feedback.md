@@ -39,21 +39,25 @@ Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `
 
 ### Frontend UI Filtering, Caching & Delta-Sync Strategy
 
-To achieve a modern, instant (0ms) user experience while minimizing server load and database queries, the `/memories` dashboard implements a **Hybrid Local Cache + Delta-Syncing** architecture powered by TanStack Query:
+To achieve a modern, instant (0ms) user experience while minimizing server load and database queries, the `/memories` dashboard implements a **Hybrid Local Cache + Progressive Background Fill** architecture powered by TanStack Query:
 
-1. **Immediate Initial Render (0ms)**: On client mount, TanStack Query is bootstrapped with `initialData` loaded from a 500-item browser cache stored in `localStorage` (`benchify_memories_v1`). The interface renders instantly with no spinners.
+1. **Immediate Initial Render (0ms)**: On client mount, TanStack Query is bootstrapped with `initialData` loaded from a browser cache stored in `localStorage` (`benchify_memories_v1`, capped at 500 items). The interface renders instantly with no spinners.
 2. **Self-Healing Reset Detection**: Before entering delta-sync, the client runs a lightweight `validateCacheState(cachedId)` check — two parallel Supabase queries:
    - Query 1: Fetch the newest `created_at` timestamp in the database.
    - Query 2: Check whether the newest cached memory's `id` still exists in the database.
-   - **If any anomaly is detected** (ID missing, DB timestamp is older than cache's newest timestamp, or database is empty), the stale cache is wiped completely and a full 500-item backfill is triggered. This automatically self-heals after database resets, re-seeds, or historical imports — with no user intervention required.
-3. **Background Delta-Sync & Backfilling**: Once the cache passes validation, `initialDataUpdatedAt: 1` treats the initial cache as stale, prompting a background sync:
-   - **Delta Sync (Cache Full)**: If the local cache is already fully populated (`cached.length >= 500`), the client requests only memories created *after* the latest cached date (`fetchNewMemories`), keeping network overhead and storage operations extremely lightweight.
-   - **Backfill Sync (Cache Incomplete)**: If the local cache is empty or contains fewer than 500 items (e.g., on first load), the client fetches a full batch of 500 memories (`fetchMemories(undefined, 500)`) to completely populate browser storage.
+   - **If any anomaly is detected** (ID missing, DB timestamp is older than cache's newest timestamp, or database is empty), the stale cache is wiped completely and a progressive backfill is triggered. This automatically self-heals after database resets, re-seeds, or historical imports — with no user intervention required.
+3. **Background Sync & Progressive Fill**: Once validated, `initialDataUpdatedAt: 1` treats the initial cache as stale, prompting a background `queryFn` to run:
+   - **Delta Sync (Cache Full)**: If the local cache is fully populated (`cached.length >= 500`), the client requests only memories created *after* the latest cached timestamp (`fetchNewMemories`), keeping network overhead minimal.
+   - **Progressive Backfill (Cache Empty or Partial)**: If the local cache is empty or has fewer than 500 items, the client runs a multi-page progressive fill:
+     1. `performFullBackfill` fetches the first page (50 items) immediately via `fetchFn` and returns it to the UI — the list is visible with no loading state.
+     2. The `queryFn` stores the `nextCursor` as `pendingCursor` state, which triggers a `useEffect`.
+     3. `runProgressiveFill` walks subsequent cursor pages in the background, calling `queryClient.setQueryData` after each page so the list silently grows in place — no spinner, no flash.
+     4. Pages continue until the cache reaches 500 items or the DB returns no more records.
    - The fetched payload is merged with the cache, deduplicated by unique ID, sorted chronologically descending, capped at 500 entries, and written back to `localStorage`.
-4. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests.
+4. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests — including during and after background fill.
 5. **Client-Side Pagination**: Scrolling and loading more data is driven by a local `displayLimit` state (in increments of 50) on the pre-loaded cache pool, eliminating network hops during pagination.
 
-**Implementation**: The `queryFn` delegates to three focused helper functions in `MemoriesPage.tsx` — `syncMemoriesCache`, `performFullBackfill`, and `fetchDeltaOrBackfill` — keeping cognitive complexity within Biome's strict limits.
+**Implementation**: The `queryFn` delegates to focused helper functions in `MemoriesPage.tsx` — `syncMemoriesCache`, `performFullBackfill`, and `runProgressiveFill` — keeping cognitive complexity within Biome's strict limits. The `fetchFn` interface `(cursor, category)` is shared between the route's TanStack Start server wrapper and the progressive fill loop; `pageSize` is intentionally not part of the interface, so bulk fetching is achieved via cursor-paged iteration rather than a single large request.
 
 To maintain consistency, the database `memory_type` values and Frontend UI selectors remain **fully unified** as first-class discriminators. The client-side classifier `getMemoryCategory(m)` categorizes memories in-memory and applies dynamic brand-color badge styles:
 

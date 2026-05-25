@@ -1,3 +1,23 @@
+## [2026-05-25] fix | Progressive Background Backfill for AI Memories Page
+
+### Context
+The `/memories` page was displaying only 2–3 MARKET_EVENT records when filtering by "Events", regardless of how many exist in the database. Root cause: a three-way architectural mismatch:
+
+1. **`fetchFn` interface strips `pageSize`** — The route wraps `fetchMemories` in a TanStack Start server function with the signature `(cursor, category)`, hard-coding `pageSize = undefined` (defaults to 50). The `MAX_CACHE_SIZE = 500` constant and the `fetchMemories(undefined, 500)` call path in `performFullBackfill` were **unreachable in production** — the `fetchFn` branch always ran instead, fetching only 50 items.
+
+2. **Cache is category-agnostic** — The 50-item (not 500) cache was filled with the 50 newest memories across all types. Depending on DB state, only 2–3 of those happened to be `MARKET_EVENT`. The "Events" filter applied client-side, showing only what the cache already held.
+
+3. **Old tests verified a dead code path** — Backfill and cache-bust tests rendered `<MemoriesPage />` without a `fetchFn` prop (the opposite of production), exercising the `fetchMemories(undefined, 500)` branch that is never reached at runtime.
+
+### Changes
+- **`performFullBackfill` redesigned**: Now returns `{ memories: Memory[], nextCursor: string | null }`. Production path (`fetchFn` provided) fetches the first 50 items immediately for display and exposes the cursor for subsequent pages. Fallback path (no `fetchFn`, test-only) still fetches up to 500 in a single shot via `fetchMemories(undefined, MAX_CACHE_SIZE)`.
+- **`fetchDeltaOrBackfill` removed**: Its branching logic was merged directly into `syncMemoriesCache`, which now explicitly routes on cache fullness — partial/empty cache → progressive backfill; full cache → validate + delta-sync.
+- **`syncMemoriesCache` return type updated**: Now returns `{ memories, nextCursor }` so the queryFn can thread the cursor to the background effect.
+- **`runProgressiveFill` helper extracted**: Walks cursor pages via `fetchFn`, calling `queryClient.setQueryData` after each page so the displayed list grows silently — no loading spinner shown to the user.
+- **Invisible background fill effect**: A `useEffect` keyed on `pendingCursor` state (set by the queryFn) drives the fill loop. `pendingCursor` is read as a true dependency (satisfying Biome's exhaustive-deps rule) and immediately cleared to prevent re-entrancy.
+- **Tests rewritten**: The dead-path backfill test (`<MemoriesPage />` without `fetchFn`) was replaced with a test asserting `fetchFn` is called twice — once for page 1 and once with the cursor from page 1. The client-side filter test now gives `fetchFn` a real resolved value. A new regression test asserts that page 2 content appears in the DOM without a full-page reload. 179/179 tests passing.
+- **Documentation**: Updated [[concepts/memory-feedback]] to replace the stale backfill description with the progressive fill architecture.
+
 ## [2026-05-25] fix | Self-Healing Cache Validation for AI Memories Page
 
 ### Context

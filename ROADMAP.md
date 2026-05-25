@@ -48,7 +48,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Set up a 'global' agent hook/env for my projects?**
 - [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too. - Maybe add a button that adds suggestion.
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
-- [ ] **add metrics** add CAPE, PE, forward PE Etc.... ? Do I already have them? P/free cash flow
+- [ ] add metrics add CAPE, PE, forward PE, book-to-market Etc.... ? Do I already have them? P/free cash flow
 - [ ] manage prompt size with increasing memory/lessons learned database.
 - [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
@@ -96,6 +96,11 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: uncorrelated high return sectors this week do well for next week check
 - [ ] - Benchify: search bar for memories
 - [ ] - Benchify: memories importance to card. Do not remove importance from papers memory. Memories filter
+- [ ] - Benchify and QMD; connect pre hook with local LLM chat convos
+- [ ] - Benchify: check wiki lint
+- [ ] - Benchify: start a "CEO" agent. With a self-loop
+- [ ] - Benchify: check if wiki lint checks code
+- [ ] - Benchify: add current prompt in autoresearch
 
 ## Under Consideration
 

@@ -1,3 +1,13 @@
+## [2026-05-25] autoresearch | Added Volatility Calculation Breakdown to Experiment Details
+
+### Context
+The user requested visual clarity on how the portfolio volatility metric is calculated within prompt experiments on the Auto-Research page, ensuring complete alignment with the design system.
+
+### Changes
+- **New Component**: Created `VolatilityCalculation` to render a step-by-step mathematical explanation of daily return weighting, standard deviation calculation, and √252 annualization.
+- **Integration**: Placed the calculation breakdown directly underneath the Score Breakdown within `ExperimentDetails`.
+- **Validation**: Added comprehensive unit tests in `VolatilityCalculation.test.tsx` achieving 100% test coverage for all component states (active vs. finalized). Verified clean Biome compliance and successful production builds.
+
 ## [2026-05-19] design-system | Enhanced design system with SubHeading and Table primitives
 
 ### Context
@@ -201,3 +211,13 @@ Resolved the issue where filtering by "Events" on the Memories page displayed a 
 - **Tests**: Added a TDD unit test in `MemoriesPage.test.tsx` asserting that `fetchMemories(undefined, 500)` is correctly called when the cache is small. Updated existing delta-sync tests to seed 500 mock memories, ensuring perfect coverage and correctness.
 - **Documentation**: Updated [[concepts/memory-feedback]] to detail the backfilling versus delta-sync logic and thresholds.
 
+
+## [2026-05-25] autoresearch | Added Volatility Calculation Breakdown to Experiment Details
+
+### Context
+The user requested visual clarity on how the portfolio volatility metric is calculated within prompt experiments on the Auto-Research page, ensuring complete alignment with the design system.
+
+### Changes
+- **New Component**: Created `VolatilityCalculation` to render a step-by-step mathematical explanation of daily return weighting, standard deviation calculation, and √252 annualization.
+- **Integration**: Placed the calculation breakdown directly underneath the Score Breakdown within `ExperimentDetails`.
+- **Validation**: Added comprehensive unit tests in `VolatilityCalculation.test.tsx` achieving 100% test coverage for all component states (active vs. finalized). Verified clean Biome compliance and successful production builds.

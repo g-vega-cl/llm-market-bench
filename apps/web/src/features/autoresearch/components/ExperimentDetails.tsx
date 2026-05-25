@@ -7,6 +7,7 @@ import {
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
 import { ScoreBreakdown } from './ScoreBreakdown';
+import { VolatilityCalculation } from './VolatilityCalculation';
 
 interface ExperimentDetailsProps {
     experiment: PromptExperiment;
@@ -38,6 +39,8 @@ export function ExperimentDetails({ experiment }: ExperimentDetailsProps) {
             </div>
 
             <ScoreBreakdown experiment={experiment} />
+
+            <VolatilityCalculation experiment={experiment} />
 
             <Card className="p-8 space-y-6">
                 <SectionHeading>Research Progression</SectionHeading>

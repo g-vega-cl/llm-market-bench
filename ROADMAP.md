@@ -37,7 +37,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Also check alternative plays function**
 - [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
 - [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
-- [ ] **Mutation Preview CLI** - Add a dry-run mode to the Auto-Research researcher to preview the next prompt mutation without deploying it.
 - [ ] **Auto-Research Diff Viewer** - Implement a color-coded diff viewer in the Web Arena to compare experiment variants against the baseline logic.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**

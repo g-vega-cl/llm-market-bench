@@ -42,12 +42,18 @@ Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `
 To achieve a modern, instant (0ms) user experience while minimizing server load and database queries, the `/memories` dashboard implements a **Hybrid Local Cache + Delta-Syncing** architecture powered by TanStack Query:
 
 1. **Immediate Initial Render (0ms)**: On client mount, TanStack Query is bootstrapped with `initialData` loaded from a 500-item browser cache stored in `localStorage` (`benchify_memories_v1`). The interface renders instantly with no spinners.
-2. **Background Delta-Sync & Backfilling**: By setting `initialDataUpdatedAt: 1`, the initial cache is treated as immediately stale, prompting a background delta-sync.
+2. **Self-Healing Reset Detection**: Before entering delta-sync, the client runs a lightweight `validateCacheState(cachedId)` check — two parallel Supabase queries:
+   - Query 1: Fetch the newest `created_at` timestamp in the database.
+   - Query 2: Check whether the newest cached memory's `id` still exists in the database.
+   - **If any anomaly is detected** (ID missing, DB timestamp is older than cache's newest timestamp, or database is empty), the stale cache is wiped completely and a full 500-item backfill is triggered. This automatically self-heals after database resets, re-seeds, or historical imports — with no user intervention required.
+3. **Background Delta-Sync & Backfilling**: Once the cache passes validation, `initialDataUpdatedAt: 1` treats the initial cache as stale, prompting a background sync:
    - **Delta Sync (Cache Full)**: If the local cache is already fully populated (`cached.length >= 500`), the client requests only memories created *after* the latest cached date (`fetchNewMemories`), keeping network overhead and storage operations extremely lightweight.
-   - **Backfill Sync (Cache Incomplete)**: If the local cache is empty or contains fewer than 500 items (e.g., on first load or backfilling from a smaller batch), the client fetches a full batch of 500 memories (`fetchMemories(undefined, 500)`) to completely populate browser storage.
+   - **Backfill Sync (Cache Incomplete)**: If the local cache is empty or contains fewer than 500 items (e.g., on first load), the client fetches a full batch of 500 memories (`fetchMemories(undefined, 500)`) to completely populate browser storage.
    - The fetched payload is merged with the cache, deduplicated by unique ID, sorted chronologically descending, capped at 500 entries, and written back to `localStorage`.
-3. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests.
-4. **Client-Side Pagination**: Scrolling and loading more data is driven by a local `displayLimit` state (in increments of 50) on the pre-loaded cache pool, eliminating network hops during pagination.
+4. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests.
+5. **Client-Side Pagination**: Scrolling and loading more data is driven by a local `displayLimit` state (in increments of 50) on the pre-loaded cache pool, eliminating network hops during pagination.
+
+**Implementation**: The `queryFn` delegates to three focused helper functions in `MemoriesPage.tsx` — `syncMemoriesCache`, `performFullBackfill`, and `fetchDeltaOrBackfill` — keeping cognitive complexity within Biome's strict limits.
 
 To maintain consistency, the database `memory_type` values and Frontend UI selectors remain **fully unified** as first-class discriminators. The client-side classifier `getMemoryCategory(m)` categorizes memories in-memory and applies dynamic brand-color badge styles:
 
@@ -58,6 +64,7 @@ To maintain consistency, the database `memory_type` values and Frontend UI selec
 - **Lessons (`LESSON_LEARNED`)**: (retained for generic legacy lessons).
 
 *Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters are completely removed. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*
+
 
 
 

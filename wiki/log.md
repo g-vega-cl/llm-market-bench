@@ -1,3 +1,15 @@
+## [2026-05-25] fix | Self-Healing Cache Validation for AI Memories Page
+
+### Context
+The `/memories` page was displaying only a small subset of MARKET_EVENT records when filtering by "Events" (e.g., 2 instead of 76). The root cause was the hybrid local cache + delta-sync architecture: once the `localStorage` cache reached its 500-item capacity, the client permanently entered delta-sync mode and only requested memories created *after* the newest cached timestamp. Historical records seeded or inserted with older timestamps were silently ignored.
+
+### Changes
+- **New API (`fetch-memories.ts`)**: Added `validateCacheState(cachedId)` — a lightweight function that runs two parallel Supabase queries on every page mount: (1) fetches the database's newest `created_at` timestamp and (2) checks whether the newest cached memory's `id` still exists in the database.
+- **Self-Healing Logic (`MemoriesPage.tsx`)**: Before entering delta-sync mode, the client now validates cache state. Any of three anomaly conditions triggers a full cache wipe and 500-item backfill: the cached ID no longer exists in the DB, the DB's newest timestamp is older than the cache's newest timestamp (rollback), or the database is empty.
+- **Refactor**: Extracted `syncMemoriesCache`, `performFullBackfill`, and `fetchDeltaOrBackfill` helper functions from the `queryFn` to satisfy Biome's cognitive complexity limit (complexity reduced from 38 to well within the 15-limit).
+- **Tests (`MemoriesPage.test.tsx`)**: Added 3 new TDD regression tests covering the self-healing paths (valid green path, ID-missing reset, timestamp-rollback reset). Fixed all async assertions with `waitFor` for correctness. 178/178 tests passing.
+- **Documentation**: Updated [[concepts/memory-feedback]] to document the new Self-Healing Reset Detection as step 2 of the caching pipeline.
+
 ## [2026-05-25] fix | Resolve /autoresearch hydration mismatch and date formatting
 
 ### Context
@@ -231,3 +243,9 @@ The user requested visual clarity on how the portfolio volatility metric is calc
 - **New Component**: Created `VolatilityCalculation` to render a step-by-step mathematical explanation of daily return weighting, standard deviation calculation, and √252 annualization.
 - **Integration**: Placed the calculation breakdown directly underneath the Score Breakdown within `ExperimentDetails`.
 - **Validation**: Added comprehensive unit tests in `VolatilityCalculation.test.tsx` achieving 100% test coverage for all component states (active vs. finalized). Verified clean Biome compliance and successful production builds.
+
+## [2026-05-25] concept | Self-healing cache validation for memories page
+
+The hybrid cache + delta-sync architecture on `/memories` gained a self-healing validation layer. Before entering delta-sync mode, the client now calls `validateCacheState()` — a lightweight API that checks whether the newest cached memory ID still exists in the database and whether the DB timeline has rolled back. Any anomaly triggers a full 500-item backfill, making the page resilient to database resets, re-seeds, and historical imports with zero user intervention.
+
+Extracted `syncMemoriesCache`, `performFullBackfill`, and `fetchDeltaOrBackfill` helpers from the `queryFn` to keep cognitive complexity within Biome's limits. Added 3 new TDD regression tests for the self-healing paths (valid cache, ID-missing reset, timeline-rollback reset). The [[concepts/memory-feedback]] page was updated inline with these changes.

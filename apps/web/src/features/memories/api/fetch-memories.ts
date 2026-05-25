@@ -92,3 +92,39 @@ export async function fetchNewMemories(since: string): Promise<Memory[]> {
     if (error) throw error;
     return data as Memory[];
 }
+
+export interface CacheValidationResult {
+    exists: boolean;
+    latestTimestamp: string | null;
+}
+
+/**
+ * Lightweight check to validate a cached memory ID and fetch the absolute newest timestamp.
+ * Used for self-healing delta-sync checks on page mount.
+ */
+export async function validateCacheState(cachedId: string): Promise<CacheValidationResult> {
+    const supabase = getSupabaseBrowserClient();
+
+    // 1. Fetch newest timestamp
+    const timestampQuery = supabase
+        .from('memories')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    // 2. Check if the cached ID still exists
+    const existenceQuery = supabase.from('memories').select('id').eq('id', cachedId).limit(1);
+
+    const [tsRes, existRes] = await Promise.all([timestampQuery, existenceQuery]);
+
+    if (tsRes.error) throw tsRes.error;
+    if (existRes.error) throw existRes.error;
+
+    const latestTimestamp = tsRes.data && tsRes.data.length > 0 ? tsRes.data[0].created_at : null;
+    const exists = existRes.data && existRes.data.length > 0;
+
+    return {
+        exists,
+        latestTimestamp,
+    };
+}

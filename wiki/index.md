@@ -33,6 +33,7 @@
 - [[concepts/equal-weighted-returns]] — Per-agent percentage returns averaged equally regardless of portfolio size
 - [[concepts/observability-standard]] — Traceback hardening and granular pipeline tracking for LLM audits
 - [[concepts/project-linting]] — Code quality enforcement: Ruff (Python) + Biome (TypeScript) in pre-commit
+- [[concepts/code-reference-validation]] — Deterministic codebase path validation and linter scope analysis
 - [[concepts/test-coverage]] — Enforced coverage thresholds (70% engine / 40% web)
 - [[concepts/ingestion]] — Newsletter scraping, economic calendar, government tracking
 - [[concepts/reasoning]] — Parallel LLM analysis with tool-calling loops

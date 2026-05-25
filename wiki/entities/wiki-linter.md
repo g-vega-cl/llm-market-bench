@@ -49,3 +49,4 @@ python apps/engine/wiki_lint_llm.py --model "deepseek/deepseek-v4-pro"
 - [[concepts/project-linting]]
 - [[entities/auto-wiki]]
 - [[concepts/observability-standard]]
+- [[concepts/code-reference-validation]]

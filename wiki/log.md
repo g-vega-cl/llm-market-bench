@@ -1,3 +1,10 @@
+## [2026-05-25] documentation | Wiki codebase reference validation audit
+
+Audited the dual-linter pipeline (`wiki_lint.py` and `wiki_lint_llm.py`) and identified that neither validates codebase references on disk.
+
+- **New Concept**: Created [[concepts/code-reference-validation]] documenting the structural and LLM linter scopes and proposing a deterministic, path-only pre-commit validation strategy to avoid doc rot.
+- **Cross-References**: Integrated the concept page into the index ([[index]]) and wiki linter entity page ([[entities/wiki-linter]]).
+
 ## [2026-05-15] removal | IBKR integration and proxy application removed
 
 Removed all IBKR-related components to reduce codebase noise, as FMP and YFinance are the primary providers.

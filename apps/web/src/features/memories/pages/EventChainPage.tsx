@@ -24,10 +24,12 @@ interface EventChainPageProps {
 
 function getTypeBadgeColor(type: string): 'accent' | 'info' | 'warning' | 'neutral' {
     switch (type) {
+        case 'MARKET_EVENT':
         case 'consensus_event':
             return 'accent';
         case 'decision_reasoning':
             return 'info';
+        case 'POST_MORTEM':
         case 'post_mortem':
             return 'warning';
         default:

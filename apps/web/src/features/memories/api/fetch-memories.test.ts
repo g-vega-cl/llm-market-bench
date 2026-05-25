@@ -21,7 +21,7 @@ vi.mock('~/lib/supabase-client', () => ({
 import { fetchMemories } from './fetch-memories';
 
 describe('fetchMemories - Category Filtering (TDD)', () => {
-    it('queries academic_paper category using text-extraction operator (->>)', async () => {
+    it('queries academic_paper category using direct memory_type column', async () => {
         const mockData: unknown[] = [];
         const chain: MockSupabaseChain = {
             eq: vi.fn(() => chain),
@@ -40,11 +40,10 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
         await fetchMemories(undefined, 50, 'academic_paper');
 
         expect(chain.from).toHaveBeenCalledWith('memories');
-        expect(chain.eq).toHaveBeenCalledWith('memory_type', 'LESSON_LEARNED');
-        expect(chain.eq).toHaveBeenCalledWith('metadata->>source_type', 'academic_paper');
+        expect(chain.eq).toHaveBeenCalledWith('memory_type', 'ACADEMIC_PAPER');
     });
 
-    it('queries post_mortem category using text-extraction operator (->>)', async () => {
+    it('queries post_mortem category using direct memory_type column', async () => {
         const mockData: unknown[] = [];
         const chain: MockSupabaseChain = {
             eq: vi.fn(() => chain),
@@ -63,10 +62,10 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
         await fetchMemories(undefined, 50, 'post_mortem');
 
         expect(chain.from).toHaveBeenCalledWith('memories');
-        expect(chain.not).toHaveBeenCalledWith('metadata->>analysis_window', 'is', null);
+        expect(chain.eq).toHaveBeenCalledWith('memory_type', 'POST_MORTEM');
     });
 
-    it('queries lesson_learned category using text-extraction operator (->>)', async () => {
+    it('queries lesson_learned category using direct memory_type column', async () => {
         const mockData: unknown[] = [];
         const chain: MockSupabaseChain = {
             eq: vi.fn(() => chain),
@@ -86,9 +85,5 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
 
         expect(chain.from).toHaveBeenCalledWith('memories');
         expect(chain.eq).toHaveBeenCalledWith('memory_type', 'LESSON_LEARNED');
-        expect(chain.is).toHaveBeenCalledWith('metadata->>analysis_window', null);
-        expect(chain.or).toHaveBeenCalledWith(
-            'metadata->>source_type.is.null,metadata->>source_type.neq.academic_paper',
-        );
     });
 });

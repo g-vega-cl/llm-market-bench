@@ -23,7 +23,7 @@ def test_seed_academic_papers(mock_add_memory):
     # Verify the arguments of the first call to ensure correct RAG formatting
     first_call_kwargs = mock_add_memory.call_args_list[0].kwargs
 
-    assert first_call_kwargs["memory_type"] == "LESSON_LEARNED"
+    assert first_call_kwargs["memory_type"] == "ACADEMIC_PAPER"
     assert first_call_kwargs["importance_score"] == 10
     assert first_call_kwargs["check_similarity"] is True
 

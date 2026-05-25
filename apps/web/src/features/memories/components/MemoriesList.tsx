@@ -5,37 +5,44 @@ import { MemoryCard } from './MemoryCard';
 import { MemoryFlow } from './MemoryFlow';
 
 export type { Memory };
-export function getMemoryCategory(m: Memory): string {
-    const content = m.content || '';
-    const meta = m.metadata || {};
-    const memType = m.memory_type || '';
 
+// biome-ignore lint/suspicious/noExplicitAny: backward-compatible metadata check
+function getFallbackCategory(content: string, meta: Record<string, any>): string | null {
     if (meta.type === 'decision_reasoning' || content.startsWith('DECISION REASONING:')) {
         return 'decision_reasoning';
     }
     if (meta.type === 'post_mortem' || meta.analysis_window || content.includes('POST-ANALYSIS')) {
-        return 'post_mortem';
+        return 'POST_MORTEM';
     }
     if (
         meta.source_type === 'academic_paper' ||
         content.startsWith('EMPIRICAL ASSET PRICING PRINCIPLE:')
     ) {
-        return 'academic_paper';
+        return 'ACADEMIC_PAPER';
     }
-    if (
-        meta.is_calendar_event ||
-        memType === 'CALENDAR_EVENT' ||
-        content.startsWith('[CALENDAR EVENT]')
-    ) {
-        return 'calendar_event';
+    if (meta.is_calendar_event || content.startsWith('[CALENDAR EVENT]')) {
+        return 'CALENDAR_EVENT';
     }
-    if (memType === 'LESSON_LEARNED') {
-        return 'lesson_learned';
+    if (meta.type === 'consensus_event') {
+        return 'MARKET_EVENT';
     }
-    if (meta.type === 'consensus_event' || memType === 'MARKET_EVENT') {
-        return 'consensus_event';
-    }
-    return 'other';
+    return null;
+}
+
+export function getMemoryCategory(m: Memory): string {
+    const memType = m.memory_type || '';
+
+    // Direct matches for unified types
+    if (memType === 'MARKET_EVENT') return 'MARKET_EVENT';
+    if (memType === 'CALENDAR_EVENT') return 'CALENDAR_EVENT';
+    if (memType === 'POST_MORTEM') return 'POST_MORTEM';
+    if (memType === 'ACADEMIC_PAPER') return 'ACADEMIC_PAPER';
+
+    const fallback = getFallbackCategory(m.content || '', m.metadata || {});
+    if (fallback) return fallback;
+
+    if (memType === 'LESSON_LEARNED') return 'LESSON_LEARNED';
+    return memType || 'other';
 }
 
 interface MemoriesListProps {
@@ -46,10 +53,10 @@ interface MemoriesListProps {
 
 const FILTERS = [
     { id: 'all', label: 'All' },
-    { id: 'consensus_event', label: 'Events' },
-    { id: 'calendar_event', label: 'Calendar Events' },
-    { id: 'post_mortem', label: 'Post-Mortems' },
-    { id: 'academic_paper', label: 'Principles' },
+    { id: 'MARKET_EVENT', label: 'Events' },
+    { id: 'CALENDAR_EVENT', label: 'Calendar Events' },
+    { id: 'POST_MORTEM', label: 'Post-Mortems' },
+    { id: 'ACADEMIC_PAPER', label: 'Principles' },
 ];
 
 export function MemoriesList({ memories, filter, onFilterChange }: MemoriesListProps) {

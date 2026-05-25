@@ -39,14 +39,15 @@ Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `
 
 ### Frontend UI Filtering & Server-Side Database Categorization
 
-Because Supabase stores multiple distinct semantic groups within the same general database `memory_type` values (e.g., both academic papers and post-trade analyses are saved as `LESSON_LEARNED`), the `/memories` page executes **Server-Side Category Filtering** with indexed database-level queries using PostgREST/Supabase JSONB filtering to bypass the "Load More" ghosting bug and avoid massive client-side data transfers.
+The `/memories` page executes **Server-Side Category Filtering** with indexed database-level queries to bypass client-side "Load More" ghosting bugs and avoid massive data transfers. 
 
-The query mappings are constructed dynamically on the database using precise fields rather than fragile text parsing:
+To maintain consistency and minimize query complexity, the database `memory_type` values, API filters, and Frontend UI selectors are **fully unified** as first-class discriminators. There is no cognitive mapping layer or fragile JSONB metadata parsing:
 
-- **Events (`consensus_event`)**: Database query `.eq('memory_type', 'MARKET_EVENT')`
-- **Calendar Events (`calendar_event`)**: Database query `.eq('memory_type', 'CALENDAR_EVENT')`
-- **Principles (`academic_paper`)**: Database query `.eq('memory_type', 'LESSON_LEARNED').eq('metadata->source_type', 'academic_paper')`
-- **Post-Mortems (`post_mortem`)**: Database query `.not('metadata->analysis_window', 'is', null)` (any `LESSON_LEARNED` memory generated via post-trade analysis).
+- **Events (`MARKET_EVENT`)**: Database query `.eq('memory_type', 'MARKET_EVENT')` (displayed as "Events").
+- **Calendar Events (`CALENDAR_EVENT`)**: Database query `.eq('memory_type', 'CALENDAR_EVENT')` (displayed as "Calendar Events").
+- **Principles (`ACADEMIC_PAPER`)**: Database query `.eq('memory_type', 'ACADEMIC_PAPER')` (displayed as "Principles").
+- **Post-Mortems (`POST_MORTEM`)**: Database query `.eq('memory_type', 'POST_MORTEM')` (displayed as "Post-Mortems").
+- **Lessons (`LESSON_LEARNED`)**: Database query `.eq('memory_type', 'LESSON_LEARNED')` (retained for generic legacy lessons).
 
 *Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters have been completely removed from this view. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*
 

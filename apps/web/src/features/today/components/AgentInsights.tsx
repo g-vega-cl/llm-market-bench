@@ -8,7 +8,9 @@ interface AgentInsightsProps {
 
 export function AgentInsights({ memories }: AgentInsightsProps) {
     const consensus = memories.filter((m) => m.memory_type === 'MARKET_EVENT');
-    const lessons = memories.filter((m) => m.memory_type === 'LESSON_LEARNED');
+    const lessons = memories.filter((m) =>
+        ['LESSON_LEARNED', 'POST_MORTEM', 'ACADEMIC_PAPER'].includes(m.memory_type || ''),
+    );
     const incentives = memories.filter((m) => m.memory_type === 'GOVERNMENT_INCENTIVE');
 
     if (!consensus.length && !lessons.length && !incentives.length) return null;

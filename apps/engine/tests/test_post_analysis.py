@@ -171,11 +171,12 @@ async def test_post_analysis_metadata_includes_model_name():
         # Verify add_memory was called with model_name in metadata
         call_kwargs = mock_add_memory.call_args[1]
         assert "metadata" in call_kwargs
+        assert call_kwargs["memory_type"] == "POST_MORTEM"
         assert call_kwargs["metadata"]["model_name"] == GEMINI_MODEL
         assert call_kwargs["metadata"]["trade_id"] == "trade-uuid-001"
         assert call_kwargs["metadata"]["analysis_window"] == "5"
 
-        print("\nTest Passed: model_name included in post-analysis memory metadata.")
+        print("\nTest Passed: model_name and memory_type included in post-analysis memory metadata.")
 
 
 if __name__ == "__main__":

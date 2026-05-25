@@ -105,7 +105,7 @@ describe('MemoriesList', () => {
         const eventsButton = screen.getByText('Events');
         fireEvent.click(eventsButton);
 
-        expect(onFilterChange).toHaveBeenCalledWith('consensus_event');
+        expect(onFilterChange).toHaveBeenCalledWith('MARKET_EVENT');
     });
 
     it('displays metadata badges correctly', () => {
@@ -150,7 +150,7 @@ describe('MemoriesList', () => {
     });
 
     describe('Memory Category Classification', () => {
-        it('classifies consensus_event and calendar_event correctly', () => {
+        it('classifies MARKET_EVENT and CALENDAR_EVENT correctly', () => {
             const m1: Memory = {
                 id: '1',
                 content: 'Market event content',
@@ -164,7 +164,7 @@ describe('MemoriesList', () => {
                 importance_score: null,
                 target_date: null,
             };
-            expect(getMemoryCategory(m1)).toBe('consensus_event');
+            expect(getMemoryCategory(m1)).toBe('MARKET_EVENT');
 
             const m2: Memory = {
                 id: '2',
@@ -179,13 +179,28 @@ describe('MemoriesList', () => {
                 importance_score: null,
                 target_date: null,
             };
-            expect(getMemoryCategory(m2)).toBe('calendar_event');
+            expect(getMemoryCategory(m2)).toBe('CALENDAR_EVENT');
         });
 
-        it('classifies academic principles correctly', () => {
-            const m: Memory = {
+        it('classifies academic principles correctly (both unified and legacy)', () => {
+            const mUnified: Memory = {
                 id: '1',
                 content: 'Empirical pricing rule',
+                created_at: '',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'ACADEMIC_PAPER',
+                importance_score: null,
+                target_date: null,
+            };
+            expect(getMemoryCategory(mUnified)).toBe('ACADEMIC_PAPER');
+
+            const mLegacy: Memory = {
+                id: '2',
+                content: 'Empirical pricing rule legacy',
                 created_at: '',
                 metadata: { source_type: 'academic_paper' },
                 status: 'ACTIVE',
@@ -196,13 +211,28 @@ describe('MemoriesList', () => {
                 importance_score: null,
                 target_date: null,
             };
-            expect(getMemoryCategory(m)).toBe('academic_paper');
+            expect(getMemoryCategory(mLegacy)).toBe('ACADEMIC_PAPER');
         });
 
-        it('classifies post_mortems and lessons correctly', () => {
-            const mPost: Memory = {
+        it('classifies post_mortems and lessons correctly (both unified and legacy)', () => {
+            const mPostUnified: Memory = {
                 id: '1',
                 content: 'Post-mortem details',
+                created_at: '',
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'POST_MORTEM',
+                importance_score: null,
+                target_date: null,
+            };
+            expect(getMemoryCategory(mPostUnified)).toBe('POST_MORTEM');
+
+            const mPostLegacy: Memory = {
+                id: '2',
+                content: 'Post-mortem details legacy',
                 created_at: '',
                 metadata: { analysis_window: '5' },
                 status: 'ACTIVE',
@@ -213,10 +243,10 @@ describe('MemoriesList', () => {
                 importance_score: null,
                 target_date: null,
             };
-            expect(getMemoryCategory(mPost)).toBe('post_mortem');
+            expect(getMemoryCategory(mPostLegacy)).toBe('POST_MORTEM');
 
             const mLesson: Memory = {
-                id: '2',
+                id: '3',
                 content: 'General trading lesson learned',
                 created_at: '',
                 metadata: {},
@@ -228,7 +258,7 @@ describe('MemoriesList', () => {
                 importance_score: null,
                 target_date: null,
             };
-            expect(getMemoryCategory(mLesson)).toBe('lesson_learned');
+            expect(getMemoryCategory(mLesson)).toBe('LESSON_LEARNED');
         });
     });
 });

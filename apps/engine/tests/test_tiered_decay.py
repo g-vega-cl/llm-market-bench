@@ -21,6 +21,8 @@ def test_tiered_decay_applies_correct_rates(mock_supabase):
         {"id": "m2", "memory_type": "GOVERNMENT_INCENTIVE", "relevance_score": 1.0},
         {"id": "m3", "memory_type": "LESSON_LEARNED", "relevance_score": 1.0},
         {"id": "m4", "memory_type": "UNCROWDED_TRADE", "relevance_score": 1.0},
+        {"id": "m5", "memory_type": "POST_MORTEM", "relevance_score": 1.0},
+        {"id": "m6", "memory_type": "ACADEMIC_PAPER", "relevance_score": 1.0},
     ]
 
     # Setup the mock database read chain to return these memories

@@ -129,7 +129,7 @@ def seed_papers() -> list[str]:
             content=content,
             metadata={"source_type": "academic_paper", "citation": paper["citation"], "pillar": paper["pillar"]},
             status="ACTIVE",
-            memory_type="LESSON_LEARNED",
+            memory_type="ACADEMIC_PAPER",
             importance_score=10,  # Max importance to ensure it bubbles up in RAG
             check_similarity=True,
             similarity_threshold=0.95,

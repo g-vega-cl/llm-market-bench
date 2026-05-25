@@ -78,7 +78,7 @@ async def perform_post_analysis(windows: list[int] = None):
                 .select("id")
                 .filter("metadata->>trade_id", "eq", str(trade["id"]))
                 .filter("metadata->>analysis_window", "eq", str(days_back))
-                .filter("memory_type", "eq", "LESSON_LEARNED")
+                .filter("memory_type", "eq", "POST_MORTEM")
                 .execute()
             )
 
@@ -135,7 +135,7 @@ async def perform_post_analysis(windows: list[int] = None):
 
                 success = add_memory(
                     content=memory_content,
-                    memory_type="LESSON_LEARNED",
+                    memory_type="POST_MORTEM",
                     metadata={
                         "price_change_pct": price_change_pct,
                         "trade_id": str(trade["id"]),

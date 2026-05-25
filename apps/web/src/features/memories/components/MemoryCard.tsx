@@ -12,9 +12,15 @@ const CATEGORY_BADGE_CONFIG: Record<
     string,
     { label: string; colorScheme: 'accent' | 'success' | 'danger' | 'info' | 'warning' | 'neutral' }
 > = {
+    MARKET_EVENT: { label: 'Consensus Event', colorScheme: 'accent' },
+    CALENDAR_EVENT: { label: 'Calendar Event', colorScheme: 'info' },
+    decision_reasoning: { label: 'Decision Reasoning', colorScheme: 'info' },
+    POST_MORTEM: { label: 'Post-Mortem', colorScheme: 'warning' },
+    ACADEMIC_PAPER: { label: 'Empirical Principle', colorScheme: 'success' },
+    LESSON_LEARNED: { label: 'Lesson Learned', colorScheme: 'neutral' },
+    // Legacy support keys
     consensus_event: { label: 'Consensus Event', colorScheme: 'accent' },
     calendar_event: { label: 'Calendar Event', colorScheme: 'info' },
-    decision_reasoning: { label: 'Decision Reasoning', colorScheme: 'info' },
     post_mortem: { label: 'Post-Mortem', colorScheme: 'warning' },
     academic_paper: { label: 'Empirical Principle', colorScheme: 'success' },
     lesson_learned: { label: 'Lesson Learned', colorScheme: 'neutral' },

@@ -12,21 +12,21 @@ export interface PaginatedMemories {
 // biome-ignore lint/suspicious/noExplicitAny: complex Supabase query builder type
 function applyCategoryFilter(query: any, category: string) {
     switch (category) {
+        case 'MARKET_EVENT':
         case 'consensus_event':
             return query.eq('memory_type', 'MARKET_EVENT');
+        case 'CALENDAR_EVENT':
         case 'calendar_event':
             return query.eq('memory_type', 'CALENDAR_EVENT');
+        case 'ACADEMIC_PAPER':
         case 'academic_paper':
-            return query
-                .eq('memory_type', 'LESSON_LEARNED')
-                .eq('metadata->>source_type', 'academic_paper');
+            return query.eq('memory_type', 'ACADEMIC_PAPER');
+        case 'POST_MORTEM':
         case 'post_mortem':
-            return query.not('metadata->>analysis_window', 'is', null);
+            return query.eq('memory_type', 'POST_MORTEM');
+        case 'LESSON_LEARNED':
         case 'lesson_learned':
-            return query
-                .eq('memory_type', 'LESSON_LEARNED')
-                .is('metadata->>analysis_window', null)
-                .or('metadata->>source_type.is.null,metadata->>source_type.neq.academic_paper');
+            return query.eq('memory_type', 'LESSON_LEARNED');
         default:
             return query;
     }

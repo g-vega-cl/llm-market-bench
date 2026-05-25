@@ -104,6 +104,8 @@ def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
                 "GOVERNMENT_INCENTIVE": "GOVERNMENT INCENTIVE",
                 "LESSON_LEARNED": "LESSON LEARNED",
                 "UNCROWDED_TRADE": "UNCROWDED TRADE",
+                "POST_MORTEM": "POST MORTEM",
+                "ACADEMIC_PAPER": "ACADEMIC PRINCIPLE",
             }
             label = label_map.get(mt, "MARKET EVENT")
             items.append(
@@ -176,6 +178,8 @@ def retrieve_for_decision(
                     "GOVERNMENT_INCENTIVE": "GOVERNMENT INCENTIVE",
                     "LESSON_LEARNED": "LESSON_LEARNED",
                     "UNCROWDED_TRADE": "UNCROWDED TRADE",
+                    "POST_MORTEM": "POST_MORTEM",
+                    "ACADEMIC_PAPER": "ACADEMIC PRINCIPLE",
                 }
                 label = label_map.get(mt, "MARKET EVENT")
                 items.append(
@@ -586,7 +590,7 @@ def decay_memories(sb_client: Client, decay_days: int = None):
         decay_count = 0
         for memory in response.data:
             mt = memory.get("memory_type", "MARKET_EVENT")
-            if mt in ("LESSON_LEARNED", "UNCROWDED_TRADE"):
+            if mt in ("LESSON_LEARNED", "UNCROWDED_TRADE", "POST_MORTEM", "ACADEMIC_PAPER"):
                 continue  # Never decay lessons and uncrowded trades
 
             decay_factor = 0.5 if mt == "MARKET_EVENT" else 0.75  # 25% decay for other types like GOVERNMENT_INCENTIVE

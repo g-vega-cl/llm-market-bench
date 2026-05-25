@@ -1,3 +1,12 @@
+## [2026-05-25] refactor | Unified Database Memory Types and Frontend Filters
+
+Unified database `memory_type` discriminators, Python constants/models, API queries, and Frontend UI filter selectors into a consistent first-class schema. Overloaded `LESSON_LEARNED` records are promoted to `POST_MORTEM` and `ACADEMIC_PAPER` to eliminate complex JSONB metadata querying, maximize index efficiency, and establish a clean ubiquitous domain vocabulary.
+
+- **Database (`supabase`)**: Added a SQL migration to update existing memories table records to use new categories.
+- **Python Engine (`engine`)**: Updated academic paper seeding and post-analysis engine scripts to write first-class `ACADEMIC_PAPER` and `POST_MORTEM` memory types. Prevented relevance decay in new memory types.
+- **Frontend App (`web`)**: Simplified API category filters to execute direct, highly indexed database column queries. Standardized UI components (filters, badges, insights) to use the new types.
+- **Tests**: Refactored both Python engine (pytest) and TypeScript web (vitest) tests to verify the unified categories under strict TDD.
+
 ## [2026-05-25] fix | Removed empty Lessons filter pill from Memories page
 
 Removed the redundant and permanently empty "Lessons" filter pill from the `/memories` page on the frontend. 

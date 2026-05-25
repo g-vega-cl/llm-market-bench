@@ -64,11 +64,8 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: improve get sector alternatives tool
 - [ ] - Benchify: use html for documentation?
 - [ ] - rate answers from 1-5 and then use that feedback to run an external agent asking "What was good from this".
-- [x] - Benchify: include copper in sector analysis. — CPER added to Commodities grid in MarketOverviewPage.tsx.
 - [ ] - Benchify: add Reddit, polymarket, kalshi odds?
 - [ ] - Revisit alpaca trades.
-- [x] - Gemini-3.1-flash-lite generated 0 decisions. — Resolved by enabling include_server_side_tool_invocations and propagating function call IDs.
-- [x] - Fix DeepSeek Verifier empty responses: Update 'prepare_messages_for_instructor' in verification loop to handle 'reasoning_content' properly and add JSON recovery prompt. — Resolved by stripping reasoning_content from non-tool calls for Instructor, implementing a 3-attempt JSON recovery prompt, and verifying with 100% test coverage. Found 57 production instances in logs successfully resolved via this method.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
@@ -78,7 +75,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [ ] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
-- [ ] -Benchify: check if pre-commit hooks work in Jules (qmd)?
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
 - [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
@@ -88,7 +84,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other
 - [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
-- [ ] - Benchify: add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because bias
 - [ ] - Benchify: audit that memories are still being correlated to each other
 - [ ] - Benchify: make sure quantum 2b push is in memories and why not if it isn't
 - [ ] - Benchify: ratchet is affected by previous weeks' decisions
@@ -96,10 +91,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: search bar for memories
 - [ ] - Benchify: memories importance to card. Do not remove importance from papers memory. Memories filter
 - [ ] - Benchify and QMD; connect pre hook with local LLM chat convos
-- [ ] - Benchify: check wiki lint
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
-- [ ] - Benchify: check if wiki lint checks code
-- [ ] - Benchify: add current prompt in autoresearch
 
 ## Under Consideration
 

@@ -37,18 +37,21 @@ dashboard with confidence bar and direction badge.
 
 Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `UNCROWDED_TRADE`), `decisions` table for past trade reasoning. Retrieval is scoped: cross-agent for memories, per-agent for decisions (prevents cross-contamination in verification).
 
-### Frontend UI Filtering & Dynamic Categorization
+### Frontend UI Filtering & Server-Side Database Categorization
 
-Because Supabase stores multiple distinct semantic groups within the same general database `memory_type` values (e.g. both academic papers and trade post-analyses are saved as `LESSON_LEARNED`), the frontend implements a dynamic, client-side classification function `getMemoryCategory(memory)` to separate them into clean, premium filter pills:
+Because Supabase stores multiple distinct semantic groups within the same general database `memory_type` values (e.g., both academic papers and post-trade analyses are saved as `LESSON_LEARNED`), the `/memories` page executes **Server-Side Category Filtering** with indexed database-level queries using PostgREST/Supabase JSONB filtering to bypass the "Load More" ghosting bug and avoid massive client-side data transfers.
 
-- **Consensus Events / Market Events (`consensus_event`)**: Database `memory_type = 'MARKET_EVENT'` or `metadata.type === 'consensus_event'`.
-- **Calendar Events (`calendar_event`)**: Database `memory_type = 'CALENDAR_EVENT'` or `metadata.is_calendar_event` or content starting with `[CALENDAR EVENT]`.
-- **Post-Mortems / Post-Analyses (`post_mortem`)**: Database `memory_type = 'LESSON_LEARNED'` containing `POST-ANALYSIS` or having `metadata.analysis_window` or `metadata.type === 'post_mortem'`.
-- **Empirical Principles (`academic_paper`)**: Database `memory_type = 'LESSON_LEARNED'` containing `EMPIRICAL ASSET PRICING PRINCIPLE` or `metadata.source_type === 'academic_paper'`.
-- **Lessons Learned (`lesson_learned`)**: General `LESSON_LEARNED` database rows that do not fall under Post-Mortems or Academic Principles.
-- **Decisions (`decision_reasoning`)**: Database `metadata.type === 'decision_reasoning'` or starting with `DECISION REASONING`.
+The query mappings are constructed dynamically on the database using precise fields rather than fragile text parsing:
 
-This hybrid categorization is highly resilient to schema drift, requires no database backfilling/downtime, and maps dynamically to beautifully styled brand-colored badges matching our custom design system.
+- **Events (`consensus_event`)**: Database query `.eq('memory_type', 'MARKET_EVENT')`
+- **Calendar Events (`calendar_event`)**: Database query `.eq('memory_type', 'CALENDAR_EVENT')`
+- **Principles (`academic_paper`)**: Database query `.eq('memory_type', 'LESSON_LEARNED').eq('metadata->source_type', 'academic_paper')`
+- **Post-Mortems (`post_mortem`)**: Database query `.not('metadata->analysis_window', 'is', null)` (any `LESSON_LEARNED` memory generated via post-trade analysis).
+- **Lessons (`lesson_learned`)**: Database query `.eq('memory_type', 'LESSON_LEARNED').is('metadata->analysis_window', null).or('metadata->source_type.is.null,metadata->source_type.neq.academic_paper')` (general lessons learned).
+
+*Note: The empty Decisions (`decision_reasoning`) filter has been completely removed from this view. AI trading agent decisions are stored in a dedicated `decisions` table in the database and are managed under the specialized **Reasoning** page rather than the memories table.*
+
+The client-side `getMemoryCategory(memory)` function is retained solely to apply dynamic brand-color badge styling to each rendered card matching our design system tokens.
 
 
 ### Memory Reinforcement & Duplicate Bumping

@@ -4,13 +4,17 @@ import { fetchMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
 const getMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: string | undefined) => d)
-    .handler(async ({ data: cursor }: { data: string | undefined }) => {
-        return fetchMemories(cursor);
+    .inputValidator((d: { cursor?: string; category?: string }) => d)
+    .handler(async ({ data: { cursor, category } }) => {
+        return fetchMemories(cursor, undefined, category);
     });
 
 export const Route = createFileRoute('/memories/')({ component: RouteComponent });
 function RouteComponent() {
     const getMemoriesFn = useServerFn(getMemories);
-    return <MemoriesPage fetchFn={(pageParam) => getMemoriesFn({ data: pageParam })} />;
+    return (
+        <MemoriesPage
+            fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category } })}
+        />
+    );
 }

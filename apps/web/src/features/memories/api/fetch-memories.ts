@@ -9,17 +9,43 @@ export interface PaginatedMemories {
     nextCursor: string | null;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: complex Supabase query builder type
+function applyCategoryFilter(query: any, category: string) {
+    switch (category) {
+        case 'consensus_event':
+            return query.eq('memory_type', 'MARKET_EVENT');
+        case 'calendar_event':
+            return query.eq('memory_type', 'CALENDAR_EVENT');
+        case 'academic_paper':
+            return query
+                .eq('memory_type', 'LESSON_LEARNED')
+                .eq('metadata->source_type', 'academic_paper');
+        case 'post_mortem':
+            return query.not('metadata->analysis_window', 'is', null);
+        case 'lesson_learned':
+            return query
+                .eq('memory_type', 'LESSON_LEARNED')
+                .is('metadata->analysis_window', null)
+                .or('metadata->source_type.is.null,metadata->source_type.neq.academic_paper');
+        default:
+            return query;
+    }
+}
+
 export async function fetchMemories(
     cursor?: string,
     pageSize: number = PAGE_SIZE,
+    category?: string,
 ): Promise<PaginatedMemories> {
     const supabase = getSupabaseBrowserClient();
 
-    let query = supabase
-        .from('memories')
-        .select('*, parent_id, status, relationship_type')
-        .order('created_at', { ascending: false })
-        .limit(pageSize + 1);
+    let query = supabase.from('memories').select('*, parent_id, status, relationship_type');
+
+    if (category && category !== 'all') {
+        query = applyCategoryFilter(query, category);
+    }
+
+    query = query.order('created_at', { ascending: false }).limit(pageSize + 1);
 
     if (cursor) {
         query = query.lt('created_at', cursor);

@@ -1,3 +1,13 @@
+## [2026-05-25] feature | Server-side memories filtering with PostgREST JSONB
+
+Transitioned the `/memories` page from the legacy hybrid client-side filtering system to a high-performance, purely database-driven server-side architecture:
+- **API Category Filtering**: Refactored `fetchMemories` in `fetch-memories.ts` to execute precise indexed database queries using PostgREST JSONB filtering on the Supabase backend.
+- **Cognitive Complexity Helper**: Extracted query construction to `applyCategoryFilter` to keep functional complexity within standard Biome limits.
+- **Query Caching & Router passing**: Integrated active categories into TanStack Query keys to trigger automatic server-side refetching during tab transitions. Updated TanStack Start's `createServerFn` validator to support parameter objects.
+- **Filter Cleanup**: Removed the empty "Decisions" filter pill since decisions live on the dedicated Reasoning page.
+- **TDD & Unit Verification**: Updated unit test suite in `MemoriesList.test.tsx` to align with the prop-driven server-side filter signature. All 166 unit tests passed successfully.
+- **Documentation**: Updated `wiki/concepts/memory-feedback.md` to detail the server-side queries and classification mappings.
+
 ## [2026-05-25] feature | Memory filtering and dynamic categorization frontend fix
 
 Implemented a dynamic frontend memory categorization system to resolve empty filters for Decisions and Post-Mortems, and added support for all memory types in the `/memories` page:

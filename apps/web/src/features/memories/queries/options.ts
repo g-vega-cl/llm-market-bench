@@ -7,15 +7,15 @@ import { eventChainQueryKeys, memoriesQueryKeys } from './keys';
  */
 export const memoriesQueries = {
     list: <T extends PaginatedMemories>(opts?: {
-        filters?: { status?: string; memoryType?: string };
+        filters?: { status?: string; memoryType?: string; category?: string };
         cursor?: string;
-        fetchFn?: (cursor: string | undefined) => Promise<T>;
+        fetchFn?: (cursor: string | undefined, category?: string) => Promise<T>;
     }) =>
         infiniteQueryOptions({
             queryKey: memoriesQueryKeys.list(opts?.filters),
             queryFn: ({ pageParam }) =>
                 opts?.fetchFn
-                    ? opts.fetchFn(pageParam)
+                    ? opts.fetchFn(pageParam, opts?.filters?.category)
                     : Promise.reject(new Error('fetchFn required')),
             initialPageParam: undefined as string | undefined,
             getNextPageParam: (lastPage: T) => lastPage?.nextCursor ?? undefined,

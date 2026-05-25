@@ -40,26 +40,21 @@ export function getMemoryCategory(m: Memory): string {
 
 interface MemoriesListProps {
     memories: Memory[];
+    filter: string;
+    onFilterChange: (filter: string) => void;
 }
 
 const FILTERS = [
     { id: 'all', label: 'All' },
     { id: 'consensus_event', label: 'Events' },
     { id: 'calendar_event', label: 'Calendar Events' },
-    { id: 'decision_reasoning', label: 'Decisions' },
     { id: 'post_mortem', label: 'Post-Mortems' },
     { id: 'academic_paper', label: 'Principles' },
     { id: 'lesson_learned', label: 'Lessons' },
 ];
 
-export function MemoriesList({ memories }: MemoriesListProps) {
-    const [filter, setFilter] = React.useState<string>('all');
+export function MemoriesList({ memories, filter, onFilterChange }: MemoriesListProps) {
     const [showFlow, setShowFlow] = React.useState(false);
-
-    const filteredMemories = memories.filter((m) => {
-        if (filter === 'all') return true;
-        return getMemoryCategory(m) === filter;
-    });
 
     const handleMemorySelect = (id: string) => {
         setShowFlow(false);
@@ -82,7 +77,7 @@ export function MemoriesList({ memories }: MemoriesListProps) {
                                 size="sm"
                                 variant={filter === type.id ? 'solid' : 'soft'}
                                 colorScheme="neutral"
-                                onClick={() => setFilter(type.id)}
+                                onClick={() => onFilterChange(type.id)}
                             >
                                 {type.label}
                             </Button>
@@ -104,19 +99,19 @@ export function MemoriesList({ memories }: MemoriesListProps) {
             {/* Flow Visualization */}
             {showFlow && (
                 <div className="w-full">
-                    <MemoryFlow memories={filteredMemories} onSelect={handleMemorySelect} />
+                    <MemoryFlow memories={memories} onSelect={handleMemorySelect} />
                 </div>
             )}
 
             {/* Memory Cards */}
             <div className="flex flex-col space-y-4">
-                {filteredMemories.map((memory) => (
+                {memories.map((memory) => (
                     <div key={memory.id}>
                         <MemoryCard memory={memory} />
                     </div>
                 ))}
 
-                {filteredMemories.length === 0 && (
+                {memories.length === 0 && (
                     <div className="flex justify-center items-center py-12">
                         <p className="text-zinc-500 text-sm">No memories found in this category</p>
                     </div>

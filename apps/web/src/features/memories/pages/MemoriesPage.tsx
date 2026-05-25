@@ -13,15 +13,19 @@ import { memoriesQueries } from '~/features/memories/queries/options';
 import type { PaginatedMemories } from '../api/fetch-memories';
 
 interface MemoriesPageProps {
-    fetchFn: (cursor: string | undefined) => Promise<PaginatedMemories>;
+    fetchFn: (cursor: string | undefined, category?: string) => Promise<PaginatedMemories>;
 }
 
 export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
     const posthog = usePostHog();
+    const [filter, setFilter] = React.useState<string>('all');
 
     const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status, error } =
         useInfiniteQuery({
-            ...memoriesQueries.list({ fetchFn }),
+            ...memoriesQueries.list({
+                filters: { category: filter },
+                fetchFn: (cursor) => fetchFn(cursor, filter),
+            }),
         });
 
     const allMemories = React.useMemo(() => data?.pages.flatMap((page) => page.data) || [], [data]);
@@ -53,7 +57,11 @@ export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
 
             {/* Main Content */}
             <PageLayout maxWidth="md" className="py-8">
-                <MemoriesList memories={allMemories || []} />
+                <MemoriesList
+                    memories={allMemories || []}
+                    filter={filter}
+                    onFilterChange={setFilter}
+                />
 
                 {/* Load More Button */}
                 {hasNextPage && (

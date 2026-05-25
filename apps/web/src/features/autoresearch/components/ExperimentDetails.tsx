@@ -6,6 +6,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
+import { ScoreBreakdown } from './ScoreBreakdown';
 
 interface ExperimentDetailsProps {
     experiment: PromptExperiment;
@@ -30,6 +31,8 @@ export function ExperimentDetails({ experiment }: ExperimentDetailsProps) {
                     value={`${metrics.max_drawdown?.toFixed(2)}%`}
                 />
             </div>
+
+            <ScoreBreakdown experiment={experiment} />
 
             <Card className="p-8 space-y-6">
                 <SectionHeading>Research Progression</SectionHeading>

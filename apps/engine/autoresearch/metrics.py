@@ -96,16 +96,20 @@ async def compute_wall_street_metrics(
     week_start: date,
     week_end: date,
 ) -> dict:
-    """Compute portfolio return and max drawdown for the given agents and week.
+    """Compute portfolio return, max drawdown, and volatility for the given agents and week.
 
-    Returns a dict with keys: total_return_pct, max_drawdown.
+    Returns a dict with keys: total_return_pct, max_drawdown, volatility.
     max_drawdown is a fraction (0-1), e.g., 0.10 = 10% drawdown.
+    volatility is the annualized standard deviation of daily returns (fraction).
     """
+    import math
+
     sb_client = await get_async_supabase_client()
     returns = await _daily_returns(sb_client, owner_ids, week_start, week_end)
 
     total_return_pct = 0.0
     max_drawdown = 0.0
+    volatility = 0.0
 
     if returns:
         cumulative = 1.0
@@ -121,9 +125,16 @@ async def compute_wall_street_metrics(
         max_drawdown = abs(max_dd)
         total_return_pct = (cumulative - 1) * 100
 
+        if len(returns) > 1:
+            mean_return = sum(returns) / len(returns)
+            variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
+            std_dev = math.sqrt(variance)
+            volatility = std_dev * math.sqrt(252)
+
     return {
         "total_return_pct": total_return_pct,
         "max_drawdown": max_drawdown,
+        "volatility": volatility,
     }
 
 
@@ -136,6 +147,7 @@ def compute_score(
     max_drawdown_pct: float,
     bond_return_pct: float = 0.0,
     dollar_return_pct: float = 0.0,
+    volatility_pct: float = 0.0,
 ) -> dict:
     """Compute the single auto-research score.
 
@@ -156,9 +168,13 @@ def compute_score(
 
     return {
         "score": score,
+        "portfolio_return_pct": round(portfolio_return_pct, 4),
+        "spy_return_pct": round(spy_return_pct, 4),
         "excess_return": round(excess_return, 4),
         "max_drawdown": max_drawdown_pct,
+        "volatility": volatility_pct,
         "bond_return_pct": round(bond_return_pct, 4),
         "dollar_return_pct": round(dollar_return_pct, 4),
         "opportunity_cost_penalty": round(opportunity_cost, 4),
+        "drawdown_penalty": round(penalty, 4),
     }

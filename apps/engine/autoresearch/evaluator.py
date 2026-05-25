@@ -191,6 +191,7 @@ async def evaluate_week(
         max_drawdown_pct=exp_metrics.get("max_drawdown", 0) * 100,
         bond_return_pct=bond_return_pct,
         dollar_return_pct=dollar_return_pct,
+        volatility_pct=exp_metrics.get("volatility", 0) * 100,
     )
 
     previous = await get_previous_variants(limit=5)

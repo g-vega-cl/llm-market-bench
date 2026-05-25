@@ -53,6 +53,7 @@ This split ensures that the "Brain" (System) is decoupled from the "Environment"
 - **Baseline tracking**: The highest score achieved so far (tied to its prompt). The meta-researcher's target. Only moves up. *Note: Variants without a `"score"` key in their metrics (such as the pre-May-12 composite metrics or explicitly demoted variants using `"old_score"`) are ignored by `get_all_time_baseline()`.*
 - **System-Heavy Evolution**: Moving logic from User to System prompt to ensure 100% of the trading "SOP" can be improved by the LLM.
 - **Control portfolios are reference only**: Shown in the report but not part of the score.
+- **Volatility Tracking**: Calculates annualized standard deviation of daily returns into metrics tracking.
 
 ## Score Formula
 
@@ -71,6 +72,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-05-24**: **Volatility & Score Breakdown UI** — Added `volatility` (annualized standard deviation) metric computation in the engine. Built a new Score Breakdown UI component to visually explain the arithmetic of the risk-adjusted scoring formula on the web app's experiment details screen.
 - **2026-05-24**: **Resilience & Execution Alignment** — Documented multi-agent system overview and verified overall pipeline integrity, ensuring zero-warning enforcement and clean wiki links.
 - **2026-05-20**: **USD Strength Decoupling** — Decoupled the USD Index return from the opportunity cost penalty calculation (retaining it in the weekly report and database payload for macroeconomic context only) and set the Treasury Bond yield as the sole active hurdle.
 - **2026-05-20**: **Dynamic Hurdles Integration** — Integrated actual Treasury Bond yields and actual USD strength returns (via `UUP` ETF proxy) fetched dynamically from the FMP API into the scoring formula as an asymmetric opportunity cost penalty.

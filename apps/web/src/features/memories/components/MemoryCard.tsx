@@ -2,11 +2,24 @@ import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
 import { parseScenarios } from '~/lib/parse-scenario-percentages';
-import type { Memory } from './MemoriesList';
+import { getMemoryCategory, type Memory } from './MemoriesList';
 
 interface MemoryCardProps {
     memory: Memory;
 }
+
+const CATEGORY_BADGE_CONFIG: Record<
+    string,
+    { label: string; colorScheme: 'accent' | 'success' | 'danger' | 'info' | 'warning' | 'neutral' }
+> = {
+    consensus_event: { label: 'Consensus Event', colorScheme: 'accent' },
+    calendar_event: { label: 'Calendar Event', colorScheme: 'info' },
+    decision_reasoning: { label: 'Decision Reasoning', colorScheme: 'info' },
+    post_mortem: { label: 'Post-Mortem', colorScheme: 'warning' },
+    academic_paper: { label: 'Empirical Principle', colorScheme: 'success' },
+    lesson_learned: { label: 'Lesson Learned', colorScheme: 'neutral' },
+    other: { label: 'Memory', colorScheme: 'neutral' },
+};
 
 export function MemoryCard({ memory }: MemoryCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
@@ -18,6 +31,9 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
     const [selectedAsset, setSelectedAsset] = React.useState<DiscoveredAsset | null>(null);
 
+    const category = getMemoryCategory(memory);
+    const badgeConfig = CATEGORY_BADGE_CONFIG[category] || CATEGORY_BADGE_CONFIG.other;
+
     return (
         <Card
             variant="default"
@@ -28,20 +44,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             {/* Header */}
             <div className="flex flex-wrap items-start gap-3 mb-4">
                 <div className="flex flex-wrap gap-2 items-center">
-                    <Badge
-                        variant="soft"
-                        colorScheme={
-                            memory.metadata?.type === 'consensus_event'
-                                ? 'accent'
-                                : memory.metadata?.type === 'decision_reasoning'
-                                  ? 'info'
-                                  : memory.metadata?.type === 'post_mortem'
-                                    ? 'warning'
-                                    : 'neutral'
-                        }
-                        size="sm"
-                    >
-                        {(memory.metadata?.type || 'Memory').replace(/_/g, ' ')}
+                    <Badge variant="soft" colorScheme={badgeConfig.colorScheme} size="sm">
+                        {badgeConfig.label}
                     </Badge>
 
                     {memory.status && memory.status !== 'ACTIVE' && (

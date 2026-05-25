@@ -35,9 +35,21 @@ After each pipeline run, an LLM generates "How I'm feeling and why" sentiment
 based on the day's trades, lessons, and market events. Displayed on Today
 dashboard with confidence bar and direction badge.
 
-## Memory Architecture
-
 Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `UNCROWDED_TRADE`), `decisions` table for past trade reasoning. Retrieval is scoped: cross-agent for memories, per-agent for decisions (prevents cross-contamination in verification).
+
+### Frontend UI Filtering & Dynamic Categorization
+
+Because Supabase stores multiple distinct semantic groups within the same general database `memory_type` values (e.g. both academic papers and trade post-analyses are saved as `LESSON_LEARNED`), the frontend implements a dynamic, client-side classification function `getMemoryCategory(memory)` to separate them into clean, premium filter pills:
+
+- **Consensus Events / Market Events (`consensus_event`)**: Database `memory_type = 'MARKET_EVENT'` or `metadata.type === 'consensus_event'`.
+- **Calendar Events (`calendar_event`)**: Database `memory_type = 'CALENDAR_EVENT'` or `metadata.is_calendar_event` or content starting with `[CALENDAR EVENT]`.
+- **Post-Mortems / Post-Analyses (`post_mortem`)**: Database `memory_type = 'LESSON_LEARNED'` containing `POST-ANALYSIS` or having `metadata.analysis_window` or `metadata.type === 'post_mortem'`.
+- **Empirical Principles (`academic_paper`)**: Database `memory_type = 'LESSON_LEARNED'` containing `EMPIRICAL ASSET PRICING PRINCIPLE` or `metadata.source_type === 'academic_paper'`.
+- **Lessons Learned (`lesson_learned`)**: General `LESSON_LEARNED` database rows that do not fall under Post-Mortems or Academic Principles.
+- **Decisions (`decision_reasoning`)**: Database `metadata.type === 'decision_reasoning'` or starting with `DECISION REASONING`.
+
+This hybrid categorization is highly resilient to schema drift, requires no database backfilling/downtime, and maps dynamically to beautifully styled brand-colored badges matching our custom design system.
+
 
 ### Memory Reinforcement & Duplicate Bumping
 When a new memory is ingested with `check_similarity=True`, the system performs a semantic similarity search. If a duplicate or highly similar entry is found:

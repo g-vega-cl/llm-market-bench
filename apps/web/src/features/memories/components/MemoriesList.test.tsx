@@ -133,4 +133,99 @@ describe('MemoriesList', () => {
         // Memory 2 has a parent
         expect(screen.getByText('View event chain →')).toBeInTheDocument();
     });
+
+    describe('Real Database Memories Categorization & Filtering (TDD)', () => {
+        const databaseMemories: Memory[] = [
+            {
+                id: 'db-cal-1',
+                content: '[CALENDAR EVENT] (08:30) 2026-05-25: Core CPI',
+                created_at: new Date().toISOString(),
+                metadata: { is_calendar_event: true },
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'CALENDAR_EVENT',
+                importance_score: null,
+                target_date: null,
+            },
+            {
+                id: 'db-pa-1',
+                content: '5-DAY POST-ANALYSIS (AAPL): Keep hold because premium pricing is solid.',
+                created_at: new Date().toISOString(),
+                metadata: { analysis_window: '5', price_change_pct: 12.3 },
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'LESSON_LEARNED',
+                importance_score: null,
+                target_date: null,
+            },
+            {
+                id: 'db-ap-1',
+                content: 'EMPIRICAL ASSET PRICING PRINCIPLE: Sloan Accrual Anomaly',
+                created_at: new Date().toISOString(),
+                metadata: { source_type: 'academic_paper' },
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'LESSON_LEARNED',
+                importance_score: null,
+                target_date: null,
+            },
+            {
+                id: 'db-ll-1',
+                content: 'Avoid trading on extreme leverage during high volatility days.',
+                created_at: new Date().toISOString(),
+                metadata: {},
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'LESSON_LEARNED',
+                importance_score: null,
+                target_date: null,
+            },
+        ];
+
+        it('filters by Calendar Events correctly', () => {
+            render(<MemoriesList memories={databaseMemories} />);
+            const btn = screen.getByText('Calendar Events');
+            expect(btn).toBeInTheDocument();
+            fireEvent.click(btn);
+            expect(screen.getByText(/Core CPI/)).toBeInTheDocument();
+            expect(screen.queryByText(/POST-ANALYSIS/)).not.toBeInTheDocument();
+        });
+
+        it('filters by Post-Mortems correctly using analysis_window metadata', () => {
+            render(<MemoriesList memories={databaseMemories} />);
+            const btn = screen.getByText('Post-Mortems');
+            expect(btn).toBeInTheDocument();
+            fireEvent.click(btn);
+            expect(screen.getByText(/POST-ANALYSIS/)).toBeInTheDocument();
+            expect(screen.queryByText(/Core CPI/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/Sloan Accrual/)).not.toBeInTheDocument();
+        });
+
+        it('filters by Academic Principles correctly', () => {
+            render(<MemoriesList memories={databaseMemories} />);
+            const btn = screen.getByText('Principles');
+            expect(btn).toBeInTheDocument();
+            fireEvent.click(btn);
+            expect(screen.getByText(/Sloan Accrual/)).toBeInTheDocument();
+            expect(screen.queryByText(/POST-ANALYSIS/)).not.toBeInTheDocument();
+        });
+
+        it('filters by general Lessons correctly', () => {
+            render(<MemoriesList memories={databaseMemories} />);
+            const btn = screen.getByText('Lessons');
+            expect(btn).toBeInTheDocument();
+            fireEvent.click(btn);
+            expect(screen.getByText(/extreme leverage/)).toBeInTheDocument();
+            expect(screen.queryByText(/Sloan Accrual/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/POST-ANALYSIS/)).not.toBeInTheDocument();
+        });
+    });
 });

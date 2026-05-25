@@ -1,3 +1,11 @@
+## [2026-05-25] feature | Memory filtering and dynamic categorization frontend fix
+
+Implemented a dynamic frontend memory categorization system to resolve empty filters for Decisions and Post-Mortems, and added support for all memory types in the `/memories` page:
+- **Dynamic Categorization**: Introduced `getMemoryCategory(memory)` function to classify database memories into specific semantic types (Events, Calendar Events, Decisions, Post-Mortems, Principles, Lessons) based on their `memory_type` and `metadata` schemas.
+- **Enhanced Badge Styling**: Refactored `MemoryCard` to badge categorized memories with distinct, curated colors from the design system.
+- **TDD Verification**: Implemented robust unit tests in `MemoriesList.test.tsx` verifying classification and filtering correctness on database memory shapes.
+- **Documentation**: Updated `wiki/concepts/memory-feedback.md` to document the dynamic UI categorization architecture.
+
 ## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
 
 Refactored the LLM client factories to follow clean Dependency Injection best practices, resolving a credentials dependency blocker in CI/CD unit testing environments:

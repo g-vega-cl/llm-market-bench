@@ -5,6 +5,38 @@ import { MemoryCard } from './MemoryCard';
 import { MemoryFlow } from './MemoryFlow';
 
 export type { Memory };
+export function getMemoryCategory(m: Memory): string {
+    const content = m.content || '';
+    const meta = m.metadata || {};
+    const memType = m.memory_type || '';
+
+    if (meta.type === 'decision_reasoning' || content.startsWith('DECISION REASONING:')) {
+        return 'decision_reasoning';
+    }
+    if (meta.type === 'post_mortem' || meta.analysis_window || content.includes('POST-ANALYSIS')) {
+        return 'post_mortem';
+    }
+    if (
+        meta.source_type === 'academic_paper' ||
+        content.startsWith('EMPIRICAL ASSET PRICING PRINCIPLE:')
+    ) {
+        return 'academic_paper';
+    }
+    if (
+        meta.is_calendar_event ||
+        memType === 'CALENDAR_EVENT' ||
+        content.startsWith('[CALENDAR EVENT]')
+    ) {
+        return 'calendar_event';
+    }
+    if (memType === 'LESSON_LEARNED') {
+        return 'lesson_learned';
+    }
+    if (meta.type === 'consensus_event' || memType === 'MARKET_EVENT') {
+        return 'consensus_event';
+    }
+    return 'other';
+}
 
 interface MemoriesListProps {
     memories: Memory[];
@@ -13,25 +45,20 @@ interface MemoriesListProps {
 const FILTERS = [
     { id: 'all', label: 'All' },
     { id: 'consensus_event', label: 'Events' },
+    { id: 'calendar_event', label: 'Calendar Events' },
     { id: 'decision_reasoning', label: 'Decisions' },
     { id: 'post_mortem', label: 'Post-Mortems' },
+    { id: 'academic_paper', label: 'Principles' },
+    { id: 'lesson_learned', label: 'Lessons' },
 ];
 
 export function MemoriesList({ memories }: MemoriesListProps) {
     const [filter, setFilter] = React.useState<string>('all');
     const [showFlow, setShowFlow] = React.useState(false);
 
-    // Normalize type to handle different formats in the database
-    const normalizeType = (type: string | undefined) => {
-        if (!type) return '';
-        return type.toLowerCase().replace(/[-_\s]+/g, '_');
-    };
-
     const filteredMemories = memories.filter((m) => {
         if (filter === 'all') return true;
-        const normalizedType = normalizeType(m.metadata?.type);
-        const normalizedFilter = normalizeType(filter);
-        return normalizedType === normalizedFilter;
+        return getMemoryCategory(m) === filter;
     });
 
     const handleMemorySelect = (id: string) => {

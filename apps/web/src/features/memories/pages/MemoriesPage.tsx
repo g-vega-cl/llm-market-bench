@@ -10,7 +10,12 @@ import { useQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import { getMemoryCategory, MemoriesList } from '~/features/memories/components/MemoriesList';
 import { fetchMemories, fetchNewMemories, type PaginatedMemories } from '../api/fetch-memories';
-import { getCachedMemories, mergeAndDeduplicate, saveCachedMemories } from '../lib/cache';
+import {
+    getCachedMemories,
+    MAX_CACHE_SIZE,
+    mergeAndDeduplicate,
+    saveCachedMemories,
+} from '../lib/cache';
 
 interface MemoriesPageProps {
     fetchFn?: (cursor: string | undefined, category?: string) => Promise<PaginatedMemories>;
@@ -40,14 +45,14 @@ export function MemoriesPage({ fetchFn }: MemoriesPageProps) {
             let newMemories = [];
             const latestTimestamp = cached.length > 0 ? cached[0].created_at : null;
 
-            if (latestTimestamp) {
+            if (latestTimestamp && cached.length >= MAX_CACHE_SIZE) {
                 // Background delta sync: fetch only newer memories
                 newMemories = await fetchNewMemories(latestTimestamp);
             } else {
-                // Cold-start fallback: fetch initial batch
+                // Cold-start fallback or cache backfill: fetch full batch matching cache capacity
                 const res = fetchFn
                     ? await fetchFn(undefined, undefined)
-                    : await fetchMemories(undefined, 100);
+                    : await fetchMemories(undefined, MAX_CACHE_SIZE);
                 newMemories = res.data;
             }
 

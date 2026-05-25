@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchNewMemories } from '../api/fetch-memories';
+import { fetchMemories, fetchNewMemories } from '../api/fetch-memories';
 import { MemoriesPage } from './MemoriesPage';
 
 // Robust mock for localStorage in test environments
@@ -102,8 +102,14 @@ describe('MemoriesPage (Solution B Cache + Delta Sync)', () => {
     });
 
     it('renders with initialData from localStorage and does not show loader', async () => {
-        // Seed localStorage
-        localStorage.setItem('benchify_memories_v1', JSON.stringify(mockMemories));
+        // Seed localStorage with 500 memories to simulate a fully populated cache
+        const largeMockMemories = Array.from({ length: 500 }, (_, i) => ({
+            ...mockMemories[i % 2],
+            id: `m-large-${i}`,
+            content: i < 2 ? mockMemories[i].content : `Other mock memory content ${i}`,
+            created_at: i === 0 ? '2026-05-25T12:00:00.000Z' : '2026-05-24T12:00:00.000Z',
+        }));
+        localStorage.setItem('benchify_memories_v1', JSON.stringify(largeMockMemories));
 
         // Mock fetchNewMemories to return empty array (no new deltas)
         vi.mocked(fetchNewMemories).mockResolvedValue([]);
@@ -159,5 +165,27 @@ describe('MemoriesPage (Solution B Cache + Delta Sync)', () => {
         // Assert 0 network/fetch requests were triggered by these tab changes!
         expect(fetchNewMemories).not.toHaveBeenCalled();
         expect(fetchFnMock).not.toHaveBeenCalled();
+    });
+
+    it('backfills cache to 500 if cached size is less than 500', async () => {
+        // Seed localStorage with only 1 memory (less than MAX_CACHE_SIZE)
+        const smallMockMemories = mockMemories.slice(0, 1);
+        localStorage.setItem('benchify_memories_v1', JSON.stringify(smallMockMemories));
+
+        const mockFetchMemories = vi.mocked(fetchMemories);
+        mockFetchMemories.mockResolvedValue({
+            data: mockMemories,
+            hasMore: false,
+            nextCursor: null,
+        });
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage />
+            </QueryClientProvider>,
+        );
+
+        // It should call fetchMemories with 500 limit to backfill the cache
+        expect(mockFetchMemories).toHaveBeenCalledWith(undefined, 500);
     });
 });

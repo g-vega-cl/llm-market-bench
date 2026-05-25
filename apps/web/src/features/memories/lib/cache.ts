@@ -1,7 +1,7 @@
 import type { Memory } from '@llm-market-bench/database';
 
-const CACHE_KEY = 'benchify_memories_v1';
-const MAX_CACHE_SIZE = 500;
+export const CACHE_KEY = 'benchify_memories_v1';
+export const MAX_CACHE_SIZE = 500;
 
 /**
  * Safely retrieves cached memories from LocalStorage.

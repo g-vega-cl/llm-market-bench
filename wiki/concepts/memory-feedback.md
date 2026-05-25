@@ -42,9 +42,10 @@ Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `
 To achieve a modern, instant (0ms) user experience while minimizing server load and database queries, the `/memories` dashboard implements a **Hybrid Local Cache + Delta-Syncing** architecture powered by TanStack Query:
 
 1. **Immediate Initial Render (0ms)**: On client mount, TanStack Query is bootstrapped with `initialData` loaded from a 500-item browser cache stored in `localStorage` (`benchify_memories_v1`). The interface renders instantly with no spinners.
-2. **Background Delta-Sync**: By setting `initialDataUpdatedAt: 1`, the initial cache is treated as immediately stale, prompting a background delta-sync. The client identifies the maximum `created_at` timestamp in the cache and requests only memories created *after* that date:
-   `SELECT * FROM memories WHERE created_at > :latest_cached_date ORDER BY created_at DESC`
-   This delta payload (usually 0 to 2 items) is merged with the cache, deduplicated by unique ID, chronologically sorted, capped at 500 entries, and written back to `localStorage`.
+2. **Background Delta-Sync & Backfilling**: By setting `initialDataUpdatedAt: 1`, the initial cache is treated as immediately stale, prompting a background delta-sync.
+   - **Delta Sync (Cache Full)**: If the local cache is already fully populated (`cached.length >= 500`), the client requests only memories created *after* the latest cached date (`fetchNewMemories`), keeping network overhead and storage operations extremely lightweight.
+   - **Backfill Sync (Cache Incomplete)**: If the local cache is empty or contains fewer than 500 items (e.g., on first load or backfilling from a smaller batch), the client fetches a full batch of 500 memories (`fetchMemories(undefined, 500)`) to completely populate browser storage.
+   - The fetched payload is merged with the cache, deduplicated by unique ID, sorted chronologically descending, capped at 500 entries, and written back to `localStorage`.
 3. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests.
 4. **Client-Side Pagination**: Scrolling and loading more data is driven by a local `displayLimit` state (in increments of 50) on the pre-loaded cache pool, eliminating network hops during pagination.
 

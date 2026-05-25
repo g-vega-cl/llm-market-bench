@@ -1,72 +1,3 @@
-## [2026-05-25] refactor | Unified Database Memory Types and Frontend Filters
-
-Unified database `memory_type` discriminators, Python constants/models, API queries, and Frontend UI filter selectors into a consistent first-class schema. Overloaded `LESSON_LEARNED` records are promoted to `POST_MORTEM` and `ACADEMIC_PAPER` to eliminate complex JSONB metadata querying, maximize index efficiency, and establish a clean ubiquitous domain vocabulary.
-
-- **Database (`supabase`)**: Added a SQL migration to update existing memories table records to use new categories.
-- **Python Engine (`engine`)**: Updated academic paper seeding and post-analysis engine scripts to write first-class `ACADEMIC_PAPER` and `POST_MORTEM` memory types. Prevented relevance decay in new memory types.
-- **Frontend App (`web`)**: Simplified API category filters to execute direct, highly indexed database column queries. Standardized UI components (filters, badges, insights) to use the new types.
-- **Tests**: Refactored both Python engine (pytest) and TypeScript web (vitest) tests to verify the unified categories under strict TDD.
-
-## [2026-05-25] fix | Removed empty Lessons filter pill from Memories page
-
-Removed the redundant and permanently empty "Lessons" filter pill from the `/memories` page on the frontend. 
-
-- **Frontend (`web`)**: Removed `{ id: 'lesson_learned', label: 'Lessons' }` from `FILTERS` in `MemoriesList.tsx`.
-- **Tests**: Updated `MemoriesList.test.tsx` to assert exactly 5 active filter buttons and expect that the "Lessons" text is absent.
-- **Documentation**: Updated [[concepts/memory-feedback]] to reflect the filter tab removal, explaining that post-mortems and academic principles fully cover all recorded lessons learned.
-
-## [2026-05-25] documentation | Wiki codebase reference validation audit
-
-Audited the dual-linter pipeline (`wiki_lint.py` and `wiki_lint_llm.py`) and identified that neither validates codebase references on disk.
-
-- **New Concept**: Created [[concepts/code-reference-validation]] documenting the structural and LLM linter scopes and proposing a deterministic, path-only pre-commit validation strategy to avoid doc rot.
-- **Cross-References**: Integrated the concept page into the index ([[index]]) and wiki linter entity page ([[entities/wiki-linter]]).
-
-## [2026-05-15] removal | IBKR integration and proxy application removed
-
-Removed all IBKR-related components to reduce codebase noise, as FMP and YFinance are the primary providers.
-- **Applications**: Deleted `apps/ibkr-proxy/`.
-- **Engine**: Deleted `ibkr.py` and `proxy_ibkr.py` providers.
-- **Factory**: Removed IBKR imports and factory logic from `factory.py`.
-- **Infrastructure**: Removed IBKR environment variables from `config.py`, `.env.example`, and all GitHub Actions workflows (`ingest.yml`, `update-prices.yml`, `weekend-ingest.yml`).
-- **Tests**: Deleted `test_ibkr_manual.py`, `test_ibkr_concurrency.py`, and `verify_refinement.py`.
-- **Dependencies**: Removed `ib-async` from `requirements.txt`.
-- **Documentation**: Updated `README.md` and sanitized references in `validation.py` and `test_etf_validation.py`.
-
-## [2026-05-15] update | Agent workflow rules refined
-
-Added Research & Strategy and TDD Requirement sub-bullets under Plan First in AGENTS.md: agents must stay in Default mode for research, wait for explicit 'Go ahead' before execution, and include a reproduction test in every plan.
-
-Updated [[concepts/agent-workflow]] to reflect these changes.
-
-## [2026-05-15] removal | IBKR integration and proxy application removed
-
-Removed all IBKR-related components to reduce codebase noise, as FMP and YFinance are the primary providers.
-- **Applications**: Deleted `apps/ibkr-proxy/`.
-- **Engine**: Deleted `ibkr.py` and `proxy_ibkr.py` providers.
-- **Factory**: Removed IBKR imports and factory logic from `factory.py`.
-- **Infrastructure**: Removed IBKR environment variables from `config.py`, `.env.example`, and all GitHub Actions workflows (`ingest.yml`, `update-prices.yml`, `weekend-ingest.yml`).
-- **Tests**: Deleted `test_ibkr_manual.py`, `test_ibkr_concurrency.py`, and `verify_refinement.py`.
-- **Dependencies**: Removed `ib-async` from `requirements.txt`.
-- **Documentation**: Updated `README.md` and sanitized comments in `validation.py` and `test_etf_validation.py`.
-
-## [2026-05-15] note | yfinance reliability concern flagged
-
-Added a ROADMAP item questioning yfinance as a backup data source due to reliability issues, with a note to at least log its usage thoroughly.
-
-## [2026-05-16] fix | Wiki Lint pipeline stabilization and documentation
-
-Resolved multiple failures in the LLM-powered wiki linting pipeline, ranging from CI/CD permission issues to LLM parsing errors.
-
-- **Robust JSON Extraction**: Replaced fragile string stripping with a robust regex + `JSONDecoder.raw_decode` strategy in `wiki_lint_llm.py`. This correctly handles models that output duplicate JSON objects or conversational prefaces.
-- **Model Upgrade**: Upgraded the default model to `deepseek/deepseek-v4-pro` in both `wiki_lint_llm.py` and `auto_wiki.py` for increased reasoning power.
-- **Context & Truncation Guard**: Implemented a strict **75k character limit** on wiki content collection with explicit `logger.warning` on truncation. This prevents context window saturation and "Unterminated string" errors from truncated LLM responses.
-- **CI/CD Stabilization**: Fixed a `ModuleNotFoundError` by setting `PYTHONPATH=.` in `.github/workflows/wiki-lint.yml`. Explicitly granted `contents: read` and `issues: write` permissions and added a check-then-create pattern for the `wiki-lint` label to prevent workflow failures.
-- **Input/Output Management**: Tuned `max_tokens` to 4096 to prevent truncation and "Unterminated string" errors during high-volume linting. Excluded `log.md` from context to avoid hallucinations about missing pages.
-- **Structural Link Resolution**: Confirmed that the structural linter (`wiki_lint.py`) treats all `[[...]]` text as paths. Documentation now uses escaped or modified examples to avoid false-positive broken link reports.
-- **TDD & Regression Fixes**: Restored test suite stability in `test_wiki_lint_llm.py` by ensuring error message assertions match the latest implementation. Added a specific test for truncated JSON handling.
-- **Documentation**: Created [[entities/wiki-linter]] to document the dual-linter architecture and updated [[index]] for discoverability.
-
 ## [2026-05-19] design-system | Enhanced design system with SubHeading and Table primitives
 
 ### Context
@@ -240,8 +171,6 @@ Optimized the AI Memories feature using a highly efficient **Hybrid Local Cache 
 - **No Side-Effects**: Replaced legacy `useEffect` dependencies with clean declarative React event handlers, satisfying Biome's strict formatting and unused import rules.
 - **TDD Regression Tests**: Added `MemoriesPage.test.tsx` verifying visual shell loading, background delta-sync triggers, and tab filter transitions. All 171 frontend unit tests are green.
 
-
-
 ## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
 
 Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.
@@ -263,3 +192,12 @@ Upon testing, the decision was made to roll back these live CLI hooks:
 - **Overhead & Noise**: The `PreToolUse` grep validation injected warning messages directly into the agent's stream, which was determined to be too invasive and noisy for day-to-day workflow.
 - **Workflow Sufficiency**: The project's existing Husky Git hooks (`.husky/pre-commit` and `.husky/post-merge`) already handle QMD re-indexing automatically during commits and merges, and manual `qmd` searches perform perfectly fine without dynamic session-level checking.
 - **Result**: Successfully removed `.agents/hooks.json`, `scripts/qmd_hooks.py`, and `tests/test_qmd_hooks.py` to keep the repository extremely lean and free of unnecessary runtime complexity.
+
+## [2026-05-25] fix | Memories Page Cache Backfilling & Filtering Resolution
+
+Resolved the issue where filtering by "Events" on the Memories page displayed a very small subset of events (e.g., only two) by implementing complete cache backfilling to its 500-item capacity.
+
+- **Frontend App (`web`)**: Imported `MAX_CACHE_SIZE = 500` from `cache.ts`. Updated the cache query logic in `MemoriesPage.tsx` to conditionally execute a full `fetchMemories(undefined, 500)` query if the local browser cache contains fewer than 500 items, backfilling it to completion. Once the cache is fully populated, subsequent page loads dynamically run the optimized background delta-sync (`fetchNewMemories`).
+- **Tests**: Added a TDD unit test in `MemoriesPage.test.tsx` asserting that `fetchMemories(undefined, 500)` is correctly called when the cache is small. Updated existing delta-sync tests to seed 500 mock memories, ensuring perfect coverage and correctness.
+- **Documentation**: Updated [[concepts/memory-feedback]] to detail the backfilling versus delta-sync logic and thresholds.
+

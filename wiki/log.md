@@ -1,3 +1,13 @@
+## [2026-05-25] fix | Resolve /autoresearch hydration mismatch and date formatting
+
+### Context
+The user reported a minified React error #418 (hydration mismatch) on the `/autoresearch` page, triggered by browser default locale and timezone differences during server-side rendering (SSR) vs. client-side hydration.
+
+### Changes
+- **Date Formatting Refactor**: In `ExperimentList.tsx`, replaced system-locale dependent `new Date().toLocaleDateString()` with a timezone-independent, manual parsing utility `formatStableDate` that guarantees identical, stable string formatting (`MMM D, YYYY`) on both the server and client.
+- **TDD Verification Suite**: Added `ExperimentList.test.tsx` verifying stable, timezone-independent formatting under mock data, preventing future regressions.
+- **Verification**: Cleanly compiled all web chunks, completed full vitest suite (175/175 tests passing), and verified 100% compliance with Biome checks.
+
 ## [2026-05-25] autoresearch | Added Volatility Calculation Breakdown to Experiment Details
 
 ### Context

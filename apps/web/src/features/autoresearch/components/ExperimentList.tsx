@@ -15,6 +15,41 @@ interface ExperimentListProps {
     selectedId?: string;
 }
 
+function formatStableDate(dateStr: string): string {
+    if (!dateStr) return 'N/A';
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const year = parts[0];
+        const monthStr = parts[1];
+        const dayStr = parts[2];
+        const months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+        ];
+        const monthIndex = parseInt(monthStr, 10) - 1;
+        if (monthIndex >= 0 && monthIndex < 12) {
+            const day = parseInt(dayStr, 10);
+            return `${months[monthIndex]} ${day}, ${year}`;
+        }
+    }
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
 export function ExperimentList({ experiments, onSelect, selectedId }: ExperimentListProps) {
     return (
         <Table>
@@ -62,8 +97,8 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                 {score}
                             </TableCell>
                             <TableCell className="text-zinc-500 text-sm">
-                                {new Date(exp.week_start).toLocaleDateString()} -{' '}
-                                {new Date(exp.week_end).toLocaleDateString()}
+                                {formatStableDate(exp.week_start)} -{' '}
+                                {formatStableDate(exp.week_end)}
                             </TableCell>
                             <TableCell>
                                 <StatusBadge status={exp.status} />

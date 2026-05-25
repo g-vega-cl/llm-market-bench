@@ -80,3 +80,15 @@ export async function fetchAllMemories(): Promise<Memory[]> {
     if (error) throw error;
     return data as Memory[];
 }
+
+export async function fetchNewMemories(since: string): Promise<Memory[]> {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('memories')
+        .select('*, parent_id, status, relationship_type')
+        .gt('created_at', since)
+        .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as Memory[];
+}

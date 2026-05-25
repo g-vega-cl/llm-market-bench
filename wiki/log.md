@@ -230,3 +230,22 @@ Refactored the Auto-Research engine and web UI to properly align weekly trading 
 
 Fixed a PostgreSQL casting error (22P02) in the memories category filter by migrating from JSONB object extraction (`->`) to text extraction (`->>`) in Supabase queries. This resolves `invalid input syntax for type json` errors when filtering by `academic_paper`, `post_mortem`, or `lesson_learned` categories. Added comprehensive Vitest test suite for the fetchMemories function. Updated database entity documentation with JSONB querying conventions.
 
+## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
+
+Optimized the AI Memories feature using a highly efficient **Hybrid Local Cache + Delta-Syncing** pattern utilizing TanStack Query's `initialData`:
+- **Instant Client Render (0ms)**: Reads directly from local storage cache (`localStorage` with a 500-item ceiling) during startup to render the dashboard instantly without spinners.
+- **Declarative Delta Syncing**: Utilizes a single React Query cache key `['benchify', 'memories', 'list']` with `initialDataUpdatedAt: 1` to immediately trigger a background delta-sync on mount. Delta-syncing fetches only memories created *after* the latest cached memory, drastically reducing network overhead.
+- **Pure Client-Side Filtering**: Executes 100% in-memory filtering based on `getMemoryCategory(m)`, resulting in **0ms latency** when clicking filter pills.
+- **Client-Side Pagination**: Implemented local pagination on the cached list (incrementing display limits by 50 when clicking "Load More"), removing subsequent API calls.
+- **No Side-Effects**: Replaced legacy `useEffect` dependencies with clean declarative React event handlers, satisfying Biome's strict formatting and unused import rules.
+- **TDD Regression Tests**: Added `MemoriesPage.test.tsx` verifying visual shell loading, background delta-sync triggers, and tab filter transitions. All 171 frontend unit tests are green.
+
+
+
+## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
+
+Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.
+
+## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
+
+Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.

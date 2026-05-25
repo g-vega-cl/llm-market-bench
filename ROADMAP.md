@@ -93,7 +93,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify and QMD; connect pre hook with local LLM chat convos
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - Benchify: Make sure memories do not need to be re-fetched when filtering. What's the best way to manage data here.
-- [ ] - check best practices for the disparity between Database ids like "lessons" and the filter we display, feels like it should be the same.
 
 ## Under Consideration
 

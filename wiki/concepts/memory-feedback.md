@@ -37,21 +37,27 @@ dashboard with confidence bar and direction badge.
 
 Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `UNCROWDED_TRADE`), `decisions` table for past trade reasoning. Retrieval is scoped: cross-agent for memories, per-agent for decisions (prevents cross-contamination in verification).
 
-### Frontend UI Filtering & Server-Side Database Categorization
+### Frontend UI Filtering, Caching & Delta-Sync Strategy
 
-The `/memories` page executes **Server-Side Category Filtering** with indexed database-level queries to bypass client-side "Load More" ghosting bugs and avoid massive data transfers. 
+To achieve a modern, instant (0ms) user experience while minimizing server load and database queries, the `/memories` dashboard implements a **Hybrid Local Cache + Delta-Syncing** architecture powered by TanStack Query:
 
-To maintain consistency and minimize query complexity, the database `memory_type` values, API filters, and Frontend UI selectors are **fully unified** as first-class discriminators. There is no cognitive mapping layer or fragile JSONB metadata parsing:
+1. **Immediate Initial Render (0ms)**: On client mount, TanStack Query is bootstrapped with `initialData` loaded from a 500-item browser cache stored in `localStorage` (`benchify_memories_v1`). The interface renders instantly with no spinners.
+2. **Background Delta-Sync**: By setting `initialDataUpdatedAt: 1`, the initial cache is treated as immediately stale, prompting a background delta-sync. The client identifies the maximum `created_at` timestamp in the cache and requests only memories created *after* that date:
+   `SELECT * FROM memories WHERE created_at > :latest_cached_date ORDER BY created_at DESC`
+   This delta payload (usually 0 to 2 items) is merged with the cache, deduplicated by unique ID, chronologically sorted, capped at 500 entries, and written back to `localStorage`.
+3. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests.
+4. **Client-Side Pagination**: Scrolling and loading more data is driven by a local `displayLimit` state (in increments of 50) on the pre-loaded cache pool, eliminating network hops during pagination.
 
-- **Events (`MARKET_EVENT`)**: Database query `.eq('memory_type', 'MARKET_EVENT')` (displayed as "Events").
-- **Calendar Events (`CALENDAR_EVENT`)**: Database query `.eq('memory_type', 'CALENDAR_EVENT')` (displayed as "Calendar Events").
-- **Principles (`ACADEMIC_PAPER`)**: Database query `.eq('memory_type', 'ACADEMIC_PAPER')` (displayed as "Principles").
-- **Post-Mortems (`POST_MORTEM`)**: Database query `.eq('memory_type', 'POST_MORTEM')` (displayed as "Post-Mortems").
-- **Lessons (`LESSON_LEARNED`)**: Database query `.eq('memory_type', 'LESSON_LEARNED')` (retained for generic legacy lessons).
+To maintain consistency, the database `memory_type` values and Frontend UI selectors remain **fully unified** as first-class discriminators. The client-side classifier `getMemoryCategory(m)` categorizes memories in-memory and applies dynamic brand-color badge styles:
 
-*Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters have been completely removed from this view. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*
+- **Events (`MARKET_EVENT`)**: (displayed as "Events").
+- **Calendar Events (`CALENDAR_EVENT`)**: (displayed as "Calendar Events").
+- **Principles (`ACADEMIC_PAPER`)**: (displayed as "Principles").
+- **Post-Mortems (`POST_MORTEM`)**: (displayed as "Post-Mortems").
+- **Lessons (`LESSON_LEARNED`)**: (retained for generic legacy lessons).
 
-The client-side `getMemoryCategory(memory)` function is retained to apply dynamic brand-color badge styling to each rendered card matching our design system tokens (where a generic lesson card will still receive the "Lesson Learned" badge format).
+*Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters are completely removed. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*
+
 
 
 ### Memory Reinforcement & Duplicate Bumping

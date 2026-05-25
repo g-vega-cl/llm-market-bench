@@ -26,6 +26,16 @@ Supabase PostgreSQL with pgvector extension. Manages four domains: ingestion
 Two RPC functions power RAG: `match_memories` (cross-agent global memories) and
 `match_decisions` (per-agent trade reasoning scoped by `model_name`).
 
+## JSONB Querying Conventions
+
+When querying nested fields inside `JSONB` columns (such as `metadata` in `memories` or `decisions`) via the Supabase client or PostgREST:
+
+- **Always use `->>` (Text Extraction)** instead of `->` (Object Extraction) for comparing primitive string or number values.
+  - *Correct:* `query.eq('metadata->>source_type', 'academic_paper')` (queries standard string against text).
+  - *Incorrect:* `query.eq('metadata->source_type', 'academic_paper')` (PostgreSQL attempts to cast `'academic_paper'` to a JSON object/string literal, causing casting error `22P02`).
+- **NULL checking**: Both `->>` and `->` can check for SQL NULL values (using `.is('metadata->>key', null)`), but `->>` is preferred for consistency across key extraction.
+- **Exceptions**: The `->` operator should be used when querying JSON boolean literals (e.g. `true`/`false`), checking JSON containment (`@>`), or extracting nested objects as valid sub-JSON objects.
+
 ## Related
 
 - [[entities/engine]]

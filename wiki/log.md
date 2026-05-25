@@ -1,75 +1,3 @@
-## [2026-05-25] feature | Server-side memories filtering with PostgREST JSONB
-
-Transitioned the `/memories` page from the legacy hybrid client-side filtering system to a high-performance, purely database-driven server-side architecture:
-- **API Category Filtering**: Refactored `fetchMemories` in `fetch-memories.ts` to execute precise indexed database queries using PostgREST JSONB filtering on the Supabase backend.
-- **Cognitive Complexity Helper**: Extracted query construction to `applyCategoryFilter` to keep functional complexity within standard Biome limits.
-- **Query Caching & Router passing**: Integrated active categories into TanStack Query keys to trigger automatic server-side refetching during tab transitions. Updated TanStack Start's `createServerFn` validator to support parameter objects.
-- **Filter Cleanup**: Removed the empty "Decisions" filter pill since decisions live on the dedicated Reasoning page.
-- **TDD & Unit Verification**: Updated unit test suite in `MemoriesList.test.tsx` to align with the prop-driven server-side filter signature. All 166 unit tests passed successfully.
-- **Documentation**: Updated `wiki/concepts/memory-feedback.md` to detail the server-side queries and classification mappings.
-
-## [2026-05-25] feature | Memory filtering and dynamic categorization frontend fix
-
-Implemented a dynamic frontend memory categorization system to resolve empty filters for Decisions and Post-Mortems, and added support for all memory types in the `/memories` page:
-- **Dynamic Categorization**: Introduced `getMemoryCategory(memory)` function to classify database memories into specific semantic types (Events, Calendar Events, Decisions, Post-Mortems, Principles, Lessons) based on their `memory_type` and `metadata` schemas.
-- **Enhanced Badge Styling**: Refactored `MemoryCard` to badge categorized memories with distinct, curated colors from the design system.
-- **TDD Verification**: Implemented robust unit tests in `MemoriesList.test.tsx` verifying classification and filtering correctness on database memory shapes.
-- **Documentation**: Updated `wiki/concepts/memory-feedback.md` to document the dynamic UI categorization architecture.
-
-## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
-
-Refactored the LLM client factories to follow clean Dependency Injection best practices, resolving a credentials dependency blocker in CI/CD unit testing environments:
-- **Parameterized factories**: Updated `get_openai_client`, `get_anthropic_client`, `get_deepseek_client`, and `get_gemini_client` to support an optional `api_key: str | None = None` parameter, falling back dynamically to global `core.config` attributes if unset.
-- **Isolated Testing**: Simplified `test_get_deepseek_client_mode` to pass dummy/mock credentials directly, eliminating global state manipulation (`monkeypatch` or env var overrides) and achieving 100% test isolation.
-- **Documentation**: Updated `wiki/sources/engine-testing-source.md` to reflect the new dependency injection and client testing paradigms.
-
-## [2026-05-22] feature | Advanced memory reinforcement, tiered decay, and sleep consolidation
-
-
-Implemented a robust and advanced LLM memory management system to prevent context pollution and reasoning degradation:
-- **Memory Reinforcement**: Semantically similar duplicate records now reset `relevance_score` to `1.0` and bump `created_at` timestamp rather than being silently ignored. The duplicate check window is extended to **168 hours (7 days)** to capture repeating signals across weekends.
-- **Tiered Decay & Purging**: Custom decay rates applied to memories based on their type during weekly cleanup (`MARKET_EVENT` decays standardly by 50%, `GOVERNMENT_INCENTIVE` decays mildly by 25%, and `LESSON_LEARNED`/`UNCROWDED_TRADE` never decay). Added a step to hard-delete `SUPERSEDED` memories older than **180 days** to prevent pgvector size bloat.
-- **Sleep Cycle Consolidation**: An offline weekly consolidation loop that clusters active memories using cosine similarity `>= 0.85`, synthesizes them using instructor-wrapped DeepSeek into canonical consolidated entries (`ACTIVE`, `UPDATE` relationship, parent-linked), and marks original entries as `SUPERSEDED`. Added a scale-safety cap of the **500 most recent active memories** for DFS clustering.
-- **TDD & Verifications**: Implemented comprehensive unit tests (`test_memory_reinforce.py`, `test_tiered_decay.py`, and `test_memory_consolidation.py`) to verify the behaviors in TDD style. Ruff checks and formatting fully completed.
-
-## [2026-05-22] refactor | Unify dark theme and enforce design system default primitives
-
-Fixed badge legibility and design system compliance globally. Eliminated all light/dark mode distinctions and `dark:` conditional classes from `Badge` and `Button` primitives to standardize on a single, high-contrast premium theme. Refactored application pages (Today, Market Overview, and Auto-Research status lists) to consume standard component properties (`colorScheme` and `variant`) without custom utility overrides. Updated wiki entities accordingly.
-
-## [2026-05-22] feature | Add South Korea's ETF (EWY) to correlation matrix
-
-Added South Korea's ETF (EWY) to the correlation matrix engine's TICKER_UNIVERSE and the web dashboard's "Emerging Markets" categories. Updated ETF descriptions and correlation-matrix-source documentation.
-
-## [2026-05-15] fix | Fix price backfill to use pre-injected price_map for consistency
-
-Changed the `injected_market_price` backfill logic in `analyze.py` to first use the price from the `price_map` that was injected into the LLM's prompt. Previously, it always fetched a fresh price from the market, which could cause false drift detections when compared to the JIT execution price. Now it stamps the price the LLM actually saw, falling back to a fresh fetch only for tickers discovered via tool calls.
-
-## [2026-05-15] infra | Node.js version bump to 24 and audit workflow consolidation
-
-Updated the entire monorepo to require Node.js >= 24. Added `.nvmrc` with `24`, updated `netlify.toml`, all `package.json` files, and development documentation. The QMD wiki search tool now uses `nvm use 24` instead of `nvm use 22`. Also consolidated the weekly audit workflow: merged the cleanup job into the audit job and added automatic cleanup of `market_feeling` records older than 30 days.
-
-## [2026-05-15] Update | Align with Karpathy's LLM-Wiki "Living Synthesis"
-
-Updated `AGENTS.md` and `wiki/SCHEMA.md` to move away from the "Never delete" (strikethrough) policy. The wiki now favors **Refining Synthesis** by replacing or removing stale content to keep pages sharp and context-efficient. History is preserved via `log.md` and Git. Cleaned up `wiki/sources/web-design-system-source.md` as a first example.
-
-## [2026-05-15] policy | Wiki maintenance rule change: strikethrough → refine synthesis
-
-Updated `AGENTS.md` and `wiki/SCHEMA.md` to replace the "never delete" (strikethrough) policy with a "Refine Synthesis" approach. The wiki now favors replacing or removing stale content to keep pages sharp and context-efficient, relying on Git and `log.md` for history. Cleaned up `wiki/sources/web-design-system-source.md` as a first example of the new policy.
-
-## [2026-05-15] feature | Database cleanup module
-
-Extracted database cleanup logic from CI workflow into a dedicated `core/cleanup.py` module with a new `cleanup` command. The module provides `run_cleanup()` for periodic deletion of stale ingestion logs, resolved audits, and market feeling records. Added unit tests in `tests/test_cleanup.py`.
-- 2026-05-15: Synchronized wiki with new AGENTS.md mandates by adding [[concepts/agent-workflow]].
-
-## [2026-05-15] fix | Engine bug fixes and agent workflow update
-
-- `market_data.py`: Added 24-hour staleness check to `_get_last_known_price` to prevent returning prices older than 24 hours.
-- `fmp.py`: Added ticker symbol verification to prevent using data from a different ticker due to FMP list shifting.
-- `reg_t_validation.py`: Fixed margin requirement calculation to use absolute stock value; added buying power sanity guardrail capped at 4x total equity to prevent inflation from negative positions.
-- Added reproduction tests for both bugs.
-- `AGENTS.md`: Reordered and clarified principles to enforce Search-First, Plan-First, and TDD-First sequence.
-- Added [[concepts/agent-workflow]] wiki page documenting the new mandatory workflow.
-
 ## [2026-05-15] removal | IBKR integration and proxy application removed
 
 Removed all IBKR-related components to reduce codebase noise, as FMP and YFinance are the primary providers.
@@ -236,7 +164,6 @@ Adjusted the styling configurations in the `@llm-market-bench/ui-design-system` 
 
 Removed the task "Make sure we save the historical correlation/returns table/matrix" from the project roadmap. No code changes, just deprioritization of a planned feature.
 
-
 ## [2026-05-22] feature | Add South Korea ETF (EWY) to correlation matrix
 
 Added EWY (iShares MSCI South Korea ETF) to the correlation matrix TICKER_UNIVERSE in the engine, expanding the Emerging Markets category from 6 to 7 tickers. Updated the web dashboard's SectorPerformanceGrid and etf-descriptions to include EWY. Updated correlation-matrix-source wiki page to reflect the new 71-asset universe.
@@ -274,3 +201,8 @@ Refactored the Auto-Research engine and web UI to properly align weekly trading 
   - Stylized `N/A` scores neutrally in `ExperimentList.tsx`.
 - **Database Backfill**: Ran a migration backfilling `v20260519-221104` with its correct metrics (score `-2.8643`, `excess_return = -1.7712`, etc.) and resetting the new active variant to a clean pending state.
 - **Tests**: Mocked database client methods in `test_autoresearch.py` and successfully verified 100% green test passing (43/43 Python pytest, 163/163 TS vitest).
+
+## [2026-05-25] fix | Resolve memories category filter SQL casting error with ->> operator
+
+Fixed a PostgreSQL casting error (22P02) in the memories category filter by migrating from JSONB object extraction (`->`) to text extraction (`->>`) in Supabase queries. This resolves `invalid input syntax for type json` errors when filtering by `academic_paper`, `post_mortem`, or `lesson_learned` categories. Added comprehensive Vitest test suite for the fetchMemories function. Updated database entity documentation with JSONB querying conventions.
+

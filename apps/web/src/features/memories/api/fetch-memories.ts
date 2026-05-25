@@ -19,14 +19,14 @@ function applyCategoryFilter(query: any, category: string) {
         case 'academic_paper':
             return query
                 .eq('memory_type', 'LESSON_LEARNED')
-                .eq('metadata->source_type', 'academic_paper');
+                .eq('metadata->>source_type', 'academic_paper');
         case 'post_mortem':
-            return query.not('metadata->analysis_window', 'is', null);
+            return query.not('metadata->>analysis_window', 'is', null);
         case 'lesson_learned':
             return query
                 .eq('memory_type', 'LESSON_LEARNED')
-                .is('metadata->analysis_window', null)
-                .or('metadata->source_type.is.null,metadata->source_type.neq.academic_paper');
+                .is('metadata->>analysis_window', null)
+                .or('metadata->>source_type.is.null,metadata->>source_type.neq.academic_paper');
         default:
             return query;
     }

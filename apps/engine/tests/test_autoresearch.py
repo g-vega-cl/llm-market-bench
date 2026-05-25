@@ -1054,6 +1054,16 @@ class TestComputeScore:
         assert "excess_return" in result
         assert "max_drawdown" in result
         assert "score" in result
+        assert "portfolio_return_pct" in result
+        assert "spy_return_pct" in result
+        assert "drawdown_penalty" in result
+
+    def test_volatility_passed_through(self):
+        """Verify volatility parameter is included in output dict."""
+        from autoresearch.metrics import compute_score
+
+        result = compute_score(portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, volatility_pct=12.5)
+        assert result["volatility"] == pytest.approx(12.5)
 
     def test_opportunity_cost_penalty_applied_when_underperforming(self):
         """Verify that underperforming the bond hurdle applies the penalty."""

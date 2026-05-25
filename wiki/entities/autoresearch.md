@@ -18,11 +18,11 @@ The auto-research system is configured via:
 
 The auto-research loop runs weekly:
 1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
-2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - Opportunity Cost% - (max_drawdown% × 0.3)`. Find the baseline (best score so far) and show Δ.
+2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - Opportunity Cost% - (max_drawdown% × 0.3)`. Update the completed week's metrics directly on the active prompt row (`P_active`) that actually ran during the week. Find the baseline (best score so far) and show Δ.
 3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This revert happens **before** generating the new prompt in Step 4. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation, never from a failed experiment.
 4. **Research** — LLM proposes a new prompt variant (incremental or radical) building on top of the **post-revert baseline**.
-5. **Deploy** — always activate the new variant generated in step 4.
-6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair).
+5. **Deploy** — always activate the new variant generated in step 4. Save it as a new database row with empty metrics (`{}`), status `active`, and scheduled for the upcoming week (advanced by 7 days from the prior week).
+6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair). The baseline only moves up.
 
 ## System-Heavy Prompt Architecture
 
@@ -32,6 +32,14 @@ As of **2026-05-24**, the system is built on a **System-Heavy** architecture to 
 - **User Prompt (The Data Case)**: Reduced to a minimal skeleton that only handles dynamic data injection (News snippets, Portfolio status, Historical context). This part is static in the source code.
 
 This split ensures that the "Brain" (System) is decoupled from the "Environment" (User), allowing the Auto-Research engine to iterate on the very rules of the system itself.
+
+## Prompt Status Lifecycle
+
+Every variant saved in the `prompt_experiments` table transitions through a structured status lifecycle:
+- **`active`**: The prompt that is currently trading in the live market for the active trading week.
+- **`kept`**: An experiment variant that successfully beat the baseline and was ratified as a new baseline (stored as a successful step in our historical prompt progression).
+- **`discarded`**: An experiment variant that underperformed the baseline and was discarded. The system automatically reverts the active pointer back to the baseline prompt.
+- **`crashed`**: A variant that caused a trading crash (fewer than 2 trades executed during its active week), triggering the safety checker's revert action.
 
 ## Files
 
@@ -72,6 +80,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-05-25**: **Metrics & Baseline Ratchet Alignment** — Refactored the runner to update performance metrics directly on the active prompt row that actually ran, while initializing the newly generated active prompt with empty/N/A metrics and advancing its week dates by 7 days for the upcoming trading week.
 - **2026-05-24**: **Volatility & Score Breakdown UI** — Added `volatility` (annualized standard deviation) metric computation in the engine. Built a new Score Breakdown UI component to visually explain the arithmetic of the risk-adjusted scoring formula on the web app's experiment details screen.
 - **2026-05-24**: **Resilience & Execution Alignment** — Documented multi-agent system overview and verified overall pipeline integrity, ensuring zero-warning enforcement and clean wiki links.
 - **2026-05-20**: **USD Strength Decoupling** — Decoupled the USD Index return from the opportunity cost penalty calculation (retaining it in the weekly report and database payload for macroeconomic context only) and set the Treasury Bond yield as the sole active hurdle.

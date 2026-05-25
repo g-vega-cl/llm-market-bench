@@ -51,7 +51,13 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                 </Badge>
                             </TableCell>
                             <TableCell
-                                className={`font-bold ${Number(score) > 0 ? 'text-emerald-600' : 'text-rose-600'}`}
+                                className={`font-bold ${
+                                    score === 'N/A'
+                                        ? 'text-zinc-400 dark:text-zinc-500 font-medium'
+                                        : Number(score) > 0
+                                          ? 'text-emerald-600'
+                                          : 'text-rose-600'
+                                }`}
                             >
                                 {score}
                             </TableCell>

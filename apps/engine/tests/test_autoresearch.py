@@ -819,7 +819,7 @@ class TestActivationGate:
         return {"score": score, "excess_return": 0.0, "max_drawdown": 0.0}
 
     def _patch_runner(self, monkeypatch, exp_score: float):
-        """Patch runner deps. Returns (runner, save_calls, revert_calls) for assertion."""
+        """Patch runner deps. Returns (runner, save_calls, revert_calls, active_variant_calls) for assertion."""
         from autoresearch import runner
 
         async def fake_evaluate(ws, we):
@@ -834,10 +834,20 @@ class TestActivationGate:
         async def fake_check(ws, we):
             return (False, "")
 
+        async def fake_get_active_variant():
+            return {"variant_tag": "v-active-mock", "status": "active", "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT"}
+
+        active_variant_calls = []
+
+        async def fake_update_variant_metrics(tag, metrics):
+            active_variant_calls.append((tag, metrics))
+
         monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
         monkeypatch.setattr(runner, "run_research", fake_research)
         monkeypatch.setattr(runner, "_check_safety", fake_check)
         monkeypatch.setattr(runner, "get_baseline_metrics", fake_baseline_metrics)
+        monkeypatch.setattr(runner, "get_active_variant", fake_get_active_variant)
+        monkeypatch.setattr(runner, "update_variant_metrics", fake_update_variant_metrics)
 
         save_calls = []
 
@@ -854,11 +864,11 @@ class TestActivationGate:
         monkeypatch.setattr(runner, "save_variant", fake_save)
         monkeypatch.setattr(runner, "revert_to_previous", lambda **kw: "v-prev")
         monkeypatch.setattr(runner, "revert_to_baseline", fake_revert_to_baseline)
-        return runner, save_calls, revert_calls
+        return runner, save_calls, revert_calls, active_variant_calls
 
     def test_deploys_when_score_beats_baseline(self, monkeypatch):
         """When score BEATS baseline, deploy AND do NOT revert to baseline."""
-        runner, save_calls, revert_calls = self._patch_runner(monkeypatch, exp_score=2.0)
+        runner, save_calls, revert_calls, active_calls = self._patch_runner(monkeypatch, exp_score=2.0)
         import asyncio
 
         asyncio.run(runner.run())
@@ -869,10 +879,16 @@ class TestActivationGate:
         assert len(revert_calls) == 0, (
             f"Must NOT revert when score beats baseline. revert_to_baseline was called {len(revert_calls)} times"
         )
+        # Check active variant got updated
+        assert len(active_calls) == 1
+        assert active_calls[0][0] == "v-active-mock"
+        assert active_calls[0][1]["score"] == 2.0
+        # Check new variant is empty metrics
+        assert save_calls[0]["metrics"] == {}
 
     def test_deploys_and_reverts_when_below_baseline(self, monkeypatch):
         """When score < baseline, revert to baseline THEN deploy new variant."""
-        runner, save_calls, revert_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
+        runner, save_calls, revert_calls, active_calls = self._patch_runner(monkeypatch, exp_score=-0.5)
         import asyncio
 
         asyncio.run(runner.run())
@@ -883,10 +899,16 @@ class TestActivationGate:
             f"Must call revert_to_baseline when score (-0.5) < baseline (1.0). "
             f"revert_to_baseline was called {len(revert_calls)} times"
         )
+        # Check active variant got updated
+        assert len(active_calls) == 1
+        assert active_calls[0][0] == "v-active-mock"
+        assert active_calls[0][1]["score"] == -0.5
+        # Check new variant is empty metrics
+        assert save_calls[0]["metrics"] == {}
 
     def test_deploys_and_reverts_when_zero_score(self, monkeypatch):
         """Zero score (treading water) < baseline → revert + deploy."""
-        runner, save_calls, revert_calls = self._patch_runner(monkeypatch, exp_score=0.0)
+        runner, save_calls, revert_calls, active_calls = self._patch_runner(monkeypatch, exp_score=0.0)
         import asyncio
 
         asyncio.run(runner.run())
@@ -896,6 +918,12 @@ class TestActivationGate:
         assert len(revert_calls) == 1, (
             f"Must revert when score (0.0) < baseline (1.0). revert_to_baseline was called {len(revert_calls)} times"
         )
+        # Check active variant got updated
+        assert len(active_calls) == 1
+        assert active_calls[0][0] == "v-active-mock"
+        assert active_calls[0][1]["score"] == 0.0
+        # Check new variant is empty metrics
+        assert save_calls[0]["metrics"] == {}
 
     def test_deploys_when_baseline_unavailable(self, monkeypatch):
         """When no baseline exists (first week), deploy without revert."""
@@ -913,10 +941,20 @@ class TestActivationGate:
         async def fake_check(ws, we):
             return (False, "")
 
+        async def fake_get_active_variant():
+            return {"variant_tag": "v-active-mock", "status": "active", "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT"}
+
+        active_calls = []
+
+        async def fake_update_variant_metrics(tag, metrics):
+            active_calls.append((tag, metrics))
+
         monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
         monkeypatch.setattr(runner, "run_research", fake_research)
         monkeypatch.setattr(runner, "_check_safety", fake_check)
         monkeypatch.setattr(runner, "get_baseline_metrics", fake_baseline_metrics)
+        monkeypatch.setattr(runner, "get_active_variant", fake_get_active_variant)
+        monkeypatch.setattr(runner, "update_variant_metrics", fake_update_variant_metrics)
 
         save_calls = []
         revert_calls = []
@@ -938,6 +976,9 @@ class TestActivationGate:
         asyncio.run(runner.run())
         assert len(save_calls) == 1
         assert len(revert_calls) == 0, "No revert when no baseline exists"
+        assert len(active_calls) == 1
+        assert active_calls[0][1]["score"] == 0.5
+        assert save_calls[0]["metrics"] == {}
 
 
 # ==============================================================================

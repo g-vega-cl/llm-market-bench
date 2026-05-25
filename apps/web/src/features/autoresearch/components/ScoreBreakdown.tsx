@@ -8,6 +8,21 @@ interface ScoreBreakdownProps {
 export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
     const metrics = experiment.metrics || {};
 
+    if (metrics.score === undefined || metrics.score === null) {
+        return (
+            <Card className="p-8 space-y-4 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900 dark:to-zinc-950 border-zinc-200 dark:border-zinc-800 animate-fade-in">
+                <div className="space-y-2">
+                    <SectionHeading>Score Breakdown</SectionHeading>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+                        This experiment variant is currently active. Performance metrics and the
+                        risk-adjusted scoring breakdown will be computed automatically at the close
+                        of the trading week.
+                    </p>
+                </div>
+            </Card>
+        );
+    }
+
     const portfolioReturn = metrics.portfolio_return_pct ?? 0;
     const spyReturn = metrics.spy_return_pct ?? 0;
     const excessReturn = metrics.excess_return ?? 0;

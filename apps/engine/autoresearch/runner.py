@@ -17,7 +17,14 @@ from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
 from core.db import get_async_supabase_client
 
 from .evaluator import evaluate_week
-from .prompt_store import get_baseline_metrics, revert_to_baseline, revert_to_previous, save_variant
+from .prompt_store import (
+    get_active_variant,
+    get_baseline_metrics,
+    revert_to_baseline,
+    revert_to_previous,
+    save_variant,
+    update_variant_metrics,
+)
 from .researcher import run_research
 from .window import get_week_window
 
@@ -94,16 +101,27 @@ async def run(dry_run: bool = False):
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
         return
 
+    # Fetch currently active variant (the one that ran during the evaluated week)
+    active_variant = await get_active_variant()
+
     # Log baseline comparison — enforce the Karpathy ratchet.
-    # If score < baseline, revert the active prompt to the baseline so the
-    # meta-researcher always builds from the known-good foundation, never
-    # from a failed experiment.
+    # Get baseline metrics BEFORE we update the active variant's metrics in the DB,
+    # so we don't accidentally overwrite the baseline we are comparing against.
     score = metrics["score"]
     baseline_metrics = await get_baseline_metrics()
+
+    if not dry_run and active_variant:
+        await update_variant_metrics(active_variant["variant_tag"], metrics)
+        logger.info("Updated active variant %s with evaluated week's metrics", active_variant["variant_tag"])
+
+    parent_tag = baseline_tag
     if baseline_metrics:
         baseline_score = baseline_metrics.get("score", 0)
         if score > baseline_score:
             logger.info("RATCHET: New score %.4f BEATS baseline %.4f. New baseline established.", score, baseline_score)
+            # If it beats the baseline, this active variant is our new baseline,
+            # so the parent tag for the next iteration is this variant's tag!
+            parent_tag = active_variant["variant_tag"] if active_variant else baseline_tag
         else:
             logger.info(
                 "RATCHET: New score %.4f failed to beat baseline %.4f. Reverting to baseline.", score, baseline_score
@@ -112,10 +130,12 @@ async def run(dry_run: bool = False):
                 reverted = await revert_to_baseline()
                 if reverted:
                     logger.info("Active prompt reverted to baseline: %s", reverted)
+                    parent_tag = reverted
             else:
                 logger.info("DRY RUN: Would revert active prompt to baseline.")
     else:
         logger.info("RATCHET: No baseline found. Establishing first baseline with score %.4f", score)
+        parent_tag = active_variant["variant_tag"] if active_variant else baseline_tag
 
     # Run the auto-research LLM
     logger.info("Calling auto-research LLM...")
@@ -147,17 +167,22 @@ async def run(dry_run: bool = False):
         return
 
     # Save and activate the new variant
+    from datetime import timedelta
+
+    next_week_start = week_start + timedelta(days=7)
+    next_week_end = week_end + timedelta(days=7)
+
     try:
         tag = await save_variant(
             prompt_content=result.new_prompt_text,
             prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT",
-            week_start=week_start.isoformat(),
-            week_end=week_end.isoformat(),
-            metrics=metrics,
+            week_start=next_week_start.isoformat(),
+            week_end=next_week_end.isoformat(),
+            metrics={},
             change_description=result.change_description,
             experiment_type=result.experiment_type,
             research_output=result.model_dump(),
-            parent_tag=baseline_tag,
+            parent_tag=parent_tag,
         )
         logger.info("New active prompt variant: %s", tag)
     except Exception as e:

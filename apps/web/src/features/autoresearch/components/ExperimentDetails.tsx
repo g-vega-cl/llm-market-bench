@@ -16,20 +16,25 @@ export function ExperimentDetails({ experiment }: ExperimentDetailsProps) {
     const metrics = experiment.metrics || {};
     const researchOutput = experiment.research_output || {};
 
+    const excessReturnVal =
+        metrics.excess_return !== undefined && metrics.excess_return !== null
+            ? `${metrics.excess_return.toFixed(2)}%`
+            : 'N/A';
+    const volatilityVal =
+        metrics.volatility !== undefined && metrics.volatility !== null
+            ? `${metrics.volatility.toFixed(2)}%`
+            : 'N/A';
+    const maxDrawdownVal =
+        metrics.max_drawdown !== undefined && metrics.max_drawdown !== null
+            ? `${metrics.max_drawdown.toFixed(2)}%`
+            : 'N/A';
+
     return (
         <div className="space-y-8 animate-slide-up">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MetricTile label="Excess Return" value={`${metrics.excess_return?.toFixed(2)}%`} />
-                <MetricTile
-                    icon="📊"
-                    label="Volatility"
-                    value={`${metrics.volatility?.toFixed(2)}%`}
-                />
-                <MetricTile
-                    icon="📉"
-                    label="Max Drawdown"
-                    value={`${metrics.max_drawdown?.toFixed(2)}%`}
-                />
+                <MetricTile label="Excess Return" value={excessReturnVal} />
+                <MetricTile icon="📊" label="Volatility" value={volatilityVal} />
+                <MetricTile icon="📉" label="Max Drawdown" value={maxDrawdownVal} />
             </div>
 
             <ScoreBreakdown experiment={experiment} />

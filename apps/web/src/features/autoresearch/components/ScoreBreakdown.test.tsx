@@ -60,8 +60,9 @@ describe('ScoreBreakdown', () => {
 
         render(<ScoreBreakdown experiment={mockExperiment} />);
 
-        expect(screen.getByText('(0.00% - 0.00%)')).toBeInTheDocument();
-        expect(screen.getByText('+0.0000')).toBeInTheDocument(); // excess_return
-        expect(screen.getByText('0.0000')).toBeInTheDocument(); // score
+        expect(screen.getByText('Score Breakdown')).toBeInTheDocument();
+        expect(
+            screen.getByText(/This experiment variant is currently active/i),
+        ).toBeInTheDocument();
     });
 });

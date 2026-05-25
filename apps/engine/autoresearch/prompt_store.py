@@ -56,6 +56,27 @@ async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") ->
     return content
 
 
+async def get_active_variant(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+    """Retrieve the full database row/dictionary of the currently active variant."""
+    sb_client = await get_async_supabase_client()
+    res = await (
+        sb_client.table("prompt_experiments")
+        .select("*")
+        .eq("status", "active")
+        .eq("prompt_name", prompt_name)
+        .maybe_single()
+        .execute()
+    )
+    return res.data if res else None
+
+
+async def update_variant_metrics(variant_tag: str, metrics: dict) -> None:
+    """Update the metrics for a specific prompt variant by its variant tag."""
+    sb_client = await get_async_supabase_client()
+    await sb_client.table("prompt_experiments").update({"metrics": metrics}).eq("variant_tag", variant_tag).execute()
+    logger.info("Updated variant %s metrics in the database", variant_tag)
+
+
 async def save_variant(
     prompt_content: str,
     prompt_name: str,
@@ -225,11 +246,11 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         logger.info("Baseline %s is already active. No revert needed.", baseline_tag)
         return baseline_tag
 
-    # Demote current active (if any) to 'kept' — it wasn't a crash, just
+    # Demote current active (if any) to 'discarded' — it wasn't a crash, just
     # an experiment that failed to beat the baseline.
     await (
         sb_client.table("prompt_experiments")
-        .update({"status": "kept"})
+        .update({"status": "discarded"})
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
         .execute()

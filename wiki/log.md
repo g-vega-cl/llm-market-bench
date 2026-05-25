@@ -246,6 +246,20 @@ Optimized the AI Memories feature using a highly efficient **Hybrid Local Cache 
 
 Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.
 
-## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
+## [2026-05-25] decision | Revert Live QMD/Search-First CLI Hooks in Favor of Lean Pre-Commit/Manual Flows
 
-Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.
+Explored and implemented a workspace-level hook configuration (`.agents/hooks.json` mapping to a Python validation helper `scripts/qmd_hooks.py`) to enforce the **Search First (QMD)** principle and perform real-time QMD index updates during active agent sessions. 
+
+Upon testing, the decision was made to roll back these live CLI hooks:
+- **Overhead & Noise**: The `PreToolUse` grep validation injected warning messages directly into the agent's stream, which was determined to be too invasive and noisy for day-to-day workflow.
+- **Workflow Sufficiency**: The project's existing Husky Git hooks (`.husky/pre-commit` and `.husky/post-merge`) already handle QMD re-indexing automatically during commits and merges, and manual `qmd` searches perform perfectly fine without dynamic session-level checking.
+- **Result**: Successfully removed `.agents/hooks.json`, `scripts/qmd_hooks.py`, and `tests/test_qmd_hooks.py` to keep the repository extremely lean and free of unnecessary runtime complexity.
+
+## [2026-05-25] decision | Revert Live QMD/Search-First CLI Hooks in Favor of Lean Pre-Commit/Manual Flows
+
+Explored and implemented a workspace-level hook configuration (`.agents/hooks.json` mapping to a Python validation helper `scripts/qmd_hooks.py`) to enforce the **Search First (QMD)** principle and perform real-time QMD index updates during active agent sessions. 
+
+Upon testing, the decision was made to roll back these live CLI hooks:
+- **Overhead & Noise**: The `PreToolUse` grep validation injected warning messages directly into the agent's stream, which was determined to be too invasive and noisy for day-to-day workflow.
+- **Workflow Sufficiency**: The project's existing Husky Git hooks (`.husky/pre-commit` and `.husky/post-merge`) already handle QMD re-indexing automatically during commits and merges, and manual `qmd` searches perform perfectly fine without dynamic session-level checking.
+- **Result**: Successfully removed `.agents/hooks.json`, `scripts/qmd_hooks.py`, and `tests/test_qmd_hooks.py` to keep the repository extremely lean and free of unnecessary runtime complexity.

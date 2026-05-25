@@ -47,11 +47,10 @@ The query mappings are constructed dynamically on the database using precise fie
 - **Calendar Events (`calendar_event`)**: Database query `.eq('memory_type', 'CALENDAR_EVENT')`
 - **Principles (`academic_paper`)**: Database query `.eq('memory_type', 'LESSON_LEARNED').eq('metadata->source_type', 'academic_paper')`
 - **Post-Mortems (`post_mortem`)**: Database query `.not('metadata->analysis_window', 'is', null)` (any `LESSON_LEARNED` memory generated via post-trade analysis).
-- **Lessons (`lesson_learned`)**: Database query `.eq('memory_type', 'LESSON_LEARNED').is('metadata->analysis_window', null).or('metadata->source_type.is.null,metadata->source_type.neq.academic_paper')` (general lessons learned).
 
-*Note: The empty Decisions (`decision_reasoning`) filter has been completely removed from this view. AI trading agent decisions are stored in a dedicated `decisions` table in the database and are managed under the specialized **Reasoning** page rather than the memories table.*
+*Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters have been completely removed from this view. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*
 
-The client-side `getMemoryCategory(memory)` function is retained solely to apply dynamic brand-color badge styling to each rendered card matching our design system tokens.
+The client-side `getMemoryCategory(memory)` function is retained to apply dynamic brand-color badge styling to each rendered card matching our design system tokens (where a generic lesson card will still receive the "Lesson Learned" badge format).
 
 
 ### Memory Reinforcement & Duplicate Bumping

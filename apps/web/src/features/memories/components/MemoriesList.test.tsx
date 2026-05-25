@@ -71,23 +71,24 @@ describe('MemoriesList', () => {
         expect(screen.getByText('Post-mortem on AAPL')).toBeInTheDocument();
     });
 
-    it('filter buttons use DS Button component and omit Decisions', () => {
+    it('filter buttons use DS Button component and omit Decisions and Lessons', () => {
         const onFilterChange = vi.fn();
         render(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
 
-        // Only the filter pills (All, Events, Calendar Events, Post-Mortems, Principles, Lessons)
+        // Only the active, populated filter pills (All, Events, Calendar Events, Post-Mortems, Principles)
         const filterButtons = screen.getAllByRole('button');
         const dsButtons = filterButtons.filter((btn) =>
-            ['All', 'Events', 'Calendar Events', 'Post-Mortems', 'Principles', 'Lessons'].includes(
+            ['All', 'Events', 'Calendar Events', 'Post-Mortems', 'Principles'].includes(
                 btn.textContent || '',
             ),
         );
-        expect(dsButtons.length).toBe(6);
+        expect(dsButtons.length).toBe(5);
 
-        // Decisions must be completely gone
+        // Decisions and Lessons must be completely gone
         expect(screen.queryByText('Decisions')).not.toBeInTheDocument();
+        expect(screen.queryByText('Lessons')).not.toBeInTheDocument();
 
         for (const btn of dsButtons) {
             expect(btn.className).toContain('inline-flex');

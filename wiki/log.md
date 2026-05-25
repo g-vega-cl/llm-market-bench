@@ -1,3 +1,11 @@
+## [2026-05-25] fix | Removed empty Lessons filter pill from Memories page
+
+Removed the redundant and permanently empty "Lessons" filter pill from the `/memories` page on the frontend. 
+
+- **Frontend (`web`)**: Removed `{ id: 'lesson_learned', label: 'Lessons' }` from `FILTERS` in `MemoriesList.tsx`.
+- **Tests**: Updated `MemoriesList.test.tsx` to assert exactly 5 active filter buttons and expect that the "Lessons" text is absent.
+- **Documentation**: Updated [[concepts/memory-feedback]] to reflect the filter tab removal, explaining that post-mortems and academic principles fully cover all recorded lessons learned.
+
 ## [2026-05-25] documentation | Wiki codebase reference validation audit
 
 Audited the dual-linter pipeline (`wiki_lint.py` and `wiki_lint_llm.py`) and identified that neither validates codebase references on disk.

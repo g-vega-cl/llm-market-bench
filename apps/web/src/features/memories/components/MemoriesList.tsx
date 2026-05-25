@@ -50,7 +50,6 @@ const FILTERS = [
     { id: 'calendar_event', label: 'Calendar Events' },
     { id: 'post_mortem', label: 'Post-Mortems' },
     { id: 'academic_paper', label: 'Principles' },
-    { id: 'lesson_learned', label: 'Lessons' },
 ];
 
 export function MemoriesList({ memories, filter, onFilterChange }: MemoriesListProps) {

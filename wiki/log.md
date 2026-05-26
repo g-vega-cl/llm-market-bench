@@ -1,3 +1,16 @@
+## [2026-05-26] resilience | Event Consensus Resilience, Rate Limit Backoff & String Fallback
+
+### Context
+1. **Consensus Crash on 429 Errors**: On May 22nd Run #3, a `429 RESOURCE_EXHAUSTED` rate limit error from the Gemini embeddings API returned an empty list `[]`, causing `process_consensus` to crash with an unhandled `IndexError: list index out of range` on `embeddings[i]`.
+2. **Strict Semantic Similarity Gate**: Multiple models extracted the $2B quantum investment event (Gemini, Claude, OpenAI), but their pairwise similarities ranged from `0.725` to `0.814`. Because the consensus grouping threshold was hardcoded to a very strict `0.85`, these events fell into separate groups of weight 1.0 (below the consensus threshold of 2.0) and were never promoted to long-term memory.
+3. **Manual Government Check**: The monthly `GovernmentPipeline` is manual and had no scheduled cron job or workflow to trigger it automatically.
+
+### Changes
+- **Exponential Backoff Retries**: Integrated the `tenacity` library in `apps/engine/memory/embeddings.py` to wrap the Gemini client call with an exponential backoff retry decorator (3 max attempts, exponential delay 2s to 10s) to handle rate limit and network errors.
+- **Defensive Grouping Fallback**: Added defensive checks to `process_consensus` in `apps/engine/analysis/consensus.py`. If embeddings fetch returns empty or size-mismatched lists, the engine logs a warning and falls back to exact string-based matching for event grouping, completely avoiding the index out of range crash.
+- **TDD Verification Suite**: Created a new test file `apps/engine/tests/test_consensus_resilience.py` with unit tests verifying graceful fallback without crashes and verifying tenacity's backoff retry counts.
+- **Documentation**: Updated `[[concepts/consensus]]` wiki page to detail the rate limit resilience and exact string match fallback mechanisms.
+
 ## [2026-05-26] feature | AutoResearch Dual-Benchmark Scoring & State Ledger Injection
 
 ### Context

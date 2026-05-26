@@ -3,6 +3,7 @@
 import logging
 
 from google import genai
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 from core import config
 from core.config import GEMINI_EMBEDDING_MODEL
@@ -20,6 +21,17 @@ def get_client():
             raise ValueError("GEMINI_API_KEY is not set in environment.")
         _client = genai.Client(api_key=config.GEMINI_API_KEY)
     return _client
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True,
+)
+def _call_embed_with_retry(client, model, contents, config):
+    """Executes the embed API call with tenacity retries."""
+    return client.models.embed_content(model=model, contents=contents, config=config)
 
 
 def get_embedding(text: str) -> list[float]:
@@ -54,8 +66,8 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         client = get_client()
         # Gemini's embed_content naturally supports lists of strings
         logger.info(f"Calling Gemini embeddings for {len(texts)} texts")
-        response = client.models.embed_content(
-            model=GEMINI_EMBEDDING_MODEL, contents=texts, config={"output_dimensionality": 768}
+        response = _call_embed_with_retry(
+            client=client, model=GEMINI_EMBEDDING_MODEL, contents=texts, config={"output_dimensionality": 768}
         )
 
         if not response.embeddings:

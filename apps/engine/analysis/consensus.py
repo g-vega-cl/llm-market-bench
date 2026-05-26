@@ -286,6 +286,13 @@ async def process_consensus(
     embeddings = await _get_event_embeddings([e.event_name for e in events])
 
     # 2. Group events semantically
+    if not embeddings or len(embeddings) != len(events):
+        logger.warning(
+            f"Embeddings list size mismatch: expected {len(events)}, got {len(embeddings) if embeddings else 0}. "
+            "Falling back to exact string comparison for event grouping."
+        )
+        embeddings = [None] * len(events)
+
     groups = _group_events_semantically(events, embeddings, sim_threshold)
 
     consensus_reached = []

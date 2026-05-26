@@ -92,9 +92,5 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: memories importance to card. Do not remove importance from papers memory. Memories filter
 - [ ] - Benchify and QMD; connect pre hook with local LLM chat convos
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
-
-## Under Consideration
-
-- [x] Benchify: Benchify: mark the portfolios that use autoresearch
-
-- **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
+- [ ] - Implement Redis?
+- [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)

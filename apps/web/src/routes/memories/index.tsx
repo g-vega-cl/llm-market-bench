@@ -4,16 +4,62 @@ import { fetchMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
 const getMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: { cursor?: string; category?: string }) => d)
-    .handler(async ({ data: { cursor, category } }) => {
-        return fetchMemories(cursor, undefined, category);
+    .inputValidator((d: { cursor?: string; category?: string } | undefined) => d)
+    .handler(async ({ data }) => {
+        const cursor = data?.cursor;
+        const category = data?.category;
+        return fetchMemories(cursor, 50, category);
     });
 
-export const Route = createFileRoute('/memories/')({ component: RouteComponent });
+export const Route = createFileRoute('/memories/')({
+    loader: async () => {
+        const categories = ['MARKET_EVENT', 'CALENDAR_EVENT', 'POST_MORTEM', 'ACADEMIC_PAPER'];
+
+        const [allRes, ...catResults] = await Promise.all([
+            getMemories({ data: { cursor: undefined, category: undefined } }),
+            ...categories.map((cat) => getMemories({ data: { cursor: undefined, category: cat } })),
+        ]);
+
+        // Merge all memories into a single list
+        const mergedMemories = [
+            ...(allRes?.data || []),
+            ...catResults.flatMap((res) => res?.data || []),
+        ];
+
+        // Deduplicate by ID
+        const seen = new Set<string>();
+        const deduplicated = mergedMemories.filter((m) => {
+            if (!m.id) return true;
+            if (seen.has(m.id)) return false;
+            seen.add(m.id);
+            return true;
+        });
+
+        // Sort chronologically descending (newest first)
+        deduplicated.sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        return {
+            data: deduplicated,
+            hasMore: allRes?.hasMore ?? false,
+            nextCursor: allRes?.nextCursor ?? null,
+        };
+    },
+    component: RouteComponent,
+});
+
 function RouteComponent() {
+    const initialData = Route.useLoaderData();
     const getMemoriesFn = useServerFn(getMemories);
+
     return (
         <MemoriesPage
+            initialMemories={initialData.data}
+            initialHasMore={initialData.hasMore}
+            initialCursor={initialData.nextCursor}
             fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category } })}
         />
     );

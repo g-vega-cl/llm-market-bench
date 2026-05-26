@@ -37,27 +37,20 @@ dashboard with confidence bar and direction badge.
 
 Decoupled vector storage: `memories` table for market context (`MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, `LESSON_LEARNED`, `UNCROWDED_TRADE`), `decisions` table for past trade reasoning. Retrieval is scoped: cross-agent for memories, per-agent for decisions (prevents cross-contamination in verification).
 
-### Frontend UI Filtering, Caching & Delta-Sync Strategy
+### SSR-First Loading & Parallel Category Prefetching Strategy
 
-To achieve a modern, instant (0ms) user experience while minimizing server load and database queries, the `/memories` dashboard implements a **Hybrid Local Cache + Progressive Background Fill** architecture powered by TanStack Query:
+To achieve a modern, instant (0ms) user experience with absolutely zero loader flashes—on both page navigation and hard browser reloads—the `/memories` dashboard implements an **SSR-First + Parallel Category Prefetching** architecture powered by TanStack Start and TanStack Query:
 
-1. **Immediate Initial Render (0ms)**: On client mount, TanStack Query is bootstrapped with `initialData` loaded from a browser cache stored in `localStorage` (`benchify_memories_v1`, capped at 500 items). The interface renders instantly with no spinners.
-2. **Self-Healing Reset Detection**: Before entering delta-sync, the client runs a lightweight `validateCacheState(cachedId)` check — two parallel Supabase queries:
-   - Query 1: Fetch the newest `created_at` timestamp in the database.
-   - Query 2: Check whether the newest cached memory's `id` still exists in the database.
-   - **If any anomaly is detected** (ID missing, DB timestamp is older than cache's newest timestamp, or database is empty), the stale cache is wiped completely and a progressive backfill is triggered. This automatically self-heals after database resets, re-seeds, or historical imports — with no user intervention required.
-3. **Background Sync & Progressive Fill**: Once validated, `initialDataUpdatedAt: 1` treats the initial cache as stale, prompting a background `queryFn` to run:
-   - **Delta Sync (Cache Full)**: If the local cache is fully populated (`cached.length >= 500`), the client requests only memories created *after* the latest cached timestamp (`fetchNewMemories`), keeping network overhead minimal.
-   - **Progressive Backfill (Cache Empty or Partial)**: If the local cache is empty or has fewer than 500 items, the client runs a multi-page progressive fill:
-     1. `performFullBackfill` fetches the first page (50 items) immediately via `fetchFn` and returns it to the UI — the list is visible with no loading state.
-     2. The `queryFn` stores the `nextCursor` as `pendingCursor` state, which triggers a `useEffect`.
-     3. `runProgressiveFill` walks subsequent cursor pages in the background, calling `queryClient.setQueryData` after each page so the list silently grows in place — no spinner, no flash.
-     4. Pages continue until the cache reaches 500 items or the DB returns no more records.
-   - The fetched payload is merged with the cache, deduplicated by unique ID, sorted chronologically descending, capped at 500 entries, and written back to `localStorage`.
-4. **100% In-Memory Filtering**: All category tabs filter the local array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests — including during and after background fill.
-5. **Client-Side Pagination**: Scrolling and loading more data is driven by a local `displayLimit` state (in increments of 50) on the pre-loaded cache pool, eliminating network hops during pagination.
+1. **True Server-Side Rendering (SSR)**: On a hard browser reload, the route loader fetches the first page of memories on the server, pre-rendering the memories directly into the static HTML. The user immediately receives the fully populated page with **zero loader flash**.
+2. **Parallel Category Prefetching (The Sparse Tab Fix)**: To ensure that client-side category filtering doesn't result in nearly empty tabs on load, the route loader runs parallel queries on the server (using a single `Promise.all` scan) to fetch:
+   - The first 50 memories for the main feed (`All` / `category: undefined`).
+   - The first 50 memories for each specific category: `MARKET_EVENT` (Events), `CALENDAR_EVENT` (Calendar Events), `POST_MORTEM` (Post-Mortems), and `ACADEMIC_PAPER` (Principles).
+3. **Server-Side Merge & Deduplication**: The loader combines the parallel results, deduplicates them by unique ID, and sorts them chronologically descending (newest first). This unified list is sent to the browser.
+4. **Hydrated TanStack Query State**: The `MemoriesPage` component is initialized with this server-fetched list via React Query's `initialData`. Because it's hydrated instantly on mount, `isPending` is false, and the memories are rendered immediately with zero flicker.
+5. **100% In-Memory Filtering**: All category tabs filter the local query array completely in-memory in the browser. Transitioning between tabs is instantaneous (0ms) and dispatches zero server requests. Because we pre-fetched 50 of each type, every single tab is guaranteed to show a rich pool of data instantly on mount.
+6. **Dynamic Cursor-Based Pagination**: When the user clicks "Load More", the page displays additional locally loaded items. If more items are required from the database, it utilizes TanStack Query's `useInfiniteQuery` to fetch subsequent pages from the server in the background, appending them seamlessly.
 
-**Implementation**: The `queryFn` delegates to focused helper functions in `MemoriesPage.tsx` — `syncMemoriesCache`, `performFullBackfill`, and `runProgressiveFill` — keeping cognitive complexity within Biome's strict limits. The `fetchFn` interface `(cursor, category)` is shared between the route's TanStack Start server wrapper and the progressive fill loop; `pageSize` is intentionally not part of the interface, so bulk fetching is achieved via cursor-paged iteration rather than a single large request.
+**Implementation**: The data fetching is configured cleanly at the routing layer in `routes/memories/index.tsx` using a route `loader` and a server function wrapper (`getMemories`). The `MemoriesPage` component utilizes `useInfiniteQuery` for bulletproof, prop-driven cursor-based pagination, while all old client-side local storage caching libraries (`cache.ts`), progressive fills, and self-healing validation endpoints are completely deleted, reducing codebase footprint and complexity.
 
 To maintain consistency, the database `memory_type` values and Frontend UI selectors remain **fully unified** as first-class discriminators. The client-side classifier `getMemoryCategory(m)` categorizes memories in-memory and applies dynamic brand-color badge styles:
 

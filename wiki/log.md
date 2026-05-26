@@ -1,3 +1,20 @@
+## [2026-05-26] architecture | SSR-First & Parallel Category Prefetching for AI Memories
+
+### Context
+On the `/memories` dashboard, a loading spinner/skeleton flashed for a split second on page navigation and hard browser refreshes. This happened because:
+1. The server had no access to the browser's `localStorage` client-side cache during SSR, rendering an empty array and flashing a false "No memories" message.
+2. We introduced an `isMounted` state gate to prevent hydration mismatches, but this still caused a loader spinner to flash on hard refresh until JS hydrated.
+3. Memories change very infrequently (around 3 times a day), making highly complex client-side local caching and delta-syncing an anti-pattern.
+4. Client-side category filtering resulted in extremely sparse lists if the initial page of memories happened to not contain many items of that specific category.
+
+### Changes
+- **Converted to SSR-First Architecture**: Moved data-fetching to the route layer in `routes/memories/index.tsx` using a route `loader` that queries memories directly on the server during the SSR pass. Memories are pre-rendered into the static HTML, resulting in **0ms loader flashes** on hard reloads and navigations.
+- **Parallel Category Prefetching Pattern (The Sparse Tab Fix)**: The route loader runs parallel queries on the server in a single `Promise.all` scan, pre-fetching the first 50 memories for the main feed, plus the first 50 memories for *each* of the specific categories (Events, Calendar Events, Post-Mortems, Principles). The results are merged, deduplicated, and chronologically sorted on the server before rendering, guaranteeing at least 50 rich records in every single tab immediately on mount.
+- **`useInfiniteQuery` Integration**: Refactored `MemoriesPage.tsx` to accept server-fetched props and initialized React Query's `useInfiniteQuery` with this `initialData`. Mapped the "Load More" button to `fetchNextPage` for elegant cursor-based pagination.
+- **Deleted Cache Library**: Completely deleted `localStorage` cache code, progressive fills, self-healing validation endpoints, and `cache.ts`, removing over 300 lines of complex cache-sync code from the project.
+- **Tests Updated**: Rewrote `MemoriesPage.test.tsx` to verify prop-driven initial data, instant client-side tab filtering, useInfiniteQuery pagination, and added a native SSR test case using `renderToString` asserting that memories render directly into HTML without skeletons. All tests are 100% passing.
+- **Documentation**: Updated [[concepts/memory-feedback]] to detail the SSR-First Parallel Prefetching architecture.
+
 ## [2026-05-25] fix | Progressive Background Backfill for AI Memories Page
 
 ### Context

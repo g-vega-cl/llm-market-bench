@@ -91,6 +91,103 @@ async def _spy_returns(sb_client, week_start: date, week_end: date) -> list[floa
     return returns
 
 
+async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> float:
+    from collections import defaultdict
+    from datetime import timedelta
+
+    owner_list = list(owner_ids)
+
+    # 1. Get initial performance (earliest snapshot in the week for each owner)
+    res_perf = (
+        sb_client.table("portfolio_performance")
+        .select("portfolio_id, total_equity, cash_balance, date, portfolios!inner(owner_id)")
+        .in_("portfolios.owner_id", owner_list)
+        .gte("date", week_start.isoformat())
+        .lte("date", week_end.isoformat())
+        .order("date")
+        .execute()
+    )
+    rows_perf = (await res_perf).data or []
+    if not rows_perf:
+        return 0.0
+
+    initial_states = {}
+    for row in rows_perf:
+        pid = row["portfolio_id"]
+        if pid not in initial_states:
+            initial_states[pid] = row
+
+    if not initial_states:
+        return 0.0
+
+    # 2. Get all trades before the starting date for each portfolio
+    res_trades = (
+        sb_client.table("trades")
+        .select("portfolio_id, ticker, signal, quantity, portfolios!inner(owner_id)")
+        .in_("portfolios.owner_id", owner_list)
+        .lt("executed_at", week_start.isoformat())
+        .execute()
+    )
+    trades = (await res_trades).data or []
+
+    positions = defaultdict(lambda: defaultdict(int))
+    for t in trades:
+        pid = t["portfolio_id"]
+        qty = t["quantity"]
+        if t["signal"] == "BUY":
+            positions[pid][t["ticker"]] += qty
+        elif t["signal"] == "SELL":
+            positions[pid][t["ticker"]] -= qty
+
+    # 3. Get week_end prices for these tickers
+    all_tickers = {ticker for p_pos in positions.values() for ticker, qty in p_pos.items() if qty > 0}
+
+    ticker_prices = {}
+    if all_tickers:
+        res_prices = (
+            sb_client.table("price_history")
+            .select("ticker, price, fetched_at")
+            .in_("ticker", list(all_tickers))
+            .gte("fetched_at", (week_end - timedelta(days=14)).isoformat())
+            .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
+            .execute()
+        )
+        price_rows = (await res_prices).data or []
+        price_rows.sort(key=lambda x: x["fetched_at"])
+        for r in price_rows:
+            ticker_prices[r["ticker"]] = float(r["price"] or 0)
+
+    # 4. Calculate return for each portfolio
+    agent_returns = []
+    for pid, state in initial_states.items():
+        initial_equity = float(state["total_equity"] or 0)
+        initial_cash = float(state["cash_balance"] or 0)
+
+        if initial_equity <= 0:
+            continue
+
+        end_equity = initial_cash
+        for ticker, qty in positions[pid].items():
+            if qty > 0:
+                price = ticker_prices.get(ticker)
+                if price is not None:
+                    end_equity += qty * price
+                else:
+                    pass
+
+        if positions[pid] and sum(positions[pid].values()) > 0 and end_equity == initial_cash:
+            agent_returns.append(0.0)
+            continue
+
+        ret = (end_equity - initial_equity) / initial_equity
+        agent_returns.append(ret)
+
+    if not agent_returns:
+        return 0.0
+
+    return sum(agent_returns) / len(agent_returns) * 100
+
+
 async def compute_wall_street_metrics(
     owner_ids: frozenset | set,
     week_start: date,
@@ -131,10 +228,13 @@ async def compute_wall_street_metrics(
             std_dev = math.sqrt(variance)
             volatility = std_dev * math.sqrt(252)
 
+    do_nothing_return_pct = await _do_nothing_return(sb_client, owner_ids, week_start, week_end)
+
     return {
         "total_return_pct": total_return_pct,
         "max_drawdown": max_drawdown,
         "volatility": volatility,
+        "do_nothing_return_pct": do_nothing_return_pct,
     }
 
 
@@ -148,19 +248,23 @@ def compute_score(
     bond_return_pct: float = 0.0,
     dollar_return_pct: float = 0.0,
     volatility_pct: float = 0.0,
+    do_nothing_return_pct: float = 0.0,
 ) -> dict:
     """Compute the single auto-research score.
 
     Formula:
       hurdle = bond_return_pct
       penalty_opp = max(0.0, hurdle - portfolio_return_pct)
-      score = (portfolio_return - SPY_return) - penalty_opp - (max_drawdown × penalty_weight)
+      score = (portfolio_return - do_nothing_return) + (portfolio_return - SPY_return) - penalty_opp - (max_drawdown × penalty_weight)
 
     Positive score = beating benchmarks and hurdles after risk penalty.
     Zero = treading water.
-    Negative = losing to SPY, hurdles, or too volatile.
+    Negative = losing to SPY, Do-Nothing, hurdles, or too volatile.
     """
-    excess_return = portfolio_return_pct - spy_return_pct
+    excess_vs_spy = portfolio_return_pct - spy_return_pct
+    excess_vs_do_nothing = portfolio_return_pct - do_nothing_return_pct
+    excess_return = excess_vs_spy + excess_vs_do_nothing
+
     hurdle = bond_return_pct
     opportunity_cost = max(0.0, hurdle - portfolio_return_pct)
     penalty = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT
@@ -170,6 +274,7 @@ def compute_score(
         "score": score,
         "portfolio_return_pct": round(portfolio_return_pct, 4),
         "spy_return_pct": round(spy_return_pct, 4),
+        "do_nothing_return_pct": round(do_nothing_return_pct, 4),
         "excess_return": round(excess_return, 4),
         "max_drawdown": max_drawdown_pct,
         "volatility": volatility_pct,

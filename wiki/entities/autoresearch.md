@@ -68,12 +68,14 @@ Every variant saved in the `prompt_experiments` table transitions through a stru
 ```
 hurdle_pct = bond_return_pct
 penalty_opp = max(0.0, hurdle_pct - portfolio_return_pct)
-score = (portfolio_return_pct - spy_return_pct) - penalty_opp - (max_drawdown_pct × 0.3)
+excess_return = (portfolio_return_pct - spy_return_pct) + (portfolio_return_pct - do_nothing_return_pct)
+score = excess_return - penalty_opp - (max_drawdown_pct × 0.3)
 
 Baseline = max(all previous scores) — the bar to beat. Only moves up.
 The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs baseline)"
 ```
 
+- **Dual-Benchmark Excess Return**: Evaluates the agent against both the absolute S&P 500 (`spy_return_pct`) and the "Do-Nothing" portfolio (`do_nothing_return_pct`), directly measuring the active trading value-add over simply holding the inherited positions.
 - **Dynamic Treasury Bond Hurdle**: Annually-reported 10-year Treasury yield (`year10`) fetched from FMP and compounded to the exact duration of the evaluation window. This serves as the active risk-free rate hurdle.
 - **Dynamic USD Index Return (Context Only)**: Actual weekly return percentage of `UUP` (US Dollar Index ETF proxy for DXY) fetched from FMP, displayed in the report for macroeconomic context only (no active penalty).
 - **Asymmetric Penalty**: Applied only if the portfolio returns fail to clear the active Treasury Bond hurdle.

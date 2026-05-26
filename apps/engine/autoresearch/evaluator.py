@@ -192,6 +192,7 @@ async def evaluate_week(
         bond_return_pct=bond_return_pct,
         dollar_return_pct=dollar_return_pct,
         volatility_pct=exp_metrics.get("volatility", 0) * 100,
+        do_nothing_return_pct=exp_metrics.get("do_nothing_return_pct", 0),
     )
 
     previous = await get_previous_variants(limit=5)
@@ -227,6 +228,7 @@ async def evaluate_week(
         "# Weekly Performance",
         f"Score: {score_result['score']}  "
         f"(portfolio: {portfolio_ret:+.2f}% | "
+        f"Do-Nothing: {score_result['do_nothing_return_pct']:+.2f}% | "
         f"SPY: {spy_return_pct:+.2f}% | "
         f"drawdown: -{max_drawdown:.2f}%)",
         f"Opportunity Cost Hurdle (compounded to {days_in_period} days):",
@@ -234,9 +236,9 @@ async def evaluate_week(
         f"  - Actual US Dollar Index Return (DXY/UUP) [Context Only]: {dollar_return_pct:+.4f}%",
         f"  - Opportunity Cost Penalty: {opp_penalty:+.4f}%",
         baseline_line,
-        f"Formula: (Portfolio_Return - SPY_Return) - Opportunity_Cost_Penalty - (Drawdown × 0.3) = "
-        f"({portfolio_ret:.2f} - {spy_return_pct:.2f}) - {opp_penalty:.2f} - ({max_drawdown:.2f} × 0.3) = "
-        f"{portfolio_ret - spy_return_pct:.2f} - {opp_penalty:.2f} - {max_drawdown * 0.3:.2f} = "
+        f"Formula: (Portfolio_Return - Do_Nothing_Return) + (Portfolio_Return - SPY_Return) - Opportunity_Cost_Penalty - (Drawdown × 0.3) = "
+        f"({portfolio_ret:.2f} - {score_result['do_nothing_return_pct']:.2f}) + ({portfolio_ret:.2f} - {spy_return_pct:.2f}) - {opp_penalty:.2f} - ({max_drawdown:.2f} × 0.3) = "
+        f"{portfolio_ret - score_result['do_nothing_return_pct']:.2f} + {portfolio_ret - spy_return_pct:.2f} - {opp_penalty:.2f} - {max_drawdown * 0.3:.2f} = "
         f"{score_result['score']}",
         "",
         "# Control Reference",

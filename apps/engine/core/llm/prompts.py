@@ -75,7 +75,10 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     '   - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.\n'
     "10. **COUNTRY TO ETF MAPPING:**\n"
     "    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.\n"
-    "11. **If I already own this stock, has this trade been profitable?**\n"
+    "11. **MANAGING EXISTING POSITIONS (THE PORTFOLIO LEDGER):**\n"
+    "    - Review the `<CURRENT_PORTFOLIO_LEDGER>` (appended to your instructions) to understand WHY you currently hold an asset.\n"
+    "    - Evaluate if the original thesis (Reasoning/Advance Planning) is 'Intact', 'Broken', or 'Realized'.\n"
+    "    - Do NOT blindly hold a position just because you inherited it. If the thesis is broken or realized, SELL. If the thesis is intact, HOLD or BUY MORE.\n"
     '    - Use `get_position_pnl` to check your current performance. Favor "buying more of winners" and "selling losers slowly".\n'
     "12. **What is the expected timeline for this catalyst to materialize?**\n"
     "    - Match your 'catalyst_duration' to the expected news cycle.\n"

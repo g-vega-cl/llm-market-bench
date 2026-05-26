@@ -105,6 +105,19 @@ class PromptFactory:
         else:
             system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 
+        # Inject portfolio ledger if applicable
+        if owner_id:
+            from attribution.service import get_active_ledger_xml
+            from core.db import get_async_supabase_client
+
+            try:
+                sb_client = await get_async_supabase_client()
+                ledger_xml = await get_active_ledger_xml(sb_client, owner_id)
+                if ledger_xml:
+                    system_prompt = system_prompt + f"\n\n{ledger_xml}"
+            except Exception as e:
+                logger.error(f"Failed to fetch ledger for {owner_id}: {e}")
+
         kwargs["market_data_block"] = market_data_block
         return cls._build_messages(
             provider,

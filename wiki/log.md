@@ -1,3 +1,15 @@
+## [2026-05-26] feature | AutoResearch Dual-Benchmark Scoring & State Ledger Injection
+
+### Context
+1. **Do-Nothing Benchmark**: The agent was previously scored strictly against the absolute SPY return. We introduced a "Do-Nothing" blended benchmark to score the agent's *active* value-add compared to simply holding its inherited positions without trading.
+2. **Context Black Hole**: The auto-research agent inherited a portfolio weekly without the historical context (thesis, advance planning) of *why* it held those positions, leading to premature liquidations.
+
+### Changes
+- **Dual-Benchmark Scoring**: Implemented `_do_nothing_return` in `metrics.py` and updated `compute_score` to use `excess_return = excess_vs_spy + excess_vs_do_nothing`.
+- **State Ledger Injection**: Created `get_active_ledger_xml` in `attribution/service.py` to aggregate historical decisions and injected `<CURRENT_PORTFOLIO_LEDGER>` into the `CORE_ANALYSIS_SYSTEM_PROMPT` via `prompt_factory.py`.
+- **Test-Fix-Verify (TDD)**: Verified 680 tests passing. Tests like `TestComputeScore` were explicitly refactored to align with the new dual-benchmark math.
+- **Documentation**: Updated `[[entities/autoresearch]]` and `[[concepts/auto-research-prompt-improver]]`. Created `[[concepts/state-ledger-injection]]`.
+
 ## [2026-05-26] architecture | SSR-First & Parallel Category Prefetching for AI Memories
 
 ### Context

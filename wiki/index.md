@@ -43,6 +43,7 @@
 - [[concepts/memory-feedback]] — Post-mortem, contrarian analysis, cause & effect
 - [[concepts/agent-workflow]] — Mandatory Search/Plan/TDD sequence for all agents
 - [[concepts/agents]] — Comprehensive role and tool breakdown for all 8 specialized agents
+- [[concepts/state-ledger-injection]] — Aggregating historical thesis/decisions into the active prompt for context retention
 - [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM
 - [[concepts/tool-enforcement]] — 4-layer hallucination prevention system
 - [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG

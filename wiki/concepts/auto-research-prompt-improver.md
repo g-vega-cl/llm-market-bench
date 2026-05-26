@@ -22,7 +22,8 @@ The auto-research loop runs weekly:
 ```
 hurdle_pct     = bond_return_pct  (compounded 10-year Treasury yield)
 opp_cost       = max(0.0, hurdle_pct - portfolio_return%)
-score          = (portfolio_return% - SPY_return%) - opp_cost - (max_drawdown% × 0.3)
+excess_return  = (portfolio_return% - SPY_return%) + (portfolio_return% - do_nothing_return%)
+score          = excess_return - opp_cost - (max_drawdown% × 0.3)
 ```
 
 A single transparent number. The meta-researcher sees all components (portfolio return, SPY return, bond hurdle, opportunity cost penalty, drawdown) plus the baseline and Δ.

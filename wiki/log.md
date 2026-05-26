@@ -1,3 +1,13 @@
+## [2026-05-26] feature | MiniMax M2.7 Portfolio — Simplified Execution Pipeline
+
+Added MiniMax M2.7 as a fifth trading agent in the engine alongside OpenAI, Anthropic, Gemini, and DeepSeek. Key changes:
+
+- **`core/llm/analysis.py`**: Added `_analyze_with_minimax()` — a dedicated analysis function that calls `MiniMaxClient.chat()` directly (raw HTTP, no Instructor, no tool loop) and parses the JSON response into a `DecisionsResponse`. Existing providers are unchanged. The `minimax` provider is routed via an early-return in `analyze_with_provider()` before the Instructor client factory lookup.
+- **`analysis/analyze.py`**: Added `{"provider": "minimax", "model": MINIMAX_MODEL}` to the `MODELS` list.
+- **`main.py`**: Added a dedicated `if d.model_provider == "minimax"` branch inside `_process_single_decision()`. This path: (1) skips the verificator, (2) skips semantic overlap check, (3) skips tool-call enforcement, (4) skips stale-quote staleness rejection, (5) uses market orders with ±0.3% fill buffer (BUY = `price * 1.003`, SELL = `price * 0.997`), (6) retains full Reg T / SMA / margin validation, (7) retains ownership hard-stop for SELL, (8) mirrors to Alpaca with the same 0.3% buffer price.
+- **`tests/test_minimax_pipeline.py`**: 13 new tests covering the MiniMax analysis provider path, the ±0.3% market order buffer, and Reg T + ownership validation.
+- **`wiki/`**: Created `wiki/concepts/minimax-portfolio.md` and updated `wiki/index.md`, `wiki/overview.md`, `wiki/entities/engine.md`, `wiki/concepts/execution.md`, `wiki/concepts/tool-enforcement.md`, and `wiki/concepts/agents.md` to fully document the MiniMax portfolio.
+
 ## [2026-05-26] fix | Fix Gemini GenerateContentConfig schema validation & DeepSeek API gateway deserialization errors
 
 Resolved pipeline execution bugs affecting the daily ingestion and consensus stages:

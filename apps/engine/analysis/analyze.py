@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 
 from core import llm
-from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL, OPENAI_MODEL, logger
+from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL, MINIMAX_MODEL, OPENAI_MODEL, logger
 from core.db import get_supabase_client
 from core.models import DecisionObject, MacroEvent
 from execution.market_data import MarketDataManager
@@ -21,6 +21,7 @@ MODELS = [
     {"provider": "anthropic", "model": ANTHROPIC_MODEL},
     {"provider": "gemini", "model": GEMINI_MODEL},
     {"provider": "deepseek", "model": DEEPSEEK_MODEL},
+    {"provider": "minimax", "model": MINIMAX_MODEL},
 ]
 
 

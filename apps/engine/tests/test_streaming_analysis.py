@@ -88,8 +88,10 @@ class TestAnalyzeChunksStreaming:
                 results.append((model_decisions, config))
                 # If we got at least one result, we can already start execution
 
-            # Verify we got results from all 4 models
-            assert len(results) == 4, f"Expected 4 models, got {len(results)}"
+            # Verify we got results from all models
+            from analysis.analyze import MODELS
+
+            assert len(results) == len(MODELS), f"Expected {len(MODELS)} models, got {len(results)}"
             assert all(d[0] for d in results), "All results should have decisions"
 
     @pytest.mark.asyncio
@@ -146,8 +148,10 @@ class TestAnalyzeChunksStreaming:
             # Should still get results from working models
             assert len(results) >= 3, f"Expected at least 3 successful models, got {len(results)}"
 
-            # Total call count should be 4 (all models attempted)
-            assert call_count == 4, f"Expected 4 model calls, got {call_count}"
+            # Total call count should equal model count (all models attempted)
+            from analysis.analyze import MODELS
+
+            assert call_count == len(MODELS), f"Expected {len(MODELS)} model calls, got {call_count}"
 
 
 class TestEarlyContrarianStart:
@@ -261,7 +265,11 @@ class TestDecisionCallback:
                         await decision_callback(d, config)
 
         # Callback should be invoked for each model's decisions
-        assert len(callback_invocations) == 4, f"Expected 4 callback invocations, got {len(callback_invocations)}"
+        from analysis.analyze import MODELS
+
+        assert len(callback_invocations) == len(MODELS), (
+            f"Expected {len(MODELS)} callback invocations, got {len(callback_invocations)}"
+        )
 
 
 class TestParallelStages:

@@ -13,7 +13,7 @@ Validates and executes trades with defense-in-depth guardrails.
 |-----------|-------|
 | Existence | Ticker found via FMP |
 | Liquidity | Market cap above floor |
-| Staleness | JIT price vs prompt-injected ≤ 2% |
+| Staleness | JIT price vs prompt-injected ≤ 2% (Bypassed for MiniMax) |
 | Buying Power | Cost fits within Reg T limits |
 | Minimum Value | Trade cost above floor |
 | SMA Floor | Projected SMA above safety threshold |
@@ -29,6 +29,8 @@ position rule enforced by quantity calculation tools.
 trade → update cash/SMA. Prevents phantom deductions on DB failure. Alpaca paper
 mirroring via fire-and-forget DAY limit orders.
 
+- **MiniMax Simplified Execution**: Rather than placing standard limit orders, the MiniMax portfolio places JIT simulated **Market Orders** using a **±0.3% slippage buffer** (BUY = `price * 1.003`, SELL = `price * 0.997`). Bypasses the verifier, stale price checks, tool loops, and semantic redundancy checks. Hard stops still apply for unheld short-selling (capped to held position size).
+
 ## Attribution Locking
 
 Two-phase commit: pre-trade decision save assigns `decision_id`, trade executes
@@ -38,10 +40,11 @@ with FK, post-trade status = EXECUTED. Result: `News → Reasoning → Decision 
 
 Every rejection is saved with a status code. Types: MARGIN, OWNERSHIP,
 REDUNDANCY, TOOL_USAGE, VERIFICATION, HALLUCINATION, LIQUIDITY, MARKET_CLOSED,
-STALE_QUOTE, ERROR_PROVIDER.
+STALE_QUOTE, ERROR_PROVIDER, REJECTED_OWNERSHIP.
 
 ## Related
 
 - [[entities/pipeline]]
 - [[concepts/consensus]]
 - [[concepts/tool-enforcement]]
+- [[concepts/minimax-portfolio]]

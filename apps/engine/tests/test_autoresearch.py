@@ -1051,7 +1051,9 @@ class TestComputeScore:
         """score = (portfolio_return - spy) + (portfolio_return - do_nothing) - (max_drawdown * 0.3)"""
         from autoresearch.metrics import compute_score
 
-        result = compute_score(portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=5.0, do_nothing_return_pct=0.0)
+        result = compute_score(
+            portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=5.0, do_nothing_return_pct=0.0
+        )
         # excess = (3.0 - 1.0) + (3.0 - 0.0) = 5.0
         assert result["excess_return"] == pytest.approx(5.0)
         assert result["score"] == pytest.approx(3.5)  # 5.0 - 1.5 = 3.5
@@ -1068,7 +1070,9 @@ class TestComputeScore:
         """Underperforming SPY and Do-Nothing should produce negative score."""
         from autoresearch.metrics import compute_score
 
-        result = compute_score(portfolio_return_pct=-2.0, spy_return_pct=1.0, max_drawdown_pct=2.0, do_nothing_return_pct=-1.0)
+        result = compute_score(
+            portfolio_return_pct=-2.0, spy_return_pct=1.0, max_drawdown_pct=2.0, do_nothing_return_pct=-1.0
+        )
         assert result["score"] < 0
         # excess = (-2.0 - 1.0) + (-2.0 - (-1.0)) = -3.0 - 1.0 = -4.0
         assert result["excess_return"] == pytest.approx(-4.0)
@@ -1077,7 +1081,9 @@ class TestComputeScore:
         """Beating SPY is not enough — drawdown penalty can flip score negative."""
         from autoresearch.metrics import compute_score
 
-        result = compute_score(portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=25.0, do_nothing_return_pct=2.0)
+        result = compute_score(
+            portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=25.0, do_nothing_return_pct=2.0
+        )
         # excess = (3.0 - 1.0) + (3.0 - 2.0) = 3.0
         # score = 3.0 - (25*0.3) = 3.0 - 7.5 = -4.5
         assert result["score"] < 0
@@ -1086,7 +1092,9 @@ class TestComputeScore:
         """Perfect run: excess return with no drawdown."""
         from autoresearch.metrics import compute_score
 
-        result = compute_score(portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, do_nothing_return_pct=2.0)
+        result = compute_score(
+            portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, do_nothing_return_pct=2.0
+        )
         # excess = (5.0 - 1.0) + (5.0 - 2.0) = 4.0 + 3.0 = 7.0
         assert result["score"] == pytest.approx(7.0)
         assert result["max_drawdown"] == 0.0
@@ -1095,7 +1103,9 @@ class TestComputeScore:
         """Output dict must include excess_return, max_drawdown, do_nothing_return_pct for transparency."""
         from autoresearch.metrics import compute_score
 
-        result = compute_score(portfolio_return_pct=2.0, spy_return_pct=0.5, max_drawdown_pct=3.0, do_nothing_return_pct=1.0)
+        result = compute_score(
+            portfolio_return_pct=2.0, spy_return_pct=0.5, max_drawdown_pct=3.0, do_nothing_return_pct=1.0
+        )
         assert "excess_return" in result
         assert "max_drawdown" in result
         assert "score" in result

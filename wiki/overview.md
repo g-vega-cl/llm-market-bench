@@ -5,7 +5,7 @@ category: synthesis
 
 # LLM Market Bench
 
-An automated platform where multiple LLMs compete in a virtual stock market.
+An automated platform where five LLMs compete in a virtual stock market.
 Multiple times daily during US market hours, they parse financial newsletters,
 debate events, and rebalance portfolios — with meta-agents reviewing consensus
 afterward.
@@ -27,9 +27,9 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 
 1. **Ingestion** — fetch newsletters, economic calendar, government data
 2. **Pre-Analysis** — market hours check, dust cleanup, macro tracking (23 tickers across 6 categories: equities, international, commodities, fixed income, FX/risk, crypto)
-3. **Analysis** — parallel LLM analysis with tool-calling loops
+3. **Analysis** — parallel LLM analysis with tool-calling loops (and raw JSON parsing for MiniMax)
 4. **Consensus** — semantic grouping, event promotion, trend tracking
-5. **Execution** — validation, Reg T checks, trade settlement, attribution
+5. **Execution** — validation, Reg T checks, trade settlement, attribution (including standard limit orders and a simplified market order pipeline for MiniMax with ±0.3% buffer)
 6. **Feedback** — post-mortem, contrarian analysis, cause & effect, and
    weekly auto-research prompt improvement
 
@@ -43,7 +43,7 @@ See [[entities/pipeline]] for the full walkthrough.
   targeted per-trade RAG scoped to the same agent's past decisions
 - **Atomic settlement**: "Commit at the End" pattern prevents phantom deductions
 - **4-layer tool enforcement**: Server-side conversation scanning confirms
-  quantity tools were actually called via native function calling
+  quantity tools were actually called via native function calling (bypassed for the simplified MiniMax model pipeline)
 
 - **Auto-research loop**: A meta-researcher LLM evaluates weekly live trading
   performance and iteratively improves the trading prompt, following Karpathy's
@@ -56,4 +56,5 @@ See [[entities/pipeline]] for the full walkthrough.
 - [[entities/database]]
 - [[entities/pipeline]]
 - [[concepts/tool-enforcement]]
+- [[concepts/minimax-portfolio]]
 - [[concepts/rag-strategy]]

@@ -221,17 +221,19 @@ async def test_analyze_with_provider_hard_enforcement_anthropic(mock_clients):
     # Mock tool loop to simulate a successful Anthropic run_tool_loop execution
     # that calls the sell tool.
     async def fake_anthropic_run_tool_loop(raw_client, model_name, messages, **kwargs):
-        messages.append({
-            "role": "assistant",
-            "content": [
-                {
-                    "type": "tool_use",
-                    "name": "calculate_sell_quantity",
-                    "input": {"ticker": "GXO", "percentage": 100},
-                    "id": "call_anthropic_1",
-                }
-            ],
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "name": "calculate_sell_quantity",
+                        "input": {"ticker": "GXO", "percentage": 100},
+                        "id": "call_anthropic_1",
+                    }
+                ],
+            }
+        )
 
     with (
         patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock) as mock_run_loop,
@@ -256,6 +258,7 @@ async def test_analyze_with_provider_hard_enforcement_anthropic(mock_clients):
 async def test_analyze_with_provider_hard_enforcement_logs_diagnostics(mock_clients, caplog):
     """Verify that analyze_with_provider logs diagnostic info (messages, tools called) on hard enforcement failure."""
     import logging
+
     mock_instructor = mock_clients["instructor"]
 
     # Mock instructor response to return a BUY decision for AAPL
@@ -278,18 +281,20 @@ async def test_analyze_with_provider_hard_enforcement_logs_diagnostics(mock_clie
 
     # Mock tool loop to call stock quote instead of the required buy quantity tool
     async def fake_openai_run_tool_loop(raw_client, model_name, messages, *args, **kwargs):
-        messages.append({
-            "role": "assistant",
-            "tool_calls": [
-                {
-                    "function": {
-                        "name": "get_stock_quote",
-                        "arguments": '{"ticker": "AAPL"}',
-                    },
-                    "id": "call_diagnostics_1",
-                }
-            ],
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "get_stock_quote",
+                            "arguments": '{"ticker": "AAPL"}',
+                        },
+                        "id": "call_diagnostics_1",
+                    }
+                ],
+            }
+        )
 
     with (
         patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock) as mock_run_loop,
@@ -318,5 +323,3 @@ async def test_analyze_with_provider_hard_enforcement_logs_diagnostics(mock_clie
     assert "Total messages in history:" in diagnostic_warning or "Total messages:" in diagnostic_warning
     assert "Tools called:" in diagnostic_warning
     assert "get_stock_quote" in diagnostic_warning
-
-

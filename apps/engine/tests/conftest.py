@@ -30,6 +30,7 @@ def fully_mocked_main():
         patch("main.get_supabase_client") as mock_db,
         patch("main._stage_dust_cleanup", new_callable=AsyncMock) as mock_dust,
         patch("main.ingest_newsletters", new_callable=AsyncMock) as mock_ingest,
+        patch("main.bulk_upsert_newsletter_snapshots") as mock_bulk_upsert,
         patch("main.upsert_newsletter_snapshot") as mock_upsert,
         patch("main.Portfolio") as MockPortfolio,
         patch("execution.market_data.MarketDataManager") as MockMDM,

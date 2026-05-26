@@ -15,6 +15,7 @@ def mock_dependencies():
     with (
         patch("main.ingest_newsletters") as mock_ingest,
         patch("main.get_supabase_client"),
+        patch("main.bulk_upsert_newsletter_snapshots"),
         patch("main.upsert_newsletter_snapshot"),
         patch("main._stage_dust_cleanup", new_callable=AsyncMock),
         patch("main.analyze_chunks", new_callable=AsyncMock) as mock_analyze,

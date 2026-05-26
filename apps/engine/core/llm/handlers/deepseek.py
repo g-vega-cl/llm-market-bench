@@ -99,22 +99,40 @@ def prepare_messages_for_instructor(messages: list) -> list:
     """Prepares DeepSeek messages for final Instructor extraction.
 
     DeepSeek with thinking mode returns reasoning_content but may leave content empty.
-    This function ensures all messages are properly formatted for Instructor.
+    This function ensures all messages are properly formatted for Instructor by flattening
+    tool calls and tool response messages into standard text messages, completely purging
+    any API gateway schema-violating raw tool/tool call elements.
 
     Args:
         messages: The message history from the tool loop.
 
     Returns:
-        Cleaned message list with reasoning_content cleared for non-tool-call messages.
+        Cleaned, flattened message list suitable for Instructor.
     """
     cleaned = []
     for msg in messages:
         if isinstance(msg, dict):
             # Create a copy to avoid mutating original
             cleaned_msg = msg.copy()
-            # Clear reasoning_content for messages without tool_calls
-            if not cleaned_msg.get("tool_calls"):
-                cleaned_msg["reasoning_content"] = None
+
+            # 1. Flatten assistant tool calls into content
+            if cleaned_msg.get("tool_calls"):
+                tcs_text = ""
+                for tc in cleaned_msg["tool_calls"]:
+                    func = tc.get("function", {})
+                    tcs_text += f"\n[Tool Call: {func.get('name')}({func.get('arguments')})]"
+                cleaned_msg["content"] = (cleaned_msg.get("content") or "") + tcs_text
+                cleaned_msg["tool_calls"] = None
+
+            # 2. Convert tool messages to user messages
+            if cleaned_msg.get("role") == "tool":
+                cleaned_msg["role"] = "user"
+                cleaned_msg["content"] = f"[Tool Result: {cleaned_msg.get('content')}]"
+                cleaned_msg.pop("tool_call_id", None)
+
+            # Clear reasoning_content since we flattened all tool calls
+            cleaned_msg["reasoning_content"] = None
+
             # Ensure content is not just whitespace
             if cleaned_msg.get("content") and cleaned_msg["content"].strip() == "":
                 cleaned_msg["content"] = ""

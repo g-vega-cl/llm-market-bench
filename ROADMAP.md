@@ -92,3 +92,4 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - Implement Redis?
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
+- [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.

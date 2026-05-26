@@ -70,7 +70,11 @@ async def test_run_tool_loop_serialization():
 
 
 def test_prepare_messages_for_instructor():
-    """Test that DeepSeek message cleanup strips reasoning_content appropriately."""
+    """Test that DeepSeek message cleanup correctly flattens tool calls and tool response messages.
+
+    This ensures there are no raw tool/tool call roles sent during final Instructor extraction,
+    avoiding the 400 Bad Request missing tool_call_id API gateway errors.
+    """
     messages = [
         {
             "role": "user",
@@ -85,13 +89,24 @@ def test_prepare_messages_for_instructor():
             "role": "assistant",
             "content": "",
             "reasoning_content": "<think>Thinking trace 2...</think>",
-            "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "test_tool"}}],
+            "tool_calls": [
+                {
+                    "id": "call_123",
+                    "type": "function",
+                    "function": {"name": "test_tool", "arguments": '{"param": "val"}'},
+                }
+            ],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_123",
+            "content": "Tool return value",
         },
     ]
 
     cleaned = deepseek.prepare_messages_for_instructor(messages)
 
-    assert len(cleaned) == 3
+    assert len(cleaned) == 4
     # User message untouched
     assert cleaned[0]["role"] == "user"
     assert cleaned[0]["content"] == "Perform research."
@@ -101,10 +116,16 @@ def test_prepare_messages_for_instructor():
     assert cleaned[1]["content"] == "Here is the result."
     assert cleaned[1]["reasoning_content"] is None
 
-    # Assistant tool message: reasoning_content must NOT be cleared (required by some API structures)
+    # Assistant tool message: tool_calls must be flattened into content and set to None
     assert cleaned[2]["role"] == "assistant"
-    assert cleaned[2]["reasoning_content"] == "<think>Thinking trace 2...</think>"
-    assert len(cleaned[2]["tool_calls"]) == 1
+    assert cleaned[2]["content"] == '\n[Tool Call: test_tool({"param": "val"})]'
+    assert cleaned[2]["tool_calls"] is None
+    assert cleaned[2]["reasoning_content"] is None
+
+    # Tool response message: role converted to user, content formatted as [Tool Result: ...], tool_call_id removed
+    assert cleaned[3]["role"] == "user"
+    assert cleaned[3]["content"] == "[Tool Result: Tool return value]"
+    assert "tool_call_id" not in cleaned[3]
 
 
 def test_has_valid_content():

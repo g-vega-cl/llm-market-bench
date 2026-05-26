@@ -1,3 +1,10 @@
+## [2026-05-26] fix | Fix Gemini GenerateContentConfig schema validation & DeepSeek API gateway deserialization errors
+
+Resolved pipeline execution bugs affecting the daily ingestion and consensus stages:
+- **Gemini Handler**: Correctly nested the `include_server_side_tool_invocations` flag inside a nested `types.ToolConfig` schema rather than passing it directly to `GenerateContentConfig` constructor (which violated the Pydantic constraints of the Google GenAI SDK and triggered fallbacks). Added a unit test validating full GenerateContentConfig parsing under the actual SDK schema.
+- **DeepSeek Handler**: Implemented tool call and tool response message flattening inside `prepare_messages_for_instructor()` to convert raw `role: "tool"` and assistant `tool_calls` into standard user/assistant plain-text messages during the final Instructor extraction. This avoids the DeepSeek API Gateway `missing field tool_call_id` deserialization error in Mode.MD_JSON.
+- **Wiki**: Updated `wiki/concepts/model-anomalies.md` with accurate root-resolution descriptions of both behaviors.
+
 ## [2026-05-19] feature | Auto-Research Arena Web UI & System-Heavy Prompt Architecture
 
 Introduced the **Auto-Research Arena** web UI at `/autoresearch`, allowing exploration of prompt experiment history with scoring methodology, experiment details, and historical progression. Simultaneously refactored the interaction pattern into a **System-Heavy** architecture: all trading logic, risk rules, tool enforcement, and SOPs now reside in the System Prompt (mutated by the meta-researcher), while the User Prompt remains a static data skeleton. This increases the surface area for autonomous prompt evolution. Added bootstrap utility and database type for `prompt_experiments`. Updated auto-wiki with truncation safety and new default model.

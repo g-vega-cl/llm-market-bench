@@ -310,6 +310,9 @@ async def analyze_with_provider(
                     }
                 )
 
+        # Keep an unflattened copy of the message history for tool call verification
+        unflattened_messages = copy.deepcopy(messages)
+
         # Anthropic-specific: flatten nested content blocks for Instructor compatibility
         if provider == "anthropic":
             flattened = []
@@ -424,7 +427,8 @@ async def analyze_with_provider(
         # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
         for decision in final_resp.decisions:
             if decision.signal in ["BUY", "SELL"]:
-                results = _scan_history_for_tools(messages, decision.ticker)
+                results = _scan_history_for_tools(unflattened_messages, decision.ticker)
+                calls_found = _get_history_tool_calls_diagnostic(unflattened_messages)
 
                 # Update buy_tool_called/sell_tool_called based on ACTUAL history
                 if decision.signal == "BUY":
@@ -433,17 +437,23 @@ async def analyze_with_provider(
 
                     if was_self_reported and not results["buy_tool_found"]:
                         logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent claimed buy tool was called for %s but it was NOT found in history. Rejecting trade.",
+                            "[%s/%s] HARD ENFORCEMENT: Agent claimed buy tool was called for %s but it was NOT found in history. "
+                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
                             provider,
                             model_name,
                             decision.ticker,
+                            len(unflattened_messages),
+                            calls_found,
                         )
                     elif not results["buy_tool_found"]:
                         logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent recommended BUY for %s without executing 'calculate_buy_quantity' tool. Rejecting trade.",
+                            "[%s/%s] HARD ENFORCEMENT: Agent recommended BUY for %s without executing 'calculate_buy_quantity' tool. "
+                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
                             provider,
                             model_name,
                             decision.ticker,
+                            len(unflattened_messages),
+                            calls_found,
                         )
 
                 elif decision.signal == "SELL":
@@ -452,17 +462,23 @@ async def analyze_with_provider(
 
                     if was_self_reported and not results["sell_tool_found"]:
                         logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. Rejecting trade.",
+                            "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. "
+                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
                             provider,
                             model_name,
                             decision.ticker,
+                            len(unflattened_messages),
+                            calls_found,
                         )
                     elif not results["sell_tool_found"]:
                         logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing 'calculate_sell_quantity' tool. Rejecting trade.",
+                            "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing 'calculate_sell_quantity' tool. "
+                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
                             provider,
                             model_name,
                             decision.ticker,
+                            len(unflattened_messages),
+                            calls_found,
                         )
 
         # PRE-ANALYSIS PORTFOLIO VALIDATION: Filter out SELL decisions for tickers not held
@@ -630,6 +646,99 @@ def _scan_history_for_tools(messages: list, ticker: str) -> dict:
             _record_call(name, args)
 
     return {"buy_tool_found": buy_tool_found, "sell_tool_found": sell_tool_found}
+
+
+def _get_history_tool_calls_diagnostic(messages: list) -> list[str]:
+    """Extracts a diagnostic summary list of all tool calls made in the message history.
+
+    This provides visibility in log streams when tool enforcement fails.
+    """
+    tool_calls = []
+
+    def _extract(value):
+        calls = []
+        if value is None:
+            return calls
+
+        if isinstance(value, dict):
+            t_calls = value.get("tool_calls")
+            if t_calls:
+                for tc in t_calls:
+                    if isinstance(tc, dict):
+                        func = tc.get("function", {})
+                        if isinstance(func, dict):
+                            calls.append((func.get("name"), func.get("arguments", "{}")))
+                        else:
+                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
+                    else:
+                        func = getattr(tc, "function", None)
+                        if func is not None:
+                            calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
+
+            content = value.get("content")
+            if isinstance(content, list):
+                for part in content:
+                    calls.extend(_extract(part))
+
+            parts = value.get("parts")
+            if isinstance(parts, list):
+                for part in parts:
+                    calls.extend(_extract(part))
+
+            if value.get("type") in {"tool_use", "function_call", "functionCall"}:
+                if "name" in value:
+                    calls.append((value.get("name"), value.get("input", value.get("arguments", {}))))
+                elif "function" in value:
+                    func = value.get("function", {})
+                    if isinstance(func, dict):
+                        calls.append((func.get("name"), func.get("arguments", "{}")))
+
+            return calls
+
+        t_calls = getattr(value, "tool_calls", None)
+        if t_calls:
+            for tc in t_calls:
+                func = getattr(tc, "function", None)
+                if func is not None:
+                    calls.append((getattr(func, "name", None), getattr(func, "arguments", "{}")))
+
+        parts = getattr(value, "parts", None)
+        if parts:
+            for part in parts:
+                f_call = getattr(part, "function_call", None)
+                if f_call is not None:
+                    calls.append(
+                        (getattr(f_call, "name", None), getattr(f_call, "args", getattr(f_call, "arguments", {})))
+                    )
+                tool_call = getattr(part, "tool_call", None)
+                if tool_call is not None:
+                    calls.append(
+                        (
+                            getattr(tool_call, "name", None),
+                            getattr(tool_call, "args", getattr(tool_call, "arguments", {})),
+                        )
+                    )
+
+        content = getattr(value, "content", None)
+        if isinstance(content, list):
+            for part in content:
+                calls.extend(_extract(part))
+
+        if getattr(value, "type", None) in {"tool_use", "function_call", "functionCall"}:
+            name = getattr(value, "name", None)
+            args = getattr(value, "input", getattr(value, "arguments", {}))
+            if name is not None:
+                calls.append((name, args))
+
+        return calls
+
+    for message in messages:
+        for name, args in _extract(message):
+            if name:
+                args_str = str(args).strip().replace("\n", " ")
+                tool_calls.append(f"{name}({args_str})")
+
+    return tool_calls
 
 
 def _extract_held_tickers(portfolio_context: str) -> list[str]:

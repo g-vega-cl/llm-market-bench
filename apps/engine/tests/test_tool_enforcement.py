@@ -193,3 +193,130 @@ def test_is_vague_government_event_false_for_non_policy_events():
     assert _is_vague_government_event("AI Demand Surge", "tech sector rallies") is False
     assert _is_vague_government_event("Earnings Season Begins") is False
     assert _is_vague_government_event("Oil Supply Disruption") is False
+
+
+@pytest.mark.asyncio
+async def test_analyze_with_provider_hard_enforcement_anthropic(mock_clients):
+    """Verify that analyze_with_provider correctly verifies Anthropic tool calls in history."""
+    mock_instructor = mock_clients["instructor"]
+
+    # Mock instructor response to return a SELL decision for GXO
+    mock_instructor.create.return_value = [
+        DecisionsResponse(
+            decisions=[
+                DecisionObject(
+                    signal="SELL",
+                    ticker="GXO",
+                    confidence=90,
+                    reasoning="Test",
+                    source_id="s1",
+                    sell_tool_called=True,
+                    quantity=10,
+                )
+            ],
+            macro_events=[],
+        )
+    ]
+
+    # Mock tool loop to simulate a successful Anthropic run_tool_loop execution
+    # that calls the sell tool.
+    async def fake_anthropic_run_tool_loop(raw_client, model_name, messages, **kwargs):
+        messages.append({
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "tool_use",
+                    "name": "calculate_sell_quantity",
+                    "input": {"ticker": "GXO", "percentage": 100},
+                    "id": "call_anthropic_1",
+                }
+            ],
+        })
+
+    with (
+        patch("core.llm.handlers.anthropic.run_tool_loop", new_callable=AsyncMock) as mock_run_loop,
+        patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock),
+    ):
+        mock_run_loop.side_effect = fake_anthropic_run_tool_loop
+
+        resp = await analyze_with_provider(
+            provider="anthropic",
+            model_name="claude-3-5-sonnet",
+            chunks=[{"source_id": "s1", "content": "..."}],
+            portfolio_context="- GXO: 100 shares",  # To satisfy ownership validation
+        )
+
+    # In a correct implementation, sell_tool_called should remain True.
+    # In a broken (flattened messages passed to scan) implementation, it will be False.
+    assert resp.decisions[0].ticker == "GXO"
+    assert resp.decisions[0].sell_tool_called is True
+
+
+@pytest.mark.asyncio
+async def test_analyze_with_provider_hard_enforcement_logs_diagnostics(mock_clients, caplog):
+    """Verify that analyze_with_provider logs diagnostic info (messages, tools called) on hard enforcement failure."""
+    import logging
+    mock_instructor = mock_clients["instructor"]
+
+    # Mock instructor response to return a BUY decision for AAPL
+    mock_instructor.create.return_value = [
+        DecisionsResponse(
+            decisions=[
+                DecisionObject(
+                    signal="BUY",
+                    ticker="AAPL",
+                    confidence=90,
+                    reasoning="Test BUY",
+                    source_id="s2",
+                    buy_tool_called=True,
+                    quantity=5,
+                )
+            ],
+            macro_events=[],
+        )
+    ]
+
+    # Mock tool loop to call stock quote instead of the required buy quantity tool
+    async def fake_openai_run_tool_loop(raw_client, model_name, messages, *args, **kwargs):
+        messages.append({
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "function": {
+                        "name": "get_stock_quote",
+                        "arguments": '{"ticker": "AAPL"}',
+                    },
+                    "id": "call_diagnostics_1",
+                }
+            ],
+        })
+
+    with (
+        patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock) as mock_run_loop,
+        patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock),
+    ):
+        mock_run_loop.side_effect = fake_openai_run_tool_loop
+
+        with caplog.at_level(logging.WARNING, logger="engine"):
+            await analyze_with_provider(
+                provider="openai",
+                model_name="gpt-4",
+                chunks=[{"source_id": "s2", "content": "..."}],
+            )
+
+    # Assert that the warning logs contain the diagnostic information
+    warnings = [r.message for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) > 0
+
+    diagnostic_warning = None
+    for w in warnings:
+        if "HARD ENFORCEMENT" in w and "AAPL" in w:
+            diagnostic_warning = w
+            break
+
+    assert diagnostic_warning is not None
+    assert "Total messages in history:" in diagnostic_warning or "Total messages:" in diagnostic_warning
+    assert "Tools called:" in diagnostic_warning
+    assert "get_stock_quote" in diagnostic_warning
+
+

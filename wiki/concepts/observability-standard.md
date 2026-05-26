@@ -28,6 +28,12 @@ The pipeline must log its progress using success/total ratios. This allows monit
 ### 4. Audit-Ready Logs
 Logs captured during the pipeline run (e.g., in `main.py`) are saved to the `ingestion_logs` table in Supabase. These logs are then analyzed by the `audit` command, which uses an LLM to identify anomalies.
 
+### 5. Enriched Diagnostic Context on Rejection
+When the engine rejects a model's trading recommendation due to a safety guardrail (e.g., failing Hard Tool Enforcement checks), the log warning must include immediate diagnostic context to enable root-cause analysis:
+- The log must report the **total message count** in the history.
+- The log must report **all actual tool calls** detected in the message history, enabling developers and automated audit systems to immediately see what tools were called instead.
+- **Example**: `HARD ENFORCEMENT: Agent recommended BUY for AAPL without executing 'calculate_buy_quantity' tool. Total messages in history: 5. Tools called: ['get_stock_quote({"ticker": "AAPL"})']. Rejecting trade.`
+
 ## Implementation Details
 
 ### Python (Engine)

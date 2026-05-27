@@ -7,11 +7,21 @@ const mockMacroStats: MacroStat[] = [
     {
         ticker: 'SPY',
         name: 'S&P 500',
-        category: 'Equities',
+        category: 'Market',
         price: 500.5,
         todayPctChange: 1.25,
         stdevPct: 0.55,
         regimeFlag: '❗ UNUSUAL',
+        hasHistory: true,
+    },
+    {
+        ticker: 'TLT',
+        name: '20+yr Treasury',
+        category: 'Market',
+        price: 90.5,
+        todayPctChange: -2.5,
+        stdevPct: 0.45,
+        regimeFlag: '⚠️ HIGHLY UNUSUAL',
         hasHistory: true,
     },
     {
@@ -25,13 +35,13 @@ const mockMacroStats: MacroStat[] = [
         hasHistory: true,
     },
     {
-        ticker: 'TLT',
-        name: '20+yr Treasury',
+        ticker: 'IEF',
+        name: '7-10yr Treasury',
         category: 'Bonds & Treasury Yields',
-        price: 90.5,
-        todayPctChange: -2.5,
-        stdevPct: 0.45,
-        regimeFlag: '⚠️ HIGHLY UNUSUAL',
+        price: 95.0,
+        todayPctChange: -0.1,
+        stdevPct: 0.3,
+        regimeFlag: 'Normal',
         hasHistory: true,
     },
     {
@@ -51,31 +61,21 @@ describe('GlobalMacroStats Component', () => {
         render(<GlobalMacroStats macroStats={mockMacroStats} />);
 
         expect(screen.getByText('Global Macro Regime')).toBeInTheDocument();
+        expect(screen.getByText('Market')).toBeInTheDocument();
         expect(screen.getByText('Equities')).toBeInTheDocument();
         expect(screen.getByText('Crypto')).toBeInTheDocument();
         expect(screen.getByText('Bonds & Treasury Yields')).toBeInTheDocument();
     });
 
-    it('renders primary indexes as hero benchmark highlights at the top', () => {
+    it('filters cards by default active category tab (Market)', () => {
         render(<GlobalMacroStats macroStats={mockMacroStats} />);
 
-        // Primary indexes defined are SPY, QQQ. Verify their presence.
-        const spyElements = screen.getAllByText('SPY');
-        expect(spyElements.length).toBeGreaterThan(0);
+        // In Market category: SPY & TLT cards should be in the document
+        expect(screen.getByText('SPY')).toBeInTheDocument();
+        expect(screen.getByText('TLT')).toBeInTheDocument();
 
-        const qqqElements = screen.getAllByText('QQQ');
-        expect(qqqElements.length).toBeGreaterThan(0);
-    });
-
-    it('filters cards by default active category tab (Equities)', () => {
-        render(<GlobalMacroStats macroStats={mockMacroStats} />);
-
-        // In equities category: SPY & QQQ cards (in addition to their hero forms) should be in the document
-        expect(screen.getAllByText('SPY')).toHaveLength(2); // Hero + card
-        expect(screen.getAllByText('QQQ')).toHaveLength(2); // Hero + card
-
-        // TLT (Bonds) & BTCUSD (Crypto) are NOT in the active "Equities" grid list
-        expect(screen.queryByText('TLT')).not.toBeInTheDocument();
+        // QQQ (Equities) & BTCUSD (Crypto) are NOT in the active "Market" grid list
+        expect(screen.queryByText('QQQ')).not.toBeInTheDocument();
         expect(screen.queryByText('BTCUSD')).not.toBeInTheDocument();
     });
 
@@ -89,19 +89,18 @@ describe('GlobalMacroStats Component', () => {
         // Explanatory yields inverse explanation ribbon is now shown!
         expect(screen.getByText(/Bond Prices vs Treasury Yields/i)).toBeInTheDocument();
 
-        // Cards list now contains TLT, but not equities grid list (though SPY/QQQ still in heroes)
-        expect(screen.getByText('TLT')).toBeInTheDocument();
+        // Cards list now contains IEF, but not equities/market grid list
+        expect(screen.getByText('IEF')).toBeInTheDocument();
+        expect(screen.queryByText('SPY')).not.toBeInTheDocument();
+        expect(screen.queryByText('TLT')).not.toBeInTheDocument();
         expect(screen.queryByText('BTCUSD')).not.toBeInTheDocument();
     });
 
     it('renders severe regime badges (REGIME SHIFT, UNUSUAL, Normal) correctly', () => {
         render(<GlobalMacroStats macroStats={mockMacroStats} />);
 
-        // Equities has SPY (❗ UNUSUAL) and QQQ (Normal)
-        expect(screen.getAllByText('❗ UNUSUAL').length).toBeGreaterThan(0);
-
-        // Switch to Bonds which has TLT (⚠️ HIGHLY UNUSUAL → REGIME SHIFT)
-        fireEvent.click(screen.getByRole('button', { name: /Bonds & Treasury Yields/i }));
+        // Default 'Market' has SPY (❗ UNUSUAL) and TLT (⚠️ HIGHLY UNUSUAL -> REGIME SHIFT)
+        expect(screen.getByText('❗ UNUSUAL')).toBeInTheDocument();
         expect(screen.getByText('⚠️ REGIME SHIFT')).toBeInTheDocument();
     });
 });

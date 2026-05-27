@@ -38,17 +38,43 @@ function buildCacheMap(cacheRows: MarketDataCache[] | null): Map<string, MarketD
     return cacheMap;
 }
 
-function buildHistoryGroup(
+export function buildHistoryGroup(
     historyRows: PriceHistoryItem[] | null,
+    estDateStr: string,
 ): Map<string, PriceHistoryItem[]> {
     const historyGroup = new Map<string, PriceHistoryItem[]>();
     if (!historyRows) return historyGroup;
+
+    // Track seen dates per ticker to deduplicate intraday ticks
+    const seenDates = new Map<string, Set<string>>();
+
     for (const row of historyRows) {
-        const list = historyGroup.get(row.ticker) || [];
-        if (list.length < 30) {
-            list.push(row);
+        const ticker = row.ticker;
+        const fetchedAt = row.fetched_at || '';
+        if (!fetchedAt) continue;
+
+        // Extract date part (YYYY-MM-DD)
+        const dateKey = fetchedAt.substring(0, 10);
+
+        // Exclude today's ET date from historical returns calculations
+        if (dateKey === estDateStr) {
+            continue;
         }
-        historyGroup.set(row.ticker, list);
+
+        let tickerSeen = seenDates.get(ticker);
+        if (!tickerSeen) {
+            tickerSeen = new Set<string>();
+            seenDates.set(ticker, tickerSeen);
+        }
+
+        if (!tickerSeen.has(dateKey)) {
+            const list = historyGroup.get(ticker) || [];
+            if (list.length < 30) {
+                list.push(row);
+                tickerSeen.add(dateKey);
+            }
+            historyGroup.set(ticker, list);
+        }
     }
     return historyGroup;
 }
@@ -91,9 +117,10 @@ function computeMacroStatsList(
 function computeMacroStatistics(
     cacheRows: MarketDataCache[] | null,
     historyRows: PriceHistoryItem[] | null,
+    estDateStr: string,
 ): MacroStat[] {
     const cacheMap = buildCacheMap(cacheRows);
-    const historyGroup = buildHistoryGroup(historyRows);
+    const historyGroup = buildHistoryGroup(historyRows, estDateStr);
     return computeMacroStatsList(cacheMap, historyGroup);
 }
 
@@ -172,7 +199,7 @@ export async function fetchTodayData(): Promise<TodayData> {
     ]);
 
     // Process and calculate macro statistics
-    const macroStats = computeMacroStatistics(cacheRows, historyRows);
+    const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);
 
     return {
         newsletters: (newsletters || []) as NewsletterSnapshot[],

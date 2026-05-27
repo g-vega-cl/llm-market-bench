@@ -41,7 +41,7 @@ The exact same 23 tickers and volatility calculations are mirrored on the Web Ap
 
 ## History
 
-- **2026-05-27**: Mirrored the entire 23-ticker macro volatility calculation engine in the frontend Web App Today page using a modular server-fetching API and Vitest test coverage, adding custom Bonds & Yields explanatory tooltips.
+- **2026-05-27**: Relocated `SPY`, `TLT` (representing Bond yields), `IWM`, and `VIXY` to a new dynamic `'Market'` tab displayed as the default view, removing the static Benchmark Heroes top row and moving `QQQ` into `'Equities'`. Fixed stale calculations (such as the -8.44% OIL/USO bug) by adding the 8 missing macro tickers (`EWY`, `MCHI`, `INDA`, `SLV`, `USO`, `IEF`, `UUP`, `VIXY`) to `update_prices.py` to keep their 90-day EOD history fresh daily. Also implemented robust date filtering (excluding today's ET date) and deduplication (keeping the latest price per unique calendar day) in the frontend `buildHistoryGroup` query layer to prevent intraday snapshots from polluting return calculations. Covered by new Vitest unit tests.
 - **2026-05-13**: Expanded from 16 to 23 tickers and 4 to 6 categories.
   Added: Fixed Income (split from Yields & Indices), FX & Risk (split), Crypto (new).
   Added tickers: TLT, TIP, UNG, BTCUSD, EWU, EWC, INDA.

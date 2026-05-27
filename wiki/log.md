@@ -1,3 +1,11 @@
+## [2026-05-27] feature | Dynamic Market tab, 23-Ticker Price History synchronization, and date deduplication
+
+- **Dynamic Market Category**: Removed the static Benchmark Heroes highlights row at the top and replaced it with a dynamic, default-selected `'Market'` tab featuring `SPY`, `TLT` (representing Bond Yields), `IWM`, and `VIXY`. Moved `QQQ` into `'Equities'` for high readability.
+- **Backend Price Synchronization**: Fixed the root cause of the incorrect price change percentages (such as the -8.44% OIL/WTI bug) by adding the 8 missing macro tickers (`EWY`, `MCHI`, `INDA`, `SLV`, `USO`, `IEF`, `UUP`, `VIXY`) to `BENCHMARK_TICKERS` in `apps/engine/scripts/update_prices.py` to ensure their history is kept fresh daily in `price_history`.
+- **Date Filtering & Deduplication**: Refactored `buildHistoryGroup` in `fetch-today-data.ts` to exclude today's ET date and deduplicate price history entries by YYYY-MM-DD. This guarantees that standard deviation and daily returns calculations are robust against multiple intraday cron runs.
+- **TDD Verification Suite**: Added comprehensive frontend unit tests in `fetch-today-data.test.ts` to cover `buildHistoryGroup` deduplication and date-filtering, and updated `GlobalMacroStats.test.tsx` to align with the new categories layout and verify the default `'Market'` tab and removal of the static highlights row. Passed all 189 unit tests successfully.
+- **Wiki Updates**: Documented these updates in the `macro-tracker` and `web-app` entity pages.
+
 ## [2026-05-19] feature | System-Heavy Prompt Refactor & Auto-Research Arena Web UI
 
 Implemented System-Heavy Prompt architecture: moved all trading logic, calendar strategies, SMA rules, and output format specifications into the System Prompt, leaving a minimal data-only User Prompt. Added bootstrap utility to seed the new baseline. Created Auto-Research Arena web pages with experiment list, detail view, and scoring methodology display. Also improved auto-wiki prompt parsing with regex-based JSON extraction and truncation handling, and updated default Ollama model to qwen3.5:latest.
@@ -187,3 +195,7 @@ The wiki pages touched in the diff (observability-standard, tool-enforcement, to
 
 The "Add statistics" task was removed from ROADMAP.md. This roadmap entry described checking current price changes in big indexes to gauge market moves, passing index prices to the LLM from the beginning (part of the global macro tracker). The downstream tracking line below it ("Pass the price of many indexes...") remains, as do the macro tracking entities/index references in the wiki. No structural change to code or architecture.
 
+
+## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
+
+Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.

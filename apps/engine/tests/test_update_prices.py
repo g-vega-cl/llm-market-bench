@@ -111,6 +111,12 @@ class TestFetchBenchmarkHistory:
     @pytest.mark.asyncio
     async def test_fetch_benchmark_history_success(self):
         """Should fetch and store history for all benchmark tickers successfully."""
+        from core.macro_tracker import MACRO_TICKERS
+        macro_tickers = set()
+        for _category, items in MACRO_TICKERS.items():
+            macro_tickers.update(items.keys())
+        expected_tickers = sorted(list(set(BENCHMARK_TICKERS).union(macro_tickers)))
+
         mock_mdm = AsyncMock()
         mock_mdm.get_history = AsyncMock(
             return_value=[
@@ -122,14 +128,20 @@ class TestFetchBenchmarkHistory:
 
         await fetch_benchmark_history(mock_mdm)
 
-        assert mock_mdm.get_history.call_count == len(BENCHMARK_TICKERS)
+        assert mock_mdm.get_history.call_count == len(expected_tickers)
 
-        for ticker in BENCHMARK_TICKERS:
+        for ticker in expected_tickers:
             mock_mdm.get_history.assert_any_call(ticker, days=BENCHMARK_HISTORY_DAYS)
 
     @pytest.mark.asyncio
     async def test_fetch_benchmark_history_partial_failure_continues(self):
         """Should continue fetching other tickers even if one fails."""
+        from core.macro_tracker import MACRO_TICKERS
+        macro_tickers = set()
+        for _category, items in MACRO_TICKERS.items():
+            macro_tickers.update(items.keys())
+        expected_tickers = sorted(list(set(BENCHMARK_TICKERS).union(macro_tickers)))
+
         call_count = 0
 
         async def mock_get_history(ticker, days):
@@ -144,7 +156,7 @@ class TestFetchBenchmarkHistory:
 
         await fetch_benchmark_history(mock_mdm)
 
-        assert call_count == len(BENCHMARK_TICKERS)
+        assert call_count == len(expected_tickers)
 
     @pytest.mark.asyncio
     async def test_fetch_benchmark_history_insufficient_data_warning(self):

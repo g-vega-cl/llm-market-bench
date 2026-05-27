@@ -3,11 +3,15 @@
  * Categorized by asset class.
  */
 export const MACRO_TICKERS = {
-    Equities: {
+    Market: {
         SPY: 'S&P 500',
+        TLT: '20+yr Treasury',
+        IWM: 'Russell 2000',
+        VIXY: 'Volatility Index',
+    },
+    Equities: {
         QQQ: 'Nasdaq 100',
         DIA: 'Dow Jones',
-        IWM: 'Russell 2000',
     },
     International: {
         EWJ: 'Japan',
@@ -28,12 +32,10 @@ export const MACRO_TICKERS = {
     },
     'Bonds & Treasury Yields': {
         IEF: '7-10yr Treasury',
-        TLT: '20+yr Treasury',
         TIP: 'TIPS (Inflation)',
     },
     'FX & Risk': {
         UUP: 'US Dollar Index',
-        VIXY: 'Volatility Index',
     },
     Crypto: {
         BTCUSD: 'Bitcoin',

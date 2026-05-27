@@ -7,6 +7,7 @@ interface GlobalMacroStatsProps {
 }
 
 const CATEGORIES: MacroCategory[] = [
+    'Market',
     'Equities',
     'International',
     'Commodities',
@@ -16,17 +17,11 @@ const CATEGORIES: MacroCategory[] = [
 ];
 
 export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
-    const [activeTab, setActiveTab] = React.useState<MacroCategory>('Equities');
+    const [activeTab, setActiveTab] = React.useState<MacroCategory>('Market');
 
     if (!macroStats || macroStats.length === 0) {
         return null;
     }
-
-    // Index primary hero stats (SPY, QQQ, IWM, VIXY)
-    const primaryTickers = ['SPY', 'QQQ', 'IWM', 'VIXY'];
-    const heroStats = primaryTickers
-        .map((ticker) => macroStats.find((s) => s.ticker === ticker))
-        .filter((s): s is MacroStat => !!s);
 
     // Stats filtered by active category tab
     const filteredStats = macroStats.filter((s) => s.category === activeTab);
@@ -48,63 +43,6 @@ export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
                         Calculated Live
                     </span>
                 </div>
-            </div>
-
-            {/* Benchmark Heroes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up">
-                {heroStats.map((stat, idx) => {
-                    const isPositive = stat.todayPctChange >= 0;
-                    return (
-                        <Card
-                            key={`hero-${stat.ticker}`}
-                            variant="default"
-                            isHoverable
-                            radius="2xl"
-                            padding="md"
-                            className="relative overflow-hidden border border-zinc-200/60 dark:border-zinc-800/60 transition-all duration-300 hover:scale-[1.02] animate-slide-up shadow-sm hover:shadow-md"
-                            style={{ animationDelay: `${idx * 75}ms` }}
-                        >
-                            {/* Accent indicator bar */}
-                            <div
-                                className={`absolute top-0 left-0 right-0 h-[3px] ${
-                                    isPositive ? 'bg-neon-green-500' : 'bg-alert-red-500'
-                                }`}
-                            />
-
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-sans">
-                                        {stat.name}
-                                    </span>
-                                    <span className="text-xs font-black text-zinc-900 dark:text-zinc-100 font-mono">
-                                        {stat.ticker}
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between items-baseline gap-2">
-                                    <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono tracking-tight text-display">
-                                        ${stat.price.toFixed(2)}
-                                    </span>
-                                    <span
-                                        className={`text-sm font-black font-mono ${
-                                            isPositive
-                                                ? 'text-neon-green-500'
-                                                : 'text-alert-red-500'
-                                        }`}
-                                    >
-                                        {isPositive ? '↑' : '↓'}{' '}
-                                        {Math.abs(stat.todayPctChange).toFixed(2)}%
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between items-center pt-2 border-t border-zinc-100 dark:border-zinc-800/60 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
-                                    <span>30d Stdev: {stat.stdevPct.toFixed(2)}%</span>
-                                    <RegimeBadge flag={stat.regimeFlag} />
-                                </div>
-                            </div>
-                        </Card>
-                    );
-                })}
             </div>
 
             {/* Category Navigation Tabs */}

@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -43,3 +44,16 @@ async def test_run_cleanup_calls_correct_deletes():
 
     # Check that delete was called 4 times
     assert mock_table.delete.call_count == 4
+
+    # Verify that the lt calls were using ISO strings and not raw SQL strings
+    for call in mock_lt.call_args_list:
+        if call.args:
+            assert isinstance(call.args[1], str)
+            assert call.args[1] != 'now() - interval "48 hours"'
+            assert call.args[1] != 'now() - interval "30 days"'
+            assert call.args[1] != 'now() - interval "180 days"'
+            # It should be possible to parse it as an ISO string
+            try:
+                datetime.fromisoformat(call.args[1])
+            except ValueError:
+                pytest.fail(f"Could not parse string {call.args[1]} as ISO format.")

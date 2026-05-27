@@ -8,7 +8,7 @@ category: concept
 Three parallel ingestion streams that feed the pipeline:
 
 - **Newsletters**: Gmail API → HTML parsing (BeautifulSoup) → ad removal
-  (Gemini Flash, parallel via `asyncio.gather`) → deterministic hashing → UPSERT into `newsletter_snapshots`.
+  (Gemini Flash, parallel via `asyncio.gather`) → deterministic hashing → single-transaction bulk `UPSERT` into `newsletter_snapshots` (with automated sequential fallback on failure).
   Source IDs use the `news_{sender_clean}_{MD5[:8]}` pattern for idempotency; chunk hashes are SHA-256.
 - **Economic Calendar**: Periodic cron fetches global macro catalysts →
   `CALENDAR_EVENT` memories with `is_future_catalyst=true`.

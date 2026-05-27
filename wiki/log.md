@@ -1,3 +1,7 @@
+## [2026-05-27] perf | Evaluation, lint-fixing, and unit testing of bulk upsert newsletter snapshots
+
+Reviewed PR #55 which introduces a performance-critical database optimization: transitioning from $N$ individual database upsert queries for newsletter snapshots to a single-transaction bulk upsert query. The optimization includes an automated sequential fallback loop if the bulk call encounters an error (network failure or constraint error). Resolved a ruff lint error (`F841`) caused by an unused `mock_bulk_upsert` variable in `conftest.py`. Created a comprehensive, isolated unit test suite in `test_newsletter_upsert.py` covering the new database operations, happy paths, and fallback error paths (with and without sequential failures). Verified that 100% of the newly created unit tests and the entire 693-test engine suite pass successfully. Updated `wiki/concepts/ingestion.md` and `wiki/entities/pipeline.md` to reflect the optimized ingestion data flow.
+
 ## [2026-05-27] feature | Dynamic Market tab, 23-Ticker Price History synchronization, and date deduplication
 
 - **Dynamic Market Category**: Removed the static Benchmark Heroes highlights row at the top and replaced it with a dynamic, default-selected `'Market'` tab featuring `SPY`, `TLT` (representing Bond Yields), `IWM`, and `VIXY`. Moved `QQQ` into `'Equities'` for high readability.
@@ -195,6 +199,10 @@ The wiki pages touched in the diff (observability-standard, tool-enforcement, to
 
 The "Add statistics" task was removed from ROADMAP.md. This roadmap entry described checking current price changes in big indexes to gauge market moves, passing index prices to the LLM from the beginning (part of the global macro tracker). The downstream tracking line below it ("Pass the price of many indexes...") remains, as do the macro tracking entities/index references in the wiki. No structural change to code or architecture.
 
+
+## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
+
+Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.
 
 ## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
 

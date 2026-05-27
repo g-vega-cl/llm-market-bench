@@ -32,7 +32,7 @@ from core.config import (
     COMMAND_WEEKEND_INGEST,
     logger,
 )
-from core.db import get_supabase_client, upsert_newsletter_snapshot
+from core.db import bulk_upsert_newsletter_snapshots, get_supabase_client, upsert_newsletter_snapshot
 from core.llm.verification import verify_trading_decision
 from execution.portfolio import Portfolio
 from execution.validation import ValidationStatus, validate_decision, validate_semantic_overlap
@@ -55,12 +55,18 @@ async def _stage_ingest_and_snapshot():
 
     sb_client = get_supabase_client()
     saved_count = 0
-    for item in data:
-        try:
-            upsert_newsletter_snapshot(sb_client, item)
-            saved_count += 1
-        except Exception:
-            logger.exception(f"Error saving snapshot for {item.get('source_id', 'unknown')}")
+
+    try:
+        bulk_upsert_newsletter_snapshots(sb_client, data)
+        saved_count = len(data)
+    except Exception:
+        logger.warning("Bulk upsert failed, falling back to individual upserts.")
+        for item in data:
+            try:
+                upsert_newsletter_snapshot(sb_client, item)
+                saved_count += 1
+            except Exception:
+                logger.exception(f"Error saving snapshot for {item.get('source_id', 'unknown')}")
 
     logger.info(f"Successfully saved {saved_count}/{len(data)} snapshots to Supabase.")
     return data, sb_client

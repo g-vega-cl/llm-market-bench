@@ -185,6 +185,45 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
     raise last_exception
 
 
+def bulk_upsert_newsletter_snapshots(client: Client, data: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Upsert multiple newsletter snapshots into the database in a single request.
+
+    Uses the composite unique constraint (date, source_id) for idempotency,
+    preventing duplicate entries if the job restarts.
+
+    Args:
+        client: The Supabase client instance.
+        data: List of dictionaries containing newsletter snapshot fields.
+
+    Returns:
+        The upserted rows data as a list of dictionaries.
+
+    Raises:
+        Exception: If the bulk upsert operation fails.
+    """
+    if not data:
+        return []
+
+    payloads = [
+        {
+            "source_id": item["source_id"],
+            "chunk_hash": item["chunk_hash"],
+            "sender": item["sender"],
+            "subject": item["subject"],
+            "content": item["content"],
+            "date": item["date"],
+        }
+        for item in data
+    ]
+
+    try:
+        response = client.table("newsletter_snapshots").upsert(payloads, on_conflict="date,source_id").execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Failed to bulk upsert {len(data)} snapshots: {e}")
+        raise
+
+
 def upsert_newsletter_snapshot(client: Client, data: dict[str, Any]) -> dict[str, Any]:
     """Upsert a newsletter snapshot into the database.
 

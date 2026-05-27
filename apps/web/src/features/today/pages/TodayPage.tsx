@@ -10,9 +10,11 @@ import { EmptyState, PageLayout } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { AgentInsights } from '../components/AgentInsights';
 import { FutureCatalysts } from '../components/FutureCatalysts';
+import { GlobalMacroStats } from '../components/GlobalMacroStats';
 import { MarketStatusHero } from '../components/MarketStatusHero';
 import { NewsletterFeed } from '../components/NewsletterFeed';
 import { TradeActivity } from '../components/TradeActivity';
+import type { MacroStat } from '../lib/macro-tickers';
 import { todayQueries } from '../queries/options';
 
 interface TodayData {
@@ -23,6 +25,7 @@ interface TodayData {
     priceUpdates: MarketDataCache[];
     futureEvents: Memory[];
     marketFeeling: MarketFeeling | null;
+    macroStats: MacroStat[];
 }
 
 interface TodayPageProps {
@@ -37,7 +40,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
         refetchInterval: 1000 * 60 * 5, // Auto-refetch every 5 minutes
     });
 
-    // Check if everything is empty for today (excluding future events)
+    // Check if everything is empty for today (excluding future events and macro stats)
     const isEmpty =
         !data.newsletters?.length &&
         !data.trades?.length &&
@@ -51,6 +54,9 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
             <MarketStatusHero data={data} />
 
             <PageLayout className="space-y-24 pb-24">
+                {/* Global Macro, Bonds & Index Volatility Regime Stats */}
+                <GlobalMacroStats macroStats={data.macroStats} />
+
                 {isEmpty ? (
                     <EmptyStateView
                         hasFutureEvents={!!data.futureEvents?.length}

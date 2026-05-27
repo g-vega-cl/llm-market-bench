@@ -1,4 +1,15 @@
+## [2026-05-27] feature | Global Macro, Bonds & Treasury Yields Volatility Statistics UI
+
+Integrated a premium, real-time "Global Macro & Index Statistics" section into the front page of the Today Dashboard:
+- **`apps/web/src/features/today/lib/macro-tickers.ts`**: Centralizes the 23 global macro tickers under Equities, International, Commodities, Bonds & Treasury Yields, FX & Risk, and Crypto. Replicates the Python data-engine's dynamic 30-day standard deviation calculations, returns, and regime shift thresholds ($1.5\sigma$ for `❗ UNUSUAL`, $2.0\sigma$ for `⚠️ HIGHLY UNUSUAL`) in standard, type-safe TypeScript.
+- **`apps/web/src/features/today/api/fetch-today-data.ts`**: Updates `fetchTodayData` to query cached quotes (`market_data_cache`) and the last 30 historical close prices (`price_history`) in parallel. Refactored the statistics processing into clean, low-complexity modular helpers to satisfy Biome rules.
+- **`apps/web/src/features/today/components/GlobalMacroStats.tsx`**: Creates a premium responsive grid of cards with custom category navigation, JetBrains Mono styled typography, Glowing severe regime shift state badges, custom visual volatility threshold bars, and an explanatory banner detailing the inverse bond price-to-yield relationship for `IEF` and `TLT` ETFs under the Bonds category.
+- **`apps/web/src/features/today/pages/TodayPage.tsx`**: Renders the statistics component directly below the status hero, ensuring index, bond, and macro status awareness is fully accessible even when no trades have been made yet today.
+- **`tests`**: Added robust unit test suites `macro-tickers.test.ts` (verifying mathematical return distributions and closed-market fallbacks) and `GlobalMacroStats.test.tsx` (verifying UI rendering, category tab transitions, and the bond yield banner).
+- **`wiki/`**: Updated `wiki/entities/macro-tracker.md` and `wiki/entities/web-app.md` to reflect these changes, documenting the computational alignment between the LLM prompt's `{macro_context}` and the frontend dashboard's statistics, and the explanatory price-yield rules.
+
 ## [2026-05-27] fix | Patch MiniMax API Key Configuration in Pipeline Tests
+
 
 Resolved a `ValueError: MINIMAX_API_KEY is required` in pipeline unit tests when running in clean or CI/CD environments:
 - **`apps/engine/tests/test_minimax_pipeline.py`**: Added `patch("core.config.MINIMAX_API_KEY", "fake-minimax-key")` around the `analyze_with_provider` tests so that the inline instantiation of `MiniMaxClient` succeeds while actual API interactions remain mocked at the boundary.

@@ -38,6 +38,7 @@
         "redaxios": "^0.5.1"
     },
     "devDependencies": {
+        "@netlify/plugin-lighthouse": "^6.0.4",
         "@netlify/vite-plugin-tanstack-start": "^1.2.8",
         "@tailwindcss/vite": "^4.1.18",
         "@testing-library/jest-dom": "^6.9.1",

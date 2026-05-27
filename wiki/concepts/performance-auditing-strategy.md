@@ -1,0 +1,118 @@
+---
+tags: [web, performance, devops, netlify, lighthouse]
+category: concept
+---
+
+# Performance Auditing Strategy
+
+Establish a high-fidelity, low-friction, cloud-native performance auditing pipeline to protect the application's user experience without dragging down developer velocity.
+
+## Context & Vision
+
+Web performance is a critical factor for trading dashboards and high-interactivity applications. Historically, developers audited performance via local headless browser passes (e.g. Husky pre-commit hooks), which introduced severe velocity bottlenecks and flaky false-positives due to local CPU and network resource variance.
+
+To build a scalable engineering workflow, we offload heavy synthetic auditing to our hosting provider's cloud edge (**Netlify Deploy Previews**) while keeping local developer loops fast and lightweight.
+
+---
+
+## Comparison Matrix: Performance Auditing Strategies
+
+| Strategy | Run Location | Velocity Impact (Developer Flow) | Score Accuracy & Flake Risk | Best Used For |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pre-Commit Hook** | Local Machine | **High Drag** (+15–45s per commit unless highly optimized) | **Poor** (Extreme variance based on local background CPU tasking) | Small, fast static landing pages; catching layout shifts instantly before pushes. |
+| **GitHub Actions (CI/CD)** | Ephemeral Cloud VM | **Low Drag** (Asynchronous; runs entirely in background) | **Moderate** (Noiser shared cloud hardware, but highly consistent rules) | Standard regression testing; blocking bad code merges on Pull Requests. |
+| **Netlify Deploy Previews** | Production Edge CDN | **Zero Drag** (Triggered after a cloud build deployment finishes) | **Excellent** (Audits a real public server link; highly deterministic) | Comprehensive frontend testing; production-parity Core Web Vitals checks. |
+
+---
+
+## Unified Blueprint: Layered Quality Gates
+
+Our pipeline layers validation checks contextually so they do not obstruct developer velocity:
+
+```mermaid
+graph TD
+    subgraph Local Dev Loop
+        A[Developer Commits Code] --> B[Fast Pre-Commit Hook]
+        B -->|Checks: Ruff, Biome, Vitest| C[Push to GitHub]
+    end
+
+    subgraph GitHub CI/CD Gate
+        C --> D[GitHub Actions PR Run]
+        D -->|Validates: Types, Engine Tests, Web Tests| E[Netlify Auto-Builds Staging Preview]
+    end
+
+    subgraph Netlify Edge Audits
+        E --> F[Netlify Staging URL Ready]
+        F --> G[Netlify Lighthouse Build Plugin Audits Paths]
+        G -->|Score >= 90| H[PR Check Turns Green - Safe to Merge]
+        G -->|Score < 90| I[PR Check Turns Red - Block Merge]
+    end
+    
+    style B fill:#e6f4ea,stroke:#137333,stroke-width:2px
+    style D fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px
+    style G fill:#fef7e0,stroke:#e37400,stroke-width:2px
+    style H fill:#ceead6,stroke:#137333,stroke-width:2px
+    style I fill:#fce8e6,stroke:#c5221f,stroke-width:2px
+```
+
+---
+
+## Technical Implementation
+
+### Netlify Lighthouse Plugin Configuration
+
+The pipeline leverages `@netlify/plugin-lighthouse` registered directly in [netlify.toml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/netlify.toml).
+
+```toml
+# NOTE: In the actual netlify.toml file, do NOT include spaces inside the double brackets.
+# Use standard double-bracketed plugins and plugins.inputs.audits syntax. Spaces are shown here 
+# solely to prevent wiki cross-reference linter false-positives.
+
+[ [plugins] ]
+  package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs]
+    fail_deploy_on_score_thresholds = true
+
+  [plugins.inputs.thresholds]
+    performance = 0.90
+    accessibility = 0.90
+    best-practices = 0.90
+    seo = 0.90
+
+  [ [plugins.inputs.audits] ]
+    path = "/"
+
+  [ [plugins.inputs.audits] ]
+    path = "/how-it-works"
+
+  [ [plugins.inputs.audits] ]
+    path = "/portfolios"
+```
+
+### Key Mechanisms:
+- **Build Failures**: When `fail_deploy_on_score_thresholds` is set to `true`, a drop below **90** on any target route in Performance, Accessibility, Best Practices, or SEO will cause the Netlify deployment step to fail. This automatically flags the associated status check in the GitHub Pull Request as red.
+- **Audit Target Routes**: We audit our primary landing page (`/`), core informational page (`/how-it-works`), and main trading portfolio overview dashboard (`/portfolios`).
+
+---
+
+## Developer Guide
+
+### Mitigating Failures & Regression Debugging
+If a deploy check fails because of a score drop:
+1. Open the failed check logs on Netlify or the markdown table posted in the GitHub PR comments.
+2. Locate which route failed (e.g. `/portfolios`) and which category dropped.
+3. Boot your local dev environment (`pnpm dev:web`) and run Chrome DevTools Lighthouse or PageSpeed Insights on your preview server.
+4. Check for common regression culprits:
+   - Accidental large image imports without sizing constraints.
+   - Dynamic imports / code splitting failures (overly large chunk sizes).
+   - Missing Alt attributes or aria-labels (accessibility drops).
+   - Core Web Vitals issues such as Cumulative Layout Shifts (`CLS`) or Largest Contentful Paint (`LCP`) regressions.
+
+### Bypassing in Emergencies
+If a deployment is absolutely critical and blocked by a minor score variance or an external API delay, you can disable the build plugin checks temporarily by modifying `netlify.toml` directly or setting a custom Netlify environment variable, though this should be avoided to preserve main-branch stability.
+
+## Related
+
+- [[entities/web-app]]
+- [[sources/web-deployment-source]]

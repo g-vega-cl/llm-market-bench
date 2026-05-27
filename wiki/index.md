@@ -49,6 +49,7 @@
 - [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG
 - [[concepts/minimax-portfolio]] — Simplified execution model & ±0.3% market order buffer for MiniMax 2.7
 - [[concepts/supabase-grant-convention]] — Explicit GRANTs required for PostgREST Data API access
+- [[concepts/performance-auditing-strategy]] — Cloud-native edge performance auditing with Netlify Lighthouse budgets
 
 ## Sources
 

@@ -99,10 +99,12 @@ Cross-cutting conventions: all "Load More" buttons use Button with isLoading, al
 ## Deployment
 
 Netlify (autoresearch.netlify.app) via `@netlify/vite-plugin-tanstack-start`. Env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- **Performance Auditing**: Integrates the `@netlify/plugin-lighthouse` plugin to perform automated Lighthouse audits on every Deploy Preview. Strict budgets of `>= 90` are enforced on `performance`, `accessibility`, `best-practices`, and `seo` for core routes (`/`, `/how-it-works`, `/portfolios`), blocking merges on violation. See [[concepts/performance-auditing-strategy]].
 
 ## Testing
 
 Vitest + React Testing Library with colocated `*.test.tsx` files. Feature-colocated component testing, TDD for new features, accessibility-first query patterns.
+- **Configuration Integrity**: Validates the Netlify and Lighthouse environment budgets dynamically through a Vitest suite in `src/test/netlify-config.test.ts` to prevent accidental threshold degradation.
 
 ## Related
 

@@ -11,7 +11,7 @@ The daily pipeline runs on a cron schedule during US market hours
 ## Phase 1: Ingestion
 
 Feeds the platform's multi-agent decision path through three concurrent, idempotent pipelines:
-1. **Newsletters**: Gmail API fetches unread newsletters → sanitizes layout and content using BeautifulSoup → parallel ad removal and text cleaning via Gemini Flash under `asyncio.gather` → computes deterministic `source_id` (`news_{sender_clean}_{MD5[:8]}`) and SHA-256 `chunk_hash` → idempotent `UPSERT` into the `newsletter_snapshots` database. This deterministic hashing prevents duplicate ingestion on rerun.
+1. **Newsletters**: Gmail API fetches unread newsletters → sanitizes layout and content using BeautifulSoup → parallel ad removal and text cleaning via Gemini Flash under `asyncio.gather` → computes deterministic `source_id` (`news_{sender_clean}_{MD5[:8]}`) and SHA-256 `chunk_hash` → idempotent single-transaction bulk `UPSERT` into the `newsletter_snapshots` database (with automatic sequential fallback on failure). This deterministic hashing prevents duplicate ingestion on rerun.
 2. **Economic Calendar**: Periodic schedules scan and fetch macro events, injecting them as `CALENDAR_EVENT` memories marked with `is_future_catalyst = true` for high-importance horizons.
 3. **Government Tracking**: Continuously monitors G7/G20 governmental policy announcements, subsidy bills, and regulatory shifts, persisting them as high-importance `GOVERNMENT_INCENTIVE` memories.
 

@@ -12,7 +12,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
 - [ ] **Review lessons learned and the learning loop** -
 - [ ] **Revisit the concepts map** - It should be something like "this new trend is comming up or leaving"
-- [ ] **Add statistics** - Check current price changes in big indexes to gauge market moves today. And other indicators like stdev etc. if the market has moved 1% up today. Why? Is that normal?
   - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
@@ -21,8 +20,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [ ] **Find trading papers not just investing** - But low sell high?
-- [ ] **Make sure CI/CD tests behave same as local tests**
-- [ ] **Use frontend skills to improve frontend**
 - [ ] **Sector leaderboard**
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it's closed:** -goes along with papers
 - [ ] **A programming buddy?**
@@ -51,7 +48,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] manage prompt size with increasing memory/lessons learned database.
 - [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
-- [ ] - Move to openrouter?
 - [ ] - Retry server errors?
 - [ ] - Benchify: focus on making good tool-calling, stock researching agents. Rather than an info dump.
 - [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
@@ -59,7 +55,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - check if this repo would help: https://github.com/anthropics/financial-services
 - [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes
 - [ ] - add a local model?
-- [ ] - scenario analysis still empty
 - [ ] - can I add how much I have spent in each provider? Would be fun to visualize
 - [ ] - Benchify: improve get sector alternatives tool
 - [ ] - Benchify: use html for documentation?
@@ -68,27 +63,35 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Revisit alpaca trades.
 - [ ] **Audit the Wiki Lint pipeline.** —
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
-  - [ ] [High] Resolve Karpathy ratchet contradiction: Reverting to baseline then immediately deploying a new variant makes the revert ineffective. Clarify if generation should be gated or if it must build strictly from the reset baseline.
   - [ ] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
-  - [x] [Low] Enhance "thin" and "data-gap" pages: `model-anomalies.md` (add examples) and `entities/cleanup.md` (add schedule). — model-anomalies.md expanded with Gemini, DeepSeek, and hard-enforcement details; entities/cleanup.md updated with complete schedule/retention policy.
-- [ ] - Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy. \
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [ ] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
 - [ ] Benchify: try to predict the next sectors that will perform well?
 - [ ] Benchify: audit the verifier.
-- [ ] Benchify: have a portfolio without verificator. Just make sure price is okay and go at it my boy.
 - [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
 - [ ] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
 - [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other
 - [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
-- [ ] - Benchify: audit that memories are still being correlated to each other
-- [ ] - Benchify: make sure quantum 2b push is in memories and why not if it isn't
 - [ ] - Benchify: uncorrelated high return sectors this week do well for next week check
 - [ ] - Benchify: search bar for memories
 - [ ] - Benchify and QMD; connect pre hook with local LLM chat convos
 - [ ] - Benchify: start a "CEO" agent. With a self-loop
 - [ ] - Implement Redis?
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
+- [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
+- [ ] - add memories sorting by importance or filter by date too.
+- [ ] - Benchify: lighthouse CLI/performance audit.
+- [ ] - Benchify: Today page market events has a consensus bar with percentage, what is it for? - Keep small text below/next to stuff so we know what it represents.
+- [ ] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
+- [ ] - Benchify: add which ticker corresponds to each scenario in memories possible scenarios
+- [ ] - Benchify: can't believe this event only has one event chain, check why:
+
+MARKET EVENT: US-Iran Strait of Hormuz Negotiations [ONGOING] | IMPACT: NEUTRAL | SUMMARY: Diplomatic negotiations between the US and Iran over the Strait of Hormuz create extreme volatility in global energy prices and correlate directly with risk-on/risk-off market sentiment. [Historical Parallel: Early 2025 and mid-2026 diplomatic collapses]
+
+- [ ] - Benchify: historical parallel more details - goes well with LLM chat.
+- [ ] - Benchify: how it works might be outdated
+- [ ] - Benchify: keep and expose my DB locally too? So I can offload data from supabase and use both DBs?
+- [ ] - Weekly audit for ingestion & consensus?

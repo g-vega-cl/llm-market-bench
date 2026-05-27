@@ -179,229 +179,410 @@ async def _process_single_decision(
                     # Note: we initialize inside the lock to ensure we have the most current DB state
                     await portfolio.initialize()
 
-                    # --- SELL Guardrails ---
-                    if d.signal.upper() == "SELL":
-                        if d.ticker not in portfolio.positions:
-                            logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
-                            save_decision(
-                                sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."}
-                            )
-                            async with counters["lock"]:
-                                counters["rejected"] += 1
-                            return False
-                        if not getattr(d, "sell_tool_called", False):
-                            logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
-                            save_decision(
-                                sb_client,
-                                d,
-                                status="REJECTED_TOOL_USAGE",
-                                metadata={"reason": "Sell tool must be called."},
-                            )
-                            async with counters["lock"]:
-                                counters["rejected"] += 1
-                            return False
+                    # ---------------------------------------------------------------
+                    # MINIMAX EXECUTION PATH
+                    # Skips: verificator, tool-call enforcement, semantic overlap,
+                    #        stale-quote staleness rejection.
+                    # Keeps: Reg T / SMA / margin validation, ownership check.
+                    # Uses market orders with ±0.1% fill buffer.
+                    # ---------------------------------------------------------------
+                    if d.model_provider == "minimax":
+                        from execution.market_data import MarketDataManager
 
-                    exec_price = validation.market_price
-                    if not exec_price or exec_price <= 0:
-                        logger.error(f"[{d.ticker}] No valid price.")
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
+                        mdm = MarketDataManager()
 
-                    # Fetch market data for verification
-                    from execution.market_data import MarketDataManager
-
-                    mdm = MarketDataManager()
-                    all_pos_tickers = list(portfolio.positions.keys())
-                    if d.ticker not in all_pos_tickers:
-                        all_pos_tickers.append(d.ticker)
-
-                    quotes = await mdm.get_quotes(all_pos_tickers)
-                    p_map = {t: data.price for t, data in quotes.items()}
-
-                    verification = None
-                    qty = 0
-
-                    if d.signal.upper() == "BUY":
-                        if not portfolio.metrics:
-                            portfolio.calculate_reg_t_metrics(p_map)
-
-                        # --- Skeptical Verification ---
-                        logger.info(f"[{d.ticker}] Verifying...")
-                        # Search for contrarian thoughts on this ticker
-                        contrarian_text = "\n".join(
-                            [f"- {c.model_name}: {c.reasoning}" for c in contrarian_decisions if c.ticker == d.ticker]
-                        )
-
-                        verification = await verify_trading_decision(
-                            decision=d,
-                            portfolio_context=await portfolio.get_portfolio_summary(p_map),
-                            aggregated_context=aggregated_context,
-                            contrarian_context=contrarian_text,
-                            uncrowded_context=uncrowded_context,
-                        )
-
-                        if verification.status == "REJECTED_VERIFICATION":
-                            logger.warning(
-                                f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}"
-                            )
-                            save_decision(
-                                sb_client,
-                                d,
-                                status="REJECTED_VERIFICATION",
-                                metadata={"reason": verification.verification_reasoning},
-                            )
-                            async with counters["lock"]:
-                                counters["rejected"] += 1
-                            return False
-
-                        meta.update(
-                            {
-                                "verification_reasoning": verification.verification_reasoning,
-                                "verification_confidence": verification.confidence_score,
-                                "suggested_alternative": verification.alternative_ticker,
-                            }
-                        )
-
-                    # 1. Semantic Overlap (Inside Lock to prevent race between concurrent same-agent trades)
-                    overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
-                    if overlap_reason:
-                        logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
-                        save_decision(
-                            sb_client,
-                            d,
-                            status=ValidationStatus.REJECTED_REDUNDANCY.value,
-                            metadata={"reason": overlap_reason},
-                        )
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
-
-                    # 2. JUST-IN-TIME (JIT) Refresh
-                    # Refresh entire portfolio state from DB to account for previous parallel trades
-                    await portfolio.initialize()
-
-                    # 3. Final Price Refresh (using default 2s cache)
-                    final_quote = await mdm.get_quote(d.ticker)
-                    if final_quote and final_quote.exists:
-                        if final_quote.price != exec_price:
-                            logger.info(
-                                f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}"
-                            )
-                            exec_price = final_quote.price
-
-                        # Staleness check: compare JIT price against the price injected into the prompt
-                        injected_price = getattr(d, "injected_market_price", None)
-                        if injected_price and injected_price > 0:
-                            drift = abs(exec_price - injected_price) / injected_price
-                            if drift > 0.02:
-                                reason = f"Stale quote: market moved {drift:.1%} since analysis (analysis: ${injected_price:.2f}, current: ${exec_price:.2f})"
-                                logger.warning(f"[{d.ticker}] REJECTED (Stale Quote): {reason}")
-                                save_decision(sb_client, d, status="REJECTED_STALE_QUOTE", metadata={"reason": reason})
-                                async with counters["lock"]:
-                                    counters["rejected"] += 1
-                                return False
-
-                    # 4. Recalculate Metrics for current trade
-                    # Fetch fresh prices for ALL holdings for accurate margin check
-                    all_pos_tickers = list(portfolio.positions.keys())
-                    if d.ticker not in all_pos_tickers:
-                        all_pos_tickers.append(d.ticker)
-                    fresh_quotes = await mdm.get_quotes(all_pos_tickers)
-                    fresh_p_map = {t: data.price for t, data in fresh_quotes.items()}
-                    portfolio.calculate_reg_t_metrics(fresh_p_map)
-
-                    if d.signal.upper() == "BUY":
-                        bp = portfolio.metrics.buying_power if portfolio.metrics else 0
-                        total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
-                        from core.config import MIN_TRADE_VALUE
-
-                        alloc_pct = d.allocation_percentage or 5
-                        # Use equity only (not max of equity/buying power) for minimum trade size
-                        min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
-                        usd_to_spend = (alloc_pct / 100.0) * bp
-
-                        if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
-                            usd_to_spend = min_buy_threshold
-
-                        qty = int(usd_to_spend / exec_price)
-                        if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
-                            qty += 1
-
-                    elif d.signal.upper() == "SELL":
-                        if d.ticker not in portfolio.positions:
+                        # Hard ownership stop for SELL
+                        if d.signal.upper() == "SELL" and d.ticker not in portfolio.positions:
+                            logger.warning(f"[MiniMax][{d.ticker}] REJECTED (Ownership): SELL for unheld ticker.")
                             save_decision(
                                 sb_client,
                                 d,
                                 status="REJECTED_OWNERSHIP",
-                                metadata={"reason": "Ticker sold by concurrent trade."},
+                                metadata={"reason": "Ticker not held."},
                             )
                             async with counters["lock"]:
                                 counters["rejected"] += 1
                             return False
-                        qty = getattr(d, "quantity", None) or int(
-                            ((d.allocation_percentage or 0) / 100.0) * portfolio.positions.get(d.ticker).quantity
+
+                        # Market price with ±0.3% fill buffer
+                        market_price = validation.market_price
+                        if not market_price or market_price <= 0:
+                            logger.error(f"[MiniMax][{d.ticker}] No valid market price.")
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        if d.signal.upper() == "BUY":
+                            exec_price = round(market_price * 1.003, 2)
+                        else:
+                            exec_price = round(market_price * 0.997, 2)
+
+                        logger.info(
+                            f"[MiniMax][{d.ticker}] Market order: {d.signal} @ ${exec_price:.2f} "
+                            f"(market: ${market_price:.2f}, buffer: 0.3%)"
                         )
 
-                    if qty <= 0:
-                        qty = getattr(d, "quantity", 0) or 1
+                        # JIT refresh to capture any concurrent trades
+                        await portfolio.initialize()
 
-                    if verification and verification.status == "ADJUSTED_ALLOCATION" and verification.adjusted_quantity:
-                        qty = verification.adjusted_quantity
+                        # Fetch fresh prices for Reg T calculation
+                        all_pos_tickers = list(portfolio.positions.keys())
+                        if d.ticker not in all_pos_tickers:
+                            all_pos_tickers.append(d.ticker)
+                        fresh_quotes = await mdm.get_quotes(all_pos_tickers)
+                        fresh_p_map = {t: data.price for t, data in fresh_quotes.items()}
+                        portfolio.calculate_reg_t_metrics(fresh_p_map)
 
-                    if qty <= 0:
-                        async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
+                        # Quantity sizing
+                        if d.signal.upper() == "BUY":
+                            bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                            total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
+                            from core.config import MIN_TRADE_VALUE
 
-                    # Final Margin Validation
-                    validation_res = portfolio.validate_trade(
-                        d.ticker, qty, exec_price, d.signal, is_sell_tool_used=getattr(d, "sell_tool_called", False)
-                    )
-                    if not validation_res.passed:
-                        logger.warning(f"[{d.ticker}] REJECTED (Margin JIT): {validation_res.reason}")
+                            alloc_pct = d.allocation_percentage or 5
+                            min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
+                            usd_to_spend = (alloc_pct / 100.0) * bp
+
+                            if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
+                                usd_to_spend = min_buy_threshold
+
+                            qty = int(usd_to_spend / exec_price)
+                            if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
+                                qty += 1
+
+                        else:  # SELL
+                            if d.ticker not in portfolio.positions:
+                                save_decision(
+                                    sb_client,
+                                    d,
+                                    status="REJECTED_OWNERSHIP",
+                                    metadata={"reason": "Ticker sold by concurrent trade."},
+                                )
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
+                            held_qty = portfolio.positions[d.ticker].quantity
+                            requested_qty = getattr(d, "quantity", None) or int(
+                                ((d.allocation_percentage or 100) / 100.0) * held_qty
+                            )
+                            qty = min(requested_qty, held_qty)
+
+                        if qty <= 0:
+                            qty = getattr(d, "quantity", 0) or 1
+
+                        if qty <= 0:
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        # Full Reg T margin validation (kept for MiniMax)
+                        validation_res = portfolio.validate_trade(
+                            d.ticker, qty, exec_price, d.signal, is_sell_tool_used=True
+                        )
+                        if not validation_res.passed:
+                            logger.warning(f"[MiniMax][{d.ticker}] REJECTED (Margin): {validation_res.reason}")
+                            save_decision(
+                                sb_client,
+                                d,
+                                status="REJECTED_MARGIN",
+                                metadata={"reason": validation_res.reason},
+                            )
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        # Atomic EXECUTE
+                        decision_row = save_decision(
+                            sb_client, d, status="VALIDATED", metadata={"info": "MiniMax market order"}
+                        )
+                        decision_id = decision_row.get("id")
+                        if not decision_id:
+                            logger.error(f"[MiniMax][{d.ticker}] Pre-save returned no decision ID — aborting trade")
+                            return False
+
+                        trade_id = await portfolio.execute_trade(
+                            d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
+                        )
+
+                        if trade_id:
+                            status = "EXECUTED"
+                            meta = {
+                                "trade_id": str(trade_id),
+                                "info": f"[MiniMax] Market order {d.signal} {qty} @ ${exec_price:.2f}",
+                            }
+                            # Alpaca mirror with same 0.3% buffer as exec_price
+                            alpaca_limit = (
+                                round(exec_price * 1.003, 2)
+                                if d.signal.upper() == "BUY"
+                                else round(exec_price * 0.997, 2)
+                            )
+                            import asyncio as _asyncio
+
+                            from execution.alpaca_broker import AlpacaBroker
+
+                            _asyncio.create_task(
+                                AlpacaBroker().submit_limit_order(
+                                    trade_id=trade_id,
+                                    ticker=d.ticker,
+                                    quantity=qty,
+                                    signal=d.signal,
+                                    limit_price=alpaca_limit,
+                                    agent_id=d.model_name,
+                                )
+                            )
+                        else:
+                            status = "ERROR_EXECUTION"
+                            meta = {"info": "MiniMax execution failed"}
+
                         save_decision(
-                            sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason}
+                            sb_client,
+                            d,
+                            status=status,
+                            metadata=meta,
+                            trade_id=str(trade_id) if trade_id else None,
+                            decision_id=decision_id,
                         )
+                        logger.info(f"[MiniMax][{d.ticker}] {d.signal}: Attribution saved (Status: {status}).")
                         async with counters["lock"]:
-                            counters["rejected"] += 1
-                        return False
+                            counters["saved"] += 1
 
-                    # 5. Atomic EXECUTE
-                    # Attribution Locking (Step 13 PRE-STEP)
-                    # We pre-save to get the ID for the trade link
-                    decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
-                    decision_id = decision_row.get("id")
-                    if not decision_id:
-                        logger.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
-                        return False
-
-                    trade_id = await portfolio.execute_trade(
-                        d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
-                    )
-
-                    if trade_id:
-                        status = "EXECUTED"
-                        meta.update(
-                            {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
-                        )
+                    # ---------------------------------------------------------------
+                    # STANDARD EXECUTION PATH (all other providers)
+                    # ---------------------------------------------------------------
                     else:
-                        status = "ERROR_EXECUTION"
-                        meta.update({"info": "Execution Failed"})
+                        # --- SELL Guardrails ---
+                        if d.signal.upper() == "SELL":
+                            if d.ticker not in portfolio.positions:
+                                logger.warning(f"[{d.ticker}] REJECTED (Ownership): SELL signal for unheld ticker.")
+                                save_decision(
+                                    sb_client, d, status="REJECTED_OWNERSHIP", metadata={"reason": "Ticker not held."}
+                                )
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
+                            if not getattr(d, "sell_tool_called", False):
+                                logger.warning(f"[{d.ticker}] REJECTED (Tool Usage): SELL without sell tool.")
+                                save_decision(
+                                    sb_client,
+                                    d,
+                                    status="REJECTED_TOOL_USAGE",
+                                    metadata={"reason": "Sell tool must be called."},
+                                )
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
 
-                    # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
-                    # We call this INSIDE the lock to ensure attribution record is final before next trade starts
-                    save_decision(
-                        sb_client,
-                        d,
-                        status=status,
-                        metadata=meta,
-                        trade_id=str(trade_id) if trade_id else None,
-                        decision_id=decision_id,
-                    )
-                    logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
-                    async with counters["lock"]:
-                        counters["saved"] += 1
+                        exec_price = validation.market_price
+                        if not exec_price or exec_price <= 0:
+                            logger.error(f"[{d.ticker}] No valid price.")
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        # Fetch market data for verification
+                        from execution.market_data import MarketDataManager
+
+                        mdm = MarketDataManager()
+                        all_pos_tickers = list(portfolio.positions.keys())
+                        if d.ticker not in all_pos_tickers:
+                            all_pos_tickers.append(d.ticker)
+
+                        quotes = await mdm.get_quotes(all_pos_tickers)
+                        p_map = {t: data.price for t, data in quotes.items()}
+
+                        verification = None
+                        qty = 0
+
+                        if d.signal.upper() == "BUY":
+                            if not portfolio.metrics:
+                                portfolio.calculate_reg_t_metrics(p_map)
+
+                            # --- Skeptical Verification ---
+                            logger.info(f"[{d.ticker}] Verifying...")
+                            # Search for contrarian thoughts on this ticker
+                            contrarian_text = "\n".join(
+                                [
+                                    f"- {c.model_name}: {c.reasoning}"
+                                    for c in contrarian_decisions
+                                    if c.ticker == d.ticker
+                                ]
+                            )
+
+                            verification = await verify_trading_decision(
+                                decision=d,
+                                portfolio_context=await portfolio.get_portfolio_summary(p_map),
+                                aggregated_context=aggregated_context,
+                                contrarian_context=contrarian_text,
+                                uncrowded_context=uncrowded_context,
+                            )
+
+                            if verification.status == "REJECTED_VERIFICATION":
+                                logger.warning(
+                                    f"[{d.ticker}] REJECTED (Verification): {verification.verification_reasoning}"
+                                )
+                                save_decision(
+                                    sb_client,
+                                    d,
+                                    status="REJECTED_VERIFICATION",
+                                    metadata={"reason": verification.verification_reasoning},
+                                )
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
+
+                            meta.update(
+                                {
+                                    "verification_reasoning": verification.verification_reasoning,
+                                    "verification_confidence": verification.confidence_score,
+                                    "suggested_alternative": verification.alternative_ticker,
+                                }
+                            )
+
+                        # 1. Semantic Overlap (Inside Lock to prevent race between concurrent same-agent trades)
+                        overlap_reason = await validate_semantic_overlap(d.ticker, d.reasoning, model_name=d.model_name)
+                        if overlap_reason:
+                            logger.warning(f"[{d.ticker}] REJECTED (Redundancy): {overlap_reason}")
+                            save_decision(
+                                sb_client,
+                                d,
+                                status=ValidationStatus.REJECTED_REDUNDANCY.value,
+                                metadata={"reason": overlap_reason},
+                            )
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        # 2. JUST-IN-TIME (JIT) Refresh
+                        # Refresh entire portfolio state from DB to account for previous parallel trades
+                        await portfolio.initialize()
+
+                        # 3. Final Price Refresh (using default 2s cache)
+                        final_quote = await mdm.get_quote(d.ticker)
+                        if final_quote and final_quote.exists:
+                            if final_quote.price != exec_price:
+                                logger.info(
+                                    f"[{d.ticker}] Price moved during verification: ${exec_price:.2f} -> ${final_quote.price:.2f}"
+                                )
+                                exec_price = final_quote.price
+
+                            # Staleness check: compare JIT price against the price injected into the prompt
+                            injected_price = getattr(d, "injected_market_price", None)
+                            if injected_price and injected_price > 0:
+                                drift = abs(exec_price - injected_price) / injected_price
+                                if drift > 0.02:
+                                    reason = f"Stale quote: market moved {drift:.1%} since analysis (analysis: ${injected_price:.2f}, current: ${exec_price:.2f})"
+                                    logger.warning(f"[{d.ticker}] REJECTED (Stale Quote): {reason}")
+                                    save_decision(
+                                        sb_client, d, status="REJECTED_STALE_QUOTE", metadata={"reason": reason}
+                                    )
+                                    async with counters["lock"]:
+                                        counters["rejected"] += 1
+                                    return False
+
+                        # 4. Recalculate Metrics for current trade
+                        # Fetch fresh prices for ALL holdings for accurate margin check
+                        all_pos_tickers = list(portfolio.positions.keys())
+                        if d.ticker not in all_pos_tickers:
+                            all_pos_tickers.append(d.ticker)
+                        fresh_quotes = await mdm.get_quotes(all_pos_tickers)
+                        fresh_p_map = {t: data.price for t, data in fresh_quotes.items()}
+                        portfolio.calculate_reg_t_metrics(fresh_p_map)
+
+                        if d.signal.upper() == "BUY":
+                            bp = portfolio.metrics.buying_power if portfolio.metrics else 0
+                            total_equity = portfolio.metrics.total_equity if portfolio.metrics else 0
+                            from core.config import MIN_TRADE_VALUE
+
+                            alloc_pct = d.allocation_percentage or 5
+                            # Use equity only (not max of equity/buying power) for minimum trade size
+                            min_buy_threshold = max(MIN_TRADE_VALUE, 0.10 * total_equity)
+                            usd_to_spend = (alloc_pct / 100.0) * bp
+
+                            if usd_to_spend < min_buy_threshold and bp >= min_buy_threshold:
+                                usd_to_spend = min_buy_threshold
+
+                            qty = int(usd_to_spend / exec_price)
+                            if qty * exec_price < min_buy_threshold and (qty + 1) * exec_price <= bp:
+                                qty += 1
+
+                        elif d.signal.upper() == "SELL":
+                            if d.ticker not in portfolio.positions:
+                                save_decision(
+                                    sb_client,
+                                    d,
+                                    status="REJECTED_OWNERSHIP",
+                                    metadata={"reason": "Ticker sold by concurrent trade."},
+                                )
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
+                            qty = getattr(d, "quantity", None) or int(
+                                ((d.allocation_percentage or 0) / 100.0) * portfolio.positions.get(d.ticker).quantity
+                            )
+
+                        if qty <= 0:
+                            qty = getattr(d, "quantity", 0) or 1
+
+                        if (
+                            verification
+                            and verification.status == "ADJUSTED_ALLOCATION"
+                            and verification.adjusted_quantity
+                        ):
+                            qty = verification.adjusted_quantity
+
+                        if qty <= 0:
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        # Final Margin Validation
+                        validation_res = portfolio.validate_trade(
+                            d.ticker, qty, exec_price, d.signal, is_sell_tool_used=getattr(d, "sell_tool_called", False)
+                        )
+                        if not validation_res.passed:
+                            logger.warning(f"[{d.ticker}] REJECTED (Margin JIT): {validation_res.reason}")
+                            save_decision(
+                                sb_client, d, status="REJECTED_MARGIN", metadata={"reason": validation_res.reason}
+                            )
+                            async with counters["lock"]:
+                                counters["rejected"] += 1
+                            return False
+
+                        # 5. Atomic EXECUTE
+                        # Attribution Locking (Step 13 PRE-STEP)
+                        # We pre-save to get the ID for the trade link
+                        decision_row = save_decision(sb_client, d, status="VALIDATED", metadata=meta)
+                        decision_id = decision_row.get("id")
+                        if not decision_id:
+                            logger.error(f"[{d.ticker}] Pre-save returned no decision ID — aborting trade")
+                            return False
+
+                        trade_id = await portfolio.execute_trade(
+                            d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
+                        )
+
+                        if trade_id:
+                            status = "EXECUTED"
+                            meta.update(
+                                {"trade_id": str(trade_id), "info": f"Executed {d.signal} {qty} @ ${exec_price:.2f}"}
+                            )
+                        else:
+                            status = "ERROR_EXECUTION"
+                            meta.update({"info": "Execution Failed"})
+
+                        # IMPORTANT: save_decision is idempotent based on (source_id, ticker, signal, model_provider, model_name)
+                        # We call this INSIDE the lock to ensure attribution record is final before next trade starts
+                        save_decision(
+                            sb_client,
+                            d,
+                            status=status,
+                            metadata=meta,
+                            trade_id=str(trade_id) if trade_id else None,
+                            decision_id=decision_id,
+                        )
+                        logger.info(f"[{d.ticker}] {d.signal}: Saved attribution (Status: {status}).")
+                        async with counters["lock"]:
+                            counters["saved"] += 1
                 else:
                     # Not a BUY/SELL (e.g. HOLD or non-actionable)
                     # We still save attribution but it doesn't need JIT refresh logic

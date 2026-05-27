@@ -158,22 +158,32 @@ async def update_prices():
 
 
 async def fetch_benchmark_history(mdm: MarketDataManager):
-    """Fetch 90-day history for benchmark tickers and store in price_history table."""
-    logger.info(f"Fetching {BENCHMARK_HISTORY_DAYS}-day history for {len(BENCHMARK_TICKERS)} benchmark tickers...")
+    """Fetch 90-day history for benchmark tickers and macro tickers, and store in price_history table."""
+    from core.macro_tracker import MACRO_TICKERS
+
+    # Flatten all macro tickers
+    macro_tickers = set()
+    for _category, items in MACRO_TICKERS.items():
+        macro_tickers.update(items.keys())
+
+    # Union of benchmark options and macro indicators
+    all_sync_tickers = sorted(list(set(BENCHMARK_TICKERS).union(macro_tickers)))
+
+    logger.info(f"Fetching {BENCHMARK_HISTORY_DAYS}-day history for {len(all_sync_tickers)} sync tickers (benchmarks + macro)...")
 
     success_count = 0
-    for ticker in BENCHMARK_TICKERS:
+    for ticker in all_sync_tickers:
         try:
             history = await mdm.get_history(ticker, days=BENCHMARK_HISTORY_DAYS)
             if history and len(history) >= 30:
-                logger.info(f"Stored {len(history)} price points for benchmark {ticker}")
+                logger.info(f"Stored {len(history)} price points for ticker {ticker}")
                 success_count += 1
             else:
-                logger.warning(f"Insufficient data for benchmark {ticker}: {len(history) if history else 0} points")
+                logger.warning(f"Insufficient data for ticker {ticker}: {len(history) if history else 0} points")
         except Exception as e:
-            logger.error(f"Failed to fetch benchmark {ticker}: {e}")
+            logger.error(f"Failed to fetch ticker {ticker}: {e}")
 
-    logger.info(f"Benchmark history update complete. Updated {success_count}/{len(BENCHMARK_TICKERS)} tickers.")
+    logger.info(f"Ticker history update complete. Updated {success_count}/{len(all_sync_tickers)} tickers.")
 
 
 if __name__ == "__main__":

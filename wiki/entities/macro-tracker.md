@@ -33,8 +33,15 @@ every LLM agent's context before trading decisions.
 - **ETF proxies**: Indices are tracked via ETFs (e.g., VIXY for VIX, UUP for DXY, IEF/TLT for yields)
 - **Unique tickers only**: No duplicates across categories; batch fetch deduplicates implicitly
 
+## Frontend Integration & Yield Rules
+
+The exact same 23 tickers and volatility calculations are mirrored on the Web App Dashboard Today page:
+- **Inverse Bond Yields Rule**: Explains the inverse price-to-yield mechanics of `IEF` (7-10 Year Treasury) and `TLT` (20+ Year Treasury) ETF prices to actual interest yields (price drop = rising yields; price rise = falling yields).
+- **Prompt Parity**: Because the Python engine injects this exact same macro block into every LLM agent's prompt during decision cycles (via the `{macro_context}` slot in `prompts.py`), there is 100% parity between what the user sees on the dashboard and what the AI models analyze when determining trade triggers.
+
 ## History
 
+- **2026-05-27**: Relocated `SPY`, `TLT` (representing Bond yields), `IWM`, and `VIXY` to a new dynamic `'Market'` tab displayed as the default view, removing the static Benchmark Heroes top row and moving `QQQ` into `'Equities'`. Fixed stale calculations (such as the -8.44% OIL/USO bug) by adding the 8 missing macro tickers (`EWY`, `MCHI`, `INDA`, `SLV`, `USO`, `IEF`, `UUP`, `VIXY`) to `update_prices.py` to keep their 90-day EOD history fresh daily. Also implemented robust date filtering (excluding today's ET date) and deduplication (keeping the latest price per unique calendar day) in the frontend `buildHistoryGroup` query layer to prevent intraday snapshots from polluting return calculations. Covered by new Vitest unit tests.
 - **2026-05-13**: Expanded from 16 to 23 tickers and 4 to 6 categories.
   Added: Fixed Income (split from Yields & Indices), FX & Risk (split), Crypto (new).
   Added tickers: TLT, TIP, UNG, BTCUSD, EWU, EWC, INDA.
@@ -43,5 +50,7 @@ every LLM agent's context before trading decisions.
 ## Related
 
 - [[entities/engine]]
+- [[entities/web-app]]
 - [[sources/correlation-matrix-source]]
 - [[concepts/rag-strategy]]
+

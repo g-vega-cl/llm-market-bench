@@ -11,7 +11,7 @@ TypeScript, and TanStack Query.
 
 ## Key Pages
 
-- **Today** — Market status hero, LLM market feeling, daily trades
+- **Today** — Market status hero, LLM market feeling, daily trades, and the premium **Global Macro & Index Volatility Statistics** panel
 - **Portfolios** — Per-agent performance, positions, P&L
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid
 - **Reasoning Trace** — Full LLM conversation history with tabbed JSON inspection
@@ -69,6 +69,15 @@ To unlock historical correlation data and trailing returns timeline exploration,
 - **Resilient Bidirectional Queries**: The Supabase data engine queries the chronological weekly records using a bidirectional `.or` filter (`ticker_a`/`ticker_b` match check), mapping and aligning the `returns_a_90d` and `returns_b_90d` values in-memory to perfectly match the user's selected ticker display order.
 - **Interactive Cursor Metrics status board**: Plotted using a custom D3 line chart displaying Pearson/Spearman coefficients and 90D returns with vibrant HSL design system tokens. Instead of using high, obstructive floating HTML tooltips, active hover states are driven through a clean **Cursor Metrics Board** positioned directly above the chart, which falls back to the latest weekly data point upon pointer exit.
 - **ETF Description Clarity**: Integrates descriptive ETF names (e.g. `QQQ — Invesco QQQ Trust (NASDAQ 100)`) next to bare tickers inside searchable select dropdown elements for increased readability.
+
+### Global Macro & Volatility Regime Statistics (2026-05-27)
+
+To ground both users and LLM agents in the exact same market regime context, a premium "Global Macro & Index Statistics" panel is integrated directly on the main dashboard page.
+- **Dynamic Category Mapping**: The static top row of SPY, QQQ, IWM, VIXY highlight cards was replaced with a new, fully dynamic `'Market'` tab displayed as the default landing view. Features `SPY`, `TLT` (for Bond Yields representation), `IWM`, and `VIXY` exclusively. Relocated `QQQ` into `'Equities'` for high readability.
+- **Price History Date Filtering & Deduplication**: To resolve a calculation bug causing stale price baselines (such as the -8.44% OIL/USO bug), the server-side price update script `update_prices.py` was updated to keep the EOD price history of all 23 macro tickers fresh daily. On the frontend, `buildHistoryGroup` filters out today's ET date and deduplicates multiple intraday ticks per unique calendar date, ensuring calculations are robust against intraday snapshots.
+- **Computational Parity**: Replicates the dynamic 30-day standard deviation and volatility regime shift formulas ($1.5\sigma$ for `❗ UNUSUAL`, $2.0\sigma$ for `⚠️ HIGHLY UNUSUAL`) from `apps/engine/core/macro_tracker.py` into a type-safe frontend library (`macro-tickers.ts`), executing calculations on the server fetching layer to ensure 100% computational parity with the LLM agents' `{macro_context}` prompt injection.
+- **Bonds & Yields Inverse Relationships**: Features custom explanation banners under the Bonds & Treasury Yields category tab explaining the inverse price-to-yield mechanics (explaining that a drop in the `IEF` or `TLT` ETF prices indicates rising government treasury rates).
+- **Premium HSL Badges & Volatility Bars**: Visualizes daily returns and standard deviations via color-coded glowing status badges (Neon Red for Regime Shift, Amber for Unusual, Neutral for Normal) and interactive visual threshold range lines.
 
 
 ## Design System

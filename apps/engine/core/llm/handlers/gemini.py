@@ -173,8 +173,12 @@ async def run_tool_loop(
                 # and activates tool context circulation across turns.
                 # Without it the API throws 400 INVALID_ARGUMENT, the loop falls back to
                 # basic analysis, and HARD ENFORCEMENT discards all trade signals.
-                if _generate_content_config_supports("include_server_side_tool_invocations"):
-                    config_kwargs["include_server_side_tool_invocations"] = True
+                if (
+                    _generate_content_config_supports("tool_config")
+                    and hasattr(types, "ToolConfig")
+                    and "include_server_side_tool_invocations" in types.ToolConfig.model_fields
+                ):
+                    config_kwargs["tool_config"] = types.ToolConfig(include_server_side_tool_invocations=True)
                 else:
                     # Older google-genai SDK: fall back to disabling AFC only.
                     config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)

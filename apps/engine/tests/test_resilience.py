@@ -61,8 +61,11 @@ async def test_individual_task_failure_does_not_halt_pipeline():
 
         decisions, events, _, _ = await analyze_chunks(chunks)
 
-    # 4 models total. OpenAI failed, so we should have 3 results.
-    assert len(decisions) == 3
+    from analysis.analyze import MODELS
+
+    # All models except openai should succeed
+    expected_count = len(MODELS) - 1
+    assert len(decisions) == expected_count
     for r in decisions:
         assert r.ticker == "AAPL"
 

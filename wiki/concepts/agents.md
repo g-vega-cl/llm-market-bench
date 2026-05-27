@@ -14,10 +14,10 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decou
 ## The 8 Specialized Agents
 
 ### 1. Analysis Agent
-- **Role**: The core driver of trading decisions. It evaluates newsletter snaps, global macro indicators, and portfolio status to identify investable ideas.
+- **Role**: The core driver of trading decisions. It evaluates newsletter snaps, global macro indicators, and portfolio status to identify investable ideas. It runs 5 parallel instances (OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax).
 - **Prompt Pair**: `CORE_ANALYSIS_SYSTEM_PROMPT` / `ANALYSIS_USER_PROMPT_TEMPLATE`
-- **Evolvable**: **Yes**. This is the only system prompt managed by the [[entities/autoresearch]] engine, which iteratively mutates it to optimize risk-adjusted returns (the Karpathy Ratchet).
-- **Primary Tools**: `get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, `calculate_sell_quantity`, `web_search`, `stock_screener`, `get_uncorrelated_assets`.
+- **Evolvable**: **Yes** (for OpenAI/Anthropic/Gemini/DeepSeek). This is the only system prompt managed by the [[entities/autoresearch]] engine, which iteratively mutates it to optimize risk-adjusted returns (the Karpathy Ratchet). Note: MiniMax is run under a fixed JSON system prompt variant and is bypass-routed around direct prompt-evolution.
+- **Primary Tools**: `get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, `calculate_sell_quantity`, `web_search`, `stock_screener`, `get_uncorrelated_assets`. (Note: MiniMax skips tool use loops entirely and generates structural JSON decisions directly).
 
 ### 2. Contrarian Agent
 - **Role**: Conducts a crowded-trade analysis. It identifies structural blindspots, potential tail risks, and over-crowded consensus in the primary decisions, executing counter-trades in a dedicated portfolio to harvest contrarian alpha.
@@ -79,4 +79,5 @@ graph TD
 - [[concepts/system-heavy-prompt]] — prompt architecture design
 - [[entities/pipeline]] — the daily running lifecycle
 - [[concepts/reasoning]] — reasoning loops and the 5 Whys
+- [[concepts/minimax-portfolio]] — simplified portfolio execution model
 - [[concepts/memory-feedback]] — manager and contrarian feedback

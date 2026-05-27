@@ -23,7 +23,7 @@ def test_build_gemini_tools_includes_search_with_function_tools():
 
 @pytest.mark.asyncio
 async def test_gemini_tool_loop_sets_include_server_side_tool_invocations():
-    """When google_search is enabled, include_server_side_tool_invocations must be True.
+    """When google_search is enabled, tool_config with include_server_side_tool_invocations must be set.
 
     This is the TDD reproduction test for the Gemini 400 INVALID_ARGUMENT bug.
     The Gemini 3 API requires this flag to mix built-in tools with function calling.
@@ -57,10 +57,42 @@ async def test_gemini_tool_loop_sets_include_server_side_tool_invocations():
     assert mock_config_class.called
     kwargs = mock_config_class.call_args.kwargs
 
-    # The flag must be set to True — this is what fixes the 400 error
-    assert kwargs.get("include_server_side_tool_invocations") is True
+    # The flag must be set nested under tool_config — this is what fixes the 400 error and Pydantic validation
+    assert kwargs.get("tool_config") is not None
+    assert kwargs.get("tool_config").include_server_side_tool_invocations is True
     # automatic_function_calling must NOT be set — the two are mutually exclusive
     assert kwargs.get("automatic_function_calling") is None
+
+
+@pytest.mark.asyncio
+async def test_gemini_config_pydantic_validation():
+    """Verify that using the nested tool_config in GenerateContentConfig passes Pydantic validation."""
+    from google.genai import types
+
+    from core.llm.handlers import gemini
+
+    raw_client = MagicMock()
+    mock_aio = raw_client.aio
+    mock_aio.models.generate_content = AsyncMock(return_value=MagicMock(candidates=[MagicMock(content=None)]))
+
+    messages = [{"role": "user", "content": "analyse markets"}]
+
+    # In this test, we do NOT mock types.GenerateContentConfig, to ensure it actually parses correctly
+    with patch.object(gemini, "_generate_content_config_supports", return_value=True):
+        await gemini.run_tool_loop(
+            raw_client=raw_client,
+            model_name="gemini-3.1-flash-lite",
+            messages=messages,
+            override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
+            enable_google_search=True,
+        )
+
+    # Ensure generate_content was called with a valid GenerateContentConfig instance
+    assert mock_aio.models.generate_content.called
+    config_arg = mock_aio.models.generate_content.call_args.kwargs["config"]
+    assert isinstance(config_arg, types.GenerateContentConfig)
+    assert config_arg.tool_config is not None
+    assert config_arg.tool_config.include_server_side_tool_invocations is True
 
 
 @pytest.mark.asyncio

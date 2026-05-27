@@ -1,3 +1,9 @@
+## [2026-05-27] fix | Patch MiniMax API Key Configuration in Pipeline Tests
+
+Resolved a `ValueError: MINIMAX_API_KEY is required` in pipeline unit tests when running in clean or CI/CD environments:
+- **`apps/engine/tests/test_minimax_pipeline.py`**: Added `patch("core.config.MINIMAX_API_KEY", "fake-minimax-key")` around the `analyze_with_provider` tests so that the inline instantiation of `MiniMaxClient` succeeds while actual API interactions remain mocked at the boundary.
+- **`wiki/sources/engine-testing-source.md`**: Updated documentation to capture the design pattern of patching inline client configurations during isolated CI/CD test runs.
+
 ## [2026-05-26] feature | MiniMax M2.7 Portfolio — Simplified Execution Pipeline
 
 Added MiniMax M2.7 as a fifth trading agent in the engine alongside OpenAI, Anthropic, Gemini, and DeepSeek. Key changes:

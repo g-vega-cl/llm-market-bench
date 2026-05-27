@@ -71,18 +71,19 @@ class TestMinimaxAnalysisProvider:
             "processing_time_ms": 500,
         }
 
-        with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)):
-            with patch.object(MiniMaxClient, "close", new=AsyncMock()):
-                result = await analyze_with_provider(
-                    provider="minimax",
-                    model_name=MINIMAX_MODEL,
-                    chunks=[{"source_id": "test-chunk-001", "content": "Apple earnings beat."}],
-                    context="",
-                    portfolio_context="Cash Balance: $10,000",
-                    current_day_info="Today is Monday.",
-                    calendar_knowledge="",
-                    macro_context="",
-                )
+        with patch("core.config.MINIMAX_API_KEY", "fake-minimax-key"):
+            with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)):
+                with patch.object(MiniMaxClient, "close", new=AsyncMock()):
+                    result = await analyze_with_provider(
+                        provider="minimax",
+                        model_name=MINIMAX_MODEL,
+                        chunks=[{"source_id": "test-chunk-001", "content": "Apple earnings beat."}],
+                        context="",
+                        portfolio_context="Cash Balance: $10,000",
+                        current_day_info="Today is Monday.",
+                        calendar_knowledge="",
+                        macro_context="",
+                    )
 
         assert len(result.decisions) == 1
         assert result.decisions[0].ticker == "AAPL"
@@ -102,18 +103,19 @@ class TestMinimaxAnalysisProvider:
             "processing_time_ms": 200,
         }
 
-        with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)):
-            with patch.object(MiniMaxClient, "close", new=AsyncMock()):
-                result = await analyze_with_provider(
-                    provider="minimax",
-                    model_name=MINIMAX_MODEL,
-                    chunks=[{"source_id": "test-chunk-002", "content": "Some news."}],
-                    context="",
-                    portfolio_context="",
-                    current_day_info="",
-                    calendar_knowledge="",
-                    macro_context="",
-                )
+        with patch("core.config.MINIMAX_API_KEY", "fake-minimax-key"):
+            with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)):
+                with patch.object(MiniMaxClient, "close", new=AsyncMock()):
+                    result = await analyze_with_provider(
+                        provider="minimax",
+                        model_name=MINIMAX_MODEL,
+                        chunks=[{"source_id": "test-chunk-002", "content": "Some news."}],
+                        context="",
+                        portfolio_context="",
+                        current_day_info="",
+                        calendar_knowledge="",
+                        macro_context="",
+                    )
 
         assert result.decisions == []
         assert result.macro_events == []
@@ -133,20 +135,21 @@ class TestMinimaxAnalysisProvider:
             "processing_time_ms": 100,
         }
 
-        with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)) as mock_chat:
-            with patch.object(MiniMaxClient, "close", new=AsyncMock()):
-                with patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop:
-                    with patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthropic_loop:
-                        await analyze_with_provider(
-                            provider="minimax",
-                            model_name=MINIMAX_MODEL,
-                            chunks=[{"source_id": "s1", "content": "News."}],
-                            context="",
-                            portfolio_context="",
-                            current_day_info="",
-                            calendar_knowledge="",
-                            macro_context="",
-                        )
+        with patch("core.config.MINIMAX_API_KEY", "fake-minimax-key"):
+            with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)) as mock_chat:
+                with patch.object(MiniMaxClient, "close", new=AsyncMock()):
+                    with patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop:
+                        with patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthropic_loop:
+                            await analyze_with_provider(
+                                provider="minimax",
+                                model_name=MINIMAX_MODEL,
+                                chunks=[{"source_id": "s1", "content": "News."}],
+                                context="",
+                                portfolio_context="",
+                                current_day_info="",
+                                calendar_knowledge="",
+                                macro_context="",
+                            )
 
         mock_chat.assert_called_once()
         mock_openai_loop.assert_not_called()

@@ -79,6 +79,15 @@ To ground both users and LLM agents in the exact same market regime context, a p
 - **Bonds & Yields Inverse Relationships**: Features custom explanation banners under the Bonds & Treasury Yields category tab explaining the inverse price-to-yield mechanics (explaining that a drop in the `IEF` or `TLT` ETF prices indicates rising government treasury rates).
 - **Premium HSL Badges & Volatility Bars**: Visualizes daily returns and standard deviations via color-coded glowing status badges (Neon Red for Regime Shift, Amber for Unusual, Neutral for Normal) and interactive visual threshold range lines.
 
+### Automatic "How It Works" Documentation Sync (2026-05-28)
+
+To keep the web app's documentation in perfect harmony with the project's living markdown wiki, an automated compilation pipeline is integrated into the build and git hook lifecycles.
+- **Python Markdown Compiler**: Implemented `compile_how_it_works.py` under `apps/engine/scripts/` to parse `wiki/entities/pipeline.md` (which maps the 7-phase daily pipeline lifecycle), extract headers, structured metadata tokens (`*   **Icon**:`, `*   **Badge**:`, `*   **Tags**:`), and markdown bullet descriptions, compiling them into a single type-safe `how-it-works.json` file.
+- **Dynamic Frontend Integration**: Refactored `apps/web/src/routes/how-it-works.tsx` to natively import `how-it-works.json` and dynamically render the premium glowing timeline interface using the designated phase-specific HSL gradient themes (blue, indigo, purple, teal, amber, emerald, pink). Bullets starting with key headers (e.g. `Layer 1`, `Atomic Settlement`, `DeepSeek Thinking Mode`) are dynamically styled and bolded using strict type-safe token lists.
+- **CI/CD & Production Build Prepend**: Prepended the compilation script to the production web `"build"` command in `apps/web/package.json`. Every local or cloud-hosted production web build now compiles the latest copy of the wiki into `how-it-works.json` prior to Vite bundling, ensuring edge server deployments remain 100% in sync even if local hooks were bypassed.
+- **Git Hook Integration**: Added a compilation hook to the pre-commit script `scripts/auto-wiki.sh`. Staged changes automatically compile the fresh JSON file and re-stage it before final commit.
+- **TDD Verification**: Covered by robust Python unit tests in `test_compile_how_it_works.py` and Vitest UI tests in `how-it-works.test.tsx` to guarantee parsing integrity and dynamic React mapping correctness.
+
 
 ## Design System
 

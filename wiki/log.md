@@ -1,23 +1,3 @@
-## [2026-05-20] refactor | System-Heavy Prompt Architecture — Full Agent Rollout
-
-Extended the System-Heavy Prompt Architecture to all 8 agent prompt pairs in `apps/engine/core/llm/prompts.py`. Previously only `ANALYSIS_USER_PROMPT_TEMPLATE` was a pure data skeleton; the other 7 agents (`CONTRARIAN`, `VERIFIER`, `SYNTHESIS`, `MANAGER`, `RELATIONSHIP`, `CAUSE_AND_EFFECT`, `DE_ADVERTISEMENT`) still embedded personas, SOPs, and task instructions in their user prompts. Moved all static instruction content to their respective system prompts. User prompts now contain only section labels, `{placeholders}`, and a single closing directive. Autoresearch ratchet and DB baseline unaffected. TDD: 30 red-phase tests confirmed failing, all 40 tests green after implementation. Updated `wiki/concepts/system-heavy-prompt.md` to reflect project-wide scope and document the prompt caching motivation (Anthropic/DeepSeek cache from the top down, so static system prompts are cached after the first request).
-
-## [2026-05-20] refactor | Standardized yfinance Logging with Fallback Warnings and Traceback Hardening
-
-Refactored `apps/engine/execution/providers/yfinance.py` to align with the [[concepts/observability-standard]]:
-- Replaced `core.config.logger` with a dedicated module-level logger (`engine.execution.providers.yfinance`).
-- Added explicit warning logs for price fallback chains (`currentPrice` → `regularMarketPrice` → `previousClose`) and market cap fallback chains (`marketCap` → `totalAssets` → `netAssets`).
-- Hardened exception handling in `get_ticker_data` and `get_history` to use `logger.exception()` for full traceback capture.
-- Added comprehensive TDD tests in `test_yfinance_provider.py` verifying logger naming, fallback warning triggers, and traceback preservation under failure states.
-
-## [2026-05-21] test | Supabase client missing-config test coverage
-
-Added tests for `get_supabase_client()` and `get_async_supabase_client()` to verify they raise `ValueError` when Supabase configuration (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) is missing and the singleton client is not already cached. Covers a gap in error-handling coverage for the database client layer.
-
-## [2026-05-21] feature | PostHog Stealthy Same-Origin Reverse Proxy
-
-Implemented a stealthy reverse proxy for PostHog to prevent ad blockers from blocking client-side analytics and error tracking. The PostHogProvider now routes all telemetry through the same-origin path `/p`. Local development uses Vite proxy rules in `vite.config.ts`, while production uses Netlify Edge CDN redirects in `netlify.toml` with `status=200` rewrites. Server-side tracking continues to call PostHog directly. Added a unit test verifying the `/p` api_host configuration.
-
 ## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
 
 Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
@@ -199,8 +179,6 @@ Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was p
 - **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
 - **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.
 
-
-
 ## [2026-05-28] fix | MiniMax 2.7 Parsing Scoping Bug and Improved Observability
 
 Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was preventing it from making trades due to JSON parsing failures:
@@ -208,3 +186,22 @@ Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was p
 - **Observability Tracing**: Removed the arbitrary `max_retries` strategy constraint so the parser attempts all available repair strategies. If all strategies fail, we now aggregate and log the exact exceptions and validation details under a single warning block, complying with **GEMINI.md Principle 5**.
 - **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
 - **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.
+
+## [2026-05-28] feature | Automatic How It Works Page Sync & Monorepo Build Hook
+
+Implemented a fully automated, TDD-backed synchronization pipeline to keep the web application's **How It Works** timeline page in perfect harmony with the canonical wiki page (`wiki/entities/pipeline.md`) describing the 7-phase daily pipeline lifecycle:
+- **Parser Compiler Script**: Created `apps/engine/scripts/compile_how_it_works.py` to parse the pipeline markdown, extracting structured phase metadata (`*   **Icon**:`, `*   **Badge**:`, `*   **Tags**:`) and bullets, stripping out unrelated trailing content, and compiling them into `apps/web/src/config/how-it-works.json`.
+- **Dynamic React Timeline UI**: Completely refactored `apps/web/src/routes/how-it-works.tsx` to dynamically load `how-it-works.json` and map it into the premium HSL gradient card layout. Implemented strict linter-compliant React keys using unique bullet/tag strings instead of indices, and introduced bullet-point header bolding via token matching.
+- **Production Build Integration**: Prepended the compilation script to the `"build"` command in `apps/web/package.json` (`../../apps/engine/.venv/bin/python3 ../engine/scripts/compile_how_it_works.py && vite build && tsc --noEmit`), guaranteeing that cloud and edge server builds always bundle the latest wiki content without relying on local git hooks.
+- **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
+- **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
+
+## [2026-05-28] feature | Automatic How It Works Page Sync & Monorepo Build Hook
+
+Implemented a fully automated, TDD-backed synchronization pipeline to keep the web application's **How It Works** timeline page in perfect harmony with the canonical wiki page (`wiki/entities/pipeline.md`) describing the 7-phase daily pipeline lifecycle:
+- **Parser Compiler Script**: Created `apps/engine/scripts/compile_how_it_works.py` to parse the pipeline markdown, extracting structured phase metadata (`*   **Icon**:`, `*   **Badge**:`, `*   **Tags**:`) and bullets, stripping out unrelated trailing content, and compiling them into `apps/web/src/config/how-it-works.json`.
+- **Dynamic React Timeline UI**: Completely refactored `apps/web/src/routes/how-it-works.tsx` to dynamically load `how-it-works.json` and map it into the premium HSL gradient card layout. Implemented strict linter-compliant React keys using unique bullet/tag strings instead of indices, and introduced bullet-point header bolding via token matching.
+- **Production Build Integration**: Prepended the compilation script to the `"build"` command in `apps/web/package.json` (`../../apps/engine/.venv/bin/python3 ../engine/scripts/compile_how_it_works.py && vite build && tsc --noEmit`), guaranteeing that cloud and edge server builds always bundle the latest wiki content without relying on local git hooks.
+- **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
+- **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
+

@@ -5,66 +5,114 @@ category: entity
 
 # Pipeline
 
-The daily pipeline runs on a cron schedule during US market hours
-(`.github/workflows/ingest.yml`). Six phases from ingestion to feedback.
+The daily pipeline runs on a cron schedule during US market hours (`.github/workflows/ingest.yml`). It executes in seven highly optimized, sequential phases:
 
-## Phase 1: Ingestion
+## Phase 1: Ingestion & Normalization
+*   **Icon**: 📰
+*   **Badge**: Tripled Trigger: Multiple Daily Runs
+*   **Tags**: [FMP Cache, Gmail API, Trading Economics]
 
-Feeds the platform's multi-agent decision path through three concurrent, idempotent pipelines:
-1. **Newsletters**: Gmail API fetches unread newsletters → sanitizes layout and content using BeautifulSoup → parallel ad removal and text cleaning via Gemini Flash under `asyncio.gather` → computes deterministic `source_id` (`news_{sender_clean}_{MD5[:8]}`) and SHA-256 `chunk_hash` → idempotent single-transaction bulk `UPSERT` into the `newsletter_snapshots` database (with automatic sequential fallback on failure). This deterministic hashing prevents duplicate ingestion on rerun.
-2. **Economic Calendar**: Periodic schedules scan and fetch macro events, injecting them as `CALENDAR_EVENT` memories marked with `is_future_catalyst = true` for high-importance horizons.
-3. **Government Tracking**: Continuously monitors G7/G20 governmental policy announcements, subsidy bills, and regulatory shifts, persisting them as high-importance `GOVERNMENT_INCENTIVE` memories.
+GitHub Actions fires the pipeline at market open, midday, and afternoon. The engine enforces a Holiday-Aware Market Hours Check via FMP API (5-minute TTL caching) to skip execution outside 09:30-16:00 ET, weekends, or US holidays.
+*   Scrapes unread emails from Gmail; removes ads via Gemini Flash
+*   Economic Calendar ingestion from Trading Economics (bi-weekly)
+*   Data snapshotting with idempotency keys (source_id, chunk_hash) to prevent duplicate ingestion
+*   FMP Market Status Check with class-level caching to avoid redundant API calls
+*   Dust Cleanup: Auto-sells negligible positions before analysis to keep LLMs focused on meaningful holdings
 
 For more details on ingestion mechanics, see [[concepts/ingestion]].
 
-## Phase 2: Pre-Analysis
+## Phase 2: Pre-Analysis Setup
+*   **Icon**: ⚙️
+*   **Badge**: Holiday-Aware Hours Check
+*   **Tags**: [FMP Cache, Global Macro Tracker, Risk-On/Risk-Off]
 
-Market hours check (holiday-aware, class-level caching) → price history cache
-validation → dust cleanup (auto-sell negligible positions) → Global Macro
-Tracker (σ-based regime detection) → portfolio initialization with lightweight
-historical context (top-5 importance memories, no embedding calls).
+Before LLM analysis, the engine prepares context and validates market conditions. It performs a Holiday-Aware Market Hours Check via FMP API (5-min TTL caching) to ensure execution only during 09:30-16:00 ET on trading days.
+*   Global Macro Snapshot: Real-time quotes for 16 curated assets (broad equities, international, commodities, yields) with σ-based regime detection (Risk-On/Risk-Off at 2σ threshold)
+*   Portfolio Initialization: Initializes all agent portfolios, fetches current prices for all unique holdings in parallel
+*   Light Context Injection: Retrieves top-5 highest-importance memories + trending concepts (~500 tokens) — no embedding calls in hot path
+*   Calendar Strategy: Injects Turn of Month and Payday Anomaly context based on current date
 
-## Phase 3: Analysis
+## Phase 3: Parallel LLM Analysis
+*   **Icon**: 🤖
+*   **Badge**: PromptFactory & Tools
+*   **Tags**: [PromptFactory, Web Search, Stock Screener, DiscoveryAgent]
 
-News chunks split into batches. Each batch receives portfolio summary + market
-data + context. All batches run in parallel via `asyncio.gather`. LLMs invoke
-tools (stock quote, price history, quantity calculators, web search, stock
-screener, uncorrelated assets). Discovery Agent identifies thematic assets
-before main analysis. Structured extraction via Instructor + Pydantic with
-3-attempt retry.
+Four LLMs analyze data in parallel using the PromptFactory for semantically identical instructions. Each receives the Global Macro Snapshot for Risk-On/Risk-Off awareness.
+*   Asynchronous Chunk Batching: 20 chunks per LLM call to prevent token truncation
+*   Web Search: Claude (`web_search_20250305`) and Gemini (`google_search`) with automatic citations
+*   Stock Screener: `run_stock_screener` tool for liquidity-filtered asset discovery
+*   DiscoveryAgent: Alpha Discovery via tool-calling loop (up to 3 steps) for "Investable Assets" mapping
+*   DeepSeek Thinking Mode: CoT reasoning with `reasoning_content` preservation
 
-## Phase 4: Consensus
+For more details on reasoning flows, see [[concepts/reasoning]].
 
-Semantic clustering (cosine similarity) → weighted voting → temporal
-dedup → relationship analysis (REVERSAL/RESOLUTION/UPDATE) → LLM synthesis →
-scenario analysis → alpha discovery via DiscoveryAgent. Trend/momentum tracking
-with concept velocity (intensity × growth), PCA visualization, half-life decay.
+## Phase 4: Consensus & Synthesis
+*   **Icon**: 🧩
+*   **Badge**: Cosine Clustering
+*   **Tags**: [pgvector, Alpha Discovery, Scenario Analysis, Trend Momentum]
 
-## Phase 5: Execution
+After LLM analysis, events are clustered and promoted through Semantic Grouping (pgvector cosine similarity) → weighted consensus → event promotion. Promoted events trigger Alpha Discovery for "Investable Assets" mapping.
+*   Semantic Grouping: Gemini embeddings cluster events by cosine similarity across all LLMs
+*   Weighted Consensus: Cumulative model weight above threshold promotes events; impact (BULLISH/BEARISH) by weighted majority
+*   Temporal Deduplication: New events checked against memories table within recency window; near-duplicates dropped
+*   Relationship Analysis: Links parent events via `parent_id` as REVERSAL, RESOLUTION, or UPDATE; auto-marks ancestors as `RESOLVED`
+*   Trend & Momentum: Concept velocity tracking (Intensity × Growth), PCA visualization, semantic merging of similar concepts
+*   Scenario Analysis: Promoted events require at least two distinct outcomes with trading plans per outcome
+*   Horizon Watch: Only high-importance events with future catalysts appear on dashboard
 
-Settles trades in the market using a multi-layered verification and database preservation process:
-1. **Pre-Market Validation**: Before placement, trades must pass rigorous checks:
-   - **Existence**: Ticker is validated and resolved via FMP.
-   - **Liquidity**: Verifies the asset's market cap exceeds the minimum floor.
-   - **Staleness**: Ensures JIT (Just-In-Time) quote prices do not deviate by > 2% compared to model prompt prices.
-   - **SMA Floor**: Checks if projected 50-day/200-day SMA is above safety parameters.
-2. **Reg T Margin Checks**: Validates Initial Margin, Maintenance Margin, and active Buying Power under a 10% minimum position constraint.
-3. **Commit at the End**: Settles trades in the database using an atomic two-phase write (`decision_id` saved → position `UPSERT` → trade `INSERT` → updates cash/SMA balances). This prevents phantom balance deductions in the event of query failure.
-4. **Alpaca Broker Mirroring**: Executes paper-trading limit orders via the Alpaca API. Statuses are decoupled and tracked dynamically via the daily cron sync script.
-5. **Performance Snapshots**: Compiles daily equity curves for all active portfolios (cash-only, inactive portfolios are skipped), fetching market data in a single optimized batch `get_quotes()` call.
+For more details, see [[concepts/consensus]].
 
-For more details on execution safeguards and order settlement, see [[concepts/execution]].
+## Phase 5: The Skeptical Verifier
+*   **Icon**: 🔍
+*   **Badge**: 4-Layer Audit
+*   **Tags**: [4-Layer Enforcement, Hard Tool Enforcement, Ownership Validation, Strategic Audit]
 
-After execution, a daily performance snapshot records equity curves for all
-active portfolios (those holding positions — empty cash-only portfolios are
-skipped). Market data is fetched in batch via `get_quotes()` rather than
-individual sequential `get_quote()` calls.
+A dedicated "Skeptical Agent" intercepts every Buy/Sell signal using the same intelligence profile as the original generator. It performs a 4-Layer Enforcement audit and retrieves targeted per-trade RAG context (up to 2k tokens, ranked by importance × similarity) from pgvector to validate against past decisions and lessons learned.
+*   Layer 1: Pre-Prompt Strengthening (enhanced system prompts with few-shot examples)
+*   Layer 2: Prompt Context Enhancement (portfolio source of truth, held tickers list)
+*   Layer 3: History scanning for actual tool calls via native function calling
+*   Layer 4: Structured output enforcement with `price_source` field declaration
+*   Hard Tool Enforcement: `get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity` must be actual function calls — text claims are hallucinations
+*   Ownership Pre-Validation: SELL signals for unheld tickers are rejected pre-analysis
+*   50% Confidence Penalty: Decisions without verified tool calls receive automatic reduction
+*   Strategic Reasoning Audit: Validates logical consistency of "sell X to fund Y" patterns
+*   Calendar & Seasonal Strategies: Turn of Month, Payday Anomaly adherence checks
 
-## Phase 6: Feedback
+For more details on verification rules, see [[concepts/tool-enforcement]] and [[concepts/rag-strategy]].
 
-Manager Agent post-mortem (multi-horizon → LESSON_LEARNED memories) →
-Contrarian Agent (crowded trade detection → counter-trades) → Cause & Effect
-audit (retrospective vs actual price data) → Market Feeling sentiment.
+## Phase 6: Execution & Settlement
+*   **Icon**: ⚖️
+*   **Badge**: Reg T Compliance
+*   **Tags**: [Reg T Margin, Atomic Settlement, Two-Phase Attribution, Broker Mirroring]
+
+Approved trades undergo strict guardrails. The engine executes trades with Atomic Settlement ("Commit at End" pattern) and links decisions to trades via Two-Phase Attribution Locking.
+*   FMP-Verified Market Hours: Holiday-aware with 5-minute TTL caching
+*   5.0% Price Banding: Rejects trades where AI price deviates >5% from market
+*   Reg T Margin Validation: Buying power check with $1,000 absolute minimum for BUYs
+*   10% Minimum Position Rule: Auto-upsize for BUYs; 100% sell for SELLS below floor
+*   Atomic Settlement: Cash/positions update only if ledger entry succeeds — prevents "Phantom Deductions"
+*   Two-Phase Attribution Locking: Decision (status=VALIDATED) → Trade → Decision (status=EXECUTED, trade_id)
+*   Real-time P&L: SQL View calculates `(market_price - avg_cost) * quantity` on-the-fly
+*   Immediate Consistency: Reg T metrics persisted immediately after every trade
+*   Alpaca Broker Mirroring: Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)
+
+For more details, see [[concepts/execution]].
+
+## Phase 7: Learning & Feedback
+*   **Icon**: 🧠
+*   **Badge**: Adaptive Feedback Loop
+*   **Tags**: [Manager Agent, Contrarian Agent, pgvector RAG, Cause & Effect]
+
+The cycle completes. Specialized agents perform post-analysis while the system maintains long-term memory via pgvector RAG with Scenario Analysis for context awareness.
+*   Manager Agent: Post-analysis at 5, 14, 30-day intervals; generates "Lessons Learned" stored as `LESSON_LEARNED` memories
+*   Contrarian Agent: Identifies crowded trades and missed risks using `List[ContrarianAgentResponse]` for multi-block robustness
+*   Government Tracking: Monthly audit of incentives/policies with strict compliance enforcement
+*   Cause & Effect Analysis: Bi-weekly (Tuesdays & Fridays) with semantic deduplication (pgvector, 24h lookback, 0.90 similarity)
+*   Dynamic Ticker Discovery: FMP API for sector proxies, ETFs, derivative play tickers
+*   Long-term Memory: pgvector store with Scenario Analysis (multi-outcome + trading plans)
+*   Semantic Deduplication: 24-hour lookback, >0.90 similarity threshold prevents duplicates
+
+For more details on feedback, see [[concepts/memory-feedback]].
 
 ## Related
 

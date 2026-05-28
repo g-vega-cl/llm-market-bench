@@ -1,0 +1,123 @@
+[
+    {
+        "phase": 1,
+        "title": "Ingestion & Normalization",
+        "badge": "Tripled Trigger: Multiple Daily Runs",
+        "description": "GitHub Actions fires the pipeline at market open, midday, and afternoon. The engine enforces a Holiday-Aware Market Hours Check via FMP API (5-minute TTL caching) to skip execution outside 09:30-16:00 ET, weekends, or US holidays.",
+        "bullets": [
+            "Scrapes unread emails from Gmail; removes ads via Gemini Flash",
+            "Economic Calendar ingestion from Trading Economics (bi-weekly)",
+            "Data snapshotting with idempotency keys (source_id, chunk_hash) to prevent duplicate ingestion",
+            "FMP Market Status Check with class-level caching to avoid redundant API calls",
+            "Dust Cleanup: Auto-sells negligible positions before analysis to keep LLMs focused on meaningful holdings"
+        ],
+        "tags": ["FMP Cache", "Gmail API", "Trading Economics"],
+        "icon": "📰"
+    },
+    {
+        "phase": 2,
+        "title": "Pre-Analysis Setup",
+        "badge": "Holiday-Aware Hours Check",
+        "description": "Before LLM analysis, the engine prepares context and validates market conditions. It performs a Holiday-Aware Market Hours Check via FMP API (5-min TTL caching) to ensure execution only during 09:30-16:00 ET on trading days.",
+        "bullets": [
+            "Global Macro Snapshot: Real-time quotes for 16 curated assets (broad equities, international, commodities, yields) with σ-based regime detection (Risk-On/Risk-Off at 2σ threshold)",
+            "Portfolio Initialization: Initializes all agent portfolios, fetches current prices for all unique holdings in parallel",
+            "Light Context Injection: Retrieves top-5 highest-importance memories + trending concepts (~500 tokens) — no embedding calls in hot path",
+            "Calendar Strategy: Injects Turn of Month and Payday Anomaly context based on current date"
+        ],
+        "tags": ["FMP Cache", "Global Macro Tracker", "Risk-On/Risk-Off"],
+        "icon": "⚙️"
+    },
+    {
+        "phase": 3,
+        "title": "Parallel LLM Analysis",
+        "badge": "PromptFactory & Tools",
+        "description": "Four LLMs analyze data in parallel using the PromptFactory for semantically identical instructions. Each receives the Global Macro Snapshot for Risk-On/Risk-Off awareness.",
+        "bullets": [
+            "Asynchronous Chunk Batching: 20 chunks per LLM call to prevent token truncation",
+            "Web Search: Claude (`web_search_20250305`) and Gemini (`google_search`) with automatic citations",
+            "Stock Screener: `run_stock_screener` tool for liquidity-filtered asset discovery",
+            "DiscoveryAgent: Alpha Discovery via tool-calling loop (up to 3 steps) for \"Investable Assets\" mapping",
+            "DeepSeek Thinking Mode: CoT reasoning with `reasoning_content` preservation"
+        ],
+        "tags": ["PromptFactory", "Web Search", "Stock Screener", "DiscoveryAgent"],
+        "icon": "🤖"
+    },
+    {
+        "phase": 4,
+        "title": "Consensus & Synthesis",
+        "badge": "Cosine Clustering",
+        "description": "After LLM analysis, events are clustered and promoted through Semantic Grouping (pgvector cosine similarity) → weighted consensus → event promotion. Promoted events trigger Alpha Discovery for \"Investable Assets\" mapping.",
+        "bullets": [
+            "Semantic Grouping: Gemini embeddings cluster events by cosine similarity across all LLMs",
+            "Weighted Consensus: Cumulative model weight above threshold promotes events; impact (BULLISH/BEARISH) by weighted majority",
+            "Temporal Deduplication: New events checked against memories table within recency window; near-duplicates dropped",
+            "Relationship Analysis: Links parent events via `parent_id` as REVERSAL, RESOLUTION, or UPDATE; auto-marks ancestors as `RESOLVED`",
+            "Trend & Momentum: Concept velocity tracking (Intensity × Growth), PCA visualization, semantic merging of similar concepts",
+            "Scenario Analysis: Promoted events require at least two distinct outcomes with trading plans per outcome",
+            "Horizon Watch: Only high-importance events with future catalysts appear on dashboard"
+        ],
+        "tags": ["pgvector", "Alpha Discovery", "Scenario Analysis", "Trend Momentum"],
+        "icon": "🧩"
+    },
+    {
+        "phase": 5,
+        "title": "The Skeptical Verifier",
+        "badge": "4-Layer Audit",
+        "description": "A dedicated \"Skeptical Agent\" intercepts every Buy/Sell signal using the same intelligence profile as the original generator. It performs a 4-Layer Enforcement audit and retrieves targeted per-trade RAG context (up to 2k tokens, ranked by importance × similarity) from pgvector to validate against past decisions and lessons learned.",
+        "bullets": [
+            "Layer 1: Pre-Prompt Strengthening (enhanced system prompts with few-shot examples)",
+            "Layer 2: Prompt Context Enhancement (portfolio source of truth, held tickers list)",
+            "Layer 3: History scanning for actual tool calls via native function calling",
+            "Layer 4: Structured output enforcement with `price_source` field declaration",
+            "Hard Tool Enforcement: `get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity` must be actual function calls — text claims are hallucinations",
+            "Ownership Pre-Validation: SELL signals for unheld tickers are rejected pre-analysis",
+            "50% Confidence Penalty: Decisions without verified tool calls receive automatic reduction",
+            "Strategic Reasoning Audit: Validates logical consistency of \"sell X to fund Y\" patterns",
+            "Calendar & Seasonal Strategies: Turn of Month, Payday Anomaly adherence checks"
+        ],
+        "tags": [
+            "4-Layer Enforcement",
+            "Hard Tool Enforcement",
+            "Ownership Validation",
+            "Strategic Audit"
+        ],
+        "icon": "🔍"
+    },
+    {
+        "phase": 6,
+        "title": "Execution & Settlement",
+        "badge": "Reg T Compliance",
+        "description": "Approved trades undergo strict guardrails. The engine executes trades with Atomic Settlement (\"Commit at End\" pattern) and links decisions to trades via Two-Phase Attribution Locking.",
+        "bullets": [
+            "FMP-Verified Market Hours: Holiday-aware with 5-minute TTL caching",
+            "5.0% Price Banding: Rejects trades where AI price deviates >5% from market",
+            "Reg T Margin Validation: Buying power check with $1,000 absolute minimum for BUYs",
+            "10% Minimum Position Rule: Auto-upsize for BUYs; 100% sell for SELLS below floor",
+            "Atomic Settlement: Cash/positions update only if ledger entry succeeds — prevents \"Phantom Deductions\"",
+            "Two-Phase Attribution Locking: Decision (status=VALIDATED) → Trade → Decision (status=EXECUTED, trade_id)",
+            "Real-time P&L: SQL View calculates `(market_price - avg_cost) * quantity` on-the-fly",
+            "Immediate Consistency: Reg T metrics persisted immediately after every trade",
+            "Alpaca Broker Mirroring: Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)"
+        ],
+        "tags": ["Reg T Margin", "Atomic Settlement", "Two-Phase Attribution", "Broker Mirroring"],
+        "icon": "⚖️"
+    },
+    {
+        "phase": 7,
+        "title": "Learning & Feedback",
+        "badge": "Adaptive Feedback Loop",
+        "description": "The cycle completes. Specialized agents perform post-analysis while the system maintains long-term memory via pgvector RAG with Scenario Analysis for context awareness.",
+        "bullets": [
+            "Manager Agent: Post-analysis at 5, 14, 30-day intervals; generates \"Lessons Learned\" stored as `LESSON_LEARNED` memories",
+            "Contrarian Agent: Identifies crowded trades and missed risks using `List[ContrarianAgentResponse]` for multi-block robustness",
+            "Government Tracking: Monthly audit of incentives/policies with strict compliance enforcement",
+            "Cause & Effect Analysis: Bi-weekly (Tuesdays & Fridays) with semantic deduplication (pgvector, 24h lookback, 0.90 similarity)",
+            "Dynamic Ticker Discovery: FMP API for sector proxies, ETFs, derivative play tickers",
+            "Long-term Memory: pgvector store with Scenario Analysis (multi-outcome + trading plans)",
+            "Semantic Deduplication: 24-hour lookback, >0.90 similarity threshold prevents duplicates"
+        ],
+        "tags": ["Manager Agent", "Contrarian Agent", "pgvector RAG", "Cause & Effect"],
+        "icon": "🧠"
+    }
+]

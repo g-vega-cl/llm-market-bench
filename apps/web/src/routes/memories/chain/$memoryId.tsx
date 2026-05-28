@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { fetchMemories } from '~/features/memories/api/fetch-memories';
 import { EventChainPage } from '~/features/memories/pages/EventChainPage';
+import { buildChain } from '~/features/memories/utils/build-chain';
 
 const getEventChain = createServerFn({ method: 'GET' })
     .inputValidator((d: string) => d)
@@ -19,20 +20,7 @@ const getEventChain = createServerFn({ method: 'GET' })
             cursor = result.nextCursor || undefined;
         }
 
-        // Build the chain starting from the given memory
-        const chain: Memory[] = [];
-        let currentId: string | null = memoryId;
-        const memoryMap = new Map(allMemories.map((m) => [m.id, m]));
-
-        // Traverse backwards through the chain, INCLUDING the target memory
-        while (currentId) {
-            const memory = memoryMap.get(currentId);
-            if (!memory) break;
-            chain.unshift(memory); // Add to beginning to maintain chronological order
-            currentId = memory.parent_id;
-        }
-
-        return { chain, targetMemory: memoryMap.get(memoryId) ?? null };
+        return buildChain(memoryId, allMemories);
     });
 
 export const Route = createFileRoute('/memories/chain/$memoryId')({

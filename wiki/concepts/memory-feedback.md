@@ -86,6 +86,15 @@ An offline weekly consolidation pipeline groups overlapping memories to compound
 4. **Supersedence**: The original memories in the cluster are updated to `status='SUPERSEDED'`, maintaining reference links while removing them from the active analysis hot path.
 
 
+### Event Chain Graph Traversal
+The Event Chain feature visualizes the full geopolitical timeline of a memory by reconstructing its causal tree. When displaying an event chain for a specific memory:
+1. **Backward Root Resolution**: The system first traverses backward via `parent_id` foreign keys to locate the absolute root node (the originating event).
+2. **Recursive Descendant Collection**: From the root, it performs a recursive depth-first search (DFS) over the entire database of memories to collect all descendants and sibling branches that share this lineage.
+3. **Chronological Assembly**: The complete connected component is then sorted chronologically by `created_at` to present a unified narrative.
+
+This architecture ensures that the user is not just viewing linear ancestors, but the entire family of events—including parallel timelines and downstream outcomes—that stem from the original causal catalyst.
+
+
 ## Related
 
 - [[entities/pipeline]]

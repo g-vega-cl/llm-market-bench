@@ -47,6 +47,19 @@ def _validate_date_coverage(rows: list, days_requested: int) -> tuple[bool, str]
     if not has_old_data:
         return False, f"no historical data (all {distinct_count} dates are today)"
 
+    # Check cache staleness: if the newest date in cache is > 4 calendar days old,
+    # it's considered stale (e.g. over weekends/holidays is fine, but weeks is not).
+    sorted_dates = sorted(list(distinct_dates), reverse=True)
+    newest_date_str = sorted_dates[0]
+    try:
+        newest_date = datetime.date.fromisoformat(newest_date_str)
+        today_date = datetime.datetime.now(datetime.UTC).date()
+        age_days = (today_date - newest_date).days
+        if age_days > 4:
+            return False, f"cache is stale (newest entry from {newest_date_str} is {age_days} days old)"
+    except Exception as e:
+        logger.warning(f"Error validating price history cache staleness: {e}")
+
     return True, f"valid cache with {distinct_count} distinct dates"
 
 
@@ -460,38 +473,40 @@ class MarketDataManager:
             tickers = [d.ticker for d in data_list]
             logger.error(f"Error saving market data batch for {tickers}: {e}")
 
-    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
+    async def get_history(self, ticker: str, days: int = 14, force_refresh: bool = False) -> list[dict]:
         """Fetch historical price data, checking local DB first.
 
         Args:
             ticker: The stock ticker symbol.
             days: Number of days of history to retrieve.
+            force_refresh: Whether to bypass the local DB cache.
 
         Returns:
             List of dicts with 'price' and 'fetched_at'.
         """
         ticker = ticker.strip().upper()
 
-        # 1. Check local DB
-        try:
-            res = (
-                self.client.table("price_history")
-                .select("price, fetched_at")
-                .eq("ticker", ticker)
-                .order("fetched_at", desc=True)
-                .limit(days)
-                .execute()
-            )
+        # 1. Check local DB (unless force_refresh is True)
+        if not force_refresh:
+            try:
+                res = (
+                    self.client.table("price_history")
+                    .select("price, fetched_at")
+                    .eq("ticker", ticker)
+                    .order("fetched_at", desc=True)
+                    .limit(days)
+                    .execute()
+                )
 
-            if res.data and len(res.data) >= (days * 0.7):
-                is_valid, reason = _validate_date_coverage(res.data, days)
-                if is_valid:
-                    logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples, {reason}).")
-                    return [{"price": float(row["price"]), "fetched_at": row["fetched_at"]} for row in res.data]
-                else:
-                    logger.debug(f"Skipping local cache for {ticker}: {reason}. Fetching from provider.")
-        except Exception as e:
-            logger.warning(f"Error checking local price history for {ticker}: {e}")
+                if res.data and len(res.data) >= (days * 0.7):
+                    is_valid, reason = _validate_date_coverage(res.data, days)
+                    if is_valid:
+                        logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples, {reason}).")
+                        return [{"price": float(row["price"]), "fetched_at": row["fetched_at"]} for row in res.data]
+                    else:
+                        logger.debug(f"Skipping local cache for {ticker}: {reason}. Fetching from provider.")
+            except Exception as e:
+                logger.warning(f"Error checking local price history for {ticker}: {e}")
 
         # 2. Fetch from the configured provider
         provider = self.provider

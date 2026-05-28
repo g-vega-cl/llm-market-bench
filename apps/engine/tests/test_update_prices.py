@@ -131,7 +131,7 @@ class TestFetchBenchmarkHistory:
         assert mock_mdm.get_history.call_count == len(expected_tickers)
 
         for ticker in expected_tickers:
-            mock_mdm.get_history.assert_any_call(ticker, days=BENCHMARK_HISTORY_DAYS)
+            mock_mdm.get_history.assert_any_call(ticker, days=BENCHMARK_HISTORY_DAYS, force_refresh=True)
 
     @pytest.mark.asyncio
     async def test_fetch_benchmark_history_partial_failure_continues(self):
@@ -144,7 +144,7 @@ class TestFetchBenchmarkHistory:
 
         call_count = 0
 
-        async def mock_get_history(ticker, days):
+        async def mock_get_history(ticker, days, force_refresh=False):
             nonlocal call_count
             call_count += 1
             if ticker == "QQQ":

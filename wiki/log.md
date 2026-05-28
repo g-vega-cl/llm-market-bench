@@ -1,3 +1,12 @@
+## [2026-05-28] fix | Pure EOD Ticker DB Caching and Dashboard Returns Synchronization
+
+Resolved a critical caching bug causing the "Market" dashboard to display incorrect daily percentage returns (e.g. 1.13% vs the actual 0.43% for `TLT`):
+- **EOD Caching Fix**: Modified `_validate_date_coverage` in `market_data.py` to mark cache records stale if the newest date in the cache is more than 4 calendar days old. This prevents pure EOD tickers (which strictly have one row per day) from triggering false cache hits when `.limit(90)` spans over 45 distinct dates.
+- **Force Refresh Logic**: Added `force_refresh` parameter to `get_history` to explicitly bypass the database cache.
+- **Cron Synchronization Hardening**: Configured `fetch_benchmark_history` in the daily update cron `update_prices.py` to invoke `get_history` with `force_refresh=True`, guaranteeing all 24 macro/benchmark tickers get updated to the latest prices daily.
+- **Database Backfill**: Manually executed a sync to backfill price history for all benchmark assets to the present date, successfully correcting `TLT` daily return to ~0.43% on the Today dashboard.
+- **Tests and Lints**: Created `test_get_history_rejects_stale_multi_day_cache` and `test_get_history_force_refresh_bypasses_cache` inside `test_market_data_history_date_validation.py`. Verified all 712 engine tests, 190 frontend tests, Biome checks, and Ruff lint checks pass cleanly.
+
 ## [2026-05-27] feature | Cloud-Native Netlify Lighthouse Audits & Performance Strategy
 
 Implemented a cloud-native performance auditing pipeline by configuring the `@netlify/plugin-lighthouse` in `apps/web/netlify.toml`. Added strict budgets of `>= 90` across all major categories (Performance, Accessibility, Best Practices, SEO) targeting our critical routes (`/`, `/how-it-works`, `/portfolios`), automatically blocking deploy previews and merges on budget violations. Created a TDD unit test `netlify-config.test.ts` to ensure config structural integrity and prevent regression. Documented this design decision and comparison matrix in the project wiki under `wiki/concepts/performance-auditing-strategy.md` and updated `wiki/index.md`.

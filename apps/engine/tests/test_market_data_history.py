@@ -10,16 +10,51 @@ from execution.providers.yfinance import YFinanceProvider
 async def test_market_data_manager_get_history_cache_hit():
     """Test that MarketDataManager uses local DB if enough data is found."""
     mock_supabase = MagicMock()
+    import datetime
+
+    today_date = datetime.datetime.now(datetime.UTC).date()
     mock_res = MagicMock()
     mock_res.data = [
-        {"price": 100.0, "volume": 10000000, "fetched_at": "2026-02-01T10:00:00"},
-        {"price": 101.0, "volume": 10000000, "fetched_at": "2026-02-02T10:00:00"},
-        {"price": 102.0, "volume": 10000000, "fetched_at": "2026-02-03T10:00:00"},
-        {"price": 103.0, "volume": 10000000, "fetched_at": "2026-02-04T10:00:00"},
-        {"price": 104.0, "volume": 10000000, "fetched_at": "2026-02-05T10:00:00"},
-        {"price": 105.0, "volume": 10000000, "fetched_at": "2026-02-06T10:00:00"},
-        {"price": 106.0, "volume": 10000000, "fetched_at": "2026-02-07T10:00:00"},
-        {"price": 107.0, "volume": 10000000, "fetched_at": "2026-02-08T10:00:00"},
+        {
+            "price": 100.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=8)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 101.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=7)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 102.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=6)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 103.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=5)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 104.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=4)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 105.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=3)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 106.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=2)).isoformat()}T10:00:00",
+        },
+        {
+            "price": 107.0,
+            "volume": 10000000,
+            "fetched_at": f"{(today_date - datetime.timedelta(days=1)).isoformat()}T10:00:00",
+        },
     ]
 
     # Supabase chaining mock

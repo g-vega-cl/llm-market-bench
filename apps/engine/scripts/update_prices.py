@@ -169,12 +169,14 @@ async def fetch_benchmark_history(mdm: MarketDataManager):
     # Union of benchmark options and macro indicators
     all_sync_tickers = sorted(list(set(BENCHMARK_TICKERS).union(macro_tickers)))
 
-    logger.info(f"Fetching {BENCHMARK_HISTORY_DAYS}-day history for {len(all_sync_tickers)} sync tickers (benchmarks + macro)...")
+    logger.info(
+        f"Fetching {BENCHMARK_HISTORY_DAYS}-day history for {len(all_sync_tickers)} sync tickers (benchmarks + macro)..."
+    )
 
     success_count = 0
     for ticker in all_sync_tickers:
         try:
-            history = await mdm.get_history(ticker, days=BENCHMARK_HISTORY_DAYS)
+            history = await mdm.get_history(ticker, days=BENCHMARK_HISTORY_DAYS, force_refresh=True)
             if history and len(history) >= 30:
                 logger.info(f"Stored {len(history)} price points for ticker {ticker}")
                 success_count += 1

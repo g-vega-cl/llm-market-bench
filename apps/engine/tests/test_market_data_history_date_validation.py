@@ -67,15 +67,16 @@ async def test_get_history_rejects_same_day_cache(mock_today):
 async def test_get_history_accepts_multi_day_cache():
     """Cache spanning multiple distinct past dates should be used (cache hit)."""
     mock_supabase = MagicMock()
+    today_date = datetime.datetime.now(datetime.UTC).date()
     mock_res = MagicMock()
     mock_res.data = [
-        {"price": 172.50, "fetched_at": "2026-04-14T16:00:00+00:00"},
-        {"price": 171.80, "fetched_at": "2026-04-13T16:00:00+00:00"},
-        {"price": 171.20, "fetched_at": "2026-04-10T16:00:00+00:00"},
-        {"price": 170.50, "fetched_at": "2026-04-09T16:00:00+00:00"},
-        {"price": 169.90, "fetched_at": "2026-04-08T16:00:00+00:00"},
-        {"price": 169.10, "fetched_at": "2026-04-07T16:00:00+00:00"},
-        {"price": 168.30, "fetched_at": "2026-04-04T16:00:00+00:00"},
+        {"price": 172.50, "fetched_at": f"{(today_date - datetime.timedelta(days=1)).isoformat()}T16:00:00+00:00"},
+        {"price": 171.80, "fetched_at": f"{(today_date - datetime.timedelta(days=2)).isoformat()}T16:00:00+00:00"},
+        {"price": 171.20, "fetched_at": f"{(today_date - datetime.timedelta(days=3)).isoformat()}T16:00:00+00:00"},
+        {"price": 170.50, "fetched_at": f"{(today_date - datetime.timedelta(days=4)).isoformat()}T16:00:00+00:00"},
+        {"price": 169.90, "fetched_at": f"{(today_date - datetime.timedelta(days=5)).isoformat()}T16:00:00+00:00"},
+        {"price": 169.10, "fetched_at": f"{(today_date - datetime.timedelta(days=6)).isoformat()}T16:00:00+00:00"},
+        {"price": 168.30, "fetched_at": f"{(today_date - datetime.timedelta(days=7)).isoformat()}T16:00:00+00:00"},
     ]
 
     mock_query = mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit
@@ -197,13 +198,14 @@ async def test_get_history_mixed_today_and_old_data_still_fetches():
 async def test_get_history_pure_historical_cache_works():
     """Cache with only historical data (no today) should still be used."""
     mock_supabase = MagicMock()
+    today_date = datetime.datetime.now(datetime.UTC).date()
     mock_res = MagicMock()
     mock_res.data = [
-        {"price": 172.50, "fetched_at": "2026-04-14T16:00:00+00:00"},
-        {"price": 172.00, "fetched_at": "2026-04-11T16:00:00+00:00"},
-        {"price": 171.50, "fetched_at": "2026-04-10T16:00:00+00:00"},
-        {"price": 171.00, "fetched_at": "2026-04-09T16:00:00+00:00"},
-        {"price": 170.50, "fetched_at": "2026-04-08T16:00:00+00:00"},
+        {"price": 172.50, "fetched_at": f"{(today_date - datetime.timedelta(days=1)).isoformat()}T16:00:00+00:00"},
+        {"price": 172.00, "fetched_at": f"{(today_date - datetime.timedelta(days=2)).isoformat()}T16:00:00+00:00"},
+        {"price": 171.50, "fetched_at": f"{(today_date - datetime.timedelta(days=3)).isoformat()}T16:00:00+00:00"},
+        {"price": 171.00, "fetched_at": f"{(today_date - datetime.timedelta(days=4)).isoformat()}T16:00:00+00:00"},
+        {"price": 170.50, "fetched_at": f"{(today_date - datetime.timedelta(days=5)).isoformat()}T16:00:00+00:00"},
     ]
 
     mock_query = mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit
@@ -260,3 +262,77 @@ async def test_get_history_rejects_single_date_cache():
 
     mock_provider.get_history.assert_called_once_with("MSFT", 7)
     assert len(history) == 3
+
+
+@pytest.mark.asyncio
+async def test_get_history_rejects_stale_multi_day_cache():
+    """Cache with enough distinct past dates but the newest is too old (> 4 days) should be rejected."""
+    mock_supabase = MagicMock()
+
+    # Seeds a cache with enough dates but the newest is extremely old (e.g. from 2026-05-13)
+    mock_res = MagicMock()
+    mock_res.data = [
+        {"price": 84.745, "fetched_at": "2026-05-13T00:00:00+00:00"},
+        {"price": 84.99, "fetched_at": "2026-05-12T00:00:00+00:00"},
+        {"price": 85.56, "fetched_at": "2026-05-11T00:00:00+00:00"},
+        {"price": 86.08, "fetched_at": "2026-05-08T00:00:00+00:00"},
+        {"price": 85.65, "fetched_at": "2026-05-07T00:00:00+00:00"},
+    ]
+
+    mock_query = mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit
+    mock_query.return_value.execute.return_value = mock_res
+
+    mock_provider = AsyncMock()
+    mock_provider.get_history.return_value = [
+        {"price": 85.70, "fetched_at": "2026-05-28"},
+        {"price": 85.33, "fetched_at": "2026-05-27"},
+    ]
+
+    with (
+        patch("execution.market_data.get_supabase_client", return_value=mock_supabase),
+        patch("execution.market_data.get_financial_provider", return_value=mock_provider),
+    ):
+        manager = MarketDataManager()
+        # Request with days=7, which requires 4 distinct dates.
+        # Cache has 5 distinct dates, but is stale (>4 days).
+        history = await manager.get_history("TLT", days=7)
+
+    mock_provider.get_history.assert_called_once_with("TLT", 7)
+    assert len(history) == 2
+    assert history[0]["price"] == 85.70
+
+
+@pytest.mark.asyncio
+async def test_get_history_force_refresh_bypasses_cache():
+    """When force_refresh=True, get_history should bypass cache even if cache is completely fresh and valid."""
+    mock_supabase = MagicMock()
+
+    # Fresh valid cache
+    today_date = datetime.datetime.now(datetime.UTC).date()
+    yesterday = (today_date - datetime.timedelta(days=1)).isoformat()
+    day_before = (today_date - datetime.timedelta(days=2)).isoformat()
+    mock_res = MagicMock()
+    mock_res.data = [
+        {"price": 100.0, "fetched_at": f"{yesterday}T16:00:00+00:00"},
+        {"price": 99.0, "fetched_at": f"{day_before}T16:00:00+00:00"},
+    ]
+
+    mock_query = mock_supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit
+    mock_query.return_value.execute.return_value = mock_res
+
+    mock_provider = AsyncMock()
+    mock_provider.get_history.return_value = [
+        {"price": 101.0, "fetched_at": today_date.isoformat()},
+    ]
+
+    with (
+        patch("execution.market_data.get_supabase_client", return_value=mock_supabase),
+        patch("execution.market_data.get_financial_provider", return_value=mock_provider),
+    ):
+        manager = MarketDataManager()
+        # Request with force_refresh=True
+        history = await manager.get_history("SPY", days=2, force_refresh=True)
+
+    mock_provider.get_history.assert_called_once_with("SPY", 2)
+    assert len(history) == 1
+    assert history[0]["price"] == 101.0

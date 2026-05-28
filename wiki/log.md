@@ -187,21 +187,13 @@ Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was p
 - **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
 - **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.
 
-## [2026-05-28] feature | Automatic How It Works Page Sync & Monorepo Build Hook
+## [2026-05-28] feature | Automatic How It Works Page Sync & Local Git Hook Compilation
 
 Implemented a fully automated, TDD-backed synchronization pipeline to keep the web application's **How It Works** timeline page in perfect harmony with the canonical wiki page (`wiki/entities/pipeline.md`) describing the 7-phase daily pipeline lifecycle:
 - **Parser Compiler Script**: Created `apps/engine/scripts/compile_how_it_works.py` to parse the pipeline markdown, extracting structured phase metadata (`*   **Icon**:`, `*   **Badge**:`, `*   **Tags**:`) and bullets, stripping out unrelated trailing content, and compiling them into `apps/web/src/config/how-it-works.json`.
 - **Dynamic React Timeline UI**: Completely refactored `apps/web/src/routes/how-it-works.tsx` to dynamically load `how-it-works.json` and map it into the premium HSL gradient card layout. Implemented strict linter-compliant React keys using unique bullet/tag strings instead of indices, and introduced bullet-point header bolding via token matching.
-- **Production Build Integration**: Prepended the compilation script to the `"build"` command in `apps/web/package.json` (`../../apps/engine/.venv/bin/python3 ../engine/scripts/compile_how_it_works.py && vite build && tsc --noEmit`), guaranteeing that cloud and edge server builds always bundle the latest wiki content without relying on local git hooks.
 - **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
+- **Local Pre-Commit Hook Strategy**: Because cloud/serverless build environments like Netlify lack Python virtualenv runtimes, compilation is executed strictly locally during commits. Staged changes automatically compile the JSON locally, stage the JSON, and commit it to the repo. Netlify then bundles the pre-compiled, committed JSON natively with zero risk of environment failures.
 - **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
 
-## [2026-05-28] feature | Automatic How It Works Page Sync & Monorepo Build Hook
-
-Implemented a fully automated, TDD-backed synchronization pipeline to keep the web application's **How It Works** timeline page in perfect harmony with the canonical wiki page (`wiki/entities/pipeline.md`) describing the 7-phase daily pipeline lifecycle:
-- **Parser Compiler Script**: Created `apps/engine/scripts/compile_how_it_works.py` to parse the pipeline markdown, extracting structured phase metadata (`*   **Icon**:`, `*   **Badge**:`, `*   **Tags**:`) and bullets, stripping out unrelated trailing content, and compiling them into `apps/web/src/config/how-it-works.json`.
-- **Dynamic React Timeline UI**: Completely refactored `apps/web/src/routes/how-it-works.tsx` to dynamically load `how-it-works.json` and map it into the premium HSL gradient card layout. Implemented strict linter-compliant React keys using unique bullet/tag strings instead of indices, and introduced bullet-point header bolding via token matching.
-- **Production Build Integration**: Prepended the compilation script to the `"build"` command in `apps/web/package.json` (`../../apps/engine/.venv/bin/python3 ../engine/scripts/compile_how_it_works.py && vite build && tsc --noEmit`), guaranteeing that cloud and edge server builds always bundle the latest wiki content without relying on local git hooks.
-- **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
-- **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
 

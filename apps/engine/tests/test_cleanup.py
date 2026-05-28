@@ -74,4 +74,3 @@ async def test_run_cleanup_exception_handling():
 
         # Check that the exception traceback was logged exactly once
         mock_logger.exception.assert_called_once_with("Database cleanup failed")
-

@@ -112,6 +112,7 @@ class TestFetchBenchmarkHistory:
     async def test_fetch_benchmark_history_success(self):
         """Should fetch and store history for all benchmark tickers successfully."""
         from core.macro_tracker import MACRO_TICKERS
+
         macro_tickers = set()
         for _category, items in MACRO_TICKERS.items():
             macro_tickers.update(items.keys())
@@ -137,6 +138,7 @@ class TestFetchBenchmarkHistory:
     async def test_fetch_benchmark_history_partial_failure_continues(self):
         """Should continue fetching other tickers even if one fails."""
         from core.macro_tracker import MACRO_TICKERS
+
         macro_tickers = set()
         for _category, items in MACRO_TICKERS.items():
             macro_tickers.update(items.keys())

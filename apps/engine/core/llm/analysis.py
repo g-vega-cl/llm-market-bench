@@ -153,7 +153,7 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
             try:
                 data_copy = dict(data)
                 data_copy["decisions"] = json.loads(repaired)
-                strategies.append(lambda d: DecisionsResponse(**d))
+                strategies.append(lambda d, dc=data_copy: DecisionsResponse(**dc))
             except Exception:
                 pass
 
@@ -162,7 +162,7 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
             try:
                 data_copy = dict(data)
                 data_copy["macro_events"] = json.loads(repaired)
-                strategies.append(lambda d: DecisionsResponse(**d))
+                strategies.append(lambda d, dc=data_copy: DecisionsResponse(**dc))
             except Exception:
                 pass
 
@@ -170,21 +170,32 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
         strategies.append(lambda d: DecisionsResponse.model_validate_json(d))
 
         repaired = _repair_json_string(data)
-        strategies.append(lambda d: DecisionsResponse.model_validate_json(d))
+        strategies.append(lambda d, r=repaired: DecisionsResponse.model_validate_json(r))
 
         try:
-            json.loads(repaired)
+            parsed = json.loads(repaired)
             strategies.append(
-                lambda d: DecisionsResponse.model_validate_json(d) if isinstance(d, dict) else DecisionsResponse(**d)
+                lambda d, p=parsed: (
+                    DecisionsResponse.model_validate_json(p) if isinstance(p, str) else DecisionsResponse(**p)
+                )
             )
         except Exception:
             pass
 
-    for strategy in strategies[:max_retries]:
+    errors = []
+    for i, strategy in enumerate(strategies):
         try:
             return strategy(data)
-        except Exception:
+        except Exception as e:
+            errors.append((i, e))
             continue
+
+    if errors:
+        logger.warning(
+            "All %d DecisionsResponse parse strategies failed. Errors: %s",
+            len(strategies),
+            "; ".join(f"Strategy {i}: {type(e).__name__}: {e}" for i, e in errors),
+        )
 
     return None
 

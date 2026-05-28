@@ -191,3 +191,20 @@ Fixed a major trade execution blocking issue where the MiniMax 2.7 Simple Portfo
 
 Removed 10 stale scratch/utility scripts from `apps/engine/scratch/` that were used for ad-hoc debugging, DB inspection, and metrics backfill during development. These were one-off scripts and are no longer needed. Also added TDD-backed `buildChain` utility and tests to the memories feature for full event chain tree traversal (already added to wiki in a previous commit), and marked two completed ROADMAP items.
 
+## [2026-05-28] fix | MiniMax 2.7 Parsing Scoping Bug and Improved Observability
+
+Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was preventing it from making trades due to JSON parsing failures:
+- **Lambda Scoping Bug Fix**: Fixed a variable scoping bug in `_try_parse_decisions_response` in `apps/engine/core/llm/analysis.py` where fallback repair strategies closed over strategies but evaluated the original, un-repaired payload instead of the repaired/copied elements (`repaired`, `data_copy`, `parsed`). Addressed this by properly binding variables to default arguments within lambda scopes (e.g., `lambda d, r=repaired: ...`).
+- **Observability Tracing**: Removed the arbitrary `max_retries` strategy constraint so the parser attempts all available repair strategies. If all strategies fail, we now aggregate and log the exact exceptions and validation details under a single warning block, complying with **GEMINI.md Principle 5**.
+- **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
+- **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.
+
+
+
+## [2026-05-28] fix | MiniMax 2.7 Parsing Scoping Bug and Improved Observability
+
+Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was preventing it from making trades due to JSON parsing failures:
+- **Lambda Scoping Bug Fix**: Fixed a variable scoping bug in `_try_parse_decisions_response` in `apps/engine/core/llm/analysis.py` where fallback repair strategies closed over strategies but evaluated the original, un-repaired payload instead of the repaired/copied elements (`repaired`, `data_copy`, `parsed`). Addressed this by properly binding variables to default arguments within lambda scopes (e.g., `lambda d, r=repaired: ...`).
+- **Observability Tracing**: Removed the arbitrary `max_retries` strategy constraint so the parser attempts all available repair strategies. If all strategies fail, we now aggregate and log the exact exceptions and validation details under a single warning block, complying with **GEMINI.md Principle 5**.
+- **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
+- **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.

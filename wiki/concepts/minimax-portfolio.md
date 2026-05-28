@@ -76,6 +76,7 @@ Because MiniMax does not support native function-calling or `instructor` structu
 To ensure parsing robustness and prevent decisions from being dropped:
 1. **Explicit Schema Enforcement:** The prompt template specifically instructs MiniMax on the exact JSON schema fields (such as `event_name`, `impact`, and `reasoning` for `macro_events`) to prevent Pydantic validation errors (`ValidationError`) at execution time.
 2. **Conditional Unescaping:** The JSON repair helper (`_repair_json_string`) only performs quote (`\"` to `"`) and newline (`\\n` to `\n`) unescaping inside double-escaped strings (i.e. those starting and ending with double quotes). Normal, single-escaped JSON responses are left intact, preserving valid internal escaped characters (like newlines in reasoning statements) from being corrupted into raw invalid JSON structures.
+3. **Robust Scope Binding & Observability:** Previously, strategy lambdas inside `_try_parse_decisions_response` closed over closed-over variables incorrectly, which caused fallback strategies to re-evaluate the original malformed payload rather than the repaired or copied data. This scoping has been resolved by explicitly binding repaired variables within the lambda definitions (e.g. `lambda d, r=repaired: ...`). Additionally, all repair strategies are now attempted, and if they all fail, the exact validation tracebacks and exceptions are aggregated and logged as warnings for complete observability.
 
 ---
 

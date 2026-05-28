@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -43,3 +44,34 @@ async def test_run_cleanup_calls_correct_deletes():
 
     # Check that delete was called 4 times
     assert mock_table.delete.call_count == 4
+
+    # Verify that the lt calls were using ISO strings and not raw SQL strings
+    for call in mock_lt.call_args_list:
+        if call.args:
+            assert isinstance(call.args[1], str)
+            assert call.args[1] != 'now() - interval "48 hours"'
+            assert call.args[1] != 'now() - interval "30 days"'
+            assert call.args[1] != 'now() - interval "180 days"'
+            # It should be possible to parse it as an ISO string
+            try:
+                datetime.fromisoformat(call.args[1])
+            except ValueError:
+                pytest.fail(f"Could not parse string {call.args[1]} as ISO format.")
+
+
+@pytest.mark.asyncio
+async def test_run_cleanup_exception_handling():
+    """Verify that run_cleanup logs exceptions via logger.exception and propagates them."""
+    mock_client = MagicMock()
+    mock_client.table.side_effect = Exception("Supabase DB Connection Failed")
+
+    with (
+        patch("core.cleanup.get_supabase_client", return_value=mock_client),
+        patch("core.cleanup.logger") as mock_logger,
+    ):
+        with pytest.raises(Exception, match="Supabase DB Connection Failed"):
+            await run_cleanup()
+
+        # Check that the exception traceback was logged exactly once
+        mock_logger.exception.assert_called_once_with("Database cleanup failed")
+

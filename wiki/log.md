@@ -211,3 +211,7 @@ Refactored the Global Macro Stats panel to remove static benchmark hero cards an
 ## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
 
 Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.
+
+## [2026-05-28] update | Cleanup module parameterization and test coverage
+
+Updated cleanup.py with comprehensive docstring explaining the 6-stage maintenance pipeline and Python-calculated threshold parameterization. Added test for exception handling. Updated wiki page to reflect new parameterization.

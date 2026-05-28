@@ -95,3 +95,6 @@ MARKET EVENT: US-Iran Strait of Hormuz Negotiations [ONGOING] | IMPACT: NEUTRAL 
 - [ ] - Benchify: how it works might be outdated
 - [ ] - Benchify: keep and expose my DB locally too? So I can offload data from supabase and use both DBs?
 - [ ] - Weekly audit for ingestion & consensus?
+- [ ] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar?
+- [ ] - check why minimax is not making any trades.
+- [ ] - check daily numbers in Today "Market" section. (TLT for example).

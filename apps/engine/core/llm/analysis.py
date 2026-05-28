@@ -102,8 +102,7 @@ def _repair_json_string(json_str: str) -> str:
 
         if json_str.startswith('"') and json_str.endswith('"'):
             json_str = json_str[1:-1]
-
-        json_str = json_str.replace('\\"', '"').replace("\\n", "\n").replace("\\r", "\r")
+            json_str = json_str.replace('\\"', '"').replace("\\n", "\n").replace("\\r", "\r")
 
         # Always trim trailing text after JSON object/array
         if json_str.startswith("{"):
@@ -255,9 +254,44 @@ async def _analyze_with_minimax(
             "content": (
                 "Output your response ONLY as a valid JSON object with no additional text, "
                 "no markdown, and no code fences. The JSON must match this schema exactly:\n"
-                '{"decisions": [...], "macro_events": [...]}\n'
-                "Where each decision has: signal, confidence, reasoning, ticker, catalyst_type, "
-                "catalyst_duration, source_id, allocation_percentage."
+                "{\n"
+                '  "decisions": [\n'
+                "    {\n"
+                '      "signal": "BUY" | "SELL" | "HOLD",\n'
+                '      "confidence": 0-100,\n'
+                '      "reasoning": "string",\n'
+                '      "ticker": "string",\n'
+                '      "catalyst_type": "MACRO" | "EARNINGS" | "M_A" | "PRODUCT" | "REGULATORY" | "EVENT" | "INNOVATION" | "TECHNICAL" | "UNCROWDED_TRADE" | "OTHER",\n'
+                '      "catalyst_duration": "INTRADAY" | "SHORT_TERM" | "MEDIUM_TERM" | "LONG_TERM",\n'
+                '      "source_id": "string",\n'
+                '      "allocation_percentage": 0-100,\n'
+                '      "is_priced_in": boolean,\n'
+                '      "is_priced_in_reasoning": "string",\n'
+                '      "profit_potential_reasoning": "string",\n'
+                '      "strategy_reasoning": "string",\n'
+                '      "advance_planning_notes": "string",\n'
+                '      "buy_tool_called": boolean,\n'
+                '      "sell_tool_called": boolean,\n'
+                '      "quantity": integer\n'
+                "    }\n"
+                "  ],\n"
+                '  "macro_events": [\n'
+                "    {\n"
+                '      "event_name": "string",\n'
+                '      "impact": "BULLISH" | "BEARISH" | "NEUTRAL",\n'
+                '      "catalyst_type": "MACRO" | "EARNINGS" | "M_A" | "PRODUCT" | "REGULATORY" | "EVENT" | "INNOVATION" | "TECHNICAL" | "UNCROWDED_TRADE" | "OTHER",\n'
+                '      "is_ongoing": boolean,\n'
+                '      "is_future_catalyst": boolean,\n'
+                '      "historical_parallel": "string",\n'
+                '      "expiry_date": "string",\n'
+                '      "importance_score": 1-10,\n'
+                '      "confidence": 0-100,\n'
+                '      "reasoning": "string",\n'
+                '      "scenario_analysis": "string",\n'
+                '      "source_id": "string"\n'
+                "    }\n"
+                "  ]\n"
+                "}"
             ),
         }
     )

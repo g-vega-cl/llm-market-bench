@@ -215,3 +215,12 @@ Refactored the Global Macro Stats panel to remove static benchmark hero cards an
 ## [2026-05-28] update | Cleanup module parameterization and test coverage
 
 Updated cleanup.py with comprehensive docstring explaining the 6-stage maintenance pipeline and Python-calculated threshold parameterization. Added test for exception handling. Updated wiki page to reflect new parameterization.
+
+## [2026-05-28] fix | MiniMax 2.7 JSON Repair and Schema Enforcement
+
+Fixed a major trade execution blocking issue where the MiniMax 2.7 Simple Portfolio made 0 trades due to JSON parsing and schema validation failures:
+- **Quote and Newline Unescaping Fix**: Corrected the custom JSON repair helper `_repair_json_string` in `core/llm/analysis.py` to perform quote and newline unescaping ONLY on double-escaped JSON responses (those wrapped in outer double quotes). This prevents the helper from unconditionally unescaping valid internal escaped quotes and newlines in standard JSON responses, which previously invalidated the JSON structure.
+- **Detailed Prompt Schema Enforcement**: Expanded the user prompt instruction in `_analyze_with_minimax` to include a precise, detailed JSON schema for both `decisions` and `macro_events`. This ensures the MiniMax API returns JSON matching the exact expected Pydantic fields (e.g. `event_name`, `impact`, and `reasoning` for `macro_events`), preventing Pydantic `ValidationError` drop-offs.
+- **TDD Tests**: Added comprehensive unit tests (`test_repair_json_string_with_escaped_quotes_and_newlines` and `test_try_parse_minimax_raw_schema`) in `apps/engine/tests/test_analysis_logic.py`.
+- **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to document the JSON extraction, schema enforcement, and parsing repair alignment.
+

@@ -251,6 +251,12 @@ class TestRepairJsonString:
         result = _repair_json_string(None)
         assert result is None
 
+    def test_repair_json_string_with_escaped_quotes_and_newlines(self):
+        """Test that normal JSON with escaped quotes and newlines is preserved."""
+        json_with_escaped = '{"reasoning": "The company announced \\"strong earnings\\".\\nThis is a second line."}'
+        result = _repair_json_string(json_with_escaped)
+        assert result == json_with_escaped
+
 
 class TestTryParseDecisionsResponse:
     """Tests for the _try_parse_decisions_response helper function."""
@@ -341,6 +347,45 @@ class TestTryParseDecisionsResponse:
         assert result is not None
         assert len(result.macro_events) == 1
         assert result.macro_events[0].event_name == "Test Event"
+
+    def test_try_parse_minimax_raw_schema(self):
+        """Test that correct schema returned by MiniMax parses successfully."""
+        data = {
+            "decisions": [
+                {
+                    "signal": "BUY",
+                    "confidence": 78,
+                    "reasoning": "Standard reasoning",
+                    "ticker": "CVX",
+                    "catalyst_type": "MACRO",
+                    "catalyst_duration": "SHORT_TERM",
+                    "source_id": "test_source",
+                    "allocation_percentage": 15,
+                    "is_priced_in": False,
+                    "is_priced_in_reasoning": "No explicit priced-in reasoning provided.",
+                    "profit_potential_reasoning": "No explicit profit potential reasoning provided.",
+                }
+            ],
+            "macro_events": [
+                {
+                    "event_name": "US-Iran Geopolitical Escalation",
+                    "impact": "BULLISH",
+                    "catalyst_type": "MACRO",
+                    "is_ongoing": True,
+                    "is_future_catalyst": False,
+                    "importance_score": 8,
+                    "confidence": 85,
+                    "reasoning": "Standard reasoning",
+                    "source_id": "test_source",
+                }
+            ],
+        }
+        result = _try_parse_decisions_response(data)
+        assert result is not None
+        assert len(result.decisions) == 1
+        assert result.decisions[0].ticker == "CVX"
+        assert len(result.macro_events) == 1
+        assert result.macro_events[0].event_name == "US-Iran Geopolitical Escalation"
 
 
 @pytest.mark.asyncio

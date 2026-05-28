@@ -1,4 +1,17 @@
-"""Database cleanup logic for CI/CD and maintenance."""
+"""Database cleanup logic for CI/CD and maintenance.
+
+This module provides a unified, secure database maintenance interface called during
+the weekly system audit pipeline. It implements robust retention policies for logs,
+audits, market feelings, and superseded vector memories.
+
+Security & Parameterization Design:
+  Rather than executing raw PostgreSQL date functions (e.g., 'now() - interval "48 hours"')
+  which are subject to implicit database coercion and bypass safe query parameterization,
+  this module calculates timezone-aware UTC datetime cutoffs in Python. These cutoffs
+  are formatted as ISO 8601 strings and passed as safe literals to the PostgREST / Supabase
+  client. This eliminates timezone discrepancies between runner/server environments and
+  guarantees that all filter values are parsed as safe parameters.
+"""
 
 from datetime import UTC, datetime, timedelta
 
@@ -7,7 +20,20 @@ from .db import get_supabase_client
 
 
 async def run_cleanup():
-    """Perform periodic database cleanup of stale logs and records."""
+    """Perform periodic database cleanup of stale logs and records.
+
+    This function coordinates the following 6 database maintenance stages:
+      1. Ingestion Logs: Prunes metadata log records older than 48 hours.
+      2. System Audits: Deletes closed/resolved/ignored logs older than 30 days.
+      3. Market Feelings: Discards outdated classification metrics older than 30 days.
+      4. Superseded Memories: Purges older iterations of consolidated vector memories (> 180 days).
+      5. Memory Decay: Triggers the tiered decay protocol for non-strategic memory elements.
+      6. Memory Consolidation: Performs the DeepSeek-powered dfs consolidation ("sleep" cycle).
+
+    Raises:
+        Exception: Propagates any database/connection exceptions after logging a
+                   traceback via logger.exception for full observability.
+    """
     sb = get_supabase_client()
     logger.info("Starting database cleanup...")
     now = datetime.now(UTC)

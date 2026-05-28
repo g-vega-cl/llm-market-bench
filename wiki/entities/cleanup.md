@@ -19,19 +19,19 @@ The `run_cleanup()` function in `apps/engine/core/cleanup.py` connects to Supaba
 
 1. **Ingestion Logs (`ingestion_logs` table)**:
    - **Retention**: 48 hours
-   - **Operator**: `.delete().lt("created_at", 'now() - interval "48 hours"')`
+   - **Operator**: `.delete().lt("created_at", threshold_48h)` where `threshold_48h` is Python-calculated `(now - timedelta(hours=48)).isoformat()` (UTC).
    - **Rationale**: Keeps the ingestion stream log table compact to speed up metadata indexing and JIT parsing during the daily run.
 2. **Resolved/Ignored System Audits (`system_audits` table)**:
    - **Retention**: 30 days
-   - **Operator**: `.delete().in_("status", ["RESOLVED", "IGNORED"]).lt("created_at", 'now() - interval "30 days"')`
+   - **Operator**: `.delete().in_("status", ["RESOLVED", "IGNORED"]).lt("created_at", threshold_30d)` where `threshold_30d` is Python-calculated `(now - timedelta(days=30)).isoformat()` (UTC).
    - **Rationale**: Purges historical audit records that have been explicitly marked as closed (`RESOLVED` or `IGNORED`), while **permanently preserving open/active audits** for ongoing developer attention.
 3. **Market Feeling Records (`market_feeling` table)**:
    - **Retention**: 30 days
-   - **Operator**: `.delete().lt("created_at", 'now() - interval "30 days"')`
+   - **Operator**: `.delete().lt("created_at", threshold_30d)` where `threshold_30d` is Python-calculated `(now - timedelta(days=30)).isoformat()` (UTC).
    - **Rationale**: Purges outdated market sentiment and classification logs that are older than 30 days, as trailing analysis displays only require recent metrics.
 4. **Superseded Memories (`memories` table)**:
    - **Retention**: 180 days
-   - **Operator**: `.delete().eq("status", "SUPERSEDED").lt("created_at", 'now() - interval "180 days"')`
+   - **Operator**: `.delete().eq("status", "SUPERSEDED").lt("created_at", threshold_180d)` where `threshold_180d` is Python-calculated `(now - timedelta(days=180)).isoformat()` (UTC).
    - **Rationale**: Purges historical superseded memory fragments older than 180 days to prevent pgvector table bloat, maintaining referential integrity for newer consolidated entries.
 5. **Tiered Memory Decay**:
    - **Retention**: Variable based on memory type.

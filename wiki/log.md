@@ -1,14 +1,3 @@
-## [2026-05-29] performance | Homepage Parallel Segmented Queries & Symmetric Server Hydration
-
-Optimized the "Today" homepage performance and solved high-impact synthetic auditing bottlenecks:
-- **Parallel Segmented Queries**: Splitted the massive `.in()` filter query across all 23 tickers over 45 days into 23 parallel `.eq()` queries (each limited to 45 rows) using a nested `Promise.all` in `fetchTodayData`. This guarantees 100% untruncated chronological history for every ticker (fixing Supabase's 1000-row query truncation bug) and yields an **~84% reduction in row density** fetched over the network, drastically slashing initial server response times (TTFB).
-- **Symmetric Hydration Symmetries**: Fixed Minified React Error #418 (hydration mismatch) by capturing a deterministic `serverTime` in the API loader payload. `MarketStatusHero` was refactored to use this static timestamp fallback (`data.serverTime ? new Date(data.serverTime) : new Date()`), ensuring 100% server-client rendering parity without using client-only mount gates.
-- **Validation**: Verified 100% green test passes across all 192 web tests (`vitest run`), resolved all workspace Biome check lint rules, and verified production compilation (`pnpm run build`).
-
-## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
-
-Updated `apps/engine/core/llm/clients.py` to parameterize the four LLM client factories (`get_openai_client`, `get_anthropic_client`, `get_deepseek_client`, `get_gemini_client`) with an optional `api_key: str | None = None` parameter. This enables clean dependency injection for unit tests, eliminating the need for `monkeypatch` or environment variable manipulation in CI/CD. Tests updated: `test_deepseek_handler.py`, `test_models.py`, `test_memory_consolidation.py`.
-
 ## [2026-05-25] refactor | Auto-Research Metrics Alignment & Baseline Ratchet Refactor
 
 Refactored the Auto-Research engine and web UI to properly align weekly trading metrics with the prompt variant that actually ran, ensuring a clean and logical progression in the history table:
@@ -230,4 +219,8 @@ Performed a complete codebase-wide date/time formatting sweep to eradicate all R
 ## [2026-05-29] enhancement | Standardize date/time formatting to Eastern Time and simplify FutureCatalysts
 
 Added explicit 'America/New_York' timeZone to all date.toLocaleDateString/toLocaleTimeString calls across multiple components (AuditCard, ExperimentList, CauseAndEffectCard, ConceptMap, MarketOverviewHero, MemoryFlow, TradesTable, AgentInsights, FutureCatalysts, MarketUpdates, NewsletterFeed). In MarketOverviewHero, replaced 'time ago' relative formatting with absolute Eastern Time. In FutureCatalysts, removed countdown timer and 'passed event' filtering, showing all events with border color based on importance score instead of proximity. Removed unused React import and countdown state management.
+
+## [2026-05-29] refactor | Remove llm_reasoning_logs from Today homepage loader
+
+Removed the `llm_reasoning_logs` query from `fetchTodayData()` in the Today homepage loader. This high-volume table (containing massive text conversation blobs) was being fetched but never rendered on the homepage, wasting ~438ms of database latency and network bandwidth. The `logs` field was removed from the `TodayData` interface, the parallel query was deleted, and the return payload no longer includes it. Added a TDD zero-load regression test (`fetch-today-data.test.ts`) that spies on the Supabase client to assert the heavy table is never queried and the `logs` key is absent from the returned payload.
 

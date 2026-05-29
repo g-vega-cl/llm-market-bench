@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { buildHistoryGroup } from './fetch-today-data';
+import { describe, expect, it, vi } from 'vitest';
+
+// Module-level mock for Supabase client
+let mockSupabaseClient: Record<string, unknown> | null = null;
+vi.mock('~/lib/supabase', () => ({
+    getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
+}));
+
+import { buildHistoryGroup, fetchTodayData } from './fetch-today-data';
 
 describe('buildHistoryGroup', () => {
     it('returns empty map when historyRows is null or empty', () => {
@@ -61,5 +68,34 @@ describe('buildHistoryGroup', () => {
         const spyHistory = result.get('SPY') || [];
 
         expect(spyHistory.length).toBe(30);
+    });
+});
+
+describe('fetchTodayData zero-load TDD checks', () => {
+    it('does not load reasoning logs and does not return them in TodayData payload', async () => {
+        const fromSpy = vi.fn().mockImplementation((_table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = {
+            from: fromSpy,
+        };
+
+        const result = await fetchTodayData();
+
+        // ASSERT 1: The 'llm_reasoning_logs' table was NEVER queried (Zero-Load)
+        expect(fromSpy).not.toHaveBeenCalledWith('llm_reasoning_logs');
+
+        // ASSERT 2: The returned data does not have the 'logs' property
+        expect(result).not.toHaveProperty('logs');
     });
 });

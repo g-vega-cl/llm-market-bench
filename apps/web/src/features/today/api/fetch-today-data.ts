@@ -1,6 +1,5 @@
 import type {
     Decision,
-    LLMReasoningLog,
     MarketDataCache,
     MarketFeeling,
     Memory,
@@ -15,7 +14,6 @@ export interface TodayData {
     newsletters: NewsletterSnapshot[];
     trades: (Trade & { portfolios: { owner_id: string } })[];
     decisions: Decision[];
-    logs: LLMReasoningLog[];
     memories: Memory[];
     priceUpdates: MarketDataCache[];
     futureEvents: Memory[];
@@ -143,7 +141,6 @@ export async function fetchTodayData(): Promise<TodayData> {
         { data: newsletters },
         { data: trades },
         { data: decisions },
-        { data: logs },
         { data: memories },
         { data: priceUpdates },
         { data: futureEvents },
@@ -163,11 +160,6 @@ export async function fetchTodayData(): Promise<TodayData> {
             .order('executed_at', { ascending: false }),
         supabase
             .from('decisions')
-            .select('*')
-            .gte('created_at', startOfDay)
-            .order('created_at', { ascending: false }),
-        supabase
-            .from('llm_reasoning_logs')
             .select('*')
             .gte('created_at', startOfDay)
             .order('created_at', { ascending: false }),
@@ -220,7 +212,6 @@ export async function fetchTodayData(): Promise<TodayData> {
         newsletters: (newsletters || []) as NewsletterSnapshot[],
         trades: (trades || []) as (Trade & { portfolios: { owner_id: string } })[],
         decisions: (decisions || []) as Decision[],
-        logs: (logs || []) as LLMReasoningLog[],
         memories: (memories || []) as Memory[],
         priceUpdates: (priceUpdates || []) as MarketDataCache[],
         futureEvents: (futureEvents || []) as Memory[],

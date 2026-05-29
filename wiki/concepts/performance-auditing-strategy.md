@@ -113,6 +113,7 @@ Hydration failures occur when the initial HTML rendered on the server differs fr
 Initial server response times depend directly on the database queries executed during the loading stage.
 *   **Rolling Lookback Filters**: When querying massive chronological data tables (such as `price_history` for rolling calculations), always enforce a strict lookback date range filter at the database layer (e.g., `.gte('fetched_at', lookbackDate.toISOString())` restricted to the last 45 days). Never fetch the entire historical database table only to filter rows in memory.
 *   **Segmented Parallel Queries to Avoid Truncation**: PostgREST/Supabase enforces a default maximum result limit of `1,000` rows. A single combined `.in()` query across many tickers over a long historical range can easily hit this threshold, resulting in truncated data and incorrect downstream calculations. Instead, execute segmented per-ticker queries in parallel (e.g., via `Promise.all` with a `.limit(N)` constraint). This guarantees untruncated chronological history for every ticker while reducing the overall row density fetched over the network, drastically slashing TTFB and database overhead.
+*   **Excising Unused High-Volume Queries**: Avoid loading high-volume or heavy tables (such as raw `llm_reasoning_logs` conversation trees containing massive text columns) in primary landing page queries if they are only rendered on secondary pages. Removing unused table loads cuts database scan times by hundreds of milliseconds and completely eliminates high-volume network overhead.
 
 ---
 
@@ -137,6 +138,28 @@ If a deploy check fails because of a score drop:
    - Dynamic imports / code splitting failures (overly large chunk sizes).
    - Missing Alt attributes or aria-labels (accessibility drops).
    - Core Web Vitals issues such as Cumulative Layout Shifts (`CLS`) or Largest Contentful Paint (`LCP`) regressions.
+
+### TDD Zero-Load Regression Testing
+To guarantee that high-volume tables (e.g., raw reasoning conversation logs) are never fetched on performance-critical pages (like the homepage loader) and prevent performance regressions during future refactors, write a module-level mock unit test that asserts:
+1.  The specific heavy table is **never queried** by the Supabase client (e.g., spy on the client `.from` call and assert `not.toHaveBeenCalledWith('heavy_table')`).
+2.  The returned payload does **not contain** the heavy data keys.
+
+Example test block (as implemented in `fetch-today-data.test.ts`):
+```typescript
+describe('fetchTodayData zero-load TDD checks', () => {
+    it('does not load reasoning logs and does not return them', async () => {
+        const fromSpy = vi.fn().mockImplementation(() => ({
+            select: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [] })),
+            // ...
+        }));
+        mockSupabaseClient = { from: fromSpy };
+        const result = await fetchTodayData();
+        expect(fromSpy).not.toHaveBeenCalledWith('llm_reasoning_logs');
+        expect(result).not.toHaveProperty('logs');
+    });
+});
+```
 
 ### Bypassing in Emergencies
 If a deployment is absolutely critical and blocked by a minor score variance or an external API delay, you can disable the build plugin checks temporarily by modifying `netlify.toml` directly or setting a custom Netlify environment variable, though this should be avoided to preserve main-branch stability.

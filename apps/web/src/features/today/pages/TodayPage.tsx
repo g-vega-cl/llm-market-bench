@@ -26,6 +26,7 @@ interface TodayData {
     futureEvents: Memory[];
     marketFeeling: MarketFeeling | null;
     macroStats: MacroStat[];
+    serverTime?: string;
 }
 
 interface TodayPageProps {

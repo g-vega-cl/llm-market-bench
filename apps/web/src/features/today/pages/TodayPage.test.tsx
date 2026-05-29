@@ -38,6 +38,7 @@ const emptyTodayData = {
         model_used: 'Gemini 3.5 Flash',
     },
     macroStats: [],
+    serverTime: '2026-05-29T18:45:00Z',
 } as unknown as TodayData;
 
 describe('TodayPage UI stability & TDD performance checks', () => {

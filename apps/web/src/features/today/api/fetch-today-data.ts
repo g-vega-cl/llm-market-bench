@@ -21,6 +21,7 @@ export interface TodayData {
     futureEvents: Memory[];
     marketFeeling: MarketFeeling | null;
     macroStats: MacroStat[];
+    serverTime?: string;
 }
 
 interface PriceHistoryItem {
@@ -148,7 +149,7 @@ export async function fetchTodayData(): Promise<TodayData> {
         { data: futureEvents },
         { data: marketFeeling },
         { data: cacheRows },
-        { data: historyRows },
+        historyResults,
     ] = await Promise.all([
         supabase
             .from('newsletter_snapshots')
@@ -195,14 +196,22 @@ export async function fetchTodayData(): Promise<TodayData> {
             .limit(1),
         // Fetch all macro quotes
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-        // Fetch historical data for all macro tickers (ordered newest-to-oldest)
-        supabase
-            .from('price_history')
-            .select('ticker, price, fetched_at')
-            .in('ticker', MACRO_TICKERS_LIST)
-            .gte('fetched_at', historyLimitDateStr)
-            .order('fetched_at', { ascending: false }),
+        // Fetch historical data for each macro ticker in parallel (limited to 45 rows per ticker)
+        // to avoid Supabase's 1000-row limit truncation and reduce payload size.
+        Promise.all(
+            MACRO_TICKERS_LIST.map((ticker) =>
+                supabase
+                    .from('price_history')
+                    .select('ticker, price, fetched_at')
+                    .eq('ticker', ticker)
+                    .gte('fetched_at', historyLimitDateStr)
+                    .order('fetched_at', { ascending: false })
+                    .limit(45),
+            ),
+        ),
     ]);
+
+    const historyRows = historyResults.flatMap((res) => res.data || []);
 
     // Process and calculate macro statistics
     const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);
@@ -217,5 +226,6 @@ export async function fetchTodayData(): Promise<TodayData> {
         futureEvents: (futureEvents || []) as Memory[],
         marketFeeling: (marketFeeling?.[0] || null) as MarketFeeling | null,
         macroStats,
+        serverTime: now.toISOString(),
     };
 }

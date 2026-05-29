@@ -17,6 +17,7 @@ interface MarketStatusHeroProps {
         futureEvents?: Record<string, unknown>[];
         newsletters?: NewsletterSnapshot[];
         marketFeeling?: MarketFeeling | null;
+        serverTime?: string;
     };
 }
 
@@ -52,7 +53,8 @@ function getConfidenceColorScheme(
 }
 
 export function MarketStatusHero({ data }: MarketStatusHeroProps) {
-    const now = new Date();
+    // Use serverTime if available to ensure server/client hydration symmetry and prevent error #418
+    const now = data.serverTime ? new Date(data.serverTime) : new Date();
     const currentHour = now.getUTCHours();
     const currentMinutes = now.getUTCMinutes();
     const dayOfWeek = now.getUTCDay();

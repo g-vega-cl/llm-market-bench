@@ -93,6 +93,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar?
 - [ ] - Benchify: audit the ad stripping llm
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
-- [ ] - Benchify: portfolio. I don't like that the individual portfolio view goes over device width.
+- [ ] - Benchify: portfolio. I don't like that the individual portfolio view goes over device width in mobile
 - [ ] - Benchify: show badge that minimax portfolio doesn't use verifier
 - [ ] - Benchify: use unlightouse to audit our whole site and fix

@@ -150,7 +150,7 @@ class MiniMaxClient:
             content = "\n".join(lines[1:-1])  # Remove first (```json) and last (```) lines
 
         try:
-            parsed = json.loads(content)
+            parsed = json.loads(content, strict=False)
             return parsed
         except json.JSONDecodeError as e:
             logger.error("Failed to parse JSON from MiniMax response: %s\nContent: %s", e, content[:500])

@@ -219,4 +219,12 @@ Aligned the meta-researcher's system instructions and the web application interf
 - **Web UI Breakdown**: Enhanced `ScoreBreakdown.tsx` to fetch the `do_nothing_return_pct` metric and render the complete `((Portfolio% - SPY%) + (Portfolio% - Do-Nothing%))` sub-label under Excess Return, correcting the visual discrepancy.
 - **TDD Regression Tests**: Updated Vitest test suites `ScoreCalculation.test.tsx` and `ScoreBreakdown.test.tsx` to assert correct dual-benchmark notations.
 
+## [2026-05-29] fix | Robust MiniMax JSON Parsing Resiliency
+
+Resolved a critical issue where the MiniMax Simple Portfolio failed to make trades due to JSON parsing crashes (`JSONDecodeError`) when parsing raw unescaped newlines and carriage returns:
+- **Resilient JSON Parsing**: Configured all key `json.loads` entry points for MiniMax LLM outputs in `apps/engine/core/llm/analysis.py` (`_try_parse_decisions_response`, `_analyze_with_minimax`) and `apps/engine/core/llm/minimax.py` (`chat_with_json_response`) to use the `strict=False` parameter. This allows Python's native decoder to accept raw control characters (including literal line breaks) inside JSON string values, completely eliminating parser crashes on rich LLM reasoning fields.
+- **Escape Alignment Repair**: Refactored the `_repair_json_string` unescaping logic inside the double-escaped block to correctly unescape `\\\\n` to `\\n` (replacing four backslashes with two backslashes in Python literal representations) instead of raw newlines. This guarantees that double-escaped payloads are repaired into valid single-escaped JSON structures containing proper escaped newline sequences (`\n` in JSON), rather than invalid raw line breaks or extra backslashes that crash standard decoders.
+- **TDD Verification**: Implemented two comprehensive TDD unit tests (`test_try_parse_json_string_with_raw_newlines` and `test_try_parse_double_escaped_json_string_with_newlines`) in `apps/engine/tests/test_minimax_repair_bug.py`. Verified 100% test success and perfect coverage alignment.
+- **Wiki Documentation**: Updated the canonical [[concepts/minimax-portfolio]] concept page to reflect robust control character decoding and unescaping alignments.
+
 

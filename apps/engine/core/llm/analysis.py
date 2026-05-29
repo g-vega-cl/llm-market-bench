@@ -102,7 +102,7 @@ def _repair_json_string(json_str: str) -> str:
 
         if json_str.startswith('"') and json_str.endswith('"'):
             json_str = json_str[1:-1]
-            json_str = json_str.replace('\\"', '"').replace("\\n", "\n").replace("\\r", "\r")
+            json_str = json_str.replace('\\"', '"').replace("\\\\n", "\\n").replace("\\\\r", "\\r")
 
         # Always trim trailing text after JSON object/array
         if json_str.startswith("{"):
@@ -152,7 +152,7 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
             repaired = _repair_json_string(data["decisions"])
             try:
                 data_copy = dict(data)
-                data_copy["decisions"] = json.loads(repaired)
+                data_copy["decisions"] = json.loads(repaired, strict=False)
                 strategies.append(lambda d, dc=data_copy: DecisionsResponse(**dc))
             except Exception:
                 pass
@@ -161,7 +161,7 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
             repaired = _repair_json_string(data["macro_events"])
             try:
                 data_copy = dict(data)
-                data_copy["macro_events"] = json.loads(repaired)
+                data_copy["macro_events"] = json.loads(repaired, strict=False)
                 strategies.append(lambda d, dc=data_copy: DecisionsResponse(**dc))
             except Exception:
                 pass
@@ -173,7 +173,7 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
         strategies.append(lambda d, r=repaired: DecisionsResponse.model_validate_json(r))
 
         try:
-            parsed = json.loads(repaired)
+            parsed = json.loads(repaired, strict=False)
             strategies.append(
                 lambda d, p=parsed: (
                     DecisionsResponse.model_validate_json(p) if isinstance(p, str) else DecisionsResponse(**p)
@@ -338,7 +338,7 @@ async def _analyze_with_minimax(
 
     # Parse the content
     try:
-        raw = _json.loads(content)
+        raw = _json.loads(content, strict=False)
     except _json.JSONDecodeError:
         logger.warning(
             "[minimax/%s] JSON decode failed — returning empty response. Content snippet: %.200s",

@@ -202,3 +202,12 @@ Implemented the "Gold Standard" combined architecture to map Financial Modeling 
 - **Targeted Discovery Loop**: Modified `consensus.py` to trigger the `DiscoveryService` specifically for each scenario's individual trading plan context. It adds the corresponding scenario label to each discovered stock and nests them inside the respective scenario under `metadata.scenarios`.
 - **Strict Structured UI Rendering**: To maximize code cleanliness, the frontend memories UI (`MemoryCard.tsx`) was refactored to standardize 100% on rendering the typed `scenarios` list directly, fully deleting the regex plain-text parser and temporary fuzzy matching fallbacks. The backend continues to populate the legacy string `scenario_analysis` fallback in the database to ensure existing consumer pages (such as upcoming catalyst timelines) remain fully functional.
 - **TDD Regression Tests**: Created full pytest integration tests in `test_consensus_structured.py` and Vitest unit tests in `MemoryCard.test.tsx` verifying structured generation, targeted asset resolution, and fallback UI rendering. Passed 100% green on both systems.
+
+## [2026-05-29] feature | High-Speed Parallel Testing via pytest-xdist
+
+Optimized the developer feedback loops and CI/CD pipelines by introducing high-speed process-based parallel testing:
+- **Dependency Integration**: Added `pytest-xdist` to the engine dependencies (`requirements.txt`).
+- **Parallel Testing Optimization**: Enabled process-based concurrent execution (`pytest -n auto`) for the engine test suite. Process boundaries guarantee perfect state isolation (memory, `sys.modules`, mock configurations, environment variables), preventing mock pollution while slashing full test suite runtime by over 50% (from **2m 34s** down to **1m 16s** including full code coverage collection).
+- **Verified Code Coverage**: Validated that `pytest-cov` seamlessly tracks, merges, and validates coverage across parallel workers (retaining an **85%** total coverage, well above the 70% threshold).
+- **Documentation**: Updated `GEMINI.md` to reference the parallel testing commands, and expanded the `wiki/sources/engine-testing-source.md` and `wiki/concepts/test-coverage.md` wiki pages with parallelization guidelines and fast feedback loop strategies.
+

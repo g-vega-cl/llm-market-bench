@@ -4,7 +4,8 @@
 
 ## Commands
 
-- Test engine: `./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc`
+- Test engine (parallel, fast): `./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc`
+- Test engine (sequential): `./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc`
 - Lint engine: `./apps/engine/.venv/bin/ruff check apps/engine/`
 - Format engine: `./apps/engine/.venv/bin/python3 -m ruff format apps/engine/`
 - Lint web: `pnpm biome check`

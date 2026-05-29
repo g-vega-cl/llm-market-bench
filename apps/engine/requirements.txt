@@ -6,6 +6,7 @@ supabase~=2.27.0
 pytest
 pytest-asyncio
 pytest-cov
+pytest-xdist
 instructor>=1.13.0
 openai
 anthropic

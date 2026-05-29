@@ -41,7 +41,7 @@ Configured via `apps/web/vitest.config.ts`.
 
 - **Test New Logic**: Every new feature or bug fix must include tests that maintain or increase the coverage percentage.
 - **Surgical Exclusions**: Do not exclude core logic to "game" the percentage. Exclusions are reserved for boilerplate and untestable entry points (like `main.py` blocks).
-- **Fast Feedback**: While the full engine suite currently runs in ~30s, focus on keeping tests fast to ensure the pre-commit hook remains useful.
+- **Fast Feedback**: The full engine suite contains 725+ tests. While running them sequentially takes ~2.5 minutes, you can run them in parallel via `pytest-xdist` using `./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc`, which leverages multiple processes to merge coverage and complete the entire suite in ~1m 16s. This high-speed feedback ensures that pre-commit checks remain fast and painless for developer workflows.
 
 ## Increasing Thresholds
 

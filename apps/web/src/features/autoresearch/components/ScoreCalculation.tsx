@@ -17,7 +17,8 @@ export function ScoreCalculation() {
                     Risk-Adjusted Score Formula
                 </div>
                 <div className="text-2xl md:text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-100 text-center leading-relaxed">
-                    (Portfolio% - SPY%) - Opportunity Cost% - (Max Drawdown% × 0.3)
+                    (Portfolio% - SPY%) + (Portfolio% - Do-Nothing%) - Opportunity Cost% - (Max
+                    Drawdown% × 0.3)
                 </div>
             </div>
 
@@ -25,8 +26,10 @@ export function ScoreCalculation() {
                 <div className="space-y-2">
                     <SubHeading>Excess Return</SubHeading>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                        The primary goal: outperform the S&P 500 benchmark. We calculate the
-                        percentage return of the experiment group minus SPY.
+                        The primary goal: outperform the S&P 500 benchmark and a "Do-Nothing"
+                        alternative (holding inherited positions). We calculate the sum of excess
+                        returns over SPY and Do-Nothing to isolate active trading value-add without
+                        the drag of the previous week.
                     </p>
                 </div>
                 <div className="space-y-2">

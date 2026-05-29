@@ -211,3 +211,12 @@ Optimized the developer feedback loops and CI/CD pipelines by introducing high-s
 - **Verified Code Coverage**: Validated that `pytest-cov` seamlessly tracks, merges, and validates coverage across parallel workers (retaining an **85%** total coverage, well above the 70% threshold).
 - **Documentation**: Updated `GEMINI.md` to reference the parallel testing commands, and expanded the `wiki/sources/engine-testing-source.md` and `wiki/concepts/test-coverage.md` wiki pages with parallelization guidelines and fast feedback loop strategies.
 
+## [2026-05-29] feature | Do-Nothing Score Formula Presentation and Instruction Alignment
+
+Aligned the meta-researcher's system instructions and the web application interface with the correct dual-benchmark score formula (`(Portfolio% - SPY%) + (Portfolio% - Do-Nothing%) - Opportunity Cost% - (Max Drawdown% * 0.3)`):
+- **LLM Instructions**: Corrected `program.md` (loaded as the system prompt for the prompt-improvement loop) to utilize the full formula, detailing the Do-Nothing benchmark comparison and Treasury Bond yield opportunity cost penalty.
+- **Web UI Formula**: Corrected `ScoreCalculation.tsx` to display the exact formula mathematically and updated the Excess Return grid column description.
+- **Web UI Breakdown**: Enhanced `ScoreBreakdown.tsx` to fetch the `do_nothing_return_pct` metric and render the complete `((Portfolio% - SPY%) + (Portfolio% - Do-Nothing%))` sub-label under Excess Return, correcting the visual discrepancy.
+- **TDD Regression Tests**: Updated Vitest test suites `ScoreCalculation.test.tsx` and `ScoreBreakdown.test.tsx` to assert correct dual-benchmark notations.
+
+

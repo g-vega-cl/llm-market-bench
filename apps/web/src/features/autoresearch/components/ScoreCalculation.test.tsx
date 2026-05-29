@@ -6,6 +6,7 @@ describe('ScoreCalculation', () => {
     it('renders the formula correctly', () => {
         render(<ScoreCalculation />);
         expect(screen.getByText(/Portfolio% - SPY%/i)).toBeInTheDocument();
+        expect(screen.getByText(/Portfolio% - Do-Nothing%/i)).toBeInTheDocument();
         expect(screen.getByText(/Opportunity Cost%/i)).toBeInTheDocument();
         expect(screen.getByText(/Max Drawdown% × 0.3/i)).toBeInTheDocument();
     });

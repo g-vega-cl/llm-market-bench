@@ -9,11 +9,12 @@ describe('ScoreBreakdown', () => {
             metrics: {
                 portfolio_return_pct: 5.5,
                 spy_return_pct: 2.0,
-                excess_return: 3.5,
+                do_nothing_return_pct: 4.0,
+                excess_return: 5.0,
                 opportunity_cost_penalty: 0,
                 max_drawdown: 10,
                 drawdown_penalty: 3.0,
-                score: 0.5,
+                score: 2.0,
             },
         } as unknown as PromptExperiment;
 
@@ -23,12 +24,12 @@ describe('ScoreBreakdown', () => {
         expect(screen.getByText('Score Breakdown')).toBeInTheDocument();
 
         // Check if values are correctly rendered
-        expect(screen.getByText('(5.50% - 2.00%)')).toBeInTheDocument();
-        expect(screen.getByText('+3.5000')).toBeInTheDocument();
+        expect(screen.getByText('((5.50% - 2.00%) + (5.50% - 4.00%))')).toBeInTheDocument();
+        expect(screen.getByText('+5.0000')).toBeInTheDocument();
         expect(screen.getByText('- 0.0000')).toBeInTheDocument();
         expect(screen.getByText('(10.00% × 0.3)')).toBeInTheDocument();
         expect(screen.getByText('- 3.0000')).toBeInTheDocument();
-        expect(screen.getByText('0.5000')).toBeInTheDocument();
+        expect(screen.getByText('2.0000')).toBeInTheDocument();
     });
 
     it('renders with negative excess return and score', () => {
@@ -36,23 +37,24 @@ describe('ScoreBreakdown', () => {
             metrics: {
                 portfolio_return_pct: -1.0,
                 spy_return_pct: 2.0,
-                excess_return: -3.0,
+                do_nothing_return_pct: -0.5,
+                excess_return: -3.5,
                 opportunity_cost_penalty: 5.5,
                 max_drawdown: 5,
                 drawdown_penalty: 1.5,
-                score: -10.0,
+                score: -10.5,
             },
         } as unknown as PromptExperiment;
 
         render(<ScoreBreakdown experiment={mockExperiment} />);
 
         // Check if values are correctly rendered for negatives
-        expect(screen.getByText('(-1.00% - 2.00%)')).toBeInTheDocument();
-        expect(screen.getByText('-3.0000')).toBeInTheDocument();
+        expect(screen.getByText('((-1.00% - 2.00%) + (-1.00% - -0.50%))')).toBeInTheDocument();
+        expect(screen.getByText('-3.5000')).toBeInTheDocument();
         expect(screen.getByText('- 5.5000')).toBeInTheDocument();
         expect(screen.getByText('(5.00% × 0.3)')).toBeInTheDocument();
         expect(screen.getByText('- 1.5000')).toBeInTheDocument();
-        expect(screen.getByText('-10.0000')).toBeInTheDocument();
+        expect(screen.getByText('-10.5000')).toBeInTheDocument();
     });
 
     it('handles empty or missing metrics', () => {

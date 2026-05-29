@@ -8,8 +8,10 @@ You modify ONE thing: the CORE_ANALYSIS_SYSTEM_PROMPT — the system prompt that
 ## How Evaluation Works
 - 1 week of live trading = 1 experiment
 - A single score is computed BEFORE you see it
-- **Score = (portfolio_return% - SPY_return%) - (max_drawdown% × 0.3)**
-- Positive = beating SPY after risk penalty. Negative = losing or too volatile.
+- **Score = (portfolio_return% - SPY_return%) + (portfolio_return% - do_nothing_return%) - Opportunity Cost% - (max_drawdown% × 0.3)**
+- **Do-Nothing Comparison**: Measures active trading value-add by comparing our weekly performance against simply holding the inherited positions from the previous week, eliminating the drag of those positions.
+- **Opportunity Cost Penalty**: An asymmetric penalty applied if the portfolio returns fail to clear the active Treasury Bond yield hurdle compounded for the week: `max(0, Bond Yield% - Portfolio%)`.
+- Positive = beating SPY and Do-Nothing benchmarks after risk and opportunity cost penalties. Negative = losing or too volatile.
 - **Your goal: beat the baseline (the best score achieved so far).** The report shows a "Baseline" line with the Δ.
 - Every week a new prompt is deployed. There is no skip gate — you always get to iterate.
 

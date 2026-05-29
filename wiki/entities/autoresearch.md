@@ -82,6 +82,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-05-29**: **Do-Nothing Formula Presentation & Instruction Alignment** — Aligned the meta-researcher's system instructions (`program.md`), the scoring methodology UI (`ScoreCalculation.tsx`), and the visual score breakdown UI (`ScoreBreakdown.tsx`) to represent the correct dual-benchmark score formula including both `SPY` and `Do-Nothing` portfolio return comparisons.
 - **2026-05-25**: **Metrics & Baseline Ratchet Alignment** — Refactored the runner to update performance metrics directly on the active prompt row that actually ran, while initializing the newly generated active prompt with empty/N/A metrics and advancing its week dates by 7 days for the upcoming trading week.
 - **2026-05-24**: **Volatility & Score Breakdown UI** — Added `volatility` (annualized standard deviation) metric computation in the engine. Built a new Score Breakdown UI component to visually explain the arithmetic of the risk-adjusted scoring formula on the web app's experiment details screen.
 - **2026-05-24**: **Resilience & Execution Alignment** — Documented multi-agent system overview and verified overall pipeline integrity, ensuring zero-warning enforcement and clean wiki links.

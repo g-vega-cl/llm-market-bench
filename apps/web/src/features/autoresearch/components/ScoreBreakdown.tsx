@@ -25,6 +25,7 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
 
     const portfolioReturn = metrics.portfolio_return_pct ?? 0;
     const spyReturn = metrics.spy_return_pct ?? 0;
+    const doNothingReturn = metrics.do_nothing_return_pct ?? 0;
     const excessReturn = metrics.excess_return ?? 0;
     const opportunityCost = metrics.opportunity_cost_penalty ?? 0;
     const maxDrawdown = metrics.max_drawdown ?? 0;
@@ -47,7 +48,8 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                         <div className="flex items-center space-x-2">
                             <span>Excess Return</span>
                             <span className="text-xs text-zinc-400">
-                                ({portfolioReturn.toFixed(2)}% - {spyReturn.toFixed(2)}%)
+                                (({portfolioReturn.toFixed(2)}% - {spyReturn.toFixed(2)}%) + (
+                                {portfolioReturn.toFixed(2)}% - {doNothingReturn.toFixed(2)}%))
                             </span>
                         </div>
                         <span className={excessReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}>

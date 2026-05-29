@@ -132,6 +132,11 @@ export async function fetchTodayData(): Promise<TodayData> {
 
     const startOfDay = `${estDateStr}T00:00:00`;
 
+    // 45 days ago lookback for historical volatility calculations
+    const historyLimitDate = new Date();
+    historyLimitDate.setDate(historyLimitDate.getDate() - 45);
+    const historyLimitDateStr = historyLimitDate.toISOString();
+
     // Fetch core dashboard data in parallel where possible to maximize performance
     const [
         { data: newsletters },
@@ -195,6 +200,7 @@ export async function fetchTodayData(): Promise<TodayData> {
             .from('price_history')
             .select('ticker, price, fetched_at')
             .in('ticker', MACRO_TICKERS_LIST)
+            .gte('fetched_at', historyLimitDateStr)
             .order('fetched_at', { ascending: false }),
     ]);
 

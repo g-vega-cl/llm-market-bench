@@ -240,12 +240,13 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest tabular-nums">
                                                     {item.timestamp
-                                                        ? new Date(
+                                                        ? `${new Date(
                                                               item.timestamp,
-                                                          ).toLocaleTimeString([], {
+                                                          ).toLocaleTimeString('en-US', {
+                                                              timeZone: 'America/New_York',
                                                               hour: '2-digit',
                                                               minute: '2-digit',
-                                                          })
+                                                          })} ET`
                                                         : 'Pending'}
                                                 </span>
                                                 <div
@@ -278,7 +279,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                 }`}
                                             >
                                                 {item.type === 'TRADE'
-                                                    ? `${item.quantity?.toLocaleString() || 'N/A'} shares • $${Number(item.price).toFixed(2)}`
+                                                    ? `${item.quantity?.toLocaleString('en-US') || 'N/A'} shares • $${Number(item.price).toFixed(2)}`
                                                     : (item.status || '').replace(/_/g, ' ')}
                                             </p>
                                             {item.type === 'TRADE' && item.portfolios?.owner_id && (
@@ -329,7 +330,10 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 <MetricTile
                                                     label="Quantity"
-                                                    value={item.quantity?.toLocaleString() || 'N/A'}
+                                                    value={
+                                                        item.quantity?.toLocaleString('en-US') ||
+                                                        'N/A'
+                                                    }
                                                     icon="📊"
                                                 />
                                                 <MetricTile
@@ -339,7 +343,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                 />
                                                 <MetricTile
                                                     label="Total Value"
-                                                    value={`$${((item.quantity || 0) * Number(item.price)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                                                    value={`$${((item.quantity || 0) * Number(item.price)).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
                                                     icon="💵"
                                                 />
                                                 {item.confidence && (

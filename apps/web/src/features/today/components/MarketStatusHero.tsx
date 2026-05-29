@@ -20,18 +20,15 @@ interface MarketStatusHeroProps {
     };
 }
 
-function formatTimeAgo(dateStr: string | null | undefined): string {
+function formatEasternTime(dateStr: string | null | undefined): string {
     if (!dateStr) return 'Unknown';
     const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+    return `${timeStr} ET`;
 }
 
 function getDirectionColor(direction: string | null | undefined): string {
@@ -102,6 +99,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         </h1>
                         <Badge variant="outline" colorScheme="neutral">
                             {now.toLocaleDateString('en-US', {
+                                timeZone: 'America/New_York',
                                 weekday: 'long',
                                 month: 'long',
                                 day: 'numeric',
@@ -262,7 +260,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
                             <span className="text-[10px] text-electric-blue-300">
                                 {marketFeeling?.created_at
-                                    ? `Last analyzed: ${formatTimeAgo(marketFeeling.created_at)}`
+                                    ? `Last analyzed: ${formatEasternTime(marketFeeling.created_at)}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (

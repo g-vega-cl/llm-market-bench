@@ -8,8 +8,6 @@
  * @llm-market-bench/ui-design-system/src/theme/globals.css for reference.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
-
 @import "tailwindcss";
 
 @theme inline {

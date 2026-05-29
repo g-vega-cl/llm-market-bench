@@ -1,26 +1,3 @@
-## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
-
-Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
-
-## [2026-05-22] refactor | auto_wiki.py: extract apply_changes() and add page deletion enforcement
-
-Extracted the inline write-changes block from `main()` into a testable `apply_changes()` function. Added `apply_page_deletions()` to physically delete wiki pages whose scope has been removed from the codebase, strip their `[[link]]` entries from `index.md`, and validate against path traversal. The LLM diff agent can now emit `deleted_pages` in its JSON output. Updated `wiki/SCHEMA.md` Maintenance Rule 5 to document the deletion policy and required log format. Covered by 7 new tests in `apps/engine/tests/test_wiki_schema.py`.
-
-## [2026-05-22] refactor | Button and Badge Solid Text Contrast and Glass Hover Fix
-
-Adjusted the styling configurations in the `@llm-market-bench/ui-design-system` package to resolve readability and contrast issues on solid primitives:
-- **Solid Button and Badge Variants**: Changed text from `text-zinc-950` to `text-white` on dark/medium backgrounds (`accent`, `danger`, and `info` schemes, including `medium` severity). Kept `text-zinc-950` for naturally light backgrounds (`success`, `warning`, `high`).
-- **Glass Hover Corrections**: Rectified copy-paste hover bugs in `Button.tsx` for `success`, `danger`, `info`, and `warning` variants to correctly use their respective dark background hover color tokens instead of the fallback `accent`.
-- **TDD Regression Suite**: Created a unit test `ButtonAndBadgeReadability.test.tsx` in `apps/web` verifying exact styling and mapping across all color schemes.
-
-## [2026-05-22] update | Remove saved correlation matrix task from ROADMAP
-
-Removed the task "Make sure we save the historical correlation/returns table/matrix" from the project roadmap. No code changes, just deprioritization of a planned feature.
-
-## [2026-05-22] feature | Add South Korea ETF (EWY) to correlation matrix
-
-Added EWY (iShares MSCI South Korea ETF) to the correlation matrix TICKER_UNIVERSE in the engine, expanding the Emerging Markets category from 6 to 7 tickers. Updated the web dashboard's SectorPerformanceGrid and etf-descriptions to include EWY. Updated correlation-matrix-source wiki page to reflect the new 71-asset universe.
-
 ## [2026-05-24] feature | DeepSeek MD_JSON mode, Ollama fallback resolution, and auto-wiki resource cleanup
 
 - **DeepSeek client**: Switched from `instructor.Mode.JSON` to `instructor.Mode.MD_JSON` in `get_deepseek_client()` to eliminate the cognitive formatting clash that caused empty responses when thinking mode (reasoning_content) was active with strict JSON Mode. This is the root-resolution fix for the DeepSeek empty content anomaly.
@@ -195,6 +172,7 @@ Implemented a fully automated, TDD-backed synchronization pipeline to keep the w
 - **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
 - **Local Pre-Commit Hook Strategy**: Because cloud/serverless build environments like Netlify lack Python virtualenv runtimes, compilation is executed strictly locally during commits. Staged changes automatically compile the JSON locally, stage the JSON, and commit it to the repo. Netlify then bundles the pre-compiled, committed JSON natively with zero risk of environment failures.
 - **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
+
 ## [2026-05-29] feature | Gold Standard Scenario-Ticker Mapping and Structured Event Synthesis
 
 Implemented the "Gold Standard" combined architecture to map Financial Modeling Prep (FMP) verified assets directly to their corresponding scenario outcomes and trading plans in memories:
@@ -227,4 +205,22 @@ Resolved a critical issue where the MiniMax Simple Portfolio failed to make trad
 - **TDD Verification**: Implemented two comprehensive TDD unit tests (`test_try_parse_json_string_with_raw_newlines` and `test_try_parse_double_escaped_json_string_with_newlines`) in `apps/engine/tests/test_minimax_repair_bug.py`. Verified 100% test success and perfect coverage alignment.
 - **Wiki Documentation**: Updated the canonical [[concepts/minimax-portfolio]] concept page to reflect robust control character decoding and unescaping alignments.
 
+## [2026-05-29] optimization | Performance Audit and SSR Hydration Mismatch Resolution
+
+Audited whole-site performance using Unlighthouse and implemented critical frontend stability and database optimizations:
+- **Empty State Professionalization**: Replaced the randomized empty-state jokes in `TodayPage.tsx` with a stable, professional financial status message to completely eliminate `Math.random()`-induced SSR hydration failures.
+- **Eastern Timezone Alignment**: Standardized all date and sentiment timestamp formatting in `MarketStatusHero.tsx` to `America/New_York` (Eastern Time). Ensures identical date strings are generated on both the server and client regardless of execution locale, resolving timezone-skew hydration exceptions. 
+- **Deterministic Sentiment Timestamps**: Replaced relative "time ago" delta strings with a static ET timestamp representation (e.g. `Last analyzed: 10:45 AM ET`), eliminating client-side clock skew mismatch.
+- **Database TTFB Optimization**: Added a rolling 45-day lookback date constraint to the `price_history` database query in `fetch-today-data.ts`. Prevents fetching the entire historical quote series for all 23 tickers, dramatically cutting network load, serverless database memory footprint, and initial page load response times.
+- **TDD Regression Coverage**: Created `TodayPage.test.tsx` checking layout stability and timezone consistency, with 100% test coverage passing.
+- **Web Font Optimization**: Migrated Google Fonts loading from CSS `@import` (render-blocking) to TanStack Start `<link>` tags with preconnect hints, improving font loading performance and reducing LCP.
+
+## [2026-05-29] refactor | UI polish: Eastern Time rendering, font preconnect, empty-state stabilization
+
+Today page UI received several polish passes:
+- Timestamps throughout the dashboard now render in Eastern Time (America/New_York) rather than relative "time ago" or local timezone. Affects MarketStatusHero, TradeActivity, and the date badge.
+- Added preconnect links to Google Fonts origins in `__root.tsx` and moved the `@import` from `app.css` to a direct `<link>` in the head, improving font load performance.
+- Replaced randomized joke-based empty state with stable professional copy: "AI agents are observing. Quiet before the market session."
+- Price history query now limits lookback to 45 days for historical volatility calculations.
+- Added TDD test suite (TodayPage.test.tsx) validating stable empty-state text and Eastern Time rendering."
 

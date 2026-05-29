@@ -87,12 +87,13 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 </div>
                                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                     {m.created_at
-                                        ? new Date(m.created_at).toLocaleDateString('en-US', {
+                                        ? `${new Date(m.created_at).toLocaleDateString('en-US', {
+                                              timeZone: 'America/New_York',
                                               month: 'short',
                                               day: 'numeric',
                                               hour: '2-digit',
                                               minute: '2-digit',
-                                          })
+                                          })} ET`
                                         : 'Pending'}
                                 </span>
                             </div>
@@ -158,6 +159,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                 {m.created_at
                                     ? new Date(m.created_at).toLocaleDateString('en-US', {
+                                          timeZone: 'America/New_York',
                                           month: 'short',
                                           day: 'numeric',
                                       })
@@ -208,6 +210,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                         {m.created_at
                                             ? new Date(m.created_at).toLocaleDateString('en-US', {
+                                                  timeZone: 'America/New_York',
                                                   month: 'short',
                                                   day: 'numeric',
                                               })

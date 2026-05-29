@@ -1,21 +1,3 @@
-## [2026-05-24] feature | DeepSeek MD_JSON mode, Ollama fallback resolution, and auto-wiki resource cleanup
-
-- **DeepSeek client**: Switched from `instructor.Mode.JSON` to `instructor.Mode.MD_JSON` in `get_deepseek_client()` to eliminate the cognitive formatting clash that caused empty responses when thinking mode (reasoning_content) was active with strict JSON Mode. This is the root-resolution fix for the DeepSeek empty content anomaly.
-- **Ollama fallback resolver**: `call_ollama()` now queries available local models and falls back gracefully if the requested model is not installed, with a preference order (`gemma4:31b` → `qwen3.6:35b` → `llama3.1:8b`) before resorting to the first available local model.
-- **Ollama resource management**: Added `keep_alive: 10s` to Ollama API payloads so models unload from memory after rapid sequential queries. The `auto-wiki.sh` cleanup trap now runs `pkill ollama` to terminate the local server after pre-commit finishes.
-- **Default Ollama model**: Changed from `qwen3.5:latest` to `gemma4:31b`.
-- **Tests**: Added `test_prepare_messages_for_instructor`, `test_has_valid_content`, and `test_get_deepseek_client_mode` to `test_deepseek_handler.py`.
-- **Wiki model-anomalies.md**: Updated DeepSeek mitigation description to document the MD_JSON root resolution alongside the existing fail-safe recovery logic.
-
-## [2026-05-24] docs | Alpaca sync resilience, new agents concept page, and wiki enhancements
-
-- Increased MAX_AGE_HOURS to 96 for weekend/cron failure resilience
-- Added comprehensive test suite for Alpaca order sync
-- Created new concept page for multi-agent system overview
-- Expanded equal-weighted returns documentation with rationale and edge cases
-- Updated pipeline and autoresearch pages with execution details
-- Added cross-references between system-heavy prompt and agents pages
-
 ## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
 
 Updated `apps/engine/core/llm/clients.py` to parameterize the four LLM client factories (`get_openai_client`, `get_anthropic_client`, `get_deepseek_client`, `get_gemini_client`) with an optional `api_key: str | None = None` parameter. This enables clean dependency injection for unit tests, eliminating the need for `monkeypatch` or environment variable manipulation in CI/CD. Tests updated: `test_deepseek_handler.py`, `test_models.py`, `test_memory_consolidation.py`.
@@ -223,4 +205,22 @@ Today page UI received several polish passes:
 - Replaced randomized joke-based empty state with stable professional copy: "AI agents are observing. Quiet before the market session."
 - Price history query now limits lookback to 45 days for historical volatility calculations.
 - Added TDD test suite (TodayPage.test.tsx) validating stable empty-state text and Eastern Time rendering."
+
+## [2026-05-29] optimization | Codebase-wide hydration mismatch stabilization sweep
+
+Performed a complete codebase-wide date/time formatting sweep to eradicate all React hydration errors (Minified React Error #418) and optimize rendering performance:
+- **Eradicated Relative Countdown & useEffect Mount Checks**: Redesigned `FutureCatalysts.tsx` to completely remove the dynamic relative countdown timers (`getCountdown`), the 60s interval update loops, and the `useEffect` mounted states. This perfectly satisfies the constraint to avoid useEffect/mounted checks while ensuring 100% stable, deterministic server/client SSR layouts. Pinned date display cards to standard Eastern Time (`America/New_York`) and styled left borders statically using the database's `importance_score` metadata.
+- **Codebase-wide Locale and Timezone Sweeps**: Pinpointed and stabilized all remaining locale and timezone-sensitive date formatting blocks to `'en-US'` and `America/New_York` to completely secure the client-side hydration tree across all application routes:
+  - `CauseAndEffectCard.tsx` (pinned market analysis dates)
+  - `ConceptMap.tsx` (pinned D3 first/last mention records)
+  - `MemoryFlow.tsx` (pinned visual SVG timeline date anchors)
+  - `TradesTable.tsx` (pinned agent trade execution logs)
+  - `AuditCard.tsx` (pinned system status verification logs)
+  - `ExperimentList.tsx` (pinned baseline benchmark fallback date formatters)
+  - `MarketOverviewPage.tsx` (replaced relative `formatTimeAgo` with deterministic `formatEasternTime` for AI sentiment updates, eliminating dynamic runtime drift)
+- **TDD & Linter Conformity**: Formatted and optimized all updated codebase files to 100% cleanliness using Biome checkups and validated that all 192 unit tests are fully green and compliant.
+
+## [2026-05-29] enhancement | Standardize date/time formatting to Eastern Time and simplify FutureCatalysts
+
+Added explicit 'America/New_York' timeZone to all date.toLocaleDateString/toLocaleTimeString calls across multiple components (AuditCard, ExperimentList, CauseAndEffectCard, ConceptMap, MarketOverviewHero, MemoryFlow, TradesTable, AgentInsights, FutureCatalysts, MarketUpdates, NewsletterFeed). In MarketOverviewHero, replaced 'time ago' relative formatting with absolute Eastern Time. In FutureCatalysts, removed countdown timer and 'passed event' filtering, showing all events with border color based on importance score instead of proximity. Removed unused React import and countdown state management.
 

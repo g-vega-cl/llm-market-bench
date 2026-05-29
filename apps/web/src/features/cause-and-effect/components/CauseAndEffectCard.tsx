@@ -9,7 +9,8 @@ export function CauseAndEffectCard({ entry }: { entry: CauseAndEffectEntry }) {
                 <div className="flex-1 space-y-6">
                     <div className="flex items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-zinc-500">
                         <span>
-                            {new Date(created_at).toLocaleDateString(undefined, {
+                            {new Date(created_at).toLocaleDateString('en-US', {
+                                timeZone: 'America/New_York',
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric',

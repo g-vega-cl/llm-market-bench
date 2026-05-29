@@ -106,21 +106,16 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
         (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
         currentHour < 20;
 
-    const formatTimeAgo = (dateStr: string | null | undefined): string => {
+    const formatEasternTime = (dateStr: string | null | undefined): string => {
         if (!dateStr) return 'Unknown';
         const date = new Date(dateStr);
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return date.toLocaleDateString('en-US', {
+        return `${date.toLocaleDateString('en-US', {
+            timeZone: 'America/New_York',
             month: 'short',
             day: 'numeric',
             hour: 'numeric',
-        });
+            minute: '2-digit',
+        })} ET`;
     };
 
     const getDirectionColor = (direction: string | null | undefined): string => {
@@ -162,6 +157,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         </h1>
                         <Badge variant="outline" colorScheme="neutral">
                             {now.toLocaleDateString('en-US', {
+                                timeZone: 'America/New_York',
                                 weekday: 'long',
                                 month: 'long',
                                 day: 'numeric',
@@ -275,7 +271,7 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
                             <span className="text-[10px] text-electric-blue-300">
                                 {marketFeeling?.created_at
-                                    ? `Last analyzed: ${formatTimeAgo(marketFeeling.created_at)}`
+                                    ? `Last analyzed: ${formatEasternTime(marketFeeling.created_at)}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (

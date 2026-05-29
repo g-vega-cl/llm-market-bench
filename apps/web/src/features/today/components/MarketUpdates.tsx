@@ -96,10 +96,11 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                                 {/* Timestamp */}
                                 <div className="text-[8px] text-zinc-400 font-mono mt-2 flex items-center justify-center gap-1">
                                     <span className="w-1 h-1 bg-zinc-300 rounded-full" />
-                                    {new Date(update.fetched_at).toLocaleTimeString([], {
+                                    {`${new Date(update.fetched_at).toLocaleTimeString('en-US', {
+                                        timeZone: 'America/New_York',
                                         hour: '2-digit',
                                         minute: '2-digit',
-                                    })}
+                                    })} ET`}
                                 </div>
                             </div>
                         </Card>

@@ -44,6 +44,7 @@ function formatStableDate(dateStr: string): string {
     }
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
+        timeZone: 'America/New_York',
         month: 'short',
         day: 'numeric',
         year: 'numeric',

@@ -49,10 +49,11 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                 </div>
                                 <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5 tabular-nums">
                                     <span className="w-2 h-2 bg-electric-blue-400 rounded-full animate-pulse" />
-                                    {new Date(news.date).toLocaleTimeString([], {
+                                    {`${new Date(news.date).toLocaleTimeString('en-US', {
+                                        timeZone: 'America/New_York',
                                         hour: '2-digit',
                                         minute: '2-digit',
-                                    })}
+                                    })} ET`}
                                 </span>
                             </div>
 

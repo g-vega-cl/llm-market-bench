@@ -267,11 +267,18 @@ export function ConceptMap({ data }: { data: Concept[] }) {
                         <div className="text-xs text-gray-400 mt-2">
                             <div>
                                 First seen:{' '}
-                                {new Date(hoveredNode.first_mention_at).toLocaleDateString()}
+                                {new Date(hoveredNode.first_mention_at).toLocaleDateString(
+                                    'en-US',
+                                    {
+                                        timeZone: 'America/New_York',
+                                    },
+                                )}
                             </div>
                             <div>
                                 Last seen:{' '}
-                                {new Date(hoveredNode.last_mention_at).toLocaleDateString()}
+                                {new Date(hoveredNode.last_mention_at).toLocaleDateString('en-US', {
+                                    timeZone: 'America/New_York',
+                                })}
                             </div>
                         </div>
                     </div>

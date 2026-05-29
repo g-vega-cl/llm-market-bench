@@ -190,7 +190,9 @@ export function MemoryFlow({ memories, onSelect }: MemoryFlowProps) {
             .attr('text-anchor', 'end')
             .text((d) => {
                 if (!d.data.created_at) return '';
-                return new Date(d.data.created_at).toLocaleDateString();
+                return new Date(d.data.created_at).toLocaleDateString('en-US', {
+                    timeZone: 'America/New_York',
+                });
             })
             .attr('class', 'text-[10px] font-mono fill-zinc-400 pointer-events-none');
 

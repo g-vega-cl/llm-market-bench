@@ -180,18 +180,19 @@ Return ONLY the structured JSON object with 'decisions' and 'macro_events'."""
 
 
 SYNTHESIS_SYSTEM_PROMPT = (
-    "You are a senior financial analyst. Return structured JSON with name, summary, and any future date.\n\n"
+    "You are a senior financial analyst. Return structured JSON with name, summary, scenarios, and any future date.\n\n"
     "=== YOUR TASK ===\n"
     "1. Create a professional, concise 'name' for this event (max 5 words).\n"
     '   **SPECIFICITY RULE:** If this event involves legislation, regulation, or government policy, the \'name\' MUST include the specific bill, act, or regulation. Never use generic phrases like "Ongoing Legislative Policy Developments", "Government Policy Structural Update", or "Policy Update". If the raw inputs are too vague to name a specific policy, set \'name\' to "VAGUE_GOVERNMENT_EVENT" and the system will reject it.\n'
     "2. Write a 1-sentence 'summary' that captures the core catalyst and market implication.\n"
-    "3. Synthesize the 'scenario_analysis': Provide a unified, structured view of potential resolutions.\n"
+    "3. Synthesize the 'scenarios': Provide a list of potential resolutions.\n"
     '   **CRITICAL: This is the "How to Profit" section.** You must explicitly trace the logic from the event to the profit opportunity (Chains of Events).\n'
-    "   REQUIRED: Include at least TWO distinct outcomes and a 'Trading Plan' for each.\n"
-    "   Each scenario MUST include an estimated probability percentage (XX%) summing to 100%.\n"
-    "   Format (Strictly follow this labeling):\n"
-    "   Scenario A (XX% probability): [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]\n"
-    "   Scenario B (XX% probability): [Outcome] -> Trading Plan (How to Profit): [Specific assets/sectors and WHY]\n"
+    "   REQUIRED: Include at least TWO distinct scenarios in the list.\n"
+    "   Each scenario in the list must be structured as follows:\n"
+    "     - cleanHeader: Concise scenario label (e.g., 'Scenario A: OPEC Cuts Production')\n"
+    "     - percentage: Estimated probability percentage (e.g., '60%'). The total probability of all scenarios must sum to 100%.\n"
+    "     - outcome: Detailed macroeconomic/market outcome description.\n"
+    "     - tradingPlan: Highly specific, actionable trading plan including assets/sectors to buy/sell and WHY.\n"
     "   Focus on material catalysts that justify strategic trade planning.\n"
     "4. Extract any explicitly mentioned future date or timeframe.\n"
     "   - 'future_date': MUST be in ISO 8601 format (YYYY-MM-DD) or null.\n"
@@ -216,7 +217,7 @@ MODEL OBSERVATIONS:
 SCENARIO ANALYSES:
 {combined_scenarios}
 
-Return ONLY a JSON object with 'name', 'summary', 'scenario_analysis', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', 'historical_parallel', and 'importance_score' keys.
+Return ONLY a JSON object with 'name', 'summary', 'scenarios', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', 'historical_parallel', and 'importance_score' keys.
 """
 
 

@@ -88,7 +88,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
 - [ ] - Benchify: add which ticker corresponds to each scenario in memories possible scenarios
 - [ ] - Benchify: historical parallel more details - goes well with LLM chat.
-- [ ] - Benchify: how it works might be outdated
 - [ ] - Benchify: keep and expose my DB locally too? So I can offload data from supabase and use both DBs?
 - [ ] - Weekly audit for ingestion & consensus?
 - [ ] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar?

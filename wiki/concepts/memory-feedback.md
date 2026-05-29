@@ -29,7 +29,16 @@ Periodic retrospective audit that:
 3. Compares scenario analysis against actual price data
 4. Creates a searchable playbook of what narratives actually moved markets
 
+## Structured Scenarios & Ticker Mapping
+
+To make scenario analysis highly actionable, memories support a strict **Gold Standard** structured scenarios schema inside their database `metadata`:
+1. **Pydantic Scenarios List**: Instead of a flat markdown string, the backend Gemini synthesis returns a structured `scenarios` array containing individual scenario objects (`cleanHeader`, `percentage`, `outcome`, `tradingPlan`).
+2. **Targeted Ticker Discovery**: For each synthesized scenario, the consensus engine runs the `DiscoveryService` specifically against that scenario's individual `tradingPlan` context (invoking FMP company screeners and web search). Verified tickers are tagged by scenario and saved directly inside the respective scenario object (`scenarios.assets`).
+3. **Structured UI Rendering**: The frontend memories UI (`MemoryCard.tsx`) bypasses all regex text parsing and fuzzy asset-matching loops, standardizing 100% on rendering this structured typed list. Clicking nested scenario tickers selects and launches the FMP asset details modal.
+4. **Resilient Fallback**: The backend continues to populate a unified flat string `scenario_analysis` fallback in the database to ensure legacy consumer pages (e.g. `FutureCatalysts.tsx` timeline) remain fully operational.
+
 ## Market Feeling
+
 
 After each pipeline run, an LLM generates "How I'm feeling and why" sentiment
 based on the day's trades, lessons, and market events. Displayed on Today

@@ -73,6 +73,12 @@ async def synthesize_event(
             combined_scenarios=combined_scenarios,
         )
 
+        class ScenarioDetail(BaseModel):
+            cleanHeader: str = Field(..., description="The title of the scenario, e.g. 'Scenario A: Cut'")
+            percentage: str | None = Field(None, description="Estimated probability percentage, e.g. '70%'")
+            outcome: str = Field(..., description="Macroeconomic/market outcome description")
+            tradingPlan: str | None = Field(None, description="Trading plan explaining how to profit")
+
         class SynthesisResponse(BaseModel):
             name: str
             summary: str
@@ -81,9 +87,9 @@ async def synthesize_event(
             is_ongoing: bool = False
             is_future_catalyst: bool = False
             historical_parallel: str | None = None
-            scenario_analysis: str | None = Field(
-                None,
-                description="Unified view of material resolutions. REQUIRED: At least two outcomes with estimated probability percentages summing to 100%, AND a 'Trading Plan' for each.",
+            scenarios: list[ScenarioDetail] = Field(
+                default_factory=list,
+                description="List of distinct possible scenarios. REQUIRED: At least two scenarios.",
             )
             importance_score: int = 5
 
@@ -123,6 +129,15 @@ async def synthesize_event(
             },
         )
 
+        # Generate legacy scenario_analysis fallback string
+        fallback_str = None
+        if resp.scenarios:
+            parts = []
+            for s in resp.scenarios:
+                pct = f" ({s.percentage} probability)" if s.percentage else ""
+                parts.append(f"{s.cleanHeader}{pct}: {s.outcome} -> Trading Plan: {s.tradingPlan or 'None'}")
+            fallback_str = " ".join(parts)
+
         return {
             "name": resp.name,
             "summary": resp.summary,
@@ -131,7 +146,8 @@ async def synthesize_event(
             "is_ongoing": resp.is_ongoing,
             "is_future_catalyst": resp.is_future_catalyst,
             "historical_parallel": resp.historical_parallel,
-            "scenario_analysis": resp.scenario_analysis,
+            "scenarios": [s.model_dump() for s in resp.scenarios] if resp.scenarios else [],
+            "scenario_analysis": fallback_str,
             "importance_score": resp.importance_score,
         }
     except Exception as e:
@@ -145,6 +161,7 @@ async def synthesize_event(
             "is_ongoing": False,
             "is_future_catalyst": False,
             "historical_parallel": None,
+            "scenarios": [],
             "scenario_analysis": None,
         }
     finally:

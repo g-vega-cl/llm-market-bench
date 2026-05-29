@@ -35,67 +35,55 @@ function makeMemory(overrides: Partial<Memory['metadata']> = {}): Memory {
     };
 }
 
-describe('MemoryCard scenario percentage badges', () => {
-    it('renders percentage badge for scenario with embedded percentage', () => {
-        render(<MemoryCard memory={makeMemory()} />);
-
-        fireEvent.click(screen.getByText('Show Analysis'));
-
-        expect(screen.getByText('70%')).toBeInTheDocument();
-        expect(screen.getByText('30%')).toBeInTheDocument();
-    });
-
-    it('renders scenario analysis without percentages gracefully', () => {
-        const memory = makeMemory({
-            scenario_analysis:
-                'Scenario A: Market rallies on positive data -> Trading Plan (How to Profit): Buy SPY. Scenario B: Market drops on negative data -> Trading Plan (How to Profit): Buy bonds.',
-        });
-
-        render(<MemoryCard memory={memory} />);
-
-        fireEvent.click(screen.getByText('Show Analysis'));
-
-        expect(screen.getByText('Scenario A:')).toBeInTheDocument();
-        expect(screen.getByText('Scenario B:')).toBeInTheDocument();
-        expect(screen.queryByText(/%/)).not.toBeInTheDocument();
-    });
-
-    it('renders percentage badge when percentage is in parentheses', () => {
-        const memory = makeMemory({
-            scenario_analysis:
-                'Scenario A: (65%) Bullish continuation -> Trading Plan (How to Profit): Buy QQQ.',
-        });
-
-        render(<MemoryCard memory={memory} />);
-
-        fireEvent.click(screen.getByText('Show Analysis'));
-
-        expect(screen.getByText('65%')).toBeInTheDocument();
-    });
-
-    it('renders percentage badge for new format "Scenario A (XX% probability):"', () => {
-        const memory = makeMemory({
-            scenario_analysis:
-                'Scenario A (85% probability): Massive rally -> Trading Plan (How to Profit): Long call options.',
-        });
-
-        render(<MemoryCard memory={memory} />);
-
-        fireEvent.click(screen.getByText('Show Analysis'));
-
-        expect(screen.getByText('85%')).toBeInTheDocument();
-        // The "Scenario A" text should be present without the probability suffix
-        expect(screen.getByText('Scenario A:')).toBeInTheDocument();
-    });
-
-    it('does not show analysis section when no scenario_analysis', () => {
+describe('MemoryCard scenario rendering', () => {
+    it('does not show analysis section when no scenarios', () => {
         const memory = makeMemory();
         if (memory.metadata) {
+            memory.metadata.scenarios = undefined;
             memory.metadata.scenario_analysis = undefined;
         }
 
         render(<MemoryCard memory={memory} />);
 
         expect(screen.queryByText('Show Analysis')).not.toBeInTheDocument();
+    });
+
+    it('renders explicit scenarios with nested tickers from metadata.scenarios', () => {
+        const memory = makeMemory();
+        memory.metadata = {
+            type: 'consensus_event',
+            impact: 'BULLISH',
+            scenarios: [
+                {
+                    cleanHeader: 'Scenario A: Cut',
+                    percentage: '70%',
+                    outcome: 'Rallies as rate cut boosts growth',
+                    tradingPlan: 'Buy SPY and growth stocks',
+                    assets: [
+                        {
+                            ticker: 'SPY',
+                            name: 'SPDR S&P 500 ETF Trust',
+                            reason: 'Broad market ETF',
+                        },
+                    ],
+                },
+                {
+                    cleanHeader: 'Scenario B: Hold',
+                    percentage: '30%',
+                    outcome: 'Stagflation fears cause sell-off',
+                    tradingPlan: 'Buy GLD safe haven',
+                    assets: [{ ticker: 'GLD', name: 'SPDR Gold Shares', reason: 'Gold hedge' }],
+                },
+            ],
+        };
+
+        render(<MemoryCard memory={memory} />);
+
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        expect(screen.getByText('Scenario A: Cut')).toBeInTheDocument();
+        expect(screen.getByText('Scenario B: Hold')).toBeInTheDocument();
+        expect(screen.getByText('$SPY')).toBeInTheDocument();
+        expect(screen.getByText('$GLD')).toBeInTheDocument();
     });
 });

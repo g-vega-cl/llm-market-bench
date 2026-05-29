@@ -46,6 +46,15 @@ To avoid UI inconsistency when parsing varying LLM scenario outputs, all splitti
 - **Splitting & Sanitization**: Uses a pattern-matching regex `/(Scenario [A-Z][^:]*:)/` to segment scenario blocks (even when newlines are missing), trims the trailing `**Investable Assets` block, and extracts probability percentages. Splits outcomes from trading plans using `/Trading Plan.*?:/`.
 - **Unified Adoption**: Standardized across both `MemoryCard` and `FutureCatalysts` to avoid code duplication and guarantee identical parsing behavior.
 
+### Scenario Ticker Mapping (2026-05-29)
+
+To solve the disjoint between memories scenario analysis and thematic stock beneficiaries, a "Gold Standard" mapping pipeline was introduced:
+- **Backend Refactoring**: The Gemini synthesis schema was updated to return a list of structured `scenarios` (cleanHeader, percentage, outcome, tradingPlan) instead of a raw text string.
+- **Targeted Discovery Loop**: `consensus.py` triggers FMP company screening and web searches specifically for each scenario's individual trading plan, nesting verified assets directly under the respective scenario in `metadata.scenarios`.
+- **Strict Structured UI**: To maximize code cleanliness, the memories UI (`MemoryCard.tsx`) was refactored to standardise 100% on the typed `scenarios` list directly, removing all text-regex parsing and fuzzy asset-matching fallbacks in favor of explicit backend mappings. The backend continues to populate the flat string `scenario_analysis` fallback in the database to ensure legacy consumer pages (e.g. `FutureCatalysts.tsx`) remain fully operational.
+
+
+
 ### D3 Chart Data Sanitization (2026-05-20)
 
 To resolve spurious rendering artifacts (such as overlapping vertical lines or rendering anomalies) on the D3 performance comparison timelines, defensive input cleaning and boundary controls were implemented:

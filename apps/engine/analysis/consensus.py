@@ -185,12 +185,58 @@ async def _synthesize_and_promote_group(
     is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
     historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
 
-    # Discover real assets
-    discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
+    # Discover real assets specifically per scenario
+    scenarios_data = []
+    global_discovered_assets = []
+    seen_tickers = set()
+
+    for s in synthesis.get("scenarios", []):
+        header = s.get("cleanHeader", "")
+        outcome = s.get("outcome", "")
+        trading_plan = s.get("tradingPlan", "")
+
+        # Discover assets specifically for this scenario's trading plan!
+        theme = f"{header}: {outcome} -> Trading Plan: {trading_plan}"
+        scenario_assets = await discovery_service.discover_assets(theme)
+
+        # Add scenario tag and unique tickers to the global discovered list
+        for asset in scenario_assets:
+            asset["scenario"] = header
+            ticker = asset["ticker"].upper()
+            if ticker not in seen_tickers:
+                global_discovered_assets.append(asset)
+                seen_tickers.add(ticker)
+
+        scenarios_data.append(
+            {
+                "cleanHeader": header,
+                "percentage": s.get("percentage"),
+                "outcome": outcome,
+                "tradingPlan": trading_plan,
+                "assets": scenario_assets,
+            }
+        )
+
+    # For backward-compatibility fallback if no scenarios were returned by Gemini
+    if not scenarios_data:
+        # Fallback to old global discovery theme
+        global_discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
+
     scenario_analysis = synthesis.get("scenario_analysis") or ""
-    if discovered_assets:
+    # Format a clean string scenario_analysis for backward compatibility if structured scenarios exist
+    if scenarios_data and not scenario_analysis:
+        parts = []
+        for s in scenarios_data:
+            pct = s["percentage"]
+            if pct and "probability" not in pct.lower():
+                pct = f"{pct} probability"
+            pct_str = f" ({pct})" if pct else ""
+            parts.append(f"{s['cleanHeader']}{pct_str}: {s['outcome']} -> Trading Plan: {s['tradingPlan']}")
+        scenario_analysis = " ".join(parts)
+
+    if global_discovered_assets and scenario_analysis:
         asset_links = "\n\n**Investable Assets (via FMP):**\n"
-        for asset in discovered_assets[:5]:
+        for asset in global_discovered_assets[:5]:
             asset_links += f"- ${asset['ticker']} ({asset['name']}): {asset['reason']}\n"
         scenario_analysis += asset_links
 
@@ -207,7 +253,8 @@ async def _synthesize_and_promote_group(
         "future_date": synthesis.get("future_date"),
         "future_date_note": synthesis.get("future_date_note"),
         "scenario_analysis": scenario_analysis.strip() if scenario_analysis else None,
-        "discovered_assets": discovered_assets,
+        "scenarios": scenarios_data,
+        "discovered_assets": global_discovered_assets,
         "importance_score": synthesis.get(
             "importance_score", int(sum(importance_scores) / len(importance_scores)) if importance_scores else 5
         ),

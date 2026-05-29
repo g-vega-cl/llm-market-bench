@@ -21,8 +21,20 @@ const mockMemories: Memory[] = [
         metadata: {
             type: 'consensus_event',
             impact: 'BEARISH',
-            scenario_analysis:
-                'Scenario A: Rates go up -> Trading Plan (How to Profit): Buy bank stocks. Scenario B: Rates go down -> Trading Plan (How to Profit): Buy tech stocks.',
+            scenarios: [
+                {
+                    cleanHeader: 'Scenario A: Rates go up',
+                    percentage: '60%',
+                    outcome: 'Rates go up',
+                    tradingPlan: 'Buy bank stocks.',
+                },
+                {
+                    cleanHeader: 'Scenario B: Rates go down',
+                    percentage: '40%',
+                    outcome: 'Rates go down',
+                    tradingPlan: 'Buy tech stocks.',
+                },
+            ],
         },
         status: 'ACTIVE',
         parent_id: null,

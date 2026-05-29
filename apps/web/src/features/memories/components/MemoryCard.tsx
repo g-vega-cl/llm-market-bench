@@ -1,8 +1,22 @@
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
-import { parseScenarios } from '~/lib/parse-scenario-percentages';
 import { getMemoryCategory, type Memory } from './MemoriesList';
+
+export interface DiscoveredAsset {
+    ticker: string;
+    name: string;
+    reason: string;
+    scenario?: string;
+}
+
+export interface StructuredScenario {
+    cleanHeader: string;
+    percentage: string | null;
+    outcome: string;
+    tradingPlan: string | null;
+    assets?: DiscoveredAsset[];
+}
 
 interface MemoryCardProps {
     memory: Memory;
@@ -29,13 +43,31 @@ const CATEGORY_BADGE_CONFIG: Record<
 
 export function MemoryCard({ memory }: MemoryCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
-    interface DiscoveredAsset {
-        ticker: string;
-        name: string;
-        reason: string;
-    }
-
     const [selectedAsset, setSelectedAsset] = React.useState<DiscoveredAsset | null>(null);
+
+    const scenarios = React.useMemo<StructuredScenario[]>(() => {
+        if (memory.metadata?.scenarios && Array.isArray(memory.metadata.scenarios)) {
+            return memory.metadata.scenarios;
+        }
+        return [];
+    }, [memory.metadata]);
+
+    const remainingAssets = React.useMemo(() => {
+        const allAssets = memory.metadata?.discovered_assets || [];
+        if (scenarios.length === 0) return allAssets;
+
+        const scenarioTickers = new Set<string>();
+        for (const s of scenarios) {
+            if (s.assets) {
+                for (const a of s.assets) {
+                    scenarioTickers.add(a.ticker.toUpperCase());
+                }
+            }
+        }
+        return allAssets.filter(
+            (a: DiscoveredAsset) => !scenarioTickers.has(a.ticker.toUpperCase()),
+        );
+    }, [memory.metadata?.discovered_assets, scenarios]);
 
     const category = getMemoryCategory(memory);
     const badgeConfig = CATEGORY_BADGE_CONFIG[category] || CATEGORY_BADGE_CONFIG.other;
@@ -143,7 +175,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             )}
 
             {/* Scenario Analysis / Profit Section */}
-            {memory.metadata?.scenario_analysis && (
+            {(memory.metadata?.scenario_analysis || scenarios.length > 0) && (
                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <button
                         type="button"
@@ -176,65 +208,87 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             </div>
 
                             <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
-                                {parseScenarios(memory.metadata.scenario_analysis).map(
-                                    (scenario, i) => (
-                                        <div
-                                            key={i}
-                                            className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                {scenario.cleanHeader && (
-                                                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                                        {scenario.cleanHeader}
-                                                    </span>
-                                                )}
-                                                {scenario.percentage && (
-                                                    <Badge
-                                                        size="xs"
-                                                        variant="soft"
-                                                        colorScheme="accent"
-                                                        radius="md"
-                                                        className="tabular-nums"
-                                                    >
-                                                        {scenario.percentage}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            {scenario.outcome && (
-                                                <div className="text-sm leading-relaxed mb-2">
-                                                    {scenario.outcome}
-                                                </div>
+                                {scenarios.map((scenario, i) => (
+                                    <div
+                                        key={i}
+                                        className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                                    >
+                                        <div className="flex items-center gap-2 mb-2">
+                                            {scenario.cleanHeader && (
+                                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                    {scenario.cleanHeader}
+                                                </span>
                                             )}
-                                            {scenario.tradingPlan && (
-                                                <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
-                                                        Trading Plan:
-                                                    </span>
-                                                    <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                                        {scenario.tradingPlan}
-                                                    </p>
-                                                </div>
+                                            {scenario.percentage && (
+                                                <Badge
+                                                    size="xs"
+                                                    variant="soft"
+                                                    colorScheme="accent"
+                                                    radius="md"
+                                                    className="tabular-nums"
+                                                >
+                                                    {scenario.percentage}
+                                                </Badge>
                                             )}
                                         </div>
-                                    ),
-                                )}
+                                        {scenario.outcome && (
+                                            <div className="text-sm leading-relaxed mb-2">
+                                                {scenario.outcome}
+                                            </div>
+                                        )}
+                                        {scenario.tradingPlan && (
+                                            <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
+                                                    Trading Plan:
+                                                </span>
+                                                <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                                    {scenario.tradingPlan}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Actionable Assets nested directly inside the scenario card */}
+                                        {scenario.assets && scenario.assets.length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
+                                                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
+                                                    Actionable Assets:
+                                                </span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {scenario.assets.map((asset, assetIdx) => (
+                                                        <button
+                                                            type="button"
+                                                            key={assetIdx}
+                                                            onClick={() => setSelectedAsset(asset)}
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:scale-105 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
+                                                        >
+                                                            <span>${asset.ticker}</span>
+                                                            <span className="text-[10px] opacity-75 font-normal">
+                                                                ({asset.name})
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
 
-                            {/* Assets Section */}
-                            {(memory.metadata.discovered_assets ||
-                                memory.metadata.scenario_analysis.includes(
+                            {/* Global Assets Section (only for remaining assets not listed inside scenarios) */}
+                            {(remainingAssets.length > 0 ||
+                                memory.metadata?.scenario_analysis?.includes(
                                     'Investable Assets',
                                 )) && (
                                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                                     <div className="flex items-center gap-2 mb-3">
                                         <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
-                                            Investable Assets
+                                            Other Investable Assets
                                         </h5>
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {memory.metadata.discovered_assets ? (
-                                            memory.metadata.discovered_assets
+                                        {remainingAssets.length > 0 ? (
+                                            remainingAssets
                                                 .slice(0, 6)
                                                 .map((asset: DiscoveredAsset, idx: number) => (
                                                     <button

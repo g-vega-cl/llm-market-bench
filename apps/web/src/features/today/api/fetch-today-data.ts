@@ -7,6 +7,7 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
+import { formatEasternDate } from '~/utils/date';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 import { calculateMacroStats, MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
@@ -20,6 +21,9 @@ export interface TodayData {
     marketFeeling: MarketFeeling | null;
     macroStats: MacroStat[];
     serverTime?: string;
+    isMarketOpen: boolean;
+    isSentimentStale: boolean;
+    todayDateString: string;
 }
 
 interface PriceHistoryItem {
@@ -208,6 +212,28 @@ export async function fetchTodayData(): Promise<TodayData> {
     // Process and calculate macro statistics
     const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);
 
+    const currentHour = now.getUTCHours();
+    const currentMinutes = now.getUTCMinutes();
+    const dayOfWeek = now.getUTCDay();
+
+    const isMarketOpen =
+        dayOfWeek >= 1 &&
+        dayOfWeek <= 5 &&
+        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
+        currentHour < 20;
+
+    const marketFeelingObj = (marketFeeling?.[0] || null) as MarketFeeling | null;
+    const isSentimentStale = marketFeelingObj
+        ? (() => {
+              if (!marketFeelingObj.created_at) return true;
+              const created = new Date(marketFeelingObj.created_at);
+              const ageHours = (now.getTime() - created.getTime()) / 3600000;
+              return ageHours > 4;
+          })()
+        : true;
+
+    const todayDateString = formatEasternDate(now);
+
     return {
         newsletters: (newsletters || []) as NewsletterSnapshot[],
         trades: (trades || []) as (Trade & { portfolios: { owner_id: string } })[],
@@ -215,8 +241,11 @@ export async function fetchTodayData(): Promise<TodayData> {
         memories: (memories || []) as Memory[],
         priceUpdates: (priceUpdates || []) as MarketDataCache[],
         futureEvents: (futureEvents || []) as Memory[],
-        marketFeeling: (marketFeeling?.[0] || null) as MarketFeeling | null,
+        marketFeeling: marketFeelingObj,
         macroStats,
         serverTime: now.toISOString(),
+        isMarketOpen,
+        isSentimentStale,
+        todayDateString,
     };
 }

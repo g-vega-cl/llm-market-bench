@@ -1,15 +1,3 @@
-## [2026-05-25] refactor | Auto-Research Metrics Alignment & Baseline Ratchet Refactor
-
-Refactored the Auto-Research engine and web UI to properly align weekly trading metrics with the prompt variant that actually ran, ensuring a clean and logical progression in the history table:
-- **Metrics Alignment**: Realigned `runner.py` to evaluate the completed trading week and update the metrics directly on the **previous active prompt** `P_active` (e.g. baseline `v20260519-221104`).
-- **New Variant Initialization**: The brand-new mutated active prompt (e.g. `v20260524-221848`) is saved with empty/N/A metrics (`{}`) and advanced week start/end dates representing the **upcoming week** (prior week dates + 7 days).
-- **UI Enhancements**: 
-  - Updated `ScoreBreakdown.tsx` to render a premium pending performance state (a clean info card explaining weekly metrics are calculated at week close) when `metrics.score` is `undefined`/`null`, resolving the legacy zero-placeholder display.
-  - Enhanced `ExperimentDetails.tsx` to render `N/A` for metric values when metrics are not present, avoiding `undefined%`.
-  - Stylized `N/A` scores neutrally in `ExperimentList.tsx`.
-- **Database Backfill**: Ran a migration backfilling `v20260519-221104` with its correct metrics (score `-2.8643`, `excess_return = -1.7712`, etc.) and resetting the new active variant to a clean pending state.
-- **Tests**: Mocked database client methods in `test_autoresearch.py` and successfully verified 100% green test passing (43/43 Python pytest, 163/163 TS vitest).
-
 ## [2026-05-25] fix | Resolve memories category filter SQL casting error with ->> operator
 
 Fixed a PostgreSQL casting error (22P02) in the memories category filter by migrating from JSONB object extraction (`->`) to text extraction (`->>`) in Supabase queries. This resolves `invalid input syntax for type json` errors when filtering by `academic_paper`, `post_mortem`, or `lesson_learned` categories. Added comprehensive Vitest test suite for the fetchMemories function. Updated database entity documentation with JSONB querying conventions.
@@ -223,4 +211,8 @@ Added explicit 'America/New_York' timeZone to all date.toLocaleDateString/toLoca
 ## [2026-05-29] refactor | Remove llm_reasoning_logs from Today homepage loader
 
 Removed the `llm_reasoning_logs` query from `fetchTodayData()` in the Today homepage loader. This high-volume table (containing massive text conversation blobs) was being fetched but never rendered on the homepage, wasting ~438ms of database latency and network bandwidth. The `logs` field was removed from the `TodayData` interface, the parallel query was deleted, and the return payload no longer includes it. Added a TDD zero-load regression test (`fetch-today-data.test.ts`) that spies on the Supabase client to assert the heavy table is never queried and the `logs` key is absent from the returned payload.
+
+## [2026-05-30] feature | Centralized Date Utilities & Zero-Date Frontend Architecture
+
+Introduced apps/web/src/utils/date.ts providing normalized Eastern Time formatters to prevent SSR hydration mismatches caused by ICU whitespace differences. All Today page components (AgentInsights, MarketStatusHero, MarketUpdates, NewsletterFeed, TradeActivity) now use these centralized utilities instead of inline date formatting. Server-side fetchTodayData API now pre-computes isMarketOpen, isSentimentStale, and todayDateString, removing temporal logic from the frontend (Zero-Date Frontend Architecture). Updated performance-auditing-strategy concept page with detailed rules on ICU whitespace normalization and zero-date architecture.
 

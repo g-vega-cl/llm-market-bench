@@ -39,6 +39,9 @@ const emptyTodayData = {
     },
     macroStats: [],
     serverTime: '2026-05-29T18:45:00Z',
+    isMarketOpen: true,
+    isSentimentStale: false,
+    todayDateString: 'Friday, May 29, 2026',
 } as unknown as TodayData;
 
 describe('TodayPage UI stability & TDD performance checks', () => {

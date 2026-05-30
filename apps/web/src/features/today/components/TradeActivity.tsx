@@ -1,5 +1,6 @@
 import { Badge, MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
+import { formatEasternShortTime } from '~/utils/date';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface TradeItem {
@@ -240,13 +241,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest tabular-nums">
                                                     {item.timestamp
-                                                        ? `${new Date(
-                                                              item.timestamp,
-                                                          ).toLocaleTimeString('en-US', {
-                                                              timeZone: 'America/New_York',
-                                                              hour: '2-digit',
-                                                              minute: '2-digit',
-                                                          })} ET`
+                                                        ? `${formatEasternShortTime(item.timestamp)} ET`
                                                         : 'Pending'}
                                                 </span>
                                                 <div

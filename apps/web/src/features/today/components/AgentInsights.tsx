@@ -1,5 +1,6 @@
 import type { Memory } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { formatEasternDateTime, formatEasternShortDate } from '~/utils/date';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface AgentInsightsProps {
@@ -86,15 +87,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     )}
                                 </div>
                                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                    {m.created_at
-                                        ? `${new Date(m.created_at).toLocaleDateString('en-US', {
-                                              timeZone: 'America/New_York',
-                                              month: 'short',
-                                              day: 'numeric',
-                                              hour: '2-digit',
-                                              minute: '2-digit',
-                                          })} ET`
-                                        : 'Pending'}
+                                    {m.created_at ? formatEasternDateTime(m.created_at) : 'Pending'}
                                 </span>
                             </div>
 
@@ -157,13 +150,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 </span>
                             </div>
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                {m.created_at
-                                    ? new Date(m.created_at).toLocaleDateString('en-US', {
-                                          timeZone: 'America/New_York',
-                                          month: 'short',
-                                          day: 'numeric',
-                                      })
-                                    : 'Pending'}
+                                {m.created_at ? formatEasternShortDate(m.created_at) : 'Pending'}
                             </span>
                         </div>
                         <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">
@@ -209,11 +196,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     </div>
                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
                                         {m.created_at
-                                            ? new Date(m.created_at).toLocaleDateString('en-US', {
-                                                  timeZone: 'America/New_York',
-                                                  month: 'short',
-                                                  day: 'numeric',
-                                              })
+                                            ? formatEasternShortDate(m.created_at)
                                             : 'Pending'}
                                     </span>
                                 </div>

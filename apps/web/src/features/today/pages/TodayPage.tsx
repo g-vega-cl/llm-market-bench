@@ -27,6 +27,9 @@ interface TodayData {
     marketFeeling: MarketFeeling | null;
     macroStats: MacroStat[];
     serverTime?: string;
+    isMarketOpen: boolean;
+    isSentimentStale: boolean;
+    todayDateString: string;
 }
 
 interface TodayPageProps {

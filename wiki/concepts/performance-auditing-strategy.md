@@ -180,7 +180,28 @@ describe('fetchTodayData zero-load TDD checks', () => {
 });
 ```
 
+### TDD Hydration Regression Testing
+To guarantee that pages render symmetrically between server-side generation (SSR) and client-side hydration without needing heavy E2E tests, write unit tests leveraging our unified hydration test helper:
+
+1. **Test Helper**: [assertHydrationSymmetry](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/test/hydration-test-helper.tsx) simulates the edge SSR step via `ReactDOMServer.renderToString()` and client-side hydration via `hydrateRoot()` in JSDOM. It registers a global event listener to intercept React 19's asynchronous scheduler mismatch exceptions, returning a list of caught errors.
+2. **Regression Suite**: Add test cases to [hydration.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/test/hydration.test.tsx) wrapping your components inside necessary providers (e.g. `QueryClientProvider`).
+3. **Execution**: Runs automatically as part of the `pnpm test` script triggered by Husky before every local git commit.
+
+Example hydration check block:
+```typescript
+import { assertHydrationSymmetry } from '~/test/hydration-test-helper';
+import { MarketStatusHero } from './MarketStatusHero';
+
+describe('MarketStatusHero Hydration Check', () => {
+    it('hydrates flawlessly with symmetric data', () => {
+        const errors = assertHydrationSymmetry(<MarketStatusHero data={mockData} />);
+        expect(errors).toEqual([]);
+    });
+});
+```
+
 ### Bypassing in Emergencies
+
 If a deployment is absolutely critical and blocked by a minor score variance or an external API delay, you can disable the build plugin checks temporarily by modifying `netlify.toml` directly or setting a custom Netlify environment variable, though this should be avoided to preserve main-branch stability.
 
 ## Related

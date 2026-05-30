@@ -1,17 +1,3 @@
-## [2026-05-25] fix | Resolve memories category filter SQL casting error with ->> operator
-
-Fixed a PostgreSQL casting error (22P02) in the memories category filter by migrating from JSONB object extraction (`->`) to text extraction (`->>`) in Supabase queries. This resolves `invalid input syntax for type json` errors when filtering by `academic_paper`, `post_mortem`, or `lesson_learned` categories. Added comprehensive Vitest test suite for the fetchMemories function. Updated database entity documentation with JSONB querying conventions.
-
-## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
-
-Optimized the AI Memories feature using a highly efficient **Hybrid Local Cache + Delta-Syncing** pattern utilizing TanStack Query's `initialData`:
-- **Instant Client Render (0ms)**: Reads directly from local storage cache (`localStorage` with a 500-item ceiling) during startup to render the dashboard instantly without spinners.
-- **Declarative Delta Syncing**: Utilizes a single React Query cache key `['benchify', 'memories', 'list']` with `initialDataUpdatedAt: 1` to immediately trigger a background delta-sync on mount. Delta-syncing fetches only memories created *after* the latest cached memory, drastically reducing network overhead.
-- **Pure Client-Side Filtering**: Executes 100% in-memory filtering based on `getMemoryCategory(m)`, resulting in **0ms latency** when clicking filter pills.
-- **Client-Side Pagination**: Implemented local pagination on the cached list (incrementing display limits by 50 when clicking "Load More"), removing subsequent API calls.
-- **No Side-Effects**: Replaced legacy `useEffect` dependencies with clean declarative React event handlers, satisfying Biome's strict formatting and unused import rules.
-- **TDD Regression Tests**: Added `MemoriesPage.test.tsx` verifying visual shell loading, background delta-sync triggers, and tab filter transitions. All 171 frontend unit tests are green.
-
 ## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
 
 Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.
@@ -215,4 +201,19 @@ Removed the `llm_reasoning_logs` query from `fetchTodayData()` in the Today home
 ## [2026-05-30] feature | Centralized Date Utilities & Zero-Date Frontend Architecture
 
 Introduced apps/web/src/utils/date.ts providing normalized Eastern Time formatters to prevent SSR hydration mismatches caused by ICU whitespace differences. All Today page components (AgentInsights, MarketStatusHero, MarketUpdates, NewsletterFeed, TradeActivity) now use these centralized utilities instead of inline date formatting. Server-side fetchTodayData API now pre-computes isMarketOpen, isSentimentStale, and todayDateString, removing temporal logic from the frontend (Zero-Date Frontend Architecture). Updated performance-auditing-strategy concept page with detailed rules on ICU whitespace normalization and zero-date architecture.
+
+## [2026-05-30] feature | Automated SSR Hydration Mismatch Regression Suite & Test Helper
+
+Implemented a zero-overhead, highly focused automated hydration regression test suite that runs in the pre-commit loop via the standard Vitest pipeline:
+- **Reusable Hydration Test Helper**: Created `apps/web/src/test/hydration-test-helper.tsx` which simulates server-side rendering (`renderToString`) and client-side hydration (`hydrateRoot`) within a `jsdom` container. Captures both React 19's asynchronous hydration exceptions (via global window error interception with `event.preventDefault()`) and logged `console.error` warnings.
+- **TDD Reproduction Tests**: Created `apps/web/src/test/hydration.test.tsx` which includes a deliberately broken mismatch component (rendering non-deterministic random values) to verify the helper successfully intercepts and catches hydration failures.
+- **Zero-Overhead Component Audits**: Added validation tests for critical frontend elements including `MarketStatusHero` and the parent `TodayPage` (wrapped in a `QueryClientProvider`), ensuring clean, symmetric client-side mounting without booting expensive E2E browser tests.
+- **Linter & Test Cleanliness**: Ensured 100% compliance with Biome strict styling and formatting checkups. All 203 frontend unit tests pass successfully in ~3.2s.
+
+## [2026-05-30] feature | SSR Hydration Symmetry Regression Suite
+
+Added a comprehensive SSR hydration regression test suite to the web app's pre-commit pipeline:
+- **Test Helper**: `apps/web/src/test/hydration-test-helper.tsx` — reusable utility that simulates SSR (`renderToString`) and client hydration (`hydrateRoot`) in JSDOM, capturing React 19 hydration errors via global error interception and `console.error` spying.
+- **Regression Suite**: `apps/web/src/test/hydration.test.tsx` — validates all major pages (Today, How It Works, Memories, Reasoning, Portfolios, Market Overview) and the `MarketStatusHero` component for hydration symmetry. Includes a TDD reproduction test with a deliberately broken component.
+- **Documentation**: Updated `concepts/performance-auditing-strategy.md` with a new section on TDD hydration regression testing, including usage examples and integration notes.
 

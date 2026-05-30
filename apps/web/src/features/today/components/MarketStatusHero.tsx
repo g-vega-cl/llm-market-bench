@@ -7,6 +7,7 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { Badge, Card, ConfidenceBar, HeroBackground } from '@llm-market-bench/ui-design-system';
+import { formatEasternTime } from '~/utils/date';
 
 interface MarketStatusHeroProps {
     data: {
@@ -17,21 +18,11 @@ interface MarketStatusHeroProps {
         futureEvents?: Record<string, unknown>[];
         newsletters?: NewsletterSnapshot[];
         marketFeeling?: MarketFeeling | null;
+        serverTime?: string;
+        isMarketOpen: boolean;
+        isSentimentStale: boolean;
+        todayDateString: string;
     };
-}
-
-function formatTimeAgo(dateStr: string | null | undefined): string {
-    if (!dateStr) return 'Unknown';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
 }
 
 function getDirectionColor(direction: string | null | undefined): string {
@@ -55,16 +46,8 @@ function getConfidenceColorScheme(
 }
 
 export function MarketStatusHero({ data }: MarketStatusHeroProps) {
-    const now = new Date();
-    const currentHour = now.getUTCHours();
-    const currentMinutes = now.getUTCMinutes();
-    const dayOfWeek = now.getUTCDay();
-
-    const isMarketOpen =
-        dayOfWeek >= 1 &&
-        dayOfWeek <= 5 &&
-        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
-        currentHour < 20;
+    const isMarketOpen = data.isMarketOpen;
+    const isStale = data.isSentimentStale;
 
     const totalTrades = data.trades?.length || 0;
     const activeMemories = data.memories?.filter((m) => m.status === 'ACTIVE').length || 0;
@@ -73,15 +56,6 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
     const buyCount = data.trades?.filter((t) => t.signal === 'BUY').length || 0;
     const sellCount = data.trades?.filter((t) => t.signal === 'SELL').length || 0;
-
-    const isStale = marketFeeling
-        ? (() => {
-              if (!marketFeeling.created_at) return true;
-              const created = new Date(marketFeeling.created_at);
-              const ageHours = (now.getTime() - created.getTime()) / 3600000;
-              return ageHours > 4;
-          })()
-        : true;
 
     const fallbackSentiment = {
         label: marketFeeling?.sentiment_label || 'Analyzing...',
@@ -101,12 +75,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                             TODAY
                         </h1>
                         <Badge variant="outline" colorScheme="neutral">
-                            {now.toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                month: 'long',
-                                day: 'numeric',
-                                year: 'numeric',
-                            })}
+                            {data.todayDateString}
                         </Badge>
                     </div>
 
@@ -262,7 +231,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
                             <span className="text-[10px] text-electric-blue-300">
                                 {marketFeeling?.created_at
-                                    ? `Last analyzed: ${formatTimeAgo(marketFeeling.created_at)}`
+                                    ? `Last analyzed: ${formatEasternTime(marketFeeling.created_at)}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (

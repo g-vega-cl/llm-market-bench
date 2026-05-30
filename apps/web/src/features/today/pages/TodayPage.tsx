@@ -26,6 +26,10 @@ interface TodayData {
     futureEvents: Memory[];
     marketFeeling: MarketFeeling | null;
     macroStats: MacroStat[];
+    serverTime?: string;
+    isMarketOpen: boolean;
+    isSentimentStale: boolean;
+    todayDateString: string;
 }
 
 interface TodayPageProps {
@@ -82,43 +86,12 @@ function EmptyStateView({
     hasFutureEvents: boolean;
     futureEvents: Memory[];
 }) {
-    const jokes = [
-        {
-            emoji: '🤖',
-            title: 'AI is observing. Markets are sleeping.',
-            subtitle: 'First trade incoming during market hours.',
-        },
-        {
-            emoji: '📊',
-            title: 'The algorithms are sharpening their models.',
-            subtitle: 'Quiet before the storm.',
-        },
-        {
-            emoji: '🧠',
-            title: 'Neural networks are dreaming of electric sheep.',
-            subtitle: 'And alpha signals.',
-        },
-        {
-            emoji: '⚡',
-            title: 'Charging the neural nets.',
-            subtitle: 'Back during market hours with insights.',
-        },
-        { emoji: '🔮', title: 'Crystal ball is warming up.', subtitle: 'Predictions loading...' },
-        {
-            emoji: '💤',
-            title: 'Agents are in power-saving mode.',
-            subtitle: 'Wake up call during market hours.',
-        },
-    ];
-
-    const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
-
     return (
         <div className="animate-scale-in">
             <EmptyState
-                emoji={randomJoke.emoji}
-                title={randomJoke.title}
-                subtitle={randomJoke.subtitle}
+                emoji="🤖"
+                title="AI agents are observing. Quiet before the market session."
+                subtitle="First trade insights will update in real-time during market hours."
                 actions={[
                     {
                         label: 'View Historical Performance',

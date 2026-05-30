@@ -1,6 +1,5 @@
 import type { Memory } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import * as React from 'react';
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
 
 interface FutureCatalystsProps {
@@ -10,19 +9,6 @@ interface FutureCatalystsProps {
 function extractDate(content: string): string | null {
     const match = content.match(/(\d{4}-\d{2}-\d{2})/);
     return match ? match[1] : null;
-}
-
-function getCountdown(targetDate: Date) {
-    const now = new Date();
-    const diff = targetDate.getTime() - now.getTime();
-
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, isPassed: true };
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    return { days, hours, minutes, isPassed: false };
 }
 
 function getImportanceColor(score: number) {
@@ -40,32 +26,16 @@ function getImportanceLabel(score: number) {
 }
 
 export function FutureCatalysts({ events }: FutureCatalystsProps) {
-    const [, forceUpdate] = React.useState({});
-
-    // Update countdowns every minute
-    React.useEffect(() => {
-        const interval = setInterval(() => forceUpdate({}), 60 * 1000);
-        return () => clearInterval(interval);
-    }, []);
-
     if (!events.length) return null;
 
     // Sort by date
-    const sortedEvents = [...events].sort((a, b) => {
+    const visibleEvents = [...events].sort((a, b) => {
         const dateA = a.target_date || extractDate(a.content);
         const dateB = b.target_date || extractDate(b.content);
         if (!dateA && !dateB) return 0;
         if (!dateA) return 1;
         if (!dateB) return -1;
         return new Date(dateA).getTime() - new Date(dateB).getTime();
-    });
-
-    // Filter out passed events and count only visible ones
-    const visibleEvents = sortedEvents.filter((event) => {
-        const eventDate = event.target_date || extractDate(event.content);
-        const dateObj = eventDate ? new Date(`${eventDate}T00:00:00`) : null;
-        const countdown = dateObj ? getCountdown(dateObj) : null;
-        return !countdown?.isPassed;
     });
 
     return (
@@ -90,11 +60,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                         const dateNote = event.metadata?.future_date_note;
                         const eventDate = event.target_date || extractDate(event.content);
                         const dateObj = eventDate ? new Date(`${eventDate}T00:00:00`) : null;
-                        const countdown = dateObj ? getCountdown(dateObj) : null;
                         const importanceScore = event.metadata?.importance_score || 7;
-
-                        // Skip if passed
-                        if (countdown?.isPassed) return null;
 
                         return (
                             <div
@@ -113,9 +79,7 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                     className="border-l-4 hover:shadow-cyber-yellow-500/10"
                                     style={{
                                         borderLeftColor:
-                                            dateObj && countdown && countdown.days <= 3
-                                                ? '#ef4444'
-                                                : '#eab308',
+                                            importanceScore >= 8 ? '#ef4444' : '#eab308',
                                     }}
                                 >
                                     {/* Header */}
@@ -123,15 +87,6 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                         <div className="flex-1 min-w-0">
                                             {/* Date & Time Badge */}
                                             <div className="flex flex-wrap items-center gap-2 mb-3">
-                                                {dateObj && countdown && (
-                                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-cyber-yellow-100 to-amber-100 dark:from-cyber-yellow-900/30 dark:to-amber-900/30 text-cyber-yellow-700 dark:text-cyber-yellow-300 text-xs font-black rounded-lg border border-cyber-yellow-200 dark:border-cyber-yellow-800 shadow-sm">
-                                                        <span className="text-lg">⏱️</span>
-                                                        <span className="font-mono tabular-nums">
-                                                            {countdown.days}d {countdown.hours}h{' '}
-                                                            {countdown.minutes}m
-                                                        </span>
-                                                    </div>
-                                                )}
                                                 {dateNote && (
                                                     <Badge
                                                         variant="soft"
@@ -171,12 +126,14 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                             <div className="text-right">
                                                 <div className="text-2xl font-black text-zinc-900 dark:text-white text-display">
                                                     {dateObj.toLocaleDateString('en-US', {
+                                                        timeZone: 'America/New_York',
                                                         month: 'short',
                                                         day: 'numeric',
                                                     })}
                                                 </div>
                                                 <div className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
                                                     {dateObj.toLocaleDateString('en-US', {
+                                                        timeZone: 'America/New_York',
                                                         year: 'numeric',
                                                     })}
                                                 </div>

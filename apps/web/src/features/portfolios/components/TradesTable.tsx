@@ -43,7 +43,9 @@ export function TradesTable({ trades }: TradesTableProps) {
                         >
                             <TableCell className="text-zinc-500 dark:text-zinc-400 text-sm">
                                 {trade.executed_at
-                                    ? new Date(trade.executed_at).toLocaleDateString()
+                                    ? new Date(trade.executed_at).toLocaleDateString('en-US', {
+                                          timeZone: 'America/New_York',
+                                      })
                                     : '-'}
                             </TableCell>
                             <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">

@@ -1,4 +1,5 @@
 import { Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { formatEasternShortTime } from '~/utils/date';
 
 interface PriceUpdate {
     ticker: string;
@@ -96,10 +97,7 @@ export function MarketUpdates({ priceUpdates }: MarketUpdatesProps) {
                                 {/* Timestamp */}
                                 <div className="text-[8px] text-zinc-400 font-mono mt-2 flex items-center justify-center gap-1">
                                     <span className="w-1 h-1 bg-zinc-300 rounded-full" />
-                                    {new Date(update.fetched_at).toLocaleTimeString([], {
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
+                                    {`${formatEasternShortTime(update.fetched_at)} ET`}
                                 </div>
                             </div>
                         </Card>

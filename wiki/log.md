@@ -1,60 +1,3 @@
-## [2026-05-21] feature | Empirical Asset Pricing Papers Seeding
-
-Added a dedicated seeding script (`seed_academic_papers.py`) and reproduction test to ingest the top 10 empirical asset pricing academic papers into the pgvector memory store. These papers are seeded as `LESSON_LEARNED` with maximum importance (10) to ensure they reliably bubble up in the Tier 2 RAG (Verifier Path) to ground agent reasoning in established financial science (e.g., Fama-French, momentum, behavioral anomalies).
-
-## [2026-05-22] refactor | auto_wiki.py: extract apply_changes() and add page deletion enforcement
-
-Extracted the inline write-changes block from `main()` into a testable `apply_changes()` function. Added `apply_page_deletions()` to physically delete wiki pages whose scope has been removed from the codebase, strip their `[[link]]` entries from `index.md`, and validate against path traversal. The LLM diff agent can now emit `deleted_pages` in its JSON output. Updated `wiki/SCHEMA.md` Maintenance Rule 5 to document the deletion policy and required log format. Covered by 7 new tests in `apps/engine/tests/test_wiki_schema.py`.
-
-## [2026-05-22] refactor | Button and Badge Solid Text Contrast and Glass Hover Fix
-
-Adjusted the styling configurations in the `@llm-market-bench/ui-design-system` package to resolve readability and contrast issues on solid primitives:
-- **Solid Button and Badge Variants**: Changed text from `text-zinc-950` to `text-white` on dark/medium backgrounds (`accent`, `danger`, and `info` schemes, including `medium` severity). Kept `text-zinc-950` for naturally light backgrounds (`success`, `warning`, `high`).
-- **Glass Hover Corrections**: Rectified copy-paste hover bugs in `Button.tsx` for `success`, `danger`, `info`, and `warning` variants to correctly use their respective dark background hover color tokens instead of the fallback `accent`.
-- **TDD Regression Suite**: Created a unit test `ButtonAndBadgeReadability.test.tsx` in `apps/web` verifying exact styling and mapping across all color schemes.
-
-## [2026-05-22] update | Remove saved correlation matrix task from ROADMAP
-
-Removed the task "Make sure we save the historical correlation/returns table/matrix" from the project roadmap. No code changes, just deprioritization of a planned feature.
-
-## [2026-05-22] feature | Add South Korea ETF (EWY) to correlation matrix
-
-Added EWY (iShares MSCI South Korea ETF) to the correlation matrix TICKER_UNIVERSE in the engine, expanding the Emerging Markets category from 6 to 7 tickers. Updated the web dashboard's SectorPerformanceGrid and etf-descriptions to include EWY. Updated correlation-matrix-source wiki page to reflect the new 71-asset universe.
-
-## [2026-05-24] feature | DeepSeek MD_JSON mode, Ollama fallback resolution, and auto-wiki resource cleanup
-
-- **DeepSeek client**: Switched from `instructor.Mode.JSON` to `instructor.Mode.MD_JSON` in `get_deepseek_client()` to eliminate the cognitive formatting clash that caused empty responses when thinking mode (reasoning_content) was active with strict JSON Mode. This is the root-resolution fix for the DeepSeek empty content anomaly.
-- **Ollama fallback resolver**: `call_ollama()` now queries available local models and falls back gracefully if the requested model is not installed, with a preference order (`gemma4:31b` → `qwen3.6:35b` → `llama3.1:8b`) before resorting to the first available local model.
-- **Ollama resource management**: Added `keep_alive: 10s` to Ollama API payloads so models unload from memory after rapid sequential queries. The `auto-wiki.sh` cleanup trap now runs `pkill ollama` to terminate the local server after pre-commit finishes.
-- **Default Ollama model**: Changed from `qwen3.5:latest` to `gemma4:31b`.
-- **Tests**: Added `test_prepare_messages_for_instructor`, `test_has_valid_content`, and `test_get_deepseek_client_mode` to `test_deepseek_handler.py`.
-- **Wiki model-anomalies.md**: Updated DeepSeek mitigation description to document the MD_JSON root resolution alongside the existing fail-safe recovery logic.
-
-## [2026-05-24] docs | Alpaca sync resilience, new agents concept page, and wiki enhancements
-
-- Increased MAX_AGE_HOURS to 96 for weekend/cron failure resilience
-- Added comprehensive test suite for Alpaca order sync
-- Created new concept page for multi-agent system overview
-- Expanded equal-weighted returns documentation with rationale and edge cases
-- Updated pipeline and autoresearch pages with execution details
-- Added cross-references between system-heavy prompt and agents pages
-
-## [2026-05-24] refactor | Parameterized LLM client factories for isolated unit testing in CI/CD
-
-Updated `apps/engine/core/llm/clients.py` to parameterize the four LLM client factories (`get_openai_client`, `get_anthropic_client`, `get_deepseek_client`, `get_gemini_client`) with an optional `api_key: str | None = None` parameter. This enables clean dependency injection for unit tests, eliminating the need for `monkeypatch` or environment variable manipulation in CI/CD. Tests updated: `test_deepseek_handler.py`, `test_models.py`, `test_memory_consolidation.py`.
-
-## [2026-05-25] refactor | Auto-Research Metrics Alignment & Baseline Ratchet Refactor
-
-Refactored the Auto-Research engine and web UI to properly align weekly trading metrics with the prompt variant that actually ran, ensuring a clean and logical progression in the history table:
-- **Metrics Alignment**: Realigned `runner.py` to evaluate the completed trading week and update the metrics directly on the **previous active prompt** `P_active` (e.g. baseline `v20260519-221104`).
-- **New Variant Initialization**: The brand-new mutated active prompt (e.g. `v20260524-221848`) is saved with empty/N/A metrics (`{}`) and advanced week start/end dates representing the **upcoming week** (prior week dates + 7 days).
-- **UI Enhancements**: 
-  - Updated `ScoreBreakdown.tsx` to render a premium pending performance state (a clean info card explaining weekly metrics are calculated at week close) when `metrics.score` is `undefined`/`null`, resolving the legacy zero-placeholder display.
-  - Enhanced `ExperimentDetails.tsx` to render `N/A` for metric values when metrics are not present, avoiding `undefined%`.
-  - Stylized `N/A` scores neutrally in `ExperimentList.tsx`.
-- **Database Backfill**: Ran a migration backfilling `v20260519-221104` with its correct metrics (score `-2.8643`, `excess_return = -1.7712`, etc.) and resetting the new active variant to a clean pending state.
-- **Tests**: Mocked database client methods in `test_autoresearch.py` and successfully verified 100% green test passing (43/43 Python pytest, 163/163 TS vitest).
-
 ## [2026-05-25] fix | Resolve memories category filter SQL casting error with ->> operator
 
 Fixed a PostgreSQL casting error (22P02) in the memories category filter by migrating from JSONB object extraction (`->`) to text extraction (`->>`) in Supabase queries. This resolves `invalid input syntax for type json` errors when filtering by `academic_paper`, `post_mortem`, or `lesson_learned` categories. Added comprehensive Vitest test suite for the fetchMemories function. Updated database entity documentation with JSONB querying conventions.
@@ -195,6 +138,7 @@ Implemented a fully automated, TDD-backed synchronization pipeline to keep the w
 - **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
 - **Local Pre-Commit Hook Strategy**: Because cloud/serverless build environments like Netlify lack Python virtualenv runtimes, compilation is executed strictly locally during commits. Staged changes automatically compile the JSON locally, stage the JSON, and commit it to the repo. Netlify then bundles the pre-compiled, committed JSON natively with zero risk of environment failures.
 - **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
+
 ## [2026-05-29] feature | Gold Standard Scenario-Ticker Mapping and Structured Event Synthesis
 
 Implemented the "Gold Standard" combined architecture to map Financial Modeling Prep (FMP) verified assets directly to their corresponding scenario outcomes and trading plans in memories:
@@ -227,4 +171,48 @@ Resolved a critical issue where the MiniMax Simple Portfolio failed to make trad
 - **TDD Verification**: Implemented two comprehensive TDD unit tests (`test_try_parse_json_string_with_raw_newlines` and `test_try_parse_double_escaped_json_string_with_newlines`) in `apps/engine/tests/test_minimax_repair_bug.py`. Verified 100% test success and perfect coverage alignment.
 - **Wiki Documentation**: Updated the canonical [[concepts/minimax-portfolio]] concept page to reflect robust control character decoding and unescaping alignments.
 
+## [2026-05-29] optimization | Performance Audit and SSR Hydration Mismatch Resolution
+
+Audited whole-site performance using Unlighthouse and implemented critical frontend stability and database optimizations:
+- **Empty State Professionalization**: Replaced the randomized empty-state jokes in `TodayPage.tsx` with a stable, professional financial status message to completely eliminate `Math.random()`-induced SSR hydration failures.
+- **Eastern Timezone Alignment**: Standardized all date and sentiment timestamp formatting in `MarketStatusHero.tsx` to `America/New_York` (Eastern Time). Ensures identical date strings are generated on both the server and client regardless of execution locale, resolving timezone-skew hydration exceptions. 
+- **Deterministic Sentiment Timestamps**: Replaced relative "time ago" delta strings with a static ET timestamp representation (e.g. `Last analyzed: 10:45 AM ET`), eliminating client-side clock skew mismatch.
+- **Database TTFB Optimization**: Added a rolling 45-day lookback date constraint to the `price_history` database query in `fetch-today-data.ts`. Prevents fetching the entire historical quote series for all 23 tickers, dramatically cutting network load, serverless database memory footprint, and initial page load response times.
+- **TDD Regression Coverage**: Created `TodayPage.test.tsx` checking layout stability and timezone consistency, with 100% test coverage passing.
+- **Web Font Optimization**: Migrated Google Fonts loading from CSS `@import` (render-blocking) to TanStack Start `<link>` tags with preconnect hints, improving font loading performance and reducing LCP.
+
+## [2026-05-29] refactor | UI polish: Eastern Time rendering, font preconnect, empty-state stabilization
+
+Today page UI received several polish passes:
+- Timestamps throughout the dashboard now render in Eastern Time (America/New_York) rather than relative "time ago" or local timezone. Affects MarketStatusHero, TradeActivity, and the date badge.
+- Added preconnect links to Google Fonts origins in `__root.tsx` and moved the `@import` from `app.css` to a direct `<link>` in the head, improving font load performance.
+- Replaced randomized joke-based empty state with stable professional copy: "AI agents are observing. Quiet before the market session."
+- Price history query now limits lookback to 45 days for historical volatility calculations.
+- Added TDD test suite (TodayPage.test.tsx) validating stable empty-state text and Eastern Time rendering."
+
+## [2026-05-29] optimization | Codebase-wide hydration mismatch stabilization sweep
+
+Performed a complete codebase-wide date/time formatting sweep to eradicate all React hydration errors (Minified React Error #418) and optimize rendering performance:
+- **Eradicated Relative Countdown & useEffect Mount Checks**: Redesigned `FutureCatalysts.tsx` to completely remove the dynamic relative countdown timers (`getCountdown`), the 60s interval update loops, and the `useEffect` mounted states. This perfectly satisfies the constraint to avoid useEffect/mounted checks while ensuring 100% stable, deterministic server/client SSR layouts. Pinned date display cards to standard Eastern Time (`America/New_York`) and styled left borders statically using the database's `importance_score` metadata.
+- **Codebase-wide Locale and Timezone Sweeps**: Pinpointed and stabilized all remaining locale and timezone-sensitive date formatting blocks to `'en-US'` and `America/New_York` to completely secure the client-side hydration tree across all application routes:
+  - `CauseAndEffectCard.tsx` (pinned market analysis dates)
+  - `ConceptMap.tsx` (pinned D3 first/last mention records)
+  - `MemoryFlow.tsx` (pinned visual SVG timeline date anchors)
+  - `TradesTable.tsx` (pinned agent trade execution logs)
+  - `AuditCard.tsx` (pinned system status verification logs)
+  - `ExperimentList.tsx` (pinned baseline benchmark fallback date formatters)
+  - `MarketOverviewPage.tsx` (replaced relative `formatTimeAgo` with deterministic `formatEasternTime` for AI sentiment updates, eliminating dynamic runtime drift)
+- **TDD & Linter Conformity**: Formatted and optimized all updated codebase files to 100% cleanliness using Biome checkups and validated that all 192 unit tests are fully green and compliant.
+
+## [2026-05-29] enhancement | Standardize date/time formatting to Eastern Time and simplify FutureCatalysts
+
+Added explicit 'America/New_York' timeZone to all date.toLocaleDateString/toLocaleTimeString calls across multiple components (AuditCard, ExperimentList, CauseAndEffectCard, ConceptMap, MarketOverviewHero, MemoryFlow, TradesTable, AgentInsights, FutureCatalysts, MarketUpdates, NewsletterFeed). In MarketOverviewHero, replaced 'time ago' relative formatting with absolute Eastern Time. In FutureCatalysts, removed countdown timer and 'passed event' filtering, showing all events with border color based on importance score instead of proximity. Removed unused React import and countdown state management.
+
+## [2026-05-29] refactor | Remove llm_reasoning_logs from Today homepage loader
+
+Removed the `llm_reasoning_logs` query from `fetchTodayData()` in the Today homepage loader. This high-volume table (containing massive text conversation blobs) was being fetched but never rendered on the homepage, wasting ~438ms of database latency and network bandwidth. The `logs` field was removed from the `TodayData` interface, the parallel query was deleted, and the return payload no longer includes it. Added a TDD zero-load regression test (`fetch-today-data.test.ts`) that spies on the Supabase client to assert the heavy table is never queried and the `logs` key is absent from the returned payload.
+
+## [2026-05-30] feature | Centralized Date Utilities & Zero-Date Frontend Architecture
+
+Introduced apps/web/src/utils/date.ts providing normalized Eastern Time formatters to prevent SSR hydration mismatches caused by ICU whitespace differences. All Today page components (AgentInsights, MarketStatusHero, MarketUpdates, NewsletterFeed, TradeActivity) now use these centralized utilities instead of inline date formatting. Server-side fetchTodayData API now pre-computes isMarketOpen, isSentimentStale, and todayDateString, removing temporal logic from the frontend (Zero-Date Frontend Architecture). Updated performance-auditing-strategy concept page with detailed rules on ICU whitespace normalization and zero-date architecture.
 

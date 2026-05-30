@@ -1,6 +1,5 @@
 import type {
     Decision,
-    LLMReasoningLog,
     MarketDataCache,
     MarketFeeling,
     Memory,
@@ -8,6 +7,7 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
+import { formatEasternDate } from '~/utils/date';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 import { calculateMacroStats, MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
@@ -15,12 +15,15 @@ export interface TodayData {
     newsletters: NewsletterSnapshot[];
     trades: (Trade & { portfolios: { owner_id: string } })[];
     decisions: Decision[];
-    logs: LLMReasoningLog[];
     memories: Memory[];
     priceUpdates: MarketDataCache[];
     futureEvents: Memory[];
     marketFeeling: MarketFeeling | null;
     macroStats: MacroStat[];
+    serverTime?: string;
+    isMarketOpen: boolean;
+    isSentimentStale: boolean;
+    todayDateString: string;
 }
 
 interface PriceHistoryItem {
@@ -132,18 +135,22 @@ export async function fetchTodayData(): Promise<TodayData> {
 
     const startOfDay = `${estDateStr}T00:00:00`;
 
+    // 45 days ago lookback for historical volatility calculations
+    const historyLimitDate = new Date();
+    historyLimitDate.setDate(historyLimitDate.getDate() - 45);
+    const historyLimitDateStr = historyLimitDate.toISOString();
+
     // Fetch core dashboard data in parallel where possible to maximize performance
     const [
         { data: newsletters },
         { data: trades },
         { data: decisions },
-        { data: logs },
         { data: memories },
         { data: priceUpdates },
         { data: futureEvents },
         { data: marketFeeling },
         { data: cacheRows },
-        { data: historyRows },
+        historyResults,
     ] = await Promise.all([
         supabase
             .from('newsletter_snapshots')
@@ -157,11 +164,6 @@ export async function fetchTodayData(): Promise<TodayData> {
             .order('executed_at', { ascending: false }),
         supabase
             .from('decisions')
-            .select('*')
-            .gte('created_at', startOfDay)
-            .order('created_at', { ascending: false }),
-        supabase
-            .from('llm_reasoning_logs')
             .select('*')
             .gte('created_at', startOfDay)
             .order('created_at', { ascending: false }),
@@ -190,26 +192,60 @@ export async function fetchTodayData(): Promise<TodayData> {
             .limit(1),
         // Fetch all macro quotes
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-        // Fetch historical data for all macro tickers (ordered newest-to-oldest)
-        supabase
-            .from('price_history')
-            .select('ticker, price, fetched_at')
-            .in('ticker', MACRO_TICKERS_LIST)
-            .order('fetched_at', { ascending: false }),
+        // Fetch historical data for each macro ticker in parallel (limited to 45 rows per ticker)
+        // to avoid Supabase's 1000-row limit truncation and reduce payload size.
+        Promise.all(
+            MACRO_TICKERS_LIST.map((ticker) =>
+                supabase
+                    .from('price_history')
+                    .select('ticker, price, fetched_at')
+                    .eq('ticker', ticker)
+                    .gte('fetched_at', historyLimitDateStr)
+                    .order('fetched_at', { ascending: false })
+                    .limit(45),
+            ),
+        ),
     ]);
+
+    const historyRows = historyResults.flatMap((res) => res.data || []);
 
     // Process and calculate macro statistics
     const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);
+
+    const currentHour = now.getUTCHours();
+    const currentMinutes = now.getUTCMinutes();
+    const dayOfWeek = now.getUTCDay();
+
+    const isMarketOpen =
+        dayOfWeek >= 1 &&
+        dayOfWeek <= 5 &&
+        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
+        currentHour < 20;
+
+    const marketFeelingObj = (marketFeeling?.[0] || null) as MarketFeeling | null;
+    const isSentimentStale = marketFeelingObj
+        ? (() => {
+              if (!marketFeelingObj.created_at) return true;
+              const created = new Date(marketFeelingObj.created_at);
+              const ageHours = (now.getTime() - created.getTime()) / 3600000;
+              return ageHours > 4;
+          })()
+        : true;
+
+    const todayDateString = formatEasternDate(now);
 
     return {
         newsletters: (newsletters || []) as NewsletterSnapshot[],
         trades: (trades || []) as (Trade & { portfolios: { owner_id: string } })[],
         decisions: (decisions || []) as Decision[],
-        logs: (logs || []) as LLMReasoningLog[],
         memories: (memories || []) as Memory[],
         priceUpdates: (priceUpdates || []) as MarketDataCache[],
         futureEvents: (futureEvents || []) as Memory[],
-        marketFeeling: (marketFeeling?.[0] || null) as MarketFeeling | null,
+        marketFeeling: marketFeelingObj,
         macroStats,
+        serverTime: now.toISOString(),
+        isMarketOpen,
+        isSentimentStale,
+        todayDateString,
     };
 }

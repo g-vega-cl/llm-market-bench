@@ -48,6 +48,7 @@ export function AuditCard({ audit }: AuditCardProps) {
                         {audit.created_at && (
                             <span className="text-xs text-zinc-600">
                                 {new Date(audit.created_at).toLocaleDateString('en-US', {
+                                    timeZone: 'America/New_York',
                                     year: 'numeric',
                                     month: 'short',
                                     day: 'numeric',

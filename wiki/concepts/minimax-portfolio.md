@@ -56,6 +56,8 @@ To maintain synchronization with real broker mechanics, the corresponding Alpaca
 * **Alpaca BUY Limit**: $\text{round}(\text{Price}_{\text{exec}} \times 1.003, 2)$
 * **Alpaca SELL Limit**: $\text{round}(\text{Price}_{\text{exec}} \times 0.997, 2)$
 
+To prevent duplicate Alpaca submissions (since the shared `portfolio.execute_trade` method automatically schedules a default `0.5%` slippage mirror), the MiniMax pipeline passes `skip_alpaca_mirror=True` to `execute_trade`. This bypasses the standard mirroring flow, allowing the custom `0.3%` offset mirror to run cleanly inside `main.py` without duplicate `client_order_id` rejections.
+
 ---
 
 ## Retained Risk Guardrails

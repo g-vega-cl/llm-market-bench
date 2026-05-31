@@ -31,9 +31,8 @@ def test_try_parse_json_string_with_raw_newlines():
 
 def test_try_parse_double_escaped_json_string_with_newlines():
     """Test that double-escaped JSON containing escaped newlines is repaired and successfully parsed."""
-    escaped_data = '"{\\"decisions\\": [{\\"signal\\": \\"BUY\\", \\"confidence\\": 88, \\"reasoning\\": \\"Line 1\\\\nLine 2\\\", \\"ticker\\": \\"DELL\\", \\"catalyst_type\\": \\"EARNINGS\\", \\"catalyst_duration\\": \\"SHORT_TERM\\", \\"source_id\\": \\"s1\\", \\"allocation_percentage\\": 10}], \\"macro_events\\": []}"'
+    escaped_data = '"{\\"decisions\\": [{\\"signal\\": \\"BUY\\", \\"confidence\\": 88, \\"reasoning\\": \\"Line 1\\\\nLine 2\\", \\"ticker\\": \\"DELL\\", \\"catalyst_type\\": \\"EARNINGS\\", \\"catalyst_duration\\": \\"SHORT_TERM\\", \\"source_id\\": \\"s1\\", \\"allocation_percentage\\": 10}], \\"macro_events\\": []}"'
     result = _try_parse_decisions_response(escaped_data)
     assert result is not None
     assert len(result.decisions) == 1
     assert result.decisions[0].reasoning == "Line 1\nLine 2"
-

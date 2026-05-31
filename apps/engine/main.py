@@ -301,7 +301,13 @@ async def _process_single_decision(
                             return False
 
                         trade_id = await portfolio.execute_trade(
-                            d.ticker, qty, exec_price, d.signal, decision_id=decision_id, current_prices=fresh_p_map
+                            d.ticker,
+                            qty,
+                            exec_price,
+                            d.signal,
+                            decision_id=decision_id,
+                            current_prices=fresh_p_map,
+                            skip_alpaca_mirror=True,
                         )
 
                         if trade_id:

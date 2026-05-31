@@ -301,6 +301,7 @@ class Portfolio:
         signal: str,
         decision_id: str | None = None,
         current_prices: dict[str, float] = None,
+        skip_alpaca_mirror: bool = False,
     ) -> UUID | None:
         """Executes the trade by updating cash, positions, and ledger.
 
@@ -442,21 +443,22 @@ class Portfolio:
             await self.save_metrics()
 
             # 5. Mirror to Alpaca for third-party audit (fire-and-forget)
-            from execution.alpaca_broker import AlpacaBroker
+            if not skip_alpaca_mirror:
+                from execution.alpaca_broker import AlpacaBroker
 
-            broker = AlpacaBroker()
-            # Server-side limit price: slightly above market for BUY, below for SELL to ensure fill
-            alpaca_limit = round(price * 1.005, 2) if signal.upper() == "BUY" else round(price * 0.995, 2)
-            asyncio.create_task(
-                broker.submit_limit_order(
-                    trade_id=trade_id,
-                    ticker=ticker,
-                    quantity=quantity,
-                    signal=signal,
-                    limit_price=alpaca_limit,
-                    agent_id=self.owner_id,
+                broker = AlpacaBroker()
+                # Server-side limit price: slightly above market for BUY, below for SELL to ensure fill
+                alpaca_limit = round(price * 1.005, 2) if signal.upper() == "BUY" else round(price * 0.995, 2)
+                asyncio.create_task(
+                    broker.submit_limit_order(
+                        trade_id=trade_id,
+                        ticker=ticker,
+                        quantity=quantity,
+                        signal=signal,
+                        limit_price=alpaca_limit,
+                        agent_id=self.owner_id,
+                    )
                 )
-            )
 
             return trade_id
 

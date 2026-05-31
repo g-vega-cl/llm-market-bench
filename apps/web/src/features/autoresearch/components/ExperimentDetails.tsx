@@ -6,6 +6,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
+import { DailyScoreDisplay } from './DailyScoreDisplay';
 import { ScoreBreakdown } from './ScoreBreakdown';
 import { VolatilityCalculation } from './VolatilityCalculation';
 
@@ -37,6 +38,8 @@ export function ExperimentDetails({ experiment }: ExperimentDetailsProps) {
                 <MetricTile icon="📊" label="Volatility" value={volatilityVal} />
                 <MetricTile icon="📉" label="Max Drawdown" value={maxDrawdownVal} />
             </div>
+
+            <DailyScoreDisplay experiment={experiment} />
 
             <ScoreBreakdown experiment={experiment} />
 

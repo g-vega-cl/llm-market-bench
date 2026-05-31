@@ -217,3 +217,12 @@ Added a comprehensive SSR hydration regression test suite to the web app's pre-c
 - **Regression Suite**: `apps/web/src/test/hydration.test.tsx` — validates all major pages (Today, How It Works, Memories, Reasoning, Portfolios, Market Overview) and the `MarketStatusHero` component for hydration symmetry. Includes a TDD reproduction test with a deliberately broken component.
 - **Documentation**: Updated `concepts/performance-auditing-strategy.md` with a new section on TDD hydration regression testing, including usage examples and integration notes.
 
+## [2026-05-31] feature | Daily Autoresearch Score Display & TDD Verification
+
+Implemented the Daily Autoresearch Score display panel inside the Auto-Research Arena:
+- **Daily Score Component**: Created `DailyScoreDisplay.tsx` under `apps/web/src/features/autoresearch/components/` incorporating custom dark gradient styles, cyberpunk grids, glowing live-tracking status rings, and day-by-day progression checkpoints.
+- **Dynamic Metrics Scaling**: Derived daily excess returns, daily opportunity costs, and daily risk penalties mathematically, cleanly modularizing calculations into `calculateDailyMetrics` and `getCheckpoints` to maintain zero-overhead complexity levels.
+- **Integration & TDD Suite**: Integrated the daily component into `ExperimentDetails.tsx` above the weekly score breakdown. Added comprehensive unit tests in `DailyScoreDisplay.test.tsx` verifying both live active tracking and finalized progression displays, passing successfully with 100% Biome compliance.
+- **Documentation**: Updated [[entities/autoresearch-arena]] with the new daily evaluation features.
+
+

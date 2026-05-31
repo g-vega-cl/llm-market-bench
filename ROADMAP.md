@@ -97,3 +97,4 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: show badge that minimax portfolio doesn't use verifier
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [ ] - I don't see lightouse in CI
+- [ ] - Benchify: show daily autoresearch score just for display

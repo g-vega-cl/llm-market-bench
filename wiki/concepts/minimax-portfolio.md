@@ -19,7 +19,7 @@ graph TD
     B -->|Skip Verifier & Tool Scans| C[Reg T Compliance Guard]
     C -->|Passed| D[Market Order Execution]
     C -->|Failed| E[REJECTED_MARGIN]
-    D -->|±0.3% Slippage Buffer| F[Portfolio Executed & Alpaca Mirror]
+    D -->|±0.5% Slippage Buffer| F[Portfolio Executed & Alpaca Mirror]
 ```
 
 By removing intermediary check-and-balance steps, the MiniMax agent trades with raw cognitive output, operating in a simplified cash/ownership context while remaining firmly inside the system's margin constraints.
@@ -41,22 +41,22 @@ By removing intermediary check-and-balance steps, the MiniMax agent trades with 
 
 ---
 
-## Market Order execution & ±0.3% Buffer
+## Market Order execution & ±0.5% Buffer
 
-Rather than placing `DAY` limit orders directly at the JIT market price, the MiniMax execution engine utilizes **Market Orders** modeled with a **±0.3% execution slippage buffer** to ensure near-instantaneous execution during live simulation:
+Rather than placing `DAY` limit orders directly at the JIT market price, the MiniMax execution engine utilizes **Market Orders** modeled with a **±0.5% execution slippage buffer** to ensure near-instantaneous execution during live simulation:
 
 ### 1. Engine Buy/Sell Offset
-* **BUY Decisions**: The execution price is adjusted upward by `0.3%` to simulate buying at the ask price in a high-liquidity order book.
-  $$\text{Price}_{\text{exec}} = \text{round}(\text{Price}_{\text{market}} \times 1.003, 2)$$
-* **SELL Decisions**: The execution price is adjusted downward by `0.3%` to simulate selling at the bid price.
-  $$\text{Price}_{\text{exec}} = \text{round}(\text{Price}_{\text{market}} \times 0.997, 2)$$
+* **BUY Decisions**: The execution price is adjusted upward by `0.5%` to simulate buying at the ask price in a high-liquidity order book.
+  $$\text{Price}_{\text{exec}} = \text{round}(\text{Price}_{\text{market}} \times 1.005, 2)$$
+* **SELL Decisions**: The execution price is adjusted downward by `0.5%` to simulate selling at the bid price.
+  $$\text{Price}_{\text{exec}} = \text{round}(\text{Price}_{\text{market}} \times 0.995, 2)$$
 
 ### 2. Alpaca Paper Mirroring
-To maintain synchronization with real broker mechanics, the corresponding Alpaca paper trading limit orders are mirrored using the same `0.3%` offset applied on top of the calculated `exec_price`:
-* **Alpaca BUY Limit**: $\text{round}(\text{Price}_{\text{exec}} \times 1.003, 2)$
-* **Alpaca SELL Limit**: $\text{round}(\text{Price}_{\text{exec}} \times 0.997, 2)$
+To maintain synchronization with real broker mechanics, the corresponding Alpaca paper trading limit orders are mirrored using the same `0.5%` offset applied on top of the calculated `exec_price`:
+* **Alpaca BUY Limit**: $\text{round}(\text{Price}_{\text{exec}} \times 1.005, 2)$
+* **Alpaca SELL Limit**: $\text{round}(\text{Price}_{\text{exec}} \times 0.995, 2)$
 
-To prevent duplicate Alpaca submissions (since the shared `portfolio.execute_trade` method automatically schedules a default `0.5%` slippage mirror), the MiniMax pipeline passes `skip_alpaca_mirror=True` to `execute_trade`. This bypasses the standard mirroring flow, allowing the custom `0.3%` offset mirror to run cleanly inside `main.py` without duplicate `client_order_id` rejections.
+To prevent duplicate Alpaca submissions (since the shared `portfolio.execute_trade` method automatically schedules a default `0.5%` slippage mirror), the MiniMax pipeline passes `skip_alpaca_mirror=True` to `execute_trade`. This bypasses the standard mirroring flow, allowing the custom `0.5%` offset mirror to run cleanly inside `main.py` without duplicate `client_order_id` rejections.
 
 ---
 

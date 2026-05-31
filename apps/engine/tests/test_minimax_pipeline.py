@@ -162,44 +162,44 @@ class TestMinimaxAnalysisProvider:
 
 
 class TestMinimaxMarketOrderBuffer:
-    """Tests for the 0.3% market order buffer price calculation."""
+    """Tests for the 0.5% market order buffer price calculation."""
 
     def test_buy_price_buffer(self):
-        """BUY exec price should be market_price * 1.003 rounded to 2dp."""
+        """BUY exec price should be market_price * 1.005 rounded to 2dp."""
         market_price = 150.00
-        expected = round(market_price * 1.003, 2)
+        expected = round(market_price * 1.005, 2)
         # Replicate the calculation that will be in main.py
-        exec_price = round(market_price * 1.003, 2)
+        exec_price = round(market_price * 1.005, 2)
         assert exec_price == expected
         assert exec_price > market_price
 
     def test_sell_price_buffer(self):
-        """SELL exec price should be market_price * 0.997 rounded to 2dp."""
+        """SELL exec price should be market_price * 0.995 rounded to 2dp."""
         market_price = 150.00
-        expected = round(market_price * 0.997, 2)
-        exec_price = round(market_price * 0.997, 2)
+        expected = round(market_price * 0.995, 2)
+        exec_price = round(market_price * 0.995, 2)
         assert exec_price == expected
         assert exec_price < market_price
 
-    def test_buy_buffer_is_03_percent(self):
-        """Confirm BUY buffer is exactly 0.3% above market price."""
+    def test_buy_buffer_is_05_percent(self):
+        """Confirm BUY buffer is exactly 0.5% above market price."""
         market_price = 200.00
-        exec_price = round(market_price * 1.003, 2)
+        exec_price = round(market_price * 1.005, 2)
         actual_pct = (exec_price - market_price) / market_price
-        assert abs(actual_pct - 0.003) < 1e-9
+        assert abs(actual_pct - 0.005) < 1e-9
 
-    def test_sell_buffer_is_03_percent(self):
-        """Confirm SELL buffer is exactly 0.3% below market price."""
+    def test_sell_buffer_is_05_percent(self):
+        """Confirm SELL buffer is exactly 0.5% below market price."""
         market_price = 200.00
-        exec_price = round(market_price * 0.997, 2)
+        exec_price = round(market_price * 0.995, 2)
         actual_pct = (market_price - exec_price) / market_price
-        assert abs(actual_pct - 0.003) < 1e-9
+        assert abs(actual_pct - 0.005) < 1e-9
 
     def test_buy_alpaca_limit_uses_same_buffer(self):
-        """Alpaca limit order price for BUY should also use the 0.3% buffer."""
+        """Alpaca limit order price for BUY should also use the 0.5% buffer."""
         market_price = 100.00
-        exec_price = round(market_price * 1.003, 2)
-        alpaca_limit = round(exec_price * 1.003, 2)
+        exec_price = round(market_price * 1.005, 2)
+        alpaca_limit = round(exec_price * 1.005, 2)
         # Alpaca limit should be at or slightly above exec_price
         assert alpaca_limit >= exec_price
 

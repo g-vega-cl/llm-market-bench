@@ -204,7 +204,7 @@ async def _process_single_decision(
                                 counters["rejected"] += 1
                             return False
 
-                        # Market price with ±0.3% fill buffer
+                        # Market price with ±0.5% fill buffer
                         market_price = validation.market_price
                         if not market_price or market_price <= 0:
                             logger.error(f"[MiniMax][{d.ticker}] No valid market price.")
@@ -213,13 +213,13 @@ async def _process_single_decision(
                             return False
 
                         if d.signal.upper() == "BUY":
-                            exec_price = round(market_price * 1.003, 2)
+                            exec_price = round(market_price * 1.005, 2)
                         else:
-                            exec_price = round(market_price * 0.997, 2)
+                            exec_price = round(market_price * 0.995, 2)
 
                         logger.info(
                             f"[MiniMax][{d.ticker}] Market order: {d.signal} @ ${exec_price:.2f} "
-                            f"(market: ${market_price:.2f}, buffer: 0.3%)"
+                            f"(market: ${market_price:.2f}, buffer: 0.5%)"
                         )
 
                         # JIT refresh to capture any concurrent trades
@@ -316,11 +316,11 @@ async def _process_single_decision(
                                 "trade_id": str(trade_id),
                                 "info": f"[MiniMax] Market order {d.signal} {qty} @ ${exec_price:.2f}",
                             }
-                            # Alpaca mirror with same 0.3% buffer as exec_price
+                            # Alpaca mirror with same 0.5% buffer as exec_price
                             alpaca_limit = (
-                                round(exec_price * 1.003, 2)
+                                round(exec_price * 1.005, 2)
                                 if d.signal.upper() == "BUY"
-                                else round(exec_price * 0.997, 2)
+                                else round(exec_price * 0.995, 2)
                             )
                             import asyncio as _asyncio
 

@@ -29,7 +29,7 @@ position rule enforced by quantity calculation tools.
 trade → update cash/SMA. Prevents phantom deductions on DB failure. Alpaca paper
 mirroring via fire-and-forget DAY limit orders.
 
-- **MiniMax Simplified Execution**: Rather than placing standard limit orders, the MiniMax portfolio places JIT simulated **Market Orders** using a **±0.3% slippage buffer** (BUY = `price * 1.003`, SELL = `price * 0.997`). Bypasses the verifier, stale price checks, tool loops, and semantic redundancy checks. Hard stops still apply for unheld short-selling (capped to held position size).
+- **MiniMax Simplified Execution**: Rather than placing standard limit orders, the MiniMax portfolio places JIT simulated **Market Orders** using a **±0.5% slippage buffer** (BUY = `price * 1.005`, SELL = `price * 0.995`). Bypasses the verifier, stale price checks, tool loops, and semantic redundancy checks. Hard stops still apply for unheld short-selling (capped to held position size).
 
 ## Attribution Locking
 

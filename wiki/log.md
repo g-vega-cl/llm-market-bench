@@ -1,20 +1,3 @@
-## [2026-05-31] fix | Resolved MiniMax Alpaca Duplicate Mirror Race Condition
-
-Resolved a critical race condition where the MiniMax Simple Portfolio submitted duplicate order mirror requests to Alpaca. The first standard-slippage submission was automatically triggered inside `portfolio.execute_trade`, and the second custom-slippage submission was fired in `main.py`. This duplicate `client_order_id` caused Alpaca to reject the second request, setting the trade status to `ERROR` even though the first order successfully went through.
-
-- **Portfolio Engine Fix**: Added a `skip_alpaca_mirror: bool = False` parameter to `execute_trade` in `apps/engine/execution/portfolio.py` to allow custom execution pipelines to skip the standard automatic Alpaca mirroring.
-- **Main Runner Integration**: Updated `apps/engine/main.py` in the MiniMax execution block to pass `skip_alpaca_mirror=True` to `execute_trade`, allowing the custom `±0.3%` offset order submission to run cleanly without duplicate ID conflicts.
-- **TDD Test Suite**: Added a new unit test `test_minimax_alpaca_duplicate_mirror.py` in `apps/engine/tests/` to assert that `execute_trade` correctly honors the `skip_alpaca_mirror` parameter. Passed with 100% test success and clean ruff check/format.
-
-## [2026-05-25] decision | Revert Live QMD/Search-First CLI Hooks in Favor of Lean Pre-Commit/Manual Flows
-
-Explored and implemented a workspace-level hook configuration (`.agents/hooks.json` mapping to a Python validation helper `scripts/qmd_hooks.py`) to enforce the **Search First (QMD)** principle and perform real-time QMD index updates during active agent sessions. 
-
-Upon testing, the decision was made to roll back these live CLI hooks:
-- **Overhead & Noise**: The `PreToolUse` grep validation injected warning messages directly into the agent's stream, which was determined to be too invasive and noisy for day-to-day workflow.
-- **Workflow Sufficiency**: The project's existing Husky Git hooks (`.husky/pre-commit` and `.husky/post-merge`) already handle QMD re-indexing automatically during commits and merges, and manual `qmd` searches perform perfectly fine without dynamic session-level checking.
-- **Result**: Successfully removed `.agents/hooks.json`, `scripts/qmd_hooks.py`, and `tests/test_qmd_hooks.py` to keep the repository extremely lean and free of unnecessary runtime complexity.
-
 ## [2026-05-25] fix | Memories Page Cache Backfilling & Filtering Resolution
 
 Resolved the issue where filtering by "Events" on the Memories page displayed a very small subset of events (e.g., only two) by implementing complete cache backfilling to its 500-item capacity.
@@ -223,4 +206,8 @@ Implemented the Daily Autoresearch Score display panel inside the Auto-Research 
 ## [2026-05-31] feature | No Verifier badge for MiniMax portfolios
 
 Added a `hasVerifier()` utility to the portfolio config module that identifies portfolios not using a verifier (currently MiniMax). The PortfolioDetailPage and PortfoliosPage now display a "No Verifier" warning badge for these portfolios, making the simplified execution model visible in the UI. Marked the corresponding ROADMAP item as complete.
+
+## [2026-05-31] doc | Updated MiniMax slippage buffer documentation from 0.3% to 0.5%
+
+Updated the wiki documentation to reflect the code change that aligns the MiniMax portfolio execution simulated slippage and Alpaca mirror order limit buffer from `±0.3%` to `±0.5%`. Updated pages: `concepts/execution.md`, `concepts/minimax-portfolio.md`, `index.md`, and `overview.md`.
 

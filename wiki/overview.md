@@ -29,7 +29,7 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 2. **Pre-Analysis** — market hours check, dust cleanup, macro tracking (23 tickers across 6 categories: equities, international, commodities, fixed income, FX/risk, crypto)
 3. **Analysis** — parallel LLM analysis with tool-calling loops (and raw JSON parsing for MiniMax)
 4. **Consensus** — semantic grouping, event promotion, trend tracking
-5. **Execution** — validation, Reg T checks, trade settlement, attribution (including standard limit orders and a simplified market order pipeline for MiniMax with ±0.3% buffer)
+5. **Execution** — validation, Reg T checks, trade settlement, attribution (including standard limit orders and a simplified market order pipeline for MiniMax with ±0.5% buffer)
 6. **Feedback** — post-mortem, contrarian analysis, cause & effect, and
    weekly auto-research prompt improvement
 

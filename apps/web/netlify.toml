@@ -27,23 +27,4 @@
   status = 200
   force = true
 
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"
 
-  [plugins.inputs]
-    fail_deploy_on_score_thresholds = true
-
-  [plugins.inputs.thresholds]
-    performance = 0.90
-    accessibility = 0.90
-    best-practices = 0.90
-    seo = 0.90
-
-  [[plugins.inputs.audits]]
-    path = "/"
-
-  [[plugins.inputs.audits]]
-    path = "/how-it-works"
-
-  [[plugins.inputs.audits]]
-    path = "/portfolios"

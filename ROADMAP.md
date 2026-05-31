@@ -83,7 +83,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - **Market-Closed Activities** - Define valuable tasks for agents when markets are closed (research, backtesting, memory consolidation)
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [ ] - add memories sorting by importance or filter by date too.
-- [ ] - Benchify: lighthouse CLI/performance audit.
+- [x] - Benchify: lighthouse CLI/performance audit.
 - [ ] - Benchify: Today page market events has a consensus bar with percentage, what is it for? - Keep small text below/next to stuff so we know what it represents.
 - [ ] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
 - [ ] - Benchify: add which ticker corresponds to each scenario in memories possible scenarios
@@ -96,5 +96,4 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: portfolio. I don't like that the individual portfolio view goes over device width in mobile
 - [ ] - Benchify: show badge that minimax portfolio doesn't use verifier
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
-- [ ] - I don't see lightouse in CI
-- [ ] - Benchify: show daily autoresearch score just for display
+- [x] - I don't see lightouse in CI

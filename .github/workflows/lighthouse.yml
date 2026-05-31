@@ -1,0 +1,48 @@
+name: Post-Deployment Lighthouse Audits
+
+on:
+  deployment_status:
+
+jobs:
+  lighthouse-audit:
+    # Trigger only when Netlify successfully deploys a staging preview or production deployment
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Run Lighthouse Audits
+        run: |
+          DEPLOY_URL="${{ github.event.deployment_status.target_url }}"
+          echo "Auditing live deployed URL: $DEPLOY_URL"
+          
+          # Clean trailing slash if present to avoid double-slashes
+          BASE_URL="${DEPLOY_URL%/}"
+          
+          # Run audits against all 12 public pages in parallel/sequence
+          lhci collect \
+            --url="$BASE_URL/" \
+            --url="$BASE_URL/how-it-works" \
+            --url="$BASE_URL/portfolios" \
+            --url="$BASE_URL/audits" \
+            --url="$BASE_URL/autoresearch" \
+            --url="$BASE_URL/cause-and-effect" \
+            --url="$BASE_URL/concepts" \
+            --url="$BASE_URL/market-overview" \
+            --url="$BASE_URL/memories" \
+            --url="$BASE_URL/reasoning" \
+            --url="$BASE_URL/login" \
+            --url="$BASE_URL/signup" \
+            --config=lighthouserc.json
+
+      - name: Verify Performance Budgets
+        run: lhci assert --config=lighthouserc.json

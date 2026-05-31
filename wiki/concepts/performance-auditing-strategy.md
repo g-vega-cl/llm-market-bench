@@ -20,8 +20,8 @@ To build a scalable engineering workflow, we offload heavy synthetic auditing to
 | Strategy | Run Location | Velocity Impact (Developer Flow) | Score Accuracy & Flake Risk | Best Used For |
 | :--- | :--- | :--- | :--- | :--- |
 | **Pre-Commit Hook** | Local Machine | **High Drag** (+15–45s per commit unless highly optimized) | **Poor** (Extreme variance based on local background CPU tasking) | Small, fast static landing pages; catching layout shifts instantly before pushes. |
-| **GitHub Actions (CI/CD)** | Ephemeral Cloud VM | **Low Drag** (Asynchronous; runs entirely in background) | **Moderate** (Noiser shared cloud hardware, but highly consistent rules) | Standard regression testing; blocking bad code merges on Pull Requests. |
-| **Netlify Deploy Previews** | Production Edge CDN | **Zero Drag** (Triggered after a cloud build deployment finishes) | **Excellent** (Audits a real public server link; highly deterministic) | Comprehensive frontend testing; production-parity Core Web Vitals checks. |
+| **Netlify Build Plugin** | Staged Build Container | **Moderate Drag** (Fails build on compile phase) | **Incompatible with SSR** (Cannot audit serverless/dynamic routes since serverless functions aren't running yet) | Purely static generated sites with no serverless functions. |
+| **Post-Deployment CI/CD** | Production Edge CDN | **Zero Drag** (Runs asynchronously in GitHub Actions after deployment succeeds) | **Excellent** (Audits real live serverless endpoints; highly deterministic) | SSR/serverless frameworks (TanStack Start, Next.js); full production-parity audits. |
 
 ---
 
@@ -41,58 +41,67 @@ graph TD
         D -->|Validates: Types, Engine Tests, Web Tests| E[Netlify Auto-Builds Staging Preview]
     end
 
-    subgraph Netlify Edge Audits
+    subgraph Post-Deployment Edge Audits
         E --> F[Netlify Staging URL Ready]
-        F --> G[Netlify Lighthouse Build Plugin Audits Paths]
-        G -->|Score >= 90| H[PR Check Turns Green - Safe to Merge]
-        G -->|Score < 90| I[PR Check Turns Red - Block Merge]
+        F --> G[GitHub Action Triggered on deployment_status]
+        G --> H[Lighthouse CI Audits All 12 Public Routes]
+        H -->|Scores >= 90| I[PR Status Turns Green - Safe to Merge]
+        H -->|Scores < 90| J[PR Status Turns Red - Block Merge]
     end
     
     style B fill:#e6f4ea,stroke:#137333,stroke-width:2px
     style D fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px
-    style G fill:#fef7e0,stroke:#e37400,stroke-width:2px
-    style H fill:#ceead6,stroke:#137333,stroke-width:2px
-    style I fill:#fce8e6,stroke:#c5221f,stroke-width:2px
+    style H fill:#fef7e0,stroke:#e37400,stroke-width:2px
+    style I fill:#ceead6,stroke:#137333,stroke-width:2px
+    style J fill:#fce8e6,stroke:#c5221f,stroke-width:2px
 ```
 
 ---
 
 ## Technical Implementation
 
-### Netlify Lighthouse Plugin Configuration
+### Post-Deployment Lighthouse CI Workflow
 
-The pipeline leverages `@netlify/plugin-lighthouse` registered directly in [netlify.toml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/netlify.toml).
+The pipeline utilizes `@lhci/cli` triggered automatically on deployment successes in [.github/workflows/lighthouse.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/lighthouse.yml). Threshold budgets are managed dynamically inside [lighthouserc.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/lighthouserc.json).
 
-```toml
-# NOTE: In the actual netlify.toml file, do NOT include spaces inside the double brackets.
-# Use standard double-bracketed plugins and plugins.inputs.audits syntax. Spaces are shown here 
-# solely to prevent wiki cross-reference linter false-positives.
-
-[ [plugins] ]
-  package = "@netlify/plugin-lighthouse"
-
-  [plugins.inputs]
-    fail_deploy_on_score_thresholds = true
-
-  [plugins.inputs.thresholds]
-    performance = 0.90
-    accessibility = 0.90
-    best-practices = 0.90
-    seo = 0.90
-
-  [ [plugins.inputs.audits] ]
-    path = "/"
-
-  [ [plugins.inputs.audits] ]
-    path = "/how-it-works"
-
-  [ [plugins.inputs.audits] ]
-    path = "/portfolios"
+#### lighthouserc.json Configuration:
+```json
+{
+  "ci": {
+    "collect": {
+      "numberOfRuns": 1,
+      "settings": {
+        "chromeFlags": "--no-sandbox --headless --disable-gpu"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.9 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["error", { "minScore": 0.9 }],
+        "categories:seo": ["error", { "minScore": 0.9 }]
+      }
+    }
+  }
+}
 ```
 
 ### Key Mechanisms:
-- **Build Failures**: When `fail_deploy_on_score_thresholds` is set to `true`, a drop below **90** on any target route in Performance, Accessibility, Best Practices, or SEO will cause the Netlify deployment step to fail. This automatically flags the associated status check in the GitHub Pull Request as red.
-- **Audit Target Routes**: We audit our primary landing page (`/`), core informational page (`/how-it-works`), and main trading portfolio overview dashboard (`/portfolios`).
+- **Deployment Status Trigger**: The workflow listens to the `deployment_status` event and launches as soon as Netlify marks a deploy state as `success`.
+- **Comprehensive Public Audits**: We audit all 12 public routes dynamically against the live deployment target URL:
+  - `/` (Root homepage)
+  - `/how-it-works` (How it works timeline)
+  - `/portfolios` (Trading portfolios dashboard)
+  - `/audits` (System status verification logs)
+  - `/autoresearch` (Auto-research arena)
+  - `/cause-and-effect` (Consensus cause-and-effect charts)
+  - `/concepts` (D3 concept relationship map)
+  - `/market-overview` (Market sentiment and trends)
+  - `/memories` (Consensus memory flow timeline)
+  - `/reasoning` (LLM reasoning log explorer)
+  - `/login` (User login page)
+  - `/signup` (User signup page)
+- **Score Assertion Gate**: The pipeline automatically asserts budgets of `0.90` (90%) for Performance, Accessibility, Best Practices, and SEO across all audited pages, blocking merges on budget violations.
 
 ---
 

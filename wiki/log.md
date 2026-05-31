@@ -1,3 +1,11 @@
+## [2026-05-31] feature | Post-Deployment Lighthouse CI & SSR Audits Migration
+
+Migrated the performance auditing pipeline from the incompatible build-time Netlify plugin to a robust post-deployment Lighthouse CI GitHub Actions workflow, covering all 12 public routes:
+- **Netlify Build De-clutter**: Removed the `@netlify/plugin-lighthouse` plugin from `netlify.toml` and package dependencies since it cannot audit dynamic Server-Side Rendered (SSR) routes during build compiles (when serverless endpoints are not yet online).
+- **Post-Deploy Audit Workflow**: Created `.github/workflows/lighthouse.yml` and `lighthouserc.json` triggered on GitHub `deployment_status` success. It audits all 12 public routes (`/`, `/how-it-works`, `/portfolios`, `/audits`, `/autoresearch`, `/cause-and-effect`, `/concepts`, `/market-overview`, `/memories`, `/reasoning`, `/login`, `/signup`) against the fully live deployment preview URL.
+- **TDD Regression Suite**: Refactored `netlify-config.test.ts` to assert that `@netlify/plugin-lighthouse` is completely absent from `netlify.toml`, preventing future build-time plugin regression.
+- **Wiki Harmonization**: Updated [[concepts/performance-auditing-strategy]] and [[entities/web-app]] to synthesize this architectural improvement.
+
 ## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
 
 Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.

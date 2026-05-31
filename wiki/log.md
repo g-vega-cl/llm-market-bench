@@ -123,7 +123,7 @@ Implemented a fully automated, TDD-backed synchronization pipeline to keep the w
 - **Dynamic React Timeline UI**: Completely refactored `apps/web/src/routes/how-it-works.tsx` to dynamically load `how-it-works.json` and map it into the premium HSL gradient card layout. Implemented strict linter-compliant React keys using unique bullet/tag strings instead of indices, and introduced bullet-point header bolding via token matching.
 - **Git Commit Hooks**: Added compilation and staging instructions to `scripts/auto-wiki.sh` to compile the JSON and automatically `git add` it on every staged code change.
 - **Local Pre-Commit Hook Strategy**: Because cloud/serverless build environments like Netlify lack Python virtualenv runtimes, compilation is executed strictly locally during commits. Staged changes automatically compile the JSON locally, stage the JSON, and commit it to the repo. Netlify then bundles the pre-compiled, committed JSON natively with zero risk of environment failures.
-- **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
+- **TDD Tests**: Implemented a comprehensive Python pytest suite `test_compile_how_it_works.py` and Vitest UI route test suite `-how-it-works.test.tsx` achieving 100% test success and zero linter/formatting issues on both systems.
 
 ## [2026-05-29] feature | Gold Standard Scenario-Ticker Mapping and Structured Event Synthesis
 

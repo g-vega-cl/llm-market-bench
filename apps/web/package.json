@@ -4,8 +4,8 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "dev": "vite dev",
-        "build": "vite build && tsc --noEmit",
+        "dev": "NODE_OPTIONS=\"--no-deprecation\" vite dev",
+        "build": "NODE_OPTIONS=\"--no-deprecation\" vite build && tsc --noEmit",
         "preview": "vite preview",
         "start": "pnpx srvx --prod -s ../client dist/server/server.js",
         "test": "vitest run",
@@ -40,7 +40,7 @@
     "devDependencies": {
         "@netlify/plugin-lighthouse": "^6.0.4",
         "@netlify/vite-plugin-tanstack-start": "^1.2.8",
-        "@tailwindcss/vite": "^4.1.18",
+        "@tailwindcss/vite": "^4.3.0",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
         "@types/react": "^19.2.9",
@@ -49,7 +49,7 @@
         "@vitest/coverage-v8": "^4.0.18",
         "jsdom": "^27.4.0",
         "mitata": "^1.0.34",
-        "tailwindcss": "^4.1.18",
+        "tailwindcss": "^4.3.0",
         "tsx": "^4.22.3",
         "typescript": "^5.7.2",
         "vite": "^7.3.1",

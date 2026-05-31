@@ -95,7 +95,7 @@ To keep the web app's documentation in perfect harmony with the project's living
 - **Dynamic Frontend Integration**: Refactored `apps/web/src/routes/how-it-works.tsx` to natively import `how-it-works.json` and dynamically render the premium glowing timeline interface using the designated phase-specific HSL gradient themes (blue, indigo, purple, teal, amber, emerald, pink). Bullets starting with key headers (e.g. `Layer 1`, `Atomic Settlement`, `DeepSeek Thinking Mode`) are dynamically styled and bolded using strict type-safe token lists.
 - **Git Pre-Commit Compilation Strategy**: Because cloud/serverless build environments like Netlify lack Python virtualenv runtimes, compilation is executed strictly locally. The Git pre-commit hook in `scripts/auto-wiki.sh` runs `compile_how_it_works.py` locally upon staged code changes, compiles the latest `how-it-works.json`, and automatically stages the compiled JSON into the git commit. Netlify then bundles the pre-compiled, committed JSON module natively with zero risk of cloud environment conflicts.
 - **Git Hook Integration**: Added a compilation hook to the pre-commit script `scripts/auto-wiki.sh`. Staged changes automatically compile the fresh JSON file and re-stage it before final commit.
-- **TDD Verification**: Covered by robust Python unit tests in `test_compile_how_it_works.py` and Vitest UI tests in `how-it-works.test.tsx` to guarantee parsing integrity and dynamic React mapping correctness.
+- **TDD Verification**: Covered by robust Python unit tests in `test_compile_how_it_works.py` and Vitest UI tests in `-how-it-works.test.tsx` to guarantee parsing integrity and dynamic React mapping correctness.
 
 
 ## Design System

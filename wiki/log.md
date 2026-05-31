@@ -209,3 +209,10 @@ Resolved a critical autoresearch evaluation bug where legacy held positions (no 
 - **TDD Safety Net**: Added a comprehensive unit test `test_do_nothing_return_with_legacy_positions` in `apps/engine/tests/test_autoresearch.py` mapping a two-asset portfolio containing legacy and active assets to reproduce the -50.0% drop and verify correct 0.0% return calculation after fix.
 - **Database Backfill**: Successfully backfilled the active prompt experiment row (`37b238f1-96c6-4c98-9743-2c3f9ed980bd`) with the recalculated correct metrics (score: 8.4638, do_nothing_return_pct: -3.3962%).
 - **Documentation**: Updated `[[entities/autoresearch]]` with the new legacy asset valuation mechanism.
+
+## [2026-05-31] fix | Eliminate ICU Whitespace Hydration Mismatch on Homepage Timeline
+
+Resolved the remaining critical `React Error #418` hydration mismatch on the Today homepage, restoring instant server-rendered paints (FCP 0.16 / LCP 0.23 on Lighthouse):
+- **Whitespace Normalization**: Wrapped all `.toLocaleDateString()` calls in the `FutureCatalysts` timeline with `normalizeWhitespace()` imported from `~/utils/date`. This standardizes the locale-sensitive spaces (e.g. browser's `U+202F` narrow no-break space vs. server's standard space `U+0020`) and prevents React 19 from throwing out the SSR HTML markup.
+- **TDD Safety Net**: Populated the empty `futureEvents` mock array inside `apps/web/src/test/hydration.test.tsx` to ensure `FutureCatalysts` is actively rendered and validated during sitemap hydration checks.
+- **ICU Space Simulation Test**: Authored a dedicated TDD test case that spies on `ReactDOMServer.renderToString` and `Date.prototype.toLocaleDateString` to inject browser-specific narrow non-breaking spaces during the client hydration phase. Verified it fails on unnormalized outputs and passes with zero errors after the fix.

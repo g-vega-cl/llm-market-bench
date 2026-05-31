@@ -1,6 +1,7 @@
 import type { Memory } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
+import { normalizeWhitespace } from '~/utils/date';
 
 interface FutureCatalystsProps {
     events: Memory[];
@@ -125,17 +126,21 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                         {dateObj && (
                                             <div className="text-right">
                                                 <div className="text-2xl font-black text-zinc-900 dark:text-white text-display">
-                                                    {dateObj.toLocaleDateString('en-US', {
-                                                        timeZone: 'America/New_York',
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })}
+                                                    {normalizeWhitespace(
+                                                        dateObj.toLocaleDateString('en-US', {
+                                                            timeZone: 'America/New_York',
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                        }),
+                                                    )}
                                                 </div>
                                                 <div className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-                                                    {dateObj.toLocaleDateString('en-US', {
-                                                        timeZone: 'America/New_York',
-                                                        year: 'numeric',
-                                                    })}
+                                                    {normalizeWhitespace(
+                                                        dateObj.toLocaleDateString('en-US', {
+                                                            timeZone: 'America/New_York',
+                                                            year: 'numeric',
+                                                        }),
+                                                    )}
                                                 </div>
                                             </div>
                                         )}

@@ -1,10 +1,13 @@
+import type { Memory } from '@llm-market-bench/database';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentProps, Suspense } from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { MarketOverviewPage } from '~/features/market-overview/pages/MarketOverviewPage';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 import { PortfoliosPage } from '~/features/portfolios/pages/PortfoliosPage';
 import { ReasoningPage } from '~/features/reasoning/pages/ReasoningPage';
+import { FutureCatalysts } from '~/features/today/components/FutureCatalysts';
 import { MarketStatusHero } from '~/features/today/components/MarketStatusHero';
 import { TodayPage } from '~/features/today/pages/TodayPage';
 import { Route as HowItWorksRoute } from '~/routes/how-it-works';
@@ -107,7 +110,28 @@ const mockTodayData = {
         },
     ],
     priceUpdates: [],
-    futureEvents: [],
+    futureEvents: [
+        {
+            id: 'fe1',
+            content: 'US FOMC Interest Rate Decision and economic projections.',
+            created_at: '2026-05-30T10:00:00Z',
+            memory_type: 'MARKET_EVENT' as const,
+            status: 'ACTIVE' as const,
+            parent_id: null,
+            relationship_type: null,
+            relevance_score: 95,
+            importance_score: 9,
+            target_date: '2026-06-15',
+            metadata: {
+                importance_score: 9,
+                future_date_note: 'June FOMC',
+                event_time: '14:00 ET',
+                tickers: ['SPY', 'QQQ', 'TLT'],
+                scenario_analysis:
+                    'Bullish scenario: 0.25% cut (65% probability) -> SPY +1.5%\nBearish scenario: Pause (35% probability) -> SPY -1.2%',
+            },
+        },
+    ],
     marketFeeling: {
         id: 'f1',
         sentiment_label: 'Bullish',
@@ -242,6 +266,48 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                     );
                 }),
             ).toBe(true);
+        });
+
+        it('should hydrate flawlessly even if client-side toLocaleDateString has narrow non-breaking spaces', () => {
+            const originalToLocaleDateString = Date.prototype.toLocaleDateString;
+            let isHydration = false;
+
+            // Spy on renderToString to set the hydration flag right after SSR completes
+            const originalRender = ReactDOMServer.renderToString;
+            const renderSpy = vi
+                .spyOn(ReactDOMServer, 'renderToString')
+                .mockImplementation((el) => {
+                    isHydration = false;
+                    const res = originalRender(el);
+                    isHydration = true;
+                    return res;
+                });
+
+            // Spy on toLocaleDateString to return narrow non-breaking spaces only during client hydration
+            const toLocaleDateStringSpy = vi
+                .spyOn(Date.prototype, 'toLocaleDateString')
+                .mockImplementation(function (
+                    this: Date,
+                    ...args: Parameters<typeof Date.prototype.toLocaleDateString>
+                ) {
+                    const res = originalToLocaleDateString.apply(this, args);
+                    if (isHydration) {
+                        // Simulate modern browser locale formatting with narrow non-breaking spaces
+                        return res.replace(/\s+/g, '\u202f');
+                    }
+                    return res;
+                });
+
+            try {
+                const errors = assertHydrationSymmetry(
+                    <FutureCatalysts events={mockTodayData.futureEvents as unknown as Memory[]} />,
+                );
+                // With whitespace normalization in place, this must hydrate flawlessly with zero errors!
+                expect(errors).toEqual([]);
+            } finally {
+                renderSpy.mockRestore();
+                toLocaleDateStringSpy.mockRestore();
+            }
         });
     });
 

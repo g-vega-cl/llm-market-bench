@@ -122,6 +122,7 @@ Date and time operations are one of the most common and volatile sources of hydr
     * **Node.js (Server)**: Formats times using a standard space character (`U+0020`, char code `32`) before `AM`/`PM` (e.g., `10:45 AM`).
     * **Modern Browser (Client)**: Formats times using a **Narrow Non-Breaking Space** (`U+202F`, char code `8239`) before `AM`/`PM` (e.g., `10:45 AM`).
     * This hidden whitespace mismatch triggers instant, silent hydration failures of text nodes. To prevent this, formatters must explicitly normalize all whitespace characters: `str.replace(/\s+/g, ' ')`.
+    * **Dynamic Client-Side Formatting Rule**: Any component rendering dates/times dynamically on the client side (such as `.toLocaleDateString()` inside `FutureCatalysts.tsx` for target dates) must explicitly wrap the output in `normalizeWhitespace` (imported from `~/utils/date`) to scrub any narrow non-breaking spaces and ensure absolute server-client consistency.
 
 *   **The "Zero-Date" Frontend Architecture (Standard Mitigation)**:
     The most robust pattern is to **completely excise all temporal logic, time zone offsets, and date calculations from frontend components**.
@@ -213,6 +214,11 @@ describe('MarketStatusHero Hydration Check', () => {
     });
 });
 ```
+
+#### ICU Space Simulation Testing
+To guarantee date formatters do not leak unnormalized narrow non-breaking spaces, our test runner runs in JSDOM where both SSR and hydration normally execute under Node.js's same standard whitespace formatting environment.
+To address this testing blindspot, [hydration.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/test/hydration.test.tsx) implements an **ICU Space Simulation Test**. It spies on `ReactDOMServer.renderToString` and `Date.prototype.toLocaleDateString` to dynamically replace all standard spaces with browser-specific narrow non-breaking spaces (`\u202f`) during client hydration, asserting that components like `FutureCatalysts` hydrate flawlessly under browser-like whitespace deltas.
+
 
 ### Bypassing in Emergencies
 

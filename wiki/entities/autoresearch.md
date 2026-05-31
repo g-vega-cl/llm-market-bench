@@ -82,7 +82,9 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-05-31**: **Do-Nothing Legacy Position Valuations & DB Corrected Backfill** — Resolved a critical evaluation bug where legacy held positions without active trading activity for >14 days were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%. Modified `_do_nothing_return` in `metrics.py` to retrieve the latest known price up to `week_end` individually for each asset (removing the 14-day lookup limit). Backfilled the active prompt experiment (`37b238f1-96c6-4c98-9743-2c3f9ed980bd`) with the recalculated correct metrics (score: 8.4638, do_nothing_return_pct: -3.3962%).
 - **2026-05-29**: **Do-Nothing Formula Presentation & Instruction Alignment** — Aligned the meta-researcher's system instructions (`program.md`), the scoring methodology UI (`ScoreCalculation.tsx`), and the visual score breakdown UI (`ScoreBreakdown.tsx`) to represent the correct dual-benchmark score formula including both `SPY` and `Do-Nothing` portfolio return comparisons.
+
 - **2026-05-25**: **Metrics & Baseline Ratchet Alignment** — Refactored the runner to update performance metrics directly on the active prompt row that actually ran, while initializing the newly generated active prompt with empty/N/A metrics and advancing its week dates by 7 days for the upcoming trading week.
 - **2026-05-24**: **Volatility & Score Breakdown UI** — Added `volatility` (annualized standard deviation) metric computation in the engine. Built a new Score Breakdown UI component to visually explain the arithmetic of the risk-adjusted scoring formula on the web app's experiment details screen.
 - **2026-05-24**: **Resilience & Execution Alignment** — Documented multi-agent system overview and verified overall pipeline integrity, ensuring zero-warning enforcement and clean wiki links.

@@ -93,7 +93,6 @@ async def _spy_returns(sb_client, week_start: date, week_end: date) -> list[floa
 
 async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> float:
     from collections import defaultdict
-    from datetime import timedelta
 
     owner_list = list(owner_ids)
 
@@ -139,23 +138,24 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
         elif t["signal"] == "SELL":
             positions[pid][t["ticker"]] -= qty
 
-    # 3. Get week_end prices for these tickers
+    # 3. Get week_end prices for these tickers (using last known price up to week_end, no 14-day limit)
     all_tickers = {ticker for p_pos in positions.values() for ticker, qty in p_pos.items() if qty > 0}
 
     ticker_prices = {}
     if all_tickers:
-        res_prices = (
-            sb_client.table("price_history")
-            .select("ticker, price, fetched_at")
-            .in_("ticker", list(all_tickers))
-            .gte("fetched_at", (week_end - timedelta(days=14)).isoformat())
-            .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
-            .execute()
-        )
-        price_rows = (await res_prices).data or []
-        price_rows.sort(key=lambda x: x["fetched_at"])
-        for r in price_rows:
-            ticker_prices[r["ticker"]] = float(r["price"] or 0)
+        for ticker in all_tickers:
+            res_price = (
+                sb_client.table("price_history")
+                .select("price")
+                .eq("ticker", ticker)
+                .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
+                .order("fetched_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            price_data = (await res_price).data
+            if price_data:
+                ticker_prices[ticker] = float(price_data[0]["price"] or 0)
 
     # 4. Calculate return for each portfolio
     agent_returns = []

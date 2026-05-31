@@ -201,4 +201,11 @@ Fixed the unit test failure in `TodayPage.test.tsx` caused by missing mock data 
 ## [2026-05-31] optimization | Server-side date formatting & progressive hydration for TodayPage
 
 Moved all date formatting from client components to server-side data fetching. Introduced pre-computed `formattedTime`, `formattedDateTime`, and `formattedShortDate` fields in `TodayData` response. Added React.lazy/Suspense code splitting for secondary dashboard modules. Optimized `priceUpdates` query to fetch only `id` (boolean check). Added Vitest regression suite enforcing zero client-side date util calls during render.
+## [2026-05-31] fix | Do-Nothing Legacy Position Valuations & DB Corrected Backfill
 
+Resolved a critical autoresearch evaluation bug where legacy held positions (no active trades for >14 days) were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%.
+
+- **Lookback Limit Fix**: Modified `_do_nothing_return` in `apps/engine/autoresearch/metrics.py` to retrieve the latest known price up to `week_end` individually for each asset (removing the 14-day lookup limit).
+- **TDD Safety Net**: Added a comprehensive unit test `test_do_nothing_return_with_legacy_positions` in `apps/engine/tests/test_autoresearch.py` mapping a two-asset portfolio containing legacy and active assets to reproduce the -50.0% drop and verify correct 0.0% return calculation after fix.
+- **Database Backfill**: Successfully backfilled the active prompt experiment row (`37b238f1-96c6-4c98-9743-2c3f9ed980bd`) with the recalculated correct metrics (score: 8.4638, do_nothing_return_pct: -3.3962%).
+- **Documentation**: Updated `[[entities/autoresearch]]` with the new legacy asset valuation mechanism.

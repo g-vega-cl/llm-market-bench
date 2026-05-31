@@ -28,7 +28,10 @@ score          = excess_return - opp_cost - (max_drawdown% × 0.3)
 
 A single transparent number. The meta-researcher sees all components (portfolio return, SPY return, bond hurdle, opportunity cost penalty, drawdown) plus the baseline and Δ.
 
+The **Do-Nothing Return** represents the theoretical return of holding the initial portfolio positions throughout the week without making any trades. To correctly value legacy positions held for weeks/months without recent active trading, the pricing query retrieves the **last known price** of each asset up to the end of the evaluation week (`week_end`), ensuring no assets are artificially valued at $0.00.
+
 The 10-year Treasury yield is the sole active risk-free hurdle — the portfolio must clear it to avoid an opportunity cost penalty. The US Dollar Index (DXY/UUP) return is fetched and shown in the weekly report for macroeconomic context but does **not** affect the score.
+
 
 ## Baseline
 

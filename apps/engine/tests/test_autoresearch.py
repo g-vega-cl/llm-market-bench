@@ -404,7 +404,157 @@ class TestQuerySyntax:
 
 
 # ---------------------------------------------------------------------------
-# Migration sanity — research_output must be JSONB.
+# Do-Nothing return calculation tests
+# ---------------------------------------------------------------------------
+
+
+class TestDoNothingReturn:
+    @pytest.mark.asyncio
+    async def test_do_nothing_return_with_legacy_positions(self, monkeypatch):
+        """Verify that _do_nothing_return uses older price records (legacy assets)
+        and does not value them at 0.0 when they fall outside the 14-day window.
+        """
+        from autoresearch import metrics
+
+        week_start = date(2026, 5, 25)
+        week_end = date(2026, 5, 31)
+
+        class FakeResponse:
+            def __init__(self, data):
+                self.data = data
+
+        class FakeQuery:
+            def __init__(self, table_name, data_map):
+                self.table_name = table_name
+                self.data_map = data_map
+                self.gte_filters = {}
+                self.lte_filters = {}
+                self.eq_filters = {}
+
+            def select(self, *args, **kwargs):
+                return self
+
+            def in_(self, *args, **kwargs):
+                return self
+
+            def gte(self, col, val):
+                self.gte_filters[col] = val
+                return self
+
+            def lte(self, col, val):
+                self.lte_filters[col] = val
+                return self
+
+            def lt(self, *args, **kwargs):
+                return self
+
+            def eq(self, col, val):
+                self.eq_filters[col] = val
+                return self
+
+            def order(self, *args, **kwargs):
+                return self
+
+            def limit(self, *args, **kwargs):
+                return self
+
+            async def execute(self):
+                data = self.data_map.get(self.table_name, [])
+                filtered = []
+                print(f"\n[FakeQuery execute] Table: {self.table_name}")
+                print(f"  GTE filters: {self.gte_filters}")
+                print(f"  LTE filters: {self.lte_filters}")
+                print(f"  EQ filters: {self.eq_filters}")
+                for row in data:
+                    keep = True
+                    if self.eq_filters:
+                        for col, val in self.eq_filters.items():
+                            if row.get(col) != val:
+                                keep = False
+                    if self.table_name == "price_history" and row.get("fetched_at"):
+                        fetched_at = row["fetched_at"]
+                        if "fetched_at" in self.gte_filters and fetched_at < self.gte_filters["fetched_at"]:
+                            print(f"    Filtering out {row} because fetched_at < {self.gte_filters['fetched_at']}")
+                            keep = False
+                        if "fetched_at" in self.lte_filters:
+                            # Strip trailing T23:59:59 if any to do string comparison
+                            val_str = self.lte_filters["fetched_at"].split("T")[0]
+                            if fetched_at.split("T")[0] > val_str:
+                                print(f"    Filtering out {row} because fetched_at > {val_str}")
+                                keep = False
+
+                    if keep:
+                        filtered.append(row)
+                print(f"  Result count: {len(filtered)}")
+                return FakeResponse(filtered)
+
+        class FakeClient:
+            def __init__(self, data_map):
+                self.data_map = data_map
+
+            def table(self, name):
+                return FakeQuery(name, self.data_map)
+
+        # Mock database data:
+        # Portfolio initial state has 10,000 equity and 3,500 cash.
+        # Trades before week start has 20 shares of IBM (legacy) and 10 shares of AAPL (active).
+        # Price history has IBM at $250 fetched on April 15 (older than 14 days),
+        # and AAPL at $150 fetched on May 28 (fresh).
+        data_map = {
+            "portfolio_performance": [
+                {
+                    "portfolio_id": "p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 3500.0,
+                    "date": "2026-05-25",
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ],
+            "trades": [
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "IBM",
+                    "signal": "BUY",
+                    "quantity": 20,
+                    "portfolios": {"owner_id": "agent-1"},
+                },
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "AAPL",
+                    "signal": "BUY",
+                    "quantity": 10,
+                    "portfolios": {"owner_id": "agent-1"},
+                },
+            ],
+            "price_history": [
+                {
+                    "ticker": "IBM",
+                    "price": 250.0,
+                    "fetched_at": "2026-04-15T00:00:00",
+                },
+                {
+                    "ticker": "AAPL",
+                    "price": 150.0,
+                    "fetched_at": "2026-05-28T00:00:00",
+                },
+            ],
+        }
+
+        fake_sb = FakeClient(data_map)
+
+        # Call _do_nothing_return with our mock client
+        ret = await metrics._do_nothing_return(
+            fake_sb,
+            owner_ids=frozenset({"agent-1"}),
+            week_start=week_start,
+            week_end=week_end,
+        )
+
+        # Expected return is 0.0% (3500 cash + 20 * 250 IBM + 10 * 150 AAPL = 10000 equity).
+        # Before the fix, the return will be -50.0% because IBM is valued at 0.0.
+        assert ret == pytest.approx(0.0)
+
+
 # ---------------------------------------------------------------------------
 
 

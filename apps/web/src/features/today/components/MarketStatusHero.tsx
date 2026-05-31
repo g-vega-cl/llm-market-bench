@@ -7,7 +7,6 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { Badge, Card, ConfidenceBar, HeroBackground } from '@llm-market-bench/ui-design-system';
-import { formatEasternTime } from '~/utils/date';
 
 interface MarketStatusHeroProps {
     data: {
@@ -17,7 +16,7 @@ interface MarketStatusHeroProps {
         priceUpdates?: MarketDataCache[];
         futureEvents?: Record<string, unknown>[];
         newsletters?: NewsletterSnapshot[];
-        marketFeeling?: MarketFeeling | null;
+        marketFeeling?: (MarketFeeling & { formattedTime?: string }) | null;
         serverTime?: string;
         isMarketOpen: boolean;
         isSentimentStale: boolean;
@@ -230,8 +229,8 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
 
                         <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
                             <span className="text-[10px] text-electric-blue-300">
-                                {marketFeeling?.created_at
-                                    ? `Last analyzed: ${formatEasternTime(marketFeeling.created_at)}`
+                                {marketFeeling?.formattedTime
+                                    ? `Last analyzed: ${marketFeeling.formattedTime}`
                                     : 'Waiting for analysis...'}
                             </span>
                             {marketFeeling?.model_used && (

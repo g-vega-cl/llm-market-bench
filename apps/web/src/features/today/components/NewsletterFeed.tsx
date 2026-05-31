@@ -1,9 +1,8 @@
 import type { NewsletterSnapshot } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { formatEasternShortTime } from '~/utils/date';
 
 interface NewsletterFeedProps {
-    newsletters: NewsletterSnapshot[];
+    newsletters: (NewsletterSnapshot & { formattedTime?: string })[];
 }
 
 export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
@@ -49,8 +48,9 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                     </Badge>
                                 </div>
                                 <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5 tabular-nums">
-                                    <span className="w-2 h-2 bg-electric-blue-400 rounded-full animate-pulse" />
-                                    {`${formatEasternShortTime(news.date)} ET`}
+                                    {news.formattedTime
+                                        ? `${news.formattedTime} ET`
+                                        : 'Unknown Time'}
                                 </span>
                             </div>
 

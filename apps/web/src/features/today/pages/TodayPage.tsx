@@ -1,36 +1,27 @@
-import type {
-    Decision,
-    MarketDataCache,
-    MarketFeeling,
-    Memory,
-    NewsletterSnapshot,
-    Trade,
-} from '@llm-market-bench/database';
+import type { Memory } from '@llm-market-bench/database';
 import { EmptyState, PageLayout } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { AgentInsights } from '../components/AgentInsights';
-import { FutureCatalysts } from '../components/FutureCatalysts';
-import { GlobalMacroStats } from '../components/GlobalMacroStats';
+import { lazy, Suspense } from 'react';
+import type { TodayData } from '../api/fetch-today-data';
 import { MarketStatusHero } from '../components/MarketStatusHero';
-import { NewsletterFeed } from '../components/NewsletterFeed';
-import { TradeActivity } from '../components/TradeActivity';
-import type { MacroStat } from '../lib/macro-tickers';
-import { todayQueries } from '../queries/options';
 
-interface TodayData {
-    newsletters: NewsletterSnapshot[];
-    trades: (Trade & { portfolios: { owner_id: string } })[];
-    decisions: Decision[];
-    memories: Memory[];
-    priceUpdates: MarketDataCache[];
-    futureEvents: Memory[];
-    marketFeeling: MarketFeeling | null;
-    macroStats: MacroStat[];
-    serverTime?: string;
-    isMarketOpen: boolean;
-    isSentimentStale: boolean;
-    todayDateString: string;
-}
+const AgentInsights = lazy(() =>
+    import('../components/AgentInsights').then((m) => ({ default: m.AgentInsights })),
+);
+const FutureCatalysts = lazy(() =>
+    import('../components/FutureCatalysts').then((m) => ({ default: m.FutureCatalysts })),
+);
+const GlobalMacroStats = lazy(() =>
+    import('../components/GlobalMacroStats').then((m) => ({ default: m.GlobalMacroStats })),
+);
+const NewsletterFeed = lazy(() =>
+    import('../components/NewsletterFeed').then((m) => ({ default: m.NewsletterFeed })),
+);
+const TradeActivity = lazy(() =>
+    import('../components/TradeActivity').then((m) => ({ default: m.TradeActivity })),
+);
+
+import { todayQueries } from '../queries/options';
 
 interface TodayPageProps {
     initialData: TodayData;
@@ -59,7 +50,13 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
 
             <PageLayout className="space-y-24 pb-24">
                 {/* Global Macro, Bonds & Index Volatility Regime Stats */}
-                <GlobalMacroStats macroStats={data.macroStats} />
+                <Suspense
+                    fallback={
+                        <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-32 rounded-2xl w-full" />
+                    }
+                >
+                    <GlobalMacroStats macroStats={data.macroStats} />
+                </Suspense>
 
                 {isEmpty ? (
                     <EmptyStateView
@@ -68,10 +65,34 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                     />
                 ) : (
                     <div className="space-y-24 animate-slide-up">
-                        <AgentInsights memories={data.memories} />
-                        <NewsletterFeed newsletters={data.newsletters} />
-                        <TradeActivity trades={data.trades} decisions={data.decisions} />
-                        <FutureCatalysts events={data.futureEvents} />
+                        <Suspense
+                            fallback={
+                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
+                            }
+                        >
+                            <AgentInsights memories={data.memories} />
+                        </Suspense>
+                        <Suspense
+                            fallback={
+                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
+                            }
+                        >
+                            <NewsletterFeed newsletters={data.newsletters} />
+                        </Suspense>
+                        <Suspense
+                            fallback={
+                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
+                            }
+                        >
+                            <TradeActivity trades={data.trades} decisions={data.decisions} />
+                        </Suspense>
+                        <Suspense
+                            fallback={
+                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
+                            }
+                        >
+                            <FutureCatalysts events={data.futureEvents as Memory[]} />
+                        </Suspense>
                     </div>
                 )}
             </PageLayout>
@@ -107,7 +128,13 @@ function EmptyStateView({
 
             {hasFutureEvents && (
                 <div className="pt-12 border-t border-zinc-200 dark:border-zinc-800 animate-slide-up animate-stagger-2">
-                    <FutureCatalysts events={futureEvents} />
+                    <Suspense
+                        fallback={
+                            <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
+                        }
+                    >
+                        <FutureCatalysts events={futureEvents as Memory[]} />
+                    </Suspense>
                 </div>
             )}
         </div>

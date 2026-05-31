@@ -36,6 +36,7 @@ const emptyTodayData = {
         primary_concern: 'Inflation risk',
         created_at: '2026-05-29T14:45:00Z',
         model_used: 'Gemini 3.5 Flash',
+        formattedTime: '10:45 AM ET',
     },
     macroStats: [],
     serverTime: '2026-05-29T18:45:00Z',

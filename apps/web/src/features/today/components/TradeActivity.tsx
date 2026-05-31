@@ -1,6 +1,5 @@
 import { Badge, MetricTile, SectionHeading, StatPill } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
-import { formatEasternShortTime } from '~/utils/date';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface TradeItem {
@@ -12,6 +11,7 @@ interface TradeItem {
     quantity?: number;
     price: number | string;
     portfolios?: { owner_id?: string };
+    formattedTime?: string;
 }
 
 interface DecisionItem {
@@ -25,6 +25,7 @@ interface DecisionItem {
     // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
     metadata?: Record<string, any> | null;
     ticker: string;
+    formattedTime?: string;
 }
 
 interface TradeActivityProps {
@@ -43,6 +44,7 @@ type ActivityItem =
     | (DecisionItem & {
           type: 'REJECTION';
           timestamp: string | null;
+          formattedTime?: string;
           reasoning?: string;
           model_name?: string;
           confidence?: number;
@@ -71,16 +73,16 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                     reasoning: decision?.reasoning || 'No reasoning found for this execution.',
                     model_name: decision?.model_name || t.portfolios?.owner_id,
                     confidence: decision?.confidence_score,
+                    formattedTime: t.formattedTime,
                 };
             }),
             ...rejections.map((r) => ({
                 ...r,
                 type: 'REJECTION' as const,
                 timestamp: r.created_at,
+                formattedTime: r.formattedTime,
             })),
-        ].sort(
-            (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime(),
-        );
+        ].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 
         // Apply filter
         if (filter === 'ALL') return activity;
@@ -240,8 +242,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest tabular-nums">
-                                                    {item.timestamp
-                                                        ? `${formatEasternShortTime(item.timestamp)} ET`
+                                                    {item.formattedTime
+                                                        ? `${item.formattedTime} ET`
                                                         : 'Pending'}
                                                 </span>
                                                 <div

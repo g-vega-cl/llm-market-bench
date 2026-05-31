@@ -1,10 +1,9 @@
 import type { Memory } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { formatEasternDateTime, formatEasternShortDate } from '~/utils/date';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface AgentInsightsProps {
-    memories: Memory[];
+    memories: (Memory & { formattedDateTime?: string; formattedShortDate?: string })[];
 }
 
 export function AgentInsights({ memories }: AgentInsightsProps) {
@@ -87,7 +86,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                     )}
                                 </div>
                                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                    {m.created_at ? formatEasternDateTime(m.created_at) : 'Pending'}
+                                    {m.formattedDateTime ? m.formattedDateTime : 'Pending'}
                                 </span>
                             </div>
 
@@ -150,7 +149,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 </span>
                             </div>
                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                {m.created_at ? formatEasternShortDate(m.created_at) : 'Pending'}
+                                {m.formattedShortDate ? m.formattedShortDate : 'Pending'}
                             </span>
                         </div>
                         <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">
@@ -195,9 +194,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                         )}
                                     </div>
                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                        {m.created_at
-                                            ? formatEasternShortDate(m.created_at)
-                                            : 'Pending'}
+                                        {m.formattedShortDate ? m.formattedShortDate : 'Pending'}
                                     </span>
                                 </div>
                             );

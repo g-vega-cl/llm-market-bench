@@ -7,18 +7,24 @@ import type {
     Trade,
 } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
-import { formatEasternDate } from '~/utils/date';
+import {
+    formatEasternDate,
+    formatEasternDateTime,
+    formatEasternShortDate,
+    formatEasternShortTime,
+    formatEasternTime,
+} from '~/utils/date';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 import { calculateMacroStats, MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
 export interface TodayData {
-    newsletters: NewsletterSnapshot[];
-    trades: (Trade & { portfolios: { owner_id: string } })[];
-    decisions: Decision[];
-    memories: Memory[];
+    newsletters: (NewsletterSnapshot & { formattedTime: string })[];
+    trades: (Trade & { portfolios: { owner_id: string }; formattedTime: string })[];
+    decisions: (Decision & { formattedTime: string })[];
+    memories: (Memory & { formattedShortDate: string; formattedDateTime: string })[];
     priceUpdates: MarketDataCache[];
-    futureEvents: Memory[];
-    marketFeeling: MarketFeeling | null;
+    futureEvents: (Memory & { formattedShortDate: string })[];
+    marketFeeling: (MarketFeeling & { formattedTime: string }) | null;
     macroStats: MacroStat[];
     serverTime?: string;
     isMarketOpen: boolean;
@@ -172,11 +178,7 @@ export async function fetchTodayData(): Promise<TodayData> {
             .select('*')
             .gte('created_at', startOfDay)
             .order('created_at', { ascending: false }),
-        supabase
-            .from('market_data_cache')
-            .select('*')
-            .gte('fetched_at', startOfDay)
-            .order('fetched_at', { ascending: false }),
+        supabase.from('market_data_cache').select('id').gte('fetched_at', startOfDay).limit(1),
         supabase
             .from('memories')
             .select('*')
@@ -235,13 +237,34 @@ export async function fetchTodayData(): Promise<TodayData> {
     const todayDateString = formatEasternDate(now);
 
     return {
-        newsletters: (newsletters || []) as NewsletterSnapshot[],
-        trades: (trades || []) as (Trade & { portfolios: { owner_id: string } })[],
-        decisions: (decisions || []) as Decision[],
-        memories: (memories || []) as Memory[],
-        priceUpdates: (priceUpdates || []) as MarketDataCache[],
-        futureEvents: (futureEvents || []) as Memory[],
-        marketFeeling: marketFeelingObj,
+        newsletters: (newsletters || []).map((n) => ({
+            ...n,
+            formattedTime: formatEasternShortTime(n.date),
+        })) as (NewsletterSnapshot & { formattedTime: string })[],
+        trades: (trades || []).map((t) => ({
+            ...t,
+            formattedTime: formatEasternShortTime(t.executed_at),
+        })) as (Trade & { portfolios: { owner_id: string }; formattedTime: string })[],
+        decisions: (decisions || []).map((d) => ({
+            ...d,
+            formattedTime: formatEasternShortTime(d.created_at),
+        })) as (Decision & { formattedTime: string })[],
+        memories: (memories || []).map((m) => ({
+            ...m,
+            formattedDateTime: formatEasternDateTime(m.created_at),
+            formattedShortDate: formatEasternShortDate(m.created_at),
+        })) as (Memory & { formattedShortDate: string; formattedDateTime: string })[],
+        priceUpdates: (priceUpdates || []) as unknown as MarketDataCache[],
+        futureEvents: (futureEvents || []).map((m) => ({
+            ...m,
+            formattedShortDate: formatEasternShortDate(m.created_at),
+        })) as (Memory & { formattedShortDate: string })[],
+        marketFeeling: marketFeelingObj
+            ? {
+                  ...marketFeelingObj,
+                  formattedTime: formatEasternTime(marketFeelingObj.created_at),
+              }
+            : null,
         macroStats,
         serverTime: now.toISOString(),
         isMarketOpen,

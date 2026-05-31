@@ -143,6 +143,11 @@ Initial server response times depend directly on the database queries executed d
 *   **Segmented Parallel Queries to Avoid Truncation**: PostgREST/Supabase enforces a default maximum result limit of `1,000` rows. A single combined `.in()` query across many tickers over a long historical range can easily hit this threshold, resulting in truncated data and incorrect downstream calculations. Instead, execute segmented per-ticker queries in parallel (e.g., via `Promise.all` with a `.limit(N)` constraint). This guarantees untruncated chronological history for every ticker while reducing the overall row density fetched over the network, drastically slashing TTFB and database overhead.
 *   **Excising Unused High-Volume Queries**: Avoid loading high-volume or heavy tables (such as raw `llm_reasoning_logs` conversation trees containing massive text columns) in primary landing page queries if they are only rendered on secondary pages. Removing unused table loads cuts database scan times by hundreds of milliseconds and completely eliminates high-volume network overhead.
 
+### 3. Progressive Hydration & Code Splitting (LCP & TTI Optimization)
+Heavy visualization libraries (like `d3` or `recharts`) and long component trees can inflate the initial JS bundle, blocking the main thread and severely degrading Time To Interactive (TTI).
+*   **Suspense Boundaries**: Wrap secondary dashboard modules (e.g. historical timelines, deep analytics panels, or below-the-fold charts) in `React.lazy()` imports and `<Suspense>` boundaries.
+*   **Priority Rendering**: The initial SSR payload should contain the fully-rendered critical Hero section (for instant First Contentful Paint) while the heavier components stream in progressively. This ensures the app becomes instantly responsive even on slow connections.
+
 ---
 
 ## Developer Guide

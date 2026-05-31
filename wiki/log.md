@@ -1,35 +1,3 @@
-## [2026-05-25] fix | Memories Page Cache Backfilling & Filtering Resolution
-
-Resolved the issue where filtering by "Events" on the Memories page displayed a very small subset of events (e.g., only two) by implementing complete cache backfilling to its 500-item capacity.
-
-- **Frontend App (`web`)**: Imported `MAX_CACHE_SIZE = 500` from `cache.ts`. Updated the cache query logic in `MemoriesPage.tsx` to conditionally execute a full `fetchMemories(undefined, 500)` query if the local browser cache contains fewer than 500 items, backfilling it to completion. Once the cache is fully populated, subsequent page loads dynamically run the optimized background delta-sync (`fetchNewMemories`).
-- **Tests**: Added a TDD unit test in `MemoriesPage.test.tsx` asserting that `fetchMemories(undefined, 500)` is correctly called when the cache is small. Updated existing delta-sync tests to seed 500 mock memories, ensuring perfect coverage and correctness.
-- **Documentation**: Updated [[concepts/memory-feedback]] to detail the backfilling versus delta-sync logic and thresholds.
-
-## [2026-05-25] autoresearch | Added Volatility Calculation Breakdown to Experiment Details
-
-### Context
-The user requested visual clarity on how the portfolio volatility metric is calculated within prompt experiments on the Auto-Research page, ensuring complete alignment with the design system.
-
-### Changes
-- **New Component**: Created `VolatilityCalculation` to render a step-by-step mathematical explanation of daily return weighting, standard deviation calculation, and √252 annualization.
-- **Integration**: Placed the calculation breakdown directly underneath the Score Breakdown within `ExperimentDetails`.
-- **Validation**: Added comprehensive unit tests in `VolatilityCalculation.test.tsx` achieving 100% test coverage for all component states (active vs. finalized). Verified clean Biome compliance and successful production builds.
-
-## [2026-05-25] concept | Self-healing cache validation for memories page
-
-The hybrid cache + delta-sync architecture on `/memories` gained a self-healing validation layer. Before entering delta-sync mode, the client now calls `validateCacheState()` — a lightweight API that checks whether the newest cached memory ID still exists in the database and whether the DB timeline has rolled back. Any anomaly triggers a full 500-item backfill, making the page resilient to database resets, re-seeds, and historical imports with zero user intervention.
-
-Extracted `syncMemoriesCache`, `performFullBackfill`, and `fetchDeltaOrBackfill` helpers from the `queryFn` to keep cognitive complexity within Biome's limits. Added 3 new TDD regression tests for the self-healing paths (valid cache, ID-missing reset, timeline-rollback reset). The [[concepts/memory-feedback]] page was updated inline with these changes.
-
-## [2026-05-26] fix | Preserve Unflattened Messages for Anthropic/Claude Hard Tool Enforcement
-
-Resolved the issue where Anthropic/Claude models (e.g. Claude Haiku 4.5) were consistently getting their BUY/SELL decisions rejected with `REJECTED_TOOL_USAGE`.
-
-- **Engine Core Fix**: Preserved a deep copy of the message history (`unflattened_messages`) in `apps/engine/core/llm/analysis.py` before flattening nested content blocks for Instructor. We now pass this unflattened copy to `_scan_history_for_tools` so it can scan structured `tool_use`/`tool_result` content blocks instead of raw strings.
-- **TDD Test**: Added a new unit test `test_analyze_with_provider_hard_enforcement_anthropic` to `apps/engine/tests/test_tool_enforcement.py`. This test mocks the tool loop to call the sell tool and verifies that before the fix, the hard enforcement checker fails and rejects the trade; after the fix, it successfully confirms and approves the trade.
-- **Documentation**: Updated [[concepts/tool-enforcement]] and [[sources/tool-enforcement-source]] with the unflattened message preservation logic.
-
 ## [2026-05-26] feature | Enriched Diagnostic Logging for Hard Tool Enforcement Rejections
 
 Added comprehensive diagnostic details on Hard Tool Enforcement rejections to prevent silent failure states and streamline automated root-cause audits.
@@ -210,4 +178,27 @@ Added a `hasVerifier()` utility to the portfolio config module that identifies p
 ## [2026-05-31] doc | Updated MiniMax slippage buffer documentation from 0.3% to 0.5%
 
 Updated the wiki documentation to reflect the code change that aligns the MiniMax portfolio execution simulated slippage and Alpaca mirror order limit buffer from `±0.3%` to `±0.5%`. Updated pages: `concepts/execution.md`, `concepts/minimax-portfolio.md`, `index.md`, and `overview.md`.
+
+## [2026-05-31] optimization | Advanced Homepage SSR Performance & Granular Hydration Stability
+
+Resolved Unlighthouse performance bottlenecks (Target: 90%+) and structural SSR hydration risks on the core `TodayPage`:
+- **Server-Side Formatting**: Eliminated the final traces of client-side date instantiations across `MarketStatusHero`, `AgentInsights`, `NewsletterFeed`, and `TradeActivity`. All formatting is now fully delegated to `fetchTodayData` on the server which injects static `formattedTime`, `formattedDate`, `formattedDateTime`, and `formattedShortDate` strings directly into the data entities.
+- **Payload Overhead Reduction**: Shrunk the massive `priceUpdates` cache database query inside `fetchTodayData` to `.select('id').limit(1)` since it is strictly evaluated as a boolean (`isEmpty`) for the layout, massively reducing row transport overhead.
+- **Chronological Sorting Fix**: Replaced `new Date().getTime()` sorting in `TradeActivity` with string-based `localeCompare()` on ISO timestamps to completely scrub the render phase of dynamic temporal logic.
+- **Progressive Hydration (Suspense)**: Refactored `TodayPage` to utilize granular `React.lazy()` boundaries and `<Suspense>` wrappers around all heavy secondary dashboard modules (`AgentInsights`, `FutureCatalysts`, `GlobalMacroStats`, `NewsletterFeed`, `TradeActivity`), significantly improving Time To Interactive (TTI) and dropping the initial blocking chunk size.
+- **TDD Safety Net**: Authored a dedicated Vitest regression suite (`TodayPage.perf.test.tsx`) that enforces 0 runtime invocations of the `dateUtils` formatters during the component render cycle. Passed 100% cleanly.
+
+## [2026-05-31] optimization | TodayPage SSR performance & progressive hydration refactor
+
+Server-side date formatting, Suspense code splitting, `priceUpdates` query optimization, and sorting fix on `TodayPage` to reduce TTI and eliminate hydration mismatches. Added `TodayPage.perf.test.tsx` regression suite ensuring zero client-side date util calls during render.
+
+## [2026-05-31] fix | Patch TodayPage.test.tsx Mock Data for Eastern Time Formatting
+
+Fixed the unit test failure in `TodayPage.test.tsx` caused by missing mock data in the optimized server-side formatted date architecture:
+- **Mock Payload Update**: Added the pre-formatted `formattedTime: '10:45 AM ET'` field to the `emptyTodayData.marketFeeling` mock object. This conforms to the server-formatting requirements expected by `MarketStatusHero` and fulfills the `Last analyzed: 10:45 AM ET` assertion.
+- **TDD Verification**: Confirmed that all 47 tests under `src/features/today/` are 100% green, with both Biome checks and TypeScript typechecks (`tsc --noEmit`) passing perfectly.
+
+## [2026-05-31] optimization | Server-side date formatting & progressive hydration for TodayPage
+
+Moved all date formatting from client components to server-side data fetching. Introduced pre-computed `formattedTime`, `formattedDateTime`, and `formattedShortDate` fields in `TodayData` response. Added React.lazy/Suspense code splitting for secondary dashboard modules. Optimized `priceUpdates` query to fetch only `id` (boolean check). Added Vitest regression suite enforcing zero client-side date util calls during render.
 

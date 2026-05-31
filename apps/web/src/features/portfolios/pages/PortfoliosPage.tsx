@@ -13,6 +13,7 @@ import * as React from 'react';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
+import { hasVerifier } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
 
 type PortfolioWithActive = Portfolio & { is_active: boolean; is_autoresearch: boolean };
@@ -71,13 +72,18 @@ function PortfolioCard({
                     </Badge>
                 </div>
 
-                {portfolio.is_autoresearch && !deprecated && (
-                    <div className="mb-4">
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {portfolio.is_autoresearch && !deprecated && (
                         <Badge variant="soft" size="xs" colorScheme="info">
                             Auto-Research
                         </Badge>
-                    </div>
-                )}
+                    )}
+                    {!hasVerifier(portfolio.owner_id) && !deprecated && (
+                        <Badge variant="soft" size="xs" colorScheme="warning">
+                            No Verifier
+                        </Badge>
+                    )}
+                </div>
 
                 <div className="space-y-4">
                     <MetricTile

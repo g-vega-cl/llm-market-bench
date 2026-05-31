@@ -66,3 +66,13 @@ export function isAutoresearchPortfolio(ownerId: string | null): boolean {
     const normalized = normalizeOwnerId(ownerId);
     return getAutoresearchOwnerIds().includes(normalized);
 }
+
+/**
+ * Checks if a portfolio uses a verifier based on its owner ID.
+ * MiniMax portfolios do not use the verifier.
+ */
+export function hasVerifier(ownerId: string | null): boolean {
+    if (!ownerId) return false;
+    const normalized = normalizeOwnerId(ownerId);
+    return !normalized.includes('minimax');
+}

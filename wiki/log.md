@@ -1,24 +1,3 @@
-## [2026-05-31] feature | Post-Deployment Lighthouse CI & SSR Audits Migration
-
-Migrated the performance auditing pipeline from the incompatible build-time Netlify plugin to a robust post-deployment Lighthouse CI GitHub Actions workflow, covering all 12 public routes:
-- **Netlify Build De-clutter**: Removed the `@netlify/plugin-lighthouse` plugin from `netlify.toml` and package dependencies since it cannot audit dynamic Server-Side Rendered (SSR) routes during build compiles (when serverless endpoints are not yet online).
-- **Post-Deploy Audit Workflow**: Created `.github/workflows/lighthouse.yml` and `lighthouserc.json` triggered on GitHub `deployment_status` success. It audits all 12 public routes (`/`, `/how-it-works`, `/portfolios`, `/audits`, `/autoresearch`, `/cause-and-effect`, `/concepts`, `/market-overview`, `/memories`, `/reasoning`, `/login`, `/signup`) against the fully live deployment preview URL.
-- **TDD Regression Suite**: Refactored `netlify-config.test.ts` to assert that `@netlify/plugin-lighthouse` is completely absent from `netlify.toml`, preventing future build-time plugin regression.
-- **Wiki Harmonization**: Updated [[concepts/performance-auditing-strategy]] and [[entities/web-app]] to synthesize this architectural improvement.
-
-## [2026-05-25] feature | Hybrid Local Cache + Delta-Syncing for AI Memories
-
-Implemented a hybrid caching strategy for the Memories dashboard using TanStack Query's `initialData` with localStorage persistence. New `fetchNewMemories` API fetches only records since the latest cached timestamp. New `cache.ts` lib provides `getCachedMemories`, `saveCachedMemories`, and `mergeAndDeduplicate` utilities. `MemoriesPage` refactored from infinite query to single-query delta-sync pattern with 100% client-side filtering and local pagination. Added comprehensive test suite (`MemoriesPage.test.tsx`) verifying instant render, background sync, and zero-network tab transitions. Removed completed roadmap item about database ID vs display filter disparity.
-
-## [2026-05-25] decision | Revert Live QMD/Search-First CLI Hooks in Favor of Lean Pre-Commit/Manual Flows
-
-Explored and implemented a workspace-level hook configuration (`.agents/hooks.json` mapping to a Python validation helper `scripts/qmd_hooks.py`) to enforce the **Search First (QMD)** principle and perform real-time QMD index updates during active agent sessions. 
-
-Upon testing, the decision was made to roll back these live CLI hooks:
-- **Overhead & Noise**: The `PreToolUse` grep validation injected warning messages directly into the agent's stream, which was determined to be too invasive and noisy for day-to-day workflow.
-- **Workflow Sufficiency**: The project's existing Husky Git hooks (`.husky/pre-commit` and `.husky/post-merge`) already handle QMD re-indexing automatically during commits and merges, and manual `qmd` searches perform perfectly fine without dynamic session-level checking.
-- **Result**: Successfully removed `.agents/hooks.json`, `scripts/qmd_hooks.py`, and `tests/test_qmd_hooks.py` to keep the repository extremely lean and free of unnecessary runtime complexity.
-
 ## [2026-05-25] decision | Revert Live QMD/Search-First CLI Hooks in Favor of Lean Pre-Commit/Manual Flows
 
 Explored and implemented a workspace-level hook configuration (`.agents/hooks.json` mapping to a Python validation helper `scripts/qmd_hooks.py`) to enforce the **Search First (QMD)** principle and perform real-time QMD index updates during active agent sessions. 
@@ -233,4 +212,7 @@ Implemented the Daily Autoresearch Score display panel inside the Auto-Research 
 - **Integration & TDD Suite**: Integrated the daily component into `ExperimentDetails.tsx` above the weekly score breakdown. Added comprehensive unit tests in `DailyScoreDisplay.test.tsx` verifying both live active tracking and finalized progression displays, passing successfully with 100% Biome compliance.
 - **Documentation**: Updated [[entities/autoresearch-arena]] with the new daily evaluation features.
 
+## [2026-05-31] feature | No Verifier badge for MiniMax portfolios
+
+Added a `hasVerifier()` utility to the portfolio config module that identifies portfolios not using a verifier (currently MiniMax). The PortfolioDetailPage and PortfoliosPage now display a "No Verifier" warning badge for these portfolios, making the simplified execution model visible in the UI. Marked the corresponding ROADMAP item as complete.
 

@@ -67,13 +67,18 @@ export const Route = createRootRoute({
 
 function RootComponent() {
     return (
-        <RootDocument>
-            <QueryClientProviderWrapper>
+        <QueryClientProviderWrapper>
+            <RootDocument>
                 <Outlet />
-            </QueryClientProviderWrapper>
-        </RootDocument>
+            </RootDocument>
+        </QueryClientProviderWrapper>
     );
 }
+
+// Exported so regression tests can render the production layout without
+// an outer QueryClientProvider. The test asserts the provider scope is
+// correct (it must cover the nav, not just the outlet).
+export { RootComponent };
 
 export const navItems = [
     { to: '/portfolios', label: 'Portfolios' },

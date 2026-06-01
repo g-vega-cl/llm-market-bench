@@ -24,6 +24,7 @@
 import type { MarketFeeling } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
 import { formatEasternDate, formatEasternTime } from '~/utils/date';
+import { isNyseOpenAt } from '~/utils/market-hours';
 
 export interface TodayHeroData {
     marketFeeling: (MarketFeeling & { formattedTime: string }) | null;
@@ -40,18 +41,6 @@ interface CacheEntry {
 
 let cache: CacheEntry | null = null;
 const CACHE_TTL_MS = 60 * 1000;
-
-function computeIsMarketOpen(now: Date): boolean {
-    const dayOfWeek = now.getUTCDay();
-    const currentHour = now.getUTCHours();
-    const currentMinutes = now.getUTCMinutes();
-    return (
-        dayOfWeek >= 1 &&
-        dayOfWeek <= 5 &&
-        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
-        currentHour < 20
-    );
-}
 
 /**
  * Returns the minimal hero data for the homepage. Cached for 60 s per
@@ -90,7 +79,7 @@ export async function fetchTodayHeroData(): Promise<TodayHeroData> {
                   formattedTime: formatEasternTime(marketFeelingObj.created_at),
               }
             : null,
-        isMarketOpen: computeIsMarketOpen(now),
+        isMarketOpen: isNyseOpenAt(now),
         isSentimentStale,
         todayDateString: formatEasternDate(now),
     };

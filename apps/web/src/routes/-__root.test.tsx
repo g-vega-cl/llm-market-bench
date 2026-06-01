@@ -8,7 +8,7 @@ import {
 import { render, screen } from '@testing-library/react';
 import type * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getRootHead, NavLink, navItems, RootDocument } from './__root';
+import { getRootHead, NavLink, navItems, RootComponent, RootDocument } from './__root';
 
 const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
 
@@ -171,5 +171,31 @@ describe('RootDocument Performance Optimizations', () => {
             (l) => l.rel === 'stylesheet' && (l as { media?: string }).media === 'print',
         );
         expect(stylesheetLink).toBeDefined();
+    });
+});
+
+describe('Root layout QueryClient provider scope', () => {
+    it('RootComponent wraps the entire RootDocument (nav + outlet) in a QueryClientProvider — regression for SSR 500', async () => {
+        // Render the production RootComponent (the actual function used by
+        // the Route) WITHOUT an outer QueryClientProvider. If the production
+        // layout scopes the provider to <Outlet/> only, the nav's
+        // NavAuthControls will throw "No QueryClient set" and the test will
+        // fail. The production code must provide a client that covers the
+        // nav.
+        const rootRoute = createRootRoute({
+            component: RootComponent,
+        });
+        const router = createRouter({
+            routeTree: rootRoute,
+            history: createMemoryHistory({ initialEntries: ['/'] }),
+        });
+
+        // No outer QueryClientProvider — production code must provide it.
+        render(<RouterProvider router={router} />);
+
+        // If the nav rendered without throwing, the Login link is in the
+        // document. If it threw, React's error boundary would have caught
+        // it and this assertion would fail.
+        expect(await screen.findByText('Login')).toBeInTheDocument();
     });
 });

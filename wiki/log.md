@@ -1,3 +1,19 @@
+## [2026-06-01] bugfix | DST-aware NYSE market open calculation (3 call sites)
+
+- **Bug**: The hardcoded `currentHour >= 13:30 && currentHour < 20` (UTC) window for NYSE open was only correct during EDT (UTC-4). During EST (UTC-5, ~Nov–Mar) the actual market window shifts to 14:30–21:00 UTC, causing the function to report "open" at 8:30 AM ET (1 h early) and "closed" at 3:00 PM ET (1 h early) for ~4 months of the year. The same buggy logic existed in 3 places: `fetch-today-hero-data.ts`, `fetch-today-data.ts`, and `MarketOverviewPage.tsx`.
+- **Fix**: Created `apps/web/src/utils/market-hours.ts` exporting `isNyseOpenAt(now: Date)` and a `getEasternParts(now)` helper. The new utility decomposes the instant into ET components via `Intl.DateTimeFormat({ timeZone: 'America/New_York' })` and checks the 09:30–16:00 ET window in ET, so the IANA timezone database (which the runtime already knows) handles the DST transition correctly. Replaced the inline UTC logic in all 3 call sites.
+- **TDD coverage**: 11 boundary cases in `market-hours.test.ts` covering EDT open/close, EST open/close (the 4 cases that failed under the old code), and weekend exclusion. All 245 Vitest tests pass (234 + 11 new). `market-hours.ts` shows 100% line coverage. `pnpm biome check` and `pnpm run build` (typecheck) both clean.
+- **Known limitations (deferred)**: NYSE market holidays (10/year) are not modeled — the function reports "OPEN" on July 4th, Thanksgiving, etc. Pre-market and after-hours are not modeled. `MarketOverviewPage` still computes `now` at render time (pre-existing hydration drift risk if SSR/CSR straddle 9:30 AM or 4:00 PM ET). All three limitations are pre-existing and out of scope of this fix.
+
+## [2026-06-01] bugfix | QueryClient provider scope — nav was outside the provider, causing SSR 500
+
+- **Bug**: The `QueryClientProviderWrapper` in `apps/web/src/routes/__root.tsx:68-76` only wrapped `<Outlet/>`, but `<NavAuthControls />` (line 192, rendered by `RootDocument`) calls `useCurrentUser()` → `useQuery()` → `useQueryClient()` which requires a `QueryClientProvider` in React context. During SSR, this threw `No QueryClient set, use QueryClientProvider to set one` on every page load (500 error).
+- **Root cause**: The provider was positioned INSIDE `RootDocument`'s `{children}`, but `NavAuthControls` is a **sibling** of `{children}` in the nav — structurally outside the provider boundary.
+- **Why the test suite missed it**: `renderRootDocument` in `-__root.test.tsx:36-41` wraps the entire router in its own test `QueryClientProvider`, masking the production layout bug.
+- **Fix**: Moved `QueryClientProviderWrapper` one level up to wrap the entire `RootDocument` in `RootComponent`. The provider is a context-only component — it can sit above `<html>` without rendering any DOM. The root's `head()`, `notFoundComponent`, and `errorComponent` remain unchanged because the `RootComponent` function delegates to `RootDocument` internally.
+- **TDD coverage**: 1 regression test (`Root layout QueryClient provider scope > RootComponent wraps the entire RootDocument...`) renders the production `RootComponent` via `RouterProvider` WITHOUT an outer `QueryClientProvider` and asserts `screen.findByText('Login')` succeeds. The test would fail if the provider scope regresses.
+- All 246 Vitest tests pass, `pnpm biome check` clean, `pnpm run build` (typecheck) clean.
+
 ## [2026-06-01] optimization | Consolidated Single-Query Database Fetch and Proxied Script Caching
 
 Resolved two primary homepage performance bottlenecks to achieve a 90+ Lighthouse score:

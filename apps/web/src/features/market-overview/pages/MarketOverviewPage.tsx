@@ -12,6 +12,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
+import { isNyseOpenAt } from '~/utils/market-hours';
 import type { CorrelationData, MarketOverviewData } from '../api/fetch-market-overview';
 import { CorrelationHeatmap } from '../components/CorrelationHeatmap';
 import { CorrelationHistoryExplorer } from '../components/CorrelationHistoryExplorer';
@@ -96,15 +97,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
 
 function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | null }) {
     const now = new Date();
-    const currentHour = now.getUTCHours();
-    const currentMinutes = now.getUTCMinutes();
-    const dayOfWeek = now.getUTCDay();
-
-    const isMarketOpen =
-        dayOfWeek >= 1 &&
-        dayOfWeek <= 5 &&
-        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
-        currentHour < 20;
+    const isMarketOpen = isNyseOpenAt(now);
 
     const formatEasternTime = (dateStr: string | null | undefined): string => {
         if (!dateStr) return 'Unknown';

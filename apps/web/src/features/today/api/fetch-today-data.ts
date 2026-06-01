@@ -14,6 +14,7 @@ import {
     formatEasternShortTime,
     formatEasternTime,
 } from '~/utils/date';
+import { isNyseOpenAt } from '~/utils/market-hours';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
 import { calculateMacroStats, MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
@@ -240,15 +241,7 @@ export async function fetchTodayData(): Promise<TodayData> {
     // Process and calculate macro statistics
     const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);
 
-    const currentHour = now.getUTCHours();
-    const currentMinutes = now.getUTCMinutes();
-    const dayOfWeek = now.getUTCDay();
-
-    const isMarketOpen =
-        dayOfWeek >= 1 &&
-        dayOfWeek <= 5 &&
-        (currentHour > 13 || (currentHour === 13 && currentMinutes >= 30)) &&
-        currentHour < 20;
+    const isMarketOpen = isNyseOpenAt(now);
 
     const marketFeelingObj = (marketFeeling?.[0] || null) as MarketFeeling | null;
     const isSentimentStale = marketFeelingObj

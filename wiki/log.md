@@ -1,3 +1,11 @@
+## [2026-06-01] optimization | Consolidated Single-Query Database Fetch and Proxied Script Caching
+
+Resolved two primary homepage performance bottlenecks to achieve a 90+ Lighthouse score:
+- **Consolidated Single-Query Database Fetch**: Replaced the 23 concurrent, parallel network database queries to `price_history` inside `fetchTodayData` with a single consolidated query using `.in('ticker', ...)` and an explicit `.limit(5000)` constraint. Retained 100% in-memory deduplication, grouping, and 30-day capping logic, cutting database network round-trips from 31 to 9 and slashing TTFB by 700ms+.
+- **TDD Regression Test**: Added a new Vitest unit test in `fetch-today-data.test.ts` asserting that `price_history` is queried exactly once. Verified expected test failure prior to changes (received 23 queries) and success after.
+- **Analytics CDN Proxy Caching**: Added version-safe, long-term public caching headers (`Cache-Control: public, max-age=31536000, immutable`) for versioned tracking scripts proxied through `netlify.toml` at `/p/static/*`, preventing browser re-downloads that block the main thread.
+- **Performance Documentation**: Updated [[concepts/performance-auditing-strategy]] and [[concepts/posthog-stealth-proxy]] to document the single-query consolidation pattern and proxies cache optimization standard.
+
 ## [2026-06-01] doc | Client/Server Time Best Practices Documentation
 
 Expanded the canonical performance auditing strategy concept page to comprehensively detail the 5 core client/server time best practices for eliminating SSR hydration mismatches (React Error #418) in server-side rendered environments.

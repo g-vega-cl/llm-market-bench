@@ -39,8 +39,9 @@ Server-side tracking (`posthog-server.ts`) connects directly to `https://us.i.po
 To slash client-side bundle size and eliminate unneeded third-party network activity, the `PostHogProvider` is configured to disable heavy session recording while keeping automatic click/event tracking active:
 - `disable_session_recording: true` — completely prunes the download of the bulky `posthog-recorder.js` script (~49 KiB) and auxiliary survey chunks, yielding significant performance savings.
 - **Autocapture & Pageviews**: Automatic click and pageview tracking remain fully enabled to capture comprehensive navigation and usage telemetry.
+- **Proxy Caching Headers**: Because the versioned tracking assets (e.g. `dead-clicks-autocapture.js?v=1.364.1`) are served via Netlify's dynamic proxy redirect (`status = 200`), they default to short or missing cache lifetimes. To prevent browser re-downloads that block the main thread, `netlify.toml` defines explicit, long-term CDN caching headers for `/p/static/*` (`Cache-Control = "public, max-age=31536000, immutable"`), accelerating LCP and TTI.
 
-This reduces the client-side JavaScript transport weight by **~49 KiB**, accelerating Largest Contentful Paint (LCP) and Time to Interactive (TTI) while preserving complete autocapture and product analytics capabilities.
+This reduces the client-side JavaScript transport weight by **~49 KiB** and ensures tracking scripts are permanently cached by the client browser, accelerating Largest Contentful Paint (LCP) and Time to Interactive (TTI) while preserving complete autocapture and product analytics capabilities.
 
 ## Testing
 

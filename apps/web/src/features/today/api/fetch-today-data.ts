@@ -203,22 +203,18 @@ export async function fetchTodayData(): Promise<TodayData> {
             .limit(1),
         // Fetch all macro quotes
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-        // Fetch historical data for each macro ticker in parallel (limited to 45 rows per ticker)
-        // to avoid Supabase's 1000-row limit truncation and reduce payload size.
-        Promise.all(
-            MACRO_TICKERS_LIST.map((ticker) =>
-                supabase
-                    .from('price_history')
-                    .select('ticker, price, fetched_at')
-                    .eq('ticker', ticker)
-                    .gte('fetched_at', historyLimitDateStr)
-                    .order('fetched_at', { ascending: false })
-                    .limit(45),
-            ),
-        ),
+        // Fetch historical data for all macro tickers in a single network query
+        // to avoid connection pool congestion and reduce TTFB.
+        supabase
+            .from('price_history')
+            .select('ticker, price, fetched_at')
+            .in('ticker', MACRO_TICKERS_LIST)
+            .gte('fetched_at', historyLimitDateStr)
+            .order('fetched_at', { ascending: false })
+            .limit(5000),
     ]);
 
-    const historyRows = historyResults.flatMap((res) => res.data || []);
+    const historyRows = (historyResults?.data || []) as PriceHistoryItem[];
 
     // Process and calculate macro statistics
     const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);

@@ -98,4 +98,33 @@ describe('fetchTodayData zero-load TDD checks', () => {
         // ASSERT 2: The returned data does not have the 'logs' property
         expect(result).not.toHaveProperty('logs');
     });
+
+    it('consolidates price_history queries into a single call', async () => {
+        const fromSpy = vi.fn().mockImplementation((_table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = {
+            from: fromSpy,
+        };
+
+        await fetchTodayData();
+
+        // Count how many times 'price_history' was queried
+        const priceHistoryQueries = fromSpy.mock.calls.filter(
+            (call) => call[0] === 'price_history',
+        );
+
+        // This will fail before our code changes (will find 23 queries)
+        expect(priceHistoryQueries.length).toBe(1);
+    });
 });

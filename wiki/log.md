@@ -1,27 +1,3 @@
-## [2026-05-26] feature | Enriched Diagnostic Logging for Hard Tool Enforcement Rejections
-
-Added comprehensive diagnostic details on Hard Tool Enforcement rejections to prevent silent failure states and streamline automated root-cause audits.
-
-- **Diagnostic Helper**: Implemented `_get_history_tool_calls_diagnostic(messages: list) -> list[str]` in `apps/engine/core/llm/analysis.py` to extract and serialize friendly tool call strings (e.g. `get_stock_quote({"ticker": "AAPL"})`) from Anthropic, OpenAI, or Gemini history structures.
-- **Enriched Warnings**: Updated all four hard tool enforcement warning logs in `apps/engine/core/llm/analysis.py` to output total message counts and the list of actual tool calls detected.
-- **TDD Test**: Added a unit test `test_analyze_with_provider_hard_enforcement_logs_diagnostics` to `apps/engine/tests/test_tool_enforcement.py` asserting that log warnings contain `Total messages in history:` and `Tools called:` details.
-- **Documentation**: Updated [[concepts/observability-standard]] with the new enriched diagnostic context standard.
-
-## [2026-05-26] refactor | Improved Hard Tool Enforcement diagnostics for Anthropic message preservation
-
-The staged diff contains changes already partially documented in wet-commits (log entries, concept updates). However, the diff itself represents a **refinement** of the tool enforcement diagnostics system:
-
-- **`_get_history_tool_calls_diagnostic()`** is a comprehensive new diagnostic helper that recursively extracts tool call names/arguments from any provider message format (dict, object, nested content arrays, tool_use parts, etc.) — significantly more robust than the prior scan.
-- **Enriched all four hard enforcement warning log statements** with total message count and actual tool calls detected.
-- **New scratch scripts** (`check_logs.py`, `inspect_analysis.py`, `inspect_prompt_details.py`, `inspect_rejections.py`) for debugging LLM decision logs and rejection patterns.
-- **New TDD tests** proving Anthropic hard enforcement works with the unflattened message copy, and that diagnostic details appear in log warnings on failure.
-
-The wiki pages touched in the diff (observability-standard, tool-enforcement, tool-enforcement-source) are up to date. No new entity or concept pages are needed — this is a refinement of an existing system.
-
-## [2026-05-27] update | ROADMAP.md — removed "Add statistics" item
-
-The "Add statistics" task was removed from ROADMAP.md. This roadmap entry described checking current price changes in big indexes to gauge market moves, passing index prices to the LLM from the beginning (part of the global macro tracker). The downstream tracking line below it ("Pass the price of many indexes...") remains, as do the macro tracking entities/index references in the wiki. No structural change to code or architecture.
-
 ## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
 
 Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.
@@ -201,6 +177,7 @@ Fixed the unit test failure in `TodayPage.test.tsx` caused by missing mock data 
 ## [2026-05-31] optimization | Server-side date formatting & progressive hydration for TodayPage
 
 Moved all date formatting from client components to server-side data fetching. Introduced pre-computed `formattedTime`, `formattedDateTime`, and `formattedShortDate` fields in `TodayData` response. Added React.lazy/Suspense code splitting for secondary dashboard modules. Optimized `priceUpdates` query to fetch only `id` (boolean check). Added Vitest regression suite enforcing zero client-side date util calls during render.
+
 ## [2026-05-31] fix | Do-Nothing Legacy Position Valuations & DB Corrected Backfill
 
 Resolved a critical autoresearch evaluation bug where legacy held positions (no active trades for >14 days) were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%.
@@ -216,3 +193,8 @@ Resolved the remaining critical `React Error #418` hydration mismatch on the Tod
 - **Whitespace Normalization**: Wrapped all `.toLocaleDateString()` calls in the `FutureCatalysts` timeline with `normalizeWhitespace()` imported from `~/utils/date`. This standardizes the locale-sensitive spaces (e.g. browser's `U+202F` narrow no-break space vs. server's standard space `U+0020`) and prevents React 19 from throwing out the SSR HTML markup.
 - **TDD Safety Net**: Populated the empty `futureEvents` mock array inside `apps/web/src/test/hydration.test.tsx` to ensure `FutureCatalysts` is actively rendered and validated during sitemap hydration checks.
 - **ICU Space Simulation Test**: Authored a dedicated TDD test case that spies on `ReactDOMServer.renderToString` and `Date.prototype.toLocaleDateString` to inject browser-specific narrow non-breaking spaces during the client hydration phase. Verified it fails on unnormalized outputs and passes with zero errors after the fix.
+
+## [2026-06-01] feature | On-Demand Price History Pre-Population & Freshness Guardrail
+
+Added on-demand pre-population of price_history via MarketDataManager.get_history() in _do_nothing_return to ensure fresh close prices for all held assets at evaluation time. Added a freshness guardrail that logs a CRITICAL METRIC ERROR if the retrieved price's fetched_at is more than 4 days before week_end, preventing silent stale valuation errors. Updated tests to cover both pre-population and stale price logging.
+

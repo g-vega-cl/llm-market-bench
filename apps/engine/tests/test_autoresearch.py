@@ -554,6 +554,216 @@ class TestDoNothingReturn:
         # Before the fix, the return will be -50.0% because IBM is valued at 0.0.
         assert ret == pytest.approx(0.0)
 
+    @pytest.mark.asyncio
+    async def test_do_nothing_pre_populates_price_history(self, monkeypatch):
+        """Verify that _do_nothing_return pre-populates price history using MarketDataManager."""
+        from autoresearch import metrics
+        from execution.market_data import MarketDataManager
+
+        week_start = date(2026, 5, 25)
+        week_end = date(2026, 5, 31)
+
+        # Track tickers called
+        called_tickers = []
+        called_days = []
+
+        async def fake_get_history(self_mdm, ticker, days=14, force_refresh=False):
+            called_tickers.append(ticker)
+            called_days.append(days)
+            return [{"price": 100.0, "fetched_at": "2026-05-29T00:00:00+00:00"}]
+
+        monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
+
+        class FakeResponse:
+            def __init__(self, data):
+                self.data = data
+
+        class FakeQuery:
+            def select(self, *args, **kwargs):
+                return self
+
+            def in_(self, *args, **kwargs):
+                return self
+
+            def gte(self, *args, **kwargs):
+                return self
+
+            def lte(self, *args, **kwargs):
+                return self
+
+            def lt(self, *args, **kwargs):
+                return self
+
+            def eq(self, *args, **kwargs):
+                return self
+
+            def order(self, *args, **kwargs):
+                return self
+
+            def limit(self, *args, **kwargs):
+                return self
+
+            async def execute(self):
+                return FakeResponse([])
+
+        original_res_perf = FakeResponse(
+            [
+                {
+                    "portfolio_id": "p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 3500.0,
+                    "date": "2026-05-25",
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ]
+        )
+
+        original_res_trades = FakeResponse(
+            [
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "AAPL",
+                    "signal": "BUY",
+                    "quantity": 10,
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ]
+        )
+
+        class AdvancedFakeQuery(FakeQuery):
+            def __init__(self, table_name):
+                self.table_name = table_name
+
+            async def execute(self):
+                if self.table_name == "portfolio_performance":
+                    return original_res_perf
+                elif self.table_name == "trades":
+                    return original_res_trades
+                return FakeResponse([])
+
+        class AdvancedFakeClient:
+            def table(self, name):
+                return AdvancedFakeQuery(name)
+
+        await metrics._do_nothing_return(
+            AdvancedFakeClient(),
+            owner_ids=frozenset({"agent-1"}),
+            week_start=week_start,
+            week_end=week_end,
+        )
+
+        assert "AAPL" in called_tickers
+        assert len(called_tickers) == 1
+        assert called_days[0] >= 14
+
+    @pytest.mark.asyncio
+    async def test_do_nothing_stale_price_logs_error(self, monkeypatch):
+        """Verify that _do_nothing_return logs a critical error when using a stale price."""
+        from autoresearch import metrics
+
+        week_start = date(2026, 5, 25)
+        week_end = date(2026, 5, 31)
+
+        # Track logged errors
+        logged_errors = []
+
+        def fake_error(msg, *args):
+            logged_errors.append(msg % args)
+
+        monkeypatch.setattr(metrics.logger, "error", fake_error)
+
+        class FakeResponse:
+            def __init__(self, data):
+                self.data = data
+
+        class FakeQuery:
+            def select(self, *args, **kwargs):
+                return self
+
+            def in_(self, *args, **kwargs):
+                return self
+
+            def gte(self, *args, **kwargs):
+                return self
+
+            def lte(self, *args, **kwargs):
+                return self
+
+            def lt(self, *args, **kwargs):
+                return self
+
+            def eq(self, *args, **kwargs):
+                return self
+
+            def order(self, *args, **kwargs):
+                return self
+
+            def limit(self, *args, **kwargs):
+                return self
+
+            async def execute(self):
+                return FakeResponse([])
+
+        original_res_perf = FakeResponse(
+            [
+                {
+                    "portfolio_id": "p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 3500.0,
+                    "date": "2026-05-25",
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ]
+        )
+
+        original_res_trades = FakeResponse(
+            [
+                {
+                    "portfolio_id": "p1",
+                    "ticker": "AAPL",
+                    "signal": "BUY",
+                    "quantity": 10,
+                    "portfolios": {"owner_id": "agent-1"},
+                }
+            ]
+        )
+
+        price_res = FakeResponse([{"price": 100.0, "fetched_at": "2026-04-20T00:00:00+00:00"}])
+
+        class AdvancedFakeQuery(FakeQuery):
+            def __init__(self, table_name):
+                self.table_name = table_name
+
+            async def execute(self):
+                if self.table_name == "portfolio_performance":
+                    return original_res_perf
+                elif self.table_name == "trades":
+                    return original_res_trades
+                elif self.table_name == "price_history":
+                    return price_res
+                return FakeResponse([])
+
+        class AdvancedFakeClient:
+            def table(self, name):
+                return AdvancedFakeQuery(name)
+
+        from execution.market_data import MarketDataManager
+
+        # Use an async mock function
+        async def fake_get_history(*args, **kwargs):
+            pass
+
+        monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
+
+        await metrics._do_nothing_return(
+            AdvancedFakeClient(),
+            owner_ids=frozenset({"agent-1"}),
+            week_start=week_start,
+            week_end=week_end,
+        )
+
+        assert any("CRITICAL METRIC ERROR" in err for err in logged_errors)
+
 
 # ---------------------------------------------------------------------------
 

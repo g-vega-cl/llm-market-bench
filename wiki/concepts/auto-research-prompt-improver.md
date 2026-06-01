@@ -28,7 +28,9 @@ score          = excess_return - opp_cost - (max_drawdown% × 0.3)
 
 A single transparent number. The meta-researcher sees all components (portfolio return, SPY return, bond hurdle, opportunity cost penalty, drawdown) plus the baseline and Δ.
 
-The **Do-Nothing Return** represents the theoretical return of holding the initial portfolio positions throughout the week without making any trades. To correctly value legacy positions held for weeks/months without recent active trading, the pricing query retrieves the **last known price** of each asset up to the end of the evaluation week (`week_end`), ensuring no assets are artificially valued at $0.00.
+The **Do-Nothing Return** represents the theoretical return of holding the initial portfolio positions throughout the week without making any trades. To ensure pricing accuracy and prevent calculation drift from stale values:
+1. **On-Demand Synchronization**: The evaluation engine dynamically pre-populates/updates `price_history` for all held assets at evaluation time via `MarketDataManager.get_history()`. This pulls fresh close prices from the financial provider (FMP), ensuring both active portfolio-specific tickers and legacy positions are correctly valued at the end of the week (`week_end`).
+2. **Freshness Guardrail**: The pricing query retrieves the last known price up to `week_end` individually for each asset. It actively validates the age of the retrieved price and logs a `CRITICAL METRIC ERROR` if the price timestamp (`fetched_at`) is older than 4 days before `week_end`, preventing any silent database omissions or stale valuation errors.
 
 The 10-year Treasury yield is the sole active risk-free hurdle — the portfolio must clear it to avoid an opportunity cost penalty. The US Dollar Index (DXY/UUP) return is fetched and shown in the weekly report for macroeconomic context but does **not** affect the score.
 

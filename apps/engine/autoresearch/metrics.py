@@ -143,10 +143,21 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
 
     ticker_prices = {}
     if all_tickers:
+        try:
+            from execution.market_data import MarketDataManager
+
+            mdm = MarketDataManager()
+            # Calculate days needed to cover the week to avoid stale cache
+            days_needed = (date.today() - week_start).days + 7
+            for ticker in all_tickers:
+                await mdm.get_history(ticker, days=max(14, days_needed))
+        except Exception as e:
+            logger.warning(f"Failed to pre-populate price history for tickers {all_tickers}: {e}")
+
         for ticker in all_tickers:
             res_price = (
                 sb_client.table("price_history")
-                .select("price")
+                .select("price, fetched_at")
                 .eq("ticker", ticker)
                 .lte("fetched_at", f"{week_end.isoformat()}T23:59:59")
                 .order("fetched_at", desc=True)
@@ -155,7 +166,27 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
             )
             price_data = (await res_price).data
             if price_data:
-                ticker_prices[ticker] = float(price_data[0]["price"] or 0)
+                price_val = float(price_data[0]["price"] or 0)
+                ticker_prices[ticker] = price_val
+
+                # Freshness Guardrail: Ensure price is not stale compared to week_end
+                fetched_at_str = price_data[0].get("fetched_at", "")
+                if fetched_at_str:
+                    try:
+                        fetched_date = date.fromisoformat(fetched_at_str[:10])
+                        age_days = (week_end - fetched_date).days
+                        if age_days > 4:
+                            logger.error(
+                                "CRITICAL METRIC ERROR: Stale price used for ticker %s in do-nothing return calculation. "
+                                "Price fetched_at is %s (%d days before week_end %s). "
+                                "Metrics calculation might be incorrect.",
+                                ticker,
+                                fetched_at_str,
+                                age_days,
+                                week_end.isoformat(),
+                            )
+                    except Exception as ex:
+                        logger.warning("Failed to validate price freshness for ticker %s: %s", ticker, ex)
 
     # 4. Calculate return for each portfolio
     agent_returns = []

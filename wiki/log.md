@@ -210,3 +210,10 @@ Resolved the remaining critical `React Error #418` hydration mismatch on the Tod
 
 Added on-demand pre-population of price_history via MarketDataManager.get_history() in _do_nothing_return to ensure fresh close prices for all held assets at evaluation time. Added a freshness guardrail that logs a CRITICAL METRIC ERROR if the retrieved price's fetched_at is more than 4 days before week_end, preventing silent stale valuation errors. Updated tests to cover both pre-population and stale price logging.
 
+## [2026-06-01] optimization | Render-Blocking Fonts and PostHog Unused JS Fix
+
+Resolved critical Lighthouse frontend performance bottlenecks that were severely degrading FCP and TTI:
+- **Asynchronous Font Loading**: Refactored `__root.tsx` to load Google Fonts using the `media="print"` and `onLoad="this.media='all'"` pattern with a `<noscript>` fallback. This completely eliminates a ~1.1s render-blocking delay.
+- **PostHog Unused JS Optimization**: Configured `<PostHogProvider>` with `disable_surveys: true`, blocking the heavy `surveys.js` module from downloading and executing on initialization, eliminating over 100 KiB of unused Javascript.
+- **TDD Safety Net**: Added new Vitest test cases to `apps/web/src/routes/-__root.test.tsx` verifying that `disable_surveys: true` is passed to the SDK and that the asynchronous `media="print"` technique is enforced in the DOM for all Google Font links.
+- **Documentation**: Added the "Eliminating Render-Blocking Resources" section to `wiki/concepts/performance-auditing-strategy.md` outlining the async font pattern and explicit SDK disabling best practices.

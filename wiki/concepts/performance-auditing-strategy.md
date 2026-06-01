@@ -154,6 +154,10 @@ Heavy visualization libraries (like `d3` or `recharts`) and long component trees
 *   **Suspense Boundaries**: Wrap secondary dashboard modules (e.g. historical timelines, deep analytics panels, or below-the-fold charts) in `React.lazy()` imports and `<Suspense>` boundaries.
 *   **Priority Rendering**: The initial SSR payload should contain the fully-rendered critical Hero section (for instant First Contentful Paint) while the heavier components stream in progressively. This ensures the app becomes instantly responsive even on slow connections.
 
+### 4. Eliminating Render-Blocking Resources
+*   **Asynchronous Font Loading**: External stylesheets (like Google Fonts) should never be loaded synchronously in the `<head>` using a standard `rel="stylesheet"`. Instead, use the `media="print" onLoad="this.media='all'"` pattern with a `<noscript>` fallback. This allows the browser to download the assets without blocking the critical rendering path, significantly improving First Contentful Paint (FCP).
+*   **Third-Party Script Optimization**: Third-party analytics and tracking SDKs (e.g., PostHog) can drastically inflate the initial JavaScript bundle with unused feature modules (such as `surveys.js`). Always configure SDK providers (like `<PostHogProvider>`) to explicitly disable unused features (e.g., `disable_surveys: true`). This prevents the browser from downloading and parsing wasted bytes, protecting the main thread and improving Time To Interactive (TTI).
+
 ---
 
 ## Developer Guide

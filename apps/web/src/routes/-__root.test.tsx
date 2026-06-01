@@ -78,4 +78,70 @@ describe('RootDocument PostHog configuration', () => {
         const callArgs = mockPostHogProvider.mock.calls[0][0];
         expect(callArgs.options.api_host).toBe('/p');
     });
+
+    it('should initialize PostHogProvider with disable_surveys: true to reduce unused JS', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Test Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({
+            initialEntries: ['/'],
+        });
+
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />);
+        await screen.findByText('Test Content');
+
+        expect(mockPostHogProvider).toHaveBeenCalled();
+        // Since the previous test might have called it, check the latest call
+        const callArgs =
+            mockPostHogProvider.mock.calls[mockPostHogProvider.mock.calls.length - 1][0];
+        expect(callArgs.options.disable_surveys).toBe(true);
+    });
+});
+
+describe('RootDocument Performance Optimizations', () => {
+    it('should render Google Fonts asynchronously with media="print" to prevent render blocking', async () => {
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>Test Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const memoryHistory = createMemoryHistory({
+            initialEntries: ['/'],
+        });
+
+        const router = createRouter({
+            routeTree: testRoute,
+            history: memoryHistory,
+        });
+
+        render(<RouterProvider router={router} />);
+        await screen.findByText('Test Content');
+
+        // Verify the asynchronous font loading trick (check document since it's rendered in head)
+        const fontLinks = document.querySelectorAll('link[href*="fonts.googleapis.com/css2"]');
+        expect(fontLinks.length).toBeGreaterThan(0);
+
+        // Find the one that has media="print"
+        const asyncFontLink = Array.from(fontLinks).find(
+            (link) => link.getAttribute('media') === 'print',
+        );
+        expect(asyncFontLink).toBeTruthy();
+    });
 });

@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
+import math
 
 from core.config import logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
@@ -180,12 +181,62 @@ async def fetch_benchmark_history(mdm: MarketDataManager):
             if history and len(history) >= 30:
                 logger.info(f"Stored {len(history)} price points for ticker {ticker}")
                 success_count += 1
+
+                # Calculate returns and 30-day volatility metrics
+                history_30 = history[:30]
+                returns = []
+                for i in range(len(history_30) - 1):
+                    prev = float(history_30[i + 1]["price"])
+                    curr = float(history_30[i]["price"])
+                    if prev > 0:
+                        returns.append((curr - prev) / prev)
+
+                today_px = float(history[0]["price"])
+                yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
+                today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
+
+                stdev_pct = 0.0
+                regime_flag = "Normal"
+                if len(returns) > 2:
+                    mean_return = sum(returns) / len(returns)
+                    variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
+                    stdev_pct = math.sqrt(variance) * 100
+
+                    # Match exact logic for high/unusual/normal regime flags
+                    if abs(today_pct_change) > (2.0 * stdev_pct):
+                        regime_flag = "⚠️ HIGHLY UNUSUAL"
+                    elif abs(today_pct_change) > (1.5 * stdev_pct):
+                        regime_flag = "❗ UNUSUAL"
+
+                # Keep existing market_cap if present in database cache
+                try:
+                    res_mcap = mdm.client.table("market_data_cache").select("market_cap").eq("ticker", ticker).execute()
+                    market_cap = res_mcap.data[0]["market_cap"] if res_mcap.data else 0
+                except Exception:
+                    market_cap = 0
+
+                # Upsert pre-calculated metrics to market_data_cache
+                cache_payload = {
+                    "ticker": ticker,
+                    "price": today_px,
+                    "market_cap": market_cap,
+                    "fetched_at": history[0]["fetched_at"],
+                    "today_pct_change": today_pct_change,
+                    "stdev_pct": stdev_pct,
+                    "regime_flag": regime_flag,
+                }
+                mdm.client.table("market_data_cache").upsert(cache_payload).execute()
+                logger.info(
+                    f"Pre-calculated metrics saved for {ticker}: {today_pct_change:+.2f}%, {stdev_pct:.2f}% stdev, {regime_flag}"
+                )
             else:
                 logger.warning(f"Insufficient data for ticker {ticker}: {len(history) if history else 0} points")
         except Exception as e:
             logger.error(f"Failed to fetch ticker {ticker}: {e}")
 
-    logger.info(f"Ticker history update complete. Updated {success_count}/{len(all_sync_tickers)} tickers.")
+    logger.info(
+        f"Ticker history update complete. Updated {success_count}/{len(all_sync_tickers)} tickers and saved pre-calculated stats."
+    )
 
 
 if __name__ == "__main__":

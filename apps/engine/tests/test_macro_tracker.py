@@ -1,6 +1,6 @@
 """Unit tests for Global Macro Tracker module."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -90,33 +90,44 @@ class TestGetGlobalMacroContext:
     async def test_returns_formatted_context(self):
         """Test that function returns a formatted string with macro environment."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=True, price=450.0),
-                "IEF": MagicMock(exists=True, price=95.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(
-            return_value=[
-                {"price": 448.0, "fetched_at": "2024-01-02"},
-                {"price": 445.0, "fetched_at": "2024-01-03"},
-                {"price": 446.0, "fetched_at": "2024-01-04"},
-            ]
-        )
+        mock_data = [
+            {
+                "ticker": "SPY",
+                "price": 450.0,
+                "today_pct_change": 1.25,
+                "stdev_pct": 0.85,
+                "regime_flag": "Normal",
+            },
+            {
+                "ticker": "IEF",
+                "price": 95.0,
+                "today_pct_change": -0.45,
+                "stdev_pct": 0.35,
+                "regime_flag": "Normal",
+            },
+        ]
+        mock_execute = MagicMock(return_value=MagicMock(data=mock_data))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 
         assert isinstance(result, str)
         assert "GLOBAL MACRO ENVIRONMENT" in result
-        assert "SPY" in result
+        assert "S&P 500" in result
         assert "Instruction" in result
 
     @pytest.mark.asyncio
     async def test_skips_missing_quotes(self):
-        """Test that function skips tickers with missing quotes."""
+        """Test that function handles missing cache data cleanly."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={})
-        mock_mdm.get_history = AsyncMock(return_value=[])
+        mock_execute = MagicMock(return_value=MagicMock(data=[]))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 
@@ -124,78 +135,43 @@ class TestGetGlobalMacroContext:
         assert "GLOBAL MACRO ENVIRONMENT" in result
 
     @pytest.mark.asyncio
-    async def test_skips_tickers_with_nan_price(self):
-        """Test that function skips tickers where price is NaN."""
-        mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=True, price=float("nan")),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(return_value=[])
-
-        result = await get_global_macro_context(mock_mdm)
-
-        assert isinstance(result, str)
-        assert "SPY" not in result
-
-    @pytest.mark.asyncio
-    async def test_handles_history_with_insufficient_data(self):
-        """Test that function handles tickers with less than 2 history points."""
-        mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=True, price=450.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(
-            return_value=[
-                {"price": 448.0, "fetched_at": "2024-01-02"},
-            ]
-        )
-
-        result = await get_global_macro_context(mock_mdm)
-
-        assert isinstance(result, str)
-        assert "No history available" in result
-
-    @pytest.mark.asyncio
     async def test_calculates_regime_flags_correctly(self):
-        """Test that regime flags are calculated based on volatility thresholds."""
+        """Test that regime flags are fetched correctly from pre-calculated stats."""
         mock_mdm = MagicMock()
-
-        quote_price = 460.0
-        history = [
-            {"price": 450.0, "fetched_at": "2024-01-01"},
-            {"price": 445.0, "fetched_at": "2024-01-02"},
-            {"price": 440.0, "fetched_at": "2024-01-03"},
-            {"price": 435.0, "fetched_at": "2024-01-04"},
-            {"price": 430.0, "fetched_at": "2024-01-05"},
+        mock_data = [
+            {
+                "ticker": "SPY",
+                "price": 450.0,
+                "today_pct_change": 3.5,
+                "stdev_pct": 0.85,
+                "regime_flag": "⚠️ HIGHLY UNUSUAL",
+            },
         ]
-
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=True, price=quote_price),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(return_value=history)
+        mock_execute = MagicMock(return_value=MagicMock(data=mock_data))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 
         assert isinstance(result, str)
-        assert "Normal" in result or "UNUSUAL" in result or "Regime Shift" in result
+        assert "⚠️ HIGHLY UNUSUAL (Regime Shift)" in result
 
     @pytest.mark.asyncio
     async def test_batch_quotes_called_with_all_tickers(self):
-        """Test that get_quotes is called with all 23 macro tickers."""
+        """Test that client queries the cache with the expected list."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={})
-        mock_mdm.get_history = AsyncMock(return_value=[])
+        mock_execute = MagicMock(return_value=MagicMock(data=[]))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         await get_global_macro_context(mock_mdm)
 
-        call_args = mock_mdm.get_quotes.call_args
-        tickers_passed = call_args[0][0]
+        mock_in.assert_called_once()
+        tickers_passed = mock_in.call_args[0][1]
         assert len(tickers_passed) == 23
         assert "SPY" in tickers_passed
         assert "IEF" in tickers_passed
@@ -206,8 +182,11 @@ class TestGetGlobalMacroContext:
     async def test_instruction_appears_at_end(self):
         """Test that the instruction text appears at the end of the output."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(return_value={})
-        mock_mdm.get_history = AsyncMock(return_value=[])
+        mock_execute = MagicMock(return_value=MagicMock(data=[]))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 
@@ -217,127 +196,65 @@ class TestGetGlobalMacroContext:
     async def test_positive_percentage_change_format(self):
         """Test that positive changes show + sign in output."""
         mock_mdm = MagicMock()
-        history = [
-            {"price": 100.0, "fetched_at": "2024-01-01"},
-            {"price": 95.0, "fetched_at": "2024-01-02"},
-            {"price": 96.0, "fetched_at": "2024-01-03"},
-            {"price": 97.0, "fetched_at": "2024-01-04"},
-            {"price": 98.0, "fetched_at": "2024-01-05"},
+        mock_data = [
+            {
+                "ticker": "GLD",
+                "price": 100.0,
+                "today_pct_change": 1.25,
+                "stdev_pct": 0.85,
+                "regime_flag": "Normal",
+            },
         ]
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "GLD": MagicMock(exists=True, price=100.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(return_value=history)
+        mock_execute = MagicMock(return_value=MagicMock(data=mock_data))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 
-        assert "+" in result, "Expected + sign for positive price change"
+        assert "+1.25%" in result, "Expected + sign for positive price change"
 
     @pytest.mark.asyncio
     async def test_negative_percentage_change_format(self):
         """Test that negative changes show - sign in output."""
         mock_mdm = MagicMock()
-        history = [
-            {"price": 90.0, "fetched_at": "2024-01-01"},
-            {"price": 95.0, "fetched_at": "2024-01-02"},
-            {"price": 96.0, "fetched_at": "2024-01-03"},
-            {"price": 97.0, "fetched_at": "2024-01-04"},
-            {"price": 98.0, "fetched_at": "2024-01-05"},
+        mock_data = [
+            {
+                "ticker": "GLD",
+                "price": 90.0,
+                "today_pct_change": -1.25,
+                "stdev_pct": 0.85,
+                "regime_flag": "Normal",
+            },
         ]
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "GLD": MagicMock(exists=True, price=90.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(return_value=history)
+        mock_execute = MagicMock(return_value=MagicMock(data=mock_data))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 
-        assert "-" in result, "Expected - sign for negative price change"
-
-    @pytest.mark.asyncio
-    async def test_get_history_called_for_each_valid_ticker(self):
-        """Test that get_history is called for each ticker with a valid quote."""
-        mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=True, price=450.0),
-                "QQQ": MagicMock(exists=True, price=380.0),
-                "GLD": MagicMock(exists=True, price=180.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(
-            return_value=[
-                {"price": 445.0, "fetched_at": "2024-01-01"},
-                {"price": 440.0, "fetched_at": "2024-01-02"},
-            ]
-        )
-
-        await get_global_macro_context(mock_mdm)
-
-        assert mock_mdm.get_history.call_count == 3
-
-    @pytest.mark.asyncio
-    async def test_skips_ticker_when_quote_not_exists(self):
-        """Test that tickers with exists=False are skipped."""
-        mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=False, price=450.0),
-                "QQQ": MagicMock(exists=True, price=380.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(return_value=[])
-
-        result = await get_global_macro_context(mock_mdm)
-
-        assert "SPY" not in result
-        assert "QQQ" in result
-
-    @pytest.mark.asyncio
-    async def test_zero_yesterday_close_handled(self):
-        """Test that zero yesterday_close doesn't cause division by zero."""
-        mock_mdm = MagicMock()
-        history = [
-            {"price": 100.0, "fetched_at": "2024-01-01"},
-            {"price": 0.0, "fetched_at": "2024-01-02"},
-            {"price": 50.0, "fetched_at": "2024-01-03"},
-        ]
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "GLD": MagicMock(exists=True, price=100.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(return_value=history)
-
-        result = await get_global_macro_context(mock_mdm)
-
-        assert isinstance(result, str)
-        assert "GLD" in result
+        assert "-1.25%" in result, "Expected - sign for negative price change"
 
     @pytest.mark.asyncio
     async def test_all_six_categories_present(self):
         """Test that all six ticker categories are present in output."""
         mock_mdm = MagicMock()
-        mock_mdm.get_quotes = AsyncMock(
-            return_value={
-                "SPY": MagicMock(exists=True, price=450.0),
-                "EWJ": MagicMock(exists=True, price=80.0),
-                "GLD": MagicMock(exists=True, price=180.0),
-                "IEF": MagicMock(exists=True, price=95.0),
-                "UUP": MagicMock(exists=True, price=28.0),
-                "BTCUSD": MagicMock(exists=True, price=87000.0),
-            }
-        )
-        mock_mdm.get_history = AsyncMock(
-            return_value=[
-                {"price": 445.0, "fetched_at": "2024-01-01"},
-                {"price": 440.0, "fetched_at": "2024-01-02"},
-                {"price": 442.0, "fetched_at": "2024-01-03"},
-            ]
-        )
+        mock_data = [
+            {"ticker": "SPY", "price": 450.0, "today_pct_change": 1.0, "stdev_pct": 0.5, "regime_flag": "Normal"},
+            {"ticker": "EWJ", "price": 80.0, "today_pct_change": 1.0, "stdev_pct": 0.5, "regime_flag": "Normal"},
+            {"ticker": "GLD", "price": 180.0, "today_pct_change": 1.0, "stdev_pct": 0.5, "regime_flag": "Normal"},
+            {"ticker": "IEF", "price": 95.0, "today_pct_change": 1.0, "stdev_pct": 0.5, "regime_flag": "Normal"},
+            {"ticker": "UUP", "price": 28.0, "today_pct_change": 1.0, "stdev_pct": 0.5, "regime_flag": "Normal"},
+            {"ticker": "BTCUSD", "price": 87000.0, "today_pct_change": 1.0, "stdev_pct": 0.5, "regime_flag": "Normal"},
+        ]
+        mock_execute = MagicMock(return_value=MagicMock(data=mock_data))
+        mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
+        mock_select = MagicMock(return_value=MagicMock(in_=mock_in))
+        mock_table = MagicMock(return_value=MagicMock(select=mock_select))
+        mock_mdm.client = MagicMock(table=mock_table)
 
         result = await get_global_macro_context(mock_mdm)
 

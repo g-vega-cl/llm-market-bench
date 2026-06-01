@@ -120,7 +120,7 @@ export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
                             <div className="space-y-4">
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="space-y-0.5">
-                                        <div className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-sans">
+                                        <div className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest font-sans">
                                             {stat.name}
                                         </div>
                                         <div className="text-[10px] text-zinc-400 font-mono uppercase tracking-widest">
@@ -152,7 +152,7 @@ export function GlobalMacroStats({ macroStats }: GlobalMacroStatsProps) {
                             <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800/60 space-y-3">
                                 {/* Standard deviation visual index threshold bar */}
                                 <div className="space-y-1">
-                                    <div className="flex justify-between text-[8px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono">
+                                    <div className="flex justify-between text-[8px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest font-mono">
                                         <span>30d Volatility Threshold</span>
                                         <span>Stdev: {stat.stdevPct.toFixed(2)}%</span>
                                     </div>
@@ -204,7 +204,7 @@ function RegimeBadge({ flag }: { flag: 'Normal' | '❗ UNUSUAL' | '⚠️ HIGHLY
                     variant="soft"
                     colorScheme="neutral"
                     radius="md"
-                    className="font-bold uppercase tracking-widest font-mono text-[8px] px-2 py-0.5 text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/40"
+                    className="font-bold uppercase tracking-widest font-mono text-[8px] px-2 py-0.5"
                 >
                     Normal
                 </Badge>

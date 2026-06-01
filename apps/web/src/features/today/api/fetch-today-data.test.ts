@@ -99,7 +99,7 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(result).not.toHaveProperty('logs');
     });
 
-    it('consolidates price_history queries into a single call', async () => {
+    it('fully eliminates price_history queries from the web app client entirely', async () => {
         const fromSpy = vi.fn().mockImplementation((_table) => {
             const chain = {
                 select: vi.fn().mockReturnThis(),
@@ -124,7 +124,55 @@ describe('fetchTodayData zero-load TDD checks', () => {
             (call) => call[0] === 'price_history',
         );
 
-        // This will fail before our code changes (will find 23 queries)
-        expect(priceHistoryQueries.length).toBe(1);
+        // ASSERT: price_history queries should be exactly 0 (fully database-driven pre-calculation)
+        expect(priceHistoryQueries.length).toBe(0);
+    });
+
+    it('maps pre-calculated macro volatility fields correctly from market_data_cache rows', async () => {
+        const mockCacheRows = [
+            {
+                ticker: 'SPY',
+                price: 512.5,
+                market_cap: 0,
+                fetched_at: '2026-06-01T15:00:00Z',
+                today_pct_change: 1.25,
+                stdev_pct: 0.85,
+                regime_flag: 'Normal',
+            },
+        ];
+
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => {
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                in: vi.fn().mockImplementation((_col, list) => {
+                    if (table === 'market_data_cache' && list.includes('SPY')) {
+                        return Promise.resolve({ data: mockCacheRows, error: null });
+                    }
+                    return chain;
+                }),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = {
+            from: fromSpy,
+        };
+
+        // Bypass cache by updating the cache TTL globally or passing a refresh trigger
+        const result = await fetchTodayData();
+        const spyStat = result.macroStats.find((s) => s.ticker === 'SPY');
+
+        expect(spyStat).toBeDefined();
+        expect(spyStat?.price).toBe(512.5);
+        expect(spyStat?.todayPctChange).toBe(1.25);
+        expect(spyStat?.stdevPct).toBe(0.85);
+        expect(spyStat?.regimeFlag).toBe('Normal');
     });
 });

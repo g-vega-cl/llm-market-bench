@@ -39,6 +39,18 @@ The exact same 23 tickers and volatility calculations are mirrored on the Web Ap
 - **Inverse Bond Yields Rule**: Explains the inverse price-to-yield mechanics of `IEF` (7-10 Year Treasury) and `TLT` (20+ Year Treasury) ETF prices to actual interest yields (price drop = rising yields; price rise = falling yields).
 - **Prompt Parity**: Because the Python engine injects this exact same macro block into every LLM agent's prompt during decision cycles (via the `{macro_context}` slot in `prompts.py`), there is 100% parity between what the user sees on the dashboard and what the AI models analyze when determining trade triggers.
 
+## Execution & Scheduling
+
+The rolling volatility, percentage change, and regime classification metrics are pre-calculated using the `update_prices.py` script (`apps/engine/scripts/update_prices.py`) and cached in the `market_data_cache` table.
+
+This is executed automatically on a scheduled **GitHub Action workflow** (`.github/workflows/update-prices.yml`) to keep the data fresh:
+
+- **Cadence**: Scheduled to run **every 30 minutes** during US market hours:
+  - **Cron Trigger**: `cron: "0,30 14-21 * * 1-5"` (approximately 14:00 - 21:00 UTC / 10:00 AM - 5:00 PM ET, Monday to Friday).
+  - Can also be triggered manually via a `workflow_dispatch` event on GitHub.
+- **Ingestion Pipeline Sync**: In addition to the dedicated price updater, the primary daily ingestion and consensus pipeline workflow (`.github/workflows/ingest.yml`) runs at **9:35 AM ET, 11:35 AM ET, and 3:00 PM ET** on trading days, which also refreshes quotes and triggers the same underlying pre-calculations.
+- **Cache Persistence**: The calculated statistics (rolling 30-day volatility `stdev_pct`, `today_pct_change`, `price`, `regime_flag`) are saved to the persistent Supabase `market_data_cache` table. This allows the serverless loader (`fetch-today-data.ts`) to retrieve all 23 tickers in a single consolidated database query in less than 5ms.
+
 ## History
 
 - **2026-05-28**: Resolved the "Market" section percentage returns reporting discrepancy for pure EOD tickers like `TLT` and `IEF`. Fixed a caching bug where the DB cache validation (`_validate_date_coverage` in `market_data.py`) returned a false cache hit for EOD tickers due to `.limit(90)` spanning over 45 calendar dates. Implemented an explicit staleness check (>4 calendar days old) to reject frozen caches, added `force_refresh` support to `get_history()`, and updated `update_prices.py` to force-refresh benchmark histories on daily cron syncs. Fully backfilled the historic price database to the current date, ensuring correct dashboard computations.

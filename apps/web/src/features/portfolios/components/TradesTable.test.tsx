@@ -19,6 +19,7 @@ const mockTrades: Trade[] = [
         alpaca_status: 'FILLED',
         alpaca_order_id: 'order-abc-123',
         alpaca_submitted_at: new Date().toISOString(),
+        alpaca_filled_at: new Date().toISOString(),
     },
     {
         id: 't2',
@@ -36,6 +37,7 @@ const mockTrades: Trade[] = [
         alpaca_status: null,
         alpaca_order_id: null,
         alpaca_submitted_at: null,
+        alpaca_filled_at: null,
     },
 ];
 

@@ -59,10 +59,11 @@ const colorSchemeMap: Record<string, Record<string, string>> = {
     },
     neutral: {
         solid: 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 focus:ring-zinc-500/40',
-        outline: 'border-2 border-zinc-800 text-zinc-100 hover:bg-zinc-800 focus:ring-zinc-500/40',
-        ghost: 'text-zinc-100 hover:bg-zinc-800 focus:ring-zinc-500/40',
-        soft: 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 focus:ring-zinc-500/40',
-        glass: 'bg-white/5 backdrop-blur-md border border-white/10 text-zinc-100 hover:bg-white/10 focus:ring-zinc-500/40',
+        outline:
+            'border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:ring-zinc-500/40',
+        ghost: 'text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:ring-zinc-500/40',
+        soft: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 focus:ring-zinc-500/40',
+        glass: 'bg-white/5 dark:bg-black/5 backdrop-blur-md border border-white/10 dark:border-white/5 text-zinc-900 dark:text-zinc-100 hover:bg-white/10 dark:hover:bg-white/5 focus:ring-zinc-500/40',
     },
 };
 

@@ -51,10 +51,10 @@ const badgeColors: Record<string, Record<string, string>> = {
         dot: 'text-zinc-450',
     },
     neutral: {
-        solid: 'bg-zinc-800 text-white',
-        soft: 'bg-zinc-800 text-zinc-400',
-        outline: 'border border-zinc-700 text-zinc-400',
-        dot: 'text-zinc-450',
+        solid: 'bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-950',
+        soft: 'bg-zinc-100 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400',
+        outline: 'border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400',
+        dot: 'text-zinc-500',
     },
     high: {
         solid: 'bg-warning text-zinc-950',

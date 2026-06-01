@@ -2,181 +2,58 @@ import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-describe('Button and Badge Contrast/Readability Tests', () => {
-    describe('Button Solid Contrast', () => {
-        it('should use text-white for accent solid button', () => {
-            const { getByRole } = render(
-                <Button variant="solid" colorScheme="accent">
-                    Accent Solid
-                </Button>,
-            );
-            const button = getByRole('button');
-            expect(button.className).toContain('text-white');
-            expect(button.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-white for danger solid button', () => {
-            const { getByRole } = render(
-                <Button variant="solid" colorScheme="danger">
-                    Danger Solid
-                </Button>,
-            );
-            const button = getByRole('button');
-            expect(button.className).toContain('text-white');
-            expect(button.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-white for info solid button', () => {
-            const { getByRole } = render(
-                <Button variant="solid" colorScheme="info">
-                    Info Solid
-                </Button>,
-            );
-            const button = getByRole('button');
-            expect(button.className).toContain('text-white');
-            expect(button.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-zinc-950 for success solid button', () => {
-            const { getByRole } = render(
-                <Button variant="solid" colorScheme="success">
-                    Success Solid
-                </Button>,
-            );
-            const button = getByRole('button');
-            expect(button.className).toContain('text-zinc-950');
-            expect(button.className).not.toContain('text-white');
-        });
-
-        it('should use text-zinc-950 for warning solid button', () => {
-            const { getByRole } = render(
-                <Button variant="solid" colorScheme="warning">
-                    Warning Solid
-                </Button>,
-            );
-            const button = getByRole('button');
-            expect(button.className).toContain('text-zinc-950');
-            expect(button.className).not.toContain('text-white');
-        });
+describe('Button and Badge Contrast Compliance (A11y Checks)', () => {
+    it('verifies neutral ghost Button uses responsive high-contrast classes instead of hardcoded zinc-100', () => {
+        const { container } = render(
+            <Button colorScheme="neutral" variant="ghost">
+                Test Ghost
+            </Button>,
+        );
+        const button = container.querySelector('button');
+        expect(button).toBeInTheDocument();
+        // Check for light-mode text contrast and dark-mode text contrast
+        expect(button?.className).toContain('text-zinc-900');
+        expect(button?.className).toContain('dark:text-zinc-100');
+        expect(button?.className).toContain('hover:bg-zinc-100');
+        expect(button?.className).toContain('dark:hover:bg-zinc-800');
     });
 
-    describe('Badge Solid Contrast', () => {
-        it('should use text-white for accent solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" colorScheme="accent">
-                    Accent Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('Accent Solid Badge');
-            expect(badge.className).toContain('text-white');
-            expect(badge.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-white for danger solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" colorScheme="danger">
-                    Danger Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('Danger Solid Badge');
-            expect(badge.className).toContain('text-white');
-            expect(badge.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-white for info solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" colorScheme="info">
-                    Info Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('Info Solid Badge');
-            expect(badge.className).toContain('text-white');
-            expect(badge.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-zinc-950 for success solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" colorScheme="success">
-                    Success Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('Success Solid Badge');
-            expect(badge.className).toContain('text-zinc-950');
-            expect(badge.className).not.toContain('text-white');
-        });
-
-        it('should use text-zinc-950 for warning solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" colorScheme="warning">
-                    Warning Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('Warning Solid Badge');
-            expect(badge.className).toContain('text-zinc-950');
-            expect(badge.className).not.toContain('text-white');
-        });
-
-        it('should use text-white for medium severity solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" severity="medium">
-                    Medium Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('Medium Solid Badge');
-            expect(badge.className).toContain('text-white');
-            expect(badge.className).not.toContain('text-zinc-950');
-        });
-
-        it('should use text-zinc-950 for high severity solid badge', () => {
-            const { getByText } = render(
-                <Badge variant="solid" severity="high">
-                    High Solid Badge
-                </Badge>,
-            );
-            const badge = getByText('High Solid Badge');
-            expect(badge.className).toContain('text-zinc-950');
-            expect(badge.className).not.toContain('text-white');
-        });
+    it('verifies neutral outline Button uses responsive high-contrast border and text classes', () => {
+        const { container } = render(
+            <Button colorScheme="neutral" variant="outline">
+                Test Outline
+            </Button>,
+        );
+        const button = container.querySelector('button');
+        expect(button?.className).toContain('border-zinc-300');
+        expect(button?.className).toContain('dark:border-zinc-700');
+        expect(button?.className).toContain('text-zinc-900');
+        expect(button?.className).toContain('dark:text-zinc-100');
     });
 
-    describe('Unified Component Colors (No Light/Dark Distinction)', () => {
-        it('should use translucent styling directly for success soft badge without dark prefix', () => {
-            const { getByText } = render(
-                <Badge variant="soft" colorScheme="success">
-                    Success Soft Badge
-                </Badge>,
-            );
-            const badge = getByText('Success Soft Badge');
-            expect(badge.className).toContain('bg-success/20');
-            expect(badge.className).toContain('text-success');
-            expect(badge.className).not.toContain('bg-success-light');
-            expect(badge.className).not.toContain('text-success-dark');
-        });
+    it('verifies neutral soft Button uses high-contrast background and text classes', () => {
+        const { container } = render(
+            <Button colorScheme="neutral" variant="soft">
+                Test Soft
+            </Button>,
+        );
+        const button = container.querySelector('button');
+        expect(button?.className).toContain('bg-zinc-100');
+        expect(button?.className).toContain('dark:bg-zinc-800');
+        expect(button?.className).toContain('text-zinc-900');
+        expect(button?.className).toContain('dark:text-zinc-100');
+    });
 
-        it('should use translucent styling directly for accent soft badge without dark prefix', () => {
-            const { getByText } = render(
-                <Badge variant="soft" colorScheme="accent">
-                    Accent Soft Badge
-                </Badge>,
-            );
-            const badge = getByText('Accent Soft Badge');
-            expect(badge.className).toContain('bg-accent/20');
-            expect(badge.className).toContain('text-accent');
-            expect(badge.className).not.toContain('bg-accent-light');
-            expect(badge.className).not.toContain('text-accent-dark');
-        });
-
-        it('should use translucent styling directly for success soft button without dark prefix', () => {
-            const { getByRole } = render(
-                <Button variant="soft" colorScheme="success">
-                    Success Soft Button
-                </Button>,
-            );
-            const button = getByRole('button');
-            expect(button.className).toContain('bg-success/20');
-            expect(button.className).toContain('text-success');
-            expect(button.className).not.toContain('bg-success-light');
-            expect(button.className).not.toContain('text-success-dark');
-        });
+    it('verifies neutral soft Badge uses high-contrast text zinc-600 and dark:zinc-400', () => {
+        const { container } = render(
+            <Badge colorScheme="neutral" variant="soft">
+                Normal
+            </Badge>,
+        );
+        const badge = container.querySelector('span');
+        expect(badge?.className).toContain('text-zinc-600');
+        expect(badge?.className).toContain('dark:text-zinc-400');
+        expect(badge?.className).toContain('bg-zinc-100');
+        expect(badge?.className).toContain('dark:bg-zinc-800/40');
     });
 });

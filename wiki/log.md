@@ -1,31 +1,3 @@
-## [2026-06-01] optimization | Consolidated Single-Query Database Fetch and Proxied Script Caching
-
-Resolved two primary homepage performance bottlenecks to achieve a 90+ Lighthouse score:
-- **Consolidated Single-Query Database Fetch**: Replaced the 23 concurrent, parallel network database queries to `price_history` inside `fetchTodayData` with a single consolidated query using `.in('ticker', ...)` and an explicit `.limit(5000)` constraint. Retained 100% in-memory deduplication, grouping, and 30-day capping logic, cutting database network round-trips from 31 to 9 and slashing TTFB by 700ms+.
-- **TDD Regression Test**: Added a new Vitest unit test in `fetch-today-data.test.ts` asserting that `price_history` is queried exactly once. Verified expected test failure prior to changes (received 23 queries) and success after.
-- **Analytics CDN Proxy Caching**: Added version-safe, long-term public caching headers (`Cache-Control: public, max-age=31536000, immutable`) for versioned tracking scripts proxied through `netlify.toml` at `/p/static/*`, preventing browser re-downloads that block the main thread.
-- **Performance Documentation**: Updated [[concepts/performance-auditing-strategy]] and [[concepts/posthog-stealth-proxy]] to document the single-query consolidation pattern and proxies cache optimization standard.
-
-## [2026-06-01] doc | Client/Server Time Best Practices Documentation
-
-Expanded the canonical performance auditing strategy concept page to comprehensively detail the 5 core client/server time best practices for eliminating SSR hydration mismatches (React Error #418) in server-side rendered environments.
-
-## [2026-06-01] feature | Granular Stock Valuation Ledger and Auditable Starting Prices
-
-Expanded the auto-research do-nothing return calculation engine and frontend dashboard to provide comprehensive, factual transparency for initial vs. ending asset valuations:
-- **Starting Price Queries**: Enhanced `_do_nothing_return()` in `apps/engine/autoresearch/metrics.py` to fetch historical stock prices at the exact beginning of the week (`week_start`) in addition to ending prices (`week_end`).
-- **Initial Valuation Ledger**: Extended the compiled `portfolio_details` position schema to calculate and record starting prices (`start_price`) and starting position values (`start_value` = `qty * start_price`) along with ending prices (`end_price`) and values (`end_value` / `value`).
-- **TDD Regression Tests**: Added `test_do_nothing_includes_initial_and_end_prices` in `apps/engine/tests/test_autoresearch.py` verifying that starting vs. ending prices are queried correctly and details are populated with full mathematical precision. Verified 100% engine test success (732/732 tests passing) and 84% code coverage.
-- **Premium Frontend Asset Auditor**: Expanded the React/TypeScript types and tabular asset auditor in `apps/web/src/features/autoresearch/components/ScoreBreakdown.tsx` with two new columns: "Start Price" and "Start Value". Added backward-compatible fallback styling (`—`) to cleanly render older experiment records that lack starting prices. Passed all 214 Vitest unit tests and `pnpm biome check` cleanly.
-
-## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
-
-Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.
-
-## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
-
-Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.
-
 ## [2026-05-28] update | Cleanup module parameterization and test coverage
 
 Updated cleanup.py with comprehensive docstring explaining the 6-stage maintenance pipeline and Python-calculated threshold parameterization. Added test for exception handling. Updated wiki page to reflect new parameterization.
@@ -225,3 +197,18 @@ Resolved critical Lighthouse frontend performance bottlenecks that were severely
 - **PostHog Unused JS Optimization**: Configured `<PostHogProvider>` with `disable_surveys: true`, blocking the heavy `surveys.js` module from downloading and executing on initialization, eliminating over 100 KiB of unused Javascript.
 - **TDD Safety Net**: Added new Vitest test cases to `apps/web/src/routes/-__root.test.tsx` verifying that `disable_surveys: true` is passed to the SDK and that the asynchronous `media="print"` technique is enforced in the DOM for all Google Font links.
 - **Documentation**: Added the "Eliminating Render-Blocking Resources" section to `wiki/concepts/performance-auditing-strategy.md` outlining the async font pattern and explicit SDK disabling best practices.
+
+## [2026-06-01] refactor | Macro Volatility Pre-Calculation Caching — Database-Driven Architecture Shift
+
+This refactor moves macro volatility calculations (daily % change, 30-day standard deviation, regime flags) from runtime computation in both the Python engine and TypeScript web loader into pre-calculated database columns persisted by the `update_prices.py` background script.
+
+**Changes:**
+- **Supabase Migration**: Added `today_pct_change`, `stdev_pct`, and `regime_flag` columns to `market_data_cache` (migration `20260601183000`).
+- **TypeScript Types**: Regenerated Supabase types (`supabase-types.ts`) to include new columns, plus a new `prompt_experiments` table type and an `alpaca_filled_at` field on trades.
+- **Python Macro Tracker**: Replaced dynamic `get_history()` calls and manual return/stdev computation with a single `.in()` query to `market_data_cache` for pre-calculated stats.
+- **TypeScript Loader**: Eliminated the `price_history` table query entirely from the web loader (`fetch-today-data.ts`). Added a 30-second in-memory cache. Macro stats now map directly from `market_data_cache` rows with zero dynamic computation.
+- **Tests**: Updated `test_macro_tracker.py` to mock the single cache query instead of quote/history chains. Updated `fetch-today-data.test.ts` to assert zero `price_history` queries and verify pre-calculated field mapping.
+- **Design System**: Updated neutral color scheme variants for Button and Badge to use responsive `dark:`-prefixed high-contrast classes instead of hardcoded dark-only zinc values. Updated UI components (`GlobalMacroStats.tsx`, `TradeActivity.tsx`) to use responsive text contrast classes.
+- **Performance Auditing Concept**: Added Database-Driven Pre-calculation as a core architectural principle in `concepts/performance-auditing-strategy.md`.
+- **Macro Tracker Entity**: Documented the execution/scheduling of `update_prices.py` via GitHub Actions in `entities/macro-tracker.md`.
+

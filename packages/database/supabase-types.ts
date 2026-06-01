@@ -311,24 +311,34 @@ export type Database = {
                     fetched_at: string | null;
                     market_cap: number;
                     price: number;
+                    regime_flag: string | null;
+                    stdev_pct: number | null;
                     ticker: string;
+                    today_pct_change: number | null;
                 };
                 Insert: {
                     fetched_at?: string | null;
                     market_cap: number;
                     price: number;
+                    regime_flag?: string | null;
+                    stdev_pct?: number | null;
                     ticker: string;
+                    today_pct_change?: number | null;
                 };
                 Update: {
                     fetched_at?: string | null;
                     market_cap?: number;
                     price?: number;
+                    regime_flag?: string | null;
+                    stdev_pct?: number | null;
                     ticker?: string;
+                    today_pct_change?: number | null;
                 };
                 Relationships: [];
             };
             market_feeling: {
                 Row: {
+                    attempts_summary: Json | null;
                     confidence_score: number | null;
                     created_at: string | null;
                     id: string;
@@ -348,6 +358,7 @@ export type Database = {
                     why_explanation: string | null;
                 };
                 Insert: {
+                    attempts_summary?: Json | null;
                     confidence_score?: number | null;
                     created_at?: string | null;
                     id?: string;
@@ -367,6 +378,7 @@ export type Database = {
                     why_explanation?: string | null;
                 };
                 Update: {
+                    attempts_summary?: Json | null;
                     confidence_score?: number | null;
                     created_at?: string | null;
                     id?: string;
@@ -624,6 +636,62 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            prompt_experiments: {
+                Row: {
+                    change_description: string | null;
+                    created_at: string;
+                    experiment_type: string;
+                    id: string;
+                    metrics: Json | null;
+                    parent_tag: string | null;
+                    prompt_content: string;
+                    prompt_name: string;
+                    research_output: Json | null;
+                    status: string;
+                    variant_tag: string;
+                    week_end: string;
+                    week_start: string;
+                };
+                Insert: {
+                    change_description?: string | null;
+                    created_at?: string;
+                    experiment_type?: string;
+                    id?: string;
+                    metrics?: Json | null;
+                    parent_tag?: string | null;
+                    prompt_content: string;
+                    prompt_name?: string;
+                    research_output?: Json | null;
+                    status?: string;
+                    variant_tag: string;
+                    week_end: string;
+                    week_start: string;
+                };
+                Update: {
+                    change_description?: string | null;
+                    created_at?: string;
+                    experiment_type?: string;
+                    id?: string;
+                    metrics?: Json | null;
+                    parent_tag?: string | null;
+                    prompt_content?: string;
+                    prompt_name?: string;
+                    research_output?: Json | null;
+                    status?: string;
+                    variant_tag?: string;
+                    week_end?: string;
+                    week_start?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'prompt_experiments_parent_tag_fkey';
+                        columns: ['parent_tag'];
+                        isOneToOne: false;
+                        referencedRelation: 'prompt_experiments';
+                        referencedColumns: ['variant_tag'];
+                    },
+                ];
+            };
             system_audits: {
                 Row: {
                     analysis_method: string | null;
@@ -681,64 +749,9 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            prompt_experiments: {
-                Row: {
-                    id: string;
-                    variant_tag: string;
-                    prompt_name: string;
-                    prompt_content: string;
-                    week_start: string;
-                    week_end: string;
-                    metrics: Json | null;
-                    status: string;
-                    experiment_type: string;
-                    parent_tag: string | null;
-                    change_description: string | null;
-                    research_output: Json | null;
-                    created_at: string;
-                };
-                Insert: {
-                    id?: string;
-                    variant_tag: string;
-                    prompt_name?: string;
-                    prompt_content: string;
-                    week_start: string;
-                    week_end: string;
-                    metrics?: Json | null;
-                    status?: string;
-                    experiment_type?: string;
-                    parent_tag?: string | null;
-                    change_description?: string | null;
-                    research_output?: Json | null;
-                    created_at?: string;
-                };
-                Update: {
-                    id?: string;
-                    variant_tag?: string;
-                    prompt_name?: string;
-                    prompt_content?: string;
-                    week_start?: string;
-                    week_end?: string;
-                    metrics?: Json | null;
-                    status?: string;
-                    experiment_type?: string;
-                    parent_tag?: string | null;
-                    change_description?: string | null;
-                    research_output?: Json | null;
-                    created_at?: string;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'prompt_experiments_parent_tag_fkey';
-                        columns: ['parent_tag'];
-                        isOneToOne: false;
-                        referencedRelation: 'prompt_experiments';
-                        referencedColumns: ['variant_tag'];
-                    },
-                ];
-            };
             trades: {
                 Row: {
+                    alpaca_filled_at: string | null;
                     alpaca_order_id: string | null;
                     alpaca_status: string | null;
                     alpaca_submitted_at: string | null;
@@ -756,6 +769,7 @@ export type Database = {
                     total_cost: number;
                 };
                 Insert: {
+                    alpaca_filled_at?: string | null;
                     alpaca_order_id?: string | null;
                     alpaca_status?: string | null;
                     alpaca_submitted_at?: string | null;
@@ -773,6 +787,7 @@ export type Database = {
                     total_cost: number;
                 };
                 Update: {
+                    alpaca_filled_at?: string | null;
                     alpaca_order_id?: string | null;
                     alpaca_status?: string | null;
                     alpaca_submitted_at?: string | null;
@@ -849,12 +864,14 @@ export type Database = {
             };
             match_decisions: {
                 Args: {
+                    filter_model_name?: string;
                     match_count: number;
                     match_threshold: number;
                     query_embedding: string;
                 };
                 Returns: {
                     id: string;
+                    model_name: string;
                     reasoning: string;
                     signal: string;
                     similarity: number;

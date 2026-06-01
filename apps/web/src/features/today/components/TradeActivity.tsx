@@ -201,7 +201,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                             <span className="text-lg">
                                                                 {agentInfo.emoji}
                                                             </span>
-                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                                            <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                                                                 {agentInfo.name}
                                                             </span>
                                                         </div>
@@ -233,7 +233,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                             <span className="text-lg">
                                                                 {agentInfo.emoji}
                                                             </span>
-                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                                            <span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                                                                 {agentInfo.name}
                                                             </span>
                                                         </div>
@@ -271,7 +271,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                             <p
                                                 className={`text-sm font-medium ${
                                                     item.type === 'REJECTION'
-                                                        ? 'text-rose-600/80 dark:text-rose-400/80'
+                                                        ? 'text-rose-600 dark:text-rose-400'
                                                         : 'text-zinc-500 dark:text-zinc-400'
                                                 }`}
                                             >

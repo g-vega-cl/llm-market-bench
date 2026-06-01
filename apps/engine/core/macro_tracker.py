@@ -7,7 +7,6 @@ providing vital contextual "regime" awareness to the LLM prior to decision-makin
 """
 
 import logging
-import math
 
 logger = logging.getLogger("engine")
 
@@ -47,7 +46,7 @@ MACRO_TICKERS = {
 
 
 async def get_global_macro_context(market_data_manager) -> str:
-    """Fetches macro context including daily % change and 30-day volatility.
+    """Fetches macro context including daily % change and 30-day volatility from cache.
 
     Args:
         market_data_manager: Instance of MarketDataManager
@@ -57,13 +56,18 @@ async def get_global_macro_context(market_data_manager) -> str:
     """
     logger.info("Gathering Global Macro Context...")
 
-    # Flatten all tickers into a single list to batch fetch quotes
+    # Flatten all tickers into a single list to batch fetch
     all_tickers = []
     for _category, items in MACRO_TICKERS.items():
         all_tickers.extend(items.keys())
 
-    # Batch fetch current quotes
-    quotes = await market_data_manager.get_quotes(all_tickers)
+    try:
+        # Fetch pre-calculated macro stats directly from the database cache in one query
+        res = market_data_manager.client.table("market_data_cache").select("*").in_("ticker", all_tickers).execute()
+        cache_map = {row["ticker"]: row for row in res.data} if res.data else {}
+    except Exception as e:
+        logger.error(f"Failed to fetch pre-calculated macro statistics: {e}")
+        cache_map = {}
 
     context_lines = ["\n--- GLOBAL MACRO ENVIRONMENT ---"]
     context_lines.append("The following indicators describe the underlying market 'regime' for today:")
@@ -71,60 +75,27 @@ async def get_global_macro_context(market_data_manager) -> str:
     for category, category_dict in MACRO_TICKERS.items():
         context_lines.append(f"\n[ {category.upper()} ]")
         for ticker, name in category_dict.items():
-            quote = quotes.get(ticker)
-            if not quote or not quote.exists or math.isnan(quote.price):
+            row = cache_map.get(ticker)
+            if not row:
                 continue
 
-            # Fetch up to 30 days of history to compute stdev and prev close
-            history = await market_data_manager.get_history(ticker, days=30)
+            price = float(row.get("price") or 0.0)
+            today_pct_change = float(row.get("today_pct_change") or 0.0)
+            stdev_pct = float(row.get("stdev_pct") or 0.0)
+            regime_flag = row.get("regime_flag") or "Normal"
 
-            if len(history) < 2:
-                # Fallback if no history
-                context_lines.append(f"{name} ({ticker}): {quote.price:.2f} | (No history available)")
-                continue
-
-            # Calculate daily % returns over the available history
-            returns = []
-            for i in range(len(history) - 1):
-                prev = history[i + 1]["price"]
-                curr = history[i]["price"]
-                if prev > 0:
-                    returns.append((curr - prev) / prev)
-
-            # Today's move (current quote vs yesterday's close)
-            yesterday_close = history[0]["price"] if history else quote.price
-            # If quote.price matches history[0], we are closed (or very stale). If not, we take current quote.
-            # To be safe against weekends, just compare quote price to history[0] (or history[1] if quote = history[0])
-            if abs(quote.price - history[0]["price"]) < 0.001 and len(history) > 1:
-                # Market is closed, so 'today's' move is history[0] vs history[1]
-                yesterday_close = history[1]["price"]
-                today_px = history[0]["price"]
-            else:
-                today_px = quote.price
-
-            today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
-
-            # Compute standard deviation
-            if len(returns) > 2:
-                mean_return = sum(returns) / len(returns)
-                variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
-                stdev_pct = math.sqrt(variance) * 100
-
-                # Compare absolute change to stdev
-                if abs(today_pct_change) > (2.0 * stdev_pct):
-                    regime_flag = "⚠️ HIGHLY UNUSUAL (Regime Shift)"
-                elif abs(today_pct_change) > (1.5 * stdev_pct):
-                    regime_flag = "❗ UNUSUAL"
-                else:
-                    regime_flag = "Normal"
+            if stdev_pct > 0:
+                flag_text = regime_flag
+                if regime_flag == "⚠️ HIGHLY UNUSUAL":
+                    flag_text = "⚠️ HIGHLY UNUSUAL (Regime Shift)"
 
                 context_lines.append(
-                    f"{name} ({ticker}): {today_px:.2f} "
+                    f"{name} ({ticker}): {price:.2f} "
                     f"[{today_pct_change:+.2f}% today] "
-                    f"| {regime_flag} (30d stdev: {stdev_pct:.2f}%)"
+                    f"| {flag_text} (30d stdev: {stdev_pct:.2f}%)"
                 )
             else:
-                context_lines.append(f"{name} ({ticker}): {today_px:.2f} [{today_pct_change:+.2f}% today]")
+                context_lines.append(f"{name} ({ticker}): {price:.2f} [{today_pct_change:+.2f}% today]")
 
     context_lines.append(
         "\n**Instruction:** Use this snapshot to understand if markets are risk-on, risk-off, or experiencing "

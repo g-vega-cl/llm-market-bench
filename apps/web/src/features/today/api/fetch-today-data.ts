@@ -15,7 +15,7 @@ import {
     formatEasternTime,
 } from '~/utils/date';
 import type { MacroCategory, MacroStat } from '../lib/macro-tickers';
-import { calculateMacroStats, MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
+import { MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
 export interface TodayData {
     newsletters: (NewsletterSnapshot & { formattedTime: string })[];
@@ -92,49 +92,43 @@ export function buildHistoryGroup(
     return historyGroup;
 }
 
-function computeMacroStatsList(
-    cacheMap: Map<string, MarketDataCache>,
-    historyGroup: Map<string, PriceHistoryItem[]>,
-): MacroStat[] {
+let cachedTodayData: TodayData | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 30000; // 30 seconds
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+
+function computeMacroStatistics(cacheRows: MarketDataCache[] | null): MacroStat[] {
     const macroStats: MacroStat[] = [];
+    if (!cacheRows) return macroStats;
+
+    const cacheMap = buildCacheMap(cacheRows);
+
     for (const [category, categoryDict] of Object.entries(MACRO_TICKERS)) {
         for (const [ticker, name] of Object.entries(categoryDict)) {
             const cacheEntry = cacheMap.get(ticker);
-            const historyEntry = historyGroup.get(ticker) || [];
+            if (!cacheEntry) continue;
 
-            const currentPrice = cacheEntry
-                ? Number(cacheEntry.price)
-                : historyEntry[0]
-                  ? Number(historyEntry[0].price)
-                  : 0;
+            const price = Number(cacheEntry.price) || 0;
+            const todayPctChange = Number(cacheEntry.today_pct_change) || 0;
+            const stdevPct = Number(cacheEntry.stdev_pct) || 0;
+            const regimeFlag = (cacheEntry.regime_flag || 'Normal') as
+                | 'Normal'
+                | '❗ UNUSUAL'
+                | '⚠️ HIGHLY UNUSUAL';
 
-            if (currentPrice > 0) {
-                macroStats.push(
-                    calculateMacroStats(
-                        ticker,
-                        name,
-                        category as MacroCategory,
-                        currentPrice,
-                        historyEntry.map((h) => ({
-                            price: Number(h.price),
-                            fetched_at: h.fetched_at || '',
-                        })),
-                    ),
-                );
-            }
+            macroStats.push({
+                ticker,
+                name,
+                category: category as MacroCategory,
+                price,
+                todayPctChange,
+                stdevPct,
+                regimeFlag,
+                hasHistory: stdevPct > 0,
+            });
         }
     }
     return macroStats;
-}
-
-function computeMacroStatistics(
-    cacheRows: MarketDataCache[] | null,
-    historyRows: PriceHistoryItem[] | null,
-    estDateStr: string,
-): MacroStat[] {
-    const cacheMap = buildCacheMap(cacheRows);
-    const historyGroup = buildHistoryGroup(historyRows, estDateStr);
-    return computeMacroStatsList(cacheMap, historyGroup);
 }
 
 function extractDate(content: string): string | null {
@@ -143,6 +137,11 @@ function extractDate(content: string): string | null {
 }
 
 export async function fetchTodayData(): Promise<TodayData> {
+    const nowTime = Date.now();
+    if (!isTest && cachedTodayData && nowTime - lastFetchTime < CACHE_TTL) {
+        return cachedTodayData;
+    }
+
     const supabase = getSupabaseServerClient();
 
     const now = new Date();
@@ -150,22 +149,15 @@ export async function fetchTodayData(): Promise<TodayData> {
 
     const startOfDay = `${estDateStr}T00:00:00`;
 
-    // 45 days ago lookback for historical volatility calculations
-    const historyLimitDate = new Date();
-    historyLimitDate.setDate(historyLimitDate.getDate() - 45);
-    const historyLimitDateStr = historyLimitDate.toISOString();
-
-    // Fetch core dashboard data in parallel where possible to maximize performance
+    // Fetch core dashboard data in parallel (reduced from 9 to 7 database queries!)
     const [
         { data: newsletters },
         { data: trades },
         { data: decisions },
         { data: memories },
-        { data: priceUpdates },
         { data: futureEvents },
         { data: marketFeeling },
         { data: cacheRows },
-        historyResults,
     ] = await Promise.all([
         supabase
             .from('newsletter_snapshots')
@@ -187,7 +179,6 @@ export async function fetchTodayData(): Promise<TodayData> {
             .select('*')
             .gte('created_at', startOfDay)
             .order('created_at', { ascending: false }),
-        supabase.from('market_data_cache').select('id').gte('fetched_at', startOfDay).limit(1),
         supabase
             .from('memories')
             .select('*')
@@ -201,23 +192,17 @@ export async function fetchTodayData(): Promise<TodayData> {
             .select('*')
             .order('created_at', { ascending: false })
             .limit(1),
-        // Fetch all macro quotes
+        // Fetch all macro quotes + pre-calculated volatility in a single query
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-        // Fetch historical data for all macro tickers in a single network query
-        // to avoid connection pool congestion and reduce TTFB.
-        supabase
-            .from('price_history')
-            .select('ticker, price, fetched_at')
-            .in('ticker', MACRO_TICKERS_LIST)
-            .gte('fetched_at', historyLimitDateStr)
-            .order('fetched_at', { ascending: false })
-            .limit(5000),
     ]);
 
-    const historyRows = (historyResults?.data || []) as PriceHistoryItem[];
+    // Derive priceUpdates in-memory from cacheRows to eliminate an entire extra DB query
+    const priceUpdates = (cacheRows || []).filter(
+        (row) => row.fetched_at && row.fetched_at >= startOfDay,
+    ) as unknown as MarketDataCache[];
 
-    // Process and calculate macro statistics
-    const macroStats = computeMacroStatistics(cacheRows, historyRows, estDateStr);
+    // Process and map pre-calculated macro statistics
+    const macroStats = computeMacroStatistics(cacheRows);
 
     const currentHour = now.getUTCHours();
     const currentMinutes = now.getUTCMinutes();
@@ -241,7 +226,7 @@ export async function fetchTodayData(): Promise<TodayData> {
 
     const todayDateString = formatEasternDate(now);
 
-    return {
+    const result: TodayData = {
         newsletters: (newsletters || []).map((n) => ({
             ...n,
             formattedTime: formatEasternShortTime(n.date),
@@ -259,7 +244,7 @@ export async function fetchTodayData(): Promise<TodayData> {
             formattedDateTime: formatEasternDateTime(m.created_at),
             formattedShortDate: formatEasternShortDate(m.created_at),
         })) as (Memory & { formattedShortDate: string; formattedDateTime: string })[],
-        priceUpdates: (priceUpdates || []) as unknown as MarketDataCache[],
+        priceUpdates,
         futureEvents: (futureEvents || []).map((m) => {
             const eventDate = m.target_date || extractDate(m.content);
             let formattedTargetMonthDay = '';
@@ -309,4 +294,11 @@ export async function fetchTodayData(): Promise<TodayData> {
         isSentimentStale,
         todayDateString,
     };
+
+    if (!isTest) {
+        cachedTodayData = result;
+        lastFetchTime = nowTime;
+    }
+
+    return result;
 }

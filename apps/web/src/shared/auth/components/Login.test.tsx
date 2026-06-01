@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Login } from './Login';
 
-vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        identify: vi.fn(),
-        capture: vi.fn(),
-    }),
-}));
+vi.mock('~/lib/posthog-client', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('~/lib/posthog-client')>();
+    return {
+        ...actual,
+        useAnalytics: () => ({
+            identify: vi.fn(),
+            capture: vi.fn(),
+        }),
+    };
+});
 
 vi.mock('@tanstack/react-router', async () => {
     const actual = await vi.importActual('@tanstack/react-router');

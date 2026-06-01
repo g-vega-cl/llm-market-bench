@@ -3,6 +3,7 @@ import { EmptyState, PageLayout } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { lazy, Suspense } from 'react';
 import type { TodayData } from '../api/fetch-today-data';
+import type { TodayHeroData } from '../api/fetch-today-hero-data';
 import { MarketStatusHero } from '../components/MarketStatusHero';
 
 const AgentInsights = lazy(() =>
@@ -24,11 +25,12 @@ const TradeActivity = lazy(() =>
 import { todayQueries } from '../queries/options';
 
 interface TodayPageProps {
+    hero: TodayHeroData;
     initialData: TodayData;
     fetchFn: () => Promise<TodayData>;
 }
 
-export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
+export function TodayPage({ hero, initialData, fetchFn }: TodayPageProps) {
     const { data } = useSuspenseQuery({
         ...todayQueries.data({ fetchFn }),
         initialData,
@@ -45,8 +47,17 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Market Status Hero */}
-            <MarketStatusHero data={data} />
+            {/* Market Status Hero — fed by the fast `hero` loader so the
+                LCP element can paint without waiting on the full data fetch. */}
+            <MarketStatusHero
+                data={{
+                    ...data,
+                    marketFeeling: hero.marketFeeling,
+                    isMarketOpen: hero.isMarketOpen,
+                    isSentimentStale: hero.isSentimentStale,
+                    todayDateString: hero.todayDateString,
+                }}
+            />
 
             <PageLayout className="space-y-24 pb-24">
                 {/* Global Macro, Bonds & Index Volatility Regime Stats */}

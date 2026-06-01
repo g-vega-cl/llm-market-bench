@@ -32,6 +32,7 @@ every LLM agent's context before trading decisions.
 - **FMP-compatible only**: All tickers must work with Financial Modeling Prep API (no Yahoo-style `^VIX`, `DX-Y.NYB`)
 - **ETF proxies**: Indices are tracked via ETFs (e.g., VIXY for VIX, UUP for DXY, IEF/TLT for yields)
 - **Unique tickers only**: No duplicates across categories; batch fetch deduplicates implicitly
+- **Server-side dedup RPC (2026-06-01)**: The web app's homepage `fetchTodayData` fetches price history via the `latest_per_ticker_per_day(p_tickers, p_days)` SQL function (migration `supabase/migrations/20260601000000_add_latest_per_ticker_per_day_rpc.sql`) instead of pulling raw rows. The RPC uses `DISTINCT ON (ticker, (fetched_at AT TIME ZONE 'America/New_York')::date)` to return at most one row per (ticker, ET calendar day) and the frontend's `buildHistoryGroup` runs as a no-op. See [[concepts/hero-loader-split]] for the full pattern.
 
 ## Frontend Integration & Yield Rules
 

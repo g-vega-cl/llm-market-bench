@@ -33,4 +33,23 @@
     Cache-Control = "public, max-age=31536000, immutable"
     X-Content-Type-Options = "nosniff"
 
+# Public homepage + marketing pages: 60s CDN cache, 5min stale-while-revalidate.
+# Anonymous traffic to the root is the dominant case from Lighthouse.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
+
+# Vite's content-hashed asset filenames are immutable for a year.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Personalized content under /_authed/* is never cached.
+[[headers]]
+  for = "/_authed/*"
+  [headers.values]
+    Cache-Control = "private, no-store"
+
 

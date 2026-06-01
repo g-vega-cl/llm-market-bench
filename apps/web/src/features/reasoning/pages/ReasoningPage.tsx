@@ -7,9 +7,9 @@ import {
     PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
-import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import { useAnalytics } from '~/lib/posthog-client';
 import type { PaginatedReasoningLogs } from '../api/fetch-reasoning-logs';
 import { HumanFriendlyPrompt } from '../components/HumanFriendlyPrompt';
 import { HumanFriendlyResponse } from '../components/HumanFriendlyResponse';
@@ -20,7 +20,7 @@ interface ReasoningPageProps {
 }
 
 export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
     const [activeTab, setActiveTab] = React.useState<string>('ALL');
     const [selectedLogId, setSelectedLogId] = React.useState<string | null>(null);
 

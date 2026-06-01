@@ -97,6 +97,21 @@ To keep the web app's documentation in perfect harmony with the project's living
 - **Git Hook Integration**: Added a compilation hook to the pre-commit script `scripts/auto-wiki.sh`. Staged changes automatically compile the fresh JSON file and re-stage it before final commit.
 - **TDD Verification**: Covered by robust Python unit tests in `test_compile_how_it_works.py` and Vitest UI tests in `-how-it-works.test.tsx` to guarantee parsing integrity and dynamic React mapping correctness.
 
+### Homepage Performance Optimization (2026-06-01)
+
+To raise the homepage Lighthouse Performance score from 0.82 to ≥0.90 and clear the CI gate, ten surgical fixes were shipped across caching, bundle hygiene, SSR, and accessibility. The full architecture and code references for these fixes are documented in [[concepts/performance-auditing-strategy]] and [[concepts/posthog-stealth-proxy]]. High-level summary of the integrated changes:
+
+- **Hero Loader Split**: `fetchTodayHeroData` (`src/features/today/api/fetch-today-hero-data.ts`) is a one-query, 60 s in-memory-cached Supabase loader returning only the `market_feeling` row and ET date math. The route's `loader` runs it in parallel with `fetchTodayData` via `Promise.all`, so the MarketStatusHero block streams to the client before the full payload finishes.
+- **Server-Side Price History Dedup**: `latest_per_ticker_per_day(p_tickers, p_days)` Supabase RPC returns pre-deduped one-row-per-(ticker, calendar-day) results, replacing the 5000-row raw `price_history` query in `fetchTodayData`. See [[concepts/performance-auditing-strategy]] for the migration.
+- **CSS Preload + Non-Blocking Stylesheet**: `getRootHead()` exports a `rel="preload" as="style"` link paired with a `media="print"` stylesheet that flips to `all` on `onLoad`. This keeps the bundled CSS out of the render-blocking critical path.
+- **Devtools Gated to DEV**: `TanStackRouterDevtools` is `lazy(() => import.meta.env.PROD ? noop : import('@tanstack/react-router-devtools'))` and the JSX is wrapped in `{import.meta.env.DEV && …}`, so the devtools package is never fetched in production.
+- **Lazy PostHog with Custom Context**: `posthog-client.tsx` was rewritten to drop the static `import { usePostHog } from '@posthog/react'` (which pulls `posthog-js` into the main bundle) in favor of a custom React context. `initPostHog()` dynamically imports `posthog-js` on `requestIdleCallback` (with `setTimeout(2000)` fallback) and `useAnalytics()` returns a noop until init resolves. All 7 call sites were migrated to `useAnalytics()`. Result: `main-*.js` dropped from 554 KB to 376 KB and PostHog scripts (`exception-autocapture`, `dead-clicks-autocapture`, `web-vitals`) are no longer in the main bundle.
+- **Public Auth via useCurrentUser**: Removed `beforeLoad` from `__root.tsx` (which previously called `supabase.auth.getUser()` on every page load including the homepage). The new `useCurrentUser` is a client-only `useQuery` whose server fn `getCurrentUser` runs only on navigation, and auth gates are now applied in `_authed.tsx`. Result: homepage SSR is Supabase-free.
+- **Color Contrast (a11y)**: `MarketStatusHero`'s stale badge uses `text-amber-100` instead of `text-amber-300` for WCAG AA contrast on the dark glass surface.
+- **Cache Headers**: `public/_headers` and `netlify.toml` add `s-maxage=60, stale-while-revalidate=300` for `/`, `max-age=31536000, immutable` for `/assets/*`, and `private, no-store` for `/_authed/*`. Validated by 3 Vitest cases in `src/test/netlify-config.test.ts`.
+- **In-Memory Data Cache**: Both `fetchTodayData` and `fetchTodayHeroData` maintain a 60 s module-scoped cache keyed on the ET date string. Repeat hits within the window make zero Supabase calls.
+- **TDD Coverage**: 18 new test cases across `posthog-client.test.ts` (5), `fetch-today-hero-data.test.ts` (4), `fetch-today-data.test.ts` (2 zero-load + 1 cache), `MarketStatusHero.test.tsx` (1), `__root.test.tsx` (2), and `netlify-config.test.ts` (3). All 234 Vitest tests pass.
+
 
 ## Design System
 
@@ -128,5 +143,9 @@ Vitest + React Testing Library with colocated `*.test.tsx` files. Feature-coloca
 
 - [[entities/engine]] — Python data engine
 - [[entities/database]] — Supabase schema
+- [[entities/macro-tracker]] — 23-ticker global macro regime monitoring
 - [[concepts/consensus]] — AI consensus system
+- [[concepts/performance-auditing-strategy]] — Cloud-native Lighthouse budgets and the 10-fix homepage optimization
+- [[concepts/posthog-stealth-proxy]] — Same-origin analytics + lazy posthog-js bundling
+- [[concepts/hero-loader-split]] — Pattern: minimal hero loader runs in parallel with full payload
 - Original design docs: [ARCHITECTURE](../../raw/docs/web/README.md), [DESIGN_SYSTEM](../../raw/docs/web/DESIGN_SYSTEM.md), [TANSTACK_BEST_PRACTICES](../../raw/docs/web/TANSTACK_BEST_PRACTICES.md), [PORTFOLIOS_UI](../../raw/docs/web/portfolios-ui.md), [DEPLOYMENT](../../raw/docs/web/tanstack-start-deploy-official.md), [TESTING](../../raw/docs/web/testing.md)

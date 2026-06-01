@@ -11,9 +11,9 @@ import {
     PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
-import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import { useAnalytics } from '~/lib/posthog-client';
 import type { BenchmarkDataPoint } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PerformanceChart } from '../components/PerformanceChart';
@@ -44,7 +44,7 @@ export function PortfolioDetailPage({
     fetchFn,
     benchmarkFetchFn,
 }: PortfolioDetailPageProps) {
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('');
 
     const { data } = useSuspenseQuery({

@@ -142,20 +142,43 @@ function extractDate(content: string): string | null {
     return match ? match[1] : null;
 }
 
+interface TodayCacheEntry {
+    estDateStr: string;
+    fetchedAt: number;
+    data: TodayData;
+}
+
+let todayCache: TodayCacheEntry | null = null;
+const TODAY_CACHE_TTL_MS = 60 * 1000;
+
+/** Test-only: clear the in-memory cache for the today-data fetcher. */
+export function __resetTodayCacheForTests(): void {
+    todayCache = null;
+}
+
 export async function fetchTodayData(): Promise<TodayData> {
     const supabase = getSupabaseServerClient();
 
     const now = new Date();
     const estDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
+    if (
+        todayCache &&
+        todayCache.estDateStr === estDateStr &&
+        Date.now() - todayCache.fetchedAt < TODAY_CACHE_TTL_MS
+    ) {
+        return todayCache.data;
+    }
+
     const startOfDay = `${estDateStr}T00:00:00`;
 
     // 45 days ago lookback for historical volatility calculations
     const historyLimitDate = new Date();
     historyLimitDate.setDate(historyLimitDate.getDate() - 45);
-    const historyLimitDateStr = historyLimitDate.toISOString();
 
-    // Fetch core dashboard data in parallel where possible to maximize performance
+    // Fetch core dashboard data in parallel where possible to maximize performance.
+    // `price_history` is now resolved via the `latest_per_ticker_per_day` RPC so
+    // we get a pre-deduped payload instead of transferring 5000 raw rows.
     const [
         { data: newsletters },
         { data: trades },
@@ -203,17 +226,15 @@ export async function fetchTodayData(): Promise<TodayData> {
             .limit(1),
         // Fetch all macro quotes
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-        // Fetch historical data for all macro tickers in a single network query
-        // to avoid connection pool congestion and reduce TTFB.
-        supabase
-            .from('price_history')
-            .select('ticker, price, fetched_at')
-            .in('ticker', MACRO_TICKERS_LIST)
-            .gte('fetched_at', historyLimitDateStr)
-            .order('fetched_at', { ascending: false })
-            .limit(5000),
+        // Server-side deduped price history (one row per ticker/calendar day,
+        // last 45 days) — replaces the 5000-row raw query.
+        supabase.rpc('latest_per_ticker_per_day', {
+            p_tickers: MACRO_TICKERS_LIST,
+            p_days: 45,
+        }),
     ]);
 
+    // The RPC returns an array; the Supabase client wraps it as `{ data, error }`.
     const historyRows = (historyResults?.data || []) as PriceHistoryItem[];
 
     // Process and calculate macro statistics
@@ -241,7 +262,7 @@ export async function fetchTodayData(): Promise<TodayData> {
 
     const todayDateString = formatEasternDate(now);
 
-    return {
+    const data: TodayData = {
         newsletters: (newsletters || []).map((n) => ({
             ...n,
             formattedTime: formatEasternShortTime(n.date),
@@ -309,4 +330,7 @@ export async function fetchTodayData(): Promise<TodayData> {
         isSentimentStale,
         todayDateString,
     };
+
+    todayCache = { estDateStr, fetchedAt: Date.now(), data };
+    return data;
 }

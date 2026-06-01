@@ -32,12 +32,16 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     };
 });
 
-vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        capture: vi.fn(),
-        identify: vi.fn(),
-    }),
-}));
+vi.mock('~/lib/posthog-client', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('~/lib/posthog-client')>();
+    return {
+        ...actual,
+        useAnalytics: () => ({
+            capture: vi.fn(),
+            identify: vi.fn(),
+        }),
+    };
+});
 
 // Mock resize observer which might be triggered by chart components (d3/recharts)
 class ResizeObserverMock {
@@ -358,9 +362,23 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
 
     describe('Sitemap Hydration Verification (All Pages)', () => {
         it('1. Today Index Page: hydrates flawlessly', () => {
+            const heroFixture = {
+                marketFeeling: mockTodayData.marketFeeling
+                    ? ({
+                          ...mockTodayData.marketFeeling,
+                          formattedTime: '06:00 AM ET',
+                      } as unknown as {
+                          formattedTime: string;
+                      })
+                    : null,
+                isMarketOpen: mockTodayData.isMarketOpen,
+                isSentimentStale: mockTodayData.isSentimentStale,
+                todayDateString: 'Friday, May 29, 2026',
+            };
             const errors = assertHydrationSymmetry(
                 <QueryClientProvider client={createTestQueryClient()}>
                     <TodayPage
+                        hero={heroFixture as unknown as ComponentProps<typeof TodayPage>['hero']}
                         initialData={
                             mockTodayData as unknown as ComponentProps<
                                 typeof TodayPage

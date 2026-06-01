@@ -5,7 +5,6 @@ import {
     PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
-import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import {
@@ -13,6 +12,7 @@ import {
     MemoriesList,
     type Memory,
 } from '~/features/memories/components/MemoriesList';
+import { useAnalytics } from '~/lib/posthog-client';
 import type { PaginatedMemories } from '../api/fetch-memories';
 
 interface MemoriesPageProps {
@@ -33,7 +33,7 @@ export function MemoriesPage({
     initialCursor,
     fetchFn,
 }: MemoriesPageProps) {
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
     const [filter, setFilter] = React.useState<string>('all');
     const [displayLimit, setDisplayLimit] = React.useState<number>(PAGE_SIZE);
 

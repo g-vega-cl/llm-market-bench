@@ -25,7 +25,8 @@
 
 ## Concepts
 
-- [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics
+- [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture + lazy `posthog-js` bundling via custom React context
+- [[concepts/hero-loader-split]] — Split a route loader into a fast hero pass and a streaming full pass for sub-second LCP
 - [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector
 - [[concepts/type-safety]] — Strict TypeScript type safety with zero any usage
 - [[concepts/tanstack-query]] — TanStack Query patterns, active/unused factories, and SSR-safe QueryClient setup

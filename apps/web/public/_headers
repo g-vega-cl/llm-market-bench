@@ -1,6 +1,18 @@
 /*
+  # Default caching: allow the CDN to hold a public copy for 60s and serve
+  # stale content for up to 5 min while revalidating. The browser always
+  # revalidates so per-user data is never stale for the visitor.
+  Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Headers: *
+
+/assets/*
+  # Vite emits content-hashed asset filenames, so this is safe for a year.
+  Cache-Control: public, max-age=31536000, immutable
+
+/_authed/*
+  # Personalized content — never cache anywhere.
+  Cache-Control: private, no-store
 
 https://us-assets.i.posthog.com/*
   Access-Control-Allow-Origin: *

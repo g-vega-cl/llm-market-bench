@@ -1,7 +1,7 @@
 import { Button } from '@llm-market-bench/ui-design-system';
-import { usePostHog } from '@posthog/react';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
+import { useAnalytics } from '~/lib/posthog-client';
 import { loginFn } from '~/routes/_authed';
 import { signupFn } from '~/routes/signup';
 import { Auth } from './Auth';
@@ -11,7 +11,7 @@ type AuthResult = { error: true; message: string } | undefined;
 
 export function Login() {
     const router = useRouter();
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
 
     const loginMutation = useMutation<AuthResult, Error, LoginVariables>({
         mutationFn: (variables) => loginFn({ data: variables }),

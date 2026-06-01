@@ -1,6 +1,6 @@
-import { usePostHog } from '@posthog/react';
 import * as d3 from 'd3';
 import * as React from 'react';
+import { useAnalytics } from '~/lib/posthog-client';
 
 export type Concept = {
     id: string;
@@ -14,7 +14,7 @@ export type Concept = {
 };
 
 export function ConceptMap({ data }: { data: Concept[] }) {
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
     const posthogRef = React.useRef(posthog);
     posthogRef.current = posthog;
     const svgRef = React.useRef<SVGSVGElement>(null);

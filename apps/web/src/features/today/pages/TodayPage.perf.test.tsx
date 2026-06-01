@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import React, { type ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TodayHeroData } from '~/features/today/api/fetch-today-hero-data';
 import * as dateUtils from '~/utils/date';
 import { TodayPage } from './TodayPage';
 
@@ -129,10 +130,23 @@ describe('TodayPage Performance & Hydration Safety', () => {
     it('should NOT call client-side temporal formatters during render (to avoid hydration mismatch)', async () => {
         const queryClient = createTestQueryClient();
 
+        const heroFixture: TodayHeroData = {
+            marketFeeling: mockTodayData.marketFeeling
+                ? ({
+                      ...mockTodayData.marketFeeling,
+                      formattedTime: '06:00 AM ET',
+                  } as unknown as TodayHeroData['marketFeeling'])
+                : null,
+            isMarketOpen: mockTodayData.isMarketOpen,
+            isSentimentStale: mockTodayData.isSentimentStale,
+            todayDateString: 'Friday, May 29, 2026',
+        };
+
         render(
             <QueryClientProvider client={queryClient}>
                 <React.Suspense fallback={<div>Loading...</div>}>
                     <TodayPage
+                        hero={heroFixture}
                         initialData={
                             mockTodayData as unknown as ComponentProps<
                                 typeof TodayPage

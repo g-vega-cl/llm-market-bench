@@ -1,7 +1,7 @@
-import { usePostHog } from '@posthog/react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
+import { useAnalytics } from '~/lib/posthog-client';
 import { getSupabaseServerClient } from '~/lib/supabase';
 import { Auth } from '~/shared/auth';
 
@@ -34,7 +34,7 @@ export const Route = createFileRoute('/signup')({
 });
 
 function SignupComp() {
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
     const signupMutation = useMutation<AuthResult, Error, SignupVariables>({
         mutationFn: (data: SignupVariables) => signupFn({ data }),
         onSuccess: (data, variables) => {

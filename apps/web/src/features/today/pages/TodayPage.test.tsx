@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import type * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TodayData } from '~/features/today/api/fetch-today-data';
+import type { TodayHeroData } from '~/features/today/api/fetch-today-hero-data';
 import { TodayPage } from './TodayPage';
 
 // Mock TanStack Router's Link
@@ -13,19 +14,17 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 // Mock PostHog
-vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        capture: vi.fn(),
-    }),
-}));
+vi.mock('~/lib/posthog-client', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('~/lib/posthog-client')>();
+    return {
+        ...actual,
+        useAnalytics: () => ({
+            capture: vi.fn(),
+        }),
+    };
+});
 
-const emptyTodayData = {
-    newsletters: [],
-    trades: [],
-    decisions: [],
-    memories: [],
-    priceUpdates: [],
-    futureEvents: [],
+const heroFixture: TodayHeroData = {
     marketFeeling: {
         id: 'mf1',
         sentiment_label: 'Bullish',
@@ -37,7 +36,20 @@ const emptyTodayData = {
         created_at: '2026-05-29T14:45:00Z',
         model_used: 'Gemini 3.5 Flash',
         formattedTime: '10:45 AM ET',
-    },
+    } as unknown as TodayHeroData['marketFeeling'],
+    isMarketOpen: true,
+    isSentimentStale: false,
+    todayDateString: 'Friday, May 29, 2026',
+};
+
+const emptyTodayData = {
+    newsletters: [],
+    trades: [],
+    decisions: [],
+    memories: [],
+    priceUpdates: [],
+    futureEvents: [],
+    marketFeeling: heroFixture.marketFeeling,
     macroStats: [],
     serverTime: '2026-05-29T18:45:00Z',
     isMarketOpen: true,
@@ -64,6 +76,7 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         render(
             <QueryClientProvider client={queryClient}>
                 <TodayPage
+                    hero={heroFixture}
                     initialData={emptyTodayData}
                     fetchFn={vi.fn().mockResolvedValue(emptyTodayData)}
                 />
@@ -95,6 +108,7 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         render(
             <QueryClientProvider client={queryClient}>
                 <TodayPage
+                    hero={heroFixture}
                     initialData={emptyTodayData}
                     fetchFn={vi.fn().mockResolvedValue(emptyTodayData)}
                 />

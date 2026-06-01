@@ -8,4 +8,5 @@
 export const todayQueryKeys = {
     all: ['benchify', 'today'] as const,
     data: () => ['benchify', 'today', 'data'] as const,
+    hero: () => ['benchify', 'today', 'hero'] as const,
 } as const;

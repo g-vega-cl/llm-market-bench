@@ -1,40 +1,34 @@
 /// <reference types="vite/client" />
 
 import { Badge, Button, cn } from '@llm-market-bench/ui-design-system';
-import { PostHogProvider } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
-import { createServerFn } from '@tanstack/react-start';
 import type * as React from 'react';
+import { lazy, Suspense } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
+import { PostHogLazyBoundary } from '~/lib/posthog-client';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { seo } from '~/lib/seo';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { useCurrentUser } from '~/lib/use-current-user';
 import appCss from '../styles/app.css?url';
 
-const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
-    const supabase = getSupabaseServerClient();
-    const { data, error: _error } = await supabase.auth.getUser();
+// Devtools are never bundled in production. The lazy() call short-circuits
+// to a noop component when running under import.meta.env.PROD, and the
+// underlying @tanstack/react-router-devtools module is only fetched in dev.
+const TanStackRouterDevtools = lazy(() =>
+    import.meta.env.PROD
+        ? Promise.resolve({ default: () => null })
+        : import('@tanstack/react-router-devtools').then((m) => ({
+              default: m.TanStackRouterDevtools,
+          })),
+);
 
-    if (!data.user?.email) {
-        return null;
-    }
-
+/**
+ * Exported so tests can render the head meta/links without spinning up the
+ * full router. The Route below uses the same definition.
+ */
+export function getRootHead() {
     return {
-        email: data.user.email,
-    };
-});
-
-export const Route = createRootRoute({
-    beforeLoad: async () => {
-        const user = await fetchUser();
-
-        return {
-            user,
-        };
-    },
-    head: () => ({
         meta: [
             {
                 charSet: 'utf-8',
@@ -48,8 +42,18 @@ export const Route = createRootRoute({
                 description: `Benchify is a LLM Market Benchmarking platform`,
             }),
         ],
-        links: [{ rel: 'stylesheet', href: appCss }],
-    }),
+        links: [
+            // Preload the bundled CSS so the browser fetches it in parallel with
+            // the JS chunk, and the non-blocking stylesheet link below flips the
+            // media to "all" without re-fetching.
+            { rel: 'preload', as: 'style', href: appCss },
+            { rel: 'stylesheet', href: appCss, media: 'print' as const },
+        ],
+    };
+}
+
+export const Route = createRootRoute({
+    head: getRootHead,
     errorComponent: (props) => {
         return (
             <RootDocument>
@@ -105,9 +109,44 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
     );
 }
 
-export function RootDocument({ children }: { children: React.ReactNode }) {
-    const { user } = Route.useRouteContext();
+function NavAuthControls() {
+    const { data: user, isLoading } = useCurrentUser();
 
+    if (isLoading || !user) {
+        return (
+            <Link to="/login">
+                <Button variant="solid" size="sm" className="uppercase tracking-widest">
+                    Login
+                </Button>
+            </Link>
+        );
+    }
+
+    return (
+        <>
+            <Badge
+                variant="soft"
+                size="sm"
+                colorScheme="neutral"
+                className="normal-case tracking-normal"
+            >
+                {user.email}
+            </Badge>
+            <Link to="/logout">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    colorScheme="danger"
+                    className="uppercase tracking-widest"
+                >
+                    Logout
+                </Button>
+            </Link>
+        </>
+    );
+}
+
+export function RootDocument({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
             <head>
@@ -130,22 +169,7 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
                 </noscript>
             </head>
             <body>
-                <PostHogProvider
-                    apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || ''}
-                    options={{
-                        api_host:
-                            typeof window !== 'undefined'
-                                ? '/p'
-                                : import.meta.env.VITE_PUBLIC_POSTHOG_HOST ||
-                                  'https://us.i.posthog.com',
-                        ui_host: 'https://us.posthog.com',
-                        defaults: '2025-05-24',
-                        capture_exceptions: true,
-                        debug: import.meta.env.DEV,
-                        disable_session_recording: true,
-                        disable_surveys: true,
-                    }}
-                >
+                <PostHogLazyBoundary>
                     <nav
                         className={cn(
                             'flex flex-nowrap overflow-x-auto whitespace-nowrap items-center gap-x-6 px-6 py-4',
@@ -165,44 +189,17 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
                         ))}
 
                         <div className="ml-auto flex items-center gap-4 shrink-0">
-                            {user ? (
-                                <>
-                                    <Badge
-                                        variant="soft"
-                                        size="sm"
-                                        colorScheme="neutral"
-                                        className="normal-case tracking-normal"
-                                    >
-                                        {user.email}
-                                    </Badge>
-                                    <Link to="/logout">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            colorScheme="danger"
-                                            className="uppercase tracking-widest"
-                                        >
-                                            Logout
-                                        </Button>
-                                    </Link>
-                                </>
-                            ) : (
-                                <Link to="/login">
-                                    <Button
-                                        variant="solid"
-                                        size="sm"
-                                        className="uppercase tracking-widest"
-                                    >
-                                        Login
-                                    </Button>
-                                </Link>
-                            )}
+                            <NavAuthControls />
                         </div>
                     </nav>
                     {children}
-                    <TanStackRouterDevtools position="bottom-right" />
-                    <Scripts />
-                </PostHogProvider>
+                    {import.meta.env.DEV && (
+                        <Suspense fallback={null}>
+                            <TanStackRouterDevtools position="bottom-right" />
+                        </Suspense>
+                    )}
+                </PostHogLazyBoundary>
+                <Scripts />
             </body>
         </html>
     );

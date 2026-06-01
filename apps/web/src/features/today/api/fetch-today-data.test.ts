@@ -1,12 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { __resetTodayCacheForTests, buildHistoryGroup, fetchTodayData } from './fetch-today-data';
 
-// Module-level mock for Supabase client
 let mockSupabaseClient: Record<string, unknown> | null = null;
 vi.mock('~/lib/supabase', () => ({
     getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
-import { buildHistoryGroup, fetchTodayData } from './fetch-today-data';
+/**
+ * Build a Supabase query-builder chain mock. Terminal calls resolve to `terminal`.
+ */
+function makeChain(terminal: { data: unknown[]; error: unknown } = { data: [], error: null }) {
+    const promise = Promise.resolve(terminal);
+    const chain: Record<string, unknown> = {};
+    for (const m of ['select', 'eq', 'gte', 'order', 'in', 'or']) {
+        chain[m] = vi.fn().mockReturnValue(chain);
+    }
+    chain.limit = vi.fn().mockImplementation(() => promise);
+    chain.single = vi.fn().mockImplementation(() => promise);
+    return chain;
+}
 
 describe('buildHistoryGroup', () => {
     it('returns empty map when historyRows is null or empty', () => {
@@ -72,23 +84,13 @@ describe('buildHistoryGroup', () => {
 });
 
 describe('fetchTodayData zero-load TDD checks', () => {
-    it('does not load reasoning logs and does not return them in TodayData payload', async () => {
-        const fromSpy = vi.fn().mockImplementation((_table) => {
-            const chain = {
-                select: vi.fn().mockReturnThis(),
-                eq: vi.fn().mockReturnThis(),
-                gte: vi.fn().mockReturnThis(),
-                order: vi.fn().mockReturnThis(),
-                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
-                in: vi.fn().mockReturnThis(),
-                or: vi.fn().mockReturnThis(),
-            };
-            return chain;
-        });
+    beforeEach(() => __resetTodayCacheForTests());
+    afterEach(() => __resetTodayCacheForTests());
 
-        mockSupabaseClient = {
-            from: fromSpy,
-        };
+    it('does not load reasoning logs and does not return them in TodayData payload', async () => {
+        const fromSpy = vi.fn().mockImplementation((_table) => makeChain());
+        const rpcSpy = vi.fn().mockImplementation(() => makeChain());
+        mockSupabaseClient = { from: fromSpy, rpc: rpcSpy };
 
         const result = await fetchTodayData();
 
@@ -99,32 +101,42 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(result).not.toHaveProperty('logs');
     });
 
-    it('consolidates price_history queries into a single call', async () => {
-        const fromSpy = vi.fn().mockImplementation((_table) => {
-            const chain = {
-                select: vi.fn().mockReturnThis(),
-                eq: vi.fn().mockReturnThis(),
-                gte: vi.fn().mockReturnThis(),
-                order: vi.fn().mockReturnThis(),
-                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
-                in: vi.fn().mockReturnThis(),
-                or: vi.fn().mockReturnThis(),
-            };
-            return chain;
-        });
-
-        mockSupabaseClient = {
-            from: fromSpy,
-        };
+    it('consolidates price_history queries into a single RPC call (no raw 5000-row query)', async () => {
+        const fromSpy = vi.fn().mockImplementation((_table) => makeChain());
+        const rpcSpy = vi.fn().mockImplementation(() => makeChain());
+        mockSupabaseClient = { from: fromSpy, rpc: rpcSpy };
 
         await fetchTodayData();
 
-        // Count how many times 'price_history' was queried
-        const priceHistoryQueries = fromSpy.mock.calls.filter(
+        // price_history must be fetched via the RPC, not via from('price_history')
+        const priceHistoryFromCalls = fromSpy.mock.calls.filter(
             (call) => call[0] === 'price_history',
         );
+        expect(priceHistoryFromCalls.length).toBe(0);
 
-        // This will fail before our code changes (will find 23 queries)
-        expect(priceHistoryQueries.length).toBe(1);
+        // The RPC must be called once
+        expect(rpcSpy).toHaveBeenCalledTimes(1);
+        expect(rpcSpy.mock.calls[0][0]).toBe('latest_per_ticker_per_day');
+    });
+});
+
+describe('fetchTodayData warm in-memory cache', () => {
+    beforeEach(() => __resetTodayCacheForTests());
+    afterEach(() => __resetTodayCacheForTests());
+
+    it('returns a warm in-memory cache hit on the second call within 60s (zero Supabase calls)', async () => {
+        const fromSpy = vi.fn().mockImplementation((_table) => makeChain());
+        const rpcSpy = vi.fn().mockImplementation(() => makeChain());
+        mockSupabaseClient = { from: fromSpy, rpc: rpcSpy };
+
+        const first = await fetchTodayData();
+        const callCountAfterFirst = fromSpy.mock.calls.length + rpcSpy.mock.calls.length;
+
+        const second = await fetchTodayData();
+        const callCountAfterSecond = fromSpy.mock.calls.length + rpcSpy.mock.calls.length;
+
+        expect(callCountAfterFirst).toBeGreaterThan(0);
+        expect(callCountAfterSecond).toBe(callCountAfterFirst);
+        expect(second.todayDateString).toBe(first.todayDateString);
     });
 });

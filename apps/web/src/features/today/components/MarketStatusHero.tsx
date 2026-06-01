@@ -146,7 +146,7 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                                 </span>
                                 {isStale && marketFeeling && (
                                     <span
-                                        className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full"
+                                        className="text-xs px-2 py-0.5 bg-amber-500/30 text-amber-100 rounded-full"
                                         title="Data is older than 4 hours"
                                     >
                                         ⚠

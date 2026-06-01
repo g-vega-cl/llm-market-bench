@@ -20,11 +20,25 @@ export const loginFn = createServerFn({ method: 'POST' })
         }
     });
 
+/**
+ * Server-side auth check for protected routes. Moved here (out of the root
+ * route) so public pages like the homepage don't pay any Supabase auth cost
+ * on first paint.
+ */
+const requireAuth = createServerFn({ method: 'GET' }).handler(async () => {
+    const supabase = getSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user?.email) {
+        throw new Error('Not authenticated');
+    }
+    return { email: data.user.email };
+});
+
 export const Route = createFileRoute('/_authed')({
-    beforeLoad: ({ context }) => {
-        if (!context.user) {
-            throw new Error('Not authenticated');
-        }
+    beforeLoad: async () => {
+        // The homepage and other public routes opt out of this check by not
+        // being under /_authed. Only protected routes pay the Supabase call.
+        return await requireAuth();
     },
     errorComponent: ({ error }) => {
         if (error.message === 'Not authenticated') {

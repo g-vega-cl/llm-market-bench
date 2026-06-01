@@ -148,6 +148,8 @@ Initial server response times depend directly on the database queries executed d
 *   **Rolling Lookback Filters**: When querying massive chronological data tables (such as `price_history` for rolling calculations), always enforce a strict lookback date range filter at the database layer (e.g., `.gte('fetched_at', lookbackDate.toISOString())` restricted to the last 45 days). Never fetch the entire historical database table only to filter rows in memory.
 *   **Consolidated Single-Query Fetching to Avoid Edge Latency**: Spawning multiple parallel database requests (e.g., 23 separate queries) inside serverless edge functions saturates connection pools and drives up TTFB. Instead, consolidate these fetches into a single network query using `.in('ticker', TICKERS_LIST)` with an explicit `.limit(5000)` constraint to prevent PostgREST's default 1000-row limit truncation. The final grouping, calendar alignment, and 30-day capping are performed extremely quickly in-memory via helper functions (`buildHistoryGroup`), reducing database round-trips to 1 and slashing TTFB by 700ms+.
 *   **Excising Unused High-Volume Queries**: Avoid loading high-volume or heavy tables (such as raw `llm_reasoning_logs` conversation trees containing massive text columns) in primary landing page queries if they are only rendered on secondary pages. Removing unused table loads cuts database scan times by hundreds of milliseconds and completely eliminates high-volume network overhead.
+*   **Server-Side Dedup RPCs (preferred over client-side `.limit(N)`)**: When the frontend needs "the most-recent N rows per group" semantics (e.g., one row per ticker per calendar day), implement a SQL function (e.g., `latest_per_ticker_per_day(p_tickers TEXT[], p_days INT)` using `DISTINCT ON (ticker, date)`) and call it via `supabase.rpc(...)`. This returns a tiny, pre-deduped payload (≈50 rows for 23 tickers × 45 days) instead of transferring 5000+ raw rows that the JS client would have to scan, sort, and dedupe. Reduces SSR HTML document size and the 9-query parallel saturation that drives TTFB.
+*   **Split Loaders for Split Critical Paths**: When a route has one piece of data that must paint fast (the LCP/hero block) and a second piece that can stream in below it, run two server functions in parallel via `Promise.all([getHero(), getFull()])` inside the route `loader`. The hero is one Supabase query (e.g. `market_feeling` + ET date math), the full payload is the rest. Each has its own 60 s in-memory cache keyed on the ET date string so warm function instances pay nothing for repeat hits within the window. See [[concepts/hero-loader-split]] for the full pattern.
 
 ### 3. Progressive Hydration & Code Splitting (LCP & TTI Optimization)
 Heavy visualization libraries (like `d3` or `recharts`) and long component trees can inflate the initial JS bundle, blocking the main thread and severely degrading Time To Interactive (TTI).
@@ -157,6 +159,25 @@ Heavy visualization libraries (like `d3` or `recharts`) and long component trees
 ### 4. Eliminating Render-Blocking Resources
 *   **Asynchronous Font Loading**: External stylesheets (like Google Fonts) should never be loaded synchronously in the `<head>` using a standard `rel="stylesheet"`. Instead, use the `media="print" onLoad="this.media='all'"` pattern with a `<noscript>` fallback. This allows the browser to download the assets without blocking the critical rendering path, significantly improving First Contentful Paint (FCP).
 *   **Third-Party Script Optimization**: Third-party analytics and tracking SDKs (e.g., PostHog) can drastically inflate the initial JavaScript bundle with unused feature modules (such as `surveys.js`). Always configure SDK providers (like `<PostHogProvider>`) to explicitly disable unused features (e.g., `disable_surveys: true`). This prevents the browser from downloading and parsing wasted bytes, protecting the main thread and improving Time To Interactive (TTI).
+*   **CSS Preload + Non-Blocking Stylesheet Pair**: Beyond fonts, your **own** bundled CSS file (`app.css`) can dominate FCP if it is the only render-blocking link in the head. The browser cannot paint anything until that stylesheet finishes parsing. The cure is a paired link strategy in `getRootHead()`: a `<link rel="preload" as="style" href={appCss}>` so the browser fetches the file in parallel with the JS chunk, paired with `<link rel="stylesheet" href={appCss} media="print" />` that flips `media` to `all` on `onLoad`. Net effect: the stylesheet is downloaded and applied without ever blocking the critical rendering path, and FCP is no longer gated on its parse.
+*   **Drop Static `import` From Packages That Transitively Pull Heavy Runtimes**: A common gotcha with React SDK wrappers is that they themselves statically `import` the heavy runtime. For example, `@posthog/react` has `import posthogJs from 'posthog-js'` baked into its source, so any `import { usePostHog } from '@posthog/react'` in your code is enough to pull 30+ KiB of `posthog-js` into your main bundle. The fix is to bypass the wrapper entirely: implement your own thin React context (`PostHogContext`), expose a `useAnalytics()` hook that returns a noop until the real client is in scope, and dynamic-import the heavy runtime inside an idle callback. See [[concepts/posthog-stealth-proxy]] for the full implementation.
+
+### 5. Skipping Auth & User-Scoped Work on Public Routes
+SSR is expensive: every `supabase.auth.getUser()` call inside a `beforeLoad` runs against the Supabase API on every page load, even for fully public, anonymous-friendly pages. A 0.82 homepage Lighthouse score with 733 ms TTFB is partly a function of unnecessary auth work in the SSR path.
+*   **Move auth checks to the protected subtree**: Run the auth check inside the `_authed.tsx` layout's `beforeLoad` (or per-route server fn), not in `__root.tsx`. Public pages then render without any Supabase call.
+*   **Client-only user hydration**: For nav elements that want the current user, expose a `useCurrentUser` hook whose `useQuery` is `enabled: false` on SSR and whose server fn only runs on client navigation. The hook returns a noop (or `{ isLoading: true }`) during SSR so the public homepage never sees a Supabase auth round-trip.
+*   **Same applies to `posthog.identify(...)`**: never call it server-side during SSR; only after a login mutation succeeds on the client.
+
+### 6. Accessibility & Color Contrast
+Lighthouse includes accessibility in its ≥0.90 budget. A common silent failure is a "stale" or "warning" badge that uses `text-amber-300` on a `bg-amber-500/20` glass surface — the contrast ratio fails WCAG AA (4.5:1). Audit every colored badge/pill on dark glass surfaces with a contrast checker before shipping; prefer `text-amber-100` (lighter, higher contrast) over `text-amber-300` when the background has any opacity overlay.
+
+### 7. CDN Cache Headers for Public SSR
+A homepage rendered by an SSR function still benefits from aggressive CDN caching because the response is identical for every anonymous visitor. Add `Cache-Control: public, s-maxage=60, stale-while-revalidate=300` for `/`, `max-age=31536000, immutable` for `/assets/*` (hashed filenames), and `private, no-store` for any `/_authed/*` path. Netlify, Cloudflare, and Fastly all honor these. The `s-maxage=60` window absorbs bot/curl traffic and re-fires in well under the Lighthouse audit window, dramatically cutting TTFB and document load time on repeat visits.
+
+### 8. Gate Devtools to DEV Bundles Only
+`@tanstack/react-router-devtools` (and other "dev-only" packages) ship sizeable UI code that you absolutely do not want in production. Two patterns to enforce:
+*   **Lazy import with a prod short-circuit**: `const TanStackRouterDevtools = lazy(() => import.meta.env.PROD ? Promise.resolve({ default: () => null }) : import('@tanstack/react-router-devtools').then(m => ({ default: m.TanStackRouterDevtools })))` — the dynamic import never fires in prod, so the package is not bundled.
+*   **JSX gate**: `{import.meta.env.DEV && <Suspense><TanStackRouterDevtools position="bottom-right" /></Suspense>}` — even if the import leaked, the JSX is dead-code-eliminated. Both together is the strongest guarantee.
 
 ---
 
@@ -236,4 +257,7 @@ If a deployment is absolutely critical and blocked by a minor score variance or 
 ## Related
 
 - [[entities/web-app]]
-- [[sources/web-deployment-source]]
+- [[concepts/posthog-stealth-proxy]] — same-origin analytics + lazy posthog-js bundling
+- [[concepts/hero-loader-split]] — split loader pattern for fast LCP
+- [[entities/macro-tracker]] — 23-ticker macro regime and `latest_per_ticker_per_day` RPC
+- [[sources/web-deployment-source]] — Netlify edge cache headers and stealth proxy

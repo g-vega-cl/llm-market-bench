@@ -13,11 +13,15 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 // Mock PostHog
-vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        capture: vi.fn(),
-    }),
-}));
+vi.mock('~/lib/posthog-client', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('~/lib/posthog-client')>();
+    return {
+        ...actual,
+        useAnalytics: () => ({
+            capture: vi.fn(),
+        }),
+    };
+});
 
 const mockMemories = [
     {

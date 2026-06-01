@@ -1,7 +1,7 @@
 import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { usePostHog } from '@posthog/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import * as React from 'react';
+import { useAnalytics } from '~/lib/posthog-client';
 import type { CauseAndEffectEntry } from '../api/fetch-cause-and-effect';
 import { CauseAndEffectList } from '../components/CauseAndEffectList';
 import { causeAndEffectQueries } from '../queries/options';
@@ -12,7 +12,7 @@ interface CauseAndEffectPageProps {
 }
 
 export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageProps) {
-    const posthog = usePostHog();
+    const posthog = useAnalytics();
 
     const { data } = useSuspenseQuery({
         ...causeAndEffectQueries.list({ fetchFn }),

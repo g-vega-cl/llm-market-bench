@@ -14,4 +14,12 @@ export const todayQueries = {
             queryFn: opts?.fetchFn,
             staleTime: 1000 * 60 * 2, // 2 minutes - today's data changes frequently
         }),
+    hero: <T>(opts?: { fetchFn?: () => Promise<T> }) =>
+        queryOptions({
+            queryKey: todayQueryKeys.hero(),
+            queryFn: opts?.fetchFn,
+            // Hero is the LCP element — keep it fresh for streaming
+            // revalidation but allow instant refetches on tab focus.
+            staleTime: 1000 * 30, // 30 seconds
+        }),
 };

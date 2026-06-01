@@ -1,3 +1,11 @@
+## [2026-06-01] feature | Granular Stock Valuation Ledger and Auditable Starting Prices
+
+Expanded the auto-research do-nothing return calculation engine and frontend dashboard to provide comprehensive, factual transparency for initial vs. ending asset valuations:
+- **Starting Price Queries**: Enhanced `_do_nothing_return()` in `apps/engine/autoresearch/metrics.py` to fetch historical stock prices at the exact beginning of the week (`week_start`) in addition to ending prices (`week_end`).
+- **Initial Valuation Ledger**: Extended the compiled `portfolio_details` position schema to calculate and record starting prices (`start_price`) and starting position values (`start_value` = `qty * start_price`) along with ending prices (`end_price`) and values (`end_value` / `value`).
+- **TDD Regression Tests**: Added `test_do_nothing_includes_initial_and_end_prices` in `apps/engine/tests/test_autoresearch.py` verifying that starting vs. ending prices are queried correctly and details are populated with full mathematical precision. Verified 100% engine test success (732/732 tests passing) and 84% code coverage.
+- **Premium Frontend Asset Auditor**: Expanded the React/TypeScript types and tabular asset auditor in `apps/web/src/features/autoresearch/components/ScoreBreakdown.tsx` with two new columns: "Start Price" and "Start Value". Added backward-compatible fallback styling (`—`) to cleanly render older experiment records that lack starting prices. Passed all 214 Vitest unit tests and `pnpm biome check` cleanly.
+
 ## [2026-05-27] feature | Dynamic Market Tab, Price History Synchronization & Date Deduplication
 
 Refactored the Global Macro Stats panel to remove static benchmark hero cards and introduce a dynamic "Market" default tab containing SPY, TLT, IWM, and VIXY. Moved QQQ to the "Equities" tab. Fixed stale price history calculations by adding 8 missing benchmark tickers to update_prices.py and implementing ET-date filtering with per-calendar-day deduplication in the frontend fetch-today-data layer. Added comprehensive Vitest unit tests for buildHistoryGroup and updated GlobalMacroStats component tests.

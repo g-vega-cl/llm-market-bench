@@ -194,6 +194,7 @@ async def evaluate_week(
         volatility_pct=exp_metrics.get("volatility", 0) * 100,
         do_nothing_return_pct=exp_metrics.get("do_nothing_return_pct", 0),
     )
+    score_result["portfolio_details"] = exp_metrics.get("portfolio_details", {})
 
     previous = await get_previous_variants(limit=5)
     baseline_variant = await get_all_time_baseline()

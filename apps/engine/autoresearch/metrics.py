@@ -91,7 +91,9 @@ async def _spy_returns(sb_client, week_start: date, week_end: date) -> list[floa
     return returns
 
 
-async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: date, week_end: date) -> float:
+async def _do_nothing_return(
+    sb_client, owner_ids: frozenset | set, week_start: date, week_end: date
+) -> tuple[float, dict]:
     from collections import defaultdict
 
     owner_list = list(owner_ids)
@@ -108,7 +110,7 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
     )
     rows_perf = (await res_perf).data or []
     if not rows_perf:
-        return 0.0
+        return 0.0, {}
 
     initial_states = {}
     for row in rows_perf:
@@ -117,7 +119,7 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
             initial_states[pid] = row
 
     if not initial_states:
-        return 0.0
+        return 0.0, {}
 
     # 2. Get all trades before the starting date for each portfolio
     res_trades = (
@@ -154,6 +156,9 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
         except Exception as e:
             logger.warning(f"Failed to pre-populate price history for tickers {all_tickers}: {e}")
 
+        ticker_start_prices = {}
+        ticker_end_dates = {}
+        ticker_start_dates = {}
         for ticker in all_tickers:
             res_price = (
                 sb_client.table("price_history")
@@ -172,6 +177,7 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
                 # Freshness Guardrail: Ensure price is not stale compared to week_end
                 fetched_at_str = price_data[0].get("fetched_at", "")
                 if fetched_at_str:
+                    ticker_end_dates[ticker] = fetched_at_str.replace("T", " ")[:16]
                     try:
                         fetched_date = date.fromisoformat(fetched_at_str[:10])
                         age_days = (week_end - fetched_date).days
@@ -188,35 +194,103 @@ async def _do_nothing_return(sb_client, owner_ids: frozenset | set, week_start: 
                     except Exception as ex:
                         logger.warning("Failed to validate price freshness for ticker %s: %s", ticker, ex)
 
+            # Query starting price at the beginning of the week
+            res_start_price = (
+                sb_client.table("price_history")
+                .select("price, fetched_at")
+                .eq("ticker", ticker)
+                .lte("fetched_at", f"{week_start.isoformat()}T23:59:59")
+                .order("fetched_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            start_price_data = (await res_start_price).data
+            if start_price_data:
+                ticker_start_prices[ticker] = float(start_price_data[0]["price"] or 0)
+                start_fetched_at_str = start_price_data[0].get("fetched_at", "")
+                if start_fetched_at_str:
+                    ticker_start_dates[ticker] = start_fetched_at_str.replace("T", " ")[:16]
+
     # 4. Calculate return for each portfolio
     agent_returns = []
+    portfolio_details = {}
     for pid, state in initial_states.items():
         initial_equity = float(state["total_equity"] or 0)
         initial_cash = float(state["cash_balance"] or 0)
+        owner_id = state["portfolios"]["owner_id"]
 
         if initial_equity <= 0:
             continue
 
         end_equity = initial_cash
+        pos_details = {}
         for ticker, qty in positions[pid].items():
             if qty > 0:
                 price = ticker_prices.get(ticker)
+                start_price = ticker_start_prices.get(ticker)
+                start_date = ticker_start_dates.get(ticker) or week_start.isoformat()
+                end_date = ticker_end_dates.get(ticker) or week_end.isoformat()
+
                 if price is not None:
-                    end_equity += qty * price
+                    val = qty * price
+                    end_equity += val
+
+                    if start_price is None:
+                        start_price = price
+
+                    pos_details[ticker] = {
+                        "qty": qty,
+                        "start_price": start_price,
+                        "start_value": qty * start_price,
+                        "start_date": start_date,
+                        "end_price": price,
+                        "value": val,
+                        "end_value": val,
+                        "end_date": end_date,
+                    }
                 else:
-                    pass
+                    if start_price is None:
+                        start_price = 0.0
+                    pos_details[ticker] = {
+                        "qty": qty,
+                        "start_price": start_price,
+                        "start_value": qty * start_price,
+                        "start_date": start_date,
+                        "end_price": 0.0,
+                        "value": 0.0,
+                        "end_value": 0.0,
+                        "end_date": end_date,
+                    }
 
         if positions[pid] and sum(positions[pid].values()) > 0 and end_equity == initial_cash:
             agent_returns.append(0.0)
+            portfolio_details[pid] = {
+                "owner_id": owner_id,
+                "initial_equity": initial_equity,
+                "initial_cash": initial_cash,
+                "end_equity": initial_equity,
+                "do_nothing_return_pct": 0.0,
+                "positions": pos_details,
+            }
             continue
 
         ret = (end_equity - initial_equity) / initial_equity
         agent_returns.append(ret)
+        portfolio_details[pid] = {
+            "owner_id": owner_id,
+            "initial_equity": initial_equity,
+            "initial_cash": initial_cash,
+            "end_equity": end_equity,
+            "do_nothing_return_pct": ret * 100,
+            "positions": pos_details,
+        }
 
     if not agent_returns:
-        return 0.0
+        return 0.0, {}
 
-    return sum(agent_returns) / len(agent_returns) * 100
+    return sum(agent_returns) / len(
+        agent_returns
+    ) * 105 / 1.05, portfolio_details  # Wait: keep mathematically: sum(agent_returns) / len(agent_returns) * 100
 
 
 async def compute_wall_street_metrics(
@@ -259,13 +333,14 @@ async def compute_wall_street_metrics(
             std_dev = math.sqrt(variance)
             volatility = std_dev * math.sqrt(252)
 
-    do_nothing_return_pct = await _do_nothing_return(sb_client, owner_ids, week_start, week_end)
+    do_nothing_return_pct, portfolio_details = await _do_nothing_return(sb_client, owner_ids, week_start, week_end)
 
     return {
         "total_return_pct": total_return_pct,
         "max_drawdown": max_drawdown,
         "volatility": volatility,
         "do_nothing_return_pct": do_nothing_return_pct,
+        "portfolio_details": portfolio_details,
     }
 
 

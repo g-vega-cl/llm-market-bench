@@ -543,7 +543,7 @@ class TestDoNothingReturn:
         fake_sb = FakeClient(data_map)
 
         # Call _do_nothing_return with our mock client
-        ret = await metrics._do_nothing_return(
+        ret, details = await metrics._do_nothing_return(
             fake_sb,
             owner_ids=frozenset({"agent-1"}),
             week_start=week_start,
@@ -553,6 +553,7 @@ class TestDoNothingReturn:
         # Expected return is 0.0% (3500 cash + 20 * 250 IBM + 10 * 150 AAPL = 10000 equity).
         # Before the fix, the return will be -50.0% because IBM is valued at 0.0.
         assert ret == pytest.approx(0.0)
+        assert len(details) == 1
 
     @pytest.mark.asyncio
     async def test_do_nothing_pre_populates_price_history(self, monkeypatch):
@@ -763,6 +764,120 @@ class TestDoNothingReturn:
         )
 
         assert any("CRITICAL METRIC ERROR" in err for err in logged_errors)
+
+    @pytest.mark.asyncio
+    async def test_do_nothing_includes_initial_and_end_prices(self, monkeypatch):
+        """Verify that _do_nothing_return fetches and returns both start and end prices for held positions."""
+        from autoresearch import metrics
+
+        week_start = date(2026, 5, 25)
+        week_end = date(2026, 5, 31)
+
+        class FakeResponse:
+            def __init__(self, data):
+                self.data = data
+
+        class FakeQuery:
+            def __init__(self, table_name):
+                self.table_name = table_name
+                self.lte_val = None
+
+            def select(self, *args, **kwargs):
+                return self
+
+            def in_(self, *args, **kwargs):
+                return self
+
+            def gte(self, *args, **kwargs):
+                return self
+
+            def lte(self, col, val):
+                self.lte_val = val
+                return self
+
+            def lt(self, *args, **kwargs):
+                return self
+
+            def eq(self, *args, **kwargs):
+                return self
+
+            def order(self, *args, **kwargs):
+                return self
+
+            def limit(self, *args, **kwargs):
+                return self
+
+            async def execute(self):
+                if self.table_name == "portfolio_performance":
+                    return FakeResponse(
+                        [
+                            {
+                                "portfolio_id": "p1",
+                                "total_equity": 10000.0,
+                                "cash_balance": 3500.0,
+                                "date": "2026-05-25",
+                                "portfolios": {"owner_id": "agent-1"},
+                            }
+                        ]
+                    )
+                elif self.table_name == "trades":
+                    return FakeResponse(
+                        [
+                            {
+                                "portfolio_id": "p1",
+                                "ticker": "IBM",
+                                "signal": "BUY",
+                                "quantity": 20,
+                                "portfolios": {"owner_id": "agent-1"},
+                            }
+                        ]
+                    )
+                elif self.table_name == "price_history":
+                    # If fetching start price (lte week_start: 2026-05-25)
+                    if self.lte_val and "2026-05-25" in self.lte_val:
+                        return FakeResponse([{"price": 240.0, "fetched_at": "2026-05-25T00:00:00"}])
+                    # If fetching end price (lte week_end: 2026-05-31)
+                    if self.lte_val and "2026-05-31" in self.lte_val:
+                        return FakeResponse([{"price": 250.0, "fetched_at": "2026-05-31T00:00:00"}])
+                return FakeResponse([])
+
+        class FakeClient:
+            def table(self, name):
+                return FakeQuery(name)
+
+        from execution.market_data import MarketDataManager
+
+        async def fake_get_history(*args, **kwargs):
+            pass
+
+        monkeypatch.setattr(MarketDataManager, "get_history", fake_get_history)
+
+        ret, details = await metrics._do_nothing_return(
+            FakeClient(),
+            owner_ids=frozenset({"agent-1"}),
+            week_start=week_start,
+            week_end=week_end,
+        )
+
+        # Assert correct return return calculation
+        assert ret == pytest.approx(-15.0)  # (3500 cash + 20 * 250 end_price - 10000) / 10000 * 100 = -15%
+        assert "p1" in details
+        positions = details["p1"]["positions"]
+        assert "IBM" in positions
+        ibm_pos = positions["IBM"]
+
+        # Verify that start_price and start_value are populated correctly
+        assert "start_price" in ibm_pos
+        assert "start_value" in ibm_pos
+        assert "start_date" in ibm_pos
+        assert "end_date" in ibm_pos
+        assert ibm_pos["qty"] == 20
+        assert ibm_pos["start_price"] == 240.0
+        assert ibm_pos["start_value"] == 4800.0
+        assert ibm_pos["start_date"] == "2026-05-25 00:00"
+        assert ibm_pos["end_price"] == 250.0
+        assert ibm_pos["end_value"] == 5000.0
+        assert ibm_pos["end_date"] == "2026-05-31 00:00"
 
 
 # ---------------------------------------------------------------------------

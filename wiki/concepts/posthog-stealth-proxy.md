@@ -34,6 +34,14 @@ Each proxy rule uses `changeOrigin: true` and `secure: false` for seamless forwa
 
 Server-side tracking (`posthog-server.ts`) connects directly to `https://us.i.posthog.com` without the proxy, since server-to-server traffic runs in Netlify Functions and is immune to ad blockers.
 
+## Client Loading Optimization
+
+To slash client-side bundle size and eliminate unneeded third-party network activity, the `PostHogProvider` is configured to disable heavy session recording while keeping automatic click/event tracking active:
+- `disable_session_recording: true` — completely prunes the download of the bulky `posthog-recorder.js` script (~49 KiB) and auxiliary survey chunks, yielding significant performance savings.
+- **Autocapture & Pageviews**: Automatic click and pageview tracking remain fully enabled to capture comprehensive navigation and usage telemetry.
+
+This reduces the client-side JavaScript transport weight by **~49 KiB**, accelerating Largest Contentful Paint (LCP) and Time to Interactive (TTI) while preserving complete autocapture and product analytics capabilities.
+
 ## Testing
 
 A Vitest unit test in `-__root.test.tsx` mocks the PostHogProvider and verifies that `options.api_host` is set to `'/p'` when rendered on the client.

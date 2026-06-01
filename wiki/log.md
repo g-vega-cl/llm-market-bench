@@ -1,3 +1,7 @@
+## [2026-06-01] doc | Client/Server Time Best Practices Documentation
+
+Expanded the canonical performance auditing strategy concept page to comprehensively detail the 5 core client/server time best practices for eliminating SSR hydration mismatches (React Error #418) in server-side rendered environments.
+
 ## [2026-06-01] feature | Granular Stock Valuation Ledger and Auditable Starting Prices
 
 Expanded the auto-research do-nothing return calculation engine and frontend dashboard to provide comprehensive, factual transparency for initial vs. ending asset valuations:

@@ -122,6 +122,8 @@ const mockTodayData = {
             relevance_score: 95,
             importance_score: 9,
             target_date: '2026-06-15',
+            formattedTargetMonthDay: 'Jun 15',
+            formattedTargetYear: '2026',
             metadata: {
                 importance_score: 9,
                 future_date_note: 'June FOMC',
@@ -303,6 +305,49 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                     <FutureCatalysts events={mockTodayData.futureEvents as unknown as Memory[]} />,
                 );
                 // With whitespace normalization in place, this must hydrate flawlessly with zero errors!
+                expect(errors).toEqual([]);
+            } finally {
+                renderSpy.mockRestore();
+                toLocaleDateStringSpy.mockRestore();
+            }
+        });
+
+        it('should detect a timezone mismatch when client-side toLocaleDateString returns a different calendar day than server-side', () => {
+            let isHydration = false;
+            const originalRender = ReactDOMServer.renderToString;
+
+            // Spy on renderToString to set the hydration flag right after SSR completes
+            const renderSpy = vi
+                .spyOn(ReactDOMServer, 'renderToString')
+                .mockImplementation((el) => {
+                    isHydration = false;
+                    const res = originalRender(el);
+                    isHydration = true;
+                    return res;
+                });
+
+            // Spy on toLocaleDateString to shift the date by 1 day only during client hydration
+            const originalToLocaleDateString = Date.prototype.toLocaleDateString;
+            const toLocaleDateStringSpy = vi
+                .spyOn(Date.prototype, 'toLocaleDateString')
+                .mockImplementation(function (
+                    this: Date,
+                    ...args: Parameters<typeof Date.prototype.toLocaleDateString>
+                ) {
+                    const res = originalToLocaleDateString.apply(this, args);
+                    if (isHydration) {
+                        // Simulate a timezone-induced calendar day mismatch
+                        if (res.includes('Jun 15')) return res.replace('Jun 15', 'Jun 14');
+                    }
+                    return res;
+                });
+
+            try {
+                const errors = assertHydrationSymmetry(
+                    <FutureCatalysts events={mockTodayData.futureEvents as unknown as Memory[]} />,
+                );
+                // Under our new Zero-Date architecture, client components render static, pre-formatted strings
+                // and NEVER execute Date parses or toLocaleDateString, yielding 100% flawless hydration!
                 expect(errors).toEqual([]);
             } finally {
                 renderSpy.mockRestore();

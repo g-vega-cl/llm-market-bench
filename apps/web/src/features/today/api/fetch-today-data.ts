@@ -23,7 +23,11 @@ export interface TodayData {
     decisions: (Decision & { formattedTime: string })[];
     memories: (Memory & { formattedShortDate: string; formattedDateTime: string })[];
     priceUpdates: MarketDataCache[];
-    futureEvents: (Memory & { formattedShortDate: string })[];
+    futureEvents: (Memory & {
+        formattedShortDate: string;
+        formattedTargetMonthDay?: string;
+        formattedTargetYear?: string;
+    })[];
     marketFeeling: (MarketFeeling & { formattedTime: string }) | null;
     macroStats: MacroStat[];
     serverTime?: string;
@@ -131,6 +135,11 @@ function computeMacroStatistics(
     const cacheMap = buildCacheMap(cacheRows);
     const historyGroup = buildHistoryGroup(historyRows, estDateStr);
     return computeMacroStatsList(cacheMap, historyGroup);
+}
+
+function extractDate(content: string): string | null {
+    const match = content.match(/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
 }
 
 export async function fetchTodayData(): Promise<TodayData> {
@@ -255,10 +264,43 @@ export async function fetchTodayData(): Promise<TodayData> {
             formattedShortDate: formatEasternShortDate(m.created_at),
         })) as (Memory & { formattedShortDate: string; formattedDateTime: string })[],
         priceUpdates: (priceUpdates || []) as unknown as MarketDataCache[],
-        futureEvents: (futureEvents || []).map((m) => ({
-            ...m,
-            formattedShortDate: formatEasternShortDate(m.created_at),
-        })) as (Memory & { formattedShortDate: string })[],
+        futureEvents: (futureEvents || []).map((m) => {
+            const eventDate = m.target_date || extractDate(m.content);
+            let formattedTargetMonthDay = '';
+            let formattedTargetYear = '';
+            if (eventDate) {
+                const parts = eventDate.split('-');
+                if (parts.length === 3) {
+                    const months = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec',
+                    ];
+                    const monthName = months[parseInt(parts[1], 10) - 1] || 'Unknown';
+                    formattedTargetMonthDay = `${monthName} ${parseInt(parts[2], 10)}`;
+                    formattedTargetYear = parts[0];
+                }
+            }
+            return {
+                ...m,
+                formattedShortDate: formatEasternShortDate(m.created_at),
+                formattedTargetMonthDay,
+                formattedTargetYear,
+            };
+        }) as (Memory & {
+            formattedShortDate: string;
+            formattedTargetMonthDay: string;
+            formattedTargetYear: string;
+        })[],
         marketFeeling: marketFeelingObj
             ? {
                   ...marketFeelingObj,

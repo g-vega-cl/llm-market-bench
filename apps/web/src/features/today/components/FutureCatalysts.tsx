@@ -3,8 +3,13 @@ import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system'
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
 import { normalizeWhitespace } from '~/utils/date';
 
+interface FutureEventItem extends Memory {
+    formattedTargetMonthDay?: string;
+    formattedTargetYear?: string;
+}
+
 interface FutureCatalystsProps {
-    events: Memory[];
+    events: FutureEventItem[];
 }
 
 function extractDate(content: string): string | null {
@@ -59,8 +64,6 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                 <div className="space-y-4">
                     {visibleEvents.map((event, idx) => {
                         const dateNote = event.metadata?.future_date_note;
-                        const eventDate = event.target_date || extractDate(event.content);
-                        const dateObj = eventDate ? new Date(`${eventDate}T00:00:00`) : null;
                         const importanceScore = event.metadata?.importance_score || 7;
 
                         return (
@@ -123,23 +126,16 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                                         </div>
 
                                         {/* Date Display */}
-                                        {dateObj && (
+                                        {event.formattedTargetMonthDay && (
                                             <div className="text-right">
                                                 <div className="text-2xl font-black text-zinc-900 dark:text-white text-display">
                                                     {normalizeWhitespace(
-                                                        dateObj.toLocaleDateString('en-US', {
-                                                            timeZone: 'America/New_York',
-                                                            month: 'short',
-                                                            day: 'numeric',
-                                                        }),
+                                                        event.formattedTargetMonthDay,
                                                     )}
                                                 </div>
                                                 <div className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
                                                     {normalizeWhitespace(
-                                                        dateObj.toLocaleDateString('en-US', {
-                                                            timeZone: 'America/New_York',
-                                                            year: 'numeric',
-                                                        }),
+                                                        event.formattedTargetYear || '',
                                                     )}
                                                 </div>
                                             </div>

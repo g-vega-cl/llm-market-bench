@@ -16,17 +16,22 @@ import { HumanFriendlyResponse } from '../components/HumanFriendlyResponse';
 import { reasoningQueries } from '../queries/options';
 
 interface ReasoningPageProps {
+    initialData: PaginatedReasoningLogs;
     fetchFn: (cursor: string | undefined) => Promise<PaginatedReasoningLogs>;
 }
 
-export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
+export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
     const posthog = usePostHog();
     const [activeTab, setActiveTab] = React.useState<string>('ALL');
     const [selectedLogId, setSelectedLogId] = React.useState<string | null>(null);
 
-    const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, status, error } =
+    const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, error } =
         useInfiniteQuery({
             ...reasoningQueries.list({ fetchFn }),
+            initialData: {
+                pages: [initialData],
+                pageParams: [undefined],
+            },
         });
 
     const allLogs = React.useMemo(() => data?.pages.flatMap((page) => page.data) || [], [data]);
@@ -37,7 +42,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
 
     const selectedLog = allLogs?.find((l) => l.id === selectedLogId);
 
-    if (status === 'pending') {
+    if (isPending && allLogs.length === 0) {
         return (
             <LoadingBoundary isLoading={true}>
                 <div />
@@ -45,7 +50,7 @@ export function ReasoningPage({ fetchFn }: ReasoningPageProps) {
         );
     }
 
-    if (status === 'error') {
+    if (error) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <ErrorCard

@@ -4,11 +4,12 @@ import { fetchMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
 const getMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: { cursor?: string; category?: string } | undefined) => d)
+    .inputValidator((d: { cursor?: string; category?: string; limit?: number } | undefined) => d)
     .handler(async ({ data }) => {
         const cursor = data?.cursor;
         const category = data?.category;
-        return fetchMemories(cursor, 50, category);
+        const limit = data?.limit ?? 50;
+        return fetchMemories(cursor, limit, category);
     });
 
 export const Route = createFileRoute('/memories/')({
@@ -16,8 +17,10 @@ export const Route = createFileRoute('/memories/')({
         const categories = ['MARKET_EVENT', 'CALENDAR_EVENT', 'POST_MORTEM', 'ACADEMIC_PAPER'];
 
         const [allRes, ...catResults] = await Promise.all([
-            getMemories({ data: { cursor: undefined, category: undefined } }),
-            ...categories.map((cat) => getMemories({ data: { cursor: undefined, category: cat } })),
+            getMemories({ data: { cursor: undefined, category: undefined, limit: 5 } }),
+            ...categories.map((cat) =>
+                getMemories({ data: { cursor: undefined, category: cat, limit: 5 } }),
+            ),
         ]);
 
         // Merge all memories into a single list
@@ -60,7 +63,7 @@ function RouteComponent() {
             initialMemories={initialData.data}
             initialHasMore={initialData.hasMore}
             initialCursor={initialData.nextCursor}
-            fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category } })}
+            fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category, limit: 50 } })}
         />
     );
 }

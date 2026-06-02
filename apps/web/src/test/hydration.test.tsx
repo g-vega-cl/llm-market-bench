@@ -413,6 +413,11 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                 <QueryClientProvider client={createTestQueryClient()}>
                     <Suspense fallback={<div>Loading...</div>}>
                         <ReasoningPage
+                            initialData={
+                                mockReasoningLogs as unknown as ComponentProps<
+                                    typeof ReasoningPage
+                                >['initialData']
+                            }
                             fetchFn={
                                 (async () => mockReasoningLogs) as unknown as ComponentProps<
                                     typeof ReasoningPage

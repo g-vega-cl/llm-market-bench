@@ -1,27 +1,3 @@
-## [2026-05-28] update | Cleanup module parameterization and test coverage
-
-Updated cleanup.py with comprehensive docstring explaining the 6-stage maintenance pipeline and Python-calculated threshold parameterization. Added test for exception handling. Updated wiki page to reflect new parameterization.
-
-## [2026-05-28] fix | MiniMax 2.7 JSON Repair and Schema Enforcement
-
-Fixed a major trade execution blocking issue where the MiniMax 2.7 Simple Portfolio made 0 trades due to JSON parsing and schema validation failures:
-- **Quote and Newline Unescaping Fix**: Corrected the custom JSON repair helper `_repair_json_string` in `core/llm/analysis.py` to perform quote and newline unescaping ONLY on double-escaped JSON responses (those wrapped in outer double quotes). This prevents the helper from unconditionally unescaping valid internal escaped quotes and newlines in standard JSON responses, which previously invalidated the JSON structure.
-- **Detailed Prompt Schema Enforcement**: Expanded the user prompt instruction in `_analyze_with_minimax` to include a precise, detailed JSON schema for both `decisions` and `macro_events`. This ensures the MiniMax API returns JSON matching the exact expected Pydantic fields (e.g. `event_name`, `impact`, and `reasoning` for `macro_events`), preventing Pydantic `ValidationError` drop-offs.
-- **TDD Tests**: Added comprehensive unit tests (`test_repair_json_string_with_escaped_quotes_and_newlines` and `test_try_parse_minimax_raw_schema`) in `apps/engine/tests/test_analysis_logic.py`.
-- **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to document the JSON extraction, schema enforcement, and parsing repair alignment.
-
-## [2026-05-28] chore | Scratch Script Cleanup & Event Chain Enhancement
-
-Removed 10 stale scratch/utility scripts from `apps/engine/scratch/` that were used for ad-hoc debugging, DB inspection, and metrics backfill during development. These were one-off scripts and are no longer needed. Also added TDD-backed `buildChain` utility and tests to the memories feature for full event chain tree traversal (already added to wiki in a previous commit), and marked two completed ROADMAP items.
-
-## [2026-05-28] fix | MiniMax 2.7 Parsing Scoping Bug and Improved Observability
-
-Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was preventing it from making trades due to JSON parsing failures:
-- **Lambda Scoping Bug Fix**: Fixed a variable scoping bug in `_try_parse_decisions_response` in `apps/engine/core/llm/analysis.py` where fallback repair strategies closed over strategies but evaluated the original, un-repaired payload instead of the repaired/copied elements (`repaired`, `data_copy`, `parsed`). Addressed this by properly binding variables to default arguments within lambda scopes (e.g., `lambda d, r=repaired: ...`).
-- **Observability Tracing**: Removed the arbitrary `max_retries` strategy constraint so the parser attempts all available repair strategies. If all strategies fail, we now aggregate and log the exact exceptions and validation details under a single warning block, complying with **GEMINI.md Principle 5**.
-- **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
-- **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.
-
 ## [2026-05-28] fix | MiniMax 2.7 Parsing Scoping Bug and Improved Observability
 
 Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was preventing it from making trades due to JSON parsing failures:
@@ -233,3 +209,16 @@ Drastically improved server response times (TTFB), eliminated unused JavaScript 
 - **Strict SSR Fetch Limiting**: Added `.limit(5)` to all heavy feed queries (newsletters, trades, decisions, memories) in the TanStack Router SSR loader (`fetch-today-data.ts`), reducing the HTML payload from 748KB to a negligible size.
 - **Seamless Background Hydration**: Replaced complex custom Intersection Observers and "Load More" buttons with native React Query behavior. Passed the SSR payload as `initialData` alongside a client-side `useQuery` executing with `.limit(50)`. With a default `staleTime: 0`, this achieves an instant First Contentful Paint followed by a seamless background refetch to lazy load the rest of the feed transparently.
 - **Living Synthesis**: Documented the unified Data Fetching Philosophy and the Deferred SDK Initialization rule in `concepts/performance-auditing-strategy.md`.
+
+## [2026-06-02] optimization | Consolidated Server Loader Fast Fetch Optimization Across Core Routes
+
+Successfully scaled the Time-to-First-Byte (TTFB) optimization paradigm (Server Loader Fast Fetch) from the Today homepage to all core auxiliary pages:
+- **Cause & Effect Refactor**: Upgraded the `fetchCauseAndEffect` API to accept pagination limits. Implemented a `limit: 5` constraint on the `createServerFn` loader inside `routes/cause-and-effect/index.tsx`, eliminating the massive unbounded database fetch on initial SSR render.
+- **Memories N+1 Consolidation**: Refactored the heavy SSR data fetching block in `routes/memories/index.tsx` which previously fired 5 parallel unconstrained category queries (fetching 250 rows). By enforcing a `limit: 5` on the backend loader parameter, the SSR blocking payload was cut down to just 25 rows, accelerating first paint.
+- **Reasoning Log Hydration Fix**: Addressed the complete lack of an SSR loader in `routes/reasoning/index.tsx`. By wrapping a `limit: 5` fast-fetch loader and injecting `initialData` directly into the `useInfiniteQuery` hook inside `ReasoningPage.tsx`, the page now achieves instant hydration without rendering a blocking spinner.
+- **TDD Regression Tests**: Authored targeted unit tests for the core fetch APIs (`fetchCauseAndEffect`, `fetchMemories`, `fetchReasoningLogs`) and updated the `hydration.test.tsx` suite to assert that the `limit` query parameters are strictly applied by the Supabase client chain, preventing future regressions.
+
+## [2026-06-02] optimization | Consolidated Server Loader Fast Fetch Optimization Across Core Routes
+
+Scaled the Server Loader Fast Fetch TTFB optimization from the Today homepage to all core auxiliary pages (cause-and-effect, memories, reasoning). Added optional `limit` parameters to fetch APIs and constrained SSR loaders to `.limit(5)` to eliminate unbounded database fetches on initial render. Injected `initialData` into `useInfiniteQuery` for the reasoning page to enable instant hydration. Added regression tests for limit enforcement across all three fetch APIs and the hydration symmetry suite.
+

@@ -86,4 +86,25 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
         expect(chain.from).toHaveBeenCalledWith('memories');
         expect(chain.eq).toHaveBeenCalledWith('memory_type', 'LESSON_LEARNED');
     });
+
+    it('applies the limit parameter + 1 for pagination', async () => {
+        const mockData: unknown[] = [];
+        const chain: MockSupabaseChain = {
+            eq: vi.fn(() => chain),
+            not: vi.fn(() => chain),
+            is: vi.fn(() => chain),
+            or: vi.fn(() => chain),
+            order: vi.fn(() => chain),
+            limit: vi.fn(() => chain),
+            lt: vi.fn(() => chain),
+            select: vi.fn(() => chain),
+            from: vi.fn(() => chain),
+        };
+        chain.limit.mockImplementationOnce(() => Promise.resolve({ data: mockData, error: null }));
+        mockSupabaseClient = chain;
+
+        await fetchMemories(undefined, 5, 'all');
+
+        expect(chain.limit).toHaveBeenCalledWith(6);
+    });
 });

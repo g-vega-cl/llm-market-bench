@@ -4,13 +4,23 @@ import { fetchReasoningLogs } from '~/features/reasoning/api/fetch-reasoning-log
 import { ReasoningPage } from '~/features/reasoning/pages/ReasoningPage';
 
 const getReasoningLogs = createServerFn({ method: 'GET' })
-    .inputValidator((d: string | undefined) => d)
-    .handler(async ({ data: cursor }) => {
-        return fetchReasoningLogs(cursor);
+    .inputValidator((d: { cursor?: string; limit?: number } | undefined) => d)
+    .handler(async ({ data }) => {
+        return fetchReasoningLogs(data?.cursor, data?.limit ?? 50);
     });
 
-export const Route = createFileRoute('/reasoning/')({ component: RouteComponent });
+export const Route = createFileRoute('/reasoning/')({
+    loader: async () => await getReasoningLogs({ data: { limit: 5 } }),
+    component: RouteComponent,
+});
+
 function RouteComponent() {
+    const initialData = Route.useLoaderData();
     const getReasoningLogsFn = useServerFn(getReasoningLogs);
-    return <ReasoningPage fetchFn={(pageParam) => getReasoningLogsFn({ data: pageParam })} />;
+    return (
+        <ReasoningPage
+            initialData={initialData}
+            fetchFn={(pageParam) => getReasoningLogsFn({ data: { cursor: pageParam, limit: 50 } })}
+        />
+    );
 }

@@ -10,12 +10,18 @@ export interface CauseAndEffectEntry {
     created_at: string;
 }
 
-export async function fetchCauseAndEffect(): Promise<CauseAndEffectEntry[]> {
+export async function fetchCauseAndEffect(limit?: number): Promise<CauseAndEffectEntry[]> {
     const supabase = getSupabaseBrowserClient();
-    const { data, error } = await supabase
+    let query = supabase
         .from('cause_and_effect')
         .select('*, event:memories(*)')
         .order('created_at', { ascending: false });
+
+    if (limit) {
+        query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return data as CauseAndEffectEntry[];

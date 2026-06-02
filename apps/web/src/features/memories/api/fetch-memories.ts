@@ -128,3 +128,13 @@ export async function validateCacheState(cachedId: string): Promise<CacheValidat
         latestTimestamp,
     };
 }
+
+export async function fetchMemoryChain(memoryId: string): Promise<Memory[]> {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.rpc('get_memory_chain', {
+        target_id: memoryId,
+    });
+
+    if (error) throw error;
+    return (data || []) as Memory[];
+}

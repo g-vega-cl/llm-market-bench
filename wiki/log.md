@@ -1,11 +1,3 @@
-## [2026-05-28] fix | MiniMax 2.7 Parsing Scoping Bug and Improved Observability
-
-Resolved a critical scoping bug in the MiniMax 2.7 portfolio pipeline that was preventing it from making trades due to JSON parsing failures:
-- **Lambda Scoping Bug Fix**: Fixed a variable scoping bug in `_try_parse_decisions_response` in `apps/engine/core/llm/analysis.py` where fallback repair strategies closed over strategies but evaluated the original, un-repaired payload instead of the repaired/copied elements (`repaired`, `data_copy`, `parsed`). Addressed this by properly binding variables to default arguments within lambda scopes (e.g., `lambda d, r=repaired: ...`).
-- **Observability Tracing**: Removed the arbitrary `max_retries` strategy constraint so the parser attempts all available repair strategies. If all strategies fail, we now aggregate and log the exact exceptions and validation details under a single warning block, complying with **GEMINI.md Principle 5**.
-- **TDD Verification**: Added a unit test `test_try_parse_escaped_json_string_repair` in a new test file `apps/engine/tests/test_minimax_repair_bug.py` to ensure escaped JSON repair logic functions correctly. Verified 100% test success and 85% test coverage.
-- **Documentation**: Updated the [[concepts/minimax-portfolio]] concept page to reflect the new robust scoping and observability mechanisms.
-
 ## [2026-05-28] feature | Automatic How It Works Page Sync & Local Git Hook Compilation
 
 Implemented a fully automated, TDD-backed synchronization pipeline to keep the web application's **How It Works** timeline page in perfect harmony with the canonical wiki page (`wiki/entities/pipeline.md`) describing the 7-phase daily pipeline lifecycle:
@@ -218,7 +210,24 @@ Successfully scaled the Time-to-First-Byte (TTFB) optimization paradigm (Server 
 - **Reasoning Log Hydration Fix**: Addressed the complete lack of an SSR loader in `routes/reasoning/index.tsx`. By wrapping a `limit: 5` fast-fetch loader and injecting `initialData` directly into the `useInfiniteQuery` hook inside `ReasoningPage.tsx`, the page now achieves instant hydration without rendering a blocking spinner.
 - **TDD Regression Tests**: Authored targeted unit tests for the core fetch APIs (`fetchCauseAndEffect`, `fetchMemories`, `fetchReasoningLogs`) and updated the `hydration.test.tsx` suite to assert that the `limit` query parameters are strictly applied by the Supabase client chain, preventing future regressions.
 
-## [2026-06-02] optimization | Consolidated Server Loader Fast Fetch Optimization Across Core Routes
+## [2026-06-02] optimization | Database RPC Traversal & Market Overview SSR Fast-Fetch
 
-Scaled the Server Loader Fast Fetch TTFB optimization from the Today homepage to all core auxiliary pages (cause-and-effect, memories, reasoning). Added optional `limit` parameters to fetch APIs and constrained SSR loaders to `.limit(5)` to eliminate unbounded database fetches on initial render. Injected `initialData` into `useInfiniteQuery` for the reasoning page to enable instant hydration. Added regression tests for limit enforcement across all three fetch APIs and the hydration symmetry suite.
+Optimized the performance of the `/market-overview` and `/memories/chain/{$memoryId}` routes to achieve sub-second edge TTFB:
+- **Memories Chain RPC**: Pushed database migration `20260602140000_add_get_memory_chain_rpc.sql` introducing recursive CTE function `get_memory_chain` to retrieve memory ancestor/descendant structures in a single query. Updated the frontend router loader to query the RPC, reducing loading from 8 sequential queries down to 1.
+- **Market Overview SSR Limiting**: Upgraded `fetchMarketOverviewData` to support a `limit` parameter and constrained the SSR loader to `limit: 5` for instant server rendering. Enabled `refetchOnMount: 'always'` to hydrate the full correlation matrix on client mount.
+- **TDD Verification**: Added unit tests to `fetch-market-overview.test.ts` and `fetch-memories.test.ts` to assert correct parameter usage, passing all 214 web tests.
+
+## [2026-06-02] optimization | Memory Chain RPC & Market Overview SSR Fast-Fetch
+
+**Database**: Deployed `get_memory_chain` recursive CTE RPC function (migrations `20260602140000` and `20260602150000`) to resolve graph-traversal N+1 queries on the memory chain detail page. The frontend `/memories/chain/$memoryId` route now calls this RPC directly, reducing sequential database roundtrips from 8+ to 1.
+
+**Market Overview SSR**: Added optional `limit` parameter to `fetchMarketOverviewData` and constrained the SSR loader to `.limit(5)` for instant initial render. Applied `refetchOnMount: 'always'` to hydrate the full correlation matrix client-side after mount.
+
+**Web Route Updates**: `routes/market-overview/index.tsx` now passes `{ limit: 5 }` in the loader and `{ limit: undefined }` in the client fetch function. `routes/memories/chain/$memoryId.tsx` replaced the paginated `fetchMemories` loop with a single `fetchMemoryChain` call.
+
+**Testing**: Verified with 214 passing web tests including new unit tests in `fetch-market-overview.test.ts` and `fetch-memories.test.ts` asserting correct RPC and limit parameter application.
+
+**Wiki Updates**: Revised `memory-feedback.md` Event Chain Graph Traversal section to describe the new RPC-based architecture. Added Recursive DB RPC pattern to `performance-auditing-strategy.md`.
+
+**See**: [[concepts/memory-feedback]], [[concepts/performance-auditing-strategy]]
 

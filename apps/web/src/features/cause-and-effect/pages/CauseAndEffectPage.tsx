@@ -17,6 +17,7 @@ export function CauseAndEffectPage({ initialData, fetchFn }: CauseAndEffectPageP
     const { data } = useSuspenseQuery({
         ...causeAndEffectQueries.list({ fetchFn }),
         initialData,
+        refetchOnMount: 'always',
     });
 
     React.useEffect(() => {

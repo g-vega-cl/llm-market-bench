@@ -28,7 +28,7 @@ export interface MarketOverviewData {
     marketFeeling: MarketFeeling | null;
 }
 
-export async function fetchMarketOverviewData(): Promise<MarketOverviewData> {
+export async function fetchMarketOverviewData(limit?: number): Promise<MarketOverviewData> {
     const supabase = getSupabaseBrowserClient();
 
     // Fetch latest correlation run
@@ -45,10 +45,13 @@ export async function fetchMarketOverviewData(): Promise<MarketOverviewData> {
     // Fetch correlation data for the latest run
     let correlationData: CorrelationData[] = [];
     if (correlationRun) {
-        const { data: corrData, error: corrError } = await supabase
-            .from('correlation_data')
-            .select('*')
-            .eq('run_id', correlationRun.id);
+        let query = supabase.from('correlation_data').select('*').eq('run_id', correlationRun.id);
+
+        if (limit) {
+            query = query.limit(limit);
+        }
+
+        const { data: corrData, error: corrError } = await query;
 
         if (corrError) throw corrError;
         correlationData = corrData || [];

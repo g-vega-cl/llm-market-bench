@@ -27,6 +27,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
     const { data } = useSuspenseQuery({
         ...marketOverviewQueries.data({ fetchFn }),
         initialData,
+        refetchOnMount: 'always',
     });
 
     const [activeTab, setActiveTab] = React.useState<'current' | 'history'>('current');

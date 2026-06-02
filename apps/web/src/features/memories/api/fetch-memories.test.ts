@@ -108,3 +108,19 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
         expect(chain.limit).toHaveBeenCalledWith(6);
     });
 });
+
+import { fetchMemoryChain } from './fetch-memories';
+
+describe('fetchMemoryChain', () => {
+    it('calls get_memory_chain RPC with target_id', async () => {
+        const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null });
+        mockSupabaseClient = {
+            rpc: mockRpc,
+        } as unknown as MockSupabaseChain;
+
+        const memoryId = 'test-memory-id';
+        await fetchMemoryChain(memoryId);
+
+        expect(mockRpc).toHaveBeenCalledWith('get_memory_chain', { target_id: memoryId });
+    });
+});

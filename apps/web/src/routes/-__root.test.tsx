@@ -5,6 +5,7 @@ import {
     RouterProvider,
 } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
+import posthog from 'posthog-js';
 import { describe, expect, it, vi } from 'vitest';
 import { NavLink, navItems, RootDocument, Route } from './__root';
 
@@ -12,6 +13,12 @@ const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
 
 vi.mock('@posthog/react', () => ({
     PostHogProvider: (props: Record<string, unknown>) => mockPostHogProvider(props),
+}));
+
+vi.mock('posthog-js', () => ({
+    default: {
+        init: vi.fn(),
+    },
 }));
 
 describe('Root layout navigation', () => {
@@ -74,9 +81,9 @@ describe('RootDocument PostHog configuration', () => {
         // Wait for router to resolve and render RootDocument
         await screen.findByText('Test Content');
 
-        expect(mockPostHogProvider).toHaveBeenCalled();
-        const callArgs = mockPostHogProvider.mock.calls[0][0];
-        expect(callArgs.options.api_host).toBe('/p');
+        expect(posthog.init).toHaveBeenCalled();
+        const callArgs = vi.mocked(posthog.init).mock.calls[0][1];
+        expect(callArgs?.api_host).toBe('/p');
     });
 
     it('should initialize PostHogProvider with disable_surveys: true to reduce unused JS', async () => {
@@ -102,11 +109,11 @@ describe('RootDocument PostHog configuration', () => {
         render(<RouterProvider router={router} />);
         await screen.findByText('Test Content');
 
-        expect(mockPostHogProvider).toHaveBeenCalled();
-        // Since the previous test might have called it, check the latest call
-        const callArgs =
-            mockPostHogProvider.mock.calls[mockPostHogProvider.mock.calls.length - 1][0];
-        expect(callArgs.options.disable_surveys).toBe(true);
+        expect(posthog.init).toHaveBeenCalled();
+        const callArgs = vi.mocked(posthog.init).mock.calls[
+            vi.mocked(posthog.init).mock.calls.length - 1
+        ][1];
+        expect(callArgs?.disable_surveys).toBe(true);
     });
 });
 

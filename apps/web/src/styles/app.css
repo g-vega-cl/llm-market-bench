@@ -17,8 +17,8 @@
   --font-mono: "JetBrains Mono", monospace;
 
   /* Semantic color tokens */
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
   --color-accent-light: #dbeafe;
   --color-accent-dark: #172554;
 

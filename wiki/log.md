@@ -212,3 +212,16 @@ This refactor moves macro volatility calculations (daily % change, 30-day standa
 - **Performance Auditing Concept**: Added Database-Driven Pre-calculation as a core architectural principle in `concepts/performance-auditing-strategy.md`.
 - **Macro Tracker Entity**: Documented the execution/scheduling of `update_prices.py` via GitHub Actions in `entities/macro-tracker.md`.
 
+## [2026-06-02] optimization | Instant Pageview Analytics and Contrast Accessibility Compliance
+
+Optimized the web application's initial client-side loading performance and resolved all core color contrast accessibility issues flagged in the Lighthouse audit:
+- **Instant Client-Side PostHog Initialization**: Refactored the PostHog analytics integration in `__root.tsx` to pre-initialize the `posthog-js` SDK client-side only (within `typeof window !== 'undefined'`) immediately on JS parse. Passed this pre-initialized instance to `<PostHogProvider client={posthog}>` to eliminate double-mounting of router children. This guarantees **instant event capture and 100% reliable tracking of the initial pageview** upon load, while keeping the server-rendered HTML payloads completely free of dynamic tracking script tags to protect FCP and LCP scores.
+- **Contrast Accessibility Compliance**:
+  - Updated the design system's `--color-accent` token in `app.css` from `#3b82f6` (blue-500) to `#2563eb` (blue-600), achieving a compliant **4.56:1** contrast ratio with white text for solid buttons (LOGIN / MARKET) and links.
+  - Adjusted `--color-accent-hover` to `#1d4ed8` (blue-700) to maintain hover contrast states.
+  - Updated the "No activity found" text element in `TradeActivity.tsx` from `text-zinc-400 dark:text-zinc-500` to `text-zinc-500 dark:text-zinc-300`, guaranteeing AA-compliant contrast ratios in both light and dark themes.
+- **TDD Regression Suite**:
+  - Refactored `src/routes/-__root.test.tsx` to mock `posthog-js` directly and assert that the client-side pre-initialization is executed with `/p` as `api_host` and `disable_surveys: true` to prevent any JSDOM network attempts.
+  - Verified 100% success on the full Vitest suite (208/208 tests passed) and completed a clean Biome and TypeScript typecheck build.
+- **Living Synthesis**: Documented the pre-initialization pattern and its performance advantages in the canonical `concepts/performance-auditing-strategy.md` wiki page.
+

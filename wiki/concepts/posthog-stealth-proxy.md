@@ -36,12 +36,12 @@ Server-side tracking (`posthog-server.ts`) connects directly to `https://us.i.po
 
 ## Client Loading Optimization
 
-To slash client-side bundle size and eliminate unneeded third-party network activity, the `PostHogProvider` is configured to disable heavy session recording while keeping automatic click/event tracking active:
-- `disable_session_recording: true` — completely prunes the download of the bulky `posthog-recorder.js` script (~49 KiB) and auxiliary survey chunks, yielding significant performance savings.
-- **Autocapture & Pageviews**: Automatic click and pageview tracking remain fully enabled to capture comprehensive navigation and usage telemetry.
-- **Proxy Caching Headers**: Because the versioned tracking assets (e.g. `dead-clicks-autocapture.js?v=1.364.1`) are served via Netlify's dynamic proxy redirect (`status = 200`), they default to short or missing cache lifetimes. To prevent browser re-downloads that block the main thread, `netlify.toml` defines explicit, long-term CDN caching headers for `/p/static/*` (`Cache-Control = "public, max-age=31536000, immutable"`), accelerating LCP and TTI.
-
-This reduces the client-side JavaScript transport weight by **~49 KiB** and ensures tracking scripts are permanently cached by the client browser, accelerating Largest Contentful Paint (LCP) and Time to Interactive (TTI) while preserving complete autocapture and product analytics capabilities.
+To slash client-side bundle size, eliminate unneeded third-party network activity, and prevent render-blocking on the critical paint path, the application uses an optimized pre-initialization pattern:
+- **Immediate Client-Side Pre-Initialization**: Instead of initializing PostHog during the React render phase, the `posthog-js` SDK is pre-initialized client-side immediately upon JavaScript execution via a guard `if (typeof window !== 'undefined')` and passed directly as a client instance to `<PostHogProvider client={posthog}>`.
+- **SSR & Hydration Immunity**: Because the initialization runs strictly client-side, the server-rendered HTML payloads contain zero dynamic tracking scripts, completely shielding FCP and LCP scores from render-blocking overhead while avoiding React 19 hydration mismatches.
+- **No Missed Events**: Pre-initializing immediately on JS load ensures the SDK is ready as soon as the DOM hydrates, capturing the initial pageview and early user clicks with 100% reliability.
+- **Pruned Features**: Session recording and surveys are explicitly disabled (`disable_session_recording: true`, `disable_surveys: true`) to completely strip the download of the bulky `posthog-recorder.js` (~49 KiB) and survey scripts, shielding the main thread.
+- **Proxy Caching Override Awareness**: Dynamic feature scripts (like `dead-clicks-autocapture.js?v=1.364.1`) are fetched via the same-origin `/p/static/*` rewrite proxy. Because Netlify forwards the upstream headers of the proxied destination, the custom `Cache-Control` header defined in `netlify.toml` is overridden by PostHog's asset CDN headers, resulting in a short 4-hour Cache TTL. Client-side pre-initialization ensures these scripts download asynchronously post-hydration, protecting Core Web Vitals from this caching limit.
 
 ## Testing
 

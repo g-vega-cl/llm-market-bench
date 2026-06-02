@@ -360,7 +360,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                 </div>
             ) : (
                 <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                    <p className="text-zinc-400 dark:text-zinc-500 font-medium">
+                    <p className="text-zinc-500 dark:text-zinc-300 font-medium">
                         No {filter === 'ALL' ? 'activity' : filter.toLowerCase()} found
                     </p>
                 </div>

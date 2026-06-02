@@ -5,7 +5,6 @@ import { PostHogProvider } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { createServerFn } from '@tanstack/react-start';
-import posthog from 'posthog-js';
 import type * as React from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
@@ -106,19 +105,6 @@ export function NavLink({ to, label, exact }: { to: string; label: string; exact
     );
 }
 
-// Initialize PostHog client-side only, immediately on JS execution to capture initial page views instantly
-if (typeof window !== 'undefined') {
-    posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || '', {
-        api_host: '/p',
-        ui_host: 'https://us.posthog.com',
-        defaults: '2025-05-24',
-        capture_exceptions: true,
-        debug: import.meta.env.DEV,
-        disable_session_recording: true,
-        disable_surveys: true,
-    });
-}
-
 export function RootDocument({ children }: { children: React.ReactNode }) {
     const { user } = Route.useRouteContext();
 
@@ -144,7 +130,22 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
                 </noscript>
             </head>
             <body>
-                <PostHogProvider client={posthog}>
+                <PostHogProvider
+                    apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || ''}
+                    options={{
+                        api_host:
+                            typeof window !== 'undefined'
+                                ? '/p'
+                                : import.meta.env.VITE_PUBLIC_POSTHOG_HOST ||
+                                  'https://us.i.posthog.com',
+                        ui_host: 'https://us.posthog.com',
+                        defaults: '2025-05-24',
+                        capture_exceptions: true,
+                        debug: import.meta.env.DEV,
+                        disable_session_recording: true,
+                        disable_surveys: true,
+                    }}
+                >
                     <nav
                         className={cn(
                             'flex flex-nowrap overflow-x-auto whitespace-nowrap items-center gap-x-6 px-6 py-4',

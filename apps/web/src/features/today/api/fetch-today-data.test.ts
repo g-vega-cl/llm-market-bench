@@ -175,4 +175,35 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(spyStat?.stdevPct).toBe(0.85);
         expect(spyStat?.regimeFlag).toBe('Normal');
     });
+
+    it('applies the limit parameter to the heavy feed queries', async () => {
+        const appliedLimits: number[] = [];
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation((l) => {
+                    if (
+                        ['newsletter_snapshots', 'trades', 'decisions', 'memories'].includes(table)
+                    ) {
+                        appliedLimits.push(l);
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        // Bypass cache by updating the cache TTL globally or passing a refresh trigger
+        await fetchTodayData(5);
+
+        // We expect 5 calls with limit(5): newsletters, trades, decisions, memories, and futureEvents (which also uses the memories table)
+        expect(appliedLimits).toEqual([5, 5, 5, 5, 5]);
+    });
 });

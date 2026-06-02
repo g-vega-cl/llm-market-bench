@@ -225,3 +225,11 @@ Optimized the web application's initial client-side loading performance and reso
   - Verified 100% success on the full Vitest suite (208/208 tests passed) and completed a clean Biome and TypeScript typecheck build.
 - **Living Synthesis**: Documented the pre-initialization pattern and its performance advantages in the canonical `concepts/performance-auditing-strategy.md` wiki page.
 
+## [2026-06-02] optimization | Layout Optimization, SSR Fetch Limiting, and Background Hydration
+
+Drastically improved server response times (TTFB), eliminated unused JavaScript penalties, and fixed hydration performance by embracing out-of-the-box data fetching patterns and eliminating unneeded DOM layout elements:
+- **Reverted PostHog Initialization**: Reverted the immediate client-side `posthog.init()` approach back to the deferred `<PostHogProvider apiKey=...>` approach. The immediate initialization forced the massive `posthog-js` SDK into the critical `main.js` bundle, tanking Lighthouse scores due to unused JavaScript penalties. The declarative provider correctly lazy-loads the SDK out of the critical rendering path.
+- **Layout Adjustments**: Omitted full feed counts from the Today layout, removing the requirement to fetch unbound arrays during initial load.
+- **Strict SSR Fetch Limiting**: Added `.limit(5)` to all heavy feed queries (newsletters, trades, decisions, memories) in the TanStack Router SSR loader (`fetch-today-data.ts`), reducing the HTML payload from 748KB to a negligible size.
+- **Seamless Background Hydration**: Replaced complex custom Intersection Observers and "Load More" buttons with native React Query behavior. Passed the SSR payload as `initialData` alongside a client-side `useQuery` executing with `.limit(50)`. With a default `staleTime: 0`, this achieves an instant First Contentful Paint followed by a seamless background refetch to lazy load the rest of the feed transparently.
+- **Living Synthesis**: Documented the unified Data Fetching Philosophy and the Deferred SDK Initialization rule in `concepts/performance-auditing-strategy.md`.

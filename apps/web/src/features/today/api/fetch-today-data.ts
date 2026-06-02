@@ -136,9 +136,10 @@ function extractDate(content: string): string | null {
     return match ? match[1] : null;
 }
 
-export async function fetchTodayData(): Promise<TodayData> {
+export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
     const nowTime = Date.now();
-    if (!isTest && cachedTodayData && nowTime - lastFetchTime < CACHE_TTL) {
+    // Do not use in-memory cache if we are asking for more items than default
+    if (!isTest && cachedTodayData && nowTime - lastFetchTime < CACHE_TTL && limit <= 50) {
         return cachedTodayData;
     }
 
@@ -163,22 +164,26 @@ export async function fetchTodayData(): Promise<TodayData> {
             .from('newsletter_snapshots')
             .select('*')
             .gte('date', startOfDay)
-            .order('date', { ascending: false }),
+            .order('date', { ascending: false })
+            .limit(limit),
         supabase
             .from('trades')
             .select('*, portfolios(owner_id)')
             .gte('executed_at', startOfDay)
-            .order('executed_at', { ascending: false }),
+            .order('executed_at', { ascending: false })
+            .limit(limit),
         supabase
             .from('decisions')
             .select('*')
             .gte('created_at', startOfDay)
-            .order('created_at', { ascending: false }),
+            .order('created_at', { ascending: false })
+            .limit(limit),
         supabase
             .from('memories')
             .select('*')
             .gte('created_at', startOfDay)
-            .order('created_at', { ascending: false }),
+            .order('created_at', { ascending: false })
+            .limit(limit),
         supabase
             .from('memories')
             .select('*')
@@ -186,7 +191,8 @@ export async function fetchTodayData(): Promise<TodayData> {
             .gte('importance_score', 8)
             .eq('metadata->is_future_catalyst', true)
             .or(`target_date.is.null,target_date.gte.${estDateStr}`)
-            .order('created_at', { ascending: false }),
+            .order('created_at', { ascending: false })
+            .limit(limit),
         supabase
             .from('market_feeling')
             .select('*')

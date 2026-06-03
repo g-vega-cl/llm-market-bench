@@ -231,3 +231,13 @@ Optimized the performance of the `/market-overview` and `/memories/chain/{$memor
 
 **See**: [[concepts/memory-feedback]], [[concepts/performance-auditing-strategy]]
 
+## [2026-06-03] optimization | Zero-Date Server Date Pre-Formatting & Hydration Fix for Event Chains
+
+Eliminated React hydration errors and layout paint delays on the `/memories/chain/$memoryId` route by shifting date formatting to the server-side loader:
+- **Server Date Pre-Formatting**: Updated the server-only `buildChain` utility to pre-compute formatted timestamps using a new centralized helper `formatEasternDateTimeWithYear`.
+- **Zero-Date View Rendering**: Refactored the frontend `EventChainPage` component to render static, pre-rendered date strings. This locks display timezone parity to Eastern Time (America/New_York) and avoids browser-specific narrow non-breaking space warnings.
+- **TDD Regression Suite**: Authored a hydration regression test checking `EventChainPage` symmetry in JSDOM, guaranteeing zero future hydration mismatches.
+
+**See**: [[concepts/memory-feedback]], [[concepts/performance-auditing-strategy]]
+
+

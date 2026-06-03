@@ -7,6 +7,7 @@ interface ChainMemory {
     id: string;
     content: string;
     created_at: string | null;
+    formattedDate?: string;
     // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
     metadata?: Record<string, any> | null;
 }
@@ -146,18 +147,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                                 {formatType(memory.metadata?.type)}
                                             </Badge>
                                             <span className="text-xs text-zinc-400 font-mono">
-                                                {memory.created_at
-                                                    ? new Date(memory.created_at).toLocaleString(
-                                                          'en-US',
-                                                          {
-                                                              month: 'short',
-                                                              day: 'numeric',
-                                                              year: 'numeric',
-                                                              hour: '2-digit',
-                                                              minute: '2-digit',
-                                                          },
-                                                      )
-                                                    : 'Pending'}
+                                                {memory.formattedDate || 'Pending'}
                                             </span>
                                         </div>
                                         {memory.id === targetMemory.id && (

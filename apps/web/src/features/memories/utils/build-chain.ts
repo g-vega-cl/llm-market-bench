@@ -1,9 +1,14 @@
 import type { Memory } from '@llm-market-bench/database';
+import { formatEasternDateTimeWithYear } from '~/utils/date';
+
+export interface ChainMemory extends Memory {
+    formattedDate?: string;
+}
 
 export function buildChain(
     memoryId: string,
     allMemories: Memory[],
-): { chain: Memory[]; targetMemory: Memory | null } {
+): { chain: ChainMemory[]; targetMemory: ChainMemory | null } {
     const memoryMap = new Map(allMemories.map((m) => [m.id, m]));
     const targetMemory = memoryMap.get(memoryId) || null;
 
@@ -33,15 +38,26 @@ export function buildChain(
     };
     collectDescendants(root.id);
 
-    // 3. Sort chronologically
-    const chain = Array.from(treeMemoryIds)
+    // 3. Sort chronologically and pre-format dates
+    const chain: ChainMemory[] = Array.from(treeMemoryIds)
         .map((id) => memoryMap.get(id))
         .filter((m): m is Memory => m !== undefined)
         .sort((a, b) => {
             const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
             const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
             return dateA - dateB;
-        });
+        })
+        .map((m) => ({
+            ...m,
+            formattedDate: formatEasternDateTimeWithYear(m.created_at),
+        }));
 
-    return { chain, targetMemory };
+    const targetMemoryWithDate: ChainMemory | null = targetMemory
+        ? {
+              ...targetMemory,
+              formattedDate: formatEasternDateTimeWithYear(targetMemory.created_at),
+          }
+        : null;
+
+    return { chain, targetMemory: targetMemoryWithDate };
 }

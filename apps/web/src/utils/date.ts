@@ -126,3 +126,32 @@ export function formatEasternShortDate(dateStr: string | null | undefined): stri
         return 'Unknown';
     }
 }
+
+/**
+ * Formats a timestamp into a space-normalized Eastern Date & Time string with year:
+ * e.g. "May 29, 2026, 10:45 AM ET"
+ */
+export function formatEasternDateTimeWithYear(dateStr: string | null | undefined): string {
+    if (!dateStr) return 'Pending';
+    try {
+        const date = new Date(dateStr);
+        if (Number.isNaN(date.getTime())) return 'Pending';
+
+        const formattedDate = date.toLocaleDateString('en-US', {
+            timeZone: 'America/New_York',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+
+        const formattedTime = date.toLocaleTimeString('en-US', {
+            timeZone: 'America/New_York',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+        return normalizeWhitespace(`${formattedDate}, ${formattedTime} ET`);
+    } catch {
+        return 'Pending';
+    }
+}

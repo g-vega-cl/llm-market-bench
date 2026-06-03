@@ -4,6 +4,7 @@ import { type ComponentProps, Suspense } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { MarketOverviewPage } from '~/features/market-overview/pages/MarketOverviewPage';
+import { EventChainPage } from '~/features/memories/pages/EventChainPage';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 import { PortfoliosPage } from '~/features/portfolios/pages/PortfoliosPage';
 import { ReasoningPage } from '~/features/reasoning/pages/ReasoningPage';
@@ -354,6 +355,69 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                 toLocaleDateStringSpy.mockRestore();
             }
         });
+
+        it('should hydrate EventChainPage flawlessly under Zero-Date architecture with zero mismatches', () => {
+            let isHydration = false;
+            const originalRender = ReactDOMServer.renderToString;
+            const renderSpy = vi
+                .spyOn(ReactDOMServer, 'renderToString')
+                .mockImplementation((el) => {
+                    isHydration = false;
+                    const res = originalRender(el);
+                    isHydration = true;
+                    return res;
+                });
+
+            const originalToLocaleString = Date.prototype.toLocaleString;
+            const toLocaleStringSpy = vi
+                .spyOn(Date.prototype, 'toLocaleString')
+                .mockImplementation(function (
+                    this: Date,
+                    ...args: Parameters<typeof Date.prototype.toLocaleString>
+                ) {
+                    if (isHydration) {
+                        // Simulate timezone calendar shift / date difference that would normally break client rendering
+                        return 'Jun 14, 2026, 10:00 AM';
+                    }
+                    return originalToLocaleString.apply(this, args);
+                });
+
+            try {
+                const mockEventChainData = {
+                    chain: [
+                        {
+                            id: 'm1',
+                            content: 'Original stimulus event.',
+                            created_at: '2026-05-30T10:00:00Z',
+                            formattedDate: 'May 30, 2026, 10:00 AM ET',
+                            metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                        },
+                    ],
+                    targetMemory: {
+                        id: 'm1',
+                        content: 'Original stimulus event.',
+                        created_at: '2026-05-30T10:00:00Z',
+                        formattedDate: 'May 30, 2026, 10:00 AM ET',
+                        metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                    },
+                };
+
+                const errors = assertHydrationSymmetry(
+                    <QueryClientProvider client={createTestQueryClient()}>
+                        <EventChainPage
+                            memoryId="m1"
+                            initialData={mockEventChainData}
+                            fetchFn={async () => mockEventChainData}
+                        />
+                    </QueryClientProvider>,
+                );
+                // Under Zero-Date, client-side renders pre-formatted strings, yielding 0 hydration errors.
+                expect(errors).toEqual([]);
+            } finally {
+                renderSpy.mockRestore();
+                toLocaleStringSpy.mockRestore();
+            }
+        });
     });
 
     describe('Sitemap Hydration Verification (All Pages)', () => {
@@ -484,6 +548,45 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
                         mockTodayData as unknown as ComponentProps<typeof MarketStatusHero>['data']
                     }
                 />,
+            );
+            expect(errors).toEqual([]);
+        });
+
+        it('8. Event Chain Page: hydrates flawlessly', () => {
+            const mockEventChainData = {
+                chain: [
+                    {
+                        id: 'm1',
+                        content: 'Original stimulus event.',
+                        created_at: '2026-05-30T10:00:00Z',
+                        formattedDate: 'May 30, 2026, 10:00 AM ET',
+                        metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                    },
+                    {
+                        id: 'm2',
+                        content: 'Consequential downstream event.',
+                        created_at: '2026-05-30T11:00:00Z',
+                        formattedDate: 'May 30, 2026, 11:00 AM ET',
+                        metadata: { type: 'POST_MORTEM', ticker: 'QQQ', impact: 'BEARISH' },
+                    },
+                ],
+                targetMemory: {
+                    id: 'm1',
+                    content: 'Original stimulus event.',
+                    created_at: '2026-05-30T10:00:00Z',
+                    formattedDate: 'May 30, 2026, 10:00 AM ET',
+                    metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                },
+            };
+
+            const errors = assertHydrationSymmetry(
+                <QueryClientProvider client={createTestQueryClient()}>
+                    <EventChainPage
+                        memoryId="m1"
+                        initialData={mockEventChainData}
+                        fetchFn={async () => mockEventChainData}
+                    />
+                </QueryClientProvider>,
             );
             expect(errors).toEqual([]);
         });

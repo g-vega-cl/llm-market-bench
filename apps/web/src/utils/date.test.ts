@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     formatEasternDate,
     formatEasternDateTime,
+    formatEasternDateTimeWithYear,
     formatEasternShortDate,
     formatEasternShortTime,
     formatEasternTime,
@@ -68,6 +69,14 @@ describe('Centralized Eastern Time date formatters', () => {
         expect(formatted.includes('\u00a0')).toBe(false);
     });
 
+    it('formatEasternDateTimeWithYear should format to standard format with year and standard spaces', () => {
+        const formatted = formatEasternDateTimeWithYear(mockTimestamp);
+        expect(formatted).toBe('May 29, 2026, 10:45 AM ET');
+
+        expect(formatted.includes('\u202f')).toBe(false);
+        expect(formatted.includes('\u00a0')).toBe(false);
+    });
+
     it('should gracefully handle null, undefined, or empty values', () => {
         expect(formatEasternTime(null)).toBe('Unknown');
         expect(formatEasternTime(undefined)).toBe('Unknown');
@@ -88,5 +97,9 @@ describe('Centralized Eastern Time date formatters', () => {
         expect(formatEasternShortDate(null)).toBe('Unknown');
         expect(formatEasternShortDate(undefined)).toBe('Unknown');
         expect(formatEasternShortDate('')).toBe('Unknown');
+
+        expect(formatEasternDateTimeWithYear(null)).toBe('Pending');
+        expect(formatEasternDateTimeWithYear(undefined)).toBe('Pending');
+        expect(formatEasternDateTimeWithYear('')).toBe('Pending');
     });
 });

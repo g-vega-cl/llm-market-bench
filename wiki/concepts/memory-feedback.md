@@ -100,9 +100,10 @@ An offline weekly consolidation pipeline groups overlapping memories to compound
 The Event Chain feature visualizes the full geopolitical timeline of a memory by reconstructing its causal tree. When displaying an event chain for a specific memory:
 1. **Database Traversal (RPC)**: Rather than executing slow client-side pagination loops, the system invokes the database function `get_memory_chain` via the Supabase API.
 2. **Recursive CTE Engine**: Inside the database, a recursive SQL Common Table Expression (CTE) traverses backward via `parent_id` foreign keys to locate the absolute root node (the originating event), and then recursively gathers all child descendants and sibling branches.
-3. **Chronological Assembly**: The resulting subset of connected memories (typically 3–10 records) is returned to the client and sorted chronologically by `created_at` to present a unified timeline.
+3. **Chronological Assembly & Pre-Formatting**: The resulting subset of connected memories is sorted chronologically by `created_at` in the server loader via `buildChain`. To satisfy the **Zero-Date Frontend Architecture**, dates are pre-formatted on the server using centralized timezone-locked helper utilities (`formatEasternDateTimeWithYear`) to lock the timezone output (Eastern Time `America/New_York`) and normalize whitespaces.
+4. **Hydration-Safe Rendering**: The client component (`EventChainPage`) renders the static pre-formatted date string directly without executing any runtime browser-side Date parses, preventing client-server timezone disparities and narrow non-breaking space warnings (React Error #418).
 
-This architecture ensures optimal edge serverless TTFB (<5ms database select) and isolates network payloads to only the relevant sub-tree.
+This architecture ensures optimal edge serverless TTFB (<5ms database select) and guarantees 100% flawless SSR hydration performance.
 
 
 

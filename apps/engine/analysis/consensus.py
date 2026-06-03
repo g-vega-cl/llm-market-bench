@@ -287,6 +287,7 @@ async def _synthesize_and_promote_group(
             "historical_parallel": historical_parallel,
             "future_date_note": consensus_data.get("future_date_note"),
             "scenario_analysis": consensus_data.get("scenario_analysis"),
+            "scenarios": consensus_data.get("scenarios"),
             "discovered_assets": consensus_data.get("discovered_assets"),
             "importance_score": consensus_data["importance_score"],
         },

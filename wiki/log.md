@@ -259,5 +259,12 @@ Created the canonical wiki concept page outlining the application's client/serve
 **See**: [[concepts/rendering-strategies]], [[concepts/performance-auditing-strategy]]
 
 
+## [2026-06-03] fix | Scenario Analysis Metadata Persistence & Database Retroactive Repair
 
+Resolved a critical metadata persistence bug where the structured `scenarios` array was omitted during memory creation in the consensus promotion loop:
+- **Consensus Loop Fix**: Modified the `add_memory` metadata dictionary inside `apps/engine/analysis/consensus.py` to include the `"scenarios": consensus_data.get("scenarios")` field. This ensures that the structured JSON list containing clean headers, probability percentages, outcomes, trading plans, and scenario-specific FMP assets is correctly saved to the Supabase database.
+- **TDD Regression Tests**: Updated the pytest integration suite `test_consensus_structured.py` to assert that `mock_add_memory` is called with the structured `"scenarios"` list in its `metadata` parameter. Verified that the updated tests pass cleanly.
+- **Database Retroactive Repair**: Developed and executed a robust matching script (`fix_historical_memories_robust.py`) utilizing a word-overlap comparison algorithm to locate corresponding synthesis logs in the `llm_reasoning_logs` table. Reconstructed and patched the metadata for the 5 affected memories in the live Supabase database since the schema launch, fixing the empty Scenario Analysis panel on the dashboard.
+- **Documentation**: Updated the [[concepts/memory-feedback]] and [[entities/web-app]] wiki documentation to detail the metadata persistence fix and the database repair.
 
+**See**: [[concepts/memory-feedback]], [[entities/web-app]]

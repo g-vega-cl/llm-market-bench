@@ -52,6 +52,7 @@ To solve the disjoint between memories scenario analysis and thematic stock bene
 - **Backend Refactoring**: The Gemini synthesis schema was updated to return a list of structured `scenarios` (cleanHeader, percentage, outcome, tradingPlan) instead of a raw text string.
 - **Targeted Discovery Loop**: `consensus.py` triggers FMP company screening and web searches specifically for each scenario's individual trading plan, nesting verified assets directly under the respective scenario in `metadata.scenarios`.
 - **Strict Structured UI**: To maximize code cleanliness, the memories UI (`MemoryCard.tsx`) was refactored to standardise 100% on the typed `scenarios` list directly, removing all text-regex parsing and fuzzy asset-matching fallbacks in favor of explicit backend mappings. The backend continues to populate the flat string `scenario_analysis` fallback in the database to ensure legacy consumer pages (e.g. `FutureCatalysts.tsx`) remain fully operational.
+- **Metadata Persistence Fix (2026-06-03)**: Resolved a bug where `consensus.py` was omitting the `"scenarios"` array from the `metadata` dictionary saved via `add_memory()`. The consensus engine now correctly writes this structured list so the UI can render it successfully, and historical records have been retroactively patched from LLM reasoning logs.
 
 
 

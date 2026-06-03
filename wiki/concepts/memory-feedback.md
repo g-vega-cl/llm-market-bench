@@ -36,6 +36,7 @@ To make scenario analysis highly actionable, memories support a strict **Gold St
 2. **Targeted Ticker Discovery**: For each synthesized scenario, the consensus engine runs the `DiscoveryService` specifically against that scenario's individual `tradingPlan` context (invoking FMP company screeners and web search). Verified tickers are tagged by scenario and saved directly inside the respective scenario object (`scenarios.assets`).
 3. **Structured UI Rendering**: The frontend memories UI (`MemoryCard.tsx`) bypasses all regex text parsing and fuzzy asset-matching loops, standardizing 100% on rendering this structured typed list. Clicking nested scenario tickers selects and launches the FMP asset details modal.
 4. **Resilient Fallback**: The backend continues to populate a unified flat string `scenario_analysis` fallback in the database to ensure legacy consumer pages (e.g. `FutureCatalysts.tsx` timeline) remain fully operational.
+5. **Consensus Persistence Fix (2026-06-03)**: Resolved a bug where the `scenarios` structured array was omitted from the `metadata` dict passed to `add_memory` in the consensus promotion logic, causing the UI to show an empty Scenario Analysis. The pipeline now correctly persists both the legacy `scenario_analysis` text fallback and the structured `scenarios` array. All historical entries since the initial schema rollout have been retroactively repaired.
 
 ## Market Feeling
 

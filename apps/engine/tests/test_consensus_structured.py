@@ -87,6 +87,15 @@ async def test_consensus_promotes_structured_scenarios(
     assert len(results) == 1
     consensus_res = results[0]
 
+    # Assert add_memory was called with scenarios in metadata
+    assert mock_add_memory.called
+    kwargs = mock_add_memory.call_args.kwargs
+    assert "metadata" in kwargs
+    assert "scenarios" in kwargs["metadata"]
+    assert len(kwargs["metadata"]["scenarios"]) == 2
+    assert kwargs["metadata"]["scenarios"][0]["cleanHeader"] == "Scenario A: Rate Cut"
+    assert kwargs["metadata"]["scenarios"][0]["assets"][0]["ticker"] == "SPY"
+
     # Assert structured scenarios are preserved
     assert "scenarios" in consensus_res
     scenarios_list = consensus_res["scenarios"]

@@ -109,7 +109,39 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
     });
 });
 
-import { fetchMemoryChain } from './fetch-memories';
+import { fetchMemoryById, fetchMemoryChain } from './fetch-memories';
+
+describe('fetchMemoryById', () => {
+    it('queries memories table by id', async () => {
+        const mockData = { id: 'test-memory-id', content: 'test content' };
+        const chain: MockSupabaseChain = {
+            eq: vi.fn(() => chain),
+            single: vi.fn(() => Promise.resolve({ data: mockData, error: null })),
+            select: vi.fn(() => chain),
+            from: vi.fn(() => chain),
+        } as unknown as MockSupabaseChain;
+        mockSupabaseClient = chain;
+
+        const result = await fetchMemoryById('test-memory-id');
+
+        expect(chain.from).toHaveBeenCalledWith('memories');
+        expect(chain.eq).toHaveBeenCalledWith('id', 'test-memory-id');
+        expect(result).toEqual(mockData);
+    });
+
+    it('returns null on PGRST116 single not found error code', async () => {
+        const chain: MockSupabaseChain = {
+            eq: vi.fn(() => chain),
+            single: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } })),
+            select: vi.fn(() => chain),
+            from: vi.fn(() => chain),
+        } as unknown as MockSupabaseChain;
+        mockSupabaseClient = chain;
+
+        const result = await fetchMemoryById('nonexistent-id');
+        expect(result).toBeNull();
+    });
+});
 
 describe('fetchMemoryChain', () => {
     it('calls get_memory_chain RPC with target_id', async () => {

@@ -590,5 +590,63 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
             );
             expect(errors).toEqual([]);
         });
+
+        it('9. Event Chain Page: hydrates flawlessly under Hybrid SSR single-node initial state', () => {
+            const mockInitialSingleNodeData = {
+                chain: [
+                    {
+                        id: 'm1',
+                        content: 'Original stimulus event.',
+                        created_at: '2026-05-30T10:00:00Z',
+                        formattedDate: 'May 30, 2026, 10:00 AM ET',
+                        metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                    },
+                ],
+                targetMemory: {
+                    id: 'm1',
+                    content: 'Original stimulus event.',
+                    created_at: '2026-05-30T10:00:00Z',
+                    formattedDate: 'May 30, 2026, 10:00 AM ET',
+                    metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                },
+            };
+
+            const mockFullChainData = {
+                chain: [
+                    {
+                        id: 'm1',
+                        content: 'Original stimulus event.',
+                        created_at: '2026-05-30T10:00:00Z',
+                        formattedDate: 'May 30, 2026, 10:00 AM ET',
+                        metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                    },
+                    {
+                        id: 'm2',
+                        content: 'Consequential downstream event.',
+                        created_at: '2026-05-30T11:00:00Z',
+                        formattedDate: 'May 30, 2026, 11:00 AM ET',
+                        metadata: { type: 'POST_MORTEM', ticker: 'QQQ', impact: 'BEARISH' },
+                    },
+                ],
+                targetMemory: {
+                    id: 'm1',
+                    content: 'Original stimulus event.',
+                    created_at: '2026-05-30T10:00:00Z',
+                    formattedDate: 'May 30, 2026, 10:00 AM ET',
+                    metadata: { type: 'MARKET_EVENT', ticker: 'SPY', impact: 'BULLISH' },
+                },
+            };
+
+            const errors = assertHydrationSymmetry(
+                <QueryClientProvider client={createTestQueryClient()}>
+                    <EventChainPage
+                        memoryId="m1"
+                        initialData={mockInitialSingleNodeData}
+                        fetchFn={async () => mockFullChainData}
+                    />
+                </QueryClientProvider>,
+            );
+            expect(errors).toEqual([]);
+        });
     });
 });

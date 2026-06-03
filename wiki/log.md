@@ -240,4 +240,24 @@ Eliminated React hydration errors and layout paint delays on the `/memories/chai
 
 **See**: [[concepts/memory-feedback]], [[concepts/performance-auditing-strategy]]
 
+## [2026-06-03] optimization | Hybrid SSR Refactor & Background Hydration for Event Chains
+
+Optimized page loading performance and TTFB on the `/memories/chain/$memoryId` route using a Hybrid SSR architecture:
+- **Fast Focus-Node SSR**: Refactored `$memoryId.tsx` loader to fetch only the focus memory (1 database row) via a new `fetchMemoryById` query. The server returns a lightweight initial HTML payload immediately.
+- **Seamless Background Hydration**: Configured `eventChainQueries.detail` with `staleTime: 0` to trigger a client-side background query on mount, rendering the remaining parent/descendant event chain recursively post-hydration.
+- **Hydration Testing**: Added `fetchMemoryById` unit tests to `fetch-memories.test.ts` and added a new integration hydration test case in `hydration.test.tsx` verifying that the event chain page hydrates flawlessly from a single focus node state.
+
+**See**: [[concepts/performance-auditing-strategy]]
+
+## [2026-06-03] doc | Documented Rendering Strategies & Hybrid SSR Design Matrix
+
+Created the canonical wiki concept page outlining the application's client/server rendering methodologies:
+- **Rendering Strategies Concept**: Authored `rendering-strategies.md` detailing the Decision Matrix for selecting Full SSR vs. Hybrid SSR vs. No SSR (CSR).
+- **Architecture Guidelines**: Documented the "limit & background hydration" design patterns using the homepage (`/`) and the newly optimized "Chain of Thought" page (`/memories/chain/$memoryId`) as core examples.
+- **Related Updates**: Updated the wiki index catalog (`index.md`) and cross-linked from the Performance Auditing Strategy page (`performance-auditing-strategy.md`).
+
+**See**: [[concepts/rendering-strategies]], [[concepts/performance-auditing-strategy]]
+
+
+
 

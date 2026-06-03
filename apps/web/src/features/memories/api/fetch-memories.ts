@@ -129,6 +129,23 @@ export async function validateCacheState(cachedId: string): Promise<CacheValidat
     };
 }
 
+export async function fetchMemoryById(memoryId: string): Promise<Memory | null> {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('memories')
+        .select('*, parent_id, status, relationship_type')
+        .eq('id', memoryId)
+        .single();
+
+    if (error) {
+        if (error.code === 'PGRST116') {
+            return null; // Row not found
+        }
+        throw error;
+    }
+    return data as Memory;
+}
+
 export async function fetchMemoryChain(memoryId: string): Promise<Memory[]> {
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase.rpc('get_memory_chain', {

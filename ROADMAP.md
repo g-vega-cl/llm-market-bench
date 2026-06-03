@@ -96,3 +96,4 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: portfolio. I don't like that the individual portfolio view goes over device width in mobile
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [x] - I don't see lightouse in CI
+- [ ] - Benchify: audit which pages should be SSR, which hybrid

@@ -254,3 +254,5 @@ If a deployment is absolutely critical and blocked by a minor score variance or 
 
 - [[entities/web-app]]
 - [[sources/web-deployment-source]]
+- [[concepts/rendering-strategies]]
+

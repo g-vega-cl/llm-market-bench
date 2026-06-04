@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "knowledge-rag": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "tsx",
+        "./packages/mcp-knowledge-rag/src/index.ts"
+      ]
+    }
+  }
+}

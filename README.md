@@ -117,6 +117,12 @@ To run the dashboard locally:
 pnpm --filter web dev
 ```
 
+### Local RAG MCP Server
+
+To enable semantic search (RAG) against your external "misc" Supabase database in your AI coding assistant (such as Antigravity/Gemini CLI, Claude Code, or Opencode), please refer to the canonical installation, configuration, and command reference guide in the workspace wiki:
+
+*   **[Model Context Protocol (MCP) Setup & Lifecycle](./wiki/concepts/mcp-setup.md)**
+
 ## Testing & Coverage
 
 The project enforces test coverage thresholds in the pre-commit hook (70% for engine, 40% for web).

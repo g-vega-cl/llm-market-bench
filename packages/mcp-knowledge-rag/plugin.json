@@ -1,0 +1,5 @@
+{
+    "name": "knowledge-rag",
+    "version": "1.0.0",
+    "description": "Local RAG plugin for llm-market-bench"
+}

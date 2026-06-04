@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/mcp-knowledge-rag]] — Local MCP server for semantic search (RAG) against external Supabase knowledge base via Gemini embeddings
 - [[entities/academic-paper-seeding]] — Seeds top 10 empirical asset pricing papers into pgvector memory store for RAG grounding
 - [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history and scoring methodology
 - [[entities/design-system]] — Shared UI component library (primitives, patterns, layouts, design tokens)
@@ -51,6 +52,8 @@
 - [[concepts/supabase-grant-convention]] — Explicit GRANTs required for PostgREST Data API access
 - [[concepts/performance-auditing-strategy]] — Cloud-native edge performance auditing with Netlify Lighthouse budgets
 - [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR decision frameworks, patterns, and live examples
+- [[concepts/mcp-setup]] — Setup, configuration, plugin management, and caching details for Model Context Protocol (MCP) servers
+
 
 
 ## Sources

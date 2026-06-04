@@ -1,0 +1,23 @@
+{
+    "name": "@llm-market-bench/mcp-knowledge-rag",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "main": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "test": "vitest run",
+        "start": "tsx src/index.ts"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "latest",
+        "@supabase/supabase-js": "^2.48.1",
+        "@google/genai": "latest",
+        "dotenv": "^16.4.5"
+    },
+    "devDependencies": {
+        "typescript": "^5.7.2",
+        "tsx": "^4.22.3",
+        "vitest": "^4.0.18"
+    }
+}

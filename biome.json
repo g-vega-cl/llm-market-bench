@@ -10,6 +10,8 @@
             "**/apps/web/**",
             "**/packages/database/**",
             "**/packages/ui-design-system/**",
+            "**/packages/mcp-knowledge-rag/**",
+
             "!**/dist",
             "!**/.netlify",
             "!**/node_modules",

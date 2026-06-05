@@ -1,4 +1,12 @@
+## [2026-06-05] feature | Future Day Masking in Daily Autoresearch Score Progression
+
+Masked future/unreached days as `'N/A'` in the active prompt progression display:
+- **Calendar-Based Detection**: Updated `DailyScoreDisplay.tsx` to resolve dates for Monday–Friday based on the experiment's `week_start` date and compare them against the current system local date.
+- **Future Day Styling & Values**: If a day's date is in the future, its simulated score and portfolio returns are displayed as `"N/A"` (and `"P: N/A"`) instead of rendering pre-calculated interpolated checkpoints. Styled these future days with a muted, semi-transparent (`opacity-40`) layout.
+- **TDD Safety Net**: Added unit tests in `DailyScoreDisplay.test.tsx` that mock the current day to a Wednesday using fake timers, verifying that Thursday and Friday are rendered as `"N/A"`, while earlier days display properly.
+
 ## [2026-05-29] optimization | Codebase-wide hydration mismatch stabilization sweep
+
 
 Performed a complete codebase-wide date/time formatting sweep to eradicate all React hydration errors (Minified React Error #418) and optimize rendering performance:
 - **Eradicated Relative Countdown & useEffect Mount Checks**: Redesigned `FutureCatalysts.tsx` to completely remove the dynamic relative countdown timers (`getCountdown`), the 60s interval update loops, and the `useEffect` mounted states. This perfectly satisfies the constraint to avoid useEffect/mounted checks while ensuring 100% stable, deterministic server/client SSR layouts. Pinned date display cards to standard Eastern Time (`America/New_York`) and styled left borders statically using the database's `importance_score` metadata.

@@ -10,7 +10,8 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 ## Features
 - **Experiment List**: Sortable table showing each variant’s tag, type (baseline/radical), score, active period, and status.
 - **Experiment Details**: Deep-dive view with portfolio vs. SPY returns, max drawdown, change description, meta-researcher hypothesis, and the full prompt text.
-- **Daily Autoresearch Score**: Displays real-time daily evaluation of the prompt performance against benchmark parameters. Renders a premium active `LIVE TRACKING` card with a glowing status ring for pending prompts, or a complete week checkpoint sequence (Monday–Friday) showing the step-by-step score progression for completed runs.
+- **Daily Autoresearch Score**: Displays real-time daily evaluation of the prompt performance against benchmark parameters. Renders a premium active `LIVE TRACKING` card with a glowing status ring for pending prompts (showing progression for past/current days of the week, while future/unreached days are masked with `'N/A'`), or a complete week checkpoint sequence (Monday–Friday) showing the step-by-step score progression for completed runs.
+
 - **Score Breakdown & Pending Card**: Displays a dynamic, live arithmetic breakdown of the risk-adjusted formula `(Portfolio% - SPY%) - Opportunity Cost% - (max_drawdown% × 0.3)` (including annualized volatility) or a premium "Pending Performance" card with a glowing status ring for active prompts that are currently trading in the live market.
 - **Dynamic State & N/A Support**: Renders neutral, stylized `'N/A'` badges and metrics tiles for pending/active prompts without polluting the UI with redundant zero-value placeholders.
 - **Server‑side Data Fetching**: Uses `createServerFn` and React Query to load `prompt_experiments` from Supabase with 10‑minute stale time.

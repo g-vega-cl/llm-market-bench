@@ -52,9 +52,15 @@ interface Checkpoint {
     day: string;
     score: number;
     portfolio: number;
+    isFuture: boolean;
 }
 
-function getCheckpoints(dailyScore: number, portfolioReturn: number): Checkpoint[] {
+function getCheckpoints(
+    dailyScore: number,
+    portfolioReturn: number,
+    weekStartStr?: string,
+    isActive?: boolean,
+): Checkpoint[] {
     const days = [
         { name: 'Monday', multiplier: 0.15 },
         { name: 'Tuesday', multiplier: 0.35 },
@@ -63,11 +69,32 @@ function getCheckpoints(dailyScore: number, portfolioReturn: number): Checkpoint
         { name: 'Friday', multiplier: 1.0 },
     ];
 
-    return days.map((d) => ({
-        day: d.name,
-        score: dailyScore * d.multiplier,
-        portfolio: portfolioReturn * d.multiplier,
-    }));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let startDate: Date | null = null;
+    if (weekStartStr) {
+        const [year, month, day] = weekStartStr.split('-').map(Number);
+        startDate = new Date(year, month - 1, day);
+        startDate.setHours(0, 0, 0, 0);
+    }
+
+    return days.map((d, idx) => {
+        let isFuture = false;
+        if (isActive && startDate) {
+            const checkpointDate = new Date(startDate);
+            checkpointDate.setDate(startDate.getDate() + idx);
+            checkpointDate.setHours(0, 0, 0, 0);
+            isFuture = checkpointDate > today;
+        }
+
+        return {
+            day: d.name,
+            score: dailyScore * d.multiplier,
+            portfolio: portfolioReturn * d.multiplier,
+            isFuture,
+        };
+    });
 }
 
 export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
@@ -82,7 +109,12 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         dailyScore,
     } = calculateDailyMetrics(metrics, isActive);
 
-    const checkpoints = getCheckpoints(dailyScore, portfolioReturn);
+    const checkpoints = getCheckpoints(
+        dailyScore,
+        portfolioReturn,
+        experiment.week_start,
+        isActive,
+    );
 
     return (
         <Card className="p-8 space-y-6 bg-gradient-to-br from-zinc-900 to-black border-zinc-800 text-zinc-100 shadow-xl overflow-hidden relative">
@@ -178,23 +210,38 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                         <div
                             key={cp.day}
                             className={`p-3 rounded-xl border transition-all duration-300 ${
-                                idx === checkpoints.length - 1 && isActive
-                                    ? 'bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)]'
-                                    : 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700'
+                                cp.isFuture
+                                    ? 'bg-zinc-950/20 border-zinc-900/50 opacity-40 select-none'
+                                    : idx === checkpoints.length - 1 && isActive
+                                      ? 'bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)]'
+                                      : 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700'
                             }`}
                         >
                             <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
                                 {cp.day.substring(0, 3)}
                             </div>
-                            <div
-                                className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
-                            >
-                                {cp.score >= 0 ? '+' : ''}
-                                {cp.score.toFixed(3)}
-                            </div>
-                            <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
-                                P: {cp.portfolio.toFixed(2)}%
-                            </div>
+                            {cp.isFuture ? (
+                                <>
+                                    <div className="text-xs font-mono font-bold mt-1 text-zinc-500">
+                                        N/A
+                                    </div>
+                                    <div className="text-[8px] text-zinc-500 font-mono mt-0.5">
+                                        P: N/A
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div
+                                        className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                                    >
+                                        {cp.score >= 0 ? '+' : ''}
+                                        {cp.score.toFixed(3)}
+                                    </div>
+                                    <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
+                                        P: {cp.portfolio.toFixed(2)}%
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ))}
                 </div>

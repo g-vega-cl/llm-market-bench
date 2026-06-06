@@ -290,6 +290,8 @@ async def _synthesize_and_promote_group(
             "scenarios": consensus_data.get("scenarios"),
             "discovered_assets": consensus_data.get("discovered_assets"),
             "importance_score": consensus_data["importance_score"],
+            "participating_agents": list(unique_models),
+            "models_involved": list(unique_models),
         },
         parent_id=parent_id,
         relationship_type=rel_type,

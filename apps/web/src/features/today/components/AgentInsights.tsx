@@ -15,35 +15,9 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
 
     if (!consensus.length && !lessons.length && !incentives.length) return null;
 
-    // Calculate consensus strength
-    const consensusStrength =
-        consensus.length > 0 ? Math.min(100, (consensus.length / 3) * 100) : 0;
-
     return (
         <section className="space-y-8 animate-slide-up">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
-
-                {/* Consensus Meter */}
-                {consensus.length > 0 && (
-                    <div className="flex items-center gap-4 px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-md">
-                        <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">
-                            Consensus
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <div className="w-32 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
-                                <div
-                                    className="h-full gradient-ai transition-all duration-1000 shadow-lg"
-                                    style={{ width: `${consensusStrength}%` }}
-                                />
-                            </div>
-                            <span className="text-sm font-black text-deep-purple-500 tabular-nums">
-                                {Math.round(consensusStrength)}%
-                            </span>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
 
             <div className="space-y-6">
                 {/* Market Consensus - Priority Display */}

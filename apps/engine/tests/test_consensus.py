@@ -84,10 +84,17 @@ async def test_process_consensus_reaches_consensus(
     assert consensus_events[0]["event_name"] == "Synthesized Event"
     assert len(consensus_events[0]["models_involved"]) == 2  # openai_gpt-4 and anthropic_claude-3
 
-    # Verify add_memory was called with target_date
+    # Verify add_memory was called with target_date and agent metadata
     mock_add_memory.assert_called_once()
     kwargs = mock_add_memory.call_args.kwargs
     assert kwargs["target_date"] == "June 2026"
+    assert "participating_agents" in kwargs["metadata"]
+    assert "models_involved" in kwargs["metadata"]
+    assert len(kwargs["metadata"]["participating_agents"]) == 2
+    assert (
+        "openai_gpt-4" in kwargs["metadata"]["participating_agents"][0]
+        or "openai_gpt-4" in kwargs["metadata"]["participating_agents"][1]
+    )
 
 
 @patch("analysis.consensus.DiscoveryService")

@@ -1,25 +1,3 @@
-## [2026-06-05] feature | Future Day Masking in Daily Autoresearch Score Progression
-
-Masked future/unreached days as `'N/A'` in the active prompt progression display:
-- **Calendar-Based Detection**: Updated `DailyScoreDisplay.tsx` to resolve dates for Monday–Friday based on the experiment's `week_start` date and compare them against the current system local date.
-- **Future Day Styling & Values**: If a day's date is in the future, its simulated score and portfolio returns are displayed as `"N/A"` (and `"P: N/A"`) instead of rendering pre-calculated interpolated checkpoints. Styled these future days with a muted, semi-transparent (`opacity-40`) layout.
-- **TDD Safety Net**: Added unit tests in `DailyScoreDisplay.test.tsx` that mock the current day to a Wednesday using fake timers, verifying that Thursday and Friday are rendered as `"N/A"`, while earlier days display properly.
-
-## [2026-05-29] optimization | Codebase-wide hydration mismatch stabilization sweep
-
-
-Performed a complete codebase-wide date/time formatting sweep to eradicate all React hydration errors (Minified React Error #418) and optimize rendering performance:
-- **Eradicated Relative Countdown & useEffect Mount Checks**: Redesigned `FutureCatalysts.tsx` to completely remove the dynamic relative countdown timers (`getCountdown`), the 60s interval update loops, and the `useEffect` mounted states. This perfectly satisfies the constraint to avoid useEffect/mounted checks while ensuring 100% stable, deterministic server/client SSR layouts. Pinned date display cards to standard Eastern Time (`America/New_York`) and styled left borders statically using the database's `importance_score` metadata.
-- **Codebase-wide Locale and Timezone Sweeps**: Pinpointed and stabilized all remaining locale and timezone-sensitive date formatting blocks to `'en-US'` and `America/New_York` to completely secure the client-side hydration tree across all application routes:
-  - `CauseAndEffectCard.tsx` (pinned market analysis dates)
-  - `ConceptMap.tsx` (pinned D3 first/last mention records)
-  - `MemoryFlow.tsx` (pinned visual SVG timeline date anchors)
-  - `TradesTable.tsx` (pinned agent trade execution logs)
-  - `AuditCard.tsx` (pinned system status verification logs)
-  - `ExperimentList.tsx` (pinned baseline benchmark fallback date formatters)
-  - `MarketOverviewPage.tsx` (replaced relative `formatTimeAgo` with deterministic `formatEasternTime` for AI sentiment updates, eliminating dynamic runtime drift)
-- **TDD & Linter Conformity**: Formatted and optimized all updated codebase files to 100% cleanliness using Biome checkups and validated that all 192 unit tests are fully green and compliant.
-
 ## [2026-05-29] enhancement | Standardize date/time formatting to Eastern Time and simplify FutureCatalysts
 
 Added explicit 'America/New_York' timeZone to all date.toLocaleDateString/toLocaleTimeString calls across multiple components (AuditCard, ExperimentList, CauseAndEffectCard, ConceptMap, MarketOverviewHero, MemoryFlow, TradesTable, AgentInsights, FutureCatalysts, MarketUpdates, NewsletterFeed). In MarketOverviewHero, replaced 'time ago' relative formatting with absolute Eastern Time. In FutureCatalysts, removed countdown timer and 'passed event' filtering, showing all events with border color based on importance score instead of proximity. Removed unused React import and countdown state management.
@@ -237,4 +215,11 @@ Implemented a workspace-local Model Context Protocol (MCP) server package and up
 ## [2026-06-04] feature | Local RAG MCP Server Package
 
 Implemented a new workspace-local Model Context Protocol (MCP) server package `@llm-market-bench/mcp-knowledge-rag` under `packages/mcp-knowledge-rag/`. The server provides semantic search (RAG) against the external `misc` Supabase database using Gemini embeddings (768-dimension) and pgvector's `match_emails` RPC. Includes workspace configuration files (`.mcp.json`, `.ai/mcp/mcp.json`) for automatic discovery in Claude Code and Opencode, plus Antigravity CLI plugin support via `plugin.json` and `mcp_config.json`. Environment variables `MISC_SUPABASE_URL` and `MISC_SUPABASE_KEY` added to engine `.env.example`. Biome linting scope extended to cover the new package.
+
+## [2026-06-06] bugfix | Add participating agents metadata to consensus events and remove frontend consensus meter
+
+Fixed consensus cards agent display bug and cleaned up Today page UI:
+- **Backend Metadata Fix**: Saved both `participating_agents` and `models_involved` (derived from unique models grouped semantically in consensus) to memory metadata dictionary in `apps/engine/analysis/consensus.py`.
+- **TDD Regression Tests**: Added metadata assertion tests to `apps/engine/tests/test_consensus.py` checking that the models involved are persisted in the database memory metadata.
+- **Frontend Meter Removal**: Removed the arbitrary and confusing "Consensus" percentage meter from `apps/web/src/features/today/components/AgentInsights.tsx` as requested. The presence of model icons on each card now directly indicates consensus.
 

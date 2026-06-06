@@ -32,6 +32,14 @@ Concept velocity tracked via hybrid formula: `Momentum = Intensity × Growth`.
 Only high-importance future catalysts with specific ISO 8601 dates appear on the
 dashboard. Vague timeframes excluded.
 
+## Metadata & UI Representation
+
+Promoted consensus events (`MARKET_EVENT` memory type) store the models that reached agreement inside their database metadata:
+* **`participating_agents`**: A list of strings matching the participating models (e.g. `["openai_gpt-5.4-nano", "anthropic_claude-haiku-4-5"]`). This is consumed by the web app to render agent avatars.
+* **`models_involved`**: A list of strings matching unique models involved.
+
+The UI displays the avatars of these models directly on the market consensus cards to indicate consensus visually. The old overall "Consensus" percentage bar has been removed to avoid confusion.
+
 ## Related
 
 - [[entities/pipeline]]

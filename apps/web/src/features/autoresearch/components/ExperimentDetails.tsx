@@ -7,14 +7,16 @@ import {
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
 import { DailyScoreDisplay } from './DailyScoreDisplay';
+import { PromptChanges } from './PromptChanges';
 import { ScoreBreakdown } from './ScoreBreakdown';
 import { VolatilityCalculation } from './VolatilityCalculation';
 
 interface ExperimentDetailsProps {
     experiment: PromptExperiment;
+    parentExperiment?: PromptExperiment | null;
 }
 
-export function ExperimentDetails({ experiment }: ExperimentDetailsProps) {
+export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDetailsProps) {
     const metrics = experiment.metrics || {};
     const researchOutput = experiment.research_output || {};
 
@@ -79,6 +81,8 @@ export function ExperimentDetails({ experiment }: ExperimentDetailsProps) {
                     )}
                 </div>
             </Card>
+
+            <PromptChanges experiment={experiment} parentExperiment={parentExperiment} />
 
             <Card className="p-8 space-y-4">
                 <SectionHeading>The Trading Prompt</SectionHeading>

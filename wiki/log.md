@@ -1,7 +1,3 @@
-## [2026-05-29] enhancement | Standardize date/time formatting to Eastern Time and simplify FutureCatalysts
-
-Added explicit 'America/New_York' timeZone to all date.toLocaleDateString/toLocaleTimeString calls across multiple components (AuditCard, ExperimentList, CauseAndEffectCard, ConceptMap, MarketOverviewHero, MemoryFlow, TradesTable, AgentInsights, FutureCatalysts, MarketUpdates, NewsletterFeed). In MarketOverviewHero, replaced 'time ago' relative formatting with absolute Eastern Time. In FutureCatalysts, removed countdown timer and 'passed event' filtering, showing all events with border color based on importance score instead of proximity. Removed unused React import and countdown state management.
-
 ## [2026-05-29] refactor | Remove llm_reasoning_logs from Today homepage loader
 
 Removed the `llm_reasoning_logs` query from `fetchTodayData()` in the Today homepage loader. This high-volume table (containing massive text conversation blobs) was being fetched but never rendered on the homepage, wasting ~438ms of database latency and network bandwidth. The `logs` field was removed from the `TodayData` interface, the parallel query was deleted, and the return payload no longer includes it. Added a TDD zero-load regression test (`fetch-today-data.test.ts`) that spies on the Supabase client to assert the heavy table is never queried and the `logs` key is absent from the returned payload.
@@ -222,4 +218,12 @@ Fixed consensus cards agent display bug and cleaned up Today page UI:
 - **Backend Metadata Fix**: Saved both `participating_agents` and `models_involved` (derived from unique models grouped semantically in consensus) to memory metadata dictionary in `apps/engine/analysis/consensus.py`.
 - **TDD Regression Tests**: Added metadata assertion tests to `apps/engine/tests/test_consensus.py` checking that the models involved are persisted in the database memory metadata.
 - **Frontend Meter Removal**: Removed the arbitrary and confusing "Consensus" percentage meter from `apps/web/src/features/today/components/AgentInsights.tsx` as requested. The presence of model icons on each card now directly indicates consensus.
+
+## [2026-06-07] feature | Interactive Prompt Changes Diff View & Custom LCS Algorithm
+
+Implemented an interactive, unified line-by-line diff section on the Auto-Research Arena details page to display the differences between an experiment's prompt and its parent prompt:
+- **Custom LCS Line-Diff Algorithm**: Implemented a lightweight, zero-dependency Longest Common Subsequence line diffing utility in `apps/web/src/features/autoresearch/utils/diff.ts` and verified it with unit tests.
+- **PromptChanges Component**: Created `PromptChanges.tsx` under `apps/web/src/features/autoresearch/components/` incorporating a unified diff display with line prefix indicators (+/-), color-coded backgrounds (emerald/rose/neutral), and a toggle to collapse/hide unchanged lines. Handles baseline prompts with a friendly callout.
+- **Integration**: Linked the parent experiment to `ExperimentDetails` in `AutoresearchPage.tsx` and nested the new `PromptChanges` component above the trading prompt block.
+- **TDD & Auditing**: Authored unit tests for both the utility and UI component, passing 100% of the test suite and resolving all Biome strict formatting and cognitive complexity rules.
 

@@ -69,7 +69,18 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                                         {selectedExperiment.variant_tag}
                                     </span>
                                 </div>
-                                <ExperimentDetails experiment={selectedExperiment} />
+                                <ExperimentDetails
+                                    experiment={selectedExperiment}
+                                    parentExperiment={
+                                        selectedExperiment.parent_tag
+                                            ? experiments.find(
+                                                  (e) =>
+                                                      e.variant_tag ===
+                                                      selectedExperiment.parent_tag,
+                                              )
+                                            : null
+                                    }
+                                />
                             </div>
                         ) : (
                             <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl text-zinc-400">

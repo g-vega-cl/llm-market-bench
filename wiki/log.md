@@ -227,3 +227,13 @@ Implemented an interactive, unified line-by-line diff section on the Auto-Resear
 - **Integration**: Linked the parent experiment to `ExperimentDetails` in `AutoresearchPage.tsx` and nested the new `PromptChanges` component above the trading prompt block.
 - **TDD & Auditing**: Authored unit tests for both the utility and UI component, passing 100% of the test suite and resolving all Biome strict formatting and cognitive complexity rules.
 
+## [2026-06-07] bugfix | Default Auto-Research Prompt Diff to Changes-Only & Improve Empty State
+
+Refined the Prompt Changes comparison on the Auto-Research Arena page:
+- **Default View Mode**: Changed `showChangesOnly` to default to `true` in `PromptChanges.tsx` so only actual modified lines are displayed initially, preventing the diff box from being visually redundant with the full prompt box below.
+- **Dynamic Empty States**: Differentiated the no-parent scenario. Baseline prompts still show the `"Initial baseline prompt"` card, while other experiments missing a parent (e.g. older incremental variants) show a customized `"No parent prompt"` callout.
+- **TDD Tests**: Updated `PromptChanges.test.tsx` to align test expectations with the new default collapsed view and to cover the new non-baseline missing-parent UI.
+
+**See**: [[entities/autoresearch-arena]], [PromptChanges.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/PromptChanges.tsx)
+
+

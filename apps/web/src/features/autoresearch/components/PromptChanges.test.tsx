@@ -19,12 +19,27 @@ describe('PromptChanges', () => {
         experiment_type: 'baseline',
     } as unknown as PromptExperiment;
 
-    it('renders initial baseline message when parent experiment is missing', () => {
-        render(<PromptChanges experiment={mockCurrentExperiment} parentExperiment={null} />);
+    it('renders initial baseline message when parent experiment is missing (baseline type)', () => {
+        const baselineExp = {
+            ...mockCurrentExperiment,
+            experiment_type: 'baseline',
+        } as PromptExperiment;
+        render(<PromptChanges experiment={baselineExp} parentExperiment={null} />);
 
         expect(screen.getByText(/Initial baseline prompt/i)).toBeInTheDocument();
         expect(
             screen.getByText(/No previous variant is available to compare/i),
+        ).toBeInTheDocument();
+    });
+
+    it('renders no parent prompt message when parent experiment is missing (non-baseline type)', () => {
+        render(<PromptChanges experiment={mockCurrentExperiment} parentExperiment={null} />);
+
+        expect(screen.getByText(/No parent prompt/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /This experiment does not have a registered parent variant to compare against/i,
+            ),
         ).toBeInTheDocument();
     });
 
@@ -38,20 +53,16 @@ describe('PromptChanges', () => {
 
         // Header and elements
         expect(screen.getByText('Prompt Changes')).toBeInTheDocument();
-        expect(screen.getByText('Show Changes Only')).toBeInTheDocument();
+        expect(screen.getByText('Show Full Prompt Diff')).toBeInTheDocument();
 
-        // Line 1 is unchanged
-        const unchangedLine = screen.getByText('line 1');
-        expect(unchangedLine).toBeInTheDocument();
+        // Unchanged lines should NOT be visible by default
+        expect(screen.queryByText('line 1')).not.toBeInTheDocument();
+        expect(screen.queryByText('line 3')).not.toBeInTheDocument();
 
         // Line 2 is added
         const addedLine = screen.getByText('+ line 2');
         expect(addedLine).toBeInTheDocument();
         expect(addedLine.className).toContain('text-emerald-400');
-
-        // Line 3 is unchanged
-        const unchangedLine3 = screen.getByText('line 3');
-        expect(unchangedLine3).toBeInTheDocument();
     });
 
     it('toggles visibility of unchanged lines when toggle button is clicked', () => {
@@ -62,19 +73,19 @@ describe('PromptChanges', () => {
             />,
         );
 
-        // Unchanged lines are visible initially
-        expect(screen.getByText('line 1')).toBeInTheDocument();
-        expect(screen.getByText('line 3')).toBeInTheDocument();
-
-        const toggleBtn = screen.getByText('Show Changes Only');
-        fireEvent.click(toggleBtn);
-
-        // Toggle text should update
-        expect(screen.getByText('Show Full Prompt Diff')).toBeInTheDocument();
-
-        // Unchanged lines should be hidden
+        // Unchanged lines are hidden initially
         expect(screen.queryByText('line 1')).not.toBeInTheDocument();
         expect(screen.queryByText('line 3')).not.toBeInTheDocument();
+
+        const toggleBtn = screen.getByText('Show Full Prompt Diff');
+        fireEvent.click(toggleBtn);
+
+        // Toggle text should update to Show Changes Only
+        expect(screen.getByText('Show Changes Only')).toBeInTheDocument();
+
+        // Unchanged lines should now be visible
+        expect(screen.getByText('line 1')).toBeInTheDocument();
+        expect(screen.getByText('line 3')).toBeInTheDocument();
 
         // Added lines should still be visible
         expect(screen.getByText('+ line 2')).toBeInTheDocument();

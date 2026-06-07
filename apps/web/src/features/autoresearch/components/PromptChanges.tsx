@@ -32,7 +32,7 @@ function getLineStyle(added?: boolean, removed?: boolean) {
 }
 
 export function PromptChanges({ experiment, parentExperiment }: PromptChangesProps) {
-    const [showChangesOnly, setShowChangesOnly] = useState(false);
+    const [showChangesOnly, setShowChangesOnly] = useState(true);
 
     // Compute diff
     const diffResult = useMemo(() => {
@@ -53,16 +53,18 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
 
     // If no parent experiment, we render a callout card (after hooks to satisfy React rules)
     if (!parentExperiment) {
+        const isBaseline = experiment.experiment_type === 'baseline';
         return (
             <Card className="p-8 border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                 <div className="flex flex-col items-center justify-center text-center space-y-3 py-4">
                     <span className="text-2xl">🌱</span>
                     <h3 className="font-bold text-zinc-900 dark:text-zinc-100">
-                        Initial baseline prompt
+                        {isBaseline ? 'Initial baseline prompt' : 'No parent prompt'}
                     </h3>
                     <p className="text-zinc-500 dark:text-zinc-400 text-sm max-w-md">
-                        This is the starting point of the auto-research loop. No previous variant is
-                        available to compare.
+                        {isBaseline
+                            ? 'This is the starting point of the auto-research loop. No previous variant is available to compare.'
+                            : 'This experiment does not have a registered parent variant to compare against.'}
                     </p>
                 </div>
             </Card>

@@ -1,15 +1,3 @@
-## [2026-05-31] feature | Daily Autoresearch Score Display & TDD Verification
-
-Implemented the Daily Autoresearch Score display panel inside the Auto-Research Arena:
-- **Daily Score Component**: Created `DailyScoreDisplay.tsx` under `apps/web/src/features/autoresearch/components/` incorporating custom dark gradient styles, cyberpunk grids, glowing live-tracking status rings, and day-by-day progression checkpoints.
-- **Dynamic Metrics Scaling**: Derived daily excess returns, daily opportunity costs, and daily risk penalties mathematically, cleanly modularizing calculations into `calculateDailyMetrics` and `getCheckpoints` to maintain zero-overhead complexity levels.
-- **Integration & TDD Suite**: Integrated the daily component into `ExperimentDetails.tsx` above the weekly score breakdown. Added comprehensive unit tests in `DailyScoreDisplay.test.tsx` verifying both live active tracking and finalized progression displays, passing successfully with 100% Biome compliance.
-- **Documentation**: Updated [[entities/autoresearch-arena]] with the new daily evaluation features.
-
-## [2026-05-31] feature | No Verifier badge for MiniMax portfolios
-
-Added a `hasVerifier()` utility to the portfolio config module that identifies portfolios not using a verifier (currently MiniMax). The PortfolioDetailPage and PortfoliosPage now display a "No Verifier" warning badge for these portfolios, making the simplified execution model visible in the UI. Marked the corresponding ROADMAP item as complete.
-
 ## [2026-05-31] doc | Updated MiniMax slippage buffer documentation from 0.3% to 0.5%
 
 Updated the wiki documentation to reflect the code change that aligns the MiniMax portfolio execution simulated slippage and Alpaca mirror order limit buffer from `±0.3%` to `±0.5%`. Updated pages: `concepts/execution.md`, `concepts/minimax-portfolio.md`, `index.md`, and `overview.md`.
@@ -245,4 +233,12 @@ Added support for multiple correlation/trailing-return windows (7d, 30d, 60d, 90
 - **Tests**: New `TestMultiWindowCorrelation` class verifies windowed computation and alignment.
 
 All existing wiki pages already reflect the new state; the correlation-matrix source page was updated inline with this commit.
+
+## [2026-06-08] feature | Homepage routing scaffold & Today page migration
+
+Moved the core "Today" dashboard from the root `/` route to its own `/today` route in `apps/web`. The root route (`/`) is now a placeholder `HomePage` component scaffolding ready for a planned UI redesign. Verified full route generation type safety and Tanstack navigation TDD tests.
+
+## [2026-06-08] feature | Homepage routing scaffold & Today page migration
+
+Moved the core "Today" dashboard from the root `/` route to its own `/today` route in the web app. The root route (`/`) is now a placeholder `HomePage` component with a welcome message, scaffolding for a planned UI redesign. The `Today` nav item now points to `/today` instead of `/`. Added TDD verification tests for the routing migration and updated route tree generation. Wiki pages already updated to reflect the new state.
 

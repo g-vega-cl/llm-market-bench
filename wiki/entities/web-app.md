@@ -11,6 +11,7 @@ TypeScript, and TanStack Query.
 
 ## Key Pages
 
+- **Home** — Placeholder for the upcoming redesign
 - **Today** — Market status hero, LLM market feeling, daily trades, and the premium **Global Macro & Index Volatility Statistics** panel
 - **Portfolios** — Per-agent performance, positions, P&L
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid

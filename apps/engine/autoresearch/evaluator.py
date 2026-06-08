@@ -145,10 +145,14 @@ async def evaluate_week(
     logger.info("Evaluating week %s to %s", week_start, week_end)
 
     current_prompt = await get_active_prompt()
+    from core.llm.prompts import split_prompt
+
     if not current_prompt:
         from core.llm import prompts
 
         current_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+
+    _, current_prompt_mutable, _ = split_prompt(current_prompt)
 
     # Fetch SPY returns once — benchmark for the score.
     sb_client = await get_async_supabase_client()
@@ -201,8 +205,11 @@ async def evaluate_week(
 
     baseline_score = None
     baseline_prompt = None
+    baseline_prompt_mutable = "No baseline prompt yet."
     if baseline_variant:
         baseline_prompt = baseline_variant.get("prompt_content")
+        if baseline_prompt:
+            _, baseline_prompt_mutable, _ = split_prompt(baseline_prompt)
         m = baseline_variant.get("metrics", {})
         if isinstance(m, str):
             import json
@@ -237,7 +244,7 @@ async def evaluate_week(
         f"  - Actual US Dollar Index Return (DXY/UUP) [Context Only]: {dollar_return_pct:+.4f}%",
         f"  - Opportunity Cost Penalty: {opp_penalty:+.4f}%",
         baseline_line,
-        f"Formula: (Portfolio_Return - Do_Nothing_Return) + (Portfolio_Return - SPY_Return) - Opportunity_Cost_Penalty - (Drawdown × 0.3) = "
+        f"Formula: (Portfolio_Return - Do-Nothing_Return) + (Portfolio_Return - SPY_Return) - Opportunity_Cost_Penalty - (Drawdown × 0.3) = "
         f"({portfolio_ret:.2f} - {score_result['do_nothing_return_pct']:.2f}) + ({portfolio_ret:.2f} - {spy_return_pct:.2f}) - {opp_penalty:.2f} - ({max_drawdown:.2f} × 0.3) = "
         f"{portfolio_ret - score_result['do_nothing_return_pct']:.2f} + {portfolio_ret - spy_return_pct:.2f} - {opp_penalty:.2f} - {max_drawdown * 0.3:.2f} = "
         f"{score_result['score']}",
@@ -250,21 +257,21 @@ async def evaluate_week(
         _format_variants(previous, baseline_score=baseline_score),
         "",
         "# Baseline Prompt (All-Time Best)",
-        "This is the prompt that achieved the highest score so far. Use this as your foundation.",
+        "This is the mutable strategies and analysis section of the prompt that achieved the highest score so far. Use this as your foundation.",
         "```",
-        baseline_prompt or "No baseline prompt yet.",
+        baseline_prompt_mutable,
         "```",
         "",
         "# Latest Experiment Prompt (Just Evaluated)",
-        "This is the prompt that produced the score at the top of this report.",
+        "This is the mutable strategies and analysis section of the prompt that produced the score at the top of this report.",
         "```",
-        current_prompt,
+        current_prompt_mutable,
         "```",
         "",
         "# Instructions",
-        "Propose a new CORE_ANALYSIS_SYSTEM_PROMPT. Return ONLY valid JSON with "
-        "new_prompt_text, change_description, experiment_type, research_reasoning, "
-        "and confidence.",
+        "Propose a new strategy and analysis section to replace the sections shown above. Return ONLY valid JSON with "
+        "new_prompt_text (containing the modified strategy and analysis rules section only), "
+        "change_description, experiment_type, research_reasoning, and confidence.",
     ]
 
     return "\n".join(report_parts), score_result, baseline_variant.get("variant_tag") if baseline_variant else None

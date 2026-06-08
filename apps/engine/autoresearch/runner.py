@@ -172,9 +172,13 @@ async def run(dry_run: bool = False):
     next_week_start = week_start + timedelta(days=7)
     next_week_end = week_end + timedelta(days=7)
 
+    from core.llm.prompts import SYSTEM_PROMPT_CONSTRAINTS_FOOTER, SYSTEM_PROMPT_CONSTRAINTS_HEADER
+
+    full_prompt_content = SYSTEM_PROMPT_CONSTRAINTS_HEADER + result.new_prompt_text + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+
     try:
         tag = await save_variant(
-            prompt_content=result.new_prompt_text,
+            prompt_content=full_prompt_content,
             prompt_name="CORE_ANALYSIS_SYSTEM_PROMPT",
             week_start=next_week_start.isoformat(),
             week_end=next_week_end.isoformat(),

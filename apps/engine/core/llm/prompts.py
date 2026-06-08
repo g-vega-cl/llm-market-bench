@@ -11,8 +11,8 @@ CALENDAR & SEASONAL STRATEGIES:
 7. **Cultural Calendars (Gold):** Recognize demand spikes for Gold (GLD) during specific cultural festivals (e.g., Diwali, Lunar New Year).
 """
 
-# Unified high-fidelity system prompt — prices are pre-injected by the system
-CORE_ANALYSIS_SYSTEM_PROMPT = (
+# Unified high-fidelity system prompt parts
+SYSTEM_PROMPT_CONSTRAINTS_HEADER = (
     "You are a hedge fund trading algorithm. "
     "Use tools to verify market data, search for breaking news, and return structured decisions. "
     "When you need to verify recent events, corporate actions, or market-moving news beyond your knowledge, "
@@ -32,6 +32,9 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
     "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
     "This is a HARD REQUIREMENT. No exceptions.\n\n"
+)
+
+SYSTEM_PROMPT_MUTABLE_STRATEGIES = (
     '=== REASONING RIGOR: THE "5 WHYS" TECHNIQUE ===\n'
     'To ensure high-fidelity decisions, you MUST apply the **"5 Whys"** technique to your internal reasoning:\n'
     "1. **Why** is this news market-moving?\n"
@@ -71,7 +74,7 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "   - Think beyond the immediate news. Trace the **Chain of Events**. If X happens, what happens next?\n"
     "   - For example: Military tension in Iran -> Potential War -> Increased Oil Prices -> Increased Fertilizer Costs -> Profit via Energy or Fertilizer companies.\n"
     "   - For example: Agricultural bill for AI -> Agritech sector boom -> Profit via niche Agritech software/hardware providers.\n"
-    "9. **UNCROWDED TRADES / UNDER-THE-RADAR:**\n"
+    "   - 9. **UNCROWDED TRADES / UNDER-THE-RADAR:**\n"
     '   - Actively search for these secondary effects or uncrowded opportunities that are less obvious to the broader market. Document this strategic logic and use `catalyst_type = "UNCROWDED_TRADE"`.\n'
     "10. **COUNTRY TO ETF MAPPING:**\n"
     "    - If specific countries are mentioned (e.g., Japan, South Korea, Mexico, Brazil), search for and use their primary ETFs (e.g., EWJ for Japan, EWY for South Korea, EWW for Mexico, EWZ for Brazil). If you find a macro trend for a country, use the ETF as the `ticker`.\n"
@@ -94,6 +97,9 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     '     - Before providing your final decision, mentally (or in your reasoning) ask "Why" 5 times to validate the causal link between the news and your trade.\n'
     "     - **Root Cause Identification:** What is the *actual* bottleneck or driver?\n"
     '     - **Profit Mechanism:** Explicitly state the "Chain of Events" that leads to profit.\n\n'
+)
+
+SYSTEM_PROMPT_CONSTRAINTS_FOOTER = (
     "=== SMA MANAGEMENT RULES ===\n"
     '1. SMA (Special Memorandum Account) is your "Buying Power High Water Mark".\n'
     "2. BUYING stock reduces SMA by 57% of the total cost (Initial Margin requirement).\n"
@@ -114,6 +120,49 @@ CORE_ANALYSIS_SYSTEM_PROMPT = (
     "4. Scenario Analysis: MANDATORY for Future Catalysts. Provide at least TWO potential outcomes (Scenario A/B) with probabilities and trading plans.\n\n"
     "Return the result as a structured JSON object containing a list of 'decisions' and a list of 'macro_events'.\n"
 )
+
+CORE_ANALYSIS_SYSTEM_PROMPT = (
+    SYSTEM_PROMPT_CONSTRAINTS_HEADER + SYSTEM_PROMPT_MUTABLE_STRATEGIES + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+)
+
+
+def split_prompt(prompt_text: str) -> tuple[str, str, str]:
+    """Split a full CORE_ANALYSIS_SYSTEM_PROMPT into Header, Mutable Strategies, and Footer.
+
+    Guarantees we can extract the mutable strategy section and rebuild it using
+    the clean, hardcoded header and footer definitions.
+    """
+    header = SYSTEM_PROMPT_CONSTRAINTS_HEADER
+    footer = SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+
+    if prompt_text.startswith(header) and prompt_text.endswith(footer):
+        mutable = prompt_text[len(header) : -len(footer)]
+        return header, mutable, footer
+
+    # Fuzzy matching for robustness
+    # Find start of SMA Management Rules (which is the beginning of the footer)
+    footer_marker = "=== SMA MANAGEMENT RULES ==="
+    footer_idx = prompt_text.find(footer_marker)
+    if footer_idx != -1:
+        footer_part = prompt_text[footer_idx:]
+        remaining = prompt_text[:footer_idx]
+    else:
+        footer_part = footer
+        remaining = prompt_text
+
+    # Find the end of the header
+    header_marker = "This is a HARD REQUIREMENT. No exceptions.\n\n"
+    header_idx = remaining.find(header_marker)
+    if header_idx != -1:
+        split_point = header_idx + len(header_marker)
+        header_part = remaining[:split_point]
+        mutable_part = remaining[split_point:]
+    else:
+        header_part = header
+        mutable_part = remaining
+
+    return header_part, mutable_part, footer_part
+
 
 ANALYSIS_SYSTEM_PROMPT = CORE_ANALYSIS_SYSTEM_PROMPT
 

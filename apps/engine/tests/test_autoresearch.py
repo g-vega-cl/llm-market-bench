@@ -1860,3 +1860,47 @@ class TestDailyReturnsEqualWeighted:
         # Only Gemini has data for both days: +10%
         assert len(result) == 1
         assert result[0] == pytest.approx(0.10)
+
+
+class TestPromptConstraints:
+    def test_split_prompt_exact(self):
+        from core.llm.prompts import (
+            CORE_ANALYSIS_SYSTEM_PROMPT,
+            SYSTEM_PROMPT_CONSTRAINTS_FOOTER,
+            SYSTEM_PROMPT_CONSTRAINTS_HEADER,
+            SYSTEM_PROMPT_MUTABLE_STRATEGIES,
+            split_prompt,
+        )
+
+        header, mutable, footer = split_prompt(CORE_ANALYSIS_SYSTEM_PROMPT)
+        assert header == SYSTEM_PROMPT_CONSTRAINTS_HEADER
+        assert footer == SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+        assert mutable == SYSTEM_PROMPT_MUTABLE_STRATEGIES
+
+    def test_split_prompt_fuzzy(self):
+        from core.llm.prompts import (
+            SYSTEM_PROMPT_CONSTRAINTS_FOOTER,
+            SYSTEM_PROMPT_CONSTRAINTS_HEADER,
+            split_prompt,
+        )
+
+        # Create a modified prompt where the mutable strategies section is modified
+        modified_mutable = (
+            '=== REASONING RIGOR: THE "5 WHYS" TECHNIQUE ===\nSome modified strategy instructions here.\n\n'
+        )
+        full_prompt = SYSTEM_PROMPT_CONSTRAINTS_HEADER + modified_mutable + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+
+        header, mutable, footer = split_prompt(full_prompt)
+        assert header == SYSTEM_PROMPT_CONSTRAINTS_HEADER
+        assert footer == SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+        assert mutable == modified_mutable
+
+    def test_recombine_prompt_matches_original(self):
+        from core.llm.prompts import (
+            CORE_ANALYSIS_SYSTEM_PROMPT,
+            split_prompt,
+        )
+
+        header, mutable, footer = split_prompt(CORE_ANALYSIS_SYSTEM_PROMPT)
+        recombined = header + mutable + footer
+        assert recombined == CORE_ANALYSIS_SYSTEM_PROMPT

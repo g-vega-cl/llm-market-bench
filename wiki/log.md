@@ -1,19 +1,3 @@
-## [2026-05-29] refactor | Remove llm_reasoning_logs from Today homepage loader
-
-Removed the `llm_reasoning_logs` query from `fetchTodayData()` in the Today homepage loader. This high-volume table (containing massive text conversation blobs) was being fetched but never rendered on the homepage, wasting ~438ms of database latency and network bandwidth. The `logs` field was removed from the `TodayData` interface, the parallel query was deleted, and the return payload no longer includes it. Added a TDD zero-load regression test (`fetch-today-data.test.ts`) that spies on the Supabase client to assert the heavy table is never queried and the `logs` key is absent from the returned payload.
-
-## [2026-05-30] feature | Centralized Date Utilities & Zero-Date Frontend Architecture
-
-Introduced apps/web/src/utils/date.ts providing normalized Eastern Time formatters to prevent SSR hydration mismatches caused by ICU whitespace differences. All Today page components (AgentInsights, MarketStatusHero, MarketUpdates, NewsletterFeed, TradeActivity) now use these centralized utilities instead of inline date formatting. Server-side fetchTodayData API now pre-computes isMarketOpen, isSentimentStale, and todayDateString, removing temporal logic from the frontend (Zero-Date Frontend Architecture). Updated performance-auditing-strategy concept page with detailed rules on ICU whitespace normalization and zero-date architecture.
-
-## [2026-05-30] feature | Automated SSR Hydration Mismatch Regression Suite & Test Helper
-
-Implemented a zero-overhead, highly focused automated hydration regression test suite that runs in the pre-commit loop via the standard Vitest pipeline:
-- **Reusable Hydration Test Helper**: Created `apps/web/src/test/hydration-test-helper.tsx` which simulates server-side rendering (`renderToString`) and client-side hydration (`hydrateRoot`) within a `jsdom` container. Captures both React 19's asynchronous hydration exceptions (via global window error interception with `event.preventDefault()`) and logged `console.error` warnings.
-- **TDD Reproduction Tests**: Created `apps/web/src/test/hydration.test.tsx` which includes a deliberately broken mismatch component (rendering non-deterministic random values) to verify the helper successfully intercepts and catches hydration failures.
-- **Zero-Overhead Component Audits**: Added validation tests for critical frontend elements including `MarketStatusHero` and the parent `TodayPage` (wrapped in a `QueryClientProvider`), ensuring clean, symmetric client-side mounting without booting expensive E2E browser tests.
-- **Linter & Test Cleanliness**: Ensured 100% compliance with Biome strict styling and formatting checkups. All 203 frontend unit tests pass successfully in ~3.2s.
-
 ## [2026-05-30] feature | SSR Hydration Symmetry Regression Suite
 
 Added a comprehensive SSR hydration regression test suite to the web app's pre-commit pipeline:
@@ -236,4 +220,25 @@ Refined the Prompt Changes comparison on the Auto-Research Arena page:
 
 **See**: [[entities/autoresearch-arena]], [PromptChanges.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/PromptChanges.tsx)
 
+## [2026-06-08] feature | Frozen System Constraints & Output Structure for Auto-Research
+
+Frozen all core system constraints and JSON output schemas to prevent the auto-research prompt-improver from modifying or breaking them:
+- **Refactored Prompts**: Split `CORE_ANALYSIS_SYSTEM_PROMPT` in [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py) into three constants: `SYSTEM_PROMPT_CONSTRAINTS_HEADER` (persona, price mechanism, tool requirements), `SYSTEM_PROMPT_MUTABLE_STRATEGIES` (5 Whys, seasonal strategies, trading logic), and `SYSTEM_PROMPT_CONSTRAINTS_FOOTER` (SMA rules and JSON Output Format rules).
+- **Prompt Splitter Utility**: Added a robust `split_prompt` function to extract the mutable strategy portion using exact and fuzzy matching.
+- **Auto-Research Integration**: Updated [evaluator.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/evaluator.py) to extract and show only the mutable strategy section of the active and baseline prompts in the researcher report. Updated [runner.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/runner.py) to automatically recombine the proposed prompt text from the researcher with the frozen header and footer before saving the variant to the database.
+- **LLM Instruction Update**: Updated [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md) to instruct the meta-researcher that system constraints are managed automatically and it is only responsible for optimizing the strategy section.
+- **TDD Tests**: Added `TestPromptConstraints` in [test_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_autoresearch.py) to assert exact and fuzzy prompt splitting. Passed 100% of tests.
+
+**See**: [[concepts/auto-research-prompt-improver]], [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py)
+
+## [2026-06-08] feature | Frozen System Constraints & Output Structure for Auto-Research
+
+Frozen all core system constraints and JSON output schemas to prevent the auto-research prompt-improver from modifying or breaking them:
+- **Refactored Prompts**: Split `CORE_ANALYSIS_SYSTEM_PROMPT` in `prompts.py` into three constants: `SYSTEM_PROMPT_CONSTRAINTS_HEADER` (persona, price mechanism, tool requirements), `SYSTEM_PROMPT_MUTABLE_STRATEGIES` (5 Whys, seasonal strategies, trading logic), and `SYSTEM_PROMPT_CONSTRAINTS_FOOTER` (SMA rules and JSON Output Format rules).
+- **Prompt Splitter Utility**: Added a robust `split_prompt` function to extract the mutable strategy portion using exact and fuzzy matching.
+- **Auto-Research Integration**: Updated `evaluator.py` to extract and show only the mutable strategy section of the active and baseline prompts in the researcher report. Updated `runner.py` to automatically recombine the proposed prompt text from the researcher with the frozen header and footer before saving the variant to the database.
+- **LLM Instruction Update**: Updated `program.md` to instruct the meta-researcher that system constraints are managed automatically and it is only responsible for optimizing the strategy section.
+- **TDD Tests**: Added `TestPromptConstraints` in `test_autoresearch.py` to assert exact and fuzzy prompt splitting. Passed 100% of tests.
+
+**See**: [[concepts/auto-research-prompt-improver]], [[concepts/system-heavy-prompt]]
 

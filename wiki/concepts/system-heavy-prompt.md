@@ -14,7 +14,7 @@ Traditional LLM prompts mix **Static Logic** (rules, SOPs, constraints) with **D
 1. **System Prompt (The Rulebook)**:
    - Contains 100% of the agent's reasoning logic, SOPs, tool-enforcement rules, output format requirements, and persona definition.
    - Never contains runtime data (`{placeholders}`).
-   - For the primary analysis agent, this is stored in the database as a `PromptVariant` and is **evolvable** by the Meta-Researcher.
+   - For the primary analysis agent, this is stored in the database as a `PromptVariant` and is **evolvable** by the Meta-Researcher (specifically, the mutable strategies section is evolved, while system/formatting constraints are frozen).
    - For all other agents, it is hardcoded in `prompts.py`.
 
 2. **User Prompt (The Data Case)**:

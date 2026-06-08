@@ -17,9 +17,14 @@ import { etfDescriptions } from '../utils/etf-descriptions';
 interface UncorrelatedPairsProps {
     correlationData: CorrelationData[];
     onSelectPair?: (tickerA: string, tickerB: string) => void;
+    timeframe?: '7d' | '30d' | '60d' | '90d';
 }
 
-export function UncorrelatedPairs({ correlationData, onSelectPair }: UncorrelatedPairsProps) {
+export function UncorrelatedPairs({
+    correlationData,
+    onSelectPair,
+    timeframe = '90d',
+}: UncorrelatedPairsProps) {
     const [maxCorrelation, setMaxCorrelation] = React.useState(0.3);
     const [minReturn, setMinReturn] = React.useState(0);
     const [method, setMethod] = React.useState<'pearson' | 'spearman'>('pearson');
@@ -96,7 +101,7 @@ export function UncorrelatedPairs({ correlationData, onSelectPair }: Uncorrelate
 
                         <div className="flex items-center gap-3">
                             <label htmlFor="min-return-slider" className="text-sm text-zinc-500">
-                                Min 90d Return:
+                                Min {timeframe.toUpperCase()} Return:
                             </label>
                             <input
                                 id="min-return-slider"

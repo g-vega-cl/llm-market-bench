@@ -4,6 +4,40 @@ import { fetchPairHistory, type PairHistoryPoint } from '../api/fetch-pair-histo
 import { etfDescriptions } from '../utils/etf-descriptions';
 import { PairProgressionChart } from './PairProgressionChart';
 
+function mapHistoryPoint(
+    h: PairHistoryPoint,
+    timeframe: '7d' | '30d' | '60d' | '90d',
+): PairHistoryPoint {
+    switch (timeframe) {
+        case '7d':
+            return {
+                run_date: h.run_date,
+                pearson_corr: h.pearson_corr_7d ?? null,
+                spearman_corr: h.spearman_corr_7d ?? null,
+                returns_a_90d: h.returns_a_7d ?? null,
+                returns_b_90d: h.returns_b_7d ?? null,
+            };
+        case '30d':
+            return {
+                run_date: h.run_date,
+                pearson_corr: h.pearson_corr_30d ?? null,
+                spearman_corr: h.spearman_corr_30d ?? null,
+                returns_a_90d: h.returns_a_30d ?? null,
+                returns_b_90d: h.returns_b_30d ?? null,
+            };
+        case '60d':
+            return {
+                run_date: h.run_date,
+                pearson_corr: h.pearson_corr_60d ?? null,
+                spearman_corr: h.spearman_corr_60d ?? null,
+                returns_a_90d: h.returns_a_60d ?? null,
+                returns_b_90d: h.returns_b_60d ?? null,
+            };
+        default:
+            return h;
+    }
+}
+
 interface CorrelationHistoryExplorerProps {
     tickers: string[];
     initialPair?: { tickerA: string; tickerB: string } | null;
@@ -20,6 +54,11 @@ export function CorrelationHistoryExplorer({
     const [history, setHistory] = React.useState<PairHistoryPoint[]>([]);
     const [loading, setLoading] = React.useState<boolean>(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [timeframe, setTimeframe] = React.useState<'7d' | '30d' | '60d' | '90d'>('90d');
+
+    const mappedHistory = React.useMemo(() => {
+        return history.map((h) => mapHistoryPoint(h, timeframe));
+    }, [history, timeframe]);
 
     // Sort tickers alphabetically for clean dropdown lists
     const sortedTickers = React.useMemo(() => {
@@ -92,9 +131,9 @@ export function CorrelationHistoryExplorer({
 
     // Calculate premium metrics from history
     const stats = React.useMemo(() => {
-        if (history.length === 0) return null;
+        if (mappedHistory.length === 0) return null;
 
-        const validCorrs = history
+        const validCorrs = mappedHistory
             .map((h) => h.pearson_corr)
             .filter((c): c is number => c !== null);
 
@@ -109,19 +148,19 @@ export function CorrelationHistoryExplorer({
         const stdDev = Math.sqrt(variance);
 
         // 3. Maximum Decoupling Point (correlation closest to 0 or most negative)
-        const maxDecouplingPoint = history.reduce((best, curr) => {
+        const maxDecouplingPoint = mappedHistory.reduce((best, curr) => {
             if (curr.pearson_corr === null) return best;
             if (best.pearson_corr === null) return curr;
             return Math.abs(curr.pearson_corr) < Math.abs(best.pearson_corr) ? curr : best;
-        }, history[0]);
+        }, mappedHistory[0]);
 
         return {
             avgCorr,
             stdDev,
             maxDecouplingPoint,
-            totalWeeks: history.length,
+            totalWeeks: mappedHistory.length,
         };
-    }, [history]);
+    }, [mappedHistory]);
 
     return (
         <div className="space-y-8 animate-slide-up">
@@ -131,9 +170,27 @@ export function CorrelationHistoryExplorer({
                 padding="lg"
                 className="rounded-3xl shadow-xl border border-zinc-200/50 dark:border-zinc-800/80"
             >
-                <h3 className="text-xl font-black text-zinc-950 dark:text-white uppercase tracking-tight mb-6">
-                    Historical Progression Explorer
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-xl font-black text-zinc-950 dark:text-white uppercase tracking-tight">
+                        Historical Progression Explorer
+                    </h3>
+                    <div className="flex gap-1 p-1 bg-zinc-100/50 dark:bg-zinc-800/80 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50">
+                        {(['7d', '30d', '60d', '90d'] as const).map((tf) => (
+                            <button
+                                key={tf}
+                                type="button"
+                                onClick={() => setTimeframe(tf)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-150 cursor-pointer ${
+                                    timeframe === tf
+                                        ? 'bg-blue-500 text-white shadow-sm'
+                                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                                }`}
+                            >
+                                {tf.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                     {/* Selector A */}
@@ -241,11 +298,30 @@ export function CorrelationHistoryExplorer({
                 </div>
             ) : null}
 
+            {timeframe === '7d' && history.length > 0 && !loading && !error && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-amber-600 dark:text-amber-400 animate-slide-up">
+                    <span className="text-lg">⚠️</span>
+                    <div className="text-xs">
+                        <span className="font-bold block mb-0.5">
+                            7-Day Correlation Disclaimer:
+                        </span>
+                        Pearson and Spearman correlations calculated over 7 days (approx. 5 trading
+                        days) are highly sensitive to short-term price movements and can exhibit
+                        significant noise and volatility. Use with caution for structural
+                        diversification decisions.
+                    </div>
+                </div>
+            )}
+
             {history.length > 0 && !loading && !error && (
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
                     {/* Visual Chart */}
                     <div className="xl:col-span-3">
-                        <PairProgressionChart data={history} tickerA={tickerA} tickerB={tickerB} />
+                        <PairProgressionChart
+                            data={mappedHistory}
+                            tickerA={tickerA}
+                            tickerB={tickerB}
+                        />
                     </div>
 
                     {/* Statistical Summary Panel */}

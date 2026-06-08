@@ -1,19 +1,3 @@
-## [2026-06-08] feature | Fundamental Financial Key Metrics Integration
-
-Added the `get_key_metrics` tool to let competitive trading LLMs query structured financial metrics to resolve the filings context bloat vs. information utility tradeoff:
-- **Base class**: Extended `FinancialProvider` in `base.py` with the `get_key_metrics` method.
-- **Provider implementations**: Implemented FMP endpoint `/key-metrics/{symbol}` with filtering/capping parameters and yfinance `Ticker.info` parsing to map to the standardized schema.
-- **Tool integration**: Created canonical `GET_KEY_METRICS_TOOL` definition in `tools.py` and implemented execution handlers and tool dispatcher logic. Registered the tool across all LLM handlers (Gemini, Anthropic, OpenAI).
-- **TDD & verification**: Created a dedicated unit/integration test suite `test_key_metrics_tool.py` checking all provider mappings and formatting outputs. All checks and tests passed 100%.
-- **Documentation**: Added `concepts/fundamental-analysis.md` and updated `index.md`.
-
-## [2026-05-30] feature | SSR Hydration Symmetry Regression Suite
-
-Added a comprehensive SSR hydration regression test suite to the web app's pre-commit pipeline:
-- **Test Helper**: `apps/web/src/test/hydration-test-helper.tsx` — reusable utility that simulates SSR (`renderToString`) and client hydration (`hydrateRoot`) in JSDOM, capturing React 19 hydration errors via global error interception and `console.error` spying.
-- **Regression Suite**: `apps/web/src/test/hydration.test.tsx` — validates all major pages (Today, How It Works, Memories, Reasoning, Portfolios, Market Overview) and the `MarketStatusHero` component for hydration symmetry. Includes a TDD reproduction test with a deliberately broken component.
-- **Documentation**: Updated `concepts/performance-auditing-strategy.md` with a new section on TDD hydration regression testing, including usage examples and integration notes.
-
 ## [2026-05-31] feature | Daily Autoresearch Score Display & TDD Verification
 
 Implemented the Daily Autoresearch Score display panel inside the Auto-Research Arena:
@@ -250,4 +234,15 @@ Frozen all core system constraints and JSON output schemas to prevent the auto-r
 - **TDD Tests**: Added `TestPromptConstraints` in `test_autoresearch.py` to assert exact and fuzzy prompt splitting. Passed 100% of tests.
 
 **See**: [[concepts/auto-research-prompt-improver]], [[concepts/system-heavy-prompt]]
+
+## [2026-06-08] feature | Multi-Window Correlation & Trailing Returns
+
+Added support for multiple correlation/trailing-return windows (7d, 30d, 60d, 90d) across the full stack:
+
+- **Engine**: Extended `compute_correlation_matrices` and `compute_trailing_returns` to accept arbitrary window sizes. `store_correlation_results` now persists all four windows.
+- **Database**: New migration adds 12 columns to `correlation_data` for 7d/30d/60d returns and correlations.
+- **Web UI**: Added timeframe switcher to Market Overview (Current tab) and Correlation History Explorer. Data is mapped client-side. A disclaimer warns about noisy 7d correlations.
+- **Tests**: New `TestMultiWindowCorrelation` class verifies windowed computation and alignment.
+
+All existing wiki pages already reflect the new state; the correlation-matrix source page was updated inline with this commit.
 

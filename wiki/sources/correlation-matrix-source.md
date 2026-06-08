@@ -9,8 +9,9 @@ Synthesized from `raw/docs/engine/CORRELATION_MATRIX.md`.
 
 ## Takeaways
 
-- **90-Day Window**: Computes Pearson and Spearman correlations over a rolling 90-day window for a diverse universe of 70 ETFs and crypto tickers.
-- **SMA Smoothing**: Uses 5-day SMA at window endpoints to reduce noise from single-day volatility spikes.
+- **Multi-Window Support (7d, 30d, 60d, 90d)**: Computes Pearson and Spearman correlations and trailing returns over multiple rolling windows (7-day, 30-day, 60-day, and 90-day) for a diverse universe of 71 ETFs and crypto tickers.
+- **SMA Smoothing**: Uses a 5-day SMA at window endpoints for windows >= 30 days to reduce noise from single-day volatility spikes. For short windows (7-day), falls back to raw endpoints.
+- **7-Day Volatility Warning**: A warning disclaimer is displayed in the UI when the 7-day window is active, as short-term correlations computed over only ~5 trading days are highly sensitive to micro-movements and statistically noisy.
 - **Agent Discovery**: Provides the `find_uncorrelated_assets` tool, allowing agents to proactively find diversification opportunities.
 
 ## Ticker Universe (71 assets)

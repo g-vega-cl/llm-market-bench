@@ -20,6 +20,18 @@ export interface CorrelationData {
     returns_a_90d: number | null;
     returns_b_90d: number | null;
     data_points: number | null;
+    returns_a_7d?: number | null;
+    returns_b_7d?: number | null;
+    returns_a_30d?: number | null;
+    returns_b_30d?: number | null;
+    returns_a_60d?: number | null;
+    returns_b_60d?: number | null;
+    pearson_corr_7d?: number | null;
+    spearman_corr_7d?: number | null;
+    pearson_corr_30d?: number | null;
+    spearman_corr_30d?: number | null;
+    pearson_corr_60d?: number | null;
+    spearman_corr_60d?: number | null;
 }
 
 export interface MarketOverviewData {

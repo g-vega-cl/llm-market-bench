@@ -178,11 +178,14 @@ def compute_returns(prices: list[float]) -> np.ndarray:
     return np.diff(prices) / np.array(prices[:-1])
 
 
-def compute_correlation_matrices(returns_dict: dict[str, list[float]]) -> tuple[dict, dict]:
+def compute_correlation_matrices(
+    returns_dict: dict[str, np.ndarray | list[float]], window_size: int | None = None
+) -> tuple[dict, dict]:
     """Compute Pearson and Spearman correlation matrices.
 
     Args:
         returns_dict: Dictionary mapping ticker -> list of returns.
+        window_size: Optional rolling window to compute correlations over.
 
     Returns:
         Tuple of (pearson_matrix, spearman_matrix) as dicts keyed by (ticker_a, ticker_b).
@@ -190,15 +193,29 @@ def compute_correlation_matrices(returns_dict: dict[str, list[float]]) -> tuple[
     tickers = list(returns_dict.keys())
     n = len(tickers)
 
+    # Slice the last window_size returns for each ticker if specified
+    sliced_returns = {}
+    for t in tickers:
+        r = returns_dict[t]
+        if window_size is not None:
+            sliced_returns[t] = r[-window_size:]
+        else:
+            sliced_returns[t] = r
+
     # Find minimum length across all tickers to ensure alignment
-    min_length = min(len(returns_dict[t]) for t in tickers)
+    min_length = min(len(sliced_returns[t]) for t in tickers)
 
     # Build returns matrix with aligned lengths (rows = tickers, columns = time points)
-    # Truncate all to minimum length
-    returns_matrix = np.array([returns_dict[t][:min_length] for t in tickers])
+    # Truncate all to minimum length, aligning the ends (most recent data)
+    returns_matrix = np.array([sliced_returns[t][-min_length:] for t in tickers])
 
     pearson_correlations = {}
     spearman_correlations = {}
+
+    # Minimum observations check: for small window_size (like 7), we must allow min_len < 30.
+    min_obs_required = 30
+    if window_size is not None:
+        min_obs_required = min(30, window_size)
 
     for i in range(n):
         for j in range(i + 1, n):
@@ -208,14 +225,16 @@ def compute_correlation_matrices(returns_dict: dict[str, list[float]]) -> tuple[
             returns_a = returns_matrix[i]
             returns_b = returns_matrix[j]
 
-            # Align lengths (some tickers may have slightly different lengths)
+            # Align lengths
             min_len = min(len(returns_a), len(returns_b))
-            if min_len < 30:
-                logger.warning(f"Skipping {ticker_a}/{ticker_b}: only {min_len} aligned observations")
+            if min_len < min_obs_required:
+                logger.warning(
+                    f"Skipping {ticker_a}/{ticker_b}: only {min_len} aligned observations (required: {min_obs_required})"
+                )
                 continue
 
-            returns_a_aligned = returns_a[:min_len]
-            returns_b_aligned = returns_b[:min_len]
+            returns_a_aligned = returns_a[-min_len:]
+            returns_b_aligned = returns_b[-min_len:]
 
             # Pearson correlation
             pearson_corr, _ = stats.pearsonr(returns_a_aligned, returns_b_aligned)
@@ -224,40 +243,54 @@ def compute_correlation_matrices(returns_dict: dict[str, list[float]]) -> tuple[
             spearman_corr, _ = stats.spearmanr(returns_a_aligned, returns_b_aligned)
 
             key = (ticker_a, ticker_b)
-            pearson_correlations[key] = float(pearson_corr)
-            spearman_correlations[key] = float(spearman_corr)
+            pearson_correlations[key] = float(pearson_corr) if not np.isnan(pearson_corr) else None
+            spearman_correlations[key] = float(spearman_corr) if not np.isnan(spearman_corr) else None
 
     return pearson_correlations, spearman_correlations
 
 
-def compute_90d_returns(prices_dict: dict[str, list[float]]) -> dict[str, float]:
-    """Compute 90-day total returns for each ticker.
+def compute_trailing_returns(prices_dict: dict[str, list[float]], window_days: int) -> dict[str, float]:
+    """Compute W-day total returns for each ticker.
 
-    Uses a {SMA_WINDOW}-day simple moving average at both endpoints to reduce
-    daily-volatility influence on the starting/ending prices. Falls back to the
-    raw endpoint method when fewer than {SMA_WINDOW * 2} price points are available.
+    Uses a {SMA_WINDOW}-day simple moving average at both endpoints for windows >= 30 days
+    to reduce daily-volatility influence. Falls back to the raw endpoint method when
+    window < 30 days or fewer than {SMA_WINDOW * 2} price points are available.
 
     Args:
         prices_dict: Dictionary mapping ticker -> list of prices (oldest first).
+        window_days: The return timeframe window in days.
 
     Returns:
-        Dictionary mapping ticker -> 90-day return as percentage.
+        Dictionary mapping ticker -> trailing return as percentage.
     """
     returns = {}
+    use_sma = window_days >= 30
     min_for_sma = SMA_WINDOW * 2
+
     for ticker, prices in prices_dict.items():
         if len(prices) < 2:
             continue
 
-        if len(prices) >= min_for_sma:
-            start_sma = sum(prices[:SMA_WINDOW]) / SMA_WINDOW
-            end_sma = sum(prices[-SMA_WINDOW:]) / SMA_WINDOW
+        # Get prices for the trailing window
+        w_prices = prices[-window_days:] if len(prices) >= window_days else prices
+
+        if len(w_prices) < 2:
+            continue
+
+        if use_sma and len(w_prices) >= min_for_sma:
+            start_sma = sum(w_prices[:SMA_WINDOW]) / SMA_WINDOW
+            end_sma = sum(w_prices[-SMA_WINDOW:]) / SMA_WINDOW
             total_return = ((end_sma / start_sma) - 1) * 100
         else:
-            total_return = ((prices[-1] / prices[0]) - 1) * 100
+            total_return = ((w_prices[-1] / w_prices[0]) - 1) * 100
 
         returns[ticker] = float(total_return)
     return returns
+
+
+def compute_90d_returns(prices_dict: dict[str, list[float]]) -> dict[str, float]:
+    """Compute 90-day total returns for each ticker. (Retained for backward compatibility)."""
+    return compute_trailing_returns(prices_dict, window_days=90)
 
 
 # =============================================================================
@@ -266,17 +299,40 @@ def compute_90d_returns(prices_dict: dict[str, list[float]]) -> dict[str, float]
 
 
 def store_correlation_results(
-    client, tickers: list[str], pearson_corrs: dict, spearman_corrs: dict, returns_90d: dict, window_days: int = 90
+    client,
+    tickers: list[str],
+    pearson_corrs: dict,
+    spearman_corrs: dict,
+    returns_90d: dict,
+    pearson_corrs_7d: dict | None = None,
+    spearman_corrs_7d: dict | None = None,
+    returns_7d: dict | None = None,
+    pearson_corrs_30d: dict | None = None,
+    spearman_corrs_30d: dict | None = None,
+    returns_30d: dict | None = None,
+    pearson_corrs_60d: dict | None = None,
+    spearman_corrs_60d: dict | None = None,
+    returns_60d: dict | None = None,
+    window_days: int = 90,
 ) -> str:
     """Store correlation results to Supabase.
 
     Args:
         client: Supabase client.
         tickers: List of all tickers included in the computation.
-        pearson_corrs: Dict of (ticker_a, ticker_b) -> pearson correlation.
-        spearman_corrs: Dict of (ticker_a, ticker_b) -> spearman correlation.
+        pearson_corrs: Dict of (ticker_a, ticker_b) -> 90d pearson correlation.
+        spearman_corrs: Dict of (ticker_a, ticker_b) -> 90d spearman correlation.
         returns_90d: Dict of ticker -> 90-day return percentage.
-        window_days: Rolling window used for computation.
+        pearson_corrs_7d: Dict of (ticker_a, ticker_b) -> 7d pearson correlation.
+        spearman_corrs_7d: Dict of (ticker_a, ticker_b) -> 7d spearman correlation.
+        returns_7d: Dict of ticker -> 7-day return percentage.
+        pearson_corrs_30d: Dict of (ticker_a, ticker_b) -> 30d pearson correlation.
+        spearman_corrs_30d: Dict of (ticker_a, ticker_b) -> 30d spearman correlation.
+        returns_30d: Dict of ticker -> 30-day return percentage.
+        pearson_corrs_60d: Dict of (ticker_a, ticker_b) -> 60d pearson correlation.
+        spearman_corrs_60d: Dict of (ticker_a, ticker_b) -> 60d spearman correlation.
+        returns_60d: Dict of ticker -> 60-day return percentage.
+        window_days: Rolling window used for main computation.
 
     Returns:
         The run_id (UUID) of the created correlation run.
@@ -312,18 +368,44 @@ def store_correlation_results(
         returns_a = returns_90d.get(ticker_a)
         returns_b = returns_90d.get(ticker_b)
 
-        correlation_records.append(
-            {
-                "run_id": run_id,
-                "ticker_a": ticker_a,
-                "ticker_b": ticker_b,
-                "pearson_corr": pearson_corr,
-                "spearman_corr": spearman_corr,
-                "returns_a_90d": returns_a,
-                "returns_b_90d": returns_b,
-                "data_points": window_days,
-            }
-        )
+        pearson_7d = pearson_corrs_7d.get((ticker_a, ticker_b)) if pearson_corrs_7d else None
+        spearman_7d = spearman_corrs_7d.get((ticker_a, ticker_b)) if spearman_corrs_7d else None
+        ret_a_7d = returns_7d.get(ticker_a) if returns_7d else None
+        ret_b_7d = returns_7d.get(ticker_b) if returns_7d else None
+
+        pearson_30d = pearson_corrs_30d.get((ticker_a, ticker_b)) if pearson_corrs_30d else None
+        spearman_30d = spearman_corrs_30d.get((ticker_a, ticker_b)) if spearman_corrs_30d else None
+        ret_a_30d = returns_30d.get(ticker_a) if returns_30d else None
+        ret_b_30d = returns_30d.get(ticker_b) if returns_30d else None
+
+        pearson_60d = pearson_corrs_60d.get((ticker_a, ticker_b)) if pearson_corrs_60d else None
+        spearman_60d = spearman_corrs_60d.get((ticker_a, ticker_b)) if spearman_corrs_60d else None
+        ret_a_60d = returns_60d.get(ticker_a) if returns_60d else None
+        ret_b_60d = returns_60d.get(ticker_b) if returns_60d else None
+
+        record = {
+            "run_id": run_id,
+            "ticker_a": ticker_a,
+            "ticker_b": ticker_b,
+            "pearson_corr": pearson_corr,
+            "spearman_corr": spearman_corr,
+            "returns_a_90d": returns_a,
+            "returns_b_90d": returns_b,
+            "data_points": window_days,
+            "pearson_corr_7d": pearson_7d,
+            "spearman_corr_7d": spearman_7d,
+            "returns_a_7d": ret_a_7d,
+            "returns_b_7d": ret_b_7d,
+            "pearson_corr_30d": pearson_30d,
+            "spearman_corr_30d": spearman_30d,
+            "returns_a_30d": ret_a_30d,
+            "returns_b_30d": ret_b_30d,
+            "pearson_corr_60d": pearson_60d,
+            "spearman_corr_60d": spearman_60d,
+            "returns_a_60d": ret_a_60d,
+            "returns_b_60d": ret_b_60d,
+        }
+        correlation_records.append(record)
 
     # Batch insert correlation data
     if correlation_records:
@@ -443,16 +525,36 @@ async def main():
 
     logger.info(f"Computing correlations for {len(returns_dict)} tickers...")
 
-    # Compute correlation matrices
-    pearson_corrs, spearman_corrs = compute_correlation_matrices(returns_dict)
+    # Compute correlation matrices for multiple windows
+    pearson_corrs, spearman_corrs = compute_correlation_matrices(returns_dict)  # default 90d
+    pearson_7d, spearman_7d = compute_correlation_matrices(returns_dict, window_size=7)
+    pearson_30d, spearman_30d = compute_correlation_matrices(returns_dict, window_size=30)
+    pearson_60d, spearman_60d = compute_correlation_matrices(returns_dict, window_size=60)
 
-    # Compute 90-day returns
-    returns_90d = compute_90d_returns(prices)
+    # Compute trailing returns for multiple windows
+    returns_90d = compute_trailing_returns(prices, window_days=90)
+    returns_7d = compute_trailing_returns(prices, window_days=7)
+    returns_30d = compute_trailing_returns(prices, window_days=30)
+    returns_60d = compute_trailing_returns(prices, window_days=60)
 
     # Store results
     logger.info("\nStoring results to Supabase...")
     run_id = store_correlation_results(
-        client, list(returns_dict.keys()), pearson_corrs, spearman_corrs, returns_90d, window_days=WINDOW_DAYS
+        client,
+        list(returns_dict.keys()),
+        pearson_corrs,
+        spearman_corrs,
+        returns_90d,
+        pearson_corrs_7d=pearson_7d,
+        spearman_corrs_7d=spearman_7d,
+        returns_7d=returns_7d,
+        pearson_corrs_30d=pearson_30d,
+        spearman_corrs_30d=spearman_30d,
+        returns_30d=returns_30d,
+        pearson_corrs_60d=pearson_60d,
+        spearman_corrs_60d=spearman_60d,
+        returns_60d=returns_60d,
+        window_days=WINDOW_DAYS,
     )
 
     # Verify storage integrity

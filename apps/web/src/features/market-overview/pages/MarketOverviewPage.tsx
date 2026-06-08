@@ -35,6 +35,40 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
         tickerA: string;
         tickerB: string;
     } | null>(null);
+    const [timeframe, setTimeframe] = React.useState<'7d' | '30d' | '60d' | '90d'>('90d');
+
+    const mappedCorrelationData = React.useMemo(() => {
+        return (data?.correlationData || []).map((d) => {
+            if (timeframe === '7d') {
+                return {
+                    ...d,
+                    pearson_corr: d.pearson_corr_7d ?? null,
+                    spearman_corr: d.spearman_corr_7d ?? null,
+                    returns_a_90d: d.returns_a_7d ?? null,
+                    returns_b_90d: d.returns_b_7d ?? null,
+                };
+            }
+            if (timeframe === '30d') {
+                return {
+                    ...d,
+                    pearson_corr: d.pearson_corr_30d ?? null,
+                    spearman_corr: d.spearman_corr_30d ?? null,
+                    returns_a_90d: d.returns_a_30d ?? null,
+                    returns_b_90d: d.returns_b_30d ?? null,
+                };
+            }
+            if (timeframe === '60d') {
+                return {
+                    ...d,
+                    pearson_corr: d.pearson_corr_60d ?? null,
+                    spearman_corr: d.spearman_corr_60d ?? null,
+                    returns_a_90d: d.returns_a_60d ?? null,
+                    returns_b_90d: d.returns_b_60d ?? null,
+                };
+            }
+            return d;
+        });
+    }, [data.correlationData, timeframe]);
 
     const handleSelectPairForHistory = (tickerA: string, tickerB: string) => {
         setSelectedPair({ tickerA, tickerB });
@@ -70,16 +104,54 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
 
                 {activeTab === 'current' ? (
                     data.correlationRun ? (
-                        <div className="space-y-24 animate-slide-up">
-                            <CorrelationHeatmap
-                                correlationData={data.correlationData}
-                                tickers={data.correlationRun.tickers}
-                            />
-                            <UncorrelatedPairs
-                                correlationData={data.correlationData}
-                                onSelectPair={handleSelectPairForHistory}
-                            />
-                            <SectorPerformanceGrid correlationData={data.correlationData} />
+                        <div className="space-y-16 animate-slide-up">
+                            {/* Timeframe Selector Button Group */}
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="flex gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                                    {(['7d', '30d', '60d', '90d'] as const).map((tf) => (
+                                        <Button
+                                            key={tf}
+                                            variant={timeframe === tf ? 'solid' : 'ghost'}
+                                            colorScheme={timeframe === tf ? 'accent' : 'neutral'}
+                                            onClick={() => setTimeframe(tf)}
+                                            className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                                        >
+                                            {tf.toUpperCase()}
+                                        </Button>
+                                    ))}
+                                </div>
+                                {timeframe === '7d' && (
+                                    <div className="max-w-3xl p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-amber-600 dark:text-amber-400 animate-slide-up">
+                                        <span className="text-lg">⚠️</span>
+                                        <div className="text-left text-xs leading-relaxed">
+                                            <span className="font-bold block mb-0.5">
+                                                7-Day Correlation Disclaimer:
+                                            </span>
+                                            Pearson and Spearman correlations calculated over 7 days
+                                            (approx. 5 trading days) are highly sensitive to
+                                            short-term price movements and can exhibit significant
+                                            noise and volatility. Use with caution for structural
+                                            diversification decisions.
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-24">
+                                <CorrelationHeatmap
+                                    correlationData={mappedCorrelationData}
+                                    tickers={data.correlationRun.tickers}
+                                />
+                                <UncorrelatedPairs
+                                    correlationData={mappedCorrelationData}
+                                    onSelectPair={handleSelectPairForHistory}
+                                    timeframe={timeframe}
+                                />
+                                <SectorPerformanceGrid
+                                    correlationData={mappedCorrelationData}
+                                    timeframe={timeframe}
+                                />
+                            </div>
                         </div>
                     ) : (
                         <EmptyCorrelationState />
@@ -288,7 +360,13 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
     );
 }
 
-function SectorPerformanceGrid({ correlationData }: { correlationData: CorrelationData[] }) {
+function SectorPerformanceGrid({
+    correlationData,
+    timeframe = '90d',
+}: {
+    correlationData: CorrelationData[];
+    timeframe?: '7d' | '30d' | '60d' | '90d';
+}) {
     const tickerReturns = React.useMemo(() => {
         const returns: Record<string, { positive: boolean; ticker: string }[]> = {};
 
@@ -331,10 +409,19 @@ function SectorPerformanceGrid({ correlationData }: { correlationData: Correlati
         return returns;
     }, [correlationData]);
 
+    const displayTimeframeName =
+        timeframe === '7d'
+            ? '7-Day'
+            : timeframe === '30d'
+              ? '30-Day'
+              : timeframe === '60d'
+                ? '60-Day'
+                : '90-Day';
+
     return (
         <section>
             <SectionHeading gradient="electric">
-                Sector Performance (90-Day Trailing Returns)
+                Sector Performance ({displayTimeframeName} Trailing Returns)
             </SectionHeading>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Object.entries(tickerReturns).map(([category, items]) => (

@@ -616,5 +616,43 @@ class TestStorageVerification:
                         await correlation_matrix.main()
 
 
+class TestMultiWindowCorrelation:
+    """Tests for multi-window returns and correlation calculations."""
+
+    def test_compute_trailing_returns_7d(self):
+        """Test 7-day trailing return calculation (uses raw endpoints)."""
+        # 7 prices: 100 to 107
+        prices = {"A": [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0]}
+        returns = correlation_matrix.compute_trailing_returns(prices, window_days=7)
+        assert "A" in returns
+        # Expected return: (107 - 101)/101 * 100
+        expected = ((107.0 / 101.0) - 1.0) * 100
+        assert returns["A"] == pytest.approx(expected)
+
+    def test_compute_trailing_returns_30d_with_sma(self):
+        """Test 30-day trailing return calculation with SMA smoothing."""
+        # Need at least 10 prices for SMA smoothing (since SMA_WINDOW is 5, min_for_sma = 10)
+        prices_list = [100.0] * 30
+        prices_list[-5:] = [110.0, 110.0, 110.0, 110.0, 110.0]
+        prices = {"A": prices_list}
+        returns = correlation_matrix.compute_trailing_returns(prices, window_days=30)
+        assert "A" in returns
+        # Expected: ((110/100) - 1) * 100 = 10%
+        assert returns["A"] == pytest.approx(10.0)
+
+    def test_compute_correlation_matrices_with_window_size(self):
+        """Test compute_correlation_matrices with specific window sizes."""
+        # Returns dict with 10 values
+        returns_dict = {
+            "A": np.array([0.01, 0.02, -0.01, 0.03, 0.01, -0.02, 0.01, 0.02, 0.03, -0.01]),
+            "B": np.array([0.02, 0.04, -0.02, 0.06, 0.02, -0.04, 0.02, 0.04, 0.06, -0.02]),
+        }
+        # Perfect positive correlation (B is exactly 2 * A)
+        # Verify for window_size = 5
+        pearson, spearman = correlation_matrix.compute_correlation_matrices(returns_dict, window_size=5)
+        assert pearson[("A", "B")] == pytest.approx(1.0)
+        assert spearman[("A", "B")] == pytest.approx(1.0)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

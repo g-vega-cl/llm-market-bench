@@ -1,3 +1,12 @@
+## [2026-06-08] feature | Fundamental Financial Key Metrics Integration
+
+Added the `get_key_metrics` tool to let competitive trading LLMs query structured financial metrics to resolve the filings context bloat vs. information utility tradeoff:
+- **Base class**: Extended `FinancialProvider` in `base.py` with the `get_key_metrics` method.
+- **Provider implementations**: Implemented FMP endpoint `/key-metrics/{symbol}` with filtering/capping parameters and yfinance `Ticker.info` parsing to map to the standardized schema.
+- **Tool integration**: Created canonical `GET_KEY_METRICS_TOOL` definition in `tools.py` and implemented execution handlers and tool dispatcher logic. Registered the tool across all LLM handlers (Gemini, Anthropic, OpenAI).
+- **TDD & verification**: Created a dedicated unit/integration test suite `test_key_metrics_tool.py` checking all provider mappings and formatting outputs. All checks and tests passed 100%.
+- **Documentation**: Added `concepts/fundamental-analysis.md` and updated `index.md`.
+
 ## [2026-05-30] feature | SSR Hydration Symmetry Regression Suite
 
 Added a comprehensive SSR hydration regression test suite to the web app's pre-commit pipeline:

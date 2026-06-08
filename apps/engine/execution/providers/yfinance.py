@@ -123,3 +123,66 @@ class YFinanceProvider(FinancialProvider):
         except Exception:
             logger.exception(f"Error fetching history from yfinance for {ticker}")
             return []
+
+    async def get_key_metrics(self, ticker: str, period: str = "annual", limit: int = 1) -> list[dict]:
+        """Fetch fundamental financial key metrics for a ticker from yfinance."""
+        try:
+            loop = asyncio.get_event_loop()
+            t = await loop.run_in_executor(None, lambda: yf.Ticker(ticker))
+            info = await loop.run_in_executor(None, lambda: t.info)
+
+            if not info:
+                logger.warning(f"No key metrics found for {ticker} on yfinance.")
+                return []
+
+            # Map yfinance info to FMP schema
+            fcf = info.get("freeCashflow")
+            market_cap = info.get("marketCap") or info.get("totalAssets") or info.get("netAssets") or 0
+            fcf_yield = None
+            if fcf and market_cap:
+                fcf_yield = float(fcf) / float(market_cap)
+
+            debt_to_equity = info.get("debtToEquity")
+            if debt_to_equity is not None:
+                # yfinance returns debtToEquity in percent (e.g., 210.0 for 2.1)
+                debt_to_equity = float(debt_to_equity) / 100.0
+
+            # Determine fiscal year/date
+            import datetime
+
+            fiscal_year_end = info.get("lastFiscalYearEnd")
+            date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            calendar_year = str(datetime.datetime.now().year)
+            if fiscal_year_end:
+                try:
+                    # fiscal_year_end is epoch seconds
+                    dt = datetime.datetime.fromtimestamp(fiscal_year_end)
+                    date_str = dt.strftime("%Y-%m-%d")
+                    calendar_year = str(dt.year)
+                except Exception:
+                    pass
+
+            metric = {
+                "symbol": ticker.upper(),
+                "date": date_str,
+                "calendarYear": calendar_year,
+                "period": "TTM",
+                "peRatio": info.get("trailingPE"),
+                "priceToSalesRatio": info.get("priceToSalesTrailing12Months"),
+                "pbRatio": info.get("priceToBook"),
+                "enterpriseValueOverEBITDA": info.get("enterpriseToEbitda"),
+                "debtToEquity": debt_to_equity,
+                "currentRatio": info.get("currentRatio"),
+                "roe": info.get("returnOnEquity"),
+                "dividendYield": info.get("dividendYield"),
+                "freeCashFlowYield": fcf_yield,
+                "bookValuePerShare": info.get("bookValue"),
+                "revenuePerShare": info.get("revenuePerShare"),
+            }
+
+            # Filter out None values to keep it clean, but keep keys
+            metric = {k: v for k, v in metric.items() if v is not None}
+            return [metric]
+        except Exception:
+            logger.exception(f"Error fetching key metrics from yfinance for {ticker}")
+            return []

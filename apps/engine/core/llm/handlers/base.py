@@ -40,4 +40,10 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             min_return=args.get("min_return", 0.0),
             method=args.get("method", "pearson"),
         )
+    elif name == "get_key_metrics":
+        return await tools.execute_key_metrics_tool(
+            args["ticker"],
+            period=args.get("period", "annual"),
+            limit=args.get("limit", 2),
+        )
     return "Unknown tool"

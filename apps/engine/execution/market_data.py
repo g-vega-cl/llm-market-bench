@@ -539,3 +539,15 @@ class MarketDataManager:
             return history
 
         return []
+
+    async def get_key_metrics(self, ticker: str, period: str = "annual", limit: int = 1) -> list[dict]:
+        """Fetch fundamental financial key metrics for a ticker.
+
+        Delegates to the configured financial provider.
+        """
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for key metrics retrieval for {ticker}.")
+            return []
+
+        return await provider.get_key_metrics(ticker, period, limit)

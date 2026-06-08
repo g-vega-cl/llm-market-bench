@@ -1,0 +1,153 @@
+"""Unit tests for get_key_metrics fundamental analysis tool."""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from core.llm import tools
+from core.llm.handlers.base import execute_tool
+from execution.market_data import MarketDataManager
+from execution.providers.fmp import FMPProvider
+from execution.providers.yfinance import YFinanceProvider
+
+
+@pytest.mark.asyncio
+async def test_fmp_provider_get_key_metrics():
+    """Test FMPProvider.get_key_metrics returns standardized key metrics."""
+    provider = FMPProvider()
+    provider.api_key = "test_api_key"
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "symbol": "AAPL",
+            "date": "2024-09-28",
+            "calendarYear": "2024",
+            "period": "FY",
+            "peRatio": 30.5,
+            "priceToSalesRatio": 8.2,
+            "pbRatio": 45.1,
+            "enterpriseValueOverEBITDA": 24.3,
+            "debtToEquity": 2.1,
+            "currentRatio": 1.2,
+            "roe": 1.75,
+            "dividendYield": 0.005,
+            "freeCashFlowYield": 0.035,
+            "bookValuePerShare": 4.5,
+            "revenuePerShare": 24.5,
+            "netIncomePerShare": 6.1,
+            "freeCashFlowPerShare": 7.2,
+            "ignoredField": "should_not_be_present",
+        }
+    ]
+    mock_resp.raise_for_status = MagicMock()
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_resp
+        metrics = await provider.get_key_metrics("AAPL", period="annual", limit=1)
+
+        assert len(metrics) == 1
+        m = metrics[0]
+        assert m["symbol"] == "AAPL"
+        assert m["date"] == "2024-09-28"
+        assert m["peRatio"] == 30.5
+        assert "ignoredField" not in m
+
+        # Check API parameters
+        mock_get.assert_called_once()
+        args, kwargs = mock_get.call_args
+        params = kwargs.get("params")
+        assert params["apikey"] == "test_api_key"
+        assert params["period"] == "annual"
+        assert params["limit"] == 1
+
+
+@pytest.mark.asyncio
+async def test_yfinance_provider_get_key_metrics():
+    """Test YFinanceProvider.get_key_metrics retrieves and maps to standardized format."""
+    provider = YFinanceProvider()
+
+    mock_ticker = MagicMock()
+    mock_ticker.info = {
+        "symbol": "AAPL",
+        "trailingPE": 30.5,
+        "priceToSalesTrailing12Months": 8.2,
+        "priceToBook": 45.1,
+        "enterpriseToEbitda": 24.3,
+        "debtToEquity": 210.0,  # yfinance returns debt to equity as % (210% = 2.1)
+        "currentRatio": 1.2,
+        "returnOnEquity": 1.75,
+        "dividendYield": 0.005,
+        "bookValue": 4.5,
+    }
+
+    with patch("yfinance.Ticker", return_value=mock_ticker):
+        metrics = await provider.get_key_metrics("AAPL", period="annual", limit=1)
+
+        assert len(metrics) == 1
+        m = metrics[0]
+        assert m["symbol"] == "AAPL"
+        assert m["peRatio"] == 30.5
+        assert m["priceToSalesRatio"] == 8.2
+        assert m["pbRatio"] == 45.1
+        assert m["enterpriseValueOverEBITDA"] == 24.3
+        assert m["debtToEquity"] == 2.1  # normalized from 210.0
+        assert m["currentRatio"] == 1.2
+        assert m["roe"] == 1.75
+        assert m["dividendYield"] == 0.005
+        assert m["bookValuePerShare"] == 4.5
+
+
+@pytest.mark.asyncio
+async def test_market_data_manager_get_key_metrics():
+    """Test MarketDataManager delegates to provider and returns results."""
+    # We will mock the provider
+    mock_provider = MagicMock()
+    mock_provider.get_key_metrics = AsyncMock(return_value=[{"symbol": "AAPL", "peRatio": 30.5}])
+
+    manager = MarketDataManager()
+    manager.providers = [mock_provider]
+
+    metrics = await manager.get_key_metrics("AAPL", period="annual", limit=2)
+    assert len(metrics) == 1
+    assert metrics[0]["peRatio"] == 30.5
+    mock_provider.get_key_metrics.assert_called_once_with("AAPL", "annual", 2)
+
+
+@pytest.mark.asyncio
+async def test_execute_key_metrics_tool():
+    """Test execute_key_metrics_tool formats and executes correctly."""
+    mock_metrics = [
+        {
+            "symbol": "AAPL",
+            "date": "2024-09-28",
+            "calendarYear": "2024",
+            "period": "FY",
+            "peRatio": 30.5,
+            "debtToEquity": 2.1,
+            "roe": 1.75,
+        }
+    ]
+
+    with patch.object(MarketDataManager, "get_key_metrics", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_metrics
+        result = await tools.execute_key_metrics_tool("AAPL", period="annual", limit=1)
+
+        assert "AAPL" in result
+        assert "30.5" in result
+        assert "2.1" in result
+        assert "ROE: 175.00%" in result
+        mock_get.assert_called_once_with("AAPL", "annual", 1)
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_dispatches_get_key_metrics():
+    """Test execute_tool dispatches 'get_key_metrics' correctly."""
+    with patch("core.llm.tools.execute_key_metrics_tool", new_callable=AsyncMock) as mock_execute:
+        mock_execute.return_value = "Mocked metrics response"
+
+        res = await execute_tool("get_key_metrics", {"ticker": "AAPL", "period": "quarter", "limit": 2}, "model-xyz")
+
+        assert res == "Mocked metrics response"
+        mock_execute.assert_called_once_with("AAPL", period="quarter", limit=2)

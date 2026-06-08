@@ -333,6 +333,36 @@ FIND_UNCORRELATED_ASSETS_TOOL = {
     },
 }
 
+GET_KEY_METRICS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_key_metrics",
+        "description": (
+            "Get fundamental financial key metrics (P/E ratio, PEG ratio, Debt-to-Equity, "
+            "ROE, margins, etc.) for a stock ticker to assess valuation and financial health."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., AAPL, TSLA, NVDA)",
+                },
+                "period": {
+                    "type": "string",
+                    "enum": ["annual", "quarter"],
+                    "description": "The period for key metrics: 'annual' or 'quarter' (default: 'annual').",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of periods of history to retrieve (default: 2).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
 
 # =============================================================================
 # TOOL EXECUTION
@@ -786,3 +816,49 @@ async def execute_find_uncorrelated_assets_tool(
 
     except Exception as e:
         return f"Error finding uncorrelated assets: {str(e)}"
+
+
+async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: int = 2) -> str:
+    """Fetches fundamental financial key metrics for a ticker to help analyze valuation/health."""
+    manager = MarketDataManager()
+    try:
+        data = await manager.get_key_metrics(ticker, period, limit)
+
+        if not data:
+            return f"No fundamental key metrics found for {ticker}."
+
+        output = f"Fundamental Key Metrics for {ticker} ({period.capitalize()} periods, recent first):\n"
+        for i, entry in enumerate(data, 1):
+            date_str = entry.get("date") or "N/A"
+            period_str = entry.get("period") or "N/A"
+            year_str = entry.get("calendarYear") or "N/A"
+
+            output += f"\n--- Period {i}: {period_str} {year_str} (Date: {date_str}) ---\n"
+
+            # Helper to safely format decimal/float metrics
+            def fmt(val, percentage=False):
+                if val is None:
+                    return "N/A"
+                if percentage:
+                    return f"{val * 100:.2f}%"
+                return f"{val:.2f}"
+
+            output += f"- P/E Ratio: {fmt(entry.get('peRatio'))}\n"
+            output += f"- Price/Sales Ratio: {fmt(entry.get('priceToSalesRatio'))}\n"
+            output += f"- Price/Book Ratio: {fmt(entry.get('pbRatio'))}\n"
+            output += f"- EV/EBITDA: {fmt(entry.get('enterpriseValueOverEBITDA'))}\n"
+            output += f"- Debt/Equity: {fmt(entry.get('debtToEquity'))}\n"
+            output += f"- Current Ratio: {fmt(entry.get('currentRatio'))}\n"
+            output += f"- ROE: {fmt(entry.get('roe'), percentage=True)}\n"
+            output += f"- Dividend Yield: {fmt(entry.get('dividendYield'), percentage=True)}\n"
+            output += f"- Free Cash Flow Yield: {fmt(entry.get('freeCashFlowYield'), percentage=True)}\n"
+            output += f"- Book Value Per Share: ${fmt(entry.get('bookValuePerShare'))}\n"
+            output += f"- Revenue Per Share: ${fmt(entry.get('revenuePerShare'))}\n"
+            if "netIncomePerShare" in entry:
+                output += f"- Net Income Per Share: ${fmt(entry.get('netIncomePerShare'))}\n"
+            if "freeCashFlowPerShare" in entry:
+                output += f"- Free Cash Flow Per Share: ${fmt(entry.get('freeCashFlowPerShare'))}\n"
+
+        return output
+    except Exception as e:
+        return f"Error fetching key metrics for {ticker}: {str(e)}"

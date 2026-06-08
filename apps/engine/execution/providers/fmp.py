@@ -257,3 +257,57 @@ class FMPProvider(FinancialProvider):
             error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
             logger.error(f"Error screening stocks on FMP: {error_details}")
             return []
+
+    async def get_key_metrics(self, ticker: str, period: str = "annual", limit: int = 1) -> list[dict]:
+        """Fetch fundamental financial key metrics for a ticker from FMP."""
+        if not self.api_key:
+            return []
+
+        # FMP expects period to be 'annual' or 'quarter'
+        params = {
+            "period": period,
+            "limit": limit,
+            "apikey": self.api_key,
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(f"{self.BASE_URL}/key-metrics/{ticker}", params=params)
+                resp.raise_for_status()
+                data = resp.json()
+
+                if not data or not isinstance(data, list):
+                    logger.warning(f"No key metrics found for {ticker} on FMP.")
+                    return []
+
+                keys_to_keep = {
+                    "symbol",
+                    "date",
+                    "calendarYear",
+                    "period",
+                    "peRatio",
+                    "priceToSalesRatio",
+                    "pbRatio",
+                    "enterpriseValueOverEBITDA",
+                    "debtToEquity",
+                    "currentRatio",
+                    "roe",
+                    "dividendYield",
+                    "freeCashFlowYield",
+                    "bookValuePerShare",
+                    "revenuePerShare",
+                    "netIncomePerShare",
+                    "freeCashFlowPerShare",
+                }
+
+                results = []
+                for entry in data:
+                    filtered_entry = {k: v for k, v in entry.items() if k in keys_to_keep}
+                    results.append(filtered_entry)
+
+                return results
+
+        except Exception as e:
+            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+            logger.error(f"Error fetching key metrics from FMP for {ticker}: {error_details}")
+            return []

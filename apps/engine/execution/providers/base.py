@@ -55,6 +55,14 @@ class FinancialProvider(ABC):
         """
         pass
 
+    async def get_key_metrics(self, ticker: str, period: str = "annual", limit: int = 1) -> list[dict]:
+        """Fetch fundamental financial key metrics for a ticker.
+
+        Returns:
+            List of dicts containing key metrics.
+        """
+        return []
+
     @classmethod
     async def disconnect_all(cls):
         """Optional hook to close persistent connections."""

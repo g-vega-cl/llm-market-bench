@@ -53,6 +53,8 @@
 - [[concepts/performance-auditing-strategy]] — Cloud-native edge performance auditing with Netlify Lighthouse budgets
 - [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR decision frameworks, patterns, and live examples
 - [[concepts/mcp-setup]] — Setup, configuration, plugin management, and caching details for Model Context Protocol (MCP) servers
+- [[concepts/fundamental-analysis]] — Standardized fundamental key metrics to prevent filings context bloat
+
 
 
 

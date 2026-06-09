@@ -1,7 +1,3 @@
-## [2026-05-31] doc | Updated MiniMax slippage buffer documentation from 0.3% to 0.5%
-
-Updated the wiki documentation to reflect the code change that aligns the MiniMax portfolio execution simulated slippage and Alpaca mirror order limit buffer from `±0.3%` to `±0.5%`. Updated pages: `concepts/execution.md`, `concepts/minimax-portfolio.md`, `index.md`, and `overview.md`.
-
 ## [2026-05-31] optimization | Advanced Homepage SSR Performance & Granular Hydration Stability
 
 Resolved Unlighthouse performance bottlenecks (Target: 90%+) and structural SSR hydration risks on the core `TodayPage`:
@@ -241,4 +237,13 @@ Moved the core "Today" dashboard from the root `/` route to its own `/today` rou
 ## [2026-06-08] feature | Homepage routing scaffold & Today page migration
 
 Moved the core "Today" dashboard from the root `/` route to its own `/today` route in the web app. The root route (`/`) is now a placeholder `HomePage` component with a welcome message, scaffolding for a planned UI redesign. The `Today` nav item now points to `/today` instead of `/`. Added TDD verification tests for the routing migration and updated route tree generation. Wiki pages already updated to reflect the new state.
+
+## [2026-06-09] feature | HomePage dashboard with Liquid Glass design system
+
+Implemented the full HomePage dashboard component with a "Liquid Glass" design system featuring dot grid backgrounds, ambient glowing orbs, and glassmorphism cards. The page displays:
+- **S&P 500 Benchmark card** — visually distinct with yellow/gold styling, showing today and week performance
+- **Individual portfolio cards** — per-LLM cards with equity, today P&L, active status, and auto-research badges
+- **Market Feeling footer** — sentiment indicator with color-coded dot and summary text
+
+Data is fetched server-side via `createServerFn` in the route loader, aggregating portfolio performance, benchmark history, and today's market feeling data. Portfolio names are cleaned from `ownerId` slugs (e.g., `org/Claude-3-Opus` → `Claude 3 Opus`). Added comprehensive test coverage for the dashboard rendering.
 

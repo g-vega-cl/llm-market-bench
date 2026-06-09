@@ -1,3 +1,10 @@
+## [2026-06-09] bugfix | Dynamic timeframe labels in Market Overview uncorrelated pairs table
+
+Resolved a UI presentation bug in the `/market-overview` route where the returns table headers and strategy notes stayed fixed as "90d" and "90-day window" respectively, even when the user selected a different timeframe:
+- **Dynamic Table Headers**: Updated the table headers in [UncorrelatedPairs.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/market-overview/components/UncorrelatedPairs.tsx) to display `{timeframe} Return A` and `{timeframe} Return B` dynamically.
+- **Dynamic Strategy Note**: Formatted the timeframe code to a descriptive window name (e.g. `'30d'` ➔ `'30-day'`) and updated the strategy note text to use this formatted name.
+- **TDD Regression Suite**: Added a comprehensive unit test file [UncorrelatedPairs.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/market-overview/components/UncorrelatedPairs.test.tsx) verifying that table headers and strategy note texts update correctly when the `timeframe` prop changes.
+
 ## [2026-05-31] optimization | Advanced Homepage SSR Performance & Granular Hydration Stability
 
 Resolved Unlighthouse performance bottlenecks (Target: 90%+) and structural SSR hydration risks on the core `TodayPage`:

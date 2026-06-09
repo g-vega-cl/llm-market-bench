@@ -30,6 +30,15 @@ export function UncorrelatedPairs({
     const [method, setMethod] = React.useState<'pearson' | 'spearman'>('pearson');
     const [sortBy, setSortBy] = React.useState<'correlation' | 'return'>('correlation');
 
+    const displayWindowName =
+        timeframe === '7d'
+            ? '7-day'
+            : timeframe === '30d'
+              ? '30-day'
+              : timeframe === '60d'
+                ? '60-day'
+                : '90-day';
+
     const filteredPairs = React.useMemo(() => {
         return correlationData
             .filter((c) => {
@@ -178,8 +187,8 @@ export function UncorrelatedPairs({
                                 <TableHead>Pair</TableHead>
                                 <TableHead align="center">Pearson</TableHead>
                                 <TableHead align="center">Spearman</TableHead>
-                                <TableHead align="right">90d Return A</TableHead>
-                                <TableHead align="right">90d Return B</TableHead>
+                                <TableHead align="right">{timeframe} Return A</TableHead>
+                                <TableHead align="right">{timeframe} Return B</TableHead>
                                 <TableHead align="right">Avg Return</TableHead>
                                 <TableHead align="center">Action</TableHead>
                             </TableRow>
@@ -287,9 +296,9 @@ export function UncorrelatedPairs({
                 </h3>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     The most uncorrelated pair with positive returns is highlighted in blue. This
-                    combination of assets would have provided diversification benefits during the
-                    90-day window while still generating positive returns. The XLK/XLE strategy
-                    (Technology + Energy) is a classic example of this approach.
+                    combination of assets would have provided diversification benefits during the{' '}
+                    {displayWindowName} window while still generating positive returns. The XLK/XLE
+                    strategy (Technology + Energy) is a classic example of this approach.
                 </p>
             </div>
         </section>

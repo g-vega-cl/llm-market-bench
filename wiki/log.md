@@ -1,19 +1,3 @@
-## [2026-06-09] bugfix | Dynamic timeframe labels in Market Overview uncorrelated pairs table
-
-Resolved a UI presentation bug in the `/market-overview` route where the returns table headers and strategy notes stayed fixed as "90d" and "90-day window" respectively, even when the user selected a different timeframe:
-- **Dynamic Table Headers**: Updated the table headers in [UncorrelatedPairs.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/market-overview/components/UncorrelatedPairs.tsx) to display `{timeframe} Return A` and `{timeframe} Return B` dynamically.
-- **Dynamic Strategy Note**: Formatted the timeframe code to a descriptive window name (e.g. `'30d'` ➔ `'30-day'`) and updated the strategy note text to use this formatted name.
-- **TDD Regression Suite**: Added a comprehensive unit test file [UncorrelatedPairs.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/market-overview/components/UncorrelatedPairs.test.tsx) verifying that table headers and strategy note texts update correctly when the `timeframe` prop changes.
-
-## [2026-05-31] optimization | Advanced Homepage SSR Performance & Granular Hydration Stability
-
-Resolved Unlighthouse performance bottlenecks (Target: 90%+) and structural SSR hydration risks on the core `TodayPage`:
-- **Server-Side Formatting**: Eliminated the final traces of client-side date instantiations across `MarketStatusHero`, `AgentInsights`, `NewsletterFeed`, and `TradeActivity`. All formatting is now fully delegated to `fetchTodayData` on the server which injects static `formattedTime`, `formattedDate`, `formattedDateTime`, and `formattedShortDate` strings directly into the data entities.
-- **Payload Overhead Reduction**: Shrunk the massive `priceUpdates` cache database query inside `fetchTodayData` to `.select('id').limit(1)` since it is strictly evaluated as a boolean (`isEmpty`) for the layout, massively reducing row transport overhead.
-- **Chronological Sorting Fix**: Replaced `new Date().getTime()` sorting in `TradeActivity` with string-based `localeCompare()` on ISO timestamps to completely scrub the render phase of dynamic temporal logic.
-- **Progressive Hydration (Suspense)**: Refactored `TodayPage` to utilize granular `React.lazy()` boundaries and `<Suspense>` wrappers around all heavy secondary dashboard modules (`AgentInsights`, `FutureCatalysts`, `GlobalMacroStats`, `NewsletterFeed`, `TradeActivity`), significantly improving Time To Interactive (TTI) and dropping the initial blocking chunk size.
-- **TDD Safety Net**: Authored a dedicated Vitest regression suite (`TodayPage.perf.test.tsx`) that enforces 0 runtime invocations of the `dateUtils` formatters during the component render cycle. Passed 100% cleanly.
-
 ## [2026-05-31] optimization | TodayPage SSR performance & progressive hydration refactor
 
 Server-side date formatting, Suspense code splitting, `priceUpdates` query optimization, and sorting fix on `TodayPage` to reduce TTI and eliminate hydration mismatches. Added `TodayPage.perf.test.tsx` regression suite ensuring zero client-side date util calls during render.
@@ -253,4 +237,8 @@ Implemented the full HomePage dashboard component with a "Liquid Glass" design s
 - **Market Feeling footer** — sentiment indicator with color-coded dot and summary text
 
 Data is fetched server-side via `createServerFn` in the route loader, aggregating portfolio performance, benchmark history, and today's market feeling data. Portfolio names are cleaned from `ownerId` slugs (e.g., `org/Claude-3-Opus` → `Claude 3 Opus`). Added comprehensive test coverage for the dashboard rendering.
+
+## [2026-06-10] feature | Background video with parallax scroll and SSR/CSR phased loading
+
+Added `BackgroundVideo` component that uses a two-phase SSR/CSR strategy: server-side renders a fast static poster image (`data-testid="background-video"`), client-side hydrates to a hardware-accelerated `<video>` with parallax scroll effect via `requestAnimationFrame`. Uses permanent S3 URLs for video and poster assets. Integrated into `HomePage` as a fixed background layer behind the dot grid overlay. Removed the solid `bg-[#050914]` fallback since the poster now handles the initial paint. Test updated to verify `data-testid` presence.
 

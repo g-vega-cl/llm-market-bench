@@ -48,6 +48,9 @@ describe('HomePage Dashboard', () => {
         // Verify the main title exists
         expect(screen.getByText('Market Overview')).toBeDefined();
 
+        // Verify the background video exists
+        expect(screen.getByTestId('background-video')).toBeDefined();
+
         // Verify individual portfolios render
         expect(screen.getByText('Claude 3 Opus')).toBeDefined();
         expect(screen.getAllByText('Auto-Research').length).toBeGreaterThan(0);

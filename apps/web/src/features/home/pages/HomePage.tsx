@@ -1,5 +1,3 @@
-import { BackgroundVideo } from '~/components/BackgroundVideo';
-
 export interface HomePageData {
     portfolios: {
         name: string;
@@ -22,7 +20,6 @@ export function HomePage({ data }: { data: HomePageData }) {
 
     return (
         <div className="homepage-wrapper relative min-h-screen w-full text-white overflow-x-hidden">
-            <BackgroundVideo />
             {/* 1. Modern Dot Grid Background with Subtle Ambient Glow */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {/* Ambient glowing orbs for depth */}

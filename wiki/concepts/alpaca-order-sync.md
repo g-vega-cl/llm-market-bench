@@ -49,7 +49,7 @@ The sync is **decoupled** from the engine run lifecycle — it runs as a daily G
 | `ERROR` | `alpaca_broker.py` on submission failure | Couldn't submit to Alpaca |
 | `SKIPPED_NO_POSITION` | `alpaca_broker.py` SELL guardrail | Blocked — no shares held |
 
-Before 2026-05-14, the initial status was `PENDING` instead of `SUBMITTED`. All legacy `PENDING` orders have reached terminal states and the sync script now only tracks `SUBMITTED` orders.
+Before 2026-05-14, the initial status was `PENDING` instead of `SUBMITTED`. All legacy `PENDING` orders reached terminal states (32 filled, 1 canceled) and were programmatically resolved in the database via a migration script on 2026-06-11. The sync script now only tracks `SUBMITTED` orders.
 
 ## Sync Script
 

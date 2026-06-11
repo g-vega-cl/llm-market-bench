@@ -491,7 +491,7 @@ class TestGetSupabasePosition:
 @pytest.mark.asyncio
 class TestUpdateTrade:
     async def test_update_trade_with_order_id(self, mock_supabase_table):
-        """Supabase row is updated with string order_id and PENDING status."""
+        """Supabase row is updated with string order_id and SUBMITTED status."""
         mock_table, mock_eq, mock_execute = mock_supabase_table
 
         with patch("execution.alpaca_broker.get_supabase_client") as mock_get_client:
@@ -499,11 +499,11 @@ class TestUpdateTrade:
 
             broker = AlpacaBroker()
             trade_id = uuid4()
-            await broker._update_trade(trade_id, "alpaca-order-456", "PENDING")
+            await broker._update_trade(trade_id, "alpaca-order-456", "SUBMITTED")
 
             # Verify update payload
             update_call = mock_table.update.call_args[0][0]
-            assert update_call["alpaca_status"] == "PENDING"
+            assert update_call["alpaca_status"] == "SUBMITTED"
             assert update_call["alpaca_submitted_at"] == "now()"
             assert update_call["alpaca_order_id"] == "alpaca-order-456"
 
@@ -536,7 +536,7 @@ class TestUpdateTrade:
             broker = AlpacaBroker()
             trade_id = uuid4()
             # Should NOT raise
-            await broker._update_trade(trade_id, "order-123", "PENDING")
+            await broker._update_trade(trade_id, "order-123", "SUBMITTED")
 
 
 # ---------------------------------------------------------------------------

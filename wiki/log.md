@@ -1,7 +1,3 @@
-## [2026-05-31] optimization | TodayPage SSR performance & progressive hydration refactor
-
-Server-side date formatting, Suspense code splitting, `priceUpdates` query optimization, and sorting fix on `TodayPage` to reduce TTI and eliminate hydration mismatches. Added `TodayPage.perf.test.tsx` regression suite ensuring zero client-side date util calls during render.
-
 ## [2026-05-31] fix | Patch TodayPage.test.tsx Mock Data for Eastern Time Formatting
 
 Fixed the unit test failure in `TodayPage.test.tsx` caused by missing mock data in the optimized server-side formatted date architecture:
@@ -241,4 +237,8 @@ Data is fetched server-side via `createServerFn` in the route loader, aggregatin
 ## [2026-06-10] feature | Background video with parallax scroll and SSR/CSR phased loading
 
 Added `BackgroundVideo` component that uses a two-phase SSR/CSR strategy: server-side renders a fast static poster image (`data-testid="background-video"`), client-side hydrates to a hardware-accelerated `<video>` with parallax scroll effect via `requestAnimationFrame`. Uses permanent S3 URLs for video and poster assets. Integrated into `HomePage` as a fixed background layer behind the dot grid overlay. Removed the solid `bg-[#050914]` fallback since the poster now handles the initial paint. Test updated to verify `data-testid` presence.
+
+## [2026-06-11] chore | Legacy PENDING trades migration completed; mobile layout fixes
+
+Ran one-time migration script (`apps/engine/scripts/migrate_pending_trades.py`) to resolve all 33 remaining PENDING orders to terminal Alpaca statuses (32 filled, 1 canceled). Updated [[concepts/alpaca-order-sync]] with details. Also fixed mobile overflow in portfolio positions and trades tables by applying `min-width` to the inner table element instead of the container.
 

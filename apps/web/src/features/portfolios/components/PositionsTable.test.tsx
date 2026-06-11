@@ -95,4 +95,15 @@ describe('PositionsTable', () => {
         expect(screen.getByText((_, el) => el?.textContent === '$-250.00')).toBeInTheDocument();
         expect(screen.getByText((_, el) => el?.textContent === '-7.14%')).toBeInTheDocument();
     });
+
+    it('applies the min-width to the inner table rather than the container', () => {
+        const { container } = render(<PositionsTable positions={mockPositions} />);
+        const outerWrapper = container.firstChild as HTMLElement;
+        expect(outerWrapper).toBeInTheDocument();
+        expect(outerWrapper.className).not.toContain('min-w-[800px]');
+
+        const table = container.querySelector('table');
+        expect(table).toBeInTheDocument();
+        expect(table?.className).toContain('min-w-[800px]');
+    });
 });

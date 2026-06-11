@@ -85,7 +85,7 @@ export function PositionsTable({ positions }: PositionsTableProps) {
     }, [positions, sortKey, sortDirection, totalInvestedCash]);
 
     return (
-        <Table containerClassName="min-w-[800px]">
+        <Table className="min-w-[800px]">
             <TableHeader>
                 <TableRow isHoverable={false}>
                     <TableHead>Ticker</TableHead>

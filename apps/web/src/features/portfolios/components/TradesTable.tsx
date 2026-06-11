@@ -21,7 +21,7 @@ export function TradesTable({ trades }: TradesTableProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
-        <Table containerClassName="min-w-[700px]">
+        <Table className="min-w-[700px]">
             <TableHeader>
                 <TableRow isHoverable={false}>
                     <TableHead>Date</TableHead>

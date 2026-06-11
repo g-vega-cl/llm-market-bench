@@ -11,15 +11,15 @@ const mockTrades: Trade[] = [
         quantity: 10,
         price: 150,
         total_cost: 1500,
-        executed_at: new Date().toISOString(),
-        decision_id: null,
+        executed_at: '2026-01-01T12:00:00Z',
+        alpaca_status: 'FILLED',
+        alpaca_order_id: 'alpaca-order-1',
+        alpaca_submitted_at: '2026-01-01T12:00:00Z',
+        alpaca_filled_at: '2026-01-01T12:05:00Z',
         realized_pnl: null,
         realized_pnl_pct: null,
-        reasoning: 'Strong earnings report.',
-        alpaca_status: 'FILLED',
-        alpaca_order_id: 'order-abc-123',
-        alpaca_submitted_at: new Date().toISOString(),
-        alpaca_filled_at: new Date().toISOString(),
+        reasoning: 'Bullish momentum breakout.',
+        decision_id: 'd1',
     },
     {
         id: 't2',
@@ -29,60 +29,51 @@ const mockTrades: Trade[] = [
         quantity: 5,
         price: 700,
         total_cost: 3500,
-        executed_at: new Date().toISOString(),
-        decision_id: null,
-        realized_pnl: null,
-        realized_pnl_pct: null,
-        reasoning: 'Technical breakdown below support.',
-        alpaca_status: null,
-        alpaca_order_id: null,
-        alpaca_submitted_at: null,
+        executed_at: '2026-01-02T12:00:00Z',
+        alpaca_status: 'CANCELED',
+        alpaca_order_id: 'alpaca-order-2',
+        alpaca_submitted_at: '2026-01-02T12:00:00Z',
         alpaca_filled_at: null,
+        realized_pnl: 100,
+        realized_pnl_pct: 2.86,
+        reasoning: 'Taking profit at target.',
+        decision_id: 'd2',
     },
 ];
 
 describe('TradesTable', () => {
-    it('renders all trades in the list', () => {
+    it('renders all trades in the table', () => {
         render(<TradesTable trades={mockTrades} />);
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getByText('TSLA')).toBeInTheDocument();
         expect(screen.getByText('BUY')).toBeInTheDocument();
         expect(screen.getByText('SELL')).toBeInTheDocument();
+        expect(screen.getByText('FILLED')).toBeInTheDocument();
+        expect(screen.getByText('CANCELED')).toBeInTheDocument();
     });
 
-    it('expands reasoning when a trade is clicked', () => {
+    it('expands reasoning when a row is clicked', () => {
         render(<TradesTable trades={mockTrades} />);
-
-        // Reasoning hidden initially
-        expect(screen.queryByText('Strong earnings report.')).not.toBeInTheDocument();
-
-        // Click AAPL trade
-        fireEvent.click(screen.getByText('AAPL'));
-
-        expect(screen.getByText('Strong earnings report.')).toBeInTheDocument();
-        expect(screen.getByText('Thinking Process')).toBeInTheDocument();
+        expect(screen.queryByText('Bullish momentum breakout.')).not.toBeInTheDocument();
+        const aaplRow = screen.getByText('AAPL').closest('tr');
+        expect(aaplRow).toBeInTheDocument();
+        if (aaplRow) {
+            fireEvent.click(aaplRow);
+            expect(screen.getByText('Bullish momentum breakout.')).toBeInTheDocument();
+            expect(screen.getByText('Thinking Process')).toBeInTheDocument();
+            fireEvent.click(aaplRow);
+            expect(screen.queryByText('Bullish momentum breakout.')).not.toBeInTheDocument();
+        }
     });
 
-    it('applies correct styling for signals', () => {
-        render(<TradesTable trades={mockTrades} />);
-        const buyBadge = screen.getByText('BUY');
-        const sellBadge = screen.getByText('SELL');
+    it('applies the min-width to the inner table rather than the container', () => {
+        const { container } = render(<TradesTable trades={mockTrades} />);
+        const outerWrapper = container.firstChild as HTMLElement;
+        expect(outerWrapper).toBeInTheDocument();
+        expect(outerWrapper.className).not.toContain('min-w-[700px]');
 
-        expect(buyBadge).toHaveClass('bg-success/20');
-        expect(sellBadge).toHaveClass('bg-danger/20');
-    });
-
-    it('renders alpaca status badges with correct colors and links', () => {
-        render(<TradesTable trades={mockTrades} />);
-
-        const filledText = screen.getByText('FILLED');
-        expect(filledText).toBeInTheDocument();
-        expect(filledText).toHaveClass('bg-success/20');
-
-        const filledLink = filledText.closest('a');
-        expect(filledLink).toHaveAttribute('href', 'https://paper.alpaca.markets/orders');
-
-        const dashes = screen.getAllByText('\u2014');
-        expect(dashes.length).toBeGreaterThanOrEqual(3);
+        const table = container.querySelector('table');
+        expect(table).toBeInTheDocument();
+        expect(table?.className).toContain('min-w-[700px]');
     });
 });

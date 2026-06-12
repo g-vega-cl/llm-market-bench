@@ -1,9 +1,3 @@
-## [2026-05-31] fix | Patch TodayPage.test.tsx Mock Data for Eastern Time Formatting
-
-Fixed the unit test failure in `TodayPage.test.tsx` caused by missing mock data in the optimized server-side formatted date architecture:
-- **Mock Payload Update**: Added the pre-formatted `formattedTime: '10:45 AM ET'` field to the `emptyTodayData.marketFeeling` mock object. This conforms to the server-formatting requirements expected by `MarketStatusHero` and fulfills the `Last analyzed: 10:45 AM ET` assertion.
-- **TDD Verification**: Confirmed that all 47 tests under `src/features/today/` are 100% green, with both Biome checks and TypeScript typechecks (`tsc --noEmit`) passing perfectly.
-
 ## [2026-05-31] optimization | Server-side date formatting & progressive hydration for TodayPage
 
 Moved all date formatting from client components to server-side data fetching. Introduced pre-computed `formattedTime`, `formattedDateTime`, and `formattedShortDate` fields in `TodayData` response. Added React.lazy/Suspense code splitting for secondary dashboard modules. Optimized `priceUpdates` query to fetch only `id` (boolean check). Added Vitest regression suite enforcing zero client-side date util calls during render.
@@ -241,4 +235,8 @@ Added `BackgroundVideo` component that uses a two-phase SSR/CSR strategy: server
 ## [2026-06-11] chore | Legacy PENDING trades migration completed; mobile layout fixes
 
 Ran one-time migration script (`apps/engine/scripts/migrate_pending_trades.py`) to resolve all 33 remaining PENDING orders to terminal Alpaca statuses (32 filled, 1 canceled). Updated [[concepts/alpaca-order-sync]] with details. Also fixed mobile overflow in portfolio positions and trades tables by applying `min-width` to the inner table element instead of the container.
+
+## [2026-06-12] feature | WebGL ShaderBackground component with 8 background variant themes
+
+Added `ShaderBackground` React component using WebGL fragment shaders to render animated backgrounds on the HomePage. Supports 8 variants: pointillism, waves, nexus, cosmic, emerald_tide, royal_bronze, css_emerald, plus the original CSS dot grid (now selected via dropdown). Includes WebGL context loss/restore handling, visibility-change pausing, and pixel-ratio-aware canvas sizing. HomePage updated with a `<select>` dropdown to switch between variants in real time.
 

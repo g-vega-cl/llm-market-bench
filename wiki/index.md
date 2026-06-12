@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/shader-background]] — WebGL shader background component with 8 animated visual themes for the HomePage
 - [[entities/mcp-knowledge-rag]] — Local MCP server for semantic search (RAG) against external Supabase knowledge base via Gemini embeddings
 - [[entities/academic-paper-seeding]] — Seeds top 10 empirical asset pricing papers into pgvector memory store for RAG grounding
 - [[entities/autoresearch-arena]] — Web UI for browsing prompt experiment history and scoring methodology

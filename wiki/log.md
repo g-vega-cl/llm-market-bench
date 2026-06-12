@@ -238,5 +238,13 @@ Added `ShaderBackground` React component using WebGL fragment shaders to render 
 
 ## [2026-06-12] feature | PostHog MCP server plugin
 
-Added a local plugin wrapper (`packages/mcp-posthog/`) for the hosted PostHog MCP server, supporting both hosted SSE and personal API key authentication. Integrated documentation in `concepts/mcp-setup.md` with step-by-step installation instructions for remote MCP servers.
+Added a local plugin wrapper (`packages/mcp-posthog/`) for the hosted PostHog MCP server, supporting both hosted SSE and personal API key authentication.- Integrated documentation in `concepts/mcp-setup.md` with step-by-step installation instructions for remote MCP servers.
 
+## [2026-06-12] feature | HomePage Background A/B Testing via PostHog
+
+Replaced the manual background dropdown selector on the HomePage with an automated, data-driven A/B test using PostHog feature flags.
+- **Background Removal**: Stripped the unused `waves`, `nexus`, `cosmic`, and `emerald_tide` GLSL shaders from `ShaderBackground.tsx` to optimize the component bundle.
+- **PostHog Integration**: Wired up the `homepage-bg-experiment` feature flag in `HomePage.tsx` via `@posthog/react`'s `usePostHog` to randomly assign users to one of 4 remaining variants (`css` [control], `css_emerald`, `pointillism`, `royal_bronze`).
+- **Experiment Launch**: Deployed the experiment remotely via the PostHog MCP server with a perfectly distributed 25% rollout configuration.
+- **TDD Safety Net**: Updated `HomePage.test.tsx` by mocking `@posthog/react` and verifying that the legacy manual dropdown is no longer rendered and the background is determined correctly by the feature flag.
+- **Documentation**: Updated `entities/shader-background.md` and `index.md` to reflect the removal of the 4 unused variants and the transition to the A/B testing mechanism.

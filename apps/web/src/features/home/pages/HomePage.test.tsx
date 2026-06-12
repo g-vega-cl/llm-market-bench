@@ -1,10 +1,22 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { HomePageData } from './HomePage';
 import { HomePage } from './HomePage';
 
+// Mock PostHog
+const mockGetFeatureFlag = vi.fn();
+vi.mock('@posthog/react', () => ({
+    usePostHog: () => ({
+        getFeatureFlag: mockGetFeatureFlag,
+        onFeatureFlags: vi.fn((cb) => cb()), // Instantly call callback for tests
+    }),
+}));
+
 describe('HomePage Dashboard', () => {
-    it('should render the Liquid Glass dashboard layout and individual portfolio cards', () => {
+    it('should render the Liquid Glass dashboard layout and individual portfolio cards without a manual background selector', () => {
+        // Set up the experiment to return pointillism
+        mockGetFeatureFlag.mockReturnValue('pointillism');
+
         const mockData: HomePageData = {
             portfolios: [
                 {
@@ -43,10 +55,41 @@ describe('HomePage Dashboard', () => {
             },
         };
 
+        // We also need to mock getContext to prevent canvas errors when ShaderBackground mounts
+        HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
+            createShader: vi.fn(),
+            shaderSource: vi.fn(),
+            compileShader: vi.fn(),
+            getShaderParameter: vi.fn().mockReturnValue(true),
+            createProgram: vi.fn(),
+            attachShader: vi.fn(),
+            linkProgram: vi.fn(),
+            getProgramParameter: vi.fn().mockReturnValue(true),
+            useProgram: vi.fn(),
+            createBuffer: vi.fn(),
+            bindBuffer: vi.fn(),
+            bufferData: vi.fn(),
+            getAttribLocation: vi.fn().mockReturnValue(0),
+            enableVertexAttribArray: vi.fn(),
+            vertexAttribPointer: vi.fn(),
+            getUniformLocation: vi.fn().mockReturnValue(0),
+            viewport: vi.fn(),
+            uniform2f: vi.fn(),
+            uniform1f: vi.fn(),
+            uniform3f: vi.fn(),
+            drawArrays: vi.fn(),
+            deleteProgram: vi.fn(),
+            deleteShader: vi.fn(),
+            deleteBuffer: vi.fn(),
+        }) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+
         render(<HomePage data={mockData} />);
 
         // Verify the main title exists
         expect(screen.getByText('Market Overview')).toBeDefined();
+
+        // The background selector should be entirely removed
+        expect(screen.queryByRole('combobox')).toBeNull();
 
         // Verify the background image no longer exists
         expect(screen.queryByTestId('background-image')).toBeNull();

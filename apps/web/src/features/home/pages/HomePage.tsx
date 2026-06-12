@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { usePostHog } from '@posthog/react';
+import { useEffect, useState } from 'react';
 import { ShaderBackground } from '~/components/ui/ShaderBackground';
 
 export interface HomePageData {
@@ -15,16 +16,38 @@ export interface HomePageData {
 }
 
 export function HomePage({ data }: { data: HomePageData }) {
-    type BgVariant =
-        | 'css'
-        | 'pointillism'
-        | 'waves'
-        | 'nexus'
-        | 'cosmic'
-        | 'emerald_tide'
-        | 'royal_bronze'
-        | 'css_emerald';
+    type BgVariant = 'css' | 'pointillism' | 'royal_bronze' | 'css_emerald';
     const [bgVariant, setBgVariant] = useState<BgVariant>('css');
+    const posthog = usePostHog();
+
+    useEffect(() => {
+        if (!posthog) return;
+
+        let active = true;
+        const checkFlag = () => {
+            if (!active) return;
+            const flag = posthog.getFeatureFlag('homepage-bg-experiment');
+            if (flag) {
+                const variant = flag === 'control' ? 'css' : (flag as BgVariant);
+                const validVariants: BgVariant[] = [
+                    'css',
+                    'css_emerald',
+                    'pointillism',
+                    'royal_bronze',
+                ];
+                if (validVariants.includes(variant)) {
+                    setBgVariant(variant);
+                }
+            }
+        };
+
+        checkFlag();
+        posthog.onFeatureFlags(checkFlag);
+
+        return () => {
+            active = false;
+        };
+    }, [posthog]);
 
     // A helper to format currency safely
     const formatMoney = (val: number) => {
@@ -62,23 +85,6 @@ export function HomePage({ data }: { data: HomePageData }) {
                     <h1 className="bg-gradient-to-r from-white via-yellow-100 to-[#f6e05e] bg-clip-text text-3xl font-bold tracking-tight text-transparent drop-shadow-lg md:text-4xl">
                         Market Overview
                     </h1>
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                        <span className="text-xs text-white/50">Background:</span>
-                        <select
-                            value={bgVariant}
-                            onChange={(e) => setBgVariant(e.target.value as BgVariant)}
-                            className="rounded border border-white/20 bg-black/40 px-2 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white outline-none"
-                        >
-                            <option value="css">CSS (Original)</option>
-                            <option value="css_emerald">CSS + Emerald Shimmer</option>
-                            <option value="pointillism">Pointillism</option>
-                            <option value="waves">Waves</option>
-                            <option value="nexus">Nexus</option>
-                            <option value="cosmic">Cosmic</option>
-                            <option value="emerald_tide">Emerald Tide</option>
-                            <option value="royal_bronze">Royal Bronze</option>
-                        </select>
-                    </div>
                 </header>
 
                 {/* Main Grid: S&P + Portfolios perfectly centered */}

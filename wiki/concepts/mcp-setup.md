@@ -87,3 +87,63 @@ If an MCP server or plugin is uninstalled or removed from `mcp_config.json`, the
 ```bash
 rm -rf ~/.gemini/antigravity-cli/mcp/<serverName>
 ```
+
+## 5. Adding Remote / Third-Party MCP Servers
+
+To install a third-party or remote MCP server (such as PostHog) locally in this workspace, follow the same plugin pattern used by local tools:
+
+1. **Create a local package directory**:
+   ```bash
+   mkdir -p packages/mcp-posthog
+   ```
+
+2. **Add a `plugin.json`**:
+   Create `packages/mcp-posthog/plugin.json` containing:
+   ```json
+   {
+     "name": "posthog",
+     "version": "1.0.0",
+     "description": "PostHog MCP server plugin"
+   }
+   ```
+
+3. **Add a `mcp_config.json`**:
+   Create `packages/mcp-posthog/mcp_config.json` containing:
+   * **Option A (Hosted SSE/Browser login)**:
+     ```json
+     {
+       "mcpServers": {
+         "posthog": {
+           "type": "stdio",
+           "command": "npx",
+           "args": ["-y", "mcp-remote@latest", "https://mcp.posthog.com/mcp"]
+         }
+       }
+     }
+     ```
+   * **Option B (Personal API Key)**:
+     ```json
+     {
+       "mcpServers": {
+         "posthog": {
+           "type": "stdio",
+           "command": "npx",
+           "args": ["-y", "@posthog/mcp-server"],
+           "env": {
+             "POSTHOG_API_TOKEN": "<YOUR_PERSONAL_API_KEY>"
+           }
+         }
+       }
+     }
+     ```
+
+4. **Install the plugin**:
+   Run the plugin installation command in the CLI:
+   ```bash
+   agy plugin install ./packages/mcp-posthog
+   ```
+
+5. **Verify active status**:
+   ```bash
+   agy plugin list
+   ```

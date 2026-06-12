@@ -29,6 +29,7 @@ The component uses a full-screen `<canvas>` element with a WebGL context. A vert
 - **Context loss handling**: Listens for `webglcontextlost` and `webglcontextrestored` events; pauses rendering on loss and reinitializes on restore
 - **Visibility-aware**: Pauses the animation loop when the tab is hidden via `visibilitychange` event
 - **Pixel ratio clamping**: Caps `devicePixelRatio` at 1.5 to reduce GPU load on high-DPI displays
+- **Logical pixel mapping**: Injects `u_pixelRatio` into shaders to guarantee physical-to-logical CSS pixel mapping (preventing grids from bunching together on retina displays)
 - **Proper cleanup**: Cancels animation frame, removes event listeners, and deletes WebGL resources on unmount
 
 ## Props

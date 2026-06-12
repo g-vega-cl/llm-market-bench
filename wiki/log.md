@@ -1,7 +1,3 @@
-## [2026-05-31] optimization | Server-side date formatting & progressive hydration for TodayPage
-
-Moved all date formatting from client components to server-side data fetching. Introduced pre-computed `formattedTime`, `formattedDateTime`, and `formattedShortDate` fields in `TodayData` response. Added React.lazy/Suspense code splitting for secondary dashboard modules. Optimized `priceUpdates` query to fetch only `id` (boolean check). Added Vitest regression suite enforcing zero client-side date util calls during render.
-
 ## [2026-05-31] fix | Do-Nothing Legacy Position Valuations & DB Corrected Backfill
 
 Resolved a critical autoresearch evaluation bug where legacy held positions (no active trades for >14 days) were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%.
@@ -238,5 +234,9 @@ Ran one-time migration script (`apps/engine/scripts/migrate_pending_trades.py`) 
 
 ## [2026-06-12] feature | WebGL ShaderBackground component with 8 background variant themes
 
-Added `ShaderBackground` React component using WebGL fragment shaders to render animated backgrounds on the HomePage. Supports 8 variants: pointillism, waves, nexus, cosmic, emerald_tide, royal_bronze, css_emerald, plus the original CSS dot grid (now selected via dropdown). Includes WebGL context loss/restore handling, visibility-change pausing, and pixel-ratio-aware canvas sizing. HomePage updated with a `<select>` dropdown to switch between variants in real time.
+Added `ShaderBackground` React component using WebGL fragment shaders to render animated backgrounds on the HomePage. Supports 8 variants: pointillism, waves, nexus, cosmic, emerald_tide, royal_bronze, css_emerald, plus the original CSS dot grid (now selected via dropdown). Includes WebGL context loss/restore handling, visibility-change pausing, logical CSS pixel density mapping via `u_pixelRatio`, and pixel-ratio-aware canvas sizing. Resolved all Biome linter errors (non-null assertions and top-level React hook false-positives for WebGL methods). HomePage updated with a `<select>` dropdown to switch between variants in real time.
+
+## [2026-06-12] feature | PostHog MCP server plugin
+
+Added a local plugin wrapper (`packages/mcp-posthog/`) for the hosted PostHog MCP server, supporting both hosted SSE and personal API key authentication. Integrated documentation in `concepts/mcp-setup.md` with step-by-step installation instructions for remote MCP servers.
 

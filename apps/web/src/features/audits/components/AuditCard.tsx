@@ -35,7 +35,7 @@ export function AuditCard({ audit }: AuditCardProps) {
     const [expanded, setExpanded] = React.useState(false);
 
     return (
-        <Card variant="default" padding="md" className="border-zinc-700 bg-zinc-900/50">
+        <Card variant="glass" padding="md">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">

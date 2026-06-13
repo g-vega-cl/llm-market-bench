@@ -74,10 +74,10 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
     return (
         <Card
-            variant="default"
+            variant="glass"
             padding="md"
             id={memory.id}
-            className="group w-full hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+            className="group w-full transition-colors"
         >
             {/* Header */}
             <div className="flex flex-wrap items-start gap-3 mb-4">

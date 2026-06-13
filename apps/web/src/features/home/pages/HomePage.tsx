@@ -31,11 +31,11 @@ export function HomePage({ data }: { data: HomePageData }) {
                 </header>
 
                 {/* Main Grid: S&P + Portfolios perfectly centered */}
-                <div className="flex flex-wrap items-start justify-center gap-4 mb-5 w-full max-w-[1300px]">
+                <div className="flex flex-wrap items-stretch justify-center gap-4 mb-5 w-full max-w-[1300px]">
                     {/* S&P 500 Benchmark Card - Formatted identically to portfolio cards but visually distinct */}
                     <Card
                         variant="glass-warning"
-                        className="w-[240px] flex-col overflow-hidden p-3"
+                        className="w-[240px] flex flex-col overflow-hidden p-3"
                         radius="xl"
                         padding="none"
                     >
@@ -50,7 +50,7 @@ export function HomePage({ data }: { data: HomePageData }) {
                             S&P 500
                         </h2>
 
-                        <div className="mt-1 flex items-end justify-between border-t border-yellow-500/20 pt-2">
+                        <div className="mt-auto flex items-end justify-between border-t border-yellow-500/20 pt-2">
                             <div>
                                 <span className="block text-[10px] text-white/50">This Week</span>
                                 <span
@@ -78,7 +78,7 @@ export function HomePage({ data }: { data: HomePageData }) {
                             key={portfolio.name}
                             variant="glass"
                             isHoverable
-                            className="w-[240px] flex-col overflow-hidden p-3"
+                            className="w-[240px] flex flex-col overflow-hidden p-3"
                             radius="xl"
                             padding="none"
                         >
@@ -110,7 +110,7 @@ export function HomePage({ data }: { data: HomePageData }) {
                                 {portfolio.name}
                             </h2>
 
-                            <div className="mt-1 flex items-end justify-between border-t border-white/10 pt-2">
+                            <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-2">
                                 <div>
                                     <span className="block text-[10px] text-white/50">Equity</span>
                                     <span className="text-base font-medium tracking-tight text-white">

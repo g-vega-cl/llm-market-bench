@@ -1,19 +1,3 @@
-## [2026-05-31] fix | Do-Nothing Legacy Position Valuations & DB Corrected Backfill
-
-Resolved a critical autoresearch evaluation bug where legacy held positions (no active trades for >14 days) were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%.
-
-- **Lookback Limit Fix**: Modified `_do_nothing_return` in `apps/engine/autoresearch/metrics.py` to retrieve the latest known price up to `week_end` individually for each asset (removing the 14-day lookup limit).
-- **TDD Safety Net**: Added a comprehensive unit test `test_do_nothing_return_with_legacy_positions` in `apps/engine/tests/test_autoresearch.py` mapping a two-asset portfolio containing legacy and active assets to reproduce the -50.0% drop and verify correct 0.0% return calculation after fix.
-- **Database Backfill**: Successfully backfilled the active prompt experiment row (`37b238f1-96c6-4c98-9743-2c3f9ed980bd`) with the recalculated correct metrics (score: 8.4638, do_nothing_return_pct: -3.3962%).
-- **Documentation**: Updated `[[entities/autoresearch]]` with the new legacy asset valuation mechanism.
-
-## [2026-05-31] fix | Eliminate ICU Whitespace Hydration Mismatch on Homepage Timeline
-
-Resolved the remaining critical `React Error #418` hydration mismatch on the Today homepage, restoring instant server-rendered paints (FCP 0.16 / LCP 0.23 on Lighthouse):
-- **Whitespace Normalization**: Wrapped all `.toLocaleDateString()` calls in the `FutureCatalysts` timeline with `normalizeWhitespace()` imported from `~/utils/date`. This standardizes the locale-sensitive spaces (e.g. browser's `U+202F` narrow no-break space vs. server's standard space `U+0020`) and prevents React 19 from throwing out the SSR HTML markup.
-- **TDD Safety Net**: Populated the empty `futureEvents` mock array inside `apps/web/src/test/hydration.test.tsx` to ensure `FutureCatalysts` is actively rendered and validated during sitemap hydration checks.
-- **ICU Space Simulation Test**: Authored a dedicated TDD test case that spies on `ReactDOMServer.renderToString` and `Date.prototype.toLocaleDateString` to inject browser-specific narrow non-breaking spaces during the client hydration phase. Verified it fails on unnormalized outputs and passes with zero errors after the fix.
-
 ## [2026-06-01] feature | On-Demand Price History Pre-Population & Freshness Guardrail
 
 Added on-demand pre-population of price_history via MarketDataManager.get_history() in _do_nothing_return to ensure fresh close prices for all held assets at evaluation time. Added a freshness guardrail that logs a CRITICAL METRIC ERROR if the retrieved price's fetched_at is more than 4 days before week_end, preventing silent stale valuation errors. Updated tests to cover both pre-population and stale price logging.
@@ -248,3 +232,8 @@ Replaced the manual background dropdown selector on the HomePage with an automat
 - **Experiment Launch**: Deployed the experiment remotely via the PostHog MCP server with a perfectly distributed 25% rollout configuration.
 - **TDD Safety Net**: Updated `HomePage.test.tsx` by mocking `@posthog/react` and verifying that the legacy manual dropdown is no longer rendered and the background is determined correctly by the feature flag.
 - **Documentation**: Updated `entities/shader-background.md` and `index.md` to reflect the removal of the 4 unused variants and the transition to the A/B testing mechanism.
+
+## [2026-06-13] new entity | Global Background component added
+
+Introduced a `GlobalBackground` component in the design system's layouts. It provides a fixed dot grid and colored ambient orbs behind all pages. The HomePage was refactored to remove its previous A/B-tested background (CSS variant and ShaderBackground) and rely on this global layer. The component is rendered in the root layout, simplifying background management.
+

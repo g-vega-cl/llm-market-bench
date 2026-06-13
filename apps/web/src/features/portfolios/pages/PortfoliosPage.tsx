@@ -48,12 +48,9 @@ function PortfolioCard({
         >
             <Card
                 padding="md"
-                variant="default"
-                className={
-                    deprecated
-                        ? 'opacity-60 hover:opacity-80'
-                        : 'shadow-md hover:shadow-md group-hover:border-zinc-300'
-                }
+                variant="glass"
+                isHoverable={!deprecated}
+                className={deprecated ? 'opacity-60 hover:opacity-80' : ''}
             >
                 <div className="flex justify-between items-start mb-4">
                     <h3
@@ -64,9 +61,10 @@ function PortfolioCard({
                         {portfolio.owner_id.replace(/-/g, ' ')}
                     </h3>
                     <Badge
-                        variant="soft"
+                        variant="glass"
                         size="sm"
                         colorScheme={deprecated ? 'neutral' : 'success'}
+                        showDot={!deprecated}
                     >
                         {deprecated ? 'Retired' : 'Active'}
                     </Badge>
@@ -74,12 +72,12 @@ function PortfolioCard({
 
                 <div className="flex flex-wrap gap-2 mb-4">
                     {portfolio.is_autoresearch && !deprecated && (
-                        <Badge variant="soft" size="xs" colorScheme="info">
+                        <Badge variant="glass" size="xs" colorScheme="info" showDot>
                             Auto-Research
                         </Badge>
                     )}
                     {!hasVerifier(portfolio.owner_id) && !deprecated && (
-                        <Badge variant="soft" size="xs" colorScheme="warning">
+                        <Badge variant="glass" size="xs" colorScheme="warning">
                             No Verifier
                         </Badge>
                     )}

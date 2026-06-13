@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { Badge, Button, cn } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, cn, GlobalBackground } from '@llm-market-bench/ui-design-system';
 import { PostHogProvider } from '@posthog/react';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
@@ -200,6 +200,7 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
                             )}
                         </div>
                     </nav>
+                    <GlobalBackground />
                     {children}
                     <TanStackRouterDevtools position="bottom-right" />
                     <Scripts />

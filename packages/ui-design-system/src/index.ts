@@ -7,6 +7,7 @@
  * import { Button, Card, Badge, PageLayout } from "@llm-market-bench/ui-design-system"
  */
 
+export { GlobalBackground } from './layouts/GlobalBackground';
 export type { HeroBackgroundProps } from './layouts/HeroBackground';
 export { HeroBackground } from './layouts/HeroBackground';
 export type { PageLayoutProps } from './layouts/PageLayout';

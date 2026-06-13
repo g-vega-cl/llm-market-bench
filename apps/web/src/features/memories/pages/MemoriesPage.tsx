@@ -118,7 +118,7 @@ export function MemoriesPage({
     return (
         <div className="min-h-screen">
             {/* Header */}
-            <div className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+            <div className="border-b border-zinc-200 dark:border-white/10">
                 <PageLayout maxWidth="md" className="py-8">
                     <SectionHeading gradient="electric">AI Memories</SectionHeading>
                     <p className="text-zinc-600 dark:text-zinc-400 text-base mt-2">

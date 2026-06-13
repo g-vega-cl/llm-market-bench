@@ -12,7 +12,6 @@ This source page documents the UI design system used across the TanStack Start d
 The following items have been **removed** as part of a design system simplification:
 
 - Select primitive (deleted entirely)
-- Badge variant `dot`
 - Badge severity levels `critical` and `low` (now only `high` and `medium`)
 - LoadingSpinner sizes `xs` and `lg` (now only `sm` and `md`)
 - Card variant `elevated` (now only `default`, `outlined`, `ghost`, `glass`)
@@ -24,7 +23,8 @@ The following items have been **removed** as part of a design system simplificat
 ## Primitives
 
 ### Badge
-- **Variants:** `solid`, `soft`, `outline` (Note: `dot` removed)
+- **Variants:** `solid`, `soft`, `outline`, `glass`
+- **Options:** `showDot` (boolean) to render an indicator dot
 - **Sizes:** `sm`, `md`
 - **Color schemes:** `accent`, `success`, `danger`, `info`, `warning`, `neutral`
 - **Severity:** `high`, `medium` (overrides colorScheme when provided)
@@ -34,7 +34,7 @@ The following items have been **removed** as part of a design system simplificat
 - **LoadingSpinner sizes:** `sm`, `md`
 
 ### Card
-- **Variants:** `default`, `outlined`, `ghost`, `glass`
+- **Variants:** `default`, `outlined`, `ghost`, `glass`, `glass-warning`
 - **Padding:** `none`, `sm`, `md`, `lg`
 - **Gradients:** `electric`, `success`, `catalyst`, `ai`
 - Note: `accentBorder` and `accentBorderColor` props have been removed.

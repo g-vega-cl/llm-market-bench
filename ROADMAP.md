@@ -96,3 +96,14 @@ A living document of features and improvements in progress or planned for the pl
 - [x] - Benchify: portfolio. I don't like that the individual portfolio view goes over device width in mobile
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [x] - I don't see lightouse in CI
+- [ ] - Benchify: make agents think "what's going to happen tomorrow? What will happen next week?" How can I profit from that? Your scenario analysis and calendar should be useful for this. Pass it the exact date and time when making choices?
+
+Make autoresearcher with more variables and more "temperatures?" More portfolios too?
+
+Allow the LLM to decide what to bring to context?
+
+Many of these things should be able to be picked up by autoresearch, I guess the loop is quite slow. How to speed up the loop?
+
+- [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
+- [ ] - Benchify: model that predicts the next best performing and uncorrelated sectors? ( I think I already have something like this
+- [ ] - Benchify: add volume? and volume derivated values?

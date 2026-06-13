@@ -9,6 +9,7 @@
  */
 
 @import "tailwindcss";
+@source "../../../../packages/ui-design-system/src";
 
 @theme inline {
   /* Typography */
@@ -44,6 +45,8 @@
   --color-steel-400: #94a3b8;
   --color-steel-500: #64748b;
   --color-steel-600: #475569;
+
+  --color-glass-dark: #1a1e23;
 
   /* Legacy physical colors for backward compatibility until full migration */
   --color-electric-blue-50: #eff6ff;

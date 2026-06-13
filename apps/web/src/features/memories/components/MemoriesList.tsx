@@ -1,5 +1,5 @@
 import type { Memory } from '@llm-market-bench/database';
-import { Button } from '@llm-market-bench/ui-design-system';
+import { Button, Card } from '@llm-market-bench/ui-design-system';
 import * as React from 'react';
 import { MemoryCard } from './MemoryCard';
 import { MemoryFlow } from './MemoryFlow';
@@ -73,15 +73,19 @@ export function MemoriesList({ memories, filter, onFilterChange }: MemoriesListP
     return (
         <div className="flex flex-col space-y-6">
             {/* Control Bar */}
-            <div className="sticky top-0 z-10 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 pb-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="sticky top-4 z-10 mb-6">
+                <Card
+                    variant="glass"
+                    padding="sm"
+                    className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                >
                     {/* Filter Pills */}
                     <div className="flex flex-wrap gap-2">
                         {FILTERS.map((type) => (
                             <Button
                                 key={type.id}
                                 size="sm"
-                                variant={filter === type.id ? 'solid' : 'soft'}
+                                variant={filter === type.id ? 'solid' : 'ghost'}
                                 colorScheme="neutral"
                                 onClick={() => onFilterChange(type.id)}
                             >
@@ -93,13 +97,13 @@ export function MemoriesList({ memories, filter, onFilterChange }: MemoriesListP
                     {/* View Toggle */}
                     <Button
                         size="sm"
-                        variant={showFlow ? 'solid' : 'outline'}
+                        variant={showFlow ? 'solid' : 'ghost'}
                         colorScheme="neutral"
                         onClick={() => setShowFlow(!showFlow)}
                     >
                         {showFlow ? 'Hide Flow' : 'Show Flow'}
                     </Button>
-                </div>
+                </Card>
             </div>
 
             {/* Flow Visualization */}

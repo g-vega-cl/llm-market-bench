@@ -25,7 +25,7 @@ function calls. Robust to formatting variances (normalizes whitespace, casing).
 Ownership pre-validation catches SELL-on-unheld-ticker before verification.
 
 - **Anthropic Message Preservation**: Because Anthropic/Claude models require content flattening into raw text strings for Instructor structured compatibility, their structured tool calling blocks (`tool_use`) are natively destroyed during this flattening block. To prevent incorrect `REJECTED_TOOL_USAGE` rejections, the engine preserves a deep copy of the raw message history (`unflattened_messages`) before flattening occurs and performs the post-analysis verification scan against this unflattened copy.
-- **MiniMax Bypass**: The MiniMax 2.7 simplified portfolio does not require native function calling or tool execution loops. As such, Layer 3 is entirely bypassed for MiniMax-derived trade signals.
+- **MiniMax Bypass**: The MiniMax-M3 simplified portfolio does not require native function calling or tool execution loops. As such, Layer 3 is entirely bypassed for MiniMax-derived trade signals.
 
 ## Layer 4: Structured Output Isolation
 

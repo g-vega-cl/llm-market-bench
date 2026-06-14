@@ -1,3 +1,21 @@
+## [2026-06-14] feature | Migrate MiniMax Portfolio and config to MiniMax-M3
+
+**Configuration & Engine**:
+- Updated the canonical model name constant `MINIMAX_MODEL` from `MiniMax-M2.7` to `MiniMax-M3` in `packages/config/models.json`.
+- Updated `MINIMAX` model name to `MiniMax-M3` in `apps/web/src/config/models.ts`.
+- Updated code docstring references in `apps/engine/core/llm/analysis.py`.
+
+**Database Migration**:
+- Deployed a SQL migration `20260614191000_update_minimax_model_to_m3.sql` that updates `owner_id` on the `portfolios` table, updates historical `market_feeling` records, and updates default `model_used` column value to `MiniMax-M3`.
+
+**TDD & Testing**:
+- Added a reproduction test `test_minimax_model_is_m3` in `apps/engine/tests/test_config.py` asserting that config uses `MiniMax-M3`.
+- Updated Vitest assertions in `apps/web/src/features/portfolios/lib/config.test.ts` to assert on `MiniMax-M3` and `minimax-m3`.
+- Verified all python tests and frontend tests pass.
+
+**Wiki Updates**:
+- Updated [[concepts/minimax-portfolio]], [[concepts/tool-enforcement]], [[entities/engine]], and [[index]] to reflect the transition from `MiniMax-M2.7` to `MiniMax-M3`.
+
 ## [2026-06-14] optimization | Dynamic Liquid Glass Card Heatmap & Ellipsis Overflow Fix
 
 **User Experience**: Shifted portfolio cards from a static single cyan border to a dynamic performance-based heatmap. Higher returns display gold/amber gradients and borders/glows, mid returns green, flat returns sky blue, and losses rose/deep crimson.

@@ -29,3 +29,9 @@ def test_env_attributes_exist():
     assert hasattr(core.config, "ANTHROPIC_API_KEY")
     assert hasattr(core.config, "GEMINI_API_KEY")
     assert hasattr(core.config, "DEEPSEEK_API_KEY")
+
+
+def test_minimax_model_is_m3():
+    """Verify that MINIMAX_MODEL is updated to MiniMax-M3."""
+    assert core.config.MINIMAX_MODEL == "MiniMax-M3"
+

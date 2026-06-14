@@ -104,7 +104,7 @@ PRICE_HISTORY_TOOL = {
     "type": "function",
     "function": {
         "name": "get_price_history",
-        "description": "Get historical price data for a stock ticker to see if news is priced in.",
+        "description": "Get historical price and volume data for a stock ticker to see if news is priced in or to check volume indicators (ADV/RVOL).",
         "parameters": {
             "type": "object",
             "properties": {
@@ -404,7 +404,10 @@ async def execute_price_history_tool(ticker: str, days: int = 7) -> str:
 
         history_str = f"Historical Price Data for {ticker} (Recent first):\n"
         for entry in data:
-            history_str += f"- {entry['fetched_at']}: ${entry['price']:.2f}\n"
+            vol_str = f", Volume: {entry['volume']}" if entry.get('volume') is not None else ""
+            history_str += f"- {entry['fetched_at']}: ${entry['price']:.2f}{vol_str}\n"
+
+        history_str += f"\nVolume Context: {compute_volume_context(data)}"
 
         return history_str
     except Exception as e:

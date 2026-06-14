@@ -248,3 +248,10 @@ Replaced the manual background dropdown selector on the HomePage with an automat
 
 Introduced a `GlobalBackground` component in the design system's layouts. It provides a fixed dot grid and colored ambient orbs behind all pages. The HomePage was refactored to remove its previous A/B-tested background (CSS variant and ShaderBackground) and rely on this global layer. The component is rendered in the root layout, simplifying background management.
 
+## [2026-06-14] feature | Volume & Liquidity Metrics in Price History
+
+Enhanced the `get_price_history` tool to support Volume and Liquidity analysis directly within the LLM tool loop.
+- **Execution Logic**: Modified `execute_price_history_tool` to output daily volume alongside historical prices and dynamically calculate Volume Context (ADV/RVOL) using the existing `compute_volume_context` engine function.
+- **Prompt Engineering**: Updated the `PRICE_HISTORY_TOOL` JSON schema description to explicitly notify trading agents that volume data and metrics are available.
+- **TDD Verification**: Authored `test_price_history_tool.py` to assert the inclusion of volume and context strings.
+- **Documentation**: Updated `fundamental-analysis.md` to reflect the new volume analysis capabilities.

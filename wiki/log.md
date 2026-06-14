@@ -1,6 +1,17 @@
+## [2026-06-14] optimization | Dynamic Liquid Glass Card Heatmap & Ellipsis Overflow Fix
+
+**User Experience**: Shifted portfolio cards from a static single cyan border to a dynamic performance-based heatmap. Higher returns display gold/amber gradients and borders/glows, mid returns green, flat returns sky blue, and losses rose/deep crimson.
+
+**Bug Fix**: Resolved browser-specific clashing styles where `truncate` on text containing both `-webkit-text-fill-color: transparent` and `bg-clip-text` resulted in invisible truncation ellipses. Shifted truncation behavior to an outer `overflow-hidden` wrapper.
+
+**TDD & Testing**: Added robust assertions to `HomePage.test.tsx` verifying card border colors and box shadow styling correspond correctly to performance values, and verifying that the `truncate` class is not directly placed on the gradient headings. Passed all 235 Vitest tests.
+
+**Wiki Updates**: Documented the clashing styles pitfall (`truncate` + `bg-clip-text`) and the dynamic card performance heatmap conventions in `entities/design-system.md`.
+
 ## [2026-06-01] feature | On-Demand Price History Pre-Population & Freshness Guardrail
 
 Added on-demand pre-population of price_history via MarketDataManager.get_history() in _do_nothing_return to ensure fresh close prices for all held assets at evaluation time. Added a freshness guardrail that logs a CRITICAL METRIC ERROR if the retrieved price's fetched_at is more than 4 days before week_end, preventing silent stale valuation errors. Updated tests to cover both pre-population and stale price logging.
+
 
 ## [2026-06-01] optimization | Render-Blocking Fonts and PostHog Unused JS Fix
 

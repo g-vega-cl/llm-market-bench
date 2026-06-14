@@ -12,7 +12,7 @@ The `@llm-market-bench/ui-design-system` package provides the shared UI componen
 Composable base components that handle styling, dark mode, and accessibility:
 
 - **Button** — 5 variants (solid, soft, outline, ghost, glass), loading state
-- **Card** — 5 variants (default, outlined, ghost, glass, glass-warning) with gradient support, customizable `radius` (xl, 2xl, 3xl, none; default is 3xl), `padding` options, and `isHoverable` toggle for `.card-lift` animation. Supported gradients: electric, success, alert, catalyst, ai. Supports the `group` class for child hover effects.
+- **Card** — 5 variants (default, outlined, ghost, glass, glass-warning) with gradient support, customizable `radius` (xl, 2xl, 3xl, none; default is 3xl), `padding` options, and `isHoverable` toggle for `.card-lift` animation. Supported gradients: electric, success, alert, catalyst, ai. Supports the `group` class for child hover effects. The `glass` variant supports a semantic `colorScheme` (`neutral`, `success`, `warning`, `danger`, `info`) which renders performance-colored glass styling (border colors, glow intensities, and tinted backdrops) natively.
 - **Badge** — 4 variants (solid, soft, outline, glass) with severity levels (critical, high, medium, low), radius options, and optional `showDot` boolean. Includes specific support for **Auto-Research** status using `info` (purple) to denote AI-driven prompt improvement experiments.
 - **Table** — Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) with built-in dark mode, alignment (`left`/`center`/`right`), optional hover on rows, and `containerClassName` for the wrapper
 - **Input**, **Label**, **ErrorMessage** — Form controls with error state and addon support
@@ -58,9 +58,12 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 
 1. **Unified Theme (No Light/Dark Toggle)**: The application is standardized on a single premium high-contrast theme ("Bloomberg Terminal meets Wired"). Primitives like `Badge` and `Button` render their high-contrast dark styles directly without relying on custom `dark:` classes, toggles, or fallback media queries.
 2. **Prefer Default Styles**: Developers MUST always favor default styles provided by the design system primitives (e.g. using standard `colorScheme` and `variant` properties) rather than writing custom `className` override styles. This prevents visual inconsistency, ensures correct contrast automatically, and simplifies maintenance.
+3. **Clashing Styles Pitfall (`truncate` + `bg-clip-text`)**: Never apply the Tailwind `truncate` class directly to headings or elements using `bg-clip-text` and text transparency. Browsers render the resulting ellipsis (`…`) using the transparent fill color, making it invisible and causing background gradient bleed. Always wrap the text inside a separate `overflow-hidden` container, using `whitespace-nowrap` on the gradient text element.
+4. **Card Performance Heatmap**: On dashboard overview grids, cards apply performance-based dynamic styles mapping the daily return percentage (`todayPct`) to visual indicators. High-gain cards shift toward gold/amber, mild gains to emerald, neutral states to sky blue, mild losses to rose, and high losses to deep crimson. This styling overrides the glass border/glow in a standardized fashion to create a natural heatmap effect.
 
 ## Related
 
 - [[entities/web-app]] — The dashboard that consumes this design system
 - [[concepts/type-safety]] — All components are strictly typed without `any`
 - [[sources/web-design-system-source]] — Original design spec
+

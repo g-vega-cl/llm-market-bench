@@ -95,20 +95,43 @@ describe('HomePage Dashboard', () => {
         expect(screen.queryByTestId('background-image')).toBeNull();
         expect(screen.queryByTestId('background-video')).toBeNull();
 
-        // Verify individual portfolios render
-        expect(screen.getByText('Claude 3 Opus')).toBeDefined();
+        // Verify individual portfolios render and apply correct heatmap styling & truncation wrapping
+        const claudeHeading = screen.getByText('Claude 3 Opus');
+        expect(claudeHeading).toBeDefined();
+        expect(claudeHeading.className).not.toContain('truncate');
+        expect(claudeHeading.parentElement?.className).toContain('overflow-hidden');
+        const claudeCard = claudeHeading.closest('div.group');
+        expect(claudeCard).toBeDefined();
+        expect(claudeCard).toHaveAttribute('data-color-scheme', 'danger');
+
         expect(screen.getAllByText('Auto-Research').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
         expect(screen.getByText('$32.98')).toBeDefined();
         expect(screen.getByText('-4.5%')).toBeDefined();
 
-        expect(screen.getByText('Llama 3 70B')).toBeDefined();
+        const llamaHeading = screen.getByText('Llama 3 70B');
+        expect(llamaHeading).toBeDefined();
+        expect(llamaHeading.className).not.toContain('truncate');
+        expect(llamaHeading.parentElement?.className).toContain('overflow-hidden');
+        const llamaCard = llamaHeading.closest('div.group');
+        expect(llamaCard).toBeDefined();
+        expect(llamaCard).toHaveAttribute('data-color-scheme', 'warning');
+
         expect(screen.getByText('+2%')).toBeDefined();
 
-        expect(screen.getByText('Gpt 5.4 Nano')).toBeDefined();
+        const gptHeading = screen.getByText('Gpt 5.4 Nano');
+        expect(gptHeading).toBeDefined();
+        expect(gptHeading.className).not.toContain('truncate');
+        expect(gptHeading.parentElement?.className).toContain('overflow-hidden');
+        const gptCard = gptHeading.closest('div.group');
+        expect(gptCard).toBeDefined();
+        expect(gptCard).toHaveAttribute('data-color-scheme', 'info');
 
         // Verify S&P 500 Benchmark card renders
-        expect(screen.getByText('S&P 500')).toBeDefined();
+        const spHeading = screen.getByText('S&P 500');
+        expect(spHeading).toBeDefined();
+        expect(spHeading.className).not.toContain('truncate');
+        expect(spHeading.parentElement?.className).toContain('overflow-hidden');
         expect(screen.getByText('+1.2%')).toBeDefined(); // Today
         expect(screen.getByText('+2.5%')).toBeDefined(); // Week
 

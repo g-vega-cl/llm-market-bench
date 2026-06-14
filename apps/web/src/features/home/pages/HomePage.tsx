@@ -13,6 +13,46 @@ export interface HomePageData {
     feeling: { sentiment: string; summary: string };
 }
 
+/** Maps today's return % to design system card metadata. */
+function getPerformanceMeta(todayPct: number): {
+    colorScheme: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+    titleGradient: string;
+} {
+    if (todayPct >= 2) {
+        // Strong positive — gold
+        return {
+            colorScheme: 'warning',
+            titleGradient: 'from-amber-100 to-[#f59e0b]',
+        };
+    }
+    if (todayPct >= 0.25) {
+        // Mild positive — emerald
+        return {
+            colorScheme: 'success',
+            titleGradient: 'from-emerald-100 to-[#34d399]',
+        };
+    }
+    if (todayPct >= -0.25) {
+        // Flat / neutral — sky blue
+        return {
+            colorScheme: 'neutral',
+            titleGradient: 'from-sky-100 to-[#38bdf8]',
+        };
+    }
+    if (todayPct >= -2) {
+        // Mild negative — rose
+        return {
+            colorScheme: 'info',
+            titleGradient: 'from-rose-100 to-[#f43f5e]',
+        };
+    }
+    // Strong negative — deep crimson
+    return {
+        colorScheme: 'danger',
+        titleGradient: 'from-red-200 to-[#dc2626]',
+    };
+}
+
 export function HomePage({ data }: { data: HomePageData }) {
     // A helper to format currency safely
     const formatMoney = (val: number) => {
@@ -46,9 +86,12 @@ export function HomePage({ data }: { data: HomePageData }) {
                                 </Badge>
                             </div>
                         </div>
-                        <h2 className="mb-3 truncate bg-gradient-to-r from-white to-[#f6e05e] bg-clip-text text-lg font-bold tracking-tight text-transparent drop-shadow-sm">
-                            S&P 500
-                        </h2>
+                        {/* overflow-hidden wrapper prevents the truncate+gradient-text invisible-ellipsis bug */}
+                        <div className="mb-3 overflow-hidden w-full">
+                            <h2 className="whitespace-nowrap bg-gradient-to-r from-white to-[#f6e05e] bg-clip-text text-lg font-bold tracking-tight text-transparent drop-shadow-sm">
+                                S&P 500
+                            </h2>
+                        </div>
 
                         <div className="mt-auto flex items-end justify-between border-t border-yellow-500/20 pt-2">
                             <div>
@@ -72,63 +115,78 @@ export function HomePage({ data }: { data: HomePageData }) {
                         </div>
                     </Card>
 
-                    {/* Individual Portfolio Cards */}
-                    {data.portfolios.map((portfolio) => (
-                        <Card
-                            key={portfolio.name}
-                            variant="glass"
-                            isHoverable
-                            className="w-[240px] flex flex-col overflow-hidden p-3"
-                            radius="xl"
-                            padding="none"
-                        >
-                            <div className="mb-3 flex items-center justify-between text-xs text-white/50">
-                                <div className="flex flex-wrap gap-1.5">
-                                    {portfolio.isActive && (
+                    {/* Individual Portfolio Cards — heatmap-coloured by today's return */}
+                    {data.portfolios.map((portfolio) => {
+                        const perfMeta = getPerformanceMeta(portfolio.todayPct);
+                        return (
+                            <Card
+                                key={portfolio.name}
+                                variant="glass"
+                                colorScheme={perfMeta.colorScheme}
+                                isHoverable
+                                className="w-[240px] flex flex-col overflow-hidden p-3"
+                                radius="xl"
+                                padding="none"
+                            >
+                                <div className="mb-3 flex items-center justify-between text-xs text-white/50">
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {portfolio.isActive && (
+                                            <Badge
+                                                variant="glass"
+                                                colorScheme="success"
+                                                size="sm"
+                                                radius="md"
+                                                showDot
+                                            >
+                                                Active
+                                            </Badge>
+                                        )}
                                         <Badge
                                             variant="glass"
-                                            colorScheme="success"
+                                            colorScheme={
+                                                portfolio.isAutoResearch ? 'info' : 'neutral'
+                                            }
                                             size="sm"
                                             radius="md"
                                             showDot
                                         >
-                                            Active
+                                            Auto-Research
                                         </Badge>
-                                    )}
-                                    <Badge
-                                        variant="glass"
-                                        colorScheme={portfolio.isAutoResearch ? 'info' : 'neutral'}
-                                        size="sm"
-                                        radius="md"
-                                        showDot
-                                    >
-                                        Auto-Research
-                                    </Badge>
+                                    </div>
                                 </div>
-                            </div>
-                            <h2 className="mb-3 truncate bg-gradient-to-r from-white to-[#00f2fe] bg-clip-text text-lg font-bold tracking-tight text-transparent drop-shadow-sm">
-                                {portfolio.name}
-                            </h2>
+                                {/* overflow-hidden wrapper fixes truncate+gradient-text invisible-ellipsis bug */}
+                                <div className="mb-3 overflow-hidden w-full">
+                                    <h2
+                                        className={`whitespace-nowrap bg-gradient-to-r ${perfMeta.titleGradient} bg-clip-text text-lg font-bold tracking-tight text-transparent drop-shadow-sm`}
+                                    >
+                                        {portfolio.name}
+                                    </h2>
+                                </div>
 
-                            <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-2">
-                                <div>
-                                    <span className="block text-[10px] text-white/50">Equity</span>
-                                    <span className="text-base font-medium tracking-tight text-white">
-                                        {formatMoney(portfolio.totalEquity)}
-                                    </span>
+                                <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-2">
+                                    <div>
+                                        <span className="block text-[10px] text-white/50">
+                                            Equity
+                                        </span>
+                                        <span className="text-base font-medium tracking-tight text-white">
+                                            {formatMoney(portfolio.totalEquity)}
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="block text-[10px] text-white/50">
+                                            Today
+                                        </span>
+                                        <span
+                                            className={`text-sm font-medium tracking-tight ${portfolio.todayPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                                        >
+                                            {portfolio.todayPct > 0 ? '+' : ''}
+                                            {portfolio.todayPct}%
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="block text-[10px] text-white/50">Today</span>
-                                    <span
-                                        className={`text-sm font-medium tracking-tight ${portfolio.todayPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-                                    >
-                                        {portfolio.todayPct > 0 ? '+' : ''}
-                                        {portfolio.todayPct}%
-                                    </span>
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                    })}
                 </div>
 
                 {/* Footer Section: Market Feeling spans horizontally below the grid */}

@@ -1,3 +1,7 @@
+## [2026-06-15] configuration | Git Union Merge for Wiki Logs
+
+Configured Git union merge strategy for `wiki/log.md` and archived log files in `wiki/log/*.md` via `.gitattributes` to automatically resolve merge conflicts in multi-user/multi-agent setups. Documented this behavior and the fallback strategy in `wiki/SCHEMA.md`.
+
 ## [2026-06-14] feature | AI Sector Predictor and Model Arena
 
 **Inference Loop**: Implemented weekly sector and uncorrelated-pair predictor tasks (`sector_predictor.py`) utilizing two competing models: **DeepSeek Flash** (via instructor proxy with markdown json format mode) and **MiniMax-M3** (via custom raw HTTP client).

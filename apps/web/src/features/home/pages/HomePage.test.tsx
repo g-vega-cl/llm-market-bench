@@ -52,6 +52,13 @@ describe('HomePage Dashboard', () => {
                 sentiment: 'BULLISH',
                 summary:
                     'The market is experiencing positive momentum due to strong tech earnings.',
+                sentimentLabel: 'Risk-On Rally',
+                sentimentEmoji: '🚀',
+                confidence: 85,
+                primaryConcern: 'Inflation risks',
+                secondaryConcern: 'Yield curve steepening',
+                modelUsed: 'MiniMax-Text-01',
+                lastAnalyzed: '14:30:00 ET',
             },
         };
 
@@ -138,5 +145,11 @@ describe('HomePage Dashboard', () => {
         // Verify LLM Feeling card renders
         expect(screen.getByText('BULLISH')).toBeDefined();
         expect(screen.getByText(/strong tech earnings/)).toBeDefined();
+        expect(screen.getByText('Risk-On Rally')).toBeDefined();
+        expect(screen.getByText('🚀')).toBeDefined();
+        expect(screen.getByText('⚠️ Inflation risks')).toBeDefined();
+        expect(screen.getByText('🔍 Yield curve steepening')).toBeDefined();
+        expect(screen.getByText(/Last analyzed: 14:30:00 ET/)).toBeDefined();
+        expect(screen.getByText(/Model: MiniMax-Text-01/)).toBeDefined();
     });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Module-level mock for Supabase client
 let mockSupabaseClient: Record<string, unknown> | null = null;
@@ -6,7 +6,16 @@ vi.mock('~/lib/supabase', () => ({
     getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
-import { buildHistoryGroup, fetchTodayData } from './fetch-today-data';
+import {
+    buildHistoryGroup,
+    clearTodayDataCache,
+    fetchLatestMarketFeeling,
+    fetchTodayData,
+} from './fetch-today-data';
+
+beforeEach(() => {
+    clearTodayDataCache();
+});
 
 describe('buildHistoryGroup', () => {
     it('returns empty map when historyRows is null or empty', () => {
@@ -205,5 +214,72 @@ describe('fetchTodayData zero-load TDD checks', () => {
 
         // We expect 5 calls with limit(5): newsletters, trades, decisions, memories, and futureEvents (which also uses the memories table)
         expect(appliedLimits).toEqual([5, 5, 5, 5, 5]);
+    });
+
+    it('bypasses the cache when a larger limit is requested than what was cached', async () => {
+        const appliedLimits: number[] = [];
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation((l) => {
+                    if (
+                        ['newsletter_snapshots', 'trades', 'decisions', 'memories'].includes(table)
+                    ) {
+                        appliedLimits.push(l);
+                    }
+                    return Promise.resolve({ data: [], error: null });
+                }),
+                in: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        // 1. Fetch with limit 5
+        await fetchTodayData(5);
+        expect(appliedLimits).toEqual([5, 5, 5, 5, 5]);
+
+        // Clear appliedLimits list to record subsequent queries
+        appliedLimits.length = 0;
+
+        // 2. Fetch with limit 50 (should bypass cache since 50 > 5)
+        await fetchTodayData(50);
+        expect(appliedLimits).toEqual([50, 50, 50, 50, 50]);
+
+        // Clear appliedLimits list again
+        appliedLimits.length = 0;
+
+        // 3. Fetch with limit 10 (should hit cache since 10 <= 50)
+        await fetchTodayData(10);
+        expect(appliedLimits).toEqual([]); // No queries should be made (cache hit)
+    });
+
+    it('fetchLatestMarketFeeling queries only market_feeling table with limit 1', async () => {
+        const queriedTables: string[] = [];
+        const limitValues: number[] = [];
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            queriedTables.push(table);
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation((l) => {
+                    limitValues.push(l);
+                    return Promise.resolve({ data: [{ sentiment_label: 'Bullish' }], error: null });
+                }),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        const result = await fetchLatestMarketFeeling();
+        expect(queriedTables).toEqual(['market_feeling']);
+        expect(limitValues).toEqual([1]);
+        expect(result).toEqual({ sentiment_label: 'Bullish' });
     });
 });

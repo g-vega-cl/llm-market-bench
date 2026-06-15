@@ -10,6 +10,9 @@ export interface AIPredictionsPageProps {
 export function AIPredictionsPage({ initialData, refreshFn }: AIPredictionsPageProps) {
     const [data, setData] = useState<SectorPrediction[]>(initialData);
     const [loading, setLoading] = useState(false);
+    const [timeframeFilter, setTimeframeFilter] = useState<'7d' | '30d' | '60d' | '90d' | 'all'>(
+        '7d',
+    );
 
     const handleRefresh = async () => {
         setLoading(true);
@@ -27,12 +30,22 @@ export function AIPredictionsPage({ initialData, refreshFn }: AIPredictionsPageP
 
     const avgScore = (items: SectorPrediction[]) => {
         const evaluated = items.filter(
-            (i) => i.status === 'evaluated' && i.sector_percentile_score != null,
+            (i) =>
+                i.status === 'evaluated' &&
+                i.sector_percentile_score != null &&
+                i.pair_percentile_score != null,
         );
         if (evaluated.length === 0) return 0;
-        const sum = evaluated.reduce((acc, curr) => acc + (curr.sector_percentile_score || 0), 0);
+        const sum = evaluated.reduce((acc, curr) => {
+            const avg =
+                ((curr.sector_percentile_score || 0) + (curr.pair_percentile_score || 0)) / 2;
+            return acc + avg;
+        }, 0);
         return (sum / evaluated.length).toFixed(1);
     };
+
+    const chartFilteredData =
+        timeframeFilter === 'all' ? data : data.filter((d) => d.timeframe === timeframeFilter);
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -76,12 +89,30 @@ export function AIPredictionsPage({ initialData, refreshFn }: AIPredictionsPageP
             </div>
 
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                <h3 className="text-xl font-bold text-white mb-6">Historical Track Record</h3>
-                {data.length > 0 ? (
-                    <AIPredictionChart data={data} />
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h3 className="text-xl font-bold text-white">Historical Track Record</h3>
+                    <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700">
+                        {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
+                            <button
+                                key={tf}
+                                type="button"
+                                onClick={() => setTimeframeFilter(tf)}
+                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                    timeframeFilter === tf
+                                        ? 'bg-slate-800 text-white shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                            >
+                                {tf.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                {chartFilteredData.length > 0 ? (
+                    <AIPredictionChart data={chartFilteredData} />
                 ) : (
-                    <div className="h-[400px] flex items-center justify-center text-slate-400">
-                        No predictions available yet.
+                    <div className="h-[300px] flex items-center justify-center text-slate-400">
+                        No predictions available for this timeframe.
                     </div>
                 )}
             </div>

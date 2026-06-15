@@ -7,6 +7,10 @@ interface ChartEntry {
     dateStr: string;
     deepseek?: number;
     minimax?: number;
+    deepseekSum?: number;
+    deepseekCount?: number;
+    minimaxSum?: number;
+    minimaxCount?: number;
 }
 
 export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
@@ -23,20 +27,44 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
         // Prepare data grouped by target date
         const dateMap = new Map<string, ChartEntry>();
 
+        const getOrCreateEntry = (dateStr: string, date: string): ChartEntry => {
+            let entry = dateMap.get(dateStr);
+            if (!entry) {
+                entry = {
+                    date: new Date(date),
+                    dateStr,
+                    deepseekSum: 0,
+                    deepseekCount: 0,
+                    minimaxSum: 0,
+                    minimaxCount: 0,
+                };
+                dateMap.set(dateStr, entry);
+            }
+            return entry;
+        };
+
         evaluated.forEach((item) => {
             const dateStr = new Date(item.target_date).toLocaleDateString();
-            if (!dateMap.has(dateStr)) {
-                dateMap.set(dateStr, { date: new Date(item.target_date), dateStr });
-            }
-            const entry = dateMap.get(dateStr);
-            if (!entry) return;
+            const entry = getOrCreateEntry(dateStr, item.target_date);
             const score =
                 ((item.sector_percentile_score || 0) + (item.pair_percentile_score || 0)) / 2;
 
             if (item.model_name.startsWith('deepseek')) {
-                entry.deepseek = score;
+                entry.deepseekSum = (entry.deepseekSum ?? 0) + score;
+                entry.deepseekCount = (entry.deepseekCount ?? 0) + 1;
             } else if (item.model_name === 'MiniMax-M3') {
-                entry.minimax = score;
+                entry.minimaxSum = (entry.minimaxSum ?? 0) + score;
+                entry.minimaxCount = (entry.minimaxCount ?? 0) + 1;
+            }
+        });
+
+        // Compute averages
+        dateMap.forEach((entry) => {
+            if (entry.deepseekCount && entry.deepseekCount > 0) {
+                entry.deepseek = (entry.deepseekSum ?? 0) / entry.deepseekCount;
+            }
+            if (entry.minimaxCount && entry.minimaxCount > 0) {
+                entry.minimax = (entry.minimaxSum ?? 0) / entry.minimaxCount;
             }
         });
 
@@ -61,11 +89,14 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
             .append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
-        // Scales
-        const x = d3
-            .scaleTime()
-            .domain(d3.extent(chartData, (d) => d.date) as [Date, Date])
-            .range([0, width]);
+        // Scales with single data point padding
+        const extent = d3.extent(chartData, (d) => d.date) as [Date, Date];
+        if (extent[0] && extent[1] && extent[0].getTime() === extent[1].getTime()) {
+            extent[0] = new Date(extent[0].getTime() - 24 * 60 * 60 * 1000);
+            extent[1] = new Date(extent[1].getTime() + 24 * 60 * 60 * 1000);
+        }
+
+        const x = d3.scaleTime().domain(extent).range([0, width]);
 
         const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
 

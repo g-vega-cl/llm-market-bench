@@ -19,14 +19,17 @@ def calculate_percentile_score(target_ticker: str, sector_returns: dict[str, flo
     Calculate the percentile score of a target ticker relative to all other sectors.
     Returns 0.0 to 100.0.
     """
-    if target_ticker not in sector_returns:
+    target_ticker = target_ticker.upper()
+    normalized_returns = {k.upper(): v for k, v in sector_returns.items()}
+
+    if target_ticker not in normalized_returns:
         return 0.0
 
-    all_returns = list(sector_returns.values())
+    all_returns = list(normalized_returns.values())
     if not all_returns:
         return 0.0
 
-    target_return = sector_returns[target_ticker]
+    target_return = normalized_returns[target_ticker]
     # Calculate percentile such that lowest is 0 and highest is 100
     if len(all_returns) <= 1:
         return 100.0
@@ -44,22 +47,23 @@ def calculate_pair_percentile_score(target_pair: list[str], sector_returns: dict
     if not target_pair or len(target_pair) != 2:
         return 0.0
 
-    t1, t2 = target_pair[0], target_pair[1]
-    if t1 not in sector_returns or t2 not in sector_returns:
+    normalized_returns = {k.upper(): v for k, v in sector_returns.items()}
+    t1, t2 = target_pair[0].upper(), target_pair[1].upper()
+    if t1 not in normalized_returns or t2 not in normalized_returns:
         return 0.0
 
-    tickers = list(sector_returns.keys())
+    tickers = list(normalized_returns.keys())
 
     all_pair_returns = []
     for i in range(len(tickers)):
         for j in range(i + 1, len(tickers)):
-            avg_ret = (sector_returns[tickers[i]] + sector_returns[tickers[j]]) / 2.0
+            avg_ret = (normalized_returns[tickers[i]] + normalized_returns[tickers[j]]) / 2.0
             all_pair_returns.append(avg_ret)
 
     if not all_pair_returns:
         return 0.0
 
-    target_avg = (sector_returns[t1] + sector_returns[t2]) / 2.0
+    target_avg = (normalized_returns[t1] + normalized_returns[t2]) / 2.0
     if len(all_pair_returns) <= 1:
         return 100.0
     rank = sum(1 for r in all_pair_returns if r < target_avg)
@@ -130,14 +134,45 @@ async def run_evaluation():
     logger.info(f"Found {len(pending)} pending predictions to evaluate.")
     provider = get_financial_provider()
 
-    # Collect all tickers we need to fetch history for
-    tickers_to_fetch = set(SECTOR_TICKERS)
+    # Get unique prediction dates to fetch correlation runs
+    prediction_dates = {p["prediction_date"] for p in pending}
+    run_tickers_by_date = {}
+
+    for pred_date in prediction_dates:
+        try:
+            # Query closest correlation run on or before prediction_date
+            run_res = (
+                client.table("correlation_runs")
+                .select("tickers")
+                .lte("run_date", pred_date)
+                .order("run_date", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if run_res.data and run_res.data[0].get("tickers"):
+                run_tickers_by_date[pred_date] = run_res.data[0]["tickers"]
+            else:
+                run_tickers_by_date[pred_date] = SECTOR_TICKERS
+        except Exception as e:
+            logger.warning(f"Failed to query correlation run for {pred_date}: {e}")
+            run_tickers_by_date[pred_date] = SECTOR_TICKERS
+
+    # Collect all unique tickers we need to fetch history for
+    tickers_to_fetch = set()
     for p in pending:
-        if p.get("predicted_sector"):
-            tickers_to_fetch.add(p["predicted_sector"])
+        pred_date = p["prediction_date"]
+        # Add tickers from this prediction's reference universe
+        ref_tickers = run_tickers_by_date.get(pred_date, SECTOR_TICKERS)
+        for t in ref_tickers:
+            tickers_to_fetch.add(t.upper())
+        # Add predicted sector/pair
+        sec = p.get("predicted_sector")
+        if sec:
+            tickers_to_fetch.add(sec.upper())
         pair = p.get("predicted_pair") or []
         for t in pair:
-            tickers_to_fetch.add(t)
+            if t:
+                tickers_to_fetch.add(t.upper())
 
     # Fetch price history for all needed tickers in parallel
     prices_history = {}
@@ -165,12 +200,28 @@ async def run_evaluation():
     # Evaluate each prediction
     for p in pending:
         pred_id = p["id"]
-        pred_date = datetime.strptime(p["prediction_date"], "%Y-%m-%d").date()
+        pred_date_str = p["prediction_date"]
+        pred_date = datetime.strptime(pred_date_str, "%Y-%m-%d").date()
         target_date = datetime.strptime(p["target_date"], "%Y-%m-%d").date()
 
-        # Calculate returns for all sectors in the universe for this timeframe
+        # Get the reference universe specific to this prediction date
+        ref_tickers = run_tickers_by_date.get(pred_date_str, SECTOR_TICKERS)
+        ref_tickers_upper = {t.upper() for t in ref_tickers}
+
+        # Always include the prediction's specific sector and pair in the universe
+        predicted_sec = p.get("predicted_sector")
+        if predicted_sec:
+            predicted_sec = predicted_sec.upper()
+            ref_tickers_upper.add(predicted_sec)
+
+        predicted_pair = p.get("predicted_pair") or []
+        predicted_pair = [t.upper() for t in predicted_pair if t]
+        for t in predicted_pair:
+            ref_tickers_upper.add(t)
+
+        # Calculate returns for the specific reference universe
         sector_returns = {}
-        for ticker in tickers_to_fetch:
+        for ticker in ref_tickers_upper:
             history = prices_history.get(ticker, [])
             p_start = get_price_for_date(history, pred_date)
             p_end = get_price_for_date(history, target_date)
@@ -178,9 +229,6 @@ async def run_evaluation():
             if p_start is not None and p_end is not None and p_start > 0:
                 ret = ((p_end / p_start) - 1.0) * 100.0
                 sector_returns[ticker] = ret
-
-        predicted_sec = p.get("predicted_sector")
-        predicted_pair = p.get("predicted_pair") or []
 
         if not sector_returns:
             logger.warning(f"No price history found for any sectors for prediction {pred_id}. Skipping.")

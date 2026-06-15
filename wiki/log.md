@@ -1,3 +1,14 @@
+## [2026-06-15] refactor | AI Sector Predictions Arena Audit and Karpathy Ratchet Alignment
+
+Refactored the AI Sector Predictions Arena tasks and frontend code to address critical evaluation, state tracking, and charting bugs:
+- **Resilient Case-Insensitive Matching**: Uppercased and standardized predicted sector and pair tickers during DB insertions and evaluations, preventing lowercase model outputs from silently stalling in `pending` status.
+- **Isolated Reference Universe**: Refactored [evaluate_predictions.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/evaluate_predictions.py) to dynamically fetch each week's benchmark tickers list from `correlation_runs.tickers` based on the prediction date. This isolates comparison pools per prediction date, handles non-standard tickers, and eliminates universe leaks between runs.
+- **Karpathy Ratchet Meta-Loop**: Upgraded [predictor_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/predictor_autoresearch.py) to calculate a weekly score from evaluated predictions, write the score back to the prompt's `metrics` column, and implement a strict revert ratchet. If the weekly score underperforms the all-time baseline, the active prompt is reverted to the baseline before mutation.
+- **Timeframe Selector & Collision Handling**: Updated [AIPredictionsPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx) to provide timeframe filter buttons (`7d`, `30d`, `60d`, `90d`, `All`) and average both sector and pair scores in summary cards. Refactored [AIPredictionChart.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx) to handle target date collisions by averaging overlapping prediction scores, and add a $\pm 1$-day margin to D3 scale domains for single-data-point resilience.
+- **TDD Test Suite**: Authored comprehensive unit tests in [test_sector_predictions_audit.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_sector_predictions_audit.py) to verify casing coercion, universe isolation, and ratchet success/revert behaviors.
+
+**See**: [[entities/sector-predictor-arena]]
+
 ## [2026-06-15] feature | Prediction Evaluation Runner and Database Uniqueness Constraints
 
 Implemented prediction evaluation and database-level deduplication guardrails for the AI Sector Predictions Arena:

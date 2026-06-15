@@ -5,62 +5,56 @@ category: entity
 
 # AI Sector Predictor and Model Arena
 
-The **AI Sector Predictor and Model Arena** is a standalone forecasting and benchmarking system designed to predict weekly top-performing sectors and uncorrelated sector pairs for 7d, 30d, 60d, and 90d timeframes, while comparing the predictive accuracy of **DeepSeek Flash** vs. **MiniMax-M3**.
+The **AI Sector Predictor and Model Arena** is a forecasting and benchmarking system designed to predict weekly top-performing sectors and uncorrelated asset pairs for 7d, 30d, 60d, and 90d timeframes, while comparing the predictive accuracy of **DeepSeek Flash** vs. **MiniMax-M3**.
 
-## Features
-- **AIPredictionsPage**: The web route (`/ai-predictions`) showcasing average performance comparison between DeepSeek Flash and MiniMax-M3, alongside a detailed feed of recent predictions, logic reasoning, and target timelines.
-- **Custom D3 Line Chart**: Visualizes historical performance trends over time using native D3 scales, grids, ticks, and legend mapping, ensuring zero external charting library bloat.
-- **Percentile-Based Scoring**: Evaluates predictions by converting raw performance returns into percentile rankings against all available sectors/sector pairs (0.0 to 100.0 scale).
-- **Strict Isolation**: Keeps prompts, database rows, and autoresearch operations completely decoupled from the main investment engine via a custom prompt tag (`SECTOR_PREDICTOR_PROMPT`).
+---
 
-## Implementation
+## 🎯 Architecture & End-State Goals
+
+### 1. Dynamic Reference Universe (Per-Week Isolation)
+Rather than hardcoding a comparison universe of 14 sector ETFs, the evaluation engine determines the benchmark assets dynamically based on the week the prediction was made:
+* For any prediction, the evaluator looks up the closest historical `correlation_runs` row by matching the `prediction_date`.
+* The `tickers` array stored in that correlation run (which lists all 59+ system-tracked assets, including commodities, crypto, and equities) is used as the **reference comparison universe**.
+* This aligns evaluation with what the model actually chose from, isolates comparison pools per prediction date, and eliminates dynamic universe leaks between runs.
+
+### 2. Standardized Case-Insensitive Matching
+* Both predictions and reference tickers are parsed and coerced to uppercase (via `.upper()`) before comparison.
+* Lowercase model outputs (e.g. `["xlk", "xlv"]`) are parsed and correctly scored without causing silent evaluation skips.
+
+### 3. Feedback-Driven Karpathy Ratchet
+The Arena prompt evolution follows a strict feedback loop identical to the main investment engine:
+1. **Weekly Evaluation**: The runner compiles all predictions with `target_date <= today` and marks them `evaluated`.
+2. **Weekly Scoring**: A single `weekly_score` is computed as the average of the evaluated predictions' average scores:
+   $$\text{Score}_{\text{prediction}} = \frac{\text{sector\_percentile} + \text{pair\_percentile}}{2}$$
+   $$\text{Score}_{\text{weekly}} = \text{Average}(\text{Score}_{\text{prediction}})$$
+3. **Database Metrics Tracking**: The `metrics` JSON column of the prompt variant that was active during that week is updated in `prompt_experiments` with `{"score": weekly_score}`.
+4. **Ratchet Decision**:
+   * The baseline score is calculated as the maximum score of any evaluated `SECTOR_PREDICTOR_PROMPT` variant in the database.
+   * If the current week's score beats the baseline, a new baseline is established.
+   * If it underperforms, the active prompt variant is reverted to the baseline variant (`revert_to_baseline()`) before mutating.
+5. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active prompt to deploy the next week's variant.
+
+### 4. Robust Frontend Visuals
+* **Timeframe Filters**: The dashboard allows filtering/splitting the chart by prediction horizon (e.g., viewing 7d, 30d, 60d, 90d individually) to prevent target date collisions and ensure statistical meaning.
+* **Single Data Point Resilience**: The time scale domain adds a $\pm 1$-day margin when only a single data point is evaluated, preventing D3 coordinate scaling crashes.
+* **Unified Metrics**: Summary card statistics and chart plotting use the same formula (averaging both sector and pair scores).
+
+---
+
+## 📁 Implementation Components
 
 ### Engine Tasks
-- **Prediction Generation (`apps/engine/tasks/sector_predictor.py`)**: Runs prediction inference for DeepSeek (via instructor proxy) and MiniMax (via direct HTTP payload). Inserts predictions into `sector_predictions` table.
-- **Auto-Research Evolution (`apps/engine/tasks/predictor_autoresearch.py`)**: A dedicated meta-researcher loop utilizing the Gemini client. Automatically mutates `SECTOR_PREDICTOR_PROMPT` and saves prompt variants in `prompt_experiments` under the isolated prompt name `SECTOR_PREDICTOR_PROMPT`.
-- **Inference Evaluation (`apps/engine/tasks/evaluate_predictions.py`)**: Computes percentile performance metrics for single sectors and uncorrelated pairs on target dates.
+* **Prediction Generation (`apps/engine/tasks/sector_predictor.py`)**: Runs prediction inference for DeepSeek (via instructor proxy) and MiniMax (via direct HTTP payload). Inserts predictions into `sector_predictions` table.
+* **Auto-Research Evolution (`apps/engine/tasks/predictor_autoresearch.py`)**: Orchestrates the weekly prompt evolution, updates database metrics, applies the ratchet revert step, and mutates the system prompt.
+* **Inference Evaluation (`apps/engine/tasks/evaluate_predictions.py`)**: Computes percentile performance metrics against the corresponding weekly correlation run assets.
 
 ### Web Front-End
-- **Route**: `apps/web/src/routes/ai-predictions/index.tsx` using `createServerFn` and TanStack Start.
-- **API Fetcher**: `apps/web/src/features/ai-predictions/api/fetch-predictions.ts` reading from `sector_predictions` table.
-- **Visuals**: `apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx` leveraging `d3` rendering pipeline.
+* **Route**: `apps/web/src/routes/ai-predictions/index.tsx` using `createServerFn` and TanStack Start.
+* **API Fetcher**: `apps/web/src/features/ai-predictions/api/fetch-predictions.ts` reading from `sector_predictions` table.
+* **Visuals**: `apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx` leveraging `d3` rendering pipeline.
+* **Pages**: `apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx` showing unified metrics and target track records.
 
-## Production Schedule & Robustness
-
-### GitHub Actions Workflow
-The system is automated via the GitHub Actions workflow [.github/workflows/sector-predictions.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/sector-predictions.yml).
-- **Trigger**: Run weekly on a cron schedule at **Sunday 9:00 PM UTC** (5:00 PM ET).
-- **Steps**:
-  1. Executes `evaluate_predictions.py` to evaluate pending predictions whose `target_date <= today` and update their status to `'evaluated'`.
-  2. Executes `predictor_autoresearch.py` to evaluate the past week's prompt performance and update the prompt.
-  3. Executes `sector_predictor.py` to generate the new week's predictions.
-
-### Deduplication and Uniqueness Guardrails
-To prevent duplicate predictions (e.g. from manual developer executions or pipeline retries), the database enforces a unique constraint on `(prediction_date, model_name, timeframe)`.
-- **Generator Upsert:** The prediction generator task in `sector_predictor.py` uses `.upsert()` with `on_conflict` to gracefully overwrite/update existing records if executed multiple times in the same week.
-
-### MiniMax-M3 API Robustness
-MiniMax-M3 leverages long-form internal reasoning (`reasoning_content`) which can occasionally exhaust API token limits, resulting in incomplete responses or empty payloads.
-- **Retry Mechanism**: The prediction task implements a **3-attempt retry loop with a 2-second exponential backoff** for each timeframe.
-- **Prompt Mutation on Retry**: If a MiniMax request fails on the first attempt, the subsequent attempts append a strict conciseness instruction (`Note: Keep your internal reasoning/thinking process concise to avoid token limit truncation`) to guarantee successful JSON payload generation.
-
-
-## Database Schema (`sector_predictions`)
-Stores historical prediction records:
-- `id` (uuid, primary key)
-- `prediction_date` (date, part of unique constraint)
-- `target_date` (date)
-- `timeframe` (text, part of unique constraint)
-- `model_name` (text, part of unique constraint)
-- `prompt_tag` (text)
-- `predicted_sector` (text)
-- `predicted_pair` (text[])
-- `reasoning` (text)
-- `sector_percentile_score` (numeric, nullable)
-- `pair_percentile_score` (numeric, nullable)
-- `status` (prediction_status: 'pending', 'evaluated')
-- **Unique Constraint:** `unique_prediction_date_model_timeframe` on `(prediction_date, model_name, timeframe)`
-
+---
 
 ## Related
 - [[entities/autoresearch]] — the parent autonomous prompt improvement engine

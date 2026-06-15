@@ -72,24 +72,37 @@ async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_resea
 async def run_predictor_autoresearch():
     client = get_supabase_client()
 
+    today = datetime.now(UTC).date()
+    seven_days_ago = today - timedelta(days=7)
+
     # 1. Fetch evaluated predictions from the last week
-    # Assuming run weekly, we fetch where status = 'evaluated' and prediction_date is recent
-    # For simplicity, just fetching the latest evaluated predictions
     response = (
         client.table("sector_predictions")
         .select("*")
         .eq("status", "evaluated")
-        .order("target_date", desc=True)
-        .limit(10)
+        .gte("target_date", seven_days_ago.isoformat())
+        .lte("target_date", today.isoformat())
         .execute()
     )
 
     predictions = response.data
     if not predictions:
-        logger.info("No evaluated predictions found. Skipping autoresearch.")
+        logger.info("No evaluated predictions found in the last week. Skipping autoresearch.")
         return
 
-    baseline_score = calculate_baseline_score(predictions)
+    # Calculate weekly score as average of all prediction scores
+    scores = []
+    for p in predictions:
+        s_score = p.get("sector_percentile_score")
+        p_score = p.get("pair_percentile_score")
+        if s_score is not None and p_score is not None:
+            scores.append((s_score + p_score) / 2.0)
+
+    if not scores:
+        logger.info("No evaluated prediction scores found for this week. Skipping autoresearch.")
+        return
+
+    weekly_score = sum(scores) / len(scores)
 
     # 2. Fetch current active prompt
     prompt_response = (
@@ -109,10 +122,48 @@ async def run_predictor_autoresearch():
     current_prompt = prompt_response.data[0]["prompt_content"]
     parent_tag = prompt_response.data[0]["variant_tag"]
 
-    # 3. Generate new prompt
+    # 3. Update the active prompt variant metrics in DB
+    client.table("prompt_experiments").update({"metrics": {"score": weekly_score}}).eq(
+        "variant_tag", parent_tag
+    ).execute()
+    logger.info(f"Updated prompt variant {parent_tag} with weekly score {weekly_score:.4f}")
+
+    # 4. Fetch all-time baseline prompt variant to perform ratchet comparison
+    all_variants = client.table("prompt_experiments").select("*").eq("prompt_name", "SECTOR_PREDICTOR_PROMPT").execute()
+
+    baseline_score = -1.0
+    baseline_tag = parent_tag
+    baseline_content = current_prompt
+
+    for v in all_variants.data:
+        if v["variant_tag"] == parent_tag:
+            continue
+        m = v.get("metrics") or {}
+        score = m.get("score")
+        if score is not None and score > baseline_score:
+            baseline_score = score
+            baseline_tag = v["variant_tag"]
+            baseline_content = v["prompt_content"]
+
+    # Compare weekly score with baseline
+    if baseline_score != -1.0 and weekly_score < baseline_score:
+        logger.info(
+            f"RATCHET: Weekly score {weekly_score:.4f} failed to beat baseline {baseline_score:.4f}. Reverting to {baseline_tag}."
+        )
+        # Revert active prompt in DB to baseline content
+        client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
+        current_prompt = baseline_content
+        parent_tag = baseline_tag
+    else:
+        logger.info(
+            f"RATCHET: Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. Keeping {parent_tag}."
+        )
+        client.table("prompt_experiments").update({"status": "kept"}).eq("variant_tag", parent_tag).execute()
+
+    # 5. Generate new prompt mutated from (post-revert) current_prompt
     meta_researcher = get_gemini_client()
     try:
-        new_prompt = await generate_new_prompt(current_prompt, baseline_score, meta_researcher)
+        new_prompt = await generate_new_prompt(current_prompt, weekly_score, meta_researcher)
     finally:
         await close_client(meta_researcher, "gemini")
 
@@ -120,13 +171,9 @@ async def run_predictor_autoresearch():
         logger.info("New prompt is identical to old prompt. Skipping insertion.")
         return
 
-    # 4. Insert new prompt and mark old as kept
+    # 6. Insert new prompt and set status to active
     new_tag = f"sector-pred-{uuid.uuid4().hex[:8]}"
-    today = datetime.now(UTC).date()
     week_end = today + timedelta(days=7)
-
-    # Mark old as kept or discarded based on logic (simplified here)
-    client.table("prompt_experiments").update({"status": "kept"}).eq("variant_tag", parent_tag).execute()
 
     client.table("prompt_experiments").insert(
         {
@@ -138,7 +185,7 @@ async def run_predictor_autoresearch():
             "status": "active",
             "experiment_type": "incremental",
             "parent_tag": parent_tag,
-            "change_description": f"Autoresearch generated from baseline {baseline_score:.1f}",
+            "change_description": f"Autoresearch generated from baseline {weekly_score:.1f}",
         }
     ).execute()
 

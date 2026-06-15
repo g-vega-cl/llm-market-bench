@@ -209,7 +209,7 @@ async def _analyze_with_minimax(
     calendar_knowledge: str = "",
     macro_context: str = "",
 ) -> DecisionsResponse:
-    """Analysis pipeline for MiniMax M2.7.
+    """Analysis pipeline for MiniMax M3.
 
     MiniMax does not support the OpenAI function-calling / Instructor flow.
     Instead we:
@@ -219,7 +219,7 @@ async def _analyze_with_minimax(
          repair helpers — no Instructor, no tool loop.
 
     Args:
-        model_name: MiniMax model identifier (e.g. ``MiniMax-M2.7``).
+        model_name: MiniMax model identifier (e.g. ``MiniMax-M3``).
         chunks: Newsletter chunks to analyse.
         context: Aggregated historical context.
         portfolio_context: Current portfolio summary text.

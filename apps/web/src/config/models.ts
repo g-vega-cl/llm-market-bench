@@ -3,6 +3,6 @@ export const MODELS = {
     ANTHROPIC: 'claude-haiku-4-5',
     GEMINI: 'gemini-3.1-flash-lite',
     DEEPSEEK: 'deepseek-v4-pro',
-    MINIMAX: 'MiniMax-M2.7',
+    MINIMAX: 'MiniMax-M3',
     CONTRARIAN: 'contrarian_agent',
 } as const;

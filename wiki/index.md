@@ -52,7 +52,7 @@
 - [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM
 - [[concepts/tool-enforcement]] — 4-layer hallucination prevention system
 - [[concepts/rag-strategy]] — Tiered context injection and per-agent RAG
-- [[concepts/minimax-portfolio]] — Simplified execution model & ±0.5% market order buffer for MiniMax 2.7
+- [[concepts/minimax-portfolio]] — Simplified execution model & ±0.5% market order buffer for MiniMax-M3
 - [[concepts/supabase-grant-convention]] — Explicit GRANTs required for PostgREST Data API access
 - [[concepts/performance-auditing-strategy]] — Cloud-native edge performance auditing with Netlify Lighthouse budgets
 - [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR decision frameworks, patterns, and live examples

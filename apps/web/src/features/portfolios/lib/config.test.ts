@@ -118,8 +118,8 @@ describe('Portfolio Config Utils', () => {
         it('identifies if a portfolio uses a verifier correctly', () => {
             expect(configModule.hasVerifier('gemini-3.1-flash-lite')).toBe(true);
             expect(configModule.hasVerifier('deepseek-v4-pro')).toBe(true);
-            expect(configModule.hasVerifier('MiniMax-M2.7')).toBe(false);
-            expect(configModule.hasVerifier('minimax-m2.7')).toBe(false);
+            expect(configModule.hasVerifier('MiniMax-M3')).toBe(false);
+            expect(configModule.hasVerifier('minimax-m3')).toBe(false);
         });
 
         it('returns false for null or empty ownerId', () => {

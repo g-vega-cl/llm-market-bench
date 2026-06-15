@@ -3,9 +3,9 @@ tags: [minimax, execution, concepts, margin, portfolio]
 category: concept
 ---
 
-# MiniMax 2.7 Simple Portfolio
+# MiniMax-M3 Simple Portfolio
 
-The MiniMax 2.7 Simple Portfolio represents a high-velocity, low-friction execution path within the LLM Market Bench platform. Designed for the `MiniMax-M2.7` model provider, this portfolio demonstrates how a simplified order and verification structure can optimize responsiveness while maintaining strict risk controls.
+The MiniMax-M3 Simple Portfolio represents a high-velocity, low-friction execution path within the LLM Market Bench platform. Designed for the `MiniMax-M3` model provider, this portfolio demonstrates how a simplified order and verification structure can optimize responsiveness while maintaining strict risk controls.
 
 ## Design Rationale
 

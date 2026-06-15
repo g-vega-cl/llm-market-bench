@@ -16,7 +16,11 @@ vi.mock('~/lib/supabase', () => ({
     getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
 }));
 
-import { fetchBenchmarkHistory, fetchPortfolios } from './fetch-portfolios';
+import {
+    fetchAllActivePortfolioPerformance,
+    fetchBenchmarkHistory,
+    fetchPortfolios,
+} from './fetch-portfolios';
 
 vi.mock('../lib/config', () => ({
     getActiveOwnerIds: vi.fn(() => ['gemini-3.1-flash-lite', 'deepseek-v4-pro']),
@@ -102,4 +106,65 @@ test('fetchPortfolios tags portfolios with is_autoresearch correctly', async () 
     expect(result.find((p) => p.owner_id === 'gemini-3.1-flash-lite')?.is_autoresearch).toBe(true);
     expect(result.find((p) => p.owner_id === 'deepseek-v4-pro')?.is_autoresearch).toBe(true);
     expect(result.find((p) => p.owner_id === 'gpt-5.4-nano')?.is_autoresearch).toBe(false);
+});
+
+test('fetchAllActivePortfolioPerformance does not restrict older portfolios when a new portfolio starts today', async () => {
+    const mockPortfolios = [
+        { id: 'old-id', owner_id: 'gemini-3.1-flash-lite', total_equity: 10000 },
+        { id: 'new-id', owner_id: 'deepseek-v4-pro', total_equity: 12000 },
+    ];
+    const mockPerformance = [
+        { portfolio_id: 'old-id', date: '2026-06-05', total_equity: 9000 },
+        { portfolio_id: 'old-id', date: '2026-06-08', total_equity: 9500 },
+        { portfolio_id: 'old-id', date: '2026-06-12', total_equity: 9800 },
+        { portfolio_id: 'old-id', date: '2026-06-15', total_equity: 10000 },
+        { portfolio_id: 'new-id', date: '2026-06-15', total_equity: 12000 },
+    ];
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock client needs to be typed as any to mock Supabase methods dynamically
+    const mockClient: any = {
+        from: vi.fn((table) => {
+            if (table === 'portfolios') {
+                return {
+                    select: vi.fn(() => ({
+                        order: vi.fn(() => Promise.resolve({ data: mockPortfolios, error: null })),
+                    })),
+                };
+            }
+            if (table === 'portfolio_performance') {
+                return {
+                    select: vi.fn(() => ({
+                        in: vi.fn(() => ({
+                            order: vi.fn(() =>
+                                Promise.resolve({ data: mockPerformance, error: null }),
+                            ),
+                        })),
+                    })),
+                };
+            }
+            return mockClient;
+        }),
+    };
+    mockSupabaseClient = mockClient;
+
+    const mockDate = new Date('2026-06-15T12:00:00Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(mockDate);
+
+    const result = await fetchAllActivePortfolioPerformance(7); // 7 days window
+
+    vi.useRealTimers();
+
+    expect(result.portfolios).toHaveLength(2);
+
+    const oldPortfolio = result.portfolios.find((p) => p.portfolioId === 'old-id');
+    const newPortfolio = result.portfolios.find((p) => p.portfolioId === 'new-id');
+
+    expect(oldPortfolio).toBeDefined();
+    expect(newPortfolio).toBeDefined();
+
+    expect(result.startDate).toBe('2026-06-08');
+    expect(oldPortfolio?.performance).toHaveLength(3);
+    expect(oldPortfolio?.performance[0].date).toBe('2026-06-08');
+    expect(newPortfolio?.performance).toHaveLength(1);
 });

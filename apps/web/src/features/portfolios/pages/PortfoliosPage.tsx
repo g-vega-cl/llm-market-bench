@@ -115,28 +115,13 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     });
 
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY');
-    const [comparisonInitialData, setComparisonInitialData] = React.useState<
-        | {
-              portfolios: PortfolioPerformanceItem[];
-              startDate: string;
-              endDate: string;
-              benchmarkData: Record<string, BenchmarkDataPoint[]>;
-          }
-        | undefined
-    >(undefined);
-
-    React.useEffect(() => {
-        comparisonFetchFn(selectedBenchmark, 90)
-            .then(setComparisonInitialData)
-            .catch(console.error);
-    }, [selectedBenchmark, comparisonFetchFn]);
+    const [_isPending, startTransition] = React.useTransition();
 
     const { data: comparisonData } = useSuspenseQuery({
         ...portfolioQueries.comparison({
             benchmark: selectedBenchmark,
             fetchFn: () => comparisonFetchFn(selectedBenchmark, 90),
         }),
-        initialData: comparisonInitialData,
     });
 
     const active = data?.filter((p) => p.is_active !== false) ?? [];
@@ -177,7 +162,11 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             </div>
                             <BenchmarkSelector
                                 selected={selectedBenchmark}
-                                onChange={setSelectedBenchmark}
+                                onChange={(ticker) => {
+                                    startTransition(() => {
+                                        setSelectedBenchmark(ticker);
+                                    });
+                                }}
                             />
                         </div>
                         <PortfolioComparisonChart

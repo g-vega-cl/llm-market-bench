@@ -218,3 +218,24 @@ Removed `dot` variant from Badge primitive and `ghost` variant from Card primiti
 
 The `fetchAllActivePortfolioPerformance` function incorrectly used the most recent portfolio start date to trim the performance window, causing older portfolios' history to be clipped whenever a new portfolio was created on the current day. This was corrected to use the earliest start date across all active portfolios, preserving full historical data for each agent while still honoring the `maxDays` parameter. A regression test was added to prevent future regressions.
 
+## [2026-06-15] bugfix | Fix portfolios page benchmark selection cache pollution
+
+Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in the portfolios comparison chart failed to display their respective performance lines:
+- **React Query Cache Pollution**: Removed stale `initialData` parameter from `useSuspenseQuery` inside `PortfoliosPage.tsx` to stop old default ('SPY') benchmark data from seeding and freezing new query keys.
+- **Smooth Suspense Transition**: Integrated `React.useTransition` to wrap `setSelectedBenchmark` updates, allowing client-side background refetching to transition smoothly without triggering hard-suspense loaders.
+- **TDD Regression Suite**: Added `PortfoliosPageBenchmark.test.tsx` which simulates switching benchmark options and verifies the chart receives the correct dataset.
+- **Documentation**: Documented this specific React Query `initialData` gotcha in `concepts/tanstack-query.md`.
+
+**See**: [[concepts/tanstack-query]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx)
+
+
+
+## [2026-06-15] bugfix | Fix portfolios page benchmark selection cache pollution
+
+Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in the portfolios comparison chart failed to display their respective performance lines:
+- **React Query Cache Pollution**: Removed stale `initialData` parameter from `useSuspenseQuery` inside `PortfoliosPage.tsx` to stop old default ('SPY') benchmark data from seeding and freezing new query keys.
+- **Smooth Suspense Transition**: Integrated `React.useTransition` to wrap `setSelectedBenchmark` updates, allowing client-side background refetching to transition smoothly without triggering hard-suspense loaders.
+- **TDD Regression Suite**: Added `PortfoliosPageBenchmark.test.tsx` which simulates switching benchmark options and verifies the chart receives the correct dataset.
+- **Documentation**: Documented this specific React Query `initialData` gotcha in `concepts/tanstack-query.md`.
+
+**See**: [[concepts/tanstack-query]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx)

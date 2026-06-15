@@ -69,6 +69,13 @@ To support server-side rendering (SSR) without leaking query data across concurr
 
 The client is wrapped around the root component in `apps/web/src/routes/__root.tsx` via the `QueryClientProviderWrapper`.
 
+## Gotchas & Common Pitfalls
+
+### Dynamic `initialData` Cache Pollution
+Using React state as `initialData` in `useSuspenseQuery` or `useQuery` when the query key is dynamic (e.g., depends on a selected benchmark, filter, or page state) can cause cache pollution:
+- **Pitfall**: When the state changes (e.g., the selected benchmark changes from `'SPY'` to `'QQQ'`), `useSuspenseQuery` is called with the new query key but the *old* `initialData` (which is still the data from `'SPY'`). React Query immediately seeds the cache for the new key (`'QQQ'`) with the old `'SPY'` data and marks it as fresh. When the fetch resolves and updates the `initialData` state variable, React Query ignores it because the cache entry is already marked as fresh and exists.
+- **Solution**: For interactive client-side queries where the query key is dynamic and depends on client-side state selection, avoid passing `initialData` to `useSuspenseQuery`. Use standard client-side fetching/suspense. To avoid hard loading states during state changes, wrap the state update in `React.useTransition` (e.g., `startTransition(() => setSelectedBenchmark(ticker))`).
+
 ## Related
 
 - [[entities/web-app]]

@@ -233,21 +233,23 @@ export async function fetchAllActivePortfolioPerformance(maxDays: number = 90): 
     }
 
     const now = new Date();
-    const ninetyDaysAgo = new Date(now.getTime() - maxDays * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - maxDays),
+    );
 
-    let mostRecentStartDate = new Date(0);
+    let earliestStartDate: Date | null = null;
 
     for (const [, perf] of portfolioPerformanceMap) {
         if (perf.length > 0) {
             const firstDate = new Date(perf[0].date);
-            if (firstDate > mostRecentStartDate) {
-                mostRecentStartDate = firstDate;
+            if (!earliestStartDate || firstDate < earliestStartDate) {
+                earliestStartDate = firstDate;
             }
         }
     }
 
     const effectiveStartDate =
-        mostRecentStartDate > ninetyDaysAgo ? mostRecentStartDate : ninetyDaysAgo;
+        earliestStartDate && earliestStartDate > ninetyDaysAgo ? earliestStartDate : ninetyDaysAgo;
 
     const filteredPortfolios: PortfolioPerformanceItem[] = [];
 

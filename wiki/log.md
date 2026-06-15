@@ -1,3 +1,14 @@
+## [2026-06-15] feature | High-Density Scroll-Free Mobile Homepage Layout
+
+Implemented a responsive, high-density dashboard for mobile viewports on the homepage to display critical information without scrolling:
+- **Responsive Conditional Rendering**: Used Tailwind media queries (`block md:hidden` and `hidden md:flex`) to render layout variations natively on the client side, avoiding SSR layout shifts and dehydration mismatches.
+- **Full-Bleed Edge-to-Edge Container**: Created a borderless glass layout wrapper that spans the full viewport width on mobile, maximizing space and preventing column crowding.
+- **Collapsible Market Feeling**: Added a stateful collapse/expand component for the market feeling analysis. It displays a compact 1-line italic summary by default, saving ~200px of vertical space, and expands to show full details, confidence bar, and concerns on tap.
+- **Consolidated Model Portfolios Table**: Consolidated all model portfolios into a compact tabular view showing status indicators (active/auto-research), total equity, and stacked return percentages (Today and Week) in a dense list.
+- **TDD Test Suite**: Added a dedicated test suite in [HomePage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.test.tsx) asserting the presence of the mobile elements (Live Overview, S&P 500 Benchmark, collapsible trigger, and dense table items).
+
+**See**: [[entities/web-app]]
+
 ## [2026-06-15] refactor | AI Sector Predictions Arena Audit and Karpathy Ratchet Alignment
 
 Refactored the AI Sector Predictions Arena tasks and frontend code to address critical evaluation, state tracking, and charting bugs:

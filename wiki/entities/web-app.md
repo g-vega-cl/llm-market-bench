@@ -99,6 +99,14 @@ To keep the web app's documentation in perfect harmony with the project's living
 - **Git Hook Integration**: Added a compilation hook to the pre-commit script `scripts/auto-wiki.sh`. Staged changes automatically compile the fresh JSON file and re-stage it before final commit.
 - **TDD Verification**: Covered by robust Python unit tests in `test_compile_how_it_works.py` and Vitest UI tests in `-how-it-works.test.tsx` to guarantee parsing integrity and dynamic React mapping correctness.
 
+### High-Density Scroll-Free Mobile Homepage Layout (2026-06-15)
+
+To optimize information density and remove scrolling requirements on mobile, a consolidated, high-density dashboard was implemented:
+- **Tailwind Responsive Swapping**: Rather than relying on stateful viewport hooks (which break SSR/hydration consistency and cause content flashing), layout swapping is driven by Tailwind's `block md:hidden` and `hidden md:flex` classes.
+- **Edge-to-Edge Fluid Layout**: Designed a borderless glass-pane container that spans 100% of the viewport width on mobile, eliminating side margins/paddings and maximizing the horizontal width available for text and metrics.
+- **Stateful Feeling Collapsible**: Embedded a collapsible toggle for the detailed Market Feeling analysis. By default, it collapses the verbose description to a single-line summary, saving ~200px of vertical space, while allowing full details, confidence meter, and concern tags to expand on tap.
+- **Dense Portfolios Grid**: Replaced individual model cards with a single tabular grid showing Model name, Active status indicators, Total Equity, and stacked Today/Weekly return percentages in a single row.
+- **Cognitive Complexity Refactoring**: Refactored the dashboard code into modular sub-components (`MobileSentimentHeader`, `MobileSPInlineRow`, `MobileFeelingDetail`, `MobileFeelingCollapsible`, `MobilePortfolioRow`) to strictly adhere to Biome's cognitive complexity threshold of 15.
 
 ## Design System
 

@@ -1,4 +1,5 @@
 import { Badge, Card, ConfidenceBar } from '@llm-market-bench/ui-design-system';
+import { useState } from 'react';
 
 export interface HomePageData {
     portfolios: {
@@ -305,27 +306,310 @@ function MarketFeelingCard({ feeling }: MarketFeelingCardProps) {
     );
 }
 
+function MobilePortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][number] }) {
+    const formatMoney = (val: number) => {
+        const sign = val < 0 ? '-' : '';
+        return `${sign}$${Math.abs(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    return (
+        <tr className="hover:bg-white/5 transition-colors duration-200">
+            <td className="px-3 py-2 font-medium">
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-[12px] font-bold text-white tracking-tight">
+                        {portfolio.name}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[9px] font-mono text-white/40">
+                        <span className="flex items-center gap-1">
+                            <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                    portfolio.isActive ? 'bg-emerald-400' : 'bg-slate-400'
+                                }`}
+                            />
+                            {portfolio.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                            <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                    portfolio.isAutoResearch ? 'bg-purple-400' : 'bg-slate-400'
+                                }`}
+                            />
+                            {portfolio.isAutoResearch ? 'Auto-Res' : 'Manual'}
+                        </span>
+                    </div>
+                </div>
+            </td>
+            <td className="px-3 py-2 text-right font-mono text-[12px] font-medium text-white/95 align-middle">
+                {formatMoney(portfolio.totalEquity)}
+            </td>
+            <td className="px-3 py-2 text-right font-mono text-[12px] align-middle">
+                <div className="flex flex-col items-end gap-0.5">
+                    <span
+                        className={`font-bold ${
+                            portfolio.todayPct >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                    >
+                        {portfolio.todayPct > 0 ? '+' : ''}
+                        {portfolio.todayPct}%
+                    </span>
+                    <span
+                        className={`text-[9px] ${
+                            portfolio.weekPct >= 0 ? 'text-emerald-500/80' : 'text-red-400/80'
+                        }`}
+                    >
+                        {portfolio.weekPct > 0 ? '+' : ''}
+                        {portfolio.weekPct}% wk
+                    </span>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+function MobileSentimentHeader({ feeling }: { feeling: HomePageData['feeling'] }) {
+    const isBullish = feeling.sentiment === 'BULLISH';
+    const isBearish = feeling.sentiment === 'BEARISH';
+    const sentimentColor = isBullish
+        ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
+        : isBearish
+          ? 'bg-red-400 shadow-[0_0_8px_#f87171]'
+          : 'bg-[#00f2fe] shadow-[0_0_8px_#00f2fe]';
+
+    return (
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <span className="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-[#f6e05e] bg-clip-text text-transparent">
+                    Live Overview
+                </span>
+                <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white shadow-inner">
+                    <span
+                        className={`mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${sentimentColor}`}
+                    />
+                    {feeling.sentimentEmoji && (
+                        <span className="mr-1">{feeling.sentimentEmoji}</span>
+                    )}
+                    {feeling.sentiment}
+                </div>
+            </div>
+            {feeling.sentimentLabel && (
+                <span className="text-[11px] font-semibold text-slate-300 tracking-wide">
+                    {feeling.sentimentLabel}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function MobileSPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
+    const spToday = benchmark.todayPct;
+    const spWeek = benchmark.weekPct;
+
+    return (
+        <div className="flex items-center justify-between bg-yellow-900/10 border border-yellow-500/25 rounded-xl px-3 py-1.5 text-xs">
+            <span className="font-bold text-yellow-300/90 tracking-tight text-[11px] uppercase">
+                S&P 500 Benchmark
+            </span>
+            <div className="flex gap-2.5 text-[11px] font-mono">
+                <div>
+                    <span className="text-white/40 mr-1">Today</span>
+                    <span
+                        className={
+                            spToday >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'
+                        }
+                    >
+                        {spToday > 0 ? '+' : ''}
+                        {spToday}%
+                    </span>
+                </div>
+                <span className="text-white/20">|</span>
+                <div>
+                    <span className="text-white/40 mr-1">Week</span>
+                    <span
+                        className={
+                            spWeek >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'
+                        }
+                    >
+                        {spWeek > 0 ? '+' : ''}
+                        {spWeek}%
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function MobileFeelingDetail({ feeling }: { feeling: HomePageData['feeling'] }) {
+    return (
+        <div className="mt-2.5 space-y-3 animate-scale-in">
+            <p className="text-xs leading-relaxed text-white/80 font-light italic bg-white/5 p-2 rounded-lg border border-white/5">
+                "{feeling.summary}"
+            </p>
+
+            {feeling.confidence !== undefined && (
+                <ConfidenceBar
+                    label="Confidence"
+                    value={feeling.confidence}
+                    colorScheme={
+                        feeling.confidence >= 70
+                            ? 'success'
+                            : feeling.confidence >= 40
+                              ? 'warning'
+                              : 'danger'
+                    }
+                    textStyle="hero"
+                    className="bg-white/5 border border-white/10 p-2 rounded-xl text-[11px]"
+                />
+            )}
+
+            {/* Concerns Grid */}
+            <div className="flex flex-col gap-2">
+                {feeling.primaryConcern && (
+                    <div className="space-y-1">
+                        <span className="block text-[9px] text-white/40 uppercase tracking-widest font-black">
+                            Primary Concern
+                        </span>
+                        <div className="inline-flex rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300 font-medium leading-tight">
+                            ⚠️ {feeling.primaryConcern}
+                        </div>
+                    </div>
+                )}
+                {feeling.secondaryConcern && (
+                    <div className="space-y-1">
+                        <span className="block text-[9px] text-white/40 uppercase tracking-widest font-black">
+                            Secondary Concern
+                        </span>
+                        <div className="inline-flex rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 font-medium leading-tight">
+                            🔍 {feeling.secondaryConcern}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Meta footer info */}
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2 text-[9px] text-white/40 font-mono">
+                {feeling.lastAnalyzed && <span>Last: {feeling.lastAnalyzed}</span>}
+                {feeling.modelUsed && <span>• Model: {feeling.modelUsed}</span>}
+            </div>
+        </div>
+    );
+}
+
+function MobileFeelingCollapsible({
+    feeling,
+    benchmark,
+}: {
+    feeling: HomePageData['feeling'];
+    benchmark: HomePageData['benchmark'];
+}) {
+    const [isFeelingExpanded, setIsFeelingExpanded] = useState(false);
+
+    return (
+        <div className="flex flex-col gap-4">
+            {/* Header Row */}
+            <div className="flex flex-col gap-2 border-b border-white/10 pb-3">
+                <MobileSentimentHeader feeling={feeling} />
+                <MobileSPInlineRow benchmark={benchmark} />
+            </div>
+
+            {/* Collapsible Market Feeling */}
+            <div className="border-b border-white/10 pb-3">
+                <button
+                    type="button"
+                    onClick={() => setIsFeelingExpanded(!isFeelingExpanded)}
+                    className="flex w-full items-center justify-between text-left text-xs font-semibold text-sky-400 hover:text-sky-300 focus:outline-none transition-colors duration-200 cursor-pointer"
+                >
+                    <span>🧠 Market Feeling Analysis</span>
+                    <span className="text-[9px] font-mono bg-sky-950/40 px-1.5 py-0.5 rounded border border-sky-500/30 text-sky-300">
+                        {isFeelingExpanded ? 'Collapse ▲' : 'Expand Details ▼'}
+                    </span>
+                </button>
+
+                {/* Quick Preview when Collapsed */}
+                {!isFeelingExpanded && (
+                    <div className="mt-1.5 text-xs text-white/60 italic truncate">
+                        "{feeling.summary}"
+                    </div>
+                )}
+
+                {/* Full Details when Expanded */}
+                {isFeelingExpanded && <MobileFeelingDetail feeling={feeling} />}
+            </div>
+        </div>
+    );
+}
+
+function MobileDashboard({ data }: { data: HomePageData }) {
+    return (
+        <div
+            data-testid="mobile-dashboard"
+            className="w-full border-y border-white/10 bg-glass-dark/40 backdrop-blur-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] px-4 py-4 space-y-4 md:hidden"
+        >
+            <MobileFeelingCollapsible feeling={data.feeling} benchmark={data.benchmark} />
+
+            {/* Models Table Section */}
+            <div className="space-y-2">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                    Active Agent Portfolios
+                </h3>
+                <div className="overflow-hidden border border-white/10 rounded-xl bg-glass-dark/30 shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
+                    <table className="w-full border-collapse text-left text-xs">
+                        <thead>
+                            <tr className="border-b border-white/10 bg-white/5 font-bold text-white/60">
+                                <th className="px-3 py-2 text-[10px] uppercase tracking-wider">
+                                    Model
+                                </th>
+                                <th className="px-3 py-2 text-right text-[10px] uppercase tracking-wider">
+                                    Equity
+                                </th>
+                                <th className="px-3 py-2 text-right text-[10px] uppercase tracking-wider">
+                                    Today / Wk
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {data.portfolios.map((portfolio) => (
+                                <MobilePortfolioRow key={portfolio.name} portfolio={portfolio} />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function HomePage({ data }: { data: HomePageData }) {
     return (
         <div className="homepage-wrapper relative min-h-screen w-full text-white overflow-x-hidden">
             {/* Content Layer: Centered Unified Grid */}
             <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1600px] flex-col items-center justify-start px-4 py-8 sm:px-6 lg:px-8">
-                <header className="mb-6 flex-shrink-0 w-full text-center relative">
+                {/* Header is hidden on mobile, compact title is inside MobileDashboard */}
+                <header className="mb-6 flex-shrink-0 w-full text-center relative hidden md:block">
                     <h1 className="bg-gradient-to-r from-white via-yellow-100 to-[#f6e05e] bg-clip-text text-3xl font-bold tracking-tight text-transparent drop-shadow-lg md:text-4xl">
                         Market Overview
                     </h1>
                 </header>
 
-                {/* Main Grid: S&P + Portfolios perfectly centered */}
-                <div className="flex flex-wrap items-stretch justify-center gap-4 mb-5 w-full max-w-[1300px]">
-                    <BenchmarkCard benchmark={data.benchmark} />
+                {/* Mobile View */}
+                <MobileDashboard data={data} />
 
-                    {data.portfolios.map((portfolio) => (
-                        <PortfolioCard key={portfolio.name} portfolio={portfolio} />
-                    ))}
+                {/* Desktop View */}
+                <div
+                    data-testid="desktop-dashboard"
+                    className="hidden md:flex flex-col items-center w-full"
+                >
+                    {/* Main Grid: S&P + Portfolios perfectly centered */}
+                    <div className="flex flex-wrap items-stretch justify-center gap-4 mb-5 w-full max-w-[1300px]">
+                        <BenchmarkCard benchmark={data.benchmark} />
+
+                        {data.portfolios.map((portfolio) => (
+                            <PortfolioCard key={portfolio.name} portfolio={portfolio} />
+                        ))}
+                    </div>
+
+                    <MarketFeelingCard feeling={data.feeling} />
                 </div>
-
-                <MarketFeelingCard feeling={data.feeling} />
             </div>
         </div>
     );

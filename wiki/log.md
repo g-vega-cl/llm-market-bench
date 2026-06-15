@@ -1,3 +1,15 @@
+## [2026-06-14] feature | AI Sector Predictor and Model Arena
+
+**Inference Loop**: Implemented weekly sector and uncorrelated-pair predictor tasks (`sector_predictor.py`) utilizing two competing models: **DeepSeek Flash** (via instructor proxy with markdown json format mode) and **MiniMax-M3** (via custom raw HTTP client).
+
+**Auto-Research & Isolation**: Implemented a completely isolated meta-evolution task (`predictor_autoresearch.py`) executing against the `SECTOR_PREDICTOR_PROMPT` tag to prevent cross-experiment strategy dilution.
+
+**Percentile Evaluation & TDD**: Implemented a mathematical percentile-ranking scoring module (`evaluate_predictions.py`) scoring single sector targets and uncorrelated pairs from 0 to 100 relative to the sector returns universe. Wrote pytest suite validating both prediction parsing and auto-research evolution.
+
+**Front-End Comparison Dashboard**: Created `/ai-predictions` route with a custom D3 performance line chart, model scoring cards, and interactive logic reasoning history breakdown.
+
+**See**: [[entities/sector-predictor-arena]], [[concepts/auto-research-prompt-improver]]
+
 ## [2026-06-14] optimization | Dynamic Liquid Glass Card Heatmap & Ellipsis Overflow Fix
 
 **User Experience**: Shifted portfolio cards from a static single cyan border to a dynamic performance-based heatmap. Higher returns display gold/amber gradients and borders/glows, mid returns green, flat returns sky blue, and losses rose/deep crimson.

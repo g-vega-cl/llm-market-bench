@@ -56,8 +56,9 @@ class MiniMaxClient:
         messages: list[dict[str, str]],
         model: str | None = None,
         temperature: float = 0.7,
-        max_completion_tokens: int = 1024,
+        max_completion_tokens: int = 4096,
         stream: bool = False,
+        response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Send a chat completion request to MiniMax.
 
@@ -83,9 +84,12 @@ class MiniMaxClient:
             "model": model,
             "messages": messages,
             "temperature": temperature,
+            "max_tokens": max_completion_tokens,
             "max_completion_tokens": max_completion_tokens,
             "stream": stream,
         }
+        if response_format:
+            payload["response_format"] = response_format
 
         start_time = time.time()
         response = await client.post(self.BASE_URL, json=payload)
@@ -115,8 +119,9 @@ class MiniMaxClient:
     async def chat_with_json_response(
         self,
         messages: list[dict[str, str]],
+        model: str | None = None,
         temperature: float = 0.3,
-        max_completion_tokens: int = 1024,
+        max_completion_tokens: int = 4096,
     ) -> dict[str, Any]:
         """Send a chat request and parse JSON from the response content.
 
@@ -126,6 +131,7 @@ class MiniMaxClient:
 
         Args:
             messages: List of message dicts with 'role' and 'content'.
+            model: Model ID (defaults to MINIMAX_MODEL from config).
             temperature: Lower temperature for more deterministic output.
             max_completion_tokens: Max response length.
 
@@ -137,8 +143,10 @@ class MiniMaxClient:
         """
         response = await self.chat(
             messages=messages,
+            model=model,
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
+            response_format={"type": "json_object"},
         )
 
         content = response["content"].strip()

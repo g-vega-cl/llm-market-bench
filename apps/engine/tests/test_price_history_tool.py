@@ -14,16 +14,16 @@ async def test_execute_price_history_tool_includes_volume():
         {"fetched_at": "2026-06-11", "price": 135.0, "volume": 900000},
         {"fetched_at": "2026-06-10", "price": 130.0, "volume": 1100000},
     ]
-    
+
     with patch("core.llm.tools.MarketDataManager") as mock_mgr_class:
         mock_mgr_instance = mock_mgr_class.return_value
         mock_mgr_instance.get_history = AsyncMock(return_value=mock_history)
-        
+
         result = await execute_price_history_tool("AAPL", days=5)
-        
+
         # Test that daily volume is included
         assert "Volume:" in result, "Daily volume is not included in the output"
         assert "1000000" in result, "Volume value is missing"
-        
+
         # Test that ADV/RVOL volume context is appended
         assert "Volume Context:" in result, "Volume context (ADV/RVOL) is not appended"

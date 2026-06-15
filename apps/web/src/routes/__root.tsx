@@ -84,6 +84,7 @@ export const navItems = [
     { to: '/cause-and-effect', label: 'Cause & Effect' },
     { to: '/audits', label: 'Audits' },
     { to: '/market-overview', label: 'Market Overview' },
+    { to: '/ai-predictions', label: 'AI Sector Predictions' },
 ];
 
 export function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {

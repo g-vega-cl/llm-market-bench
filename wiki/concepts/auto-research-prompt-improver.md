@@ -56,6 +56,11 @@ The researcher's `program.md` specifies:
 - Keep the prompt under 1000 words
 - Compatible with Gemini Flash and DeepSeek Flash
 
+## Isolated Research Loops
+
+While the primary loop targets the `CORE_ANALYSIS_SYSTEM_PROMPT` to refine full-portfolio strategies, the auto-research runner supports fully isolated prompt evaluation cycles. 
+Specifically, the **AI Sector Predictor and Model Arena** uses the prompt name `SECTOR_PREDICTOR_PROMPT`. The predictor-specific evaluation and meta-evolution loops only retrieve, mutate, and store variants belonging to this tag, preventing strategy leaks or baseline dilution between different autonomous engines.
+
 ## Design Philosophy
 
 - **Always explore**: Every week deploys a new prompt. The meta-researcher always gets to test its ideas.

@@ -24,6 +24,7 @@ import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
 import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
 import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
 import { Route as AuditsIndexRouteImport } from './routes/audits/index'
+import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
@@ -105,6 +106,11 @@ const AuditsIndexRoute = AuditsIndexRouteImport.update({
   path: '/audits/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiPredictionsIndexRoute = AiPredictionsIndexRouteImport.update({
+  id: '/ai-predictions/',
+  path: '/ai-predictions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
   id: '/portfolios/$portfolioId',
   path: '/portfolios/$portfolioId',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
   '/autoresearch/': typeof AutoresearchIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/today': typeof TodayRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/ai-predictions': typeof AiPredictionsIndexRoute
   '/audits': typeof AuditsIndexRoute
   '/autoresearch': typeof AutoresearchIndexRoute
   '/cause-and-effect': typeof CauseAndEffectIndexRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/_authed/posts': typeof AuthedPostsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
   '/autoresearch/': typeof AutoresearchIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/auth/callback'
     | '/portfolios/$portfolioId'
+    | '/ai-predictions/'
     | '/audits/'
     | '/autoresearch/'
     | '/cause-and-effect/'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/auth/callback'
     | '/portfolios/$portfolioId'
+    | '/ai-predictions'
     | '/audits'
     | '/autoresearch'
     | '/cause-and-effect'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/_authed/posts'
     | '/auth/callback'
     | '/portfolios/$portfolioId'
+    | '/ai-predictions/'
     | '/audits/'
     | '/autoresearch/'
     | '/cause-and-effect/'
@@ -282,6 +294,7 @@ export interface RootRouteChildren {
   TodayRoute: typeof TodayRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
+  AiPredictionsIndexRoute: typeof AiPredictionsIndexRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
   AutoresearchIndexRoute: typeof AutoresearchIndexRoute
   CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute
@@ -400,6 +413,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai-predictions/': {
+      id: '/ai-predictions/'
+      path: '/ai-predictions'
+      fullPath: '/ai-predictions/'
+      preLoaderRoute: typeof AiPredictionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portfolios/$portfolioId': {
       id: '/portfolios/$portfolioId'
       path: '/portfolios/$portfolioId'
@@ -480,6 +500,7 @@ const rootRouteChildren: RootRouteChildren = {
   TodayRoute: TodayRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
+  AiPredictionsIndexRoute: AiPredictionsIndexRoute,
   AuditsIndexRoute: AuditsIndexRoute,
   AutoresearchIndexRoute: AutoresearchIndexRoute,
   CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,

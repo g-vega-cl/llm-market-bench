@@ -44,13 +44,13 @@ function PortfolioCard({
             key={portfolio.id}
             to="/portfolios/$portfolioId"
             params={{ portfolioId: portfolio.id }}
-            className="block group"
+            className="block group h-full"
         >
             <Card
                 padding="md"
                 variant="glass"
                 isHoverable={!deprecated}
-                className={deprecated ? 'opacity-60 hover:opacity-80' : ''}
+                className={`h-full flex flex-col ${deprecated ? 'opacity-60 hover:opacity-80' : ''}`}
             >
                 <div className="flex justify-between items-start mb-4">
                     <h3
@@ -83,7 +83,7 @@ function PortfolioCard({
                     )}
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 mt-auto">
                     <MetricTile
                         icon="💰"
                         label="Total Equity"

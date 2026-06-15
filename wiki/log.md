@@ -1,3 +1,43 @@
+## [2026-06-15] feature | High-Density Scroll-Free Mobile Homepage Layout
+
+Implemented a responsive, high-density dashboard for mobile viewports on the homepage to display critical information without scrolling:
+- **Responsive Conditional Rendering**: Used Tailwind media queries (`block md:hidden` and `hidden md:flex`) to render layout variations natively on the client side, avoiding SSR layout shifts and dehydration mismatches.
+- **Full-Bleed Edge-to-Edge Container**: Created a borderless glass layout wrapper that spans the full viewport width on mobile, maximizing space and preventing column crowding.
+- **Collapsible Market Feeling**: Added a stateful collapse/expand component for the market feeling analysis. It displays a compact 1-line italic summary by default, saving ~200px of vertical space, and expands to show full details, confidence bar, and concerns on tap.
+- **Consolidated Model Portfolios Table**: Consolidated all model portfolios into a compact tabular view showing status indicators (active/auto-research), total equity, and stacked return percentages (Today and Week) in a dense list.
+- **TDD Test Suite**: Added a dedicated test suite in [HomePage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.test.tsx) asserting the presence of the mobile elements (Live Overview, S&P 500 Benchmark, collapsible trigger, and dense table items).
+
+**See**: [[entities/web-app]]
+
+## [2026-06-15] refactor | AI Sector Predictions Arena Audit and Karpathy Ratchet Alignment
+
+Refactored the AI Sector Predictions Arena tasks and frontend code to address critical evaluation, state tracking, and charting bugs:
+- **Resilient Case-Insensitive Matching**: Uppercased and standardized predicted sector and pair tickers during DB insertions and evaluations, preventing lowercase model outputs from silently stalling in `pending` status.
+- **Isolated Reference Universe**: Refactored [evaluate_predictions.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/evaluate_predictions.py) to dynamically fetch each week's benchmark tickers list from `correlation_runs.tickers` based on the prediction date. This isolates comparison pools per prediction date, handles non-standard tickers, and eliminates universe leaks between runs.
+- **Karpathy Ratchet Meta-Loop**: Upgraded [predictor_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/predictor_autoresearch.py) to calculate a weekly score from evaluated predictions, write the score back to the prompt's `metrics` column, and implement a strict revert ratchet. If the weekly score underperforms the all-time baseline, the active prompt is reverted to the baseline before mutation.
+- **Timeframe Selector & Collision Handling**: Updated [AIPredictionsPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx) to provide timeframe filter buttons (`7d`, `30d`, `60d`, `90d`, `All`) and average both sector and pair scores in summary cards. Refactored [AIPredictionChart.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx) to handle target date collisions by averaging overlapping prediction scores, and add a $\pm 1$-day margin to D3 scale domains for single-data-point resilience.
+- **TDD Test Suite**: Authored comprehensive unit tests in [test_sector_predictions_audit.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_sector_predictions_audit.py) to verify casing coercion, universe isolation, and ratchet success/revert behaviors.
+
+**See**: [[entities/sector-predictor-arena]]
+
+## [2026-06-15] feature | Prediction Evaluation Runner and Database Uniqueness Constraints
+
+Implemented prediction evaluation and database-level deduplication guardrails for the AI Sector Predictions Arena:
+- **Evaluation Runner**: Integrated [evaluate_predictions.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/evaluate_predictions.py) to fetch pending predictions <= today, calculate sector returns, compute percentile rankings, and update status to `evaluated`.
+- **Database Uniqueness**: Applied Supabase migration adding a unique constraint on `(prediction_date, model_name, timeframe)` to prevent duplicate records.
+- **Upsert Logic**: Refactored the prediction generator in [sector_predictor.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/sector_predictor.py) to use `.upsert()` with `on_conflict` to safely overwrite existing records on manual retries.
+- **Workflow Scheduling**: Integrated the evaluation task as the first step of the weekly GitHub Actions cron job.
+
+**See**: [[entities/sector-predictor-arena]]
+
+## [2026-06-15] doc | Documented Pre-commit Test Scope Decisions in Coverage Policy
+
+Updated the Test Coverage Policy page to document the design rationale for running full test suites rather than changed-only/related tests in the pre-commit hook:
+- **Coverage Conflict**: Running subset-only tests fails to capture global test coverage, violating pre-commit threshold checks.
+- **Pytest Limitations**: Noted the lack of native, dependency-aware test targeting in Pytest without introducing extra tooling/plugins.
+
+**See**: [[concepts/test-coverage]]
+
 ## [2026-06-14] feature | Migrate MiniMax Portfolio and config to MiniMax-M3
 
 **Configuration & Engine**:
@@ -25,46 +65,6 @@
 **TDD & Testing**: Added robust assertions to `HomePage.test.tsx` verifying card border colors and box shadow styling correspond correctly to performance values, and verifying that the `truncate` class is not directly placed on the gradient headings. Passed all 235 Vitest tests.
 
 **Wiki Updates**: Documented the clashing styles pitfall (`truncate` + `bg-clip-text`) and the dynamic card performance heatmap conventions in `entities/design-system.md`.
-
-## [2026-06-01] feature | On-Demand Price History Pre-Population & Freshness Guardrail
-
-Added on-demand pre-population of price_history via MarketDataManager.get_history() in _do_nothing_return to ensure fresh close prices for all held assets at evaluation time. Added a freshness guardrail that logs a CRITICAL METRIC ERROR if the retrieved price's fetched_at is more than 4 days before week_end, preventing silent stale valuation errors. Updated tests to cover both pre-population and stale price logging.
-
-
-## [2026-06-01] optimization | Render-Blocking Fonts and PostHog Unused JS Fix
-
-Resolved critical Lighthouse frontend performance bottlenecks that were severely degrading FCP and TTI:
-- **Asynchronous Font Loading**: Refactored `__root.tsx` to load Google Fonts using the `media="print"` and `onLoad="this.media='all'"` pattern with a `<noscript>` fallback. This completely eliminates a ~1.1s render-blocking delay.
-- **PostHog Unused JS Optimization**: Configured `<PostHogProvider>` with `disable_surveys: true`, blocking the heavy `surveys.js` module from downloading and executing on initialization, eliminating over 100 KiB of unused Javascript.
-- **TDD Safety Net**: Added new Vitest test cases to `apps/web/src/routes/-__root.test.tsx` verifying that `disable_surveys: true` is passed to the SDK and that the asynchronous `media="print"` technique is enforced in the DOM for all Google Font links.
-- **Documentation**: Added the "Eliminating Render-Blocking Resources" section to `wiki/concepts/performance-auditing-strategy.md` outlining the async font pattern and explicit SDK disabling best practices.
-
-## [2026-06-01] refactor | Macro Volatility Pre-Calculation Caching — Database-Driven Architecture Shift
-
-This refactor moves macro volatility calculations (daily % change, 30-day standard deviation, regime flags) from runtime computation in both the Python engine and TypeScript web loader into pre-calculated database columns persisted by the `update_prices.py` background script.
-
-**Changes:**
-- **Supabase Migration**: Added `today_pct_change`, `stdev_pct`, and `regime_flag` columns to `market_data_cache` (migration `20260601183000`).
-- **TypeScript Types**: Regenerated Supabase types (`supabase-types.ts`) to include new columns, plus a new `prompt_experiments` table type and an `alpaca_filled_at` field on trades.
-- **Python Macro Tracker**: Replaced dynamic `get_history()` calls and manual return/stdev computation with a single `.in()` query to `market_data_cache` for pre-calculated stats.
-- **TypeScript Loader**: Eliminated the `price_history` table query entirely from the web loader (`fetch-today-data.ts`). Added a 30-second in-memory cache. Macro stats now map directly from `market_data_cache` rows with zero dynamic computation.
-- **Tests**: Updated `test_macro_tracker.py` to mock the single cache query instead of quote/history chains. Updated `fetch-today-data.test.ts` to assert zero `price_history` queries and verify pre-calculated field mapping.
-- **Design System**: Updated neutral color scheme variants for Button and Badge to use responsive `dark:`-prefixed high-contrast classes instead of hardcoded dark-only zinc values. Updated UI components (`GlobalMacroStats.tsx`, `TradeActivity.tsx`) to use responsive text contrast classes.
-- **Performance Auditing Concept**: Added Database-Driven Pre-calculation as a core architectural principle in `concepts/performance-auditing-strategy.md`.
-- **Macro Tracker Entity**: Documented the execution/scheduling of `update_prices.py` via GitHub Actions in `entities/macro-tracker.md`.
-
-## [2026-06-02] optimization | Instant Pageview Analytics and Contrast Accessibility Compliance
-
-Optimized the web application's initial client-side loading performance and resolved all core color contrast accessibility issues flagged in the Lighthouse audit:
-- **Instant Client-Side PostHog Initialization**: Refactored the PostHog analytics integration in `__root.tsx` to pre-initialize the `posthog-js` SDK client-side only (within `typeof window !== 'undefined'`) immediately on JS parse. Passed this pre-initialized instance to `<PostHogProvider client={posthog}>` to eliminate double-mounting of router children. This guarantees **instant event capture and 100% reliable tracking of the initial pageview** upon load, while keeping the server-rendered HTML payloads completely free of dynamic tracking script tags to protect FCP and LCP scores.
-- **Contrast Accessibility Compliance**:
-  - Updated the design system's `--color-accent` token in `app.css` from `#3b82f6` (blue-500) to `#2563eb` (blue-600), achieving a compliant **4.56:1** contrast ratio with white text for solid buttons (LOGIN / MARKET) and links.
-  - Adjusted `--color-accent-hover` to `#1d4ed8` (blue-700) to maintain hover contrast states.
-  - Updated the "No activity found" text element in `TradeActivity.tsx` from `text-zinc-400 dark:text-zinc-500` to `text-zinc-500 dark:text-zinc-300`, guaranteeing AA-compliant contrast ratios in both light and dark themes.
-- **TDD Regression Suite**:
-  - Refactored `src/routes/-__root.test.tsx` to mock `posthog-js` directly and assert that the client-side pre-initialization is executed with `/p` as `api_host` and `disable_surveys: true` to prevent any JSDOM network attempts.
-  - Verified 100% success on the full Vitest suite (208/208 tests passed) and completed a clean Biome and TypeScript typecheck build.
-- **Living Synthesis**: Documented the pre-initialization pattern and its performance advantages in the canonical `concepts/performance-auditing-strategy.md` wiki page.
 
 ## [2026-06-02] optimization | Layout Optimization, SSR Fetch Limiting, and Background Hydration
 
@@ -266,6 +266,10 @@ Replaced the manual background dropdown selector on the HomePage with an automat
 
 Introduced a `GlobalBackground` component in the design system's layouts. It provides a fixed dot grid and colored ambient orbs behind all pages. The HomePage was refactored to remove its previous A/B-tested background (CSS variant and ShaderBackground) and rely on this global layer. The component is rendered in the root layout, simplifying background management.
 
+## [2026-06-13] refactor | Remove unused Badge dot variant and Card ghost variant
+
+Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.
+
 ## [2026-06-14] feature | Volume & Liquidity Metrics in Price History
 
 Enhanced the `get_price_history` tool to support Volume and Liquidity analysis directly within the LLM tool loop.
@@ -273,3 +277,17 @@ Enhanced the `get_price_history` tool to support Volume and Liquidity analysis d
 - **Prompt Engineering**: Updated the `PRICE_HISTORY_TOOL` JSON schema description to explicitly notify trading agents that volume data and metrics are available.
 - **TDD Verification**: Authored `test_price_history_tool.py` to assert the inclusion of volume and context strings.
 - **Documentation**: Updated `fundamental-analysis.md` to reflect the new volume analysis capabilities.
+
+## [2026-06-15] refactor | Remove unused Badge dot variant and Card ghost variant
+
+Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.
+
+## [2026-06-15] enhancement | Enhanced Market Feeling Card with Confidence Bar, Concerns, and Metadata
+
+- Added `MarketFeelingCard` component with `ConfidenceBar`, `ConcernsSection`, and `MetadataFooter` subcomponents.
+- New `fetchLatestMarketFeeling` server function queries `market_feeling` table directly.
+- Populated new fields: `sentimentLabel`, `sentimentEmoji`, `confidence`, `primaryConcern`, `secondaryConcern`, `modelUsed`, `lastAnalyzed`.
+- Improved caching in `fetchTodayData`: cache bypass adjusted to compare against cached limit instead of hardcoded 50; exported `clearTodayDataCache` for testing.
+- Routes updated to use `fetchLatestMarketFeeling` and `formatEasternTime`.
+- Tests added for new market feeling flow and cache behavior.
+

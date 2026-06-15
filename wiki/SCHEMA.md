@@ -100,6 +100,7 @@ qmd embed                          # regenerate embeddings
 
 1. **Pages are always current** — A wiki page must reflect the *present* state of the codebase, nothing more. When information changes, rewrite or remove the outdated content directly. Never use strikethroughs, "~~old text~~", or phrases like "previously" / "as of X, this was superseded". The log.md and Git history are the chronological record; the wiki pages are the living truth.
 2. **Log every action** — append to `log.md` with `## [YYYY-MM-DD] action | Title`. The file is automatically rotated into `wiki/log/YYYY-MM.md` buckets when it exceeds 30KB.
+   - *Note on conflicts*: To avoid merge conflicts in multi-user/multi-agent environments, `wiki/log.md` and archived logs use a Git union merge strategy (`merge=union` in `.gitattributes`). If this automatic resolution ever causes formatting or sequencing confusion, we can transition to a log fragment (changeset) compiling system.
 3. **Answers become pages** — good query answers get filed back into the wiki
 4. **Lint weekly** — check for contradictions, orphans, stale claims, gaps
 5. **Page Deletion on Scope Removal** — When a subsystem, entity, or concept is fully removed from the codebase, its wiki page **must** be deleted. Do **not** strike through or mark it superseded — delete the file entirely. Removing a stale page is cleaner than leaving dead documentation. The deletion must be recorded in `log.md` using the format:

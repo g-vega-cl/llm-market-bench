@@ -7,13 +7,14 @@ import {
     fetchBenchmarkHistory,
 } from '~/features/portfolios/api/fetch-portfolios';
 import { isAutoresearchPortfolio } from '~/features/portfolios/lib/config';
-import { fetchTodayData } from '~/features/today/api/fetch-today-data';
+import { fetchLatestMarketFeeling } from '~/features/today/api/fetch-today-data';
+import { formatEasternTime } from '~/utils/date';
 
 const getHomepageData = createServerFn({ method: 'GET' }).handler(
     async (): Promise<HomePageData> => {
         // Fetch initial data concurrently
-        const [todayData, portfoliosData] = await Promise.all([
-            fetchTodayData(5),
+        const [marketFeeling, portfoliosData] = await Promise.all([
+            fetchLatestMarketFeeling(),
             fetchAllActivePortfolioPerformance(7),
         ]);
 
@@ -81,8 +82,17 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
                 weekPct: Number(benchWeek.toFixed(2)),
             },
             feeling: {
-                sentiment: todayData.marketFeeling?.market_direction || 'NEUTRAL',
-                summary: todayData.marketFeeling?.why_explanation || 'No market feeling available.',
+                sentiment: marketFeeling?.market_direction || 'NEUTRAL',
+                summary: marketFeeling?.why_explanation || 'No market feeling available.',
+                sentimentLabel: marketFeeling?.sentiment_label || 'Analyzing...',
+                sentimentEmoji: marketFeeling?.sentiment_emoji || '🤔',
+                confidence: marketFeeling?.confidence_score ?? 50,
+                primaryConcern: marketFeeling?.primary_concern || undefined,
+                secondaryConcern: marketFeeling?.secondary_concern || undefined,
+                modelUsed: marketFeeling?.model_used || undefined,
+                lastAnalyzed: marketFeeling?.created_at
+                    ? formatEasternTime(marketFeeling.created_at)
+                    : undefined,
             },
         };
     },

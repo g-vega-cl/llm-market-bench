@@ -404,7 +404,7 @@ async def execute_price_history_tool(ticker: str, days: int = 7) -> str:
 
         history_str = f"Historical Price Data for {ticker} (Recent first):\n"
         for entry in data:
-            vol_str = f", Volume: {entry['volume']}" if entry.get('volume') is not None else ""
+            vol_str = f", Volume: {entry['volume']}" if entry.get("volume") is not None else ""
             history_str += f"- {entry['fetched_at']}: ${entry['price']:.2f}{vol_str}\n"
 
         history_str += f"\nVolume Context: {compute_volume_context(data)}"

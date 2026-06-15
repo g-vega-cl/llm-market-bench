@@ -1,3 +1,13 @@
+## [2026-06-15] feature | Prediction Evaluation Runner and Database Uniqueness Constraints
+
+Implemented prediction evaluation and database-level deduplication guardrails for the AI Sector Predictions Arena:
+- **Evaluation Runner**: Integrated [evaluate_predictions.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/evaluate_predictions.py) to fetch pending predictions <= today, calculate sector returns, compute percentile rankings, and update status to `evaluated`.
+- **Database Uniqueness**: Applied Supabase migration adding a unique constraint on `(prediction_date, model_name, timeframe)` to prevent duplicate records.
+- **Upsert Logic**: Refactored the prediction generator in [sector_predictor.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/sector_predictor.py) to use `.upsert()` with `on_conflict` to safely overwrite existing records on manual retries.
+- **Workflow Scheduling**: Integrated the evaluation task as the first step of the weekly GitHub Actions cron job.
+
+**See**: [[entities/sector-predictor-arena]]
+
 ## [2026-06-15] doc | Documented Pre-commit Test Scope Decisions in Coverage Policy
 
 Updated the Test Coverage Policy page to document the design rationale for running full test suites rather than changed-only/related tests in the pre-commit hook:

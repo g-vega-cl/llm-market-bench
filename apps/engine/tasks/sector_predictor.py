@@ -155,7 +155,10 @@ async def run_sector_predictions():
                         resp = await client_inst.chat.completions.create(
                             model=model["name"],
                             response_model=SectorPredictionResponse,
-                            messages=[{"role": "system", "content": prompt_content}, {"role": "user", "content": user_msg}],
+                            messages=[
+                                {"role": "system", "content": prompt_content},
+                                {"role": "user", "content": user_msg},
+                            ],
                         )
                         result = {
                             "predicted_sector": resp.predicted_sector,
@@ -164,11 +167,14 @@ async def run_sector_predictions():
                         }
                     elif model["type"] == "minimax":
                         # MiniMax uses its own client
-                        messages = [{"role": "system", "content": prompt_content}, {"role": "user", "content": user_msg}]
+                        messages = [
+                            {"role": "system", "content": prompt_content},
+                            {"role": "user", "content": user_msg},
+                        ]
                         result = await model["client"].chat_with_json_response(messages, model=model["name"])
 
-                    # Insert prediction
-                    client.table("sector_predictions").insert(
+                    # Upsert prediction to prevent duplicates on the same date/model/timeframe
+                    client.table("sector_predictions").upsert(
                         {
                             "prediction_date": today.isoformat(),
                             "target_date": target_date.isoformat(),
@@ -178,7 +184,8 @@ async def run_sector_predictions():
                             "predicted_sector": result.get("predicted_sector", "UNKNOWN"),
                             "predicted_pair": result.get("predicted_pair", []),
                             "reasoning": result.get("reasoning", ""),
-                        }
+                        },
+                        on_conflict="prediction_date,model_name,timeframe",
                     ).execute()
                     success = True
                     break

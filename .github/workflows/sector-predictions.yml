@@ -25,6 +25,15 @@ jobs:
           python3 -m venv venv
           ./venv/bin/pip install -r requirements.txt
 
+      - name: Run prediction evaluation (score pending target predictions)
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          cd apps/engine
+          ./venv/bin/python3 tasks/evaluate_predictions.py
+
       - name: Run predictor autoresearch (evaluate and mutate prompt)
         env:
           SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}

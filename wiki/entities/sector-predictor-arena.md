@@ -28,9 +28,16 @@ The **AI Sector Predictor and Model Arena** is a standalone forecasting and benc
 ## Production Schedule & Robustness
 
 ### GitHub Actions Workflow
-The system is automated via the GitHub Actions workflow [.github/workflows/sector-predictions.yml](file:///home/cv/Documents/Code/llm-market-bench/.github/workflows/sector-predictions.yml).
+The system is automated via the GitHub Actions workflow [.github/workflows/sector-predictions.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/sector-predictions.yml).
 - **Trigger**: Run weekly on a cron schedule at **Sunday 9:00 PM UTC** (5:00 PM ET).
-- **Steps**: Configures a Python 3.12 environment, installs requirements, executes `predictor_autoresearch.py` to evaluate the past week's predictions and update the prompt, and then executes `sector_predictor.py` to generate the new week's predictions.
+- **Steps**:
+  1. Executes `evaluate_predictions.py` to evaluate pending predictions whose `target_date <= today` and update their status to `'evaluated'`.
+  2. Executes `predictor_autoresearch.py` to evaluate the past week's prompt performance and update the prompt.
+  3. Executes `sector_predictor.py` to generate the new week's predictions.
+
+### Deduplication and Uniqueness Guardrails
+To prevent duplicate predictions (e.g. from manual developer executions or pipeline retries), the database enforces a unique constraint on `(prediction_date, model_name, timeframe)`.
+- **Generator Upsert:** The prediction generator task in `sector_predictor.py` uses `.upsert()` with `on_conflict` to gracefully overwrite/update existing records if executed multiple times in the same week.
 
 ### MiniMax-M3 API Robustness
 MiniMax-M3 leverages long-form internal reasoning (`reasoning_content`) which can occasionally exhaust API token limits, resulting in incomplete responses or empty payloads.
@@ -41,10 +48,10 @@ MiniMax-M3 leverages long-form internal reasoning (`reasoning_content`) which ca
 ## Database Schema (`sector_predictions`)
 Stores historical prediction records:
 - `id` (uuid, primary key)
-- `prediction_date` (timestamp)
-- `target_date` (timestamp)
-- `timeframe` (text)
-- `model_name` (text)
+- `prediction_date` (date, part of unique constraint)
+- `target_date` (date)
+- `timeframe` (text, part of unique constraint)
+- `model_name` (text, part of unique constraint)
 - `prompt_tag` (text)
 - `predicted_sector` (text)
 - `predicted_pair` (text[])
@@ -52,6 +59,8 @@ Stores historical prediction records:
 - `sector_percentile_score` (numeric, nullable)
 - `pair_percentile_score` (numeric, nullable)
 - `status` (prediction_status: 'pending', 'evaluated')
+- **Unique Constraint:** `unique_prediction_date_model_timeframe` on `(prediction_date, model_name, timeframe)`
+
 
 ## Related
 - [[entities/autoresearch]] — the parent autonomous prompt improvement engine

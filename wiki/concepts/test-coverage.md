@@ -48,3 +48,12 @@ Configured via `apps/web/vitest.config.ts`.
 Thresholds are periodically reviewed and ratcheted upward as the codebase matures.
 - **Ratchet Mechanism**: When a component's actual test coverage consistently exceeds the baseline threshold by a significant margin (e.g., 5%+), a task is scheduled to increase the minimum threshold inside `.husky/pre-commit` and update this document accordingly. This prevents coverage regression and drives gradual code quality improvements.
 - **Ultimate Goal**: The long-term target is to reach a uniform 80% coverage across all core business-logic components.
+
+## Design Considerations: Staged/Changed-Only Tests
+
+A common optimization is to run only the tests related to files modified in the current commit. However, we intentionally run the full test suite in the pre-commit hook due to the following constraints:
+
+1. **Global Coverage Enforcement**: Both the engine (70%) and web (40%) workspaces enforce global coverage thresholds in the pre-commit hook. Running only a subset of tests prevents coverage from being measured across the entire codebase, resulting in calculated coverage that drops below the minimum thresholds and triggers commit failures.
+2. **Tooling Limitations (Pytest)**: While Vitest supports running related tests out of the box via `vitest related`, Pytest does not natively map changed source code files to their dependent tests. Doing so would require third-party impact-analysis plugins (like `pytest-testmon` or `pytest-picked`), which introduce additional dependency tracking files (`.testmondata`) or fail to trace indirect imports.
+3. **Verification Integrity**: Running the full test suite guarantees that no regressions have been introduced elsewhere in the codebase before code is committed.
+

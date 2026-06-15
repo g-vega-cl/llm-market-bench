@@ -1,3 +1,11 @@
+## [2026-06-15] doc | Documented Pre-commit Test Scope Decisions in Coverage Policy
+
+Updated the Test Coverage Policy page to document the design rationale for running full test suites rather than changed-only/related tests in the pre-commit hook:
+- **Coverage Conflict**: Running subset-only tests fails to capture global test coverage, violating pre-commit threshold checks.
+- **Pytest Limitations**: Noted the lack of native, dependency-aware test targeting in Pytest without introducing extra tooling/plugins.
+
+**See**: [[concepts/test-coverage]]
+
 ## [2026-06-02] optimization | Layout Optimization, SSR Fetch Limiting, and Background Hydration
 
 Drastically improved server response times (TTFB), eliminated unused JavaScript penalties, and fixed hydration performance by embracing out-of-the-box data fetching patterns and eliminating unneeded DOM layout elements:

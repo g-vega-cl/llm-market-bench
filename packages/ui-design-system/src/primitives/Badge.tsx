@@ -4,7 +4,7 @@ import { cn } from '../lib/cn';
 /**
  * Badge primitive.
  *
- * Variants: solid, soft, outline, dot
+ * Variants: solid, soft, outline
  * Sizes: xs, sm, md
  * Color schemes: accent, success, danger, info, warning, neutral
  * Severity schemes: high, medium (overrides colorScheme)
@@ -12,7 +12,7 @@ import { cn } from '../lib/cn';
  */
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-    variant?: 'solid' | 'soft' | 'outline' | 'dot' | 'glass';
+    variant?: 'solid' | 'soft' | 'outline' | 'glass';
     size?: 'xs' | 'sm' | 'md';
     colorScheme?: 'accent' | 'success' | 'danger' | 'info' | 'warning' | 'neutral';
     severity?: 'high' | 'medium';
@@ -25,56 +25,48 @@ const badgeColors: Record<string, Record<string, string>> = {
         solid: 'bg-accent text-white',
         soft: 'bg-accent/20 text-accent',
         outline: 'border border-accent/30 text-accent',
-        dot: 'text-zinc-450',
         glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     success: {
         solid: 'bg-success text-zinc-950',
         soft: 'bg-success/20 text-success',
         outline: 'border border-success/30 text-success',
-        dot: 'text-zinc-450',
         glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     danger: {
         solid: 'bg-danger text-white',
         soft: 'bg-danger/20 text-danger',
         outline: 'border border-danger/30 text-danger',
-        dot: 'text-zinc-450',
         glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     info: {
         solid: 'bg-info text-white',
         soft: 'bg-info/20 text-info',
         outline: 'border border-info/30 text-info',
-        dot: 'text-zinc-450',
         glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     warning: {
         solid: 'bg-warning text-zinc-950',
         soft: 'bg-warning/20 text-warning',
         outline: 'border border-warning/30 text-warning',
-        dot: 'text-zinc-450',
         glass: 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300',
     },
     neutral: {
         solid: 'bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-950',
         soft: 'bg-zinc-100 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400',
         outline: 'border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400',
-        dot: 'text-zinc-500',
         glass: 'bg-white/5 border border-white/10 text-white/70',
     },
     high: {
         solid: 'bg-warning text-zinc-950',
         soft: 'bg-warning/20 text-warning',
         outline: 'border border-warning/30 text-warning',
-        dot: 'text-zinc-450',
         glass: 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-300',
     },
     medium: {
         solid: 'bg-info text-white',
         soft: 'bg-info/20 text-info',
         outline: 'border border-info/30 text-info',
-        dot: 'text-zinc-450',
         glass: 'bg-white/5 border border-white/10 text-white/70',
     },
 };
@@ -127,7 +119,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
                 className={cn(base, radiusClasses, sizeClasses, colorClasses, className)}
                 {...props}
             >
-                {(variant === 'dot' || showDot) && (
+                {showDot && (
                     <span
                         className={cn(
                             'mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full',

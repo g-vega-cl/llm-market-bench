@@ -19,20 +19,6 @@
 **TDD & Testing**: Added robust assertions to `HomePage.test.tsx` verifying card border colors and box shadow styling correspond correctly to performance values, and verifying that the `truncate` class is not directly placed on the gradient headings. Passed all 235 Vitest tests.
 
 **Wiki Updates**: Documented the clashing styles pitfall (`truncate` + `bg-clip-text`) and the dynamic card performance heatmap conventions in `entities/design-system.md`.
-
-## [2026-06-01] feature | On-Demand Price History Pre-Population & Freshness Guardrail
-
-Added on-demand pre-population of price_history via MarketDataManager.get_history() in _do_nothing_return to ensure fresh close prices for all held assets at evaluation time. Added a freshness guardrail that logs a CRITICAL METRIC ERROR if the retrieved price's fetched_at is more than 4 days before week_end, preventing silent stale valuation errors. Updated tests to cover both pre-population and stale price logging.
-
-
-## [2026-06-01] optimization | Render-Blocking Fonts and PostHog Unused JS Fix
-
-Resolved critical Lighthouse frontend performance bottlenecks that were severely degrading FCP and TTI:
-- **Asynchronous Font Loading**: Refactored `__root.tsx` to load Google Fonts using the `media="print"` and `onLoad="this.media='all'"` pattern with a `<noscript>` fallback. This completely eliminates a ~1.1s render-blocking delay.
-- **PostHog Unused JS Optimization**: Configured `<PostHogProvider>` with `disable_surveys: true`, blocking the heavy `surveys.js` module from downloading and executing on initialization, eliminating over 100 KiB of unused Javascript.
-- **TDD Safety Net**: Added new Vitest test cases to `apps/web/src/routes/-__root.test.tsx` verifying that `disable_surveys: true` is passed to the SDK and that the asynchronous `media="print"` technique is enforced in the DOM for all Google Font links.
-- **Documentation**: Added the "Eliminating Render-Blocking Resources" section to `wiki/concepts/performance-auditing-strategy.md` outlining the async font pattern and explicit SDK disabling best practices.
-
 ## [2026-06-01] refactor | Macro Volatility Pre-Calculation Caching — Database-Driven Architecture Shift
 
 This refactor moves macro volatility calculations (daily % change, 30-day standard deviation, regime flags) from runtime computation in both the Python engine and TypeScript web loader into pre-calculated database columns persisted by the `update_prices.py` background script.
@@ -260,6 +246,10 @@ Replaced the manual background dropdown selector on the HomePage with an automat
 
 Introduced a `GlobalBackground` component in the design system's layouts. It provides a fixed dot grid and colored ambient orbs behind all pages. The HomePage was refactored to remove its previous A/B-tested background (CSS variant and ShaderBackground) and rely on this global layer. The component is rendered in the root layout, simplifying background management.
 
+## [2026-06-13] refactor | Remove unused Badge dot variant and Card ghost variant
+
+Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.
+
 ## [2026-06-14] feature | Volume & Liquidity Metrics in Price History
 
 Enhanced the `get_price_history` tool to support Volume and Liquidity analysis directly within the LLM tool loop.
@@ -267,3 +257,7 @@ Enhanced the `get_price_history` tool to support Volume and Liquidity analysis d
 - **Prompt Engineering**: Updated the `PRICE_HISTORY_TOOL` JSON schema description to explicitly notify trading agents that volume data and metrics are available.
 - **TDD Verification**: Authored `test_price_history_tool.py` to assert the inclusion of volume and context strings.
 - **Documentation**: Updated `fundamental-analysis.md` to reflect the new volume analysis capabilities.
+
+## [2026-06-15] refactor | Remove unused Badge dot variant and Card ghost variant
+
+Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.

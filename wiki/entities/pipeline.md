@@ -1,118 +1,41 @@
 ---
-tags: [pipeline, data-flow, phases]
+tags: [pipeline, engine, automation]
 category: entity
 ---
 
 # Pipeline
 
-The daily pipeline runs on a cron schedule during US market hours (`.github/workflows/ingest.yml`). It executes in seven highly optimized, sequential phases:
+The daily automated pipeline that ingests financial news, runs parallel LLM analysis, builds consensus, executes trades, and provides feedback. It runs multiple times during US market hours on a cron schedule.
 
-## Phase 1: Ingestion & Normalization
-*   **Icon**: 📰
-*   **Badge**: Tripled Trigger: Multiple Daily Runs
-*   **Tags**: [FMP Cache, Gmail API, Trading Economics]
+## Schedule
 
-GitHub Actions fires the pipeline at market open, midday, and afternoon. The engine enforces a Holiday-Aware Market Hours Check via FMP API (5-minute TTL caching) to skip execution outside 09:30-16:00 ET, weekends, or US holidays.
-*   Scrapes unread emails from Gmail; removes ads via Gemini Flash
-*   Economic Calendar ingestion from Trading Economics (bi-weekly)
-*   Data snapshotting with idempotency keys (source_id, chunk_hash) to prevent duplicate ingestion
-*   FMP Market Status Check with class-level caching to avoid redundant API calls
-*   Dust Cleanup: Auto-sells negligible positions before analysis to keep LLMs focused on meaningful holdings
+The pipeline is triggered by GitHub Actions with the following UTC cron expressions (hardcoded for EDT, UTC-4):
 
-For more details on ingestion mechanics, see [[concepts/ingestion]].
+- **9:35 AM ET** → `35 13 * * 1-5`
+- **11:35 AM ET** → `35 15 * * 1-5`
+- **3:00 PM ET** → `0 19 * * 1-5`
 
-## Phase 2: Pre-Analysis Setup
-*   **Icon**: ⚙️
-*   **Badge**: Holiday-Aware Hours Check
-*   **Tags**: [FMP Cache, Global Macro Tracker, Risk-On/Risk-Off]
+GitHub Actions does not correctly handle DST when using the `timezone` field — it treats `America/New_York` as always UTC-5. To avoid schedule drift during summer months, the times are expressed directly in UTC for the EDT offset. During EST (winter), the pipeline will run one hour later in local time (10:35 AM, 12:35 PM, 4:00 PM ET), which is acceptable for market coverage.
 
-Before LLM analysis, the engine prepares context and validates market conditions. It performs a Holiday-Aware Market Hours Check via FMP API (5-min TTL caching) to ensure execution only during 09:30-16:00 ET on trading days.
-*   Global Macro Snapshot: Real-time quotes for 16 curated assets (broad equities, international, commodities, yields) with σ-based regime detection (Risk-On/Risk-Off at 2σ threshold)
-*   Portfolio Initialization: Initializes all agent portfolios, fetches current prices for all unique holdings in parallel
-*   Light Context Injection: Retrieves top-5 highest-importance memories + trending concepts (~500 tokens) — no embedding calls in hot path
-*   Calendar Strategy: Injects Turn of Month and Payday Anomaly context based on current date
+## Phases
 
-## Phase 3: Parallel LLM Analysis
-*   **Icon**: 🤖
-*   **Badge**: PromptFactory & Tools
-*   **Tags**: [PromptFactory, Web Search, Stock Screener, DiscoveryAgent]
+### 1. Ingestion
+Fetch newsletters, economic calendar events, and government data. See [[concepts/ingestion]].
 
-Four LLMs analyze data in parallel using the PromptFactory for semantically identical instructions. Each receives the Global Macro Snapshot for Risk-On/Risk-Off awareness.
-*   Asynchronous Chunk Batching: 20 chunks per LLM call to prevent token truncation
-*   Web Search: Claude (`web_search_20250305`) and Gemini (`google_search`) with automatic citations
-*   Stock Screener: `run_stock_screener` tool for liquidity-filtered asset discovery
-*   DiscoveryAgent: Alpha Discovery via tool-calling loop (up to 3 steps) for "Investable Assets" mapping
-*   DeepSeek Thinking Mode: CoT reasoning with `reasoning_content` preservation
+### 2. Pre-Analysis
+Market hours check, dust cleanup, and macro tracking across 23 tickers in 6 categories (equities, international, commodities, fixed income, FX/risk, crypto). See [[entities/macro-tracker]].
 
-For more details on reasoning flows, see [[concepts/reasoning]].
+### 3. Analysis
+Parallel LLM analysis with tool-calling loops. Each agent receives pre-injected market data and follows a mandatory Search/Plan/TDD workflow. See [[concepts/reasoning]] and [[concepts/agent-workflow]].
 
-## Phase 4: Consensus & Synthesis
-*   **Icon**: 🧩
-*   **Badge**: Cosine Clustering
-*   **Tags**: [pgvector, Alpha Discovery, Scenario Analysis, Trend Momentum]
+### 4. Consensus
+Semantic grouping of agent outputs, weighted voting, event promotion, and trend tracking. See [[concepts/consensus]].
 
-After LLM analysis, events are clustered and promoted through Semantic Grouping (pgvector cosine similarity) → weighted consensus → event promotion. Promoted events trigger Alpha Discovery for "Investable Assets" mapping.
-*   Semantic Grouping: Gemini embeddings cluster events by cosine similarity across all LLMs
-*   Weighted Consensus: Cumulative model weight above threshold promotes events; impact (BULLISH/BEARISH) by weighted majority
-*   Temporal Deduplication: New events checked against memories table within recency window; near-duplicates dropped
-*   Relationship Analysis: Links parent events via `parent_id` as REVERSAL, RESOLUTION, or UPDATE; auto-marks ancestors as `RESOLVED`
-*   Trend & Momentum: Concept velocity tracking (Intensity × Growth), PCA visualization, semantic merging of similar concepts
-*   Scenario Analysis: Promoted events require at least two distinct outcomes with trading plans per outcome
-*   Horizon Watch: Only high-importance events with future catalysts appear on dashboard
+### 5. Execution
+Pre-market validation, Reg T checks, trade settlement, and attribution. Includes standard limit orders and a simplified market order pipeline for MiniMax with a ±0.5% buffer. See [[concepts/execution]] and [[concepts/minimax-portfolio]].
 
-For more details, see [[concepts/consensus]].
-
-## Phase 5: The Skeptical Verifier
-*   **Icon**: 🔍
-*   **Badge**: 4-Layer Audit
-*   **Tags**: [4-Layer Enforcement, Hard Tool Enforcement, Ownership Validation, Strategic Audit]
-
-A dedicated "Skeptical Agent" intercepts every Buy/Sell signal using the same intelligence profile as the original generator. It performs a 4-Layer Enforcement audit and retrieves targeted per-trade RAG context (up to 2k tokens, ranked by importance × similarity) from pgvector to validate against past decisions and lessons learned.
-*   Layer 1: Pre-Prompt Strengthening (enhanced system prompts with few-shot examples)
-*   Layer 2: Prompt Context Enhancement (portfolio source of truth, held tickers list)
-*   Layer 3: History scanning for actual tool calls via native function calling
-*   Layer 4: Structured output enforcement with `price_source` field declaration
-*   Hard Tool Enforcement: `get_stock_quote`, `calculate_buy_quantity`, `calculate_sell_quantity` must be actual function calls — text claims are hallucinations
-*   Ownership Pre-Validation: SELL signals for unheld tickers are rejected pre-analysis
-*   50% Confidence Penalty: Decisions without verified tool calls receive automatic reduction
-*   Strategic Reasoning Audit: Validates logical consistency of "sell X to fund Y" patterns
-*   Calendar & Seasonal Strategies: Turn of Month, Payday Anomaly adherence checks
-
-For more details on verification rules, see [[concepts/tool-enforcement]] and [[concepts/rag-strategy]].
-
-## Phase 6: Execution & Settlement
-*   **Icon**: ⚖️
-*   **Badge**: Reg T Compliance
-*   **Tags**: [Reg T Margin, Atomic Settlement, Two-Phase Attribution, Broker Mirroring]
-
-Approved trades undergo strict guardrails. The engine executes trades with Atomic Settlement ("Commit at End" pattern) and links decisions to trades via Two-Phase Attribution Locking.
-*   FMP-Verified Market Hours: Holiday-aware with 5-minute TTL caching
-*   5.0% Price Banding: Rejects trades where AI price deviates >5% from market
-*   Reg T Margin Validation: Buying power check with $1,000 absolute minimum for BUYs
-*   10% Minimum Position Rule: Auto-upsize for BUYs; 100% sell for SELLS below floor
-*   Atomic Settlement: Cash/positions update only if ledger entry succeeds — prevents "Phantom Deductions"
-*   Two-Phase Attribution Locking: Decision (status=VALIDATED) → Trade → Decision (status=EXECUTED, trade_id)
-*   Real-time P&L: SQL View calculates `(market_price - avg_cost) * quantity` on-the-fly
-*   Immediate Consistency: Reg T metrics persisted immediately after every trade
-*   Alpaca Broker Mirroring: Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)
-
-For more details, see [[concepts/execution]].
-
-## Phase 7: Learning & Feedback
-*   **Icon**: 🧠
-*   **Badge**: Adaptive Feedback Loop
-*   **Tags**: [Manager Agent, Contrarian Agent, pgvector RAG, Cause & Effect]
-
-The cycle completes. Specialized agents perform post-analysis while the system maintains long-term memory via pgvector RAG with Scenario Analysis for context awareness.
-*   Manager Agent: Post-analysis at 5, 14, 30-day intervals; generates "Lessons Learned" stored as `LESSON_LEARNED` memories
-*   Contrarian Agent: Identifies crowded trades and missed risks using `List[ContrarianAgentResponse]` for multi-block robustness
-*   Government Tracking: Monthly audit of incentives/policies with strict compliance enforcement
-*   Cause & Effect Analysis: Bi-weekly (Tuesdays & Fridays) with semantic deduplication (pgvector, 24h lookback, 0.90 similarity)
-*   Dynamic Ticker Discovery: FMP API for sector proxies, ETFs, derivative play tickers
-*   Long-term Memory: pgvector store with Scenario Analysis (multi-outcome + trading plans)
-*   Semantic Deduplication: 24-hour lookback, >0.90 similarity threshold prevents duplicates
-
-For more details on feedback, see [[concepts/memory-feedback]].
+### 6. Feedback
+Post-mortem analysis, contrarian review, cause & effect tracking, and weekly auto-research prompt improvement. See [[concepts/memory-feedback]] and [[entities/autoresearch]].
 
 ## Related
 
@@ -122,3 +45,5 @@ For more details on feedback, see [[concepts/memory-feedback]].
 - [[concepts/consensus]]
 - [[concepts/execution]]
 - [[concepts/memory-feedback]]
+- [[entities/macro-tracker]]
+- [[entities/autoresearch]]

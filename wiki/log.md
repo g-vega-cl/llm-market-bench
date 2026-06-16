@@ -1,41 +1,3 @@
-## [2026-06-02] optimization | Consolidated Server Loader Fast Fetch Optimization Across Core Routes
-
-Successfully scaled the Time-to-First-Byte (TTFB) optimization paradigm (Server Loader Fast Fetch) from the Today homepage to all core auxiliary pages:
-- **Cause & Effect Refactor**: Upgraded the `fetchCauseAndEffect` API to accept pagination limits. Implemented a `limit: 5` constraint on the `createServerFn` loader inside `routes/cause-and-effect/index.tsx`, eliminating the massive unbounded database fetch on initial SSR render.
-- **Memories N+1 Consolidation**: Refactored the heavy SSR data fetching block in `routes/memories/index.tsx` which previously fired 5 parallel unconstrained category queries (fetching 250 rows). By enforcing a `limit: 5` on the backend loader parameter, the SSR blocking payload was cut down to just 25 rows, accelerating first paint.
-- **Reasoning Log Hydration Fix**: Addressed the complete lack of an SSR loader in `routes/reasoning/index.tsx`. By wrapping a `limit: 5` fast-fetch loader and injecting `initialData` directly into the `useInfiniteQuery` hook inside `ReasoningPage.tsx`, the page now achieves instant hydration without rendering a blocking spinner.
-- **TDD Regression Tests**: Authored targeted unit tests for the core fetch APIs (`fetchCauseAndEffect`, `fetchMemories`, `fetchReasoningLogs`) and updated the `hydration.test.tsx` suite to assert that the `limit` query parameters are strictly applied by the Supabase client chain, preventing future regressions.
-
-## [2026-06-02] optimization | Database RPC Traversal & Market Overview SSR Fast-Fetch
-
-Optimized the performance of the `/market-overview` and `/memories/chain/{$memoryId}` routes to achieve sub-second edge TTFB:
-- **Memories Chain RPC**: Pushed database migration `20260602140000_add_get_memory_chain_rpc.sql` introducing recursive CTE function `get_memory_chain` to retrieve memory ancestor/descendant structures in a single query. Updated the frontend router loader to query the RPC, reducing loading from 8 sequential queries down to 1.
-- **Market Overview SSR Limiting**: Upgraded `fetchMarketOverviewData` to support a `limit` parameter and constrained the SSR loader to `limit: 5` for instant server rendering. Enabled `refetchOnMount: 'always'` to hydrate the full correlation matrix on client mount.
-- **TDD Verification**: Added unit tests to `fetch-market-overview.test.ts` and `fetch-memories.test.ts` to assert correct parameter usage, passing all 214 web tests.
-
-## [2026-06-02] optimization | Memory Chain RPC & Market Overview SSR Fast-Fetch
-
-**Database**: Deployed `get_memory_chain` recursive CTE RPC function (migrations `20260602140000` and `20260602150000`) to resolve graph-traversal N+1 queries on the memory chain detail page. The frontend `/memories/chain/$memoryId` route now calls this RPC directly, reducing sequential database roundtrips from 8+ to 1.
-
-**Market Overview SSR**: Added optional `limit` parameter to `fetchMarketOverviewData` and constrained the SSR loader to `.limit(5)` for instant initial render. Applied `refetchOnMount: 'always'` to hydrate the full correlation matrix client-side after mount.
-
-**Web Route Updates**: `routes/market-overview/index.tsx` now passes `{ limit: 5 }` in the loader and `{ limit: undefined }` in the client fetch function. `routes/memories/chain/$memoryId.tsx` replaced the paginated `fetchMemories` loop with a single `fetchMemoryChain` call.
-
-**Testing**: Verified with 214 passing web tests including new unit tests in `fetch-market-overview.test.ts` and `fetch-memories.test.ts` asserting correct RPC and limit parameter application.
-
-**Wiki Updates**: Revised `memory-feedback.md` Event Chain Graph Traversal section to describe the new RPC-based architecture. Added Recursive DB RPC pattern to `performance-auditing-strategy.md`.
-
-**See**: [[concepts/memory-feedback]], [[concepts/performance-auditing-strategy]]
-
-## [2026-06-03] optimization | Zero-Date Server Date Pre-Formatting & Hydration Fix for Event Chains
-
-Eliminated React hydration errors and layout paint delays on the `/memories/chain/$memoryId` route by shifting date formatting to the server-side loader:
-- **Server Date Pre-Formatting**: Updated the server-only `buildChain` utility to pre-compute formatted timestamps using a new centralized helper `formatEasternDateTimeWithYear`.
-- **Zero-Date View Rendering**: Refactored the frontend `EventChainPage` component to render static, pre-rendered date strings. This locks display timezone parity to Eastern Time (America/New_York) and avoids browser-specific narrow non-breaking space warnings.
-- **TDD Regression Suite**: Authored a hydration regression test checking `EventChainPage` symmetry in JSDOM, guaranteeing zero future hydration mismatches.
-
-**See**: [[concepts/memory-feedback]], [[concepts/performance-auditing-strategy]]
-
 ## [2026-06-03] optimization | Hybrid SSR Refactor & Background Hydration for Event Chains
 
 Optimized page loading performance and TTFB on the `/memories/chain/$memoryId` route using a Hybrid SSR architecture:
@@ -228,8 +190,6 @@ Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in
 
 **See**: [[concepts/tanstack-query]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx)
 
-
-
 ## [2026-06-15] bugfix | Fix portfolios page benchmark selection cache pollution
 
 Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in the portfolios comparison chart failed to display their respective performance lines:
@@ -251,3 +211,12 @@ Root-caused and fixed a visual flash in the portfolio comparison chart when swit
 - **Documentation**: Updated `concepts/tanstack-query.md` with the corrected `keepPreviousData` solution pattern and a new pitfall entry for the `key={dynamicValue}` anti-pattern. Updated `sources/web-portfolios-source.md` with a Smooth Benchmark Switching bullet.
 
 **See**: [[concepts/tanstack-query]], [[sources/web-portfolios-source]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx), [PortfolioComparisonChart.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/components/PortfolioComparisonChart.tsx)
+
+## [2026-06-16] fix | Hardcode ingest schedule to UTC for DST correctness
+
+GitHub Actions does not correctly handle DST when using the `timezone` field — it treats `America/New_York` as always UTC-5. The ingest workflow schedule has been converted to explicit UTC times (13:35, 15:35, 19:00) to match the intended 9:35 AM, 11:35 AM, and 3:00 PM ET during EDT (UTC-4). This ensures the pipeline runs at the correct market hours year-round without relying on GitHub's broken DST support.
+
+
+## [2026-06-16] documentation | Simplified pipeline wiki and hardcoded ingest schedule for DST
+
+The `how-it-works.json` data source has been emptied, removing the detailed 7-phase breakdown from the web UI. The [[entities/pipeline]] wiki page has been condensed to a high-level 6-phase overview with UTC schedule details. The ingest workflow cron is now hardcoded to UTC to avoid GitHub Actions DST handling bug.

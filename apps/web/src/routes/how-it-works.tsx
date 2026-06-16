@@ -1,6 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
-import howItWorksData from '~/config/how-it-works.json';
+import _howItWorksData from '~/config/how-it-works.json';
 import { MODELS } from '~/config/models';
+
+interface HowItWorksItem {
+    phase: number;
+    icon: string;
+    title: string;
+    description: string;
+    badge?: string;
+    bullets?: string[];
+    tags?: string[];
+}
+
+const howItWorksData = _howItWorksData as HowItWorksItem[];
+
 import { ThoughtProcessFlow } from '../components/ThoughtProcessFlow';
 
 export const Route = createFileRoute('/how-it-works')({

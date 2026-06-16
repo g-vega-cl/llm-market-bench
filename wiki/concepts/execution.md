@@ -33,8 +33,14 @@ mirroring via fire-and-forget DAY limit orders.
 
 ## Attribution Locking
 
-Two-phase commit: pre-trade decision save assigns `decision_id`, trade executes
-with FK, post-trade status = EXECUTED. Result: `News → Reasoning → Decision ↔ Trade`.
+Two-phase commit: pre-trade decision save assigns `decision_id`, trade executes with FK (`trades.decision_id`), and post-trade status is updated to `EXECUTED` with `decisions.trade_id` set. 
+
+Result: Bidirectional linking `News → Reasoning → Decision ↔ Trade`.
+* **Forward Link**: `decisions.trade_id` points to the primary trade record.
+* **Backward Link**: `trades.decision_id` points back to the initiating decision.
+
+> [!NOTE]
+> **Historical Database Anomaly (Feb/Mar 2026)**: Early pipeline code failed to populate the backward reference `trades.decision_id` at execution time, leaving it as `NULL` despite the forward reference being locked. This triggered system audits for "Executed Decisions Without Trade Record". A retroactive database repair script was run to restore referential integrity by populating the missing `decision_id` values for these 13 historical trades. Current execution code correctly populates both links atomically.
 
 ## Rejection Preservation
 

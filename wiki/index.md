@@ -47,6 +47,7 @@
 - [[concepts/alpaca-order-sync]] — Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)
 - [[concepts/memory-feedback]] — Post-mortem, contrarian analysis, cause & effect
 - [[concepts/agent-workflow]] — Mandatory Search/Plan/TDD sequence for all agents
+- [[concepts/visual-planning]] — Terminal-native visual planning using Unicode box-drawing, flowcharts, and tables
 - [[concepts/agents]] — Comprehensive role and tool breakdown for all 8 specialized agents
 - [[concepts/state-ledger-injection]] — Aggregating historical thesis/decisions into the active prompt for context retention
 - [[concepts/auto-research-prompt-improver]] — Weekly autonomous prompt iteration via meta-researcher LLM

@@ -34,6 +34,7 @@
    - **Research & Strategy**: Stay in "Default" mode (avoid automated/restricted plan modes) to ensure full access to `qmd` and shell tools during research.
    - **Wait for Approval**: Stop and wait for an explicit "Go ahead" before beginning the Execution phase.
    - **TDD Requirement**: Every plan MUST include a reproduction test that fails without the change.
+   - **Visual Plan**: Plans for non-trivial features, migrations, or design questions MUST follow the terminal-friendly visual planning guidelines defined in `[[concepts/visual-planning]]`.
 3. **TDD First**: Every implementation plan MUST include a step for creating a reproduction test first. Verification requires a test that fails without your change and passes with it.
 4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting — don't assume.
 5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.

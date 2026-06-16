@@ -13,9 +13,10 @@ Before answering any question or starting any task, you must search the wiki usi
 
 ## Plan First
 
-Before making any code changes or executing multi-turn workflows, present a written strategy and wait for explicit approval. Do not "just fix it." This step includes two sub-requirements:
+Before making any code changes or executing multi-turn workflows, present a written strategy and wait for explicit approval. Do not "just fix it." This step includes the following sub-requirements:
 - **Research & Strategy**: Stay in "Default" mode (avoid automated/restricted plan modes) to ensure full access to `qmd` and shell tools during research.
 - **Wait for Approval**: Stop and wait for an explicit "Go ahead" before beginning the Execution phase.
+- **Visual Terminal Planning**: Plans for non-trivial features, migrations, or design questions MUST follow the terminal-friendly visual planning guidelines defined in [[concepts/visual-planning]].
 
 ## TDD Requirement
 
@@ -32,5 +33,6 @@ Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual 
 ## Related
 
 - [[concepts/project-linting]]
+- [[concepts/visual-planning]]
 - [[entities/engine]]
 - [[entities/gemini]]

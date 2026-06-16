@@ -1,3 +1,12 @@
+## [2026-06-16] feature | Terminal-Friendly Visual Planning Framework
+
+Implemented a terminal-native visual planning framework to allow agents to generate rich, visual, Markdown-compliant plans:
+- **Concept Page**: Created [[concepts/visual-planning]] detailing Unicode box-drawing, ASCII flowcharts, progress trackers, and UI mockups.
+- **Mandatory Agent Guideline**: Updated the Plan First instructions in [[entities/gemini]] and [[concepts/agent-workflow]] to require visual planning for all non-trivial tasks.
+- **Wiki Integration**: Indexed and cross-linked the new planning page within the wiki index.
+
+**See**: [[concepts/visual-planning]], [[concepts/agent-workflow]], [[entities/gemini]]
+
 ## [2026-06-04] feature | Local RAG MCP Server Implementation & Setup Documentation
  
 Implemented a workspace-local Model Context Protocol (MCP) server package and updated setup documentation:
@@ -208,3 +217,12 @@ Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:2
 
 **See**: [[concepts/model-anomalies]], [[concepts/tool-enforcement]]
 
+
+## [2026-06-16] feature | Terminal-Friendly Visual Planning Framework
+
+Implemented a terminal-native visual planning framework to allow agents to generate rich, visual, Markdown-compliant plans:
+- **Concept Page**: Created [[concepts/visual-planning]] detailing Unicode box-drawing, ASCII flowcharts, progress trackers, and UI mockups.
+- **Mandatory Agent Guideline**: Updated the Plan First instructions in [[entities/gemini]] and [[concepts/agent-workflow]] to require visual planning for all non-trivial tasks.
+- **Wiki Integration**: Indexed and cross-linked the new planning page within the wiki index.
+
+**See**: [[concepts/visual-planning]], [[concepts/agent-workflow]], [[entities/gemini]]

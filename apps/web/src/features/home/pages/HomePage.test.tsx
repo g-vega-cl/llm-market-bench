@@ -163,4 +163,19 @@ describe('HomePage Dashboard', () => {
         expect(llamaRow).toBeDefined();
         if (llamaRow) expect(within(llamaRow).getByText('Manual')).toBeDefined();
     });
+
+    it('applies desktop responsive styling classes for layout, fonts, and table padding', () => {
+        render(<HomePage data={baseData} />);
+
+        const dashboard = screen.getByTestId('dashboard');
+        const container = dashboard.parentElement;
+        expect(container?.className).toContain('md:max-w-4xl');
+        expect(dashboard.className).toContain('md:px-8');
+        expect(dashboard.className).toContain('md:py-8');
+        expect(dashboard.className).toContain('md:rounded-2xl');
+        expect(dashboard.className).toContain('md:border');
+
+        const title = screen.getByText('Market Overview');
+        expect(title.className).toContain('md:text-4xl');
+    });
 });

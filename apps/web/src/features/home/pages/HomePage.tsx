@@ -32,15 +32,15 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
 
     return (
         <tr className="hover:bg-white/5 transition-colors duration-200">
-            <td className="px-3 py-2 font-medium">
+            <td className="px-3 py-2 md:px-4 md:py-3 font-medium">
                 <div className="flex flex-col gap-0.5">
-                    <span className="text-[12px] font-bold text-white tracking-tight">
+                    <span className="text-[12px] md:text-[14px] font-bold text-white tracking-tight">
                         {portfolio.name}
                     </span>
-                    <div className="flex items-center gap-1.5 text-[9px] font-mono text-white/40">
+                    <div className="flex items-center gap-1.5 text-[9px] md:text-[11px] font-mono text-white/40">
                         <span className="flex items-center gap-1">
                             <span
-                                className={`h-1.5 w-1.5 rounded-full ${
+                                className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${
                                     portfolio.isActive ? 'bg-emerald-400' : 'bg-slate-400'
                                 }`}
                             />
@@ -49,7 +49,7 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
                         <span>•</span>
                         <span className="flex items-center gap-1">
                             <span
-                                className={`h-1.5 w-1.5 rounded-full ${
+                                className={`h-1.5 w-1.5 md:h-2 md:w-2 rounded-full ${
                                     portfolio.isAutoResearch ? 'bg-purple-400' : 'bg-slate-400'
                                 }`}
                             />
@@ -58,10 +58,10 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
                     </div>
                 </div>
             </td>
-            <td className="px-3 py-2 text-right font-mono text-[12px] font-medium text-white/95 align-middle">
+            <td className="px-3 py-2 md:px-4 md:py-3 text-right font-mono text-[12px] md:text-[14px] font-medium text-white/95 align-middle">
                 {formatMoney(portfolio.totalEquity)}
             </td>
-            <td className="px-3 py-2 text-right font-mono text-[12px] align-middle">
+            <td className="px-3 py-2 md:px-4 md:py-3 text-right font-mono text-[12px] md:text-[14px] align-middle">
                 <div className="flex flex-col items-end gap-0.5">
                     <span
                         className={`font-bold ${
@@ -72,7 +72,7 @@ function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][num
                         {portfolio.todayPct}%
                     </span>
                     <span
-                        className={`text-[9px] ${
+                        className={`text-[9px] md:text-[11px] ${
                             portfolio.weekPct >= 0 ? 'text-emerald-500/80' : 'text-red-400/80'
                         }`}
                     >
@@ -97,10 +97,10 @@ function SentimentHeader({ feeling }: { feeling: HomePageData['feeling'] }) {
     return (
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <span className="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-[#f6e05e] bg-clip-text text-transparent">
+                <span className="text-lg md:text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-[#f6e05e] bg-clip-text text-transparent">
                     Live Overview
                 </span>
-                <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white shadow-inner">
+                <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-[11px] font-medium text-white shadow-inner">
                     <span
                         className={`mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${sentimentColor}`}
                     />
@@ -111,7 +111,7 @@ function SentimentHeader({ feeling }: { feeling: HomePageData['feeling'] }) {
                 </div>
             </div>
             {feeling.sentimentLabel && (
-                <span className="text-[11px] font-semibold text-slate-300 tracking-wide">
+                <span className="text-[11px] md:text-[12px] font-semibold text-slate-300 tracking-wide">
                     {feeling.sentimentLabel}
                 </span>
             )}
@@ -124,11 +124,11 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
     const spWeek = benchmark.weekPct;
 
     return (
-        <div className="flex items-center justify-between bg-yellow-900/10 border border-yellow-500/25 rounded-xl px-3 py-1.5 text-xs">
-            <span className="font-bold text-yellow-300/90 tracking-tight text-[11px] uppercase">
+        <div className="flex items-center justify-between bg-yellow-900/10 border border-yellow-500/25 rounded-xl px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm">
+            <span className="font-bold text-yellow-300/90 tracking-tight text-[11px] md:text-[12px] uppercase">
                 S&P 500 Benchmark
             </span>
-            <div className="flex gap-2.5 text-[11px] font-mono">
+            <div className="flex gap-2.5 md:gap-4 text-[11px] md:text-[12px] font-mono">
                 <div>
                     <span className="text-white/40 mr-1">Today</span>
                     <span
@@ -159,8 +159,8 @@ function SPInlineRow({ benchmark }: { benchmark: HomePageData['benchmark'] }) {
 
 function FeelingDetail({ feeling }: { feeling: HomePageData['feeling'] }) {
     return (
-        <div className="mt-2.5 space-y-3 animate-scale-in">
-            <p className="text-xs leading-relaxed text-white/80 font-light italic bg-white/5 p-2 rounded-lg border border-white/5">
+        <div className="mt-2.5 space-y-3 md:space-y-4 animate-scale-in">
+            <p className="text-xs md:text-sm leading-relaxed text-white/80 font-light italic bg-white/5 p-2 md:p-3 rounded-lg border border-white/5">
                 &quot;{feeling.summary}&quot;
             </p>
 
@@ -176,28 +176,28 @@ function FeelingDetail({ feeling }: { feeling: HomePageData['feeling'] }) {
                               : 'danger'
                     }
                     textStyle="hero"
-                    className="bg-white/5 border border-white/10 p-2 rounded-xl text-[11px]"
+                    className="bg-white/5 border border-white/10 p-2 md:p-3 rounded-xl text-[11px] md:text-[12px]"
                 />
             )}
 
             {/* Concerns */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col md:flex-row gap-2 md:gap-4">
                 {feeling.primaryConcern && (
-                    <div className="space-y-1">
-                        <span className="block text-[9px] text-white/40 uppercase tracking-widest font-black">
+                    <div className="space-y-1 flex-1">
+                        <span className="block text-[9px] md:text-[10px] text-white/40 uppercase tracking-widest font-black">
                             Primary Concern
                         </span>
-                        <div className="inline-flex rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300 font-medium leading-tight">
+                        <div className="inline-flex w-full rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1 md:px-2.5 md:py-1.5 text-[11px] md:text-[12px] text-rose-300 font-medium leading-tight">
                             ⚠️ {feeling.primaryConcern}
                         </div>
                     </div>
                 )}
                 {feeling.secondaryConcern && (
-                    <div className="space-y-1">
-                        <span className="block text-[9px] text-white/40 uppercase tracking-widest font-black">
+                    <div className="space-y-1 flex-1">
+                        <span className="block text-[9px] md:text-[10px] text-white/40 uppercase tracking-widest font-black">
                             Secondary Concern
                         </span>
-                        <div className="inline-flex rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 font-medium leading-tight">
+                        <div className="inline-flex w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 md:px-2.5 md:py-1.5 text-[11px] md:text-[12px] text-white/70 font-medium leading-tight">
                             🔍 {feeling.secondaryConcern}
                         </div>
                     </div>
@@ -205,7 +205,7 @@ function FeelingDetail({ feeling }: { feeling: HomePageData['feeling'] }) {
             </div>
 
             {/* Meta footer */}
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2 text-[9px] text-white/40 font-mono">
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2 text-[9px] md:text-[11px] text-white/40 font-mono">
                 {feeling.lastAnalyzed && <span>Last: {feeling.lastAnalyzed}</span>}
                 {feeling.modelUsed && <span>• Model: {feeling.modelUsed}</span>}
             </div>
@@ -235,17 +235,17 @@ function FeelingCollapsible({
                 <button
                     type="button"
                     onClick={() => setIsFeelingExpanded(!isFeelingExpanded)}
-                    className="flex w-full items-center justify-between text-left text-xs font-semibold text-sky-400 hover:text-sky-300 focus:outline-none transition-colors duration-200 cursor-pointer"
+                    className="flex w-full items-center justify-between text-left text-xs md:text-sm font-semibold text-sky-400 hover:text-sky-300 focus:outline-none transition-colors duration-200 cursor-pointer"
                 >
                     <span>🧠 Market Feeling Analysis</span>
-                    <span className="text-[9px] font-mono bg-sky-950/40 px-1.5 py-0.5 rounded border border-sky-500/30 text-sky-300">
+                    <span className="text-[9px] md:text-[10px] font-mono bg-sky-950/40 px-1.5 py-0.5 md:px-2 md:py-1 rounded border border-sky-500/30 text-sky-300">
                         {isFeelingExpanded ? 'Collapse ▲' : 'Expand Details ▼'}
                     </span>
                 </button>
 
                 {/* Quick Preview when Collapsed */}
                 {!isFeelingExpanded && (
-                    <div className="mt-1.5 text-xs text-white/60 italic truncate">
+                    <div className="mt-1.5 text-xs md:text-sm text-white/60 italic truncate">
                         &quot;{feeling.summary}&quot;
                     </div>
                 )}
@@ -261,26 +261,26 @@ function Dashboard({ data }: { data: HomePageData }) {
     return (
         <div
             data-testid="dashboard"
-            className="w-full border-y border-white/10 bg-glass-dark/40 backdrop-blur-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] px-4 py-4 space-y-4"
+            className="w-full border-y md:border border-white/10 md:rounded-2xl bg-glass-dark/40 backdrop-blur-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] px-4 py-4 md:px-8 md:py-8 space-y-4 md:space-y-6"
         >
             <FeelingCollapsible feeling={data.feeling} benchmark={data.benchmark} />
 
             {/* Models Table Section */}
-            <div className="space-y-2">
-                <h2 className="text-[10px] font-black uppercase tracking-widest text-white/40">
+            <div className="space-y-2 md:space-y-3">
+                <h2 className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-white/40">
                     Active Agent Portfolios
                 </h2>
                 <div className="overflow-hidden border border-white/10 rounded-xl bg-glass-dark/30 shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
-                    <table className="w-full border-collapse text-left text-xs">
+                    <table className="w-full border-collapse text-left text-xs md:text-sm">
                         <thead>
                             <tr className="border-b border-white/10 bg-white/5 font-bold text-white/60">
-                                <th className="px-3 py-2 text-[10px] uppercase tracking-wider">
+                                <th className="px-3 py-2 md:px-4 md:py-3 text-[10px] md:text-[11px] uppercase tracking-wider">
                                     Model
                                 </th>
-                                <th className="px-3 py-2 text-right text-[10px] uppercase tracking-wider">
+                                <th className="px-3 py-2 md:px-4 md:py-3 text-right text-[10px] md:text-[11px] uppercase tracking-wider">
                                     Equity
                                 </th>
-                                <th className="px-3 py-2 text-right text-[10px] uppercase tracking-wider">
+                                <th className="px-3 py-2 md:px-4 md:py-3 text-right text-[10px] md:text-[11px] uppercase tracking-wider">
                                     Today / Wk
                                 </th>
                             </tr>
@@ -300,9 +300,9 @@ function Dashboard({ data }: { data: HomePageData }) {
 export function HomePage({ data }: { data: HomePageData }) {
     return (
         <div className="relative min-h-screen w-full text-white overflow-x-hidden">
-            <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-start px-0 py-8">
-                <header className="mb-6 flex-shrink-0 w-full text-center px-4">
-                    <h1 className="bg-gradient-to-r from-white via-yellow-100 to-[#f6e05e] bg-clip-text text-3xl font-bold tracking-tight text-transparent drop-shadow-lg">
+            <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-2xl md:max-w-4xl flex-col items-center justify-start px-0 py-8 md:py-12">
+                <header className="mb-6 md:mb-8 flex-shrink-0 w-full text-center px-4">
+                    <h1 className="bg-gradient-to-r from-white via-yellow-100 to-[#f6e05e] bg-clip-text text-3xl md:text-4xl font-bold tracking-tight text-transparent drop-shadow-lg">
                         Market Overview
                     </h1>
                 </header>

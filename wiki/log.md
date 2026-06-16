@@ -235,3 +235,10 @@ Implemented a terminal-native visual planning framework to allow agents to gener
 - **Wiki Integration**: Indexed and cross-linked the new planning page within the wiki index.
 
 **See**: [[concepts/visual-planning]], [[concepts/agent-workflow]], [[entities/gemini]]
+
+## [2026-06-16] documentation | Document Supabase Google OAuth Redirect Whitelisting
+
+Created a concept page to detail how Supabase Auth whitelisting and fallback logic handles requested redirects. Documents the difference between local dev ports (Netlify dev 3000 vs. Vite 3005) and production deployment whitelists, providing step-by-step instructions to prevent redirect-loop fallbacks to localhost:3000.
+
+**See**: [[concepts/supabase-redirect-whitelisting]], [[entities/web-app]]
+

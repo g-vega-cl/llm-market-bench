@@ -107,3 +107,5 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
 - [ ] - Benchify: model that predicts the next best performing and uncorrelated sectors? ( I think I already have something like this
 - [ ] - Benchify: add volume? and volume derivated values?
+- [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
+- [ ] - Benchify: it's stock analysis also part of my sources?

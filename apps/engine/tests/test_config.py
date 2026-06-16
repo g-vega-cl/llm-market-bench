@@ -34,4 +34,3 @@ def test_env_attributes_exist():
 def test_minimax_model_is_m3():
     """Verify that MINIMAX_MODEL is updated to MiniMax-M3."""
     assert core.config.MINIMAX_MODEL == "MiniMax-M3"
-

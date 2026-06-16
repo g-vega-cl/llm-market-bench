@@ -314,6 +314,7 @@ async def _analyze_with_minimax(
             model=model_name,
             temperature=0.3,
             max_completion_tokens=4096,
+            response_format={"type": "json_object"},
         )
     except Exception:
         logger.exception("[minimax/%s] API call failed — returning empty response.", model_name)
@@ -321,7 +322,16 @@ async def _analyze_with_minimax(
     finally:
         await client.close()
 
-    content = resp.get("content", "").strip()
+    raw_content = resp.get("content") or ""
+    content = raw_content.strip()
+
+    # Strip <think>...</think> tags if present, including any unclosed <think> block
+    if "<think>" in content:
+        parts = content.split("<think>", 1)
+        before_think = parts[0]
+        after_think = parts[1]
+        content = before_think + after_think.split("</think>", 1)[1] if "</think>" in after_think else before_think
+        content = content.strip()
 
     # Strip markdown code fences if present
     if content.startswith("```"):
@@ -554,6 +564,11 @@ async def analyze_with_provider(
             "messages": copy.deepcopy(messages),
             "max_retries": 2,
         }
+
+        # DeepSeek specific: Enable thinking mode during final extraction so the model uses its
+        # full reasoning capacity to formulate the final trade decisions.
+        if provider == "deepseek" and "deepseek" in model_name.lower():
+            final_args["extra_body"] = {"thinking": {"type": "enabled"}}
 
         if provider == "anthropic":
             final_args["max_tokens"] = 32000  # Increased from 8000 to handle long outputs

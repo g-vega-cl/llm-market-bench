@@ -1,39 +1,3 @@
-## [2026-06-03] optimization | Hybrid SSR Refactor & Background Hydration for Event Chains
-
-Optimized page loading performance and TTFB on the `/memories/chain/$memoryId` route using a Hybrid SSR architecture:
-- **Fast Focus-Node SSR**: Refactored `$memoryId.tsx` loader to fetch only the focus memory (1 database row) via a new `fetchMemoryById` query. The server returns a lightweight initial HTML payload immediately.
-- **Seamless Background Hydration**: Configured `eventChainQueries.detail` with `staleTime: 0` to trigger a client-side background query on mount, rendering the remaining parent/descendant event chain recursively post-hydration.
-- **Hydration Testing**: Added `fetchMemoryById` unit tests to `fetch-memories.test.ts` and added a new integration hydration test case in `hydration.test.tsx` verifying that the event chain page hydrates flawlessly from a single focus node state.
-
-**See**: [[concepts/performance-auditing-strategy]]
-
-## [2026-06-03] doc | Documented Rendering Strategies & Hybrid SSR Design Matrix
-
-Created the canonical wiki concept page outlining the application's client/server rendering methodologies:
-- **Rendering Strategies Concept**: Authored `rendering-strategies.md` detailing the Decision Matrix for selecting Full SSR vs. Hybrid SSR vs. No SSR (CSR).
-- **Architecture Guidelines**: Documented the "limit & background hydration" design patterns using the homepage (`/`) and the newly optimized "Chain of Thought" page (`/memories/chain/$memoryId`) as core examples.
-- **Related Updates**: Updated the wiki index catalog (`index.md`) and cross-linked from the Performance Auditing Strategy page (`performance-auditing-strategy.md`).
-
-**See**: [[concepts/rendering-strategies]], [[concepts/performance-auditing-strategy]]
-
-## [2026-06-03] fix | Scenario Analysis Metadata Persistence & Database Retroactive Repair
-
-Resolved a critical metadata persistence bug where the structured `scenarios` array was omitted during memory creation in the consensus promotion loop:
-- **Consensus Loop Fix**: Modified the `add_memory` metadata dictionary inside `apps/engine/analysis/consensus.py` to include the `"scenarios": consensus_data.get("scenarios")` field. This ensures that the structured JSON list containing clean headers, probability percentages, outcomes, trading plans, and scenario-specific FMP assets is correctly saved to the Supabase database.
-- **TDD Regression Tests**: Updated the pytest integration suite `test_consensus_structured.py` to assert that `mock_add_memory` is called with the structured `"scenarios"` list in its `metadata` parameter. Verified that the updated tests pass cleanly.
-- **Database Retroactive Repair**: Developed and executed a robust matching script (`fix_historical_memories_robust.py`) utilizing a word-overlap comparison algorithm to locate corresponding synthesis logs in the `llm_reasoning_logs` table. Reconstructed and patched the metadata for the 5 affected memories in the live Supabase database since the schema launch, fixing the empty Scenario Analysis panel on the dashboard.
-- **Documentation**: Updated the [[concepts/memory-feedback]] and [[entities/web-app]] wiki documentation to detail the metadata persistence fix and the database repair.
-
-**See**: [[concepts/memory-feedback]], [[entities/web-app]]
-
-## [2026-06-04] doc | Documented Model Context Protocol (MCP) Setup & Plugin Lifecycle
- 
-Created the canonical wiki concept page outlining MCP server configurations, global settings, plugins, and caching:
-- **MCP Setup Concept**: Authored `mcp-setup.md` detailing Workspace vs. Global MCP configurations, managing plugins via `agy plugin`, and clearing cached tool schemas.
-- **Related Updates**: Updated the wiki index catalog (`index.md`) and uninstalled/deleted the cached Netlify MCP global files and plugins.
- 
-**See**: [[concepts/mcp-setup]]
-
 ## [2026-06-04] feature | Local RAG MCP Server Implementation & Setup Documentation
  
 Implemented a workspace-local Model Context Protocol (MCP) server package and updated setup documentation:
@@ -216,7 +180,6 @@ Root-caused and fixed a visual flash in the portfolio comparison chart when swit
 
 GitHub Actions does not correctly handle DST when using the `timezone` field — it treats `America/New_York` as always UTC-5. The ingest workflow schedule has been converted to explicit UTC times (13:35, 15:35, 19:00) to match the intended 9:35 AM, 11:35 AM, and 3:00 PM ET during EDT (UTC-4). This ensures the pipeline runs at the correct market hours year-round without relying on GitHub's broken DST support.
 
-
 ## [2026-06-16] documentation | Simplified pipeline wiki and hardcoded ingest schedule for DST
 
 The `how-it-works.json` data source has been emptied, removing the detailed 7-phase breakdown from the web UI. The [[entities/pipeline]] wiki page has been condensed to a high-level 6-phase overview with UTC schedule details. The ingest workflow cron is now hardcoded to UTC to avoid GitHub Actions DST handling bug.
@@ -224,3 +187,24 @@ The `how-it-works.json` data source has been emptied, removing the detailed 7-ph
 ## [2026-06-16] refactor | Unified HomePage dashboard with table layout
 
 Merged separate mobile/desktop views into a single responsive Dashboard component. Replaced portfolio cards with a compact table row layout, collapsed the market feeling analysis into a toggleable section, and removed the desktop-specific BenchmarkCard and MarketFeelingCard in favor of inline rows. Simplified the sentiment header and removed the background selector experiment logic.
+
+## [2026-06-16] fix | MiniMax empty response and DeepSeek tool call narration anomalies
+
+Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:21 UTC ingest run audit:
+- **MiniMax Empty Response & Tag Clash**: Stripped `<think>...</think>` reasoning blocks (including unclosed blocks) from the raw response content in `_analyze_with_minimax` before attempting JSON extraction, preventing parser clashes with internal thoughts. Coerced `None` response content to `""` to prevent attribute errors, and passed `response_format={"type": "json_object"}` to force valid JSON output.
+- **DeepSeek Tool Call Narration**: Disabled `thinking` mode during the info-gathering tool execution loop (`run_tool_loop`) for DeepSeek to stop the reasoning model from narrating its planned tool calls in text instead of emitting structured API `tool_calls` objects.
+- **DeepSeek Final Extraction Thinking**: Explicitly enabled `thinking` mode (`extra_body={"thinking": {"type": "enabled"}}`) in the final extraction phase inside `analyze_with_provider` so the model uses its full reasoning capacity to formulate the final trade decisions.
+- **TDD Verification**: Created `test_reproduce_deepseek_minimax.py` reproducing the anomalies and verifying the fixes. Passed 100% of the 757-test suite.
+
+**See**: [[concepts/model-anomalies]], [[concepts/tool-enforcement]], [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [deepseek.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/deepseek.py), [test_reproduce_deepseek_minimax.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_reproduce_deepseek_minimax.py)
+
+## [2026-06-16] fix | MiniMax empty response and DeepSeek tool call narration anomalies
+
+Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:21 UTC ingest run audit:
+- **MiniMax Empty Response & Tag Clash**: Stripped ` thinking... response` reasoning blocks (including unclosed blocks) from the raw response content in `_analyze_with_minimax` before attempting JSON extraction, preventing parser clashes with internal thoughts. Coerced `None` response content to `""` to prevent attribute errors, and passed `response_format={"type": "json_object"}` to force valid JSON output.
+- **DeepSeek Tool Call Narration**: Disabled `thinking` mode during the info-gathering tool execution loop (`run_tool_loop`) for DeepSeek to stop the reasoning model from narrating its planned tool calls in text instead of emitting structured API `tool_calls` objects.
+- **DeepSeek Final Extraction Thinking**: Explicitly enabled `thinking` mode (`extra_body={"thinking": {"type": "enabled"}}`) in the final extraction phase inside `analyze_with_provider` so the model uses its full reasoning capacity to formulate the final trade decisions.
+- **TDD Verification**: Created `test_reproduce_deepseek_minimax.py` reproducing the anomalies and verifying the fixes. Passed 100% of the 757-test suite.
+
+**See**: [[concepts/model-anomalies]], [[concepts/tool-enforcement]]
+

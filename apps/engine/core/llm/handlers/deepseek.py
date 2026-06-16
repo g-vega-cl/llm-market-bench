@@ -38,9 +38,14 @@ async def run_tool_loop(
             "tools": override_tools if override_tools is not None else _build_tool_list(enable_web_search),
         }
 
-        # DeepSeek specific: Enable thinking mode (all v4 models support it)
+        # DeepSeek specific: Enable thinking mode (all v4 models support it).
+        # Note: We disable thinking mode during the tool execution loop because reasoning models
+        # get confused and narrate/hallucinate tool usage in their reasoning block rather than
+        # emitting the structured API tool_calls object. Disabling thinking mode here allows
+        # clean tool execution. The final extraction step will still use reasoning/extraction.
         if "deepseek" in model_name.lower():
-            args["extra_body"] = {"thinking": {"type": "enabled"}}
+            # args["extra_body"] = {"thinking": {"type": "enabled"}}
+            pass
 
             # DeepSeek requires reasoning_content to be present if tool_calls is present.
             # We clear it for messages WITHOUT tool calls to save context window.

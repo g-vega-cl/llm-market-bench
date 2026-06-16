@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { HomePageData } from './HomePage';
 import { HomePage } from './HomePage';
@@ -8,219 +8,159 @@ const mockGetFeatureFlag = vi.fn();
 vi.mock('@posthog/react', () => ({
     usePostHog: () => ({
         getFeatureFlag: mockGetFeatureFlag,
-        onFeatureFlags: vi.fn((cb) => cb()), // Instantly call callback for tests
+        onFeatureFlags: vi.fn((cb) => cb()),
     }),
 }));
 
+const baseData: HomePageData = {
+    portfolios: [
+        {
+            name: 'Claude 3 Opus',
+            todayPct: -4.5,
+            weekPct: -1.2,
+            totalEquity: 32.98,
+            isActive: true,
+            isAutoResearch: true,
+        },
+        {
+            name: 'Llama 3 70B',
+            todayPct: 2.0,
+            weekPct: 5.1,
+            totalEquity: 23.89,
+            isActive: true,
+            isAutoResearch: false,
+        },
+        {
+            name: 'Gpt 5.4 Nano',
+            todayPct: -0.8,
+            weekPct: 1.5,
+            totalEquity: 3.19,
+            isActive: true,
+            isAutoResearch: false,
+        },
+    ],
+    benchmark: {
+        todayPct: 1.2,
+        weekPct: 2.5,
+    },
+    feeling: {
+        sentiment: 'BULLISH',
+        summary: 'The market is experiencing positive momentum due to strong tech earnings.',
+        sentimentLabel: 'Risk-On Rally',
+        sentimentEmoji: '🚀',
+        confidence: 85,
+        primaryConcern: 'Inflation risks',
+        secondaryConcern: 'Yield curve steepening',
+        modelUsed: 'MiniMax-Text-01',
+        lastAnalyzed: '14:30:00 ET',
+    },
+};
+
 describe('HomePage Dashboard', () => {
-    it('should render the Liquid Glass dashboard layout and individual portfolio cards without a manual background selector', () => {
-        // Set up the experiment to return pointillism
-        mockGetFeatureFlag.mockReturnValue('pointillism');
+    it('renders the unified dashboard with header, sentiment info, S&P 500 benchmark, and portfolio table', () => {
+        render(<HomePage data={baseData} />);
 
-        const mockData: HomePageData = {
-            portfolios: [
-                {
-                    name: 'Claude 3 Opus',
-                    todayPct: -4.5,
-                    weekPct: -1.2,
-                    totalEquity: 32.98,
-                    isActive: true,
-                    isAutoResearch: true,
-                },
-                {
-                    name: 'Llama 3 70B',
-                    todayPct: 2.0,
-                    weekPct: 5.1,
-                    totalEquity: 23.89,
-                    isActive: true,
-                    isAutoResearch: false,
-                },
-                {
-                    name: 'Gpt 5.4 Nano',
-                    todayPct: -0.8,
-                    weekPct: 1.5,
-                    totalEquity: 3.19,
-                    isActive: true,
-                    isAutoResearch: false,
-                },
-            ],
-            benchmark: {
-                todayPct: 1.2,
-                weekPct: 2.5,
-            },
-            feeling: {
-                sentiment: 'BULLISH',
-                summary:
-                    'The market is experiencing positive momentum due to strong tech earnings.',
-                sentimentLabel: 'Risk-On Rally',
-                sentimentEmoji: '🚀',
-                confidence: 85,
-                primaryConcern: 'Inflation risks',
-                secondaryConcern: 'Yield curve steepening',
-                modelUsed: 'MiniMax-Text-01',
-                lastAnalyzed: '14:30:00 ET',
-            },
-        };
+        const dashboard = screen.getByTestId('dashboard');
 
-        // We also need to mock getContext to prevent canvas errors when ShaderBackground mounts
-        HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
-            createShader: vi.fn(),
-            shaderSource: vi.fn(),
-            compileShader: vi.fn(),
-            getShaderParameter: vi.fn().mockReturnValue(true),
-            createProgram: vi.fn(),
-            attachShader: vi.fn(),
-            linkProgram: vi.fn(),
-            getProgramParameter: vi.fn().mockReturnValue(true),
-            useProgram: vi.fn(),
-            createBuffer: vi.fn(),
-            bindBuffer: vi.fn(),
-            bufferData: vi.fn(),
-            getAttribLocation: vi.fn().mockReturnValue(0),
-            enableVertexAttribArray: vi.fn(),
-            vertexAttribPointer: vi.fn(),
-            getUniformLocation: vi.fn().mockReturnValue(0),
-            viewport: vi.fn(),
-            uniform2f: vi.fn(),
-            uniform1f: vi.fn(),
-            uniform3f: vi.fn(),
-            drawArrays: vi.fn(),
-            deleteProgram: vi.fn(),
-            deleteShader: vi.fn(),
-            deleteBuffer: vi.fn(),
-        }) as unknown as typeof HTMLCanvasElement.prototype.getContext;
-
-        render(<HomePage data={mockData} />);
-
-        // Verify the main title exists
+        // Page title
         expect(screen.getByText('Market Overview')).toBeDefined();
 
-        // The background selector should be entirely removed
-        expect(screen.queryByRole('combobox')).toBeNull();
+        // Sentiment header
+        expect(within(dashboard).getByText('Live Overview')).toBeDefined();
+        expect(within(dashboard).getByText('BULLISH')).toBeDefined();
+        expect(within(dashboard).getByText('🚀')).toBeDefined();
+        expect(within(dashboard).getByText('Risk-On Rally')).toBeDefined();
 
-        // Verify the background image no longer exists
-        expect(screen.queryByTestId('background-image')).toBeNull();
-        expect(screen.queryByTestId('background-video')).toBeNull();
+        // S&P 500 benchmark inline row
+        expect(within(dashboard).getByText('S&P 500 Benchmark')).toBeDefined();
+        expect(within(dashboard).getByText('+1.2%')).toBeDefined();
+        expect(within(dashboard).getByText('+2.5%')).toBeDefined();
 
-        const desktopContainer = screen.getByTestId('desktop-dashboard');
+        // Portfolio table header
+        expect(within(dashboard).getByText('Active Agent Portfolios')).toBeDefined();
+        expect(within(dashboard).getByText('Model')).toBeDefined();
+        expect(within(dashboard).getByText('Equity')).toBeDefined();
+        expect(within(dashboard).getByText('Today / Wk')).toBeDefined();
 
-        // Verify individual portfolios render and apply correct heatmap styling & truncation wrapping
-        const claudeHeading = within(desktopContainer).getByText('Claude 3 Opus');
-        expect(claudeHeading).toBeDefined();
-        expect(claudeHeading.className).not.toContain('truncate');
-        expect(claudeHeading.parentElement?.className).toContain('overflow-hidden');
-        const claudeCard = claudeHeading.closest('div.group');
-        expect(claudeCard).toBeDefined();
-        expect(claudeCard).toHaveAttribute('data-color-scheme', 'danger');
+        // Portfolio rows
+        expect(within(dashboard).getByText('Claude 3 Opus')).toBeDefined();
+        expect(within(dashboard).getByText('$32.98')).toBeDefined();
+        expect(within(dashboard).getByText('-4.5%')).toBeDefined();
+        expect(within(dashboard).getByText('-1.2% wk')).toBeDefined();
 
-        expect(within(desktopContainer).getAllByText('Auto-Research').length).toBeGreaterThan(0);
-        expect(within(desktopContainer).getAllByText('Active').length).toBeGreaterThan(0);
-        expect(within(desktopContainer).getByText('$32.98')).toBeDefined();
-        expect(within(desktopContainer).getByText('-4.5%')).toBeDefined();
+        expect(within(dashboard).getByText('Llama 3 70B')).toBeDefined();
+        expect(within(dashboard).getByText('$23.89')).toBeDefined();
+        expect(within(dashboard).getByText('+2%')).toBeDefined();
+        expect(within(dashboard).getByText('+5.1% wk')).toBeDefined();
 
-        const llamaHeading = within(desktopContainer).getByText('Llama 3 70B');
-        expect(llamaHeading).toBeDefined();
-        expect(llamaHeading.className).not.toContain('truncate');
-        expect(llamaHeading.parentElement?.className).toContain('overflow-hidden');
-        const llamaCard = llamaHeading.closest('div.group');
-        expect(llamaCard).toBeDefined();
-        expect(llamaCard).toHaveAttribute('data-color-scheme', 'warning');
-
-        expect(within(desktopContainer).getByText('+2%')).toBeDefined();
-
-        const gptHeading = within(desktopContainer).getByText('Gpt 5.4 Nano');
-        expect(gptHeading).toBeDefined();
-        expect(gptHeading.className).not.toContain('truncate');
-        expect(gptHeading.parentElement?.className).toContain('overflow-hidden');
-        const gptCard = gptHeading.closest('div.group');
-        expect(gptCard).toBeDefined();
-        expect(gptCard).toHaveAttribute('data-color-scheme', 'info');
-
-        // Verify S&P 500 Benchmark card renders
-        const spHeading = within(desktopContainer).getByText('S&P 500');
-        expect(spHeading).toBeDefined();
-        expect(spHeading.className).not.toContain('truncate');
-        expect(spHeading.parentElement?.className).toContain('overflow-hidden');
-        expect(within(desktopContainer).getByText('+1.2%')).toBeDefined(); // Today
-        expect(within(desktopContainer).getByText('+2.5%')).toBeDefined(); // Week
-
-        // Verify LLM Feeling card renders
-        expect(within(desktopContainer).getByText('BULLISH')).toBeDefined();
-        expect(within(desktopContainer).getByText(/strong tech earnings/)).toBeDefined();
-        expect(within(desktopContainer).getByText('Risk-On Rally')).toBeDefined();
-        expect(within(desktopContainer).getByText('🚀')).toBeDefined();
-        expect(within(desktopContainer).getByText('⚠️ Inflation risks')).toBeDefined();
-        expect(within(desktopContainer).getByText('🔍 Yield curve steepening')).toBeDefined();
-        expect(within(desktopContainer).getByText(/Last analyzed: 14:30:00 ET/)).toBeDefined();
-        expect(within(desktopContainer).getByText(/Model: MiniMax-Text-01/)).toBeDefined();
+        expect(within(dashboard).getByText('Gpt 5.4 Nano')).toBeDefined();
+        expect(within(dashboard).getByText('$3.19')).toBeDefined();
+        expect(within(dashboard).getByText('-0.8%')).toBeDefined();
+        expect(within(dashboard).getByText('+1.5% wk')).toBeDefined();
     });
 
-    it('should render the high-density mobile layout with collapsible market feeling and dense model table', () => {
-        mockGetFeatureFlag.mockReturnValue('pointillism');
+    it('renders the market feeling collapsible toggle and shows a preview when collapsed', () => {
+        render(<HomePage data={baseData} />);
 
-        const mockData: HomePageData = {
-            portfolios: [
-                {
-                    name: 'Claude 3 Opus',
-                    todayPct: -4.5,
-                    weekPct: -1.2,
-                    totalEquity: 32.98,
-                    isActive: true,
-                    isAutoResearch: true,
-                },
-                {
-                    name: 'Llama 3 70B',
-                    todayPct: 2.0,
-                    weekPct: 5.1,
-                    totalEquity: 23.89,
-                    isActive: true,
-                    isAutoResearch: false,
-                },
-            ],
-            benchmark: {
-                todayPct: 1.2,
-                weekPct: 2.5,
-            },
-            feeling: {
-                sentiment: 'BULLISH',
-                summary: 'The market is experiencing positive momentum.',
-                sentimentLabel: 'Risk-On Rally',
-                sentimentEmoji: '🚀',
-                confidence: 85,
-                primaryConcern: 'Inflation risks',
-                secondaryConcern: 'Yield curve steepening',
-                modelUsed: 'MiniMax-Text-01',
-                lastAnalyzed: '14:30:00 ET',
-            },
-        };
+        const dashboard = screen.getByTestId('dashboard');
 
-        render(<HomePage data={mockData} />);
-
-        const mobileContainer = screen.getByTestId('mobile-dashboard');
-
-        // Verify mobile dashboard elements are present
-        expect(within(mobileContainer).getByText('Live Overview')).toBeDefined();
-        expect(within(mobileContainer).getByText('S&P 500 Benchmark')).toBeDefined();
-
-        // Collapsible trigger should exist
-        const toggleBtn = within(mobileContainer).getByText('🧠 Market Feeling Analysis');
+        // Collapsible button present and shows "Expand" by default
+        const toggleBtn = within(dashboard).getByText('🧠 Market Feeling Analysis');
         expect(toggleBtn).toBeDefined();
+        expect(within(dashboard).getByText('Expand Details ▼')).toBeDefined();
 
-        // Table headers should exist
-        expect(within(mobileContainer).getByText('Active Agent Portfolios')).toBeDefined();
-        expect(within(mobileContainer).getByText('Model')).toBeDefined();
-        expect(within(mobileContainer).getByText('Equity')).toBeDefined();
-        expect(within(mobileContainer).getByText('Today / Wk')).toBeDefined();
+        // Preview (truncated summary) visible when collapsed
+        expect(
+            within(dashboard).getByText(/positive momentum due to strong tech earnings/),
+        ).toBeDefined();
+    });
 
-        // Verify model info exists in mobile table
-        expect(within(mobileContainer).getByText('Claude 3 Opus')).toBeDefined();
-        expect(within(mobileContainer).getByText('$32.98')).toBeDefined();
-        expect(within(mobileContainer).getByText('-4.5%')).toBeDefined();
-        expect(within(mobileContainer).getByText('-1.2% wk')).toBeDefined();
+    it('expands market feeling details when the toggle is clicked', () => {
+        render(<HomePage data={baseData} />);
 
-        expect(within(mobileContainer).getByText('Llama 3 70B')).toBeDefined();
-        expect(within(mobileContainer).getByText('$23.89')).toBeDefined();
-        expect(within(mobileContainer).getByText('+2%')).toBeDefined();
-        expect(within(mobileContainer).getByText('+5.1% wk')).toBeDefined();
+        const dashboard = screen.getByTestId('dashboard');
+        const toggleBtn = within(dashboard).getByRole('button', {
+            name: /Market Feeling Analysis/,
+        });
+
+        fireEvent.click(toggleBtn);
+
+        // Full summary visible
+        expect(within(dashboard).getByText(/strong tech earnings/)).toBeDefined();
+
+        // Concerns
+        expect(within(dashboard).getByText('⚠️ Inflation risks')).toBeDefined();
+        expect(within(dashboard).getByText('🔍 Yield curve steepening')).toBeDefined();
+
+        // Metadata
+        expect(within(dashboard).getByText(/Last: 14:30:00 ET/)).toBeDefined();
+        expect(within(dashboard).getByText(/Model: MiniMax-Text-01/)).toBeDefined();
+
+        // Button now shows Collapse
+        expect(within(dashboard).getByText('Collapse ▲')).toBeDefined();
+    });
+
+    it('does not render a separate mobile or desktop dashboard — only a single unified dashboard', () => {
+        render(<HomePage data={baseData} />);
+
+        expect(screen.queryByTestId('mobile-dashboard')).toBeNull();
+        expect(screen.queryByTestId('desktop-dashboard')).toBeNull();
+        expect(screen.getByTestId('dashboard')).toBeDefined();
+    });
+
+    it('marks auto-research portfolios with a purple dot and manual ones with slate', () => {
+        render(<HomePage data={baseData} />);
+
+        const dashboard = screen.getByTestId('dashboard');
+
+        // Claude 3 Opus is auto-research → purple dot shown as "Auto-Res"
+        const claudeRow = within(dashboard).getByText('Claude 3 Opus').closest('tr');
+        expect(claudeRow).toBeDefined();
+        if (claudeRow) expect(within(claudeRow).getByText('Auto-Res')).toBeDefined();
+
+        // Llama is manual → "Manual"
+        const llamaRow = within(dashboard).getByText('Llama 3 70B').closest('tr');
+        expect(llamaRow).toBeDefined();
+        if (llamaRow) expect(within(llamaRow).getByText('Manual')).toBeDefined();
     });
 });

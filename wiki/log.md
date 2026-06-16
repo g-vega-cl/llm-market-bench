@@ -220,3 +220,7 @@ GitHub Actions does not correctly handle DST when using the `timezone` field —
 ## [2026-06-16] documentation | Simplified pipeline wiki and hardcoded ingest schedule for DST
 
 The `how-it-works.json` data source has been emptied, removing the detailed 7-phase breakdown from the web UI. The [[entities/pipeline]] wiki page has been condensed to a high-level 6-phase overview with UTC schedule details. The ingest workflow cron is now hardcoded to UTC to avoid GitHub Actions DST handling bug.
+
+## [2026-06-16] refactor | Unified HomePage dashboard with table layout
+
+Merged separate mobile/desktop views into a single responsive Dashboard component. Replaced portfolio cards with a compact table row layout, collapsed the market feeling analysis into a toggleable section, and removed the desktop-specific BenchmarkCard and MarketFeelingCard in favor of inline rows. Simplified the sentiment header and removed the background selector experiment logic.

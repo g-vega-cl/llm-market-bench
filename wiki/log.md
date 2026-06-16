@@ -1,3 +1,12 @@
+## [2026-06-16] bugfix | Supabase SSR Cookie Options Propagation for OAuth Session Persistence
+
+Resolved Google sign-in/up and sign-out session persistence issues in the web application:
+- **Cookie Option Forwarding**: Updated the `setAll` implementation in [supabase.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.ts) to forward `cookie.options` to TanStack Start's `setCookie` function.
+- **Session Loss Prevention**: Prevented browsers from scoping authentication cookies to the `/_server` path (the default request path for server functions), enabling session cookies to persist on standard routes.
+- **TDD verification**: Authored [supabase.test.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.test.ts) to assert proper forwarding of cookie options.
+
+**See**: [[entities/web-app]], [supabase.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.ts), [supabase.test.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.test.ts)
+
 ## [2026-06-16] feature | Terminal-Friendly Visual Planning Framework
 
 Implemented a terminal-native visual planning framework to allow agents to generate rich, visual, Markdown-compliant plans:

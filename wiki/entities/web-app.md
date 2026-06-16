@@ -108,6 +108,13 @@ To optimize information density and remove scrolling requirements on mobile, a c
 - **Dense Portfolios Grid**: Replaced individual model cards with a single tabular grid showing Model name, Active status indicators, Total Equity, and stacked Today/Weekly return percentages in a single row.
 - **Cognitive Complexity Refactoring**: Refactored the dashboard code into modular sub-components (`MobileSentimentHeader`, `MobileSPInlineRow`, `MobileFeelingDetail`, `MobileFeelingCollapsible`, `MobilePortfolioRow`) to strictly adhere to Biome's cognitive complexity threshold of 15.
 
+### Supabase SSR Cookie Options Propagation (2026-06-16)
+
+To resolve session persistence issues where users were being logged out immediately after redirecting from authentication callbacks:
+- **Cookie Option Forwarding**: In `getSupabaseServerClient` (`apps/web/src/lib/supabase.ts`), the `setAll` cookie handler was modified to forward `cookie.options` (e.g. `path`, `maxAge`) to TanStack Start's `setCookie` function.
+- **Root Cause**: Since server-side OAuth exchange happens within TanStack Start server functions (which request paths under `/_server`), omitting `options.path` defaulted the cookies' path scope to `/_server`, preventing standard pages (like `/portfolios` or `/today`) from receiving the auth cookies.
+- **TDD Verification**: Covered by robust server client tests in `supabase.test.ts` checking correct propagation of cookie options to prevent regression.
+
 ## Design System
 
 "Bloomberg Terminal Meets Wired Magazine" at `packages/ui-design-system/`. Fully adopted across all pages as of 2026-05-14.

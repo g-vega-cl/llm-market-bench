@@ -16,9 +16,9 @@ export function getSupabaseServerClient() {
                     value,
                 }));
             },
-            setAll(cookies: { name: string; value: string }[]) {
-                cookies.forEach((cookie: { name: string; value: string }) => {
-                    setCookie(cookie.name, cookie.value);
+            setAll(cookies: { name: string; value: string; options?: Record<string, unknown> }[]) {
+                cookies.forEach((cookie) => {
+                    setCookie(cookie.name, cookie.value, cookie.options);
                 });
             },
         },

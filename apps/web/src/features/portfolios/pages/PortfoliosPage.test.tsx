@@ -4,27 +4,36 @@ import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { PortfoliosPage } from './PortfoliosPage';
 
-// Mock Tanstack Query's useSuspenseQuery to return the data directly
+// Mock Tanstack Query's useSuspenseQuery and useQuery to return the data directly
 vi.mock('@tanstack/react-query', async (importOriginal) => {
     const original = await importOriginal<typeof import('@tanstack/react-query')>();
+    const stubQuery = ({
+        queryKey,
+        initialData,
+    }: {
+        queryKey?: unknown[];
+        initialData?: unknown;
+    }) => {
+        if (queryKey && queryKey[0] === 'portfolios' && queryKey[1] === 'list') {
+            return { data: initialData };
+        }
+        if (queryKey && queryKey[0] === 'portfolios' && queryKey[1] === 'comparison') {
+            return {
+                data: initialData || {
+                    portfolios: [],
+                    startDate: '',
+                    endDate: '',
+                    benchmarkData: {},
+                },
+            };
+        }
+        return { data: initialData };
+    };
     return {
         ...original,
-        useSuspenseQuery: vi.fn().mockImplementation(({ queryKey, initialData }) => {
-            if (queryKey && queryKey[0] === 'portfolios' && queryKey[1] === 'list') {
-                return { data: initialData };
-            }
-            if (queryKey && queryKey[0] === 'portfolios' && queryKey[1] === 'comparison') {
-                return {
-                    data: initialData || {
-                        portfolios: [],
-                        startDate: '',
-                        endDate: '',
-                        benchmarkData: {},
-                    },
-                };
-            }
-            return { data: initialData };
-        }),
+        useSuspenseQuery: vi.fn().mockImplementation(stubQuery),
+        useQuery: vi.fn().mockImplementation(stubQuery),
+        keepPreviousData: original.keepPreviousData,
     };
 });
 

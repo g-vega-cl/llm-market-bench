@@ -296,7 +296,12 @@ export function PortfolioComparisonChart({
                 .attr('fill', 'none')
                 .attr('stroke', color)
                 .attr('stroke-width', 2.5)
-                .attr('d', line);
+                .attr('opacity', 0)
+                .attr('d', line)
+                .transition()
+                .duration(350)
+                .ease(d3.easeQuadInOut)
+                .attr('opacity', 1);
         });
 
         if (benchmarkLines.length > 0) {
@@ -310,7 +315,12 @@ export function PortfolioComparisonChart({
                 .attr('stroke', '#f59e0b')
                 .attr('stroke-width', 2)
                 .attr('stroke-dasharray', '6,3')
-                .attr('d', line);
+                .attr('opacity', 0)
+                .attr('d', line)
+                .transition()
+                .duration(350)
+                .ease(d3.easeQuadInOut)
+                .attr('opacity', 1);
         }
 
         const bisector = d3.bisector<ChartLine, Date>((d) => d.date).left;
@@ -621,6 +631,7 @@ export function PortfolioComparisonChart({
                     height="400"
                     viewBox="0 0 800 400"
                     preserveAspectRatio="xMidYMid meet"
+                    style={{ transition: 'opacity 150ms ease' }}
                 />
             </div>
             <div className="mt-2 text-xs text-zinc-400 text-center">

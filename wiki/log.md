@@ -239,3 +239,15 @@ Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in
 - **Documentation**: Documented this specific React Query `initialData` gotcha in `concepts/tanstack-query.md`.
 
 **See**: [[concepts/tanstack-query]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx)
+
+## [2026-06-15] fix | Eliminate benchmark switch flash and add D3 fade transition
+
+Root-caused and fixed a visual flash in the portfolio comparison chart when switching the benchmark dropdown:
+
+- **Root cause 1 — `key={selectedBenchmark}` on chart component**: React interpreted a different `key` as a different component and fully unmounted + remounted the `<PortfolioComparisonChart>` on every benchmark change, destroying the D3 SVG and all state. Removed the `key` prop; the chart's existing `useEffect([data, benchmarkData, selectedBenchmark])` already handles in-place re-draws correctly.
+- **Root cause 2 — `useSuspenseQuery` without `placeholderData`**: When the query key changed (new benchmark), `useSuspenseQuery` suspended immediately (no cache hit), triggering the nearest Suspense fallback and blanking the chart area. Added `placeholderData: keepPreviousData` so the previous benchmark's cached data stays visible while the new fetch runs.
+- **Smooth D3 animation**: Added a 350ms `easeQuadInOut` opacity fade-in transition to all chart paths (portfolio lines and benchmark line) on every D3 redraw. Combined with the two fixes above, switching benchmarks now produces a smooth animated handoff instead of a hard snap.
+- **TDD regression guard**: Added a second test in `PortfoliosPageBenchmark.test.tsx` that captures the DOM node reference before a benchmark switch and asserts it is the exact same node after — a structural guarantee that no unmount/remount occurred.
+- **Documentation**: Updated `concepts/tanstack-query.md` with the corrected `keepPreviousData` solution pattern and a new pitfall entry for the `key={dynamicValue}` anti-pattern. Updated `sources/web-portfolios-source.md` with a Smooth Benchmark Switching bullet.
+
+**See**: [[concepts/tanstack-query]], [[sources/web-portfolios-source]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx), [PortfolioComparisonChart.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/components/PortfolioComparisonChart.tsx)

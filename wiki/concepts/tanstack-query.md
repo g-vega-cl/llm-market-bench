@@ -74,7 +74,33 @@ The client is wrapped around the root component in `apps/web/src/routes/__root.t
 ### Dynamic `initialData` Cache Pollution
 Using React state as `initialData` in `useSuspenseQuery` or `useQuery` when the query key is dynamic (e.g., depends on a selected benchmark, filter, or page state) can cause cache pollution:
 - **Pitfall**: When the state changes (e.g., the selected benchmark changes from `'SPY'` to `'QQQ'`), `useSuspenseQuery` is called with the new query key but the *old* `initialData` (which is still the data from `'SPY'`). React Query immediately seeds the cache for the new key (`'QQQ'`) with the old `'SPY'` data and marks it as fresh. When the fetch resolves and updates the `initialData` state variable, React Query ignores it because the cache entry is already marked as fresh and exists.
-- **Solution**: For interactive client-side queries where the query key is dynamic and depends on client-side state selection, avoid passing `initialData` to `useSuspenseQuery`. Use standard client-side fetching/suspense. To avoid hard loading states during state changes, wrap the state update in `React.useTransition` (e.g., `startTransition(() => setSelectedBenchmark(ticker))`).
+- **Solution**: Remove `initialData` entirely from `useSuspenseQuery` for dynamic-key queries. Add `placeholderData: keepPreviousData` so the **previous key's cached data** remains visible while the new key is fetching — preventing the Suspense boundary from firing and eliminating visual flicker. Wrap the state update in `React.useTransition` as an additional layer: the transition defers the state commit so React can keep rendering the old state until the new data is ready.
+
+```typescript
+import { keepPreviousData, useSuspenseQuery } from '@tanstack/react-query';
+
+// Good: keepPreviousData keeps old data visible while new key loads.
+const { data } = useSuspenseQuery({
+    ...portfolioQueries.comparison({ benchmark: selectedBenchmark, fetchFn }),
+    placeholderData: keepPreviousData, // ← prevents Suspense boundary flash
+});
+
+// In the event handler:
+startTransition(() => setSelectedBenchmark(ticker)); // ← defers state update
+```
+
+### `key={dynamicValue}` on Expensive Components
+Passing a dynamic value as the React `key` prop on a chart or data-heavy component forces a **full unmount + remount** every time the value changes — even if the component's own `useEffect`/memo dependencies would handle the update correctly:
+- **Pitfall**: `<PortfolioComparisonChart key={selectedBenchmark} />` — changing the benchmark destroys the entire D3 SVG and all associated state, causing a jarring visual flash.
+- **Solution**: Remove the `key` prop and let the component re-render naturally through its own dependency tracking (e.g., `useEffect([data, benchmarkData, selectedBenchmark])`). If a smooth animated transition is desired, add D3 transitions (opacity or path animations) rather than relying on React remounting.
+
+```tsx
+// Bad — unmounts the entire chart on every benchmark change:
+<PortfolioComparisonChart key={selectedBenchmark} data={...} />
+
+// Good — chart stays mounted and D3 re-draws in-place with a fade transition:
+<PortfolioComparisonChart data={...} selectedBenchmark={selectedBenchmark} />
+```
 
 ## Related
 

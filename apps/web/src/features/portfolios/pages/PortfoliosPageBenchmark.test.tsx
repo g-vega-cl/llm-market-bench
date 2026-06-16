@@ -113,4 +113,64 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
             expect(lastChartProps.benchmarkData?.QQQ).toBeDefined();
         });
     });
+
+    it('should not remount the chart when the benchmark changes (no flash)', async () => {
+        render(
+            <QueryClientProvider client={queryClient}>
+                <PortfoliosPage
+                    initialData={
+                        [
+                            {
+                                id: 'p1',
+                                owner_id: 'agent-1',
+                                total_equity: 100000,
+                                cash_balance: 50000,
+                                buying_power: 100000,
+                                is_active: true,
+                                is_autoresearch: true,
+                                created_at: '2026-05-25T12:00:00.000Z',
+                                updated_at: '2026-05-25T12:00:00.000Z',
+                            },
+                            // biome-ignore lint/suspicious/noExplicitAny: mock data
+                        ] as unknown as any
+                    }
+                    fetchFn={vi.fn()}
+                    comparisonFetchFn={vi.fn().mockImplementation(async (benchmark) => ({
+                        portfolios: [
+                            {
+                                portfolioId: 'p1',
+                                ownerId: 'agent-1',
+                                performance: [
+                                    { date: '2026-06-01', value: 0, totalEquity: 100000 },
+                                ],
+                            },
+                        ],
+                        startDate: '2026-06-01',
+                        endDate: '2026-06-01',
+                        benchmarkData: {
+                            [benchmark]: [{ date: '2026-06-01', price: 500 }],
+                        },
+                    }))}
+                />
+            </QueryClientProvider>,
+        );
+
+        // Wait for the initial chart to appear
+        const chartEl = await screen.findByTestId('portfolio-comparison-chart');
+
+        // Capture the DOM node reference before the benchmark switch
+        const nodeBeforeSwitch = chartEl;
+
+        // Switch benchmark
+        const select = screen.getByRole('combobox');
+        fireEvent.change(select, { target: { value: 'QQQ' } });
+
+        await waitFor(() => {
+            expect(lastChartProps?.selectedBenchmark).toBe('QQQ');
+        });
+
+        // The DOM node must be the same object — no unmount/remount occurred
+        const nodeAfterSwitch = screen.getByTestId('portfolio-comparison-chart');
+        expect(nodeAfterSwitch).toBe(nodeBeforeSwitch);
+    });
 });

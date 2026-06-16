@@ -7,7 +7,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
@@ -117,11 +117,12 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY');
     const [_isPending, startTransition] = React.useTransition();
 
-    const { data: comparisonData } = useSuspenseQuery({
+    const { data: comparisonData } = useQuery({
         ...portfolioQueries.comparison({
             benchmark: selectedBenchmark,
             fetchFn: () => comparisonFetchFn(selectedBenchmark, 90),
         }),
+        placeholderData: keepPreviousData,
     });
 
     const active = data?.filter((p) => p.is_active !== false) ?? [];
@@ -170,7 +171,6 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                             />
                         </div>
                         <PortfolioComparisonChart
-                            key={selectedBenchmark}
                             data={comparisonData?.portfolios || []}
                             benchmarkData={comparisonData?.benchmarkData}
                             selectedBenchmark={selectedBenchmark}

@@ -13,10 +13,10 @@ This page defines the framework for producing highly visual, terminal-native pla
 
 Use these pre-formatted Unicode components to build visual plans:
 
-### 1. Progress Tracker & State Board
-Use visual progress bars to indicate completion status of planning, execution, and verification phases.
+### 1. Status Board
+Use a status board to indicate the active phase of the plan.
 ```
-Status: [▓▓▓▓▓░░░░░] 50% | Phase: Implementation
+Phase: Implementation (Awaiting "Go ahead")
 ```
 
 ### 2. File Change Tree
@@ -68,7 +68,7 @@ A visual plan must structure information into the following distinct sections:
 
 | Section | Visual Element Used | Purpose |
 | :--- | :--- | :--- |
-| **1. Progress Board** | Progress bar + status badge | High-level status & active phase |
+| **1. Status Board** | Active phase indicator | High-level active phase |
 | **2. File Change Tree** | Unicode file directory tree | Explicit file paths, lines, and actions |
 | **3. Logic / Data Flow** | ASCII/Unicode flowchart | Technical execution flow or sequence |
 | **4. UI/UX Mockup** | Unicode box interface frame | Screen layout / state changes (if applicable) |
@@ -83,7 +83,7 @@ A visual plan must structure information into the following distinct sections:
 ```
 ### 📋 Visual Implementation Plan
 
-Status: [░░░░░░░░░░] 0% | Phase: Drafting
+Phase: Drafting
 
 #### 📁 File Change Tree
 📁 apps/engine/

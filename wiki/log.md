@@ -213,3 +213,10 @@ Added prediction market capabilities to the engine:
 - Wiki updates: agents, database, ingestion pages updated
 - ROADMAP.md: added options/info item
 
+## [2026-06-17] refactor | Remove progress bar from visual planning framework
+
+Refactored the visual planning framework:
+- **Removed Progress Bar**: Removed the 0%-100% Unicode progress bars from `wiki/concepts/visual-planning.md` instructions, tables, and templates.
+- **Status Board**: Renamed "Progress Board" and "Progress Tracker" to "Status Board", focusing exclusively on the active phase rather than completion percentages.
+
+**See**: [[concepts/visual-planning]]

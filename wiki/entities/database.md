@@ -19,6 +19,7 @@ Supabase PostgreSQL with pgvector extension. Manages four domains: ingestion
 - **`newsletter_snapshots`** — Cleaned newsletter content with chunk hashing for dedup
 - **`concept_metrics`** — Momentum tracking with PCA coordinates
 - **`market_feeling`** — LLM-driven sentiment (refreshed multiple times daily)
+- **`prediction_market_snapshots`** — Filtered Polymarket and Kalshi active market odds for sentiment checking
 - **`system_audits`** — Weekly anomaly detection findings
 
 ## Vector Search

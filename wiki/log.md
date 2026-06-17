@@ -1,42 +1,3 @@
-## [2026-06-16] bugfix | Supabase SSR Cookie Options Propagation for OAuth Session Persistence
-
-Resolved Google sign-in/up and sign-out session persistence issues in the web application:
-- **Cookie Option Forwarding**: Updated the `setAll` implementation in [supabase.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.ts) to forward `cookie.options` to TanStack Start's `setCookie` function.
-- **Session Loss Prevention**: Prevented browsers from scoping authentication cookies to the `/_server` path (the default request path for server functions), enabling session cookies to persist on standard routes.
-- **TDD verification**: Authored [supabase.test.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.test.ts) to assert proper forwarding of cookie options.
-
-**See**: [[entities/web-app]], [supabase.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.ts), [supabase.test.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/lib/supabase.test.ts)
-
-## [2026-06-16] feature | Terminal-Friendly Visual Planning Framework
-
-Implemented a terminal-native visual planning framework to allow agents to generate rich, visual, Markdown-compliant plans:
-- **Concept Page**: Created [[concepts/visual-planning]] detailing Unicode box-drawing, ASCII flowcharts, progress trackers, and UI mockups.
-- **Mandatory Agent Guideline**: Updated the Plan First instructions in [[entities/gemini]] and [[concepts/agent-workflow]] to require visual planning for all non-trivial tasks.
-- **Wiki Integration**: Indexed and cross-linked the new planning page within the wiki index.
-
-**See**: [[concepts/visual-planning]], [[concepts/agent-workflow]], [[entities/gemini]]
-
-## [2026-06-04] feature | Local RAG MCP Server Implementation & Setup Documentation
- 
-Implemented a workspace-local Model Context Protocol (MCP) server package and updated setup documentation:
-- **RAG MCP Package**: Implemented `@llm-market-bench/mcp-knowledge-rag` under `packages/mcp-knowledge-rag/` to query the external `misc` Supabase database and generate 768-dimension Gemini embeddings.
-- **CLI Plugin Configuration**: Configured the package as an Antigravity CLI plugin using `plugin.json` and `mcp_config.json`. Successfully registered the server locally using the `agy plugin install` interface.
-- **Workspace Configuration**: Added `.mcp.json` and `.ai/mcp/mcp.json` config files for automatic discovery in Claude Code and Opencode.
-- **Documentation**: Updated the main README and the `mcp-setup.md` wiki concept page with installation/uninstallation guides for the custom local RAG server.
- 
-**See**: [[concepts/mcp-setup]], [README.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/README.md)
-
-## [2026-06-04] feature | Local RAG MCP Server Package
-
-Implemented a new workspace-local Model Context Protocol (MCP) server package `@llm-market-bench/mcp-knowledge-rag` under `packages/mcp-knowledge-rag/`. The server provides semantic search (RAG) against the external `misc` Supabase database using Gemini embeddings (768-dimension) and pgvector's `match_emails` RPC. Includes workspace configuration files (`.mcp.json`, `.ai/mcp/mcp.json`) for automatic discovery in Claude Code and Opencode, plus Antigravity CLI plugin support via `plugin.json` and `mcp_config.json`. Environment variables `MISC_SUPABASE_URL` and `MISC_SUPABASE_KEY` added to engine `.env.example`. Biome linting scope extended to cover the new package.
-
-## [2026-06-06] bugfix | Add participating agents metadata to consensus events and remove frontend consensus meter
-
-Fixed consensus cards agent display bug and cleaned up Today page UI:
-- **Backend Metadata Fix**: Saved both `participating_agents` and `models_involved` (derived from unique models grouped semantically in consensus) to memory metadata dictionary in `apps/engine/analysis/consensus.py`.
-- **TDD Regression Tests**: Added metadata assertion tests to `apps/engine/tests/test_consensus.py` checking that the models involved are persisted in the database memory metadata.
-- **Frontend Meter Removal**: Removed the arbitrary and confusing "Consensus" percentage meter from `apps/web/src/features/today/components/AgentInsights.tsx` as requested. The presence of model icons on each card now directly indicates consensus.
-
 ## [2026-06-07] feature | Interactive Prompt Changes Diff View & Custom LCS Algorithm
 
 Implemented an interactive, unified line-by-line diff section on the Auto-Research Arena details page to display the differences between an experiment's prompt and its parent prompt:
@@ -226,7 +187,6 @@ Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:2
 
 **See**: [[concepts/model-anomalies]], [[concepts/tool-enforcement]]
 
-
 ## [2026-06-16] feature | Terminal-Friendly Visual Planning Framework
 
 Implemented a terminal-native visual planning framework to allow agents to generate rich, visual, Markdown-compliant plans:
@@ -241,4 +201,15 @@ Implemented a terminal-native visual planning framework to allow agents to gener
 Created a concept page to detail how Supabase Auth whitelisting and fallback logic handles requested redirects. Documents the difference between local dev ports (Netlify dev 3000 vs. Vite 3005) and production deployment whitelists, providing step-by-step instructions to prevent redirect-loop fallbacks to localhost:3000.
 
 **See**: [[concepts/supabase-redirect-whitelisting]], [[entities/web-app]]
+
+## [2026-06-17] feature | Prediction Market Tools and Database Schema
+
+Added prediction market capabilities to the engine:
+- New DB table `prediction_market_snapshots` for storing Polymarket/Kalshi odds
+- Two new LLM tools: `search_prediction_markets` (DB search) and `get_prediction_market_odds` (live API fetch)
+- Tool definitions registered across all providers (OpenAI, Anthropic, Gemini)
+- Execution handlers with dispatcher routing
+- Unit tests for search, live odds, and handler dispatch
+- Wiki updates: agents, database, ingestion pages updated
+- ROADMAP.md: added options/info item
 

@@ -17,6 +17,8 @@ DEFAULT_OPENAI_TOOLS = [
     tools.CALCULATE_SELL_QUANTITY_TOOL,
     tools.FIND_UNCORRELATED_ASSETS_TOOL,
     tools.GET_KEY_METRICS_TOOL,
+    tools.SEARCH_PREDICTION_MARKETS_TOOL,
+    tools.GET_PREDICTION_MARKET_ODDS_TOOL,
 ]
 
 # OpenAI web search tool (native tool, not a function)

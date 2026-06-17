@@ -21,6 +21,8 @@ MiniMaxClient = minimax.MiniMaxClient
 # Constants and definitions
 _CLIENT_FACTORIES = clients.CLIENT_FACTORIES
 execute_stock_tool = tools.execute_stock_tool
+execute_search_prediction_markets_tool = tools.execute_search_prediction_markets_tool
+execute_get_prediction_market_odds_tool = tools.execute_get_prediction_market_odds_tool
 
 __all__ = [
     "analysis",
@@ -40,5 +42,7 @@ __all__ = [
     "MiniMaxClient",
     "_CLIENT_FACTORIES",
     "execute_stock_tool",
+    "execute_search_prediction_markets_tool",
+    "execute_get_prediction_market_odds_tool",
     "MarketDataManager",
 ]

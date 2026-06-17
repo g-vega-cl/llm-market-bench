@@ -11,7 +11,6 @@ from core.llm.handlers import base
 
 logger = logging.getLogger("engine")
 
-# Default function tools for Gemini (translated from canonical OpenAI format).
 DEFAULT_GEMINI_TOOLS = [
     tools.to_gemini(t)
     for t in (
@@ -22,6 +21,8 @@ DEFAULT_GEMINI_TOOLS = [
         tools.CALCULATE_SELL_QUANTITY_TOOL,
         tools.FIND_UNCORRELATED_ASSETS_TOOL,
         tools.GET_KEY_METRICS_TOOL,
+        tools.SEARCH_PREDICTION_MARKETS_TOOL,
+        tools.GET_PREDICTION_MARKET_ODDS_TOOL,
     )
 ]
 

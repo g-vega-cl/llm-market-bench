@@ -14,6 +14,7 @@ Three parallel ingestion streams that feed the pipeline:
   `CALENDAR_EVENT` memories with `is_future_catalyst=true`.
 - **Government Tracking**: Scans for policy bills, subsidies, regulatory changes
   across G7 and major G20 economies. Stores as `GOVERNMENT_INCENTIVE` memories.
+- **Prediction Markets (Hybrid)**: Periodically fetches active, high-volume sentiment data from Polymarket and Kalshi APIs, filtered via a lightweight LLM classifier, and upserts them to `prediction_market_snapshots`. Also exposed as real-time tools for active agent queries.
 
 ## Key Design
 

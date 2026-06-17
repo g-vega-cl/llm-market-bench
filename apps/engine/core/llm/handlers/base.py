@@ -46,4 +46,14 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             period=args.get("period", "annual"),
             limit=args.get("limit", 2),
         )
+    elif name == "search_prediction_markets":
+        return await tools.execute_search_prediction_markets_tool(
+            args["query"],
+            platform=args.get("platform"),
+        )
+    elif name == "get_prediction_market_odds":
+        return await tools.execute_get_prediction_market_odds_tool(
+            args["market_id"],
+            platform=args["platform"],
+        )
     return "Unknown tool"

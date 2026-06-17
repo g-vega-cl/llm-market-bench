@@ -12,7 +12,6 @@ from core.llm.handlers import base
 
 logger = logging.getLogger("engine")
 
-# Default tools for Anthropic (translated from canonical OpenAI format).
 DEFAULT_ANTHROPIC_TOOLS = [
     tools.to_anthropic(t)
     for t in (
@@ -23,6 +22,8 @@ DEFAULT_ANTHROPIC_TOOLS = [
         tools.CALCULATE_SELL_QUANTITY_TOOL,
         tools.FIND_UNCORRELATED_ASSETS_TOOL,
         tools.GET_KEY_METRICS_TOOL,
+        tools.SEARCH_PREDICTION_MARKETS_TOOL,
+        tools.GET_PREDICTION_MARKET_ODDS_TOOL,
     )
 ]
 

@@ -109,3 +109,4 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: add volume? and volume derivated values?
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
 - [ ] - Benchify: it's stock analysis also part of my sources?
+- [ ] - Get option information. Like Greeks, implied volatility, etc... Maybe from FMP?

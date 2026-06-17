@@ -22,10 +22,12 @@ Supabase PostgreSQL with pgvector extension. Manages four domains: ingestion
 - **`prediction_market_snapshots`** — Filtered Polymarket and Kalshi active market odds for sentiment checking
 - **`system_audits`** — Weekly anomaly detection findings
 
-## Vector Search
+## Database RPC Functions
 
-Two RPC functions power RAG: `match_memories` (cross-agent global memories) and
-`match_decisions` (per-agent trade reasoning scoped by `model_name`).
+- **`match_memories`** — Cross-agent semantic global memory vector searches.
+- **`match_decisions`** — Per-agent trade reasoning searches scoped by `model_name`.
+- **`get_llm_leaderboard_metrics`** — Aggregates and calculates dynamic metrics (Return %, Win Rate, Verifier Approval Rate, Consistency Score, and composite Leaderboard Score) for all models over a selectable timeframe (`time_window_days`).
+
 
 ## JSONB Querying Conventions
 

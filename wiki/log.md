@@ -220,3 +220,26 @@ Refactored the visual planning framework:
 - **Status Board**: Renamed "Progress Board" and "Progress Tracker" to "Status Board", focusing exclusively on the active phase rather than completion percentages.
 
 **See**: [[concepts/visual-planning]]
+
+## [2026-06-17] feature | LLM Leaderboard & Screening Tool
+
+Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
+- **Database Layer**: Deployed Supabase migration `20260618000000_create_llm_leaderboard_rpc.sql` creating the `get_llm_leaderboard_metrics` function to dynamically calculate returns, realized P&L, win rates, verifier approval rates, average confidence, and consistency scores over selected timeframes (7d, 30d, 90d, All-Time).
+- **TypeScript Integration**: Added `LLMLeaderboardRow` types to `@llm-market-bench/database`.
+- **API Fetcher**: Created `fetch-leaderboard.ts` to execute RPC queries from the TanStack Start server layer.
+- **Visual Page & Routing**: Added new route `/leaderboard` and created the `LeaderboardPage` hub with a timeframe switcher.
+- **Aesthetic Components**: Designed a Bloomberg-meets-Wired podium layout (`LeaderboardPodium.tsx`), a sortable data grid (`LeaderboardTable.tsx`), and a side-by-side comparative diagnostics utility (`ModelComparison.tsx`) using the design system's glass Cards, Tables, and Badges.
+- **TDD & Quality**: Created `fetch-leaderboard.test.ts` and `LeaderboardPage.test.tsx` verifying data aggregation, metrics calculations, UI rendering, and comparison interactions. Passed 100% of test suites with zero lint or formatting errors.
+
+**See**: [leaderboard route](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/leaderboard/index.tsx), [fetch-leaderboard.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/api/fetch-leaderboard.ts)
+
+
+## [2026-06-17] feature | LLM Leaderboard & Screening Tool
+
+Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
+- **Database Layer**: Deployed Supabase migration `20260618000000_create_llm_leaderboard_rpc.sql` creating the `get_llm_leaderboard_metrics` function to dynamically calculate returns, realized P&L, win rates, verifier approval rates, average confidence, and consistency scores over selected timeframes (7d, 30d, 90d, All-Time).
+- **TypeScript Integration**: Added `LLMLeaderboardRow` types to `@llm-market-bench/database`.
+- **API Fetcher**: Created `fetch-leaderboard.ts` to execute RPC queries from the TanStack Start server layer.
+- **Visual Page & Routing**: Added new route `/leaderboard` and created the `LeaderboardPage` hub with a timeframe switcher.
+- **Aesthetic Components**: Designed a Bloomberg-meets-Wired podium layout (`LeaderboardPodium.tsx`), a sortable data grid (`LeaderboardTable.tsx`), and a side-by-side comparative diagnostics utility (`ModelComparison.tsx`) using the design system's glass Cards, Tables, and Badges.
+- **TDD & Quality**: Created `fetch-leaderboard.test.ts` and `LeaderboardPage.test.tsx` verifying data aggregation, metrics calculations, UI rendering, and comparison interactions. Passed 100% of test suites with zero lint or formatting errors.

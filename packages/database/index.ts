@@ -106,3 +106,20 @@ export type PositionWithReasoning = PositionPnl & {
 export type TradeWithReasoning = Trade & {
     reasoning?: string;
 };
+
+export interface LLMLeaderboardRow {
+    model_name: string;
+    total_equity: number;
+    return_pct: number;
+    realized_pnl: number;
+    win_rate: number;
+    total_trades: number;
+    verifier_approval_rate: number;
+    average_confidence: number;
+    api_success_rate: number;
+    trading_activity_rate: number;
+    trading_performance_score: number;
+    reasoning_quality_score: number;
+    consistency_score: number;
+    composite_score: number;
+}

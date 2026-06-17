@@ -26,6 +26,7 @@
 - [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop
 - [[entities/macro-tracker]] — 23-ticker global macro regime monitoring
 - [[entities/sector-predictor-arena]] — Weekly top sector predictions and DeepSeek vs MiniMax arena dashboard
+- [[entities/llm-leaderboard]] — LLM ranking and diagnostic screening system (composite scoring, verifier rates, and consistency metrics)
 - [[entities/gemini]] — Project-level mandates, precedence directives, and command reference
 
 ## Concepts

@@ -75,6 +75,7 @@ export const navItems = [
     { to: '/portfolios', label: 'Portfolios' },
     { to: '/memories', label: 'Memories' },
     { to: '/autoresearch', label: 'Auto-Research' },
+    { to: '/leaderboard', label: 'Leaderboard' },
     { to: '/', label: 'Home', exact: true },
     { to: '/today', label: 'Today' },
     { to: '/posts', label: 'Posts' },

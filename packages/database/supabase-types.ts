@@ -118,10 +118,22 @@ export type Database = {
                     data_points: number | null;
                     id: string;
                     pearson_corr: number | null;
+                    pearson_corr_30d: number | null;
+                    pearson_corr_60d: number | null;
+                    pearson_corr_7d: number | null;
+                    returns_a_30d: number | null;
+                    returns_a_60d: number | null;
+                    returns_a_7d: number | null;
                     returns_a_90d: number | null;
+                    returns_b_30d: number | null;
+                    returns_b_60d: number | null;
+                    returns_b_7d: number | null;
                     returns_b_90d: number | null;
                     run_id: string;
                     spearman_corr: number | null;
+                    spearman_corr_30d: number | null;
+                    spearman_corr_60d: number | null;
+                    spearman_corr_7d: number | null;
                     ticker_a: string;
                     ticker_b: string;
                 };
@@ -129,10 +141,22 @@ export type Database = {
                     data_points?: number | null;
                     id?: string;
                     pearson_corr?: number | null;
+                    pearson_corr_30d?: number | null;
+                    pearson_corr_60d?: number | null;
+                    pearson_corr_7d?: number | null;
+                    returns_a_30d?: number | null;
+                    returns_a_60d?: number | null;
+                    returns_a_7d?: number | null;
                     returns_a_90d?: number | null;
+                    returns_b_30d?: number | null;
+                    returns_b_60d?: number | null;
+                    returns_b_7d?: number | null;
                     returns_b_90d?: number | null;
                     run_id: string;
                     spearman_corr?: number | null;
+                    spearman_corr_30d?: number | null;
+                    spearman_corr_60d?: number | null;
+                    spearman_corr_7d?: number | null;
                     ticker_a: string;
                     ticker_b: string;
                 };
@@ -140,10 +164,22 @@ export type Database = {
                     data_points?: number | null;
                     id?: string;
                     pearson_corr?: number | null;
+                    pearson_corr_30d?: number | null;
+                    pearson_corr_60d?: number | null;
+                    pearson_corr_7d?: number | null;
+                    returns_a_30d?: number | null;
+                    returns_a_60d?: number | null;
+                    returns_a_7d?: number | null;
                     returns_a_90d?: number | null;
+                    returns_b_30d?: number | null;
+                    returns_b_60d?: number | null;
+                    returns_b_7d?: number | null;
                     returns_b_90d?: number | null;
                     run_id?: string;
                     spearman_corr?: number | null;
+                    spearman_corr_30d?: number | null;
+                    spearman_corr_60d?: number | null;
+                    spearman_corr_7d?: number | null;
                     ticker_a?: string;
                     ticker_b?: string;
                 };
@@ -303,6 +339,36 @@ export type Database = {
                     prompt?: Json;
                     response?: Json | null;
                     task_type?: string;
+                };
+                Relationships: [];
+            };
+            market_barometer_history: {
+                Row: {
+                    date: string;
+                    earnings_surprise_momentum: number | null;
+                    forward_pe: number | null;
+                    pb_ratio: number | null;
+                    pe_ratio: number | null;
+                    ps_ratio: number | null;
+                    updated_at: string | null;
+                };
+                Insert: {
+                    date: string;
+                    earnings_surprise_momentum?: number | null;
+                    forward_pe?: number | null;
+                    pb_ratio?: number | null;
+                    pe_ratio?: number | null;
+                    ps_ratio?: number | null;
+                    updated_at?: string | null;
+                };
+                Update: {
+                    date?: string;
+                    earnings_surprise_momentum?: number | null;
+                    forward_pe?: number | null;
+                    pb_ratio?: number | null;
+                    pe_ratio?: number | null;
+                    ps_ratio?: number | null;
+                    updated_at?: string | null;
                 };
                 Relationships: [];
             };
@@ -615,6 +681,57 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            prediction_market_snapshots: {
+                Row: {
+                    category: string;
+                    description: string | null;
+                    ends_at: string | null;
+                    id: string;
+                    ingested_at: string | null;
+                    is_active: boolean | null;
+                    last_updated_at: string | null;
+                    market_id: string;
+                    no_odds: number;
+                    platform: string;
+                    question: string;
+                    slug: string | null;
+                    volume_usd: number;
+                    yes_odds: number;
+                };
+                Insert: {
+                    category: string;
+                    description?: string | null;
+                    ends_at?: string | null;
+                    id?: string;
+                    ingested_at?: string | null;
+                    is_active?: boolean | null;
+                    last_updated_at?: string | null;
+                    market_id: string;
+                    no_odds: number;
+                    platform: string;
+                    question: string;
+                    slug?: string | null;
+                    volume_usd?: number;
+                    yes_odds: number;
+                };
+                Update: {
+                    category?: string;
+                    description?: string | null;
+                    ends_at?: string | null;
+                    id?: string;
+                    ingested_at?: string | null;
+                    is_active?: boolean | null;
+                    last_updated_at?: string | null;
+                    market_id?: string;
+                    no_odds?: number;
+                    platform?: string;
+                    question?: string;
+                    slug?: string | null;
+                    volume_usd?: number;
+                    yes_odds?: number;
+                };
+                Relationships: [];
+            };
             price_history: {
                 Row: {
                     fetched_at: string | null;
@@ -691,6 +808,54 @@ export type Database = {
                         referencedColumns: ['variant_tag'];
                     },
                 ];
+            };
+            sector_predictions: {
+                Row: {
+                    created_at: string;
+                    id: string;
+                    model_name: string;
+                    pair_percentile_score: number | null;
+                    predicted_pair: Json;
+                    predicted_sector: string;
+                    prediction_date: string;
+                    prompt_tag: string | null;
+                    reasoning: string | null;
+                    sector_percentile_score: number | null;
+                    status: string;
+                    target_date: string;
+                    timeframe: string;
+                };
+                Insert: {
+                    created_at?: string;
+                    id?: string;
+                    model_name: string;
+                    pair_percentile_score?: number | null;
+                    predicted_pair: Json;
+                    predicted_sector: string;
+                    prediction_date: string;
+                    prompt_tag?: string | null;
+                    reasoning?: string | null;
+                    sector_percentile_score?: number | null;
+                    status?: string;
+                    target_date: string;
+                    timeframe: string;
+                };
+                Update: {
+                    created_at?: string;
+                    id?: string;
+                    model_name?: string;
+                    pair_percentile_score?: number | null;
+                    predicted_pair?: Json;
+                    predicted_sector?: string;
+                    prediction_date?: string;
+                    prompt_tag?: string | null;
+                    reasoning?: string | null;
+                    sector_percentile_score?: number | null;
+                    status?: string;
+                    target_date?: string;
+                    timeframe?: string;
+                };
+                Relationships: [];
             };
             system_audits: {
                 Row: {
@@ -848,6 +1013,48 @@ export type Database = {
                 Returns: {
                     result: Json;
                 }[];
+            };
+            get_llm_leaderboard_metrics: {
+                Args: { time_window_days: number };
+                Returns: {
+                    api_success_rate: number;
+                    average_confidence: number;
+                    composite_score: number;
+                    consistency_score: number;
+                    model_name: string;
+                    realized_pnl: number;
+                    reasoning_quality_score: number;
+                    return_pct: number;
+                    total_equity: number;
+                    total_trades: number;
+                    trading_activity_rate: number;
+                    trading_performance_score: number;
+                    verifier_approval_rate: number;
+                    win_rate: number;
+                }[];
+            };
+            get_memory_chain: {
+                Args: { target_id: string };
+                Returns: {
+                    content: string;
+                    created_at: string | null;
+                    embedding: string | null;
+                    id: string;
+                    importance_score: number | null;
+                    memory_type: string | null;
+                    metadata: Json | null;
+                    parent_id: string | null;
+                    relationship_type: string | null;
+                    relevance_score: number | null;
+                    status: string | null;
+                    target_date: string | null;
+                }[];
+                SetofOptions: {
+                    from: '*';
+                    to: 'memories';
+                    isOneToOne: false;
+                    isSetofReturn: true;
+                };
             };
             match_concepts: {
                 Args: {

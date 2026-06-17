@@ -7,6 +7,7 @@ function-tool schema). Handlers translate to provider-specific formats via
 
 import contextlib
 
+from core.config import logger
 from core.db import get_supabase_client
 from execution.market_data import MarketDataManager
 from memory.embeddings import get_embedding
@@ -364,6 +365,54 @@ GET_KEY_METRICS_TOOL = {
         },
     },
 }
+
+GET_MARKET_HEALTH_BAROMETER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_market_health_barometer",
+        "description": (
+            "Fetch recent historical and current daily S&P 500 aggregate valuation "
+            "and earnings metrics (aggregate PE ratio, Forward PE ratio, PB ratio, "
+            "PS ratio, and earnings surprise beat rate) to assess broad market health and valuation regimes."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of daily historical snapshots to retrieve (default: 5).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+GET_EARNINGS_HISTORY_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_earnings_history",
+        "description": (
+            "Retrieve historical earnings reports (actual vs. estimated EPS/revenue, surprise percentages) "
+            "and check for the upcoming earnings announcement date for a specific stock ticker."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., AAPL, NVDA, TSLA)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of recent reports to retrieve (default: 8).",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
 
 SEARCH_PREDICTION_MARKETS_TOOL = {
     "type": "function",
@@ -920,6 +969,85 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
         return output
     except Exception as e:
         return f"Error fetching key metrics for {ticker}: {str(e)}"
+
+
+async def execute_market_health_barometer_tool(limit: int = 5) -> str:
+    """Fetches S&P 500 aggregate valuation and earnings metrics from Supabase."""
+    try:
+        from core.db import get_supabase_client
+        client = get_supabase_client()
+        res = client.table("market_barometer_history").select("*").order("date", desc=True).limit(limit).execute()
+        
+        if not res.data:
+            return "No S&P 500 Market Health Barometer data found."
+            
+        output = f"S&P 500 Aggregate Market Health Barometer (Recent {len(res.data)} daily snapshots):\n"
+        for entry in res.data:
+            date_str = entry.get("date") or "N/A"
+            pe = entry.get("pe_ratio")
+            fwd_pe = entry.get("forward_pe")
+            pb = entry.get("pb_ratio")
+            ps = entry.get("ps_ratio")
+            surprise = entry.get("earnings_surprise_momentum")
+            
+            pe_val = f"{float(pe):.2f}" if pe is not None else "N/A"
+            fwd_pe_val = f"{float(fwd_pe):.2f}" if fwd_pe is not None else "N/A"
+            pb_val = f"{float(pb):.2f}" if pb is not None else "N/A"
+            ps_val = f"{float(ps):.2f}" if ps is not None else "N/A"
+            surprise_val = f"{float(surprise):.1f}%" if surprise is not None else "N/A"
+            
+            output += f"\n- Date: {date_str}\n"
+            output += f"  * Aggregate Trailing P/E: {pe_val}\n"
+            output += f"  * Aggregate Forward P/E:  {fwd_pe_val}\n"
+            output += f"  * Aggregate P/S Ratio:   {ps_val}\n"
+            output += f"  * Aggregate P/B Ratio:   {pb_val}\n"
+            output += f"  * Earnings Beat Rate:     {surprise_val} of companies beating expectations\n"
+            
+        return output
+    except Exception as e:
+        logger.exception("Error executing get_market_health_barometer tool")
+        return f"Error retrieving barometer data: {str(e)}"
+
+
+async def execute_earnings_history_tool(ticker: str, limit: int = 8) -> str:
+    """Fetches earnings history and upcoming calendar info for a ticker."""
+    manager = MarketDataManager()
+    try:
+        data = await manager.get_earnings_history(ticker, limit)
+        if not data:
+            return f"No earnings history or upcoming reports found for {ticker}."
+
+        output = f"Earnings History and Calendar for {ticker.upper()}:\n"
+        
+        upcoming = [e for e in data if e.get("isUpcoming")]
+        past = [e for e in data if not e.get("isUpcoming")]
+
+        if upcoming:
+            output += "\n--- Upcoming Earnings Announcement ---\n"
+            for entry in upcoming:
+                est_eps = f"${entry['epsEstimated']:.2f}" if entry.get('epsEstimated') is not None else "N/A"
+                est_rev = f"${entry['revenueEstimated'] / 1e9:.2f}B" if entry.get('revenueEstimated') is not None else "N/A"
+                output += f"- Date: {entry['date']} | Estimated EPS: {est_eps} | Estimated Revenue: {est_rev}\n"
+
+        if past:
+            output += "\n--- Historical Earnings Reports (Recent first) ---\n"
+            for entry in past:
+                act_eps = f"${entry['epsActual']:.2f}" if entry.get('epsActual') is not None else "N/A"
+                est_eps = f"${entry['epsEstimated']:.2f}" if entry.get('epsEstimated') is not None else "N/A"
+                act_rev = f"${entry['revenueActual'] / 1e9:.2f}B" if entry.get('revenueActual') is not None else "N/A"
+                est_rev = f"${entry['revenueEstimated'] / 1e9:.2f}B" if entry.get('revenueEstimated') is not None else "N/A"
+                
+                surprise = entry.get('surprisePct')
+                surprise_str = f"{surprise:+.2f}%" if surprise is not None else "N/A"
+                
+                output += f"- Date: {entry['date']}\n"
+                output += f"  * EPS: Actual {act_eps} vs Estimate {est_eps} (Surprise: {surprise_str})\n"
+                output += f"  * Revenue: Actual {act_rev} vs Estimate {est_rev}\n"
+
+        return output
+    except Exception as e:
+        logger.exception(f"Error executing get_earnings_history tool for {ticker}")
+        return f"Error retrieving earnings history for {ticker}: {str(e)}"
 
 
 async def execute_search_prediction_markets_tool(query: str, platform: str | None = None) -> str:

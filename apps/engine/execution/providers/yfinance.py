@@ -1,7 +1,9 @@
 """yfinance implementation of FinancialProvider."""
 
 import asyncio
+import datetime
 import logging
+import math
 import time
 
 import yfinance as yf
@@ -185,4 +187,52 @@ class YFinanceProvider(FinancialProvider):
             return [metric]
         except Exception:
             logger.exception(f"Error fetching key metrics from yfinance for {ticker}")
+            return []
+
+    async def get_earnings_history(self, ticker: str, limit: int = 8) -> list[dict]:
+        """Fetch earnings history using yfinance."""
+        try:
+            loop = asyncio.get_event_loop()
+            t = await loop.run_in_executor(None, lambda: yf.Ticker(ticker))
+            df = await loop.run_in_executor(None, lambda: getattr(t, "earnings_dates", None))
+
+            if df is None or df.empty:
+                logger.warning(f"No earnings history found for {ticker} on yfinance.")
+                return []
+
+            results = []
+            now = datetime.datetime.now(datetime.UTC)
+
+            for dt, row in df.iterrows():
+                date_str = dt.strftime("%Y-%m-%d")
+                eps_est = row.get("EPS Estimate")
+                eps_act = row.get("Reported EPS")
+                
+                if isinstance(eps_est, float) and math.isnan(eps_est):
+                    eps_est = None
+                if isinstance(eps_act, float) and math.isnan(eps_act):
+                    eps_act = None
+
+                # Compute surprise pct
+                surprise_pct = None
+                if eps_act is not None and eps_est is not None and eps_est != 0:
+                    surprise_pct = ((eps_act - eps_est) / abs(eps_est)) * 100
+
+                is_upcoming = dt > now if dt.tzinfo is not None else dt.date() >= now.date()
+
+                results.append({
+                    "symbol": ticker.upper(),
+                    "date": date_str,
+                    "epsActual": eps_act,
+                    "epsEstimated": eps_est,
+                    "revenueActual": None,
+                    "revenueEstimated": None,
+                    "surprisePct": surprise_pct,
+                    "isUpcoming": is_upcoming
+                })
+
+            results.sort(key=lambda x: x["date"], reverse=True)
+            return results[:limit]
+        except Exception as e:
+            logger.error(f"Error fetching earnings history from yfinance for {ticker}: {e}")
             return []

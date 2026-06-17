@@ -17,34 +17,46 @@ async def test_fmp_provider_get_key_metrics():
     provider = FMPProvider()
     provider.api_key = "test_api_key"
 
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = [
-        {
-            "symbol": "AAPL",
-            "date": "2024-09-28",
-            "calendarYear": "2024",
-            "period": "FY",
-            "peRatio": 30.5,
-            "priceToSalesRatio": 8.2,
-            "pbRatio": 45.1,
-            "enterpriseValueOverEBITDA": 24.3,
-            "debtToEquity": 2.1,
-            "currentRatio": 1.2,
-            "roe": 1.75,
-            "dividendYield": 0.005,
-            "freeCashFlowYield": 0.035,
-            "bookValuePerShare": 4.5,
-            "revenuePerShare": 24.5,
-            "netIncomePerShare": 6.1,
-            "freeCashFlowPerShare": 7.2,
-            "ignoredField": "should_not_be_present",
-        }
-    ]
-    mock_resp.raise_for_status = MagicMock()
+    def mock_get_impl(url, params=None):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        
+        if "key-metrics" in url:
+            mock_resp.json.return_value = [
+                {
+                    "symbol": "AAPL",
+                    "date": "2024-09-28",
+                    "fiscalYear": "2024",
+                    "period": "FY",
+                    "evToEBITDA": 24.3,
+                    "freeCashFlowYield": 0.035,
+                    "ignoredField": "should_not_be_present",
+                }
+            ]
+        elif "ratios" in url:
+            mock_resp.json.return_value = [
+                {
+                    "symbol": "AAPL",
+                    "date": "2024-09-28",
+                    "fiscalYear": "2024",
+                    "period": "FY",
+                    "priceToEarningsRatio": 30.5,
+                    "priceToSalesRatio": 8.2,
+                    "priceToBookRatio": 45.1,
+                    "debtToEquityRatio": 2.1,
+                    "currentRatio": 1.2,
+                    "returnOnEquity": 1.75,
+                    "dividendYield": 0.005,
+                    "bookValuePerShare": 4.5,
+                    "revenuePerShare": 24.5,
+                    "netIncomePerShare": 6.1,
+                    "freeCashFlowPerShare": 7.2,
+                }
+            ]
+        return mock_resp
 
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = mock_resp
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=mock_get_impl) as mock_get:
         metrics = await provider.get_key_metrics("AAPL", period="annual", limit=1)
 
         assert len(metrics) == 1
@@ -52,15 +64,19 @@ async def test_fmp_provider_get_key_metrics():
         assert m["symbol"] == "AAPL"
         assert m["date"] == "2024-09-28"
         assert m["peRatio"] == 30.5
+        assert m["pbRatio"] == 45.1
+        assert m["enterpriseValueOverEBITDA"] == 24.3
+        assert m["freeCashFlowYield"] == 0.035
         assert "ignoredField" not in m
 
         # Check API parameters
-        mock_get.assert_called_once()
-        args, kwargs = mock_get.call_args
-        params = kwargs.get("params")
-        assert params["apikey"] == "test_api_key"
-        assert params["period"] == "annual"
-        assert params["limit"] == 1
+        assert mock_get.call_count == 2
+        for call in mock_get.call_args_list:
+            args, kwargs = call
+            params = kwargs.get("params")
+            assert params["apikey"] == "test_api_key"
+            assert params["period"] == "annual"
+            assert params["limit"] == 1
 
 
 @pytest.mark.asyncio

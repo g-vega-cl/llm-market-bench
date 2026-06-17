@@ -1,53 +1,3 @@
-## [2026-06-07] feature | Interactive Prompt Changes Diff View & Custom LCS Algorithm
-
-Implemented an interactive, unified line-by-line diff section on the Auto-Research Arena details page to display the differences between an experiment's prompt and its parent prompt:
-- **Custom LCS Line-Diff Algorithm**: Implemented a lightweight, zero-dependency Longest Common Subsequence line diffing utility in `apps/web/src/features/autoresearch/utils/diff.ts` and verified it with unit tests.
-- **PromptChanges Component**: Created `PromptChanges.tsx` under `apps/web/src/features/autoresearch/components/` incorporating a unified diff display with line prefix indicators (+/-), color-coded backgrounds (emerald/rose/neutral), and a toggle to collapse/hide unchanged lines. Handles baseline prompts with a friendly callout.
-- **Integration**: Linked the parent experiment to `ExperimentDetails` in `AutoresearchPage.tsx` and nested the new `PromptChanges` component above the trading prompt block.
-- **TDD & Auditing**: Authored unit tests for both the utility and UI component, passing 100% of the test suite and resolving all Biome strict formatting and cognitive complexity rules.
-
-## [2026-06-07] bugfix | Default Auto-Research Prompt Diff to Changes-Only & Improve Empty State
-
-Refined the Prompt Changes comparison on the Auto-Research Arena page:
-- **Default View Mode**: Changed `showChangesOnly` to default to `true` in `PromptChanges.tsx` so only actual modified lines are displayed initially, preventing the diff box from being visually redundant with the full prompt box below.
-- **Dynamic Empty States**: Differentiated the no-parent scenario. Baseline prompts still show the `"Initial baseline prompt"` card, while other experiments missing a parent (e.g. older incremental variants) show a customized `"No parent prompt"` callout.
-- **TDD Tests**: Updated `PromptChanges.test.tsx` to align test expectations with the new default collapsed view and to cover the new non-baseline missing-parent UI.
-
-**See**: [[entities/autoresearch-arena]], [PromptChanges.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/PromptChanges.tsx)
-
-## [2026-06-08] feature | Frozen System Constraints & Output Structure for Auto-Research
-
-Frozen all core system constraints and JSON output schemas to prevent the auto-research prompt-improver from modifying or breaking them:
-- **Refactored Prompts**: Split `CORE_ANALYSIS_SYSTEM_PROMPT` in [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py) into three constants: `SYSTEM_PROMPT_CONSTRAINTS_HEADER` (persona, price mechanism, tool requirements), `SYSTEM_PROMPT_MUTABLE_STRATEGIES` (5 Whys, seasonal strategies, trading logic), and `SYSTEM_PROMPT_CONSTRAINTS_FOOTER` (SMA rules and JSON Output Format rules).
-- **Prompt Splitter Utility**: Added a robust `split_prompt` function to extract the mutable strategy portion using exact and fuzzy matching.
-- **Auto-Research Integration**: Updated [evaluator.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/evaluator.py) to extract and show only the mutable strategy section of the active and baseline prompts in the researcher report. Updated [runner.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/runner.py) to automatically recombine the proposed prompt text from the researcher with the frozen header and footer before saving the variant to the database.
-- **LLM Instruction Update**: Updated [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md) to instruct the meta-researcher that system constraints are managed automatically and it is only responsible for optimizing the strategy section.
-- **TDD Tests**: Added `TestPromptConstraints` in [test_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_autoresearch.py) to assert exact and fuzzy prompt splitting. Passed 100% of tests.
-
-**See**: [[concepts/auto-research-prompt-improver]], [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py)
-
-## [2026-06-08] feature | Frozen System Constraints & Output Structure for Auto-Research
-
-Frozen all core system constraints and JSON output schemas to prevent the auto-research prompt-improver from modifying or breaking them:
-- **Refactored Prompts**: Split `CORE_ANALYSIS_SYSTEM_PROMPT` in `prompts.py` into three constants: `SYSTEM_PROMPT_CONSTRAINTS_HEADER` (persona, price mechanism, tool requirements), `SYSTEM_PROMPT_MUTABLE_STRATEGIES` (5 Whys, seasonal strategies, trading logic), and `SYSTEM_PROMPT_CONSTRAINTS_FOOTER` (SMA rules and JSON Output Format rules).
-- **Prompt Splitter Utility**: Added a robust `split_prompt` function to extract the mutable strategy portion using exact and fuzzy matching.
-- **Auto-Research Integration**: Updated `evaluator.py` to extract and show only the mutable strategy section of the active and baseline prompts in the researcher report. Updated `runner.py` to automatically recombine the proposed prompt text from the researcher with the frozen header and footer before saving the variant to the database.
-- **LLM Instruction Update**: Updated `program.md` to instruct the meta-researcher that system constraints are managed automatically and it is only responsible for optimizing the strategy section.
-- **TDD Tests**: Added `TestPromptConstraints` in `test_autoresearch.py` to assert exact and fuzzy prompt splitting. Passed 100% of tests.
-
-**See**: [[concepts/auto-research-prompt-improver]], [[concepts/system-heavy-prompt]]
-
-## [2026-06-08] feature | Multi-Window Correlation & Trailing Returns
-
-Added support for multiple correlation/trailing-return windows (7d, 30d, 60d, 90d) across the full stack:
-
-- **Engine**: Extended `compute_correlation_matrices` and `compute_trailing_returns` to accept arbitrary window sizes. `store_correlation_results` now persists all four windows.
-- **Database**: New migration adds 12 columns to `correlation_data` for 7d/30d/60d returns and correlations.
-- **Web UI**: Added timeframe switcher to Market Overview (Current tab) and Correlation History Explorer. Data is mapped client-side. A disclaimer warns about noisy 7d correlations.
-- **Tests**: New `TestMultiWindowCorrelation` class verifies windowed computation and alignment.
-
-All existing wiki pages already reflect the new state; the correlation-matrix source page was updated inline with this commit.
-
 ## [2026-06-08] feature | Homepage routing scaffold & Today page migration
 
 Moved the core "Today" dashboard from the root `/` route to its own `/today` route in `apps/web`. The root route (`/`) is now a placeholder `HomePage` component scaffolding ready for a planned UI redesign. Verified full route generation type safety and Tanstack navigation TDD tests.
@@ -233,7 +183,6 @@ Implemented a comprehensive screening and ranking leaderboard for comparing LLMs
 
 **See**: [leaderboard route](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/leaderboard/index.tsx), [fetch-leaderboard.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/api/fetch-leaderboard.ts)
 
-
 ## [2026-06-17] feature | LLM Leaderboard & Screening Tool
 
 Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
@@ -255,3 +204,10 @@ Updated the LLM Leaderboard to ignore verifier metrics for MiniMax-M3 and fix ca
 - **TDD Tests**: Updated tests to verify null-safety, em-dash display, and filtering of inactive models.
 
 **See**: [[entities/llm-leaderboard]], [LeaderboardPodium.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/components/LeaderboardPodium.tsx), [fetch-leaderboard.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/api/fetch-leaderboard.ts)
+
+## [2026-06-17] feature | S&P 500 Market Health Barometer & Company Earnings Tools
+
+Added two new LLM agent tools (`get_market_health_barometer` and `get_earnings_history`) and a daily S&P 500 barometer aggregator script. The barometer computes cap-weighted Trailing P/E, Forward P/E, P/S, P/B, and earnings beat rate from top 100 S&P 500 constituents, stores daily snapshots in `market_barometer_history`, and injects the latest snapshot into the global macro context. The earnings tool fetches ticker-specific earnings history (actuals vs estimates, surprise %, upcoming dates) via FMP and yfinance. Both tools are registered across Anthropic, Gemini, and OpenAI handlers. The barometer is displayed on the HomePage dashboard with a glassmorphism widget and animated beat rate gauge.
+
+**See**: [[concepts/fundamental-analysis]], [[entities/web-app]], [[entities/macro-tracker]]
+

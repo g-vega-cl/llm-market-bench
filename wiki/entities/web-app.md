@@ -115,6 +115,14 @@ To resolve session persistence issues where users were being logged out immediat
 - **Root Cause**: Since server-side OAuth exchange happens within TanStack Start server functions (which request paths under `/_server`), omitting `options.path` defaulted the cookies' path scope to `/_server`, preventing standard pages (like `/portfolios` or `/today`) from receiving the auth cookies.
 - **TDD Verification**: Covered by robust server client tests in `supabase.test.ts` checking correct propagation of cookie options to prevent regression.
 
+### S&P 500 Market Health Barometer Dashboard Integration (2026-06-17)
+
+To display aggregate valuation and earnings metrics on the central dashboard:
+- **Server-Side Loader Fetching**: Integrated a database query [fetchLatestMarketBarometer](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/api/fetch-barometer.ts) into the root page's loaders, fetching the latest daily snapshot from `market_barometer_history` in parallel with other dashboard dependencies.
+- **High-Density Glassmorphism Design**: Designed [BarometerSection](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx#L259-L327) displaying Trailing P/E, Forward P/E, Price-to-Book, and Price-to-Sales ratios inside a 4-column premium glass metrics panel, with glowing backgrounds on the key P/E ratios.
+- **Animated Surprise Momentum Gauge**: Features a dynamic progress bar showcasing the overall S&P 500 constituent Earnings Beat Rate, styled with glowing emerald gradients and custom drop shadow filters.
+- **TDD Verification**: Added unit tests in `HomePage.test.tsx` checking correct structure and mock representation rendering, passing 100% of test suites with zero Biome linter errors.
+
 ## Design System
 
 "Bloomberg Terminal Meets Wired Magazine" at `packages/ui-design-system/`. Fully adopted across all pages as of 2026-05-14.

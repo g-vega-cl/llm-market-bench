@@ -178,4 +178,32 @@ describe('HomePage Dashboard', () => {
         const title = screen.getByText('Market Overview');
         expect(title.className).toContain('md:text-4xl');
     });
+
+    it('renders the Market Health Barometer card when barometer data is provided', () => {
+        const barometerData = {
+            date: '2026-06-17',
+            pe_ratio: 28.362798,
+            forward_pe: 13.609154,
+            pb_ratio: 6.701241,
+            ps_ratio: 4.73962,
+            earnings_surprise_momentum: 92.929292,
+            updated_at: '2026-06-17T14:19:15Z',
+        };
+        const dataWithBarometer = {
+            ...baseData,
+            barometer: barometerData,
+        };
+        render(<HomePage data={dataWithBarometer} />);
+
+        const dashboard = screen.getByTestId('dashboard');
+
+        // Assert barometer section is rendered
+        expect(within(dashboard).getByText('MARKET HEALTH BAROMETER (S&P 500)')).toBeDefined();
+        expect(within(dashboard).getByText('28.36')).toBeDefined();
+        expect(within(dashboard).getByText('13.61')).toBeDefined();
+        expect(within(dashboard).getByText('6.70')).toBeDefined();
+        expect(within(dashboard).getByText('4.74')).toBeDefined();
+        expect(within(dashboard).getByText('92.9%')).toBeDefined();
+        expect(within(dashboard).getByText('As of 2026-06-17')).toBeDefined();
+    });
 });

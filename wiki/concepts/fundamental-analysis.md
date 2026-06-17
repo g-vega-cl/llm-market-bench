@@ -1,5 +1,5 @@
 ---
-tags: [fundamental-analysis, key-metrics, tools, fmp, yfinance]
+tags: [fundamental-analysis, key-metrics, tools, fmp, yfinance, earnings, market-barometer]
 category: concept
 ---
 
@@ -35,6 +35,29 @@ To assist trading agents in identifying accumulation, exhaustion, and liquidity 
 Instead of requiring agents to calculate volume derivatives manually, the `get_price_history` tool is enhanced to automatically output daily volume alongside historical prices, and automatically append computed **Volume Context** metrics. This includes:
 - **Average Daily Volume (ADV)**: Baseline average calculated dynamically (up to 20 days lookback).
 - **Relative Volume (RVOL)**: Expressed as a multiplier (e.g., "2.3x above 20-day average") and a historical percentile ranking to clearly signal unusual volume spikes.
+
+## S&P 500 Market Health Barometer
+
+To track broader economic health and market valuation regimes, the system implements a daily **S&P 500 Market Health Barometer**. 
+
+A daily background script (`update_market_barometer.py`) gathers fundamental and pricing data for S&P 500 constituents (falling back to a curated top-100 list representing ~80% of S&P 500 cap to stay under FMP rate limits). It computes cap-weighted index aggregates:
+- **Aggregate Trailing P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Net Income}}$
+- **Aggregate Forward P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Estimated Net Income}}$
+- **Aggregate P/S (Price-to-Sales)**: $\frac{\sum \text{Market Cap}}{\sum \text{Revenue}}$ (a distortion-free metric that includes loss-making companies)
+- **Aggregate P/B (Price-to-Book)**: $\frac{\sum \text{Market Cap}}{\sum \text{Book Value}}$
+- **Earnings Beat Rate**: Percentage of constituents whose most recent earnings report exceeded estimates.
+
+These daily snapshots are saved to `market_barometer_history` in Supabase. The latest snapshot is injected into the system prompt's global macroeconomic context (`macro_context`), the LLMs can call `get_market_health_barometer` to check historical valuation trends, and the metrics are displayed to users in a premium glassmorphism card on the dashboard [HomePage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx) (visualizing trailing/forward multiples and an animated earnings surprise beat rate progress bar).
+
+## Company Earnings & Calendar
+
+To aid event-driven thesis verification (e.g. trading around quarterly announcements), the `get_earnings_history` tool fetches:
+1. **Upcoming Earnings Announcement**: Estimated date, expected EPS, and expected revenue.
+2. **Historical Earnings Reports**: Recent actual vs. estimated EPS and revenue, surprise absolute/percentage numbers, and beat/miss status.
+
+The tool delegates to:
+- **FMPProvider**: Queries `/stable/earnings?symbol={ticker}`.
+- **YFinanceProvider**: Queries the `earnings_dates` DataFrame.
 
 ## Related
 

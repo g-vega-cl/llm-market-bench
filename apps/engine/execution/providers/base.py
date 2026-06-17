@@ -63,6 +63,14 @@ class FinancialProvider(ABC):
         """
         return []
 
+    async def get_earnings_history(self, ticker: str, limit: int = 8) -> list[dict]:
+        """Fetch historical earnings estimates vs actuals and upcoming date.
+
+        Returns:
+            List of dicts containing earnings details.
+        """
+        return []
+
     @classmethod
     async def disconnect_all(cls):
         """Optional hook to close persistent connections."""

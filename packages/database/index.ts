@@ -77,6 +77,7 @@ export type LLMReasoningLog = Omit<
 export type NewsletterSnapshot = Database['public']['Tables']['newsletter_snapshots']['Row'];
 export type MarketDataCache = Database['public']['Tables']['market_data_cache']['Row'];
 export type MarketFeeling = Database['public']['Tables']['market_feeling']['Row'];
+export type MarketBarometer = Database['public']['Tables']['market_barometer_history']['Row'];
 export type CorrelationRun = Database['public']['Tables']['correlation_runs']['Row'];
 export type CorrelationData = Database['public']['Tables']['correlation_data']['Row'];
 export type ConceptMetric = Database['public']['Tables']['concept_metrics']['Row'];

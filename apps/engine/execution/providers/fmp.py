@@ -263,51 +263,154 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
 
-        # FMP expects period to be 'annual' or 'quarter'
-        params = {
-            "period": period,
-            "limit": limit,
-            "apikey": self.api_key,
-        }
-
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.get(f"{self.BASE_URL}/key-metrics/{ticker}", params=params)
-                resp.raise_for_status()
-                data = resp.json()
-
-                if not data or not isinstance(data, list):
-                    logger.warning(f"No key metrics found for {ticker} on FMP.")
-                    return []
-
-                keys_to_keep = {
-                    "symbol",
-                    "date",
-                    "calendarYear",
-                    "period",
-                    "peRatio",
-                    "priceToSalesRatio",
-                    "pbRatio",
-                    "enterpriseValueOverEBITDA",
-                    "debtToEquity",
-                    "currentRatio",
-                    "roe",
-                    "dividendYield",
-                    "freeCashFlowYield",
-                    "bookValuePerShare",
-                    "revenuePerShare",
-                    "netIncomePerShare",
-                    "freeCashFlowPerShare",
+                # Build params with symbol instead of ticker path for stable API
+                params = {
+                    "symbol": ticker,
+                    "period": period,
+                    "limit": limit,
+                    "apikey": self.api_key,
                 }
 
-                results = []
-                for entry in data:
-                    filtered_entry = {k: v for k, v in entry.items() if k in keys_to_keep}
-                    results.append(filtered_entry)
+                # Fetch key-metrics and ratios in parallel
+                metrics_task = client.get(f"{self.BASE_URL}/key-metrics", params=params)
+                ratios_task = client.get(f"{self.BASE_URL}/ratios", params=params)
 
+                metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
+
+                metrics_resp.raise_for_status()
+                ratios_resp.raise_for_status()
+
+                metrics_data = metrics_resp.json()
+                ratios_data = ratios_resp.json()
+
+                merged_by_date = {}
+
+                # Process metrics
+                if isinstance(metrics_data, list):
+                    for entry in metrics_data:
+                        date = entry.get("date")
+                        if not date:
+                            continue
+
+                        merged_by_date[date] = {
+                            "symbol": entry.get("symbol") or ticker,
+                            "date": date,
+                            "calendarYear": entry.get("fiscalYear") or entry.get("calendarYear"),
+                            "period": entry.get("period"),
+                            "enterpriseValueOverEBITDA": entry.get("evToEBITDA"),
+                            "freeCashFlowYield": entry.get("freeCashFlowYield"),
+                        }
+
+                # Process ratios
+                if isinstance(ratios_data, list):
+                    for entry in ratios_data:
+                        date = entry.get("date")
+                        if not date:
+                            continue
+
+                        if date not in merged_by_date:
+                            merged_by_date[date] = {
+                                "symbol": entry.get("symbol") or ticker,
+                                "date": date,
+                                "calendarYear": entry.get("fiscalYear") or entry.get("calendarYear"),
+                                "period": entry.get("period"),
+                            }
+
+                        merged_by_date[date].update({
+                            "peRatio": entry.get("priceToEarningsRatio"),
+                            "priceToSalesRatio": entry.get("priceToSalesRatio"),
+                            "pbRatio": entry.get("priceToBookRatio"),
+                            "debtToEquity": entry.get("debtToEquityRatio"),
+                            "currentRatio": entry.get("currentRatio"),
+                            "roe": entry.get("returnOnEquity"),
+                            "dividendYield": entry.get("dividendYield"),
+                            "bookValuePerShare": entry.get("bookValuePerShare"),
+                            "revenuePerShare": entry.get("revenuePerShare"),
+                            "netIncomePerShare": entry.get("netIncomePerShare"),
+                            "freeCashFlowPerShare": entry.get("freeCashFlowPerShare"),
+                        })
+
+                # Sort by date descending
+                sorted_dates = sorted(merged_by_date.keys(), reverse=True)
+                results = [merged_by_date[d] for d in sorted_dates[:limit]]
                 return results
 
         except Exception as e:
             error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
             logger.error(f"Error fetching key metrics from FMP for {ticker}: {error_details}")
+            return []
+
+    async def get_earnings_history(self, ticker: str, limit: int = 8) -> list[dict]:
+        """Fetch historical earnings estimates vs actuals and upcoming date using FMP."""
+        if not self.api_key:
+            return []
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/earnings",
+                    params={"symbol": ticker, "apikey": self.api_key}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if not data or not isinstance(data, list):
+                    return []
+
+                results = []
+                now_str = datetime.now().strftime("%Y-%m-%d")
+
+                for entry in data[:limit]:
+                    date_str = entry.get("date")
+                    eps_actual = entry.get("epsActual")
+                    eps_estimated = entry.get("epsEstimated")
+                    revenue_actual = entry.get("revenueActual")
+                    revenue_estimated = entry.get("revenueEstimated")
+
+                    if eps_actual == "":
+                        eps_actual = None
+                    if eps_estimated == "":
+                        eps_estimated = None
+                    if revenue_actual == "":
+                        revenue_actual = None
+                    if revenue_estimated == "":
+                        revenue_estimated = None
+
+                    # Compute surprise percentage
+                    surprise_pct = None
+                    if eps_actual is not None and eps_estimated is not None and eps_estimated != 0:
+                        surprise_pct = ((float(eps_actual) - float(eps_estimated)) / abs(float(eps_estimated))) * 100
+
+                    results.append({
+                        "symbol": ticker.upper(),
+                        "date": date_str,
+                        "epsActual": float(eps_actual) if eps_actual is not None else None,
+                        "epsEstimated": float(eps_estimated) if eps_estimated is not None else None,
+                        "revenueActual": float(revenue_actual) if revenue_actual is not None else None,
+                        "revenueEstimated": float(revenue_estimated) if revenue_estimated is not None else None,
+                        "surprisePct": surprise_pct,
+                        "isUpcoming": eps_actual is None and date_str >= now_str
+                    })
+                return results
+        except Exception as e:
+            logger.error(f"Error fetching earnings history from FMP for {ticker}: {e}")
+            return []
+
+    async def get_sp500_constituents(self) -> list[str]:
+        """Fetch list of S&P 500 constituent symbols from FMP."""
+        if not self.api_key:
+            return []
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/sp500-constituent",
+                    params={"apikey": self.api_key}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                return [item["symbol"] for item in data if "symbol" in item]
+        except Exception as e:
+            logger.warning(f"Failed to fetch S&P 500 constituents dynamically (expected if free key): {e}")
             return []

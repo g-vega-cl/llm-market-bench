@@ -1,3 +1,4 @@
+import type { MarketBarometer } from '@llm-market-bench/database';
 import { ConfidenceBar } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
 
@@ -22,6 +23,7 @@ export interface HomePageData {
         modelUsed?: string;
         lastAnalyzed?: string;
     };
+    barometer?: MarketBarometer | null;
 }
 
 function PortfolioRow({ portfolio }: { portfolio: HomePageData['portfolios'][number] }) {
@@ -257,6 +259,84 @@ function FeelingCollapsible({
     );
 }
 
+function BarometerSection({ barometer }: { barometer: MarketBarometer }) {
+    const metrics = [
+        {
+            label: 'Trailing P/E',
+            value: barometer.pe_ratio,
+            format: (v: number) => v.toFixed(2),
+            highlight: true,
+        },
+        {
+            label: 'Forward P/E',
+            value: barometer.forward_pe,
+            format: (v: number) => v.toFixed(2),
+            highlight: true,
+        },
+        { label: 'Price-to-Book', value: barometer.pb_ratio, format: (v: number) => v.toFixed(2) },
+        { label: 'Price-to-Sales', value: barometer.ps_ratio, format: (v: number) => v.toFixed(2) },
+    ];
+
+    const beatRate = barometer.earnings_surprise_momentum;
+
+    return (
+        <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <h2 className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-white/40">
+                    MARKET HEALTH BAROMETER (S&P 500)
+                </h2>
+                <span className="text-[9px] md:text-[10px] font-mono text-white/40">
+                    As of {barometer.date}
+                </span>
+            </div>
+
+            {/* Premium Glass Metrics Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {metrics.map((m) => {
+                    const hasValue = m.value !== null && m.value !== undefined;
+                    return (
+                        <div
+                            key={m.label}
+                            className={`relative overflow-hidden rounded-xl border border-white/10 p-3 bg-white/5 backdrop-blur-[8px] transition-all duration-200 hover:border-white/20 flex flex-col justify-between ${
+                                m.highlight
+                                    ? 'bg-gradient-to-br from-white/[0.08] to-transparent'
+                                    : ''
+                            }`}
+                        >
+                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wide block mb-1">
+                                {m.label}
+                            </span>
+                            <span className="text-xl md:text-2xl font-black text-white font-mono tracking-tight">
+                                {hasValue ? m.format(Number(m.value)) : '—'}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Beat Rate Gauge/Progress bar */}
+            {beatRate !== null && beatRate !== undefined && (
+                <div className="rounded-xl border border-white/10 p-3 bg-white/5 backdrop-blur-[8px] space-y-1.5 bg-gradient-to-r from-emerald-500/[0.03] to-transparent">
+                    <div className="flex justify-between items-center text-[10px] md:text-[11px] font-bold">
+                        <span className="text-white/40 uppercase tracking-wide">
+                            Earnings Beat Rate
+                        </span>
+                        <span className="text-emerald-400 font-mono font-black">
+                            {Number(beatRate).toFixed(1)}%
+                        </span>
+                    </div>
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden relative border border-white/5">
+                        <div
+                            className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] transition-all duration-500"
+                            style={{ width: `${beatRate}%` }}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function Dashboard({ data }: { data: HomePageData }) {
     return (
         <div
@@ -264,6 +344,8 @@ function Dashboard({ data }: { data: HomePageData }) {
             className="w-full border-y md:border border-white/10 md:rounded-2xl bg-glass-dark/40 backdrop-blur-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] px-4 py-4 md:px-8 md:py-8 space-y-4 md:space-y-6"
         >
             <FeelingCollapsible feeling={data.feeling} benchmark={data.benchmark} />
+
+            {data.barometer && <BarometerSection barometer={data.barometer} />}
 
             {/* Models Table Section */}
             <div className="space-y-2 md:space-y-3">

@@ -551,3 +551,15 @@ class MarketDataManager:
             return []
 
         return await provider.get_key_metrics(ticker, period, limit)
+
+    async def get_earnings_history(self, ticker: str, limit: int = 8) -> list[dict]:
+        """Fetch historical earnings and upcoming date for a ticker.
+
+        Delegates to the configured financial provider.
+        """
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for earnings history retrieval for {ticker}.")
+            return []
+
+        return await provider.get_earnings_history(ticker, limit)

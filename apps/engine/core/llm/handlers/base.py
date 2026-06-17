@@ -46,6 +46,15 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             period=args.get("period", "annual"),
             limit=args.get("limit", 2),
         )
+    elif name == "get_market_health_barometer":
+        return await tools.execute_market_health_barometer_tool(
+            limit=args.get("limit", 5),
+        )
+    elif name == "get_earnings_history":
+        return await tools.execute_earnings_history_tool(
+            args["ticker"],
+            limit=args.get("limit", 8),
+        )
     elif name == "search_prediction_markets":
         return await tools.execute_search_prediction_markets_tool(
             args["query"],

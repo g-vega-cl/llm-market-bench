@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
+import { fetchLatestMarketBarometer } from '~/features/home/api/fetch-barometer';
 import type { HomePageData } from '~/features/home/pages/HomePage';
 import { HomePage } from '~/features/home/pages/HomePage';
 import {
@@ -13,9 +14,10 @@ import { formatEasternTime } from '~/utils/date';
 const getHomepageData = createServerFn({ method: 'GET' }).handler(
     async (): Promise<HomePageData> => {
         // Fetch initial data concurrently
-        const [marketFeeling, portfoliosData] = await Promise.all([
+        const [marketFeeling, portfoliosData, barometer] = await Promise.all([
             fetchLatestMarketFeeling(),
             fetchAllActivePortfolioPerformance(7),
+            fetchLatestMarketBarometer(),
         ]);
 
         // Fetch benchmark now that we have the dates
@@ -94,6 +96,7 @@ const getHomepageData = createServerFn({ method: 'GET' }).handler(
                     ? formatEasternTime(marketFeeling.created_at)
                     : undefined,
             },
+            barometer,
         };
     },
 );

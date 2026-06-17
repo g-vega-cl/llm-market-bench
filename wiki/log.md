@@ -1,3 +1,10 @@
+## [2026-06-17] feature | Self-Correction Retry Loop for Missing Tool Calls & Sequence Constraint Rule
+
+Implemented a post-hoc retry mechanism inside `analyze_with_provider` in the execution engine to handle cases where LLMs recommend trade actions (BUY/SELL) but fail to execute the required quantity calculation tools (`calculate_buy_quantity`/`calculate_sell_quantity`).
+- **Correction Request & Retry**: The engine detects missing tool calls from the conversation history, appends a detailed correction prompt requesting immediate execution, and performs a single-attempt retry loop on the provider-specific tool runner.
+- **Sequence Constraint Rule**: Added a strict Ordering rule (6) to the immutable `SYSTEM_PROMPT_CONSTRAINTS_HEADER` prompt to explicitly instruct models to execute all calculation tools before outputting their final structured JSON decision block.
+- **TDD Enforcement**: Added `test_gemini_sell_tool_missing_triggers_retry` verifying the retry mechanism for the Gemini handler. Updated existing OpenAI and Gemini tool loop tests to avoid false retries during unit testing.
+
 ## [2026-06-08] feature | Homepage routing scaffold & Today page migration
 
 Moved the core "Today" dashboard from the root `/` route to its own `/today` route in `apps/web`. The root route (`/`) is now a placeholder `HomePage` component scaffolding ready for a planned UI redesign. Verified full route generation type safety and Tanstack navigation TDD tests.

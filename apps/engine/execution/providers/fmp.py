@@ -318,19 +318,21 @@ class FMPProvider(FinancialProvider):
                                 "period": entry.get("period"),
                             }
 
-                        merged_by_date[date].update({
-                            "peRatio": entry.get("priceToEarningsRatio"),
-                            "priceToSalesRatio": entry.get("priceToSalesRatio"),
-                            "pbRatio": entry.get("priceToBookRatio"),
-                            "debtToEquity": entry.get("debtToEquityRatio"),
-                            "currentRatio": entry.get("currentRatio"),
-                            "roe": entry.get("returnOnEquity"),
-                            "dividendYield": entry.get("dividendYield"),
-                            "bookValuePerShare": entry.get("bookValuePerShare"),
-                            "revenuePerShare": entry.get("revenuePerShare"),
-                            "netIncomePerShare": entry.get("netIncomePerShare"),
-                            "freeCashFlowPerShare": entry.get("freeCashFlowPerShare"),
-                        })
+                        merged_by_date[date].update(
+                            {
+                                "peRatio": entry.get("priceToEarningsRatio"),
+                                "priceToSalesRatio": entry.get("priceToSalesRatio"),
+                                "pbRatio": entry.get("priceToBookRatio"),
+                                "debtToEquity": entry.get("debtToEquityRatio"),
+                                "currentRatio": entry.get("currentRatio"),
+                                "roe": entry.get("returnOnEquity"),
+                                "dividendYield": entry.get("dividendYield"),
+                                "bookValuePerShare": entry.get("bookValuePerShare"),
+                                "revenuePerShare": entry.get("revenuePerShare"),
+                                "netIncomePerShare": entry.get("netIncomePerShare"),
+                                "freeCashFlowPerShare": entry.get("freeCashFlowPerShare"),
+                            }
+                        )
 
                 # Sort by date descending
                 sorted_dates = sorted(merged_by_date.keys(), reverse=True)
@@ -349,10 +351,7 @@ class FMPProvider(FinancialProvider):
 
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{self.BASE_URL}/earnings",
-                    params={"symbol": ticker, "apikey": self.api_key}
-                )
+                resp = await client.get(f"{self.BASE_URL}/earnings", params={"symbol": ticker, "apikey": self.api_key})
                 resp.raise_for_status()
                 data = resp.json()
 
@@ -383,16 +382,18 @@ class FMPProvider(FinancialProvider):
                     if eps_actual is not None and eps_estimated is not None and eps_estimated != 0:
                         surprise_pct = ((float(eps_actual) - float(eps_estimated)) / abs(float(eps_estimated))) * 100
 
-                    results.append({
-                        "symbol": ticker.upper(),
-                        "date": date_str,
-                        "epsActual": float(eps_actual) if eps_actual is not None else None,
-                        "epsEstimated": float(eps_estimated) if eps_estimated is not None else None,
-                        "revenueActual": float(revenue_actual) if revenue_actual is not None else None,
-                        "revenueEstimated": float(revenue_estimated) if revenue_estimated is not None else None,
-                        "surprisePct": surprise_pct,
-                        "isUpcoming": eps_actual is None and date_str >= now_str
-                    })
+                    results.append(
+                        {
+                            "symbol": ticker.upper(),
+                            "date": date_str,
+                            "epsActual": float(eps_actual) if eps_actual is not None else None,
+                            "epsEstimated": float(eps_estimated) if eps_estimated is not None else None,
+                            "revenueActual": float(revenue_actual) if revenue_actual is not None else None,
+                            "revenueEstimated": float(revenue_estimated) if revenue_estimated is not None else None,
+                            "surprisePct": surprise_pct,
+                            "isUpcoming": eps_actual is None and date_str >= now_str,
+                        }
+                    )
                 return results
         except Exception as e:
             logger.error(f"Error fetching earnings history from FMP for {ticker}: {e}")
@@ -404,10 +405,7 @@ class FMPProvider(FinancialProvider):
             return []
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{self.BASE_URL}/sp500-constituent",
-                    params={"apikey": self.api_key}
-                )
+                resp = await client.get(f"{self.BASE_URL}/sp500-constituent", params={"apikey": self.api_key})
                 resp.raise_for_status()
                 data = resp.json()
                 return [item["symbol"] for item in data if "symbol" in item]

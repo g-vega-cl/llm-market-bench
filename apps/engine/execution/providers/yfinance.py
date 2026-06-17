@@ -207,7 +207,7 @@ class YFinanceProvider(FinancialProvider):
                 date_str = dt.strftime("%Y-%m-%d")
                 eps_est = row.get("EPS Estimate")
                 eps_act = row.get("Reported EPS")
-                
+
                 if isinstance(eps_est, float) and math.isnan(eps_est):
                     eps_est = None
                 if isinstance(eps_act, float) and math.isnan(eps_act):
@@ -220,16 +220,18 @@ class YFinanceProvider(FinancialProvider):
 
                 is_upcoming = dt > now if dt.tzinfo is not None else dt.date() >= now.date()
 
-                results.append({
-                    "symbol": ticker.upper(),
-                    "date": date_str,
-                    "epsActual": eps_act,
-                    "epsEstimated": eps_est,
-                    "revenueActual": None,
-                    "revenueEstimated": None,
-                    "surprisePct": surprise_pct,
-                    "isUpcoming": is_upcoming
-                })
+                results.append(
+                    {
+                        "symbol": ticker.upper(),
+                        "date": date_str,
+                        "epsActual": eps_act,
+                        "epsEstimated": eps_est,
+                        "revenueActual": None,
+                        "revenueEstimated": None,
+                        "surprisePct": surprise_pct,
+                        "isUpcoming": is_upcoming,
+                    }
+                )
 
             results.sort(key=lambda x: x["date"], reverse=True)
             return results[:limit]

@@ -975,12 +975,13 @@ async def execute_market_health_barometer_tool(limit: int = 5) -> str:
     """Fetches S&P 500 aggregate valuation and earnings metrics from Supabase."""
     try:
         from core.db import get_supabase_client
+
         client = get_supabase_client()
         res = client.table("market_barometer_history").select("*").order("date", desc=True).limit(limit).execute()
-        
+
         if not res.data:
             return "No S&P 500 Market Health Barometer data found."
-            
+
         output = f"S&P 500 Aggregate Market Health Barometer (Recent {len(res.data)} daily snapshots):\n"
         for entry in res.data:
             date_str = entry.get("date") or "N/A"
@@ -989,20 +990,20 @@ async def execute_market_health_barometer_tool(limit: int = 5) -> str:
             pb = entry.get("pb_ratio")
             ps = entry.get("ps_ratio")
             surprise = entry.get("earnings_surprise_momentum")
-            
+
             pe_val = f"{float(pe):.2f}" if pe is not None else "N/A"
             fwd_pe_val = f"{float(fwd_pe):.2f}" if fwd_pe is not None else "N/A"
             pb_val = f"{float(pb):.2f}" if pb is not None else "N/A"
             ps_val = f"{float(ps):.2f}" if ps is not None else "N/A"
             surprise_val = f"{float(surprise):.1f}%" if surprise is not None else "N/A"
-            
+
             output += f"\n- Date: {date_str}\n"
             output += f"  * Aggregate Trailing P/E: {pe_val}\n"
             output += f"  * Aggregate Forward P/E:  {fwd_pe_val}\n"
             output += f"  * Aggregate P/S Ratio:   {ps_val}\n"
             output += f"  * Aggregate P/B Ratio:   {pb_val}\n"
             output += f"  * Earnings Beat Rate:     {surprise_val} of companies beating expectations\n"
-            
+
         return output
     except Exception as e:
         logger.exception("Error executing get_market_health_barometer tool")
@@ -1018,28 +1019,32 @@ async def execute_earnings_history_tool(ticker: str, limit: int = 8) -> str:
             return f"No earnings history or upcoming reports found for {ticker}."
 
         output = f"Earnings History and Calendar for {ticker.upper()}:\n"
-        
+
         upcoming = [e for e in data if e.get("isUpcoming")]
         past = [e for e in data if not e.get("isUpcoming")]
 
         if upcoming:
             output += "\n--- Upcoming Earnings Announcement ---\n"
             for entry in upcoming:
-                est_eps = f"${entry['epsEstimated']:.2f}" if entry.get('epsEstimated') is not None else "N/A"
-                est_rev = f"${entry['revenueEstimated'] / 1e9:.2f}B" if entry.get('revenueEstimated') is not None else "N/A"
+                est_eps = f"${entry['epsEstimated']:.2f}" if entry.get("epsEstimated") is not None else "N/A"
+                est_rev = (
+                    f"${entry['revenueEstimated'] / 1e9:.2f}B" if entry.get("revenueEstimated") is not None else "N/A"
+                )
                 output += f"- Date: {entry['date']} | Estimated EPS: {est_eps} | Estimated Revenue: {est_rev}\n"
 
         if past:
             output += "\n--- Historical Earnings Reports (Recent first) ---\n"
             for entry in past:
-                act_eps = f"${entry['epsActual']:.2f}" if entry.get('epsActual') is not None else "N/A"
-                est_eps = f"${entry['epsEstimated']:.2f}" if entry.get('epsEstimated') is not None else "N/A"
-                act_rev = f"${entry['revenueActual'] / 1e9:.2f}B" if entry.get('revenueActual') is not None else "N/A"
-                est_rev = f"${entry['revenueEstimated'] / 1e9:.2f}B" if entry.get('revenueEstimated') is not None else "N/A"
-                
-                surprise = entry.get('surprisePct')
+                act_eps = f"${entry['epsActual']:.2f}" if entry.get("epsActual") is not None else "N/A"
+                est_eps = f"${entry['epsEstimated']:.2f}" if entry.get("epsEstimated") is not None else "N/A"
+                act_rev = f"${entry['revenueActual'] / 1e9:.2f}B" if entry.get("revenueActual") is not None else "N/A"
+                est_rev = (
+                    f"${entry['revenueEstimated'] / 1e9:.2f}B" if entry.get("revenueEstimated") is not None else "N/A"
+                )
+
+                surprise = entry.get("surprisePct")
                 surprise_str = f"{surprise:+.2f}%" if surprise is not None else "N/A"
-                
+
                 output += f"- Date: {entry['date']}\n"
                 output += f"  * EPS: Actual {act_eps} vs Estimate {est_eps} (Surprise: {surprise_str})\n"
                 output += f"  * Revenue: Actual {act_rev} vs Estimate {est_rev}\n"

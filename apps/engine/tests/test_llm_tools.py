@@ -235,7 +235,7 @@ async def test_analyze_with_provider_tool_loop():
     mock_final_decision = DecisionsResponse(
         decisions=[
             DecisionObject(
-                signal="BUY",
+                signal="HOLD",
                 confidence=90,
                 reasoning="Verified price is reasonable.",
                 ticker="AAPL",

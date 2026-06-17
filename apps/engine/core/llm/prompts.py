@@ -30,7 +30,8 @@ SYSTEM_PROMPT_CONSTRAINTS_HEADER = (
     "4. Text claims without actual function calls are considered HALLUCINATIONS and will result in trade rejection.\n"
     "5. 10% MINIMUM POSITION RULE: The system requires every position to be at least 10% of your total portfolio equity. \n"
     "   - For BUYS: The `calculate_buy_quantity` tool will automatically upsize your request to this floor. \n"
-    "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n\n"
+    "   - For SELLS: If your remaining position would fall below this floor, the `calculate_sell_quantity` tool will mandate a 100% (FULL) sell to avoid 'dust' positions.\n"
+    "6. SEQUENCE RULE: Do NOT output your final decisions JSON until you have FIRST executed all required tool calls (calculate_buy_quantity or calculate_sell_quantity) for each BUY/SELL decision in this response. Tool calls MUST come before the final structured output.\n\n"
     "This is a HARD REQUIREMENT. No exceptions.\n\n"
 )
 

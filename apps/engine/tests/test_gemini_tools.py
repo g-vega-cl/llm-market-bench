@@ -240,7 +240,7 @@ async def test_analyze_with_provider_gemini_tool_loop():
     mock_final_decision = DecisionsResponse(
         decisions=[
             DecisionObject(
-                signal="BUY", confidence=95, reasoning="Price is good.", ticker="AAPL", source_id="src_g1", price=150.0
+                signal="HOLD", confidence=95, reasoning="Price is good.", ticker="AAPL", source_id="src_g1", price=150.0
             )
         ]
     )

@@ -21,7 +21,7 @@ async def test_fmp_provider_get_key_metrics():
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
-        
+
         if "key-metrics" in url:
             mock_resp.json.return_value = [
                 {

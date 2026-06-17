@@ -12,6 +12,7 @@ A 4-layer defense system preventing LLM hallucinations in tool usage and pricing
 System prompt includes explicit instructions: prices are pre-injected, quantity
 tools are mandatory for BUY/SELL, text-only claims = hallucination = rejection.
 Few-shot examples show correct vs incorrect patterns.
+- **Sequence Constraint Rule**: `SYSTEM_PROMPT_CONSTRAINTS_HEADER` (the immutable prompt header) contains a strict ordering constraint enforcing that all tool calls must be fully executed before the final structured JSON decision block is produced.
 
 ## Layer 2: Context Enhancement
 
@@ -24,6 +25,7 @@ Server-side scan of conversation history for actual `calculate_buy/sell_quantity
 function calls. Robust to formatting variances (normalizes whitespace, casing).
 Ownership pre-validation catches SELL-on-unheld-ticker before verification.
 
+- **Self-Correction Retry Loop**: If the LLM generates a BUY/SELL recommendation without executing the required tool call (a common failure pattern in models like `gemini-3.1-flash-lite` that return the structured response in their first turn), the engine intercepts this post-analysis. It appends a correction request directly to the unflattened conversation history and triggers a single-attempt retry loop of the provider's tool-calling sequence. A subsequent extraction is then performed. If the model executes the tool call on this retry turn, the trade is verified as valid rather than rejected.
 - **Anthropic Message Preservation**: Because Anthropic/Claude models require content flattening into raw text strings for Instructor structured compatibility, their structured tool calling blocks (`tool_use`) are natively destroyed during this flattening block. To prevent incorrect `REJECTED_TOOL_USAGE` rejections, the engine preserves a deep copy of the raw message history (`unflattened_messages`) before flattening occurs and performs the post-analysis verification scan against this unflattened copy.
 - **MiniMax Bypass**: The MiniMax-M3 simplified portfolio does not require native function calling or tool execution loops. As such, Layer 3 is entirely bypassed for MiniMax-derived trade signals.
 

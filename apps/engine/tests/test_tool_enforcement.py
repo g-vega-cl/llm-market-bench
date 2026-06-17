@@ -323,3 +323,99 @@ async def test_analyze_with_provider_hard_enforcement_logs_diagnostics(mock_clie
     assert "Total messages in history:" in diagnostic_warning or "Total messages:" in diagnostic_warning
     assert "Tools called:" in diagnostic_warning
     assert "get_stock_quote" in diagnostic_warning
+
+
+@pytest.mark.asyncio
+async def test_gemini_sell_tool_missing_triggers_retry(mock_clients):
+    """Verify that if a Gemini SELL decision is missing its tool call, a retry loop is triggered."""
+    mock_instructor = mock_clients["instructor"]
+
+    # The Instructor client is called twice: once for the initial extraction, and once after the retry
+    mock_instructor.create.side_effect = [
+        # Attempt 1 output
+        [
+            DecisionsResponse(
+                decisions=[
+                    DecisionObject(
+                        signal="SELL",
+                        ticker="SPOT",
+                        confidence=95,
+                        reasoning="Sell SPOT because of reasons",
+                        source_id="s_gemini",
+                        sell_tool_called=True,
+                        quantity=25,
+                    )
+                ],
+                macro_events=[],
+            )
+        ],
+        # Attempt 2 output
+        [
+            DecisionsResponse(
+                decisions=[
+                    DecisionObject(
+                        signal="SELL",
+                        ticker="SPOT",
+                        confidence=95,
+                        reasoning="Sell SPOT because of reasons (after retry)",
+                        source_id="s_gemini",
+                        sell_tool_called=True,
+                        quantity=25,
+                    )
+                ],
+                macro_events=[],
+            )
+        ],
+    ]
+
+    # Mock tool classes for Gemini format verification
+    class MockFunctionCall:
+        def __init__(self, name, args):
+            self.name = name
+            self.args = args
+
+    class MockPart:
+        def __init__(self, name, args):
+            self.function_call = MockFunctionCall(name, args)
+
+    class MockContent:
+        def __init__(self, parts, role="model"):
+            self.parts = parts
+            self.role = role
+
+    # Keep track of run_tool_loop calls
+    call_count = 0
+
+    async def fake_gemini_run_tool_loop(raw_client, model_name, messages, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            # During retry, simulate Gemini executing the tool call
+            messages.append(
+                MockContent(
+                    [
+                        MockPart("calculate_sell_quantity", {"ticker": "SPOT", "percentage": 100}),
+                    ]
+                )
+            )
+
+    with (
+        patch("core.llm.handlers.gemini.run_tool_loop", new_callable=AsyncMock) as mock_run_loop,
+        patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock),
+        patch("autoresearch.prompt_store.get_active_prompt", new_callable=AsyncMock, return_value=None),
+        patch("core.db.get_async_supabase_client", new_callable=AsyncMock),
+        patch("attribution.service.get_active_ledger_xml", new_callable=AsyncMock, return_value=""),
+    ):
+        mock_run_loop.side_effect = fake_gemini_run_tool_loop
+
+        resp = await analyze_with_provider(
+            provider="gemini",
+            model_name="gemini-3.1-flash-lite",
+            chunks=[{"source_id": "s_gemini", "content": "..."}],
+            portfolio_context="- SPOT: 100 shares",  # To satisfy ownership validation
+        )
+
+    # Verify that run_tool_loop was called twice (initial + retry)
+    assert call_count == 2
+    assert resp.decisions[0].ticker == "SPOT"
+    assert resp.decisions[0].sell_tool_called is True

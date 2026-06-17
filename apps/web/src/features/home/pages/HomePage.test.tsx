@@ -12,6 +12,13 @@ vi.mock('@posthog/react', () => ({
     }),
 }));
 
+// Mock Router
+vi.mock('@tanstack/react-router', () => ({
+    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+        <a href={to}>{children}</a>
+    ),
+}));
+
 const baseData: HomePageData = {
     portfolios: [
         {
@@ -188,6 +195,7 @@ describe('HomePage Dashboard', () => {
             ps_ratio: 4.73962,
             earnings_surprise_momentum: 92.929292,
             updated_at: '2026-06-17T14:19:15Z',
+            constituents_data: [],
         };
         const dataWithBarometer = {
             ...baseData,

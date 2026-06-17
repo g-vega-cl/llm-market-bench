@@ -1,3 +1,12 @@
+## [2026-06-17] bugfix | Fix Barometer Audit Page compilation and routing type safety
+
+Resolved TypeScript compiler errors in the web application around the S&P 500 Market Health Barometer Audit route:
+- **Search Parameter Optionality**: Updated `validateSearch` in `routes/barometer-audit.tsx` to return `{ date?: string }`, resolving a compiler error where links to `/barometer-audit` were complaining about missing the required `search` prop.
+- **Bound useNavigate Context**: Contextually bound `useNavigate` to `/barometer-audit` inside `BarometerAuditPage.tsx` via `useNavigate({ from: '/barometer-audit' })`. This types the navigation search state modifier function (`(prev) => ...`) correctly and prevents generic router/root parameter conflicts.
+- **Test Mock Schema Alignment**: Appended the missing `constituents_data` property to the mock barometer data in `HomePage.test.tsx` to conform to the `MarketBarometer` type definition introduced by the database layer for constituent audit logs.
+
+**See**: [[entities/web-app]], [barometer-audit route](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/barometer-audit.tsx), [BarometerAuditPage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx), [HomePage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.test.tsx)
+
 ## [2026-06-17] feature | Self-Correction Retry Loop for Missing Tool Calls & Sequence Constraint Rule
 
 Implemented a post-hoc retry mechanism inside `analyze_with_provider` in the execution engine to handle cases where LLMs recommend trade actions (BUY/SELL) but fail to execute the required quantity calculation tools (`calculate_buy_quantity`/`calculate_sell_quantity`).
@@ -217,4 +226,17 @@ Updated the LLM Leaderboard to ignore verifier metrics for MiniMax-M3 and fix ca
 Added two new LLM agent tools (`get_market_health_barometer` and `get_earnings_history`) and a daily S&P 500 barometer aggregator script. The barometer computes cap-weighted Trailing P/E, Forward P/E, P/S, P/B, and earnings beat rate from top 100 S&P 500 constituents, stores daily snapshots in `market_barometer_history`, and injects the latest snapshot into the global macro context. The earnings tool fetches ticker-specific earnings history (actuals vs estimates, surprise %, upcoming dates) via FMP and yfinance. Both tools are registered across Anthropic, Gemini, and OpenAI handlers. The barometer is displayed on the HomePage dashboard with a glassmorphism widget and animated beat rate gauge.
 
 **See**: [[concepts/fundamental-analysis]], [[entities/web-app]], [[entities/macro-tracker]]
+
+## [2026-06-17] feature | S&P 500 Market Health Barometer Audit Page & transparent constituent tracking
+
+Implemented constituent-level audit tracking for S&P 500 Market Health Barometer:
+- **Database Layer**: Added migration `20260620000000_add_constituents_data_to_barometer.sql` introducing a `constituents_data` JSONB column to the `market_barometer_history` table to store atomic daily constituent snapshot weights. Manually updated `supabase-types.ts` Row, Insert, and Update interface definitions.
+- **Data Engine**: Updated the daily calculation script `update_market_barometer.py` to extract `companyName` and construct/persist the serialized array of constituent valuation metrics (market cap, price, trailing/forward P/E, P/B, P/S, earnings beat status) alongside the aggregates.
+- **Frontend APIs**: Added `fetchMarketBarometerDates` and `fetchMarketBarometerForDate` loader functions in `fetch-barometer.ts` to retrieve historical dates and daily snapshots.
+- **Audit View Routing**: Created the `/barometer-audit` route with TanStack Start's URL search params loader schema mapping, making selecting historical dates fully shareable and refreshable without client-side state.
+- **High-Density Audit Dashboard**: Created `BarometerAuditPage.tsx` outlining standard formulas (cap-weighted averages) and presenting a high-density constituent table with reactive client-side search, column sorting, and beat-status filtering. Added an "Audit Data" link to the dashboard's barometer header.
+- **TDD & Code Quality**: Updated Python backend tests to verify constituent snapshot generation. Created Vitest frontend test `barometer-audit.test.tsx` verifying data filtering, search, sorting, and fallback notice behaviors. Re-organized TS imports and refactored helper functions to fully comply with Biome's strict formatting and cognitive complexity constraints.
+
+**See**: [[entities/web-app]], [BarometerAuditPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
+
 

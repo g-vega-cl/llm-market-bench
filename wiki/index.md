@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/market-barometer-audit]] — S&P 500 Market Health Barometer audit page with constituent-level data browser
 - [[entities/global-background]] — Fixed ambient background with dot grid and glowing orbs for the full application
 - [[entities/mcp-posthog]] — Local plugin wrapper for the hosted PostHog MCP server
 - [[entities/shader-background]] — WebGL shader background component with 4 animated visual themes mapped to a PostHog A/B test

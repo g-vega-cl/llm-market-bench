@@ -173,6 +173,7 @@ async def fetch_constituent_data(
 
     market_cap = float(profile.get("marketCap") or 0.0)
     price = float(profile.get("price") or 0.0)
+    company_name = profile.get("companyName")
     if market_cap <= 0 or price <= 0:
         return None
 
@@ -229,6 +230,7 @@ async def fetch_constituent_data(
 
     return {
         "symbol": symbol,
+        "company_name": company_name,
         "market_cap": market_cap,
         "price": price,
         "pe": ratios.get("priceToEarningsRatio"),
@@ -341,6 +343,21 @@ async def calculate_barometer():
     fwd_pe_index = (sum_mcap_fwd / sum_fwd_income) if sum_fwd_income != 0 else None
     beat_rate = (beats_count / total_beats_valid * 100) if total_beats_valid > 0 else None
 
+    # Construct clean constituents details payload for audit trail
+    constituents_payload = []
+    for r in valid_results:
+        constituents_payload.append({
+            "symbol": r["symbol"],
+            "company_name": r["company_name"],
+            "market_cap": r["market_cap"],
+            "price": r["price"],
+            "pe": float(r["pe"]) if r["pe"] is not None else None,
+            "pb": float(r["pb"]) if r["pb"] is not None else None,
+            "ps": float(r["ps"]) if r["ps"] is not None else None,
+            "next_eps_est": float(r["next_eps_est"]) if r["next_eps_est"] is not None else None,
+            "beat": r["beat"],
+        })
+
     logger.info(
         f"Calculated S&P 500 Aggregates: PE={pe_index}, PS={ps_index}, PB={pb_index}, FwdPE={fwd_pe_index}, BeatRate={beat_rate}"
     )
@@ -357,6 +374,7 @@ async def calculate_barometer():
             "pb_ratio": pb_index,
             "ps_ratio": ps_index,
             "earnings_surprise_momentum": beat_rate,
+            "constituents_data": constituents_payload,
             "updated_at": datetime.now().isoformat(),
         }
 

@@ -1,5 +1,6 @@
 import type { MarketBarometer } from '@llm-market-bench/database';
 import { ConfidenceBar } from '@llm-market-bench/ui-design-system';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
 export interface HomePageData {
@@ -285,9 +286,17 @@ function BarometerSection({ barometer }: { barometer: MarketBarometer }) {
                 <h2 className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-white/40">
                     MARKET HEALTH BAROMETER (S&P 500)
                 </h2>
-                <span className="text-[9px] md:text-[10px] font-mono text-white/40">
-                    As of {barometer.date}
-                </span>
+                <div className="flex items-center gap-3">
+                    <span className="text-[9px] md:text-[10px] font-mono text-white/40">
+                        As of {barometer.date}
+                    </span>
+                    <Link
+                        to="/barometer-audit"
+                        className="text-[9px] md:text-[10px] font-bold text-accent hover:text-accent-hover uppercase tracking-wider transition-colors border-l border-white/10 pl-3"
+                    >
+                        Audit Data ↗
+                    </Link>
+                </div>
             </div>
 
             {/* Premium Glass Metrics Grid */}

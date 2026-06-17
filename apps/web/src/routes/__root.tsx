@@ -86,6 +86,7 @@ export const navItems = [
     { to: '/audits', label: 'Audits' },
     { to: '/market-overview', label: 'Market Overview' },
     { to: '/ai-predictions', label: 'AI Sector Predictions' },
+    { to: '/barometer-audit', label: 'Barometer Audit' },
 ];
 
 export function NavLink({ to, label, exact }: { to: string; label: string; exact?: boolean }) {

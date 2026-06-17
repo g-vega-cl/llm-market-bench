@@ -115,13 +115,14 @@ To resolve session persistence issues where users were being logged out immediat
 - **Root Cause**: Since server-side OAuth exchange happens within TanStack Start server functions (which request paths under `/_server`), omitting `options.path` defaulted the cookies' path scope to `/_server`, preventing standard pages (like `/portfolios` or `/today`) from receiving the auth cookies.
 - **TDD Verification**: Covered by robust server client tests in `supabase.test.ts` checking correct propagation of cookie options to prevent regression.
 
-### S&P 500 Market Health Barometer Dashboard Integration (2026-06-17)
+### S&P 500 Market Health Barometer Dashboard & Audit Integration (2026-06-17)
 
-To display aggregate valuation and earnings metrics on the central dashboard:
-- **Server-Side Loader Fetching**: Integrated a database query [fetchLatestMarketBarometer](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/api/fetch-barometer.ts) into the root page's loaders, fetching the latest daily snapshot from `market_barometer_history` in parallel with other dashboard dependencies.
-- **High-Density Glassmorphism Design**: Designed [BarometerSection](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx#L259-L327) displaying Trailing P/E, Forward P/E, Price-to-Book, and Price-to-Sales ratios inside a 4-column premium glass metrics panel, with glowing backgrounds on the key P/E ratios.
+To display aggregate valuation and earnings metrics and support transparent data auditing:
+- **Server-Side Loader Fetching**: Integrated database queries [fetchLatestMarketBarometer](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/api/fetch-barometer.ts), `fetchMarketBarometerDates`, and `fetchMarketBarometerForDate` into loaders, enabling parallel snapshot fetching and historical date lookup.
+- **High-Density Glassmorphism Design**: Designed [BarometerSection](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx#L259-L327) displaying Trailing P/E, Forward P/E, Price-to-Book, and Price-to-Sales ratios inside a 4-column premium glass metrics panel, with a link to the audit page.
 - **Animated Surprise Momentum Gauge**: Features a dynamic progress bar showcasing the overall S&P 500 constituent Earnings Beat Rate, styled with glowing emerald gradients and custom drop shadow filters.
-- **TDD Verification**: Added unit tests in `HomePage.test.tsx` checking correct structure and mock representation rendering, passing 100% of test suites with zero Biome linter errors.
+- **Barometer Audit Page (`/barometer-audit`)**: Created a dedicated audit page [BarometerAuditPage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx) displaying the methodology and formulas (Trailing P/E, Forward P/E, P/S, P/B, Beat Rate) along with an interactive table containing all constituent records (market cap, price, ratios, earnings beat status). Includes search by ticker/name, sorting by column, and filtering by beat status.
+- **TDD Verification**: Added unit tests in `HomePage.test.tsx` and `barometer-audit.test.tsx` checking correct structure rendering, filtering, and sorting, passing 100% of test suites with zero Biome linter errors.
 
 ## Design System
 

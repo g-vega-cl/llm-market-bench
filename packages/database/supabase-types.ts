@@ -344,6 +344,7 @@ export type Database = {
             };
             market_barometer_history: {
                 Row: {
+                    constituents_data: Json | null;
                     date: string;
                     earnings_surprise_momentum: number | null;
                     forward_pe: number | null;
@@ -353,6 +354,7 @@ export type Database = {
                     updated_at: string | null;
                 };
                 Insert: {
+                    constituents_data?: Json | null;
                     date: string;
                     earnings_surprise_momentum?: number | null;
                     forward_pe?: number | null;
@@ -362,6 +364,7 @@ export type Database = {
                     updated_at?: string | null;
                 };
                 Update: {
+                    constituents_data?: Json | null;
                     date?: string;
                     earnings_surprise_momentum?: number | null;
                     forward_pe?: number | null;

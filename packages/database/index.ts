@@ -114,7 +114,7 @@ export interface LLMLeaderboardRow {
     realized_pnl: number;
     win_rate: number;
     total_trades: number;
-    verifier_approval_rate: number;
+    verifier_approval_rate: number | null;
     average_confidence: number;
     api_success_rate: number;
     trading_activity_rate: number;

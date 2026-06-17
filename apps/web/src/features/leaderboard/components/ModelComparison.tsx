@@ -57,9 +57,23 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
             label: 'Verifier Approval',
             valA: modelA.verifier_approval_rate,
             valB: modelB.verifier_approval_rate,
-            formattedA: `${modelA.verifier_approval_rate.toFixed(1)}%`,
-            formattedB: `${modelB.verifier_approval_rate.toFixed(1)}%`,
-            isHigherBetter: true,
+            formattedA:
+                modelA.verifier_approval_rate !== null &&
+                modelA.verifier_approval_rate !== undefined
+                    ? `${modelA.verifier_approval_rate.toFixed(1)}%`
+                    : '—',
+            formattedB:
+                modelB.verifier_approval_rate !== null &&
+                modelB.verifier_approval_rate !== undefined
+                    ? `${modelB.verifier_approval_rate.toFixed(1)}%`
+                    : '—',
+            isHigherBetter:
+                modelA.verifier_approval_rate !== null &&
+                modelA.verifier_approval_rate !== undefined &&
+                modelB.verifier_approval_rate !== null &&
+                modelB.verifier_approval_rate !== undefined
+                    ? true
+                    : null,
         },
         {
             label: 'Average Confidence',
@@ -118,8 +132,16 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
 
                     <div className="space-y-4">
                         {compareMetrics.map((m) => {
-                            const isWin = m.isHigherBetter !== null && m.valA > m.valB;
-                            const isLoss = m.isHigherBetter !== null && m.valA < m.valB;
+                            const isWin =
+                                m.isHigherBetter !== null &&
+                                m.valA !== null &&
+                                m.valB !== null &&
+                                m.valA > m.valB;
+                            const isLoss =
+                                m.isHigherBetter !== null &&
+                                m.valA !== null &&
+                                m.valB !== null &&
+                                m.valA < m.valB;
 
                             return (
                                 <div
@@ -173,8 +195,16 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
 
                     <div className="space-y-4">
                         {compareMetrics.map((m) => {
-                            const isWin = m.isHigherBetter !== null && m.valB > m.valA;
-                            const isLoss = m.isHigherBetter !== null && m.valB < m.valA;
+                            const isWin =
+                                m.isHigherBetter !== null &&
+                                m.valA !== null &&
+                                m.valB !== null &&
+                                m.valB > m.valA;
+                            const isLoss =
+                                m.isHigherBetter !== null &&
+                                m.valA !== null &&
+                                m.valB !== null &&
+                                m.valB < m.valA;
 
                             return (
                                 <div

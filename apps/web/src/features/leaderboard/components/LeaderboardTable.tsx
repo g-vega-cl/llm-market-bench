@@ -26,6 +26,25 @@ type SortField =
 
 type SortOrder = 'asc' | 'desc';
 
+function sortLeaderboardModels(
+    models: LLMLeaderboardRow[],
+    sortField: SortField,
+    sortOrder: SortOrder,
+): LLMLeaderboardRow[] {
+    const isAsc = sortOrder === 'asc';
+    return [...models].sort((a, b) => {
+        const valA = a[sortField];
+        const valB = b[sortField];
+
+        if (valA === valB) return 0;
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+
+        const comparison = valA < valB ? -1 : 1;
+        return isAsc ? comparison : -comparison;
+    });
+}
+
 export function LeaderboardTable({
     models,
     selectedModels,
@@ -44,14 +63,7 @@ export function LeaderboardTable({
     };
 
     // Sort models on client side
-    const sortedModels = [...models].sort((a, b) => {
-        const valueA = a[sortField];
-        const valueB = b[sortField];
-
-        if (valueA < valueB) return sortOrder === 'asc' ? -1 : 1;
-        if (valueA > valueB) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-    });
+    const sortedModels = sortLeaderboardModels(models, sortField, sortOrder);
 
     const renderSortIndicator = (field: SortField) => {
         if (sortField !== field) return <span className="text-zinc-600 pl-1">↕</span>;
@@ -198,7 +210,9 @@ function LeaderboardTableRow({
                 {model.win_rate.toFixed(1)}%
             </TableCell>
             <TableCell className="font-mono text-zinc-300 text-sm">
-                {model.verifier_approval_rate.toFixed(1)}%
+                {model.verifier_approval_rate !== null && model.verifier_approval_rate !== undefined
+                    ? `${model.verifier_approval_rate.toFixed(1)}%`
+                    : '—'}
             </TableCell>
             <TableCell className="font-mono text-zinc-300 text-sm">
                 {model.consistency_score.toFixed(1)}%

@@ -43,6 +43,22 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         composite_score: 89.5,
     },
     {
+        model_name: 'MiniMax-M3',
+        total_equity: 10600,
+        return_pct: 6.0,
+        realized_pnl: 600,
+        win_rate: 60.0,
+        total_trades: 10,
+        verifier_approval_rate: null, // ignored verifier score
+        average_confidence: 80.0,
+        api_success_rate: 100.0,
+        trading_activity_rate: 85.0,
+        trading_performance_score: 80.0,
+        reasoning_quality_score: 80.0,
+        consistency_score: 95.0,
+        composite_score: 85.0,
+    },
+    {
         model_name: 'gpt-5.4-nano',
         total_equity: 10480,
         return_pct: 4.8,
@@ -70,14 +86,20 @@ describe('LeaderboardPage', () => {
         // Should render podium placements
         expect(screen.getByText('Place #1')).toBeDefined();
         expect(screen.getByText('Place #2')).toBeDefined();
+        expect(screen.getByText('Place #3')).toBeDefined();
 
         // Should render model display names from config or fallback
         expect(screen.getAllByText('DeepSeek (v4-pro)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('MiniMax (M3)').length).toBeGreaterThan(0);
         expect(screen.getAllByText('OpenAI (gpt-5.4-nano)').length).toBeGreaterThan(0);
 
         // Should render score percentages
         expect(screen.getAllByText('89.5%').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('85.0%').length).toBeGreaterThan(0);
         expect(screen.getAllByText('84.2%').length).toBeGreaterThan(0);
+
+        // Should render em-dash (—) for MiniMax verifier rate
+        expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
     it('enables comparing two selected models side-by-side', () => {
@@ -85,9 +107,9 @@ describe('LeaderboardPage', () => {
 
         // Get compare checkboxes
         const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
-        expect(checkboxes.length).toBe(2);
+        expect(checkboxes.length).toBe(3);
 
-        // Check both checkboxes to trigger comparison
+        // Check first two checkboxes to trigger comparison
         fireEvent.click(checkboxes[0]);
         fireEvent.click(checkboxes[1]);
 

@@ -243,3 +243,15 @@ Implemented a comprehensive screening and ranking leaderboard for comparing LLMs
 - **Visual Page & Routing**: Added new route `/leaderboard` and created the `LeaderboardPage` hub with a timeframe switcher.
 - **Aesthetic Components**: Designed a Bloomberg-meets-Wired podium layout (`LeaderboardPodium.tsx`), a sortable data grid (`LeaderboardTable.tsx`), and a side-by-side comparative diagnostics utility (`ModelComparison.tsx`) using the design system's glass Cards, Tables, and Badges.
 - **TDD & Quality**: Created `fetch-leaderboard.test.ts` and `LeaderboardPage.test.tsx` verifying data aggregation, metrics calculations, UI rendering, and comparison interactions. Passed 100% of test suites with zero lint or formatting errors.
+
+## [2026-06-17] feature | Leaderboard MiniMax Bypass & Card Height Fixes
+
+Updated the LLM Leaderboard to ignore verifier metrics for MiniMax-M3 and fix card height overflow:
+- **Database Layer**: Added migration `20260618000001_update_llm_leaderboard_rpc_minimax.sql` that sets `verifier_approval_rate` to NULL and bases reasoning quality and composite scores solely on confidence for MiniMax-M3.
+- **Frontend Filtering**: Modified `fetch-leaderboard.ts` to filter out old/inactive models not present in the active `MODELS` config.
+- **Card Styling & Height**: Replaced fixed height `md:h-[...]` with dynamic `md:min-h-[...] h-auto` on the Podium cards to prevent floating text overflow, extracting `PodiumCard` to resolve Biome complexity warnings.
+- **UI Logic**: Handled null verifier approval rates gracefully with an em-dash (`—`) and disabled win/loss highlighting for it in side-by-side comparison.
+- **Type Safety**: Updated `LLMLeaderboardRow` definition to allow `verifier_approval_rate` to be `number | null`.
+- **TDD Tests**: Updated tests to verify null-safety, em-dash display, and filtering of inactive models.
+
+**See**: [[entities/llm-leaderboard]], [LeaderboardPodium.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/components/LeaderboardPodium.tsx), [fetch-leaderboard.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/api/fetch-leaderboard.ts)

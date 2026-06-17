@@ -1,5 +1,8 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
+import { MODELS } from '~/config/models';
 import { getSupabaseServerClient } from '~/lib/supabase';
+
+const activeModels = new Set<string>(Object.values(MODELS));
 
 export async function fetchLeaderboard(
     timeWindowDays: number | null,
@@ -14,5 +17,6 @@ export async function fetchLeaderboard(
         throw error;
     }
 
-    return (data || []) as LLMLeaderboardRow[];
+    const rows = (data || []) as LLMLeaderboardRow[];
+    return rows.filter((row) => activeModels.has(row.model_name));
 }

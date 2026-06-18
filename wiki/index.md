@@ -62,6 +62,7 @@
 - [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR decision frameworks, patterns, and live examples
 - [[concepts/mcp-setup]] — Setup, configuration, plugin management, and caching details for Model Context Protocol (MCP) servers
 - [[concepts/fundamental-analysis]] — Standardized fundamental metrics, company earnings tools, and S&P 500 Market Health Barometer
+- [[concepts/market-feeling]] — LLM-driven daily and weekend market sentiment analysis grounded in newsletters, S&P 500 barometer, prediction markets, and ticker price swings
 
 
 

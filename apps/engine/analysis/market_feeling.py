@@ -23,6 +23,14 @@ You have access to the following data from today's trading session:
 - Lessons learned from past failures: {lessons}
 - Market events and consensus: {events}
 - Key decision reasoning: {reasoning}
+- Financial newsletters received today:
+{newsletters_summary}
+- S&P 500 Market Health Barometer:
+{barometer_summary}
+- Active prediction market odds:
+{prediction_markets_summary}
+- Price swings of traded/proposed tickers:
+{price_swings_summary}
 
 TASK:
 Analyze this data holistically and provide a market sentiment assessment.
@@ -31,15 +39,16 @@ Think step-by-step:
 1. What is the overall tone of recent trades?
 2. Are there rejected attempts that show strong agent conviction despite execution failure?
 3. Are there any lessons that suggest caution or different positioning?
-4. What market events are driving current decisions?
-5. What risks or opportunities are top-of-mind?
+4. What market events and external newsletters/news are driving current decisions?
+5. How does the S&P 500 valuation barometer and prediction market consensus support or contrast with the agents' actions?
+6. What risks or opportunities are top-of-mind?
 
 OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
 {{
   "sentiment_label": "string (2-4 words, e.g., 'Cautiously Optimistic', 'Risk-Off', 'Wait-and-See', 'Defensive', 'Opportunistic', 'Uncertain')",
   "sentiment_emoji": "string (single emoji that best represents the sentiment)",
   "confidence_score": 0-100 (how confident are you in this assessment based on available data - higher if more trades/lessons available),
-  "why_explanation": "string (2-3 sentences explaining the reasoning behind this sentiment - be specific about what you're seeing)",
+  "why_explanation": "string (2-3 sentences explaining the reasoning behind this sentiment - be specific about what you're seeing in the trades, newsletters, barometer, and prediction markets)",
   "market_direction": "BULLISH|BEARISH|NEUTRAL",
   "primary_concern": "string (the most important risk or opportunity currently - be specific)",
   "secondary_concern": "string (secondary consideration)"
@@ -54,6 +63,14 @@ You have access to the following data from the past week:
 - Lessons learned from past failures: {lessons}
 - Market events and consensus: {events}
 - Key decision reasoning from the week: {reasoning}
+- Financial newsletters received this week:
+{newsletters_summary}
+- S&P 500 Market Health Barometer:
+{barometer_summary}
+- Active prediction market odds:
+{prediction_markets_summary}
+- Price swings of traded/proposed tickers:
+{price_swings_summary}
 
 TASK:
 Provide a weekend recap sentiment assessment. This is a read-only analysis - no new trades will be executed until markets reopen.
@@ -62,15 +79,16 @@ Think step-by-step:
 1. How did the week go overall in terms of trading outcomes?
 2. Are there rejected attempts that show strong agent conviction despite execution failure?
 3. What lessons from past failures are most relevant going into next week?
-4. What market events should I be thinking about for next week?
-5. What are the key risks and opportunities heading into the new week?
+4. What market events and newsletters should I be thinking about for next week?
+5. How does the S&P 500 valuation barometer and prediction market consensus support or contrast with the agents' actions?
+6. What are the key risks and opportunities heading into the new week?
 
 OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
 {{
   "sentiment_label": "string (2-4 words, e.g., 'Weekend Recap', 'Cautiously Optimistic', 'Risk-Off', 'Wait-and-See', 'Defensive', 'Opportunistic', 'Uncertain')",
   "sentiment_emoji": "string (single emoji that best represents the sentiment)",
   "confidence_score": 0-100 (how confident are you in this assessment based on available data - higher if more trades/lessons available),
-  "why_explanation": "string (2-3 sentences explaining the reasoning behind this weekend recap - be specific about what happened this week)",
+  "why_explanation": "string (2-3 sentences explaining the reasoning behind this weekend recap - be specific about what happened in the trades, newsletters, barometer, and prediction markets)",
   "market_direction": "BULLISH|BEARISH|NEUTRAL",
   "primary_concern": "string (the most important risk or opportunity for next week - be specific)",
   "secondary_concern": "string (secondary consideration for next week)"
@@ -141,6 +159,96 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
         f"Gathered {date_label} data: {len(executed_trades)} executed, {len(rejected_attempts)} rejected, {len(lessons)} lessons, {len(events)} events"
     )
 
+    # 4. Fetch newsletters
+    newsletters_res = (
+        sb_client.table("newsletter_snapshots")
+        .select("sender, subject, content, date")
+        .gte("date", start_date)
+        .order("date", desc=True)
+        .execute()
+    )
+    newsletters = newsletters_res.data or []
+
+    # 5. Fetch latest S&P 500 barometer
+    barometer_res = sb_client.table("market_barometer_history").select("*").order("date", desc=True).limit(1).execute()
+    barometer = barometer_res.data[0] if barometer_res.data else None
+
+    # 6. Fetch active prediction market odds
+    prediction_markets_res = (
+        sb_client.table("prediction_market_snapshots")
+        .select("*")
+        .eq("is_active", True)
+        .order("volume_usd", desc=True)
+        .limit(5)
+        .execute()
+    )
+    prediction_markets = prediction_markets_res.data or []
+
+    # 7. Calculate price swings of traded/proposed tickers
+    tickers = list(
+        {t.get("ticker") for t in executed_trades if t.get("ticker")}
+        | {d.get("ticker") for d in all_decisions if d.get("ticker")}
+        | {d.get("ticker") for d in rejected_attempts if d.get("ticker")}
+    )
+
+    price_swings = {}
+    if tickers:
+        try:
+            price_history_res = (
+                sb_client.table("price_history")
+                .select("ticker, price, fetched_at")
+                .in_("ticker", tickers)
+                .gte("fetched_at", start_date)
+                .order("fetched_at", desc=True)
+                .execute()
+            )
+            rows = price_history_res.data or []
+
+            history_by_ticker = {}
+            for row in rows:
+                t = row.get("ticker")
+                if t:
+                    if t not in history_by_ticker:
+                        history_by_ticker[t] = []
+                    history_by_ticker[t].append(row)
+
+            for ticker in tickers:
+                t_rows = history_by_ticker.get(ticker, [])
+                if not t_rows:
+                    fallback_res = (
+                        sb_client.table("price_history")
+                        .select("price, fetched_at")
+                        .eq("ticker", ticker)
+                        .order("fetched_at", desc=True)
+                        .limit(2)
+                        .execute()
+                    )
+                    t_rows = fallback_res.data or []
+
+                if len(t_rows) >= 2:
+                    latest_price = float(t_rows[0]["price"])
+                    oldest_price = float(t_rows[-1]["price"])
+                    pct_change = ((latest_price - oldest_price) / oldest_price) * 100 if oldest_price > 0 else 0.0
+                    price_swings[ticker] = {
+                        "latest_price": latest_price,
+                        "oldest_price": oldest_price,
+                        "pct_change": pct_change,
+                    }
+                elif len(t_rows) == 1:
+                    price_swings[ticker] = {
+                        "latest_price": float(t_rows[0]["price"]),
+                        "oldest_price": float(t_rows[0]["price"]),
+                        "pct_change": 0.0,
+                    }
+                else:
+                    price_swings[ticker] = {
+                        "latest_price": 0.0,
+                        "oldest_price": 0.0,
+                        "pct_change": 0.0,
+                    }
+        except Exception as e:
+            logger.warning(f"Failed to fetch price history swings: {e}")
+
     return {
         "trades": executed_trades,
         "memories": memories,
@@ -148,6 +256,10 @@ async def gather_today_data(sb_client, weekend_mode: bool = False) -> dict[str, 
         "events": events,
         "decisions": all_decisions,
         "rejected_attempts": rejected_attempts,
+        "newsletters": newsletters,
+        "barometer": barometer,
+        "prediction_markets": prediction_markets,
+        "price_swings": price_swings,
     }
 
 
@@ -262,6 +374,74 @@ def build_reasoning_summary(decisions: list[dict], weekend_mode: bool = False) -
     return "\n".join(reasoning_parts) if reasoning_parts else f"No decisions made {date_label}."
 
 
+def build_newsletters_summary(newsletters: list[dict], weekend_mode: bool = False) -> str:
+    """Build a summary of newsletters."""
+    date_label = "this week" if weekend_mode else "today"
+    if not newsletters:
+        return f"No newsletters received {date_label}."
+
+    lines = []
+    for i, ns in enumerate(newsletters[:10], 1):
+        sender = ns.get("sender", "Unknown")
+        subject = ns.get("subject", "No Subject")
+        content_snippet = ns.get("content", "")[:200].replace("\n", " ").strip()
+        lines.append(f"{i}. From: {sender} | Subject: {subject} | Snippet: {content_snippet}...")
+    return "\n".join(lines)
+
+
+def build_barometer_summary(barometer: dict | None) -> str:
+    """Build a summary of the S&P 500 Market Health Barometer."""
+    if not barometer:
+        return "No S&P 500 Market Health Barometer data available."
+    pe = barometer.get("pe_ratio")
+    fwd_pe = barometer.get("forward_pe")
+    pb = barometer.get("pb_ratio")
+    ps = barometer.get("ps_ratio")
+    surprise = barometer.get("earnings_surprise_momentum")
+
+    pe_val = f"{float(pe):.2f}" if pe is not None else "N/A"
+    fwd_pe_val = f"{float(fwd_pe):.2f}" if fwd_pe is not None else "N/A"
+    pb_val = f"{float(pb):.2f}" if pb is not None else "N/A"
+    ps_val = f"{float(ps):.2f}" if ps is not None else "N/A"
+    surprise_val = f"{float(surprise):.1f}%" if surprise is not None else "N/A"
+
+    return (
+        f"S&P 500 Aggregate Metrics (Snapshot from {barometer.get('date', 'N/A')}):\n"
+        f"- Trailing P/E: {pe_val}\n"
+        f"- Forward P/E: {fwd_pe_val}\n"
+        f"- P/B Ratio: {pb_val}\n"
+        f"- P/S Ratio: {ps_val}\n"
+        f"- Earnings Surprise Momentum: {surprise_val}"
+    )
+
+
+def build_prediction_markets_summary(prediction_markets: list[dict]) -> str:
+    """Build a summary of active prediction market sentiment."""
+    if not prediction_markets:
+        return "No active prediction market sentiment data available."
+    lines = []
+    for i, pm in enumerate(prediction_markets, 1):
+        yes_pct = float(pm.get("yes_odds") or 0) * 100
+        no_pct = float(pm.get("no_odds") or 0) * 100
+        lines.append(
+            f"{i}. {pm['question']} ({pm['platform'].upper()}) - YES: {yes_pct:.1f}% / NO: {no_pct:.1f}% (Volume: ${pm.get('volume_usd', 0):,.2f})"
+        )
+    return "\n".join(lines)
+
+
+def build_price_swings_summary(swings: dict[str, dict[str, Any]]) -> str:
+    """Build a summary of calculated price swings."""
+    if not swings:
+        return "No price swings recorded for today's tickers."
+
+    lines = []
+    for ticker, data in sorted(swings.items()):
+        pct = data["pct_change"]
+        sign = "+" if pct >= 0 else ""
+        lines.append(f"- {ticker}: ${data['latest_price']:.2f} ({sign}{pct:.2f}%)")
+    return "\n".join(lines)
+
+
 def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
     """Build the market feeling prompt with today's (or week's) data.
 
@@ -278,6 +458,11 @@ def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
     events_summary = build_events_summary(data["events"], weekend_mode)
     reasoning_summary = build_reasoning_summary(data["decisions"], weekend_mode)
 
+    newsletters_summary = build_newsletters_summary(data.get("newsletters", []), weekend_mode)
+    barometer_summary = build_barometer_summary(data.get("barometer"))
+    prediction_markets_summary = build_prediction_markets_summary(data.get("prediction_markets", []))
+    price_swings_summary = build_price_swings_summary(data.get("price_swings", {}))
+
     template = WEEKEND_MARKET_FEELING_PROMPT if weekend_mode else MARKET_FEELING_PROMPT
 
     return template.format(
@@ -286,6 +471,10 @@ def build_prompt(data: dict[str, Any], weekend_mode: bool = False) -> str:
         lessons=lessons_summary,
         events=events_summary,
         reasoning=reasoning_summary,
+        newsletters_summary=newsletters_summary,
+        barometer_summary=barometer_summary,
+        prediction_markets_summary=prediction_markets_summary,
+        price_swings_summary=price_swings_summary,
     )
 
 

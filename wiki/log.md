@@ -1,3 +1,14 @@
+## [2026-06-18] feature | Ground How I'm Feeling LLM with Newsletters, S&P 500 Barometer, Prediction Markets, and Ticker Price Swings
+
+Grounded the "How I'm Feeling" sentiment generation engine in external market and macro contexts to prevent it from overreacting solely to the trading decisions of other LLM agents:
+- **Newsletter Ingestion**: Integrated today's/this week's clean newsletter snapshots (`sender`, `subject`, `content` snippets) into the sentiment analysis prompt context.
+- **S&P 500 Barometer**: Added the latest S&P 500 valuation multiples and earnings surprise momentum snapshot from `market_barometer_history`.
+- **Prediction Markets**: Incorporated active Polymarket and Kalshi odds sorted by volume from `prediction_market_snapshots`.
+- **Price Swings**: Calculated price return percentages for all tickers traded or proposed today based on `price_history` and formatted them into the prompt.
+- **TDD Enforcement**: Added a robust test case `test_prompt_includes_grounding_data` inside `TestBuildPrompt` to ensure prompt formatting is stable and correct.
+
+**See**: [market_feeling.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/market_feeling.py), [test_market_feeling.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_market_feeling.py)
+
 ## [2026-06-17] bugfix | Fix Barometer Audit Page compilation and routing type safety
 
 Resolved TypeScript compiler errors in the web application around the S&P 500 Market Health Barometer Audit route:

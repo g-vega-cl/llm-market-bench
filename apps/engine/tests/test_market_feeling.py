@@ -226,6 +226,48 @@ class TestBuildPrompt:
         assert "Test reasoning" in prompt
         assert "Rejected buys: 1" in prompt
 
+    def test_prompt_includes_grounding_data(self):
+        """Verify that the generated prompt includes newsletters, barometer, prediction market odds, and price swings."""
+        from analysis.market_feeling import build_prompt
+
+        data = {
+            "trades": [],
+            "rejected_attempts": [],
+            "lessons": [],
+            "events": [],
+            "decisions": [],
+            "newsletters": [{"sender": "newsletter@test.com", "subject": "Macro Vibe", "content": "Inflation is cool"}],
+            "barometer": {
+                "pe_ratio": 24.5,
+                "forward_pe": 21.2,
+                "pb_ratio": 4.1,
+                "ps_ratio": 2.8,
+                "earnings_surprise_momentum": 78.5,
+                "date": "2026-06-18",
+            },
+            "prediction_markets": [
+                {
+                    "question": "Will Fed cut rates?",
+                    "platform": "kalshi",
+                    "yes_odds": 0.65,
+                    "no_odds": 0.35,
+                    "volume_usd": 1500000.0,
+                }
+            ],
+            "price_swings": {"AAPL": {"latest_price": 185.50, "oldest_price": 180.00, "pct_change": 3.06}},
+        }
+
+        prompt = build_prompt(data)
+
+        # Assert new elements are present in the prompt
+        assert "newsletter@test.com" in prompt
+        assert "Macro Vibe" in prompt
+        assert "Inflation is cool" in prompt
+        assert "Trailing P/E: 24.50" in prompt
+        assert "Will Fed cut rates?" in prompt
+        assert "YES: 65.0%" in prompt
+        assert "AAPL: $185.50 (+3.06%)" in prompt
+
     def test_prompt_has_structure(self):
         """Test that prompt contains expected sections."""
         from analysis.market_feeling import build_prompt

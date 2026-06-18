@@ -21,7 +21,7 @@ TypeScript, and TanStack Query.
 
 - **Framework**: TanStack Start (SSR + client routing)
 - **Data Fetching**: TanStack Query with centralized query options factory, hybrid SSR + `useSuspenseQuery`, cursor-based pagination
-- **Charts**: D3.js for equity curves with benchmark overlay; Recharts for heatmaps and concept maps
+- **Charts**: D3.js for equity curves with benchmark overlay; Recharts for heatmaps
 - **Design System**: Custom UI primitives ("Bloomberg Terminal Meets Wired Magazine"), Space Grotesk/Satoshi/JetBrains Mono typography, semantic color system with dark mode
 
 ## Architecture
@@ -64,7 +64,7 @@ To resolve spurious rendering artifacts (such as overlapping vertical lines or r
 - **Date Deduplication**: Dynamically groups records by unique dates, preventing duplicate time-series indices which would otherwise cause vertical overlapping lines at the same x-axis coordinate.
 - **Defensive Line Generators**: Equipped the D3 line generator with explicit `.defined()` callback boundaries to skip disjoint indices safely and render clean paths.
 
-Features: today (dashboard), portfolios (summary + detail with D3 equity curves), reasoning (LLM audit trail), memories (memory chains), market-overview (correlation heatmap), concepts (PCA concept map), audits (system audit logs).
+Features: today (dashboard), portfolios (summary + detail with D3 equity curves), reasoning (LLM audit trail), memories (memory chains), market-overview (correlation heatmap), concepts (concept tracker dashboard), audits (system audit logs).
 
 ### PostHog Stealthy Reverse Proxy (2026-05-21)
 
@@ -139,6 +139,13 @@ To display aggregate valuation and earnings metrics and support transparent data
 - Accessibility: WCAG AA (4.5:1), aria labels, visible focus states
 
 Cross-cutting conventions: all "Load More" buttons use Button with isLoading, all error states use ErrorCard, all loading states use LoadingBoundary, all section titles use SectionHeading. Color palette is consistently zinc-based across all pages.
+
+### Concept Tracker Table (2026-06-18)
+
+To resolve complexity and low usability of the D3 2D PCA cluster map, the concepts visualization was refactored into a high-fidelity Concept Tracker dashboard:
+- **Tabbed Views**: Standardized views for "Trending" (sorted by momentum velocity), "Most Mentioned" (sorted by mention count), and "Newest" (sorted by chronological first seen timestamp).
+- **Text Filtering**: Equipped with a real-time name filter powered by the Design System `Input` component.
+- **Inline Expansion Details**: Shows detailed activity timelines (First/Last Seen dates), active duration, and original PCA vector coordinate mapping on row click, keeping the layout clean and actionable.
 
 ## Deployment
 

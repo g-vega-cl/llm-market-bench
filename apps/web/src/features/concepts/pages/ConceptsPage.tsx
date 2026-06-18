@@ -21,10 +21,10 @@ export function ConceptsPage({ initialData, fetchFn }: ConceptsPageProps) {
         <div className="min-h-screen">
             <PageLayout>
                 <header className="mb-8">
-                    <SectionHeading gradient="ai">Concept Cluster Map</SectionHeading>
+                    <SectionHeading gradient="ai">Concept Tracker</SectionHeading>
                     <p className="text-zinc-500 text-lg mt-2">
-                        Semantic visualization of market narratives. Position represents semantic
-                        similarity (PCA), color represents momentum velocity.
+                        Track trending, high-volume, and emerging market concepts extracted from
+                        news feeds and decision logs.
                     </p>
                 </header>
 
@@ -33,39 +33,55 @@ export function ConceptsPage({ initialData, fetchFn }: ConceptsPageProps) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                     <div>
                         <h3 className="font-semibold mb-2 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
-                            <span className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 via-green-500 to-red-500" />
-                            Color: Momentum Velocity
+                            <span className="w-3 h-3 rounded-full bg-accent" />
+                            Dynamic Tabs
                         </h3>
                         <p className="text-sm text-zinc-500">
-                            Represents the acceleration of mentions (Last 7 Days vs 30-Day Avg).
+                            Switch between tabs to change sorting order:
                             <br />
-                            <span className="text-accent font-medium">Cool Colors</span> =
-                            Stable/Fading
-                            <br />
-                            <span className="text-danger font-medium">Hot Colors</span> =
-                            Emerging/Viral
-                        </p>
-                    </div>
-                    <div>
-                        <h3 className="font-semibold mb-2 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
-                            <span className="w-3 h-3 rounded-full bg-zinc-400" />
-                            Size: Volume
-                        </h3>
-                        <p className="text-sm text-zinc-500">
-                            Larger circles indicate a higher total citation count across all
-                            newsletters (90-day history).
-                        </p>
-                    </div>
-                    <div>
-                        <h3 className="font-semibold mb-2 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
-                            <span className="w-4 h-4 text-xs border border-zinc-300 dark:border-zinc-600 flex items-center justify-center rounded text-zinc-600 dark:text-zinc-400">
-                                XY
+                            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                Trending
                             </span>
-                            Position: Semantic Similarity
+                            : Mentions accelerating velocity.
+                            <br />
+                            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                Most Mentioned
+                            </span>
+                            : Highest overall volume.
+                            <br />
+                            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                Newest
+                            </span>
+                            : Chronological discovery.
+                        </p>
+                    </div>
+                    <div>
+                        <h3 className="font-semibold mb-2 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
+                            <span className="w-3 h-3 rounded-full bg-success" />
+                            Status Badges
                         </h3>
                         <p className="text-sm text-zinc-500">
-                            Concepts appearing close together share semantic meaning in the vector
-                            space (reduced from 768 dimensions via PCA).
+                            Visual status indicators categorized by velocity score:
+                            <br />
+                            <span className="text-danger font-medium">Accelerating</span>: Velocity
+                            &ge; 3.0 (rapidly gaining traction).
+                            <br />
+                            <span className="text-success font-medium">Stable</span>: Velocity &ge;
+                            1.0 (moderate persistent interest).
+                            <br />
+                            <span className="text-zinc-400 font-medium">Cooling</span>: Velocity
+                            &lt; 1.0 (fading mentions).
+                        </p>
+                    </div>
+                    <div>
+                        <h3 className="font-semibold mb-2 flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
+                            <span className="w-3 h-3 rounded-full bg-blue-500" />
+                            Timeline & Lifespan
+                        </h3>
+                        <p className="text-sm text-zinc-500">
+                            Click on any row to expand it inline. This reveals the first seen date,
+                            the last seen date, the lifespan duration of the narrative, and its
+                            original vector space coordinates.
                         </p>
                     </div>
                 </div>

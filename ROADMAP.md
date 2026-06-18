@@ -8,7 +8,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
-- [ ] **Whole market earnings estimates** - Add whole market earnings estimates to the system. Compare with historical if possible.
 - [ ] **Review lessons learned and the learning loop** -
 - [ ] **Revisit the concepts map** - It should be something like "this new trend is comming up or leaving"
   - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)

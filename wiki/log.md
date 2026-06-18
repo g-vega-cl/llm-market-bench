@@ -1,3 +1,14 @@
+## [2026-06-18] feature | Replace D3 PCA Concept Map with Interactive Concept Tracker Table
+
+Refactored the complex and unintuitive D3-based PCA concept map visualization on the `/concepts` page into an interactive, high-fidelity tabbed table:
+- **Interactive Tabs**: Implemented three sorting modes: "Trending" (momentum velocity), "Most Mentioned" (citation counts), and "Newest" (chronological discovery date).
+- **Search Filtering**: Added real-time client-side search filtering by concept name.
+- **Inline Expansion**: Enabled expanding rows to inspect timeline activity (First/Last Seen dates), lifespan active duration, and original semantic PCA coordinates.
+- **TDD & Design System**: Rewrote unit tests in `ConceptMap.test.tsx` to assert search, tab switching, and expansion; used standard design system primitives (`Table`, `Badge`, `Button`, `Input`).
+- **PostHog Tracking**: Captured `concept_tab_changed` and `concept_row_expanded` events for usage analytics.
+
+**See**: [[entities/web-app]], [ConceptMap.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/components/ConceptMap.tsx), [ConceptMap.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/components/ConceptMap.test.tsx), [ConceptsPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/pages/ConceptsPage.tsx)
+
 ## [2026-06-18] feature | Ground How I'm Feeling LLM with Newsletters, S&P 500 Barometer, Prediction Markets, and Ticker Price Swings
 
 Grounded the "How I'm Feeling" sentiment generation engine in external market and macro contexts to prevent it from overreacting solely to the trading decisions of other LLM agents:

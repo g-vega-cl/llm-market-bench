@@ -1,6 +1,17 @@
+import {
+    Badge,
+    Button,
+    Input,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
-import * as d3 from 'd3';
 import * as React from 'react';
+import { useMemo, useState } from 'react';
 
 export type Concept = {
     id: string;
@@ -13,277 +24,285 @@ export type Concept = {
     last_mention_at: string;
 };
 
+type TabType = 'trending' | 'volume' | 'newest';
+
 export function ConceptMap({ data }: { data: Concept[] }) {
     const posthog = usePostHog();
-    const posthogRef = React.useRef(posthog);
-    posthogRef.current = posthog;
-    const svgRef = React.useRef<SVGSVGElement>(null);
-    const [hoveredNode, setHoveredNode] = React.useState<Concept | null>(null);
-    const [hoveredCluster, setHoveredCluster] = React.useState<{
-        text: string;
-        x: number;
-        y: number;
-        color: string;
-    } | null>(null);
+    const [activeTab, setActiveTab] = useState<TabType>('trending');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    // Debug Stats
-    const _conceptCount = data.length;
+    // Track tab changes in PostHog
+    const handleTabChange = (tab: TabType) => {
+        setActiveTab(tab);
+        posthog?.capture('concept_tab_changed', { tab });
+    };
 
-    React.useEffect(() => {
-        if (!data || data.length === 0 || !svgRef.current) return;
-
-        const width = 800;
-        const height = 600;
-        const margin = { top: 20, right: 20, bottom: 20, left: 20 };
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        const svg = d3.select(svgRef.current);
-        svg.selectAll('*').remove();
-
-        // Scales
-        const xExtent = d3.extent(data, (d) => d.pca_x!) as [number, number];
-        const yExtent = d3.extent(data, (d) => d.pca_y!) as [number, number];
-
-        const xPad = (xExtent[1] - xExtent[0]) * 0.05;
-        const yPad = (yExtent[1] - yExtent[0]) * 0.05;
-
-        const xScale = d3
-            .scaleLinear()
-            .domain([xExtent[0] - xPad, xExtent[1] + xPad])
-            .range([margin.left, width - margin.right]);
-
-        const yScale = d3
-            .scaleLinear()
-            .domain([yExtent[0] - yPad, yExtent[1] + yPad])
-            .range([height - margin.bottom, margin.top]);
-
-        const rScale = d3
-            .scaleSqrt()
-            .domain([0, d3.max(data, (d) => d.mention_count) || 10])
-            .range([3, 12]);
-
-        // --- Node Color Scale (Velocity - Restored) ---
-        const velocityScale = d3
-            .scaleSequential(d3.interpolateTurbo)
-            .domain([0, d3.max(data, (d) => d.velocity_score) || 5]);
-
-        // --- Spatial Color Scale (Background Only) ---
-        const getSpatialColor = (x: number, y: number) => {
-            const dx = x - centerX;
-            const dy = y - centerY;
-            const angle = Math.atan2(dy, dx);
-            const t = (angle + Math.PI) / (2 * Math.PI);
-            return d3.interpolateRainbow(t);
-        };
-
-        // --- Contours ---
-        // 1. Generate standard contours (MultiPolygons)
-        const contoursRaw = d3
-            .contourDensity<Concept>()
-            .x((d) => xScale(d.pca_x!))
-            .y((d) => yScale(d.pca_y!))
-            .size([width, height])
-            .bandwidth(20)
-            .thresholds(20)(data);
-
-        // 2. Split MultiPolygons into Individual Polygons (Islands)
-        // This ensures that two distant clusters at the same density level are treated as separate hover targets.
-        type ContourFeature = {
-            type: 'Feature';
-            geometry: { type: 'Polygon'; coordinates: number[][][] };
-            properties: { value: number }; // Density value
-        };
-
-        const separateContours: ContourFeature[] = [];
-
-        contoursRaw.forEach((multiPoly) => {
-            // multiPoly.coordinates is [Polygon1, Polygon2, ...]
-            // Where each Polygon is [Ring1, Ring2...]
-            multiPoly.coordinates.forEach((polygonCoords) => {
-                separateContours.push({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: polygonCoords,
-                    },
-                    properties: { value: multiPoly.value },
-                });
+    // Track row expansions in PostHog
+    const handleRowClick = (concept: Concept) => {
+        const nextId = expandedId === concept.id ? null : concept.id;
+        setExpandedId(nextId);
+        if (nextId) {
+            posthog?.capture('concept_row_expanded', {
+                concept_name: concept.concept_name,
+                mention_count: concept.mention_count,
+                velocity_score: concept.velocity_score,
             });
+        }
+    };
+
+    // Process concepts: Filter and Sort
+    const processedConcepts = useMemo(() => {
+        if (!data) return [];
+
+        // 1. Filter by search query
+        const filtered = data.filter((c) =>
+            c.concept_name.toLowerCase().includes(searchQuery.toLowerCase()),
+        );
+
+        // 2. Sort based on active tab
+        return [...filtered].sort((a, b) => {
+            if (activeTab === 'trending') {
+                return (b.velocity_score || 0) - (a.velocity_score || 0);
+            }
+            if (activeTab === 'volume') {
+                return (b.mention_count || 0) - (a.mention_count || 0);
+            }
+            if (activeTab === 'newest') {
+                const aTime = a.first_mention_at ? new Date(a.first_mention_at).getTime() : 0;
+                const bTime = b.first_mention_at ? new Date(b.first_mention_at).getTime() : 0;
+                return bTime - aTime;
+            }
+            return 0;
         });
+    }, [data, activeTab, searchQuery]);
 
-        const pathGenerator = d3.geoPath();
+    // Format utility for Date
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC',
+        });
+    };
 
-        // Draw Individual Contours
-        svg.append('g')
-            .attr('class', 'contours')
-            .selectAll('path')
-            .data(separateContours)
-            .enter()
-            .append('path')
-            .attr('d', (d) => pathGenerator(d.geometry as d3.GeoPermissibleObjects))
-            .attr('fill', (d) => {
-                const centroid = pathGenerator.centroid(d.geometry as d3.GeoPermissibleObjects);
-                if (!centroid || Number.isNaN(centroid[0])) return '#eee';
-                return getSpatialColor(centroid[0], centroid[1]);
-            })
-            .attr('fill-opacity', (d) => 0.05 + d.properties.value * 0.1)
-            .attr('stroke', 'white')
-            .attr('stroke-width', 0.5)
-            .attr('stroke-opacity', 0.1)
-            .style('cursor', 'crosshair')
-            .on('mouseenter', function (_event, d) {
-                d3.select(this)
-                    .transition()
-                    .duration(100)
-                    .attr('fill-opacity', 0.4)
-                    .attr('stroke-opacity', 0.8);
+    // Calculate elapsed duration in days
+    const getDurationDays = (first: string | null, last: string | null) => {
+        if (!first || !last) return 0;
+        const fTime = new Date(first).getTime();
+        const lTime = new Date(last).getTime();
+        const diffMs = Math.abs(lTime - fTime);
+        const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return Math.max(1, days);
+    };
 
-                const centroid = pathGenerator.centroid(d.geometry as d3.GeoPermissibleObjects);
-                if (centroid && !Number.isNaN(centroid[0])) {
-                    const cx = centroid[0];
-                    const cy = centroid[1];
-
-                    // Find dominant concept for THIS specific island
-                    let closest: Concept | null = null;
-                    let minDist = Infinity;
-
-                    for (const c of data) {
-                        const dx = xScale(c.pca_x!) - cx;
-                        const dy = yScale(c.pca_y!) - cy;
-                        const dist = dx * dx + dy * dy;
-                        if (dist < minDist) {
-                            minDist = dist;
-                            closest = c;
-                        }
-                    }
-
-                    if (closest) {
-                        setHoveredCluster({
-                            text: closest.concept_name,
-                            x: cx,
-                            y: cy,
-                            color: getSpatialColor(cx, cy),
-                        });
-                    }
-                }
-            })
-            .on('mouseleave', function (_event, d) {
-                d3.select(this)
-                    .transition()
-                    .duration(200)
-                    .attr('fill-opacity', 0.05 + d.properties.value * 0.1)
-                    .attr('stroke-opacity', 0.1);
-                setHoveredCluster(null);
-            });
-
-        // Draw Nodes (Restored Velocity Color)
-        const _pointsG = svg
-            .append('g')
-            .selectAll('circle')
-            .data(data)
-            .join('circle')
-            .attr('cx', (d) => xScale(d.pca_x!))
-            .attr('cy', (d) => yScale(d.pca_y!))
-            .attr('r', (d) => rScale(d.mention_count))
-            .attr('fill', (d) => velocityScale(d.velocity_score)) // Back to Velocity
-            .attr('fill-opacity', 0.9)
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 1)
-            .style('cursor', 'pointer')
-            .on('mouseenter', (event, d) => {
-                d3.select(event.currentTarget).raise();
-                d3.select(event.currentTarget)
-                    .transition()
-                    .duration(150)
-                    .attr('r', rScale(d.mention_count) * 1.5)
-                    .attr('stroke-width', 2)
-                    .attr('stroke', '#000');
-                setHoveredNode(d);
-                posthogRef.current?.capture('concept_node_hovered', {
-                    concept_name: d.concept_name,
-                    mention_count: d.mention_count,
-                    velocity_score: d.velocity_score,
-                });
-            })
-            .on('mouseleave', (event, d) => {
-                d3.select(event.currentTarget)
-                    .transition()
-                    .duration(150)
-                    .attr('r', rScale(d.mention_count))
-                    .attr('stroke', '#fff')
-                    .attr('stroke-width', 1);
-                setHoveredNode(null);
-            });
-    }, [data]);
+    // Categorize momentum to assign proper badge color scheme
+    const getVelocityBadge = (score: number) => {
+        if (score >= 3.0) {
+            return (
+                <Badge colorScheme="danger" variant="soft" size="sm" showDot>
+                    Accelerating
+                </Badge>
+            );
+        }
+        if (score >= 1.0) {
+            return (
+                <Badge colorScheme="success" variant="soft" size="sm" showDot>
+                    Stable
+                </Badge>
+            );
+        }
+        return (
+            <Badge colorScheme="neutral" variant="soft" size="sm" showDot>
+                Cooling
+            </Badge>
+        );
+    };
 
     return (
-        <div className="relative flex justify-center p-4 w-full">
-            <svg
-                ref={svgRef}
-                width="100%"
-                height="100%"
-                viewBox="0 0 800 600"
-                className="w-full border border-gray-200 rounded-xl bg-gray-50/30 shadow-sm"
-            />
-
-            {/* Region Label - Now uses the cluster's specific color */}
-            {hoveredCluster && !hoveredNode && (
-                <div
-                    className="absolute top-8 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full border border-gray-200 shadow-sm pointer-events-none transition-all flex items-center gap-2 bg-white/95 backdrop-blur"
-                    style={{ borderLeft: `4px solid ${hoveredCluster.color}` }}
-                >
-                    <span
-                        className="text-xs font-bold uppercase tracking-widest"
-                        style={{ color: hoveredCluster.color }}
+        <div className="space-y-6 w-full">
+            {/* Controls Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                {/* Tabs */}
+                <div className="flex gap-2 bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                    <Button
+                        variant={activeTab === 'trending' ? 'solid' : 'ghost'}
+                        onClick={() => handleTabChange('trending')}
+                        className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
                     >
-                        Region
-                    </span>
-                    <span className="text-lg font-bold text-gray-800">{hoveredCluster.text}</span>
+                        Trending 🔥
+                    </Button>
+                    <Button
+                        variant={activeTab === 'volume' ? 'solid' : 'ghost'}
+                        onClick={() => handleTabChange('volume')}
+                        className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                    >
+                        Most Mentioned 📊
+                    </Button>
+                    <Button
+                        variant={activeTab === 'newest' ? 'solid' : 'ghost'}
+                        onClick={() => handleTabChange('newest')}
+                        className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                    >
+                        Newest ⏱️
+                    </Button>
                 </div>
-            )}
 
-            {hoveredNode && (
-                <div className="absolute top-4 right-4 p-4 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg max-w-xs pointer-events-none z-10">
-                    <h3 className="font-bold text-md mb-1 text-gray-800">
-                        {hoveredNode.concept_name}
-                    </h3>
-                    <div className="text-sm text-gray-600 space-y-1">
-                        <div className="flex justify-between">
-                            <span>Mentions:</span>
-                            <span className="font-mono">{hoveredNode.mention_count}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Momentum:</span>
-                            <span
-                                className="font-mono"
-                                style={{
-                                    color: d3.interpolateTurbo(hoveredNode.velocity_score / 5),
-                                }}
+                {/* Search */}
+                <div className="w-full sm:w-72">
+                    <Input
+                        placeholder="Search concepts..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        leftAddon={
+                            <svg
+                                className="w-4 h-4 text-zinc-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                aria-label="Search Icon"
                             >
-                                {hoveredNode.velocity_score.toFixed(2)}
-                            </span>
-                        </div>
-                        <div className="text-xs text-gray-400 mt-2">
-                            <div>
-                                First seen:{' '}
-                                {new Date(hoveredNode.first_mention_at).toLocaleDateString(
-                                    'en-US',
-                                    {
-                                        timeZone: 'America/New_York',
-                                    },
-                                )}
-                            </div>
-                            <div>
-                                Last seen:{' '}
-                                {new Date(hoveredNode.last_mention_at).toLocaleDateString('en-US', {
-                                    timeZone: 'America/New_York',
-                                })}
-                            </div>
-                        </div>
-                    </div>
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        }
+                    />
                 </div>
-            )}
+            </div>
+
+            {/* Concepts Table */}
+            <Table>
+                <TableHeader>
+                    <TableRow isHoverable={false}>
+                        <TableHead>Concept Name</TableHead>
+                        <TableHead align="right">Mentions</TableHead>
+                        <TableHead align="right">Momentum Velocity</TableHead>
+                        <TableHead align="center">Status</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {processedConcepts.map((concept) => {
+                        const isExpanded = expandedId === concept.id;
+                        return (
+                            <React.Fragment key={concept.id}>
+                                <TableRow
+                                    className="cursor-pointer group select-none"
+                                    onClick={() => handleRowClick(concept)}
+                                >
+                                    <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                                className={`transition-transform duration-200 ${
+                                                    isExpanded ? 'rotate-90' : ''
+                                                }`}
+                                            >
+                                                <svg
+                                                    className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <title>Arrow</title>
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 5l7 7-7 7"
+                                                    />
+                                                </svg>
+                                            </span>
+                                            {concept.concept_name}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell
+                                        align="right"
+                                        className="text-zinc-700 dark:text-zinc-300 font-mono"
+                                    >
+                                        {concept.mention_count}
+                                    </TableCell>
+                                    <TableCell
+                                        align="right"
+                                        className="text-zinc-700 dark:text-zinc-300 font-mono"
+                                    >
+                                        {concept.velocity_score.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {getVelocityBadge(concept.velocity_score)}
+                                    </TableCell>
+                                </TableRow>
+
+                                {isExpanded && (
+                                    <TableRow
+                                        isHoverable={false}
+                                        className="bg-zinc-50/40 dark:bg-zinc-950/40"
+                                    >
+                                        <TableCell colSpan={4} className="px-6 py-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm animate-fade-in">
+                                                <div className="space-y-1">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                                                        Timeline Activity
+                                                    </span>
+                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                                                        <span className="font-semibold text-zinc-500">
+                                                            First Seen:
+                                                        </span>{' '}
+                                                        {formatDate(concept.first_mention_at)}
+                                                    </div>
+                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                                                        <span className="font-semibold text-zinc-500">
+                                                            Last Seen:
+                                                        </span>{' '}
+                                                        {formatDate(concept.last_mention_at)}
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                                                        Lifespan Duration
+                                                    </span>
+                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                                                        <span className="font-semibold text-zinc-500">
+                                                            Duration Active:
+                                                        </span>{' '}
+                                                        {getDurationDays(
+                                                            concept.first_mention_at,
+                                                            concept.last_mention_at,
+                                                        )}{' '}
+                                                        days
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                                                        Semantic Coordinates
+                                                    </span>
+                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300 font-mono text-zinc-500">
+                                                        X: {concept.pca_x?.toFixed(4) ?? 'N/A'}, Y:{' '}
+                                                        {concept.pca_y?.toFixed(4) ?? 'N/A'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                    {processedConcepts.length === 0 && (
+                        <TableRow isHoverable={false}>
+                            <TableCell colSpan={4} className="py-12 text-center text-zinc-500">
+                                No concepts found matching your filters.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
         </div>
     );
 }

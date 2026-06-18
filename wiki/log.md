@@ -1,3 +1,14 @@
+## [2026-06-18] bugfix | Add loading indicator to Event Chain Explorer page
+
+Introduced a loading indicator and timeline loading cards to `EventChainPage` to notify the user that other memories in the chain are being fetched in the background:
+- **Background Refetch Detection**: Destructured `isFetching` from the `useSuspenseQuery` hook.
+- **Stale Cache Forcing**: Added `initialDataUpdatedAt: 0` to query options to force TanStack Query to immediately refetch the event chain on client mount, updating the single-item server-rendered page.
+- **Inline Loading Badge**: Added a loading badge with a spinner next to the page subtitle when `isFetching` is true.
+- **Placeholder Card**: Added a dashed placeholder loading card at the bottom of the timeline if `chain.length === 1 && isFetching` is true, indicating other memories in the chain are loading.
+- **TDD Verification**: Created `EventChainPage.test.tsx` verifying that the loading indicators appear during active fetches and disappear when query resolution finishes.
+
+**See**: [[entities/web-app]], [EventChainPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/pages/EventChainPage.tsx), [EventChainPage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/pages/EventChainPage.test.tsx)
+
 ## [2026-06-18] bugfix | Hide "Other Investable Assets" section when remaining assets is empty
 
 Resolved a UI rendering issue in `MemoryCard.tsx` where an empty "Other Investable Assets" section containing a confusing static placeholder was rendered for newly generated events:

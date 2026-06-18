@@ -1,4 +1,10 @@
-import { Badge, Button, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
+import {
+    Badge,
+    Button,
+    LoadingSpinner,
+    PageLayout,
+    SectionHeading,
+} from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { eventChainQueries } from '~/features/memories/queries/options';
@@ -54,9 +60,10 @@ function formatType(type: string): string {
 }
 
 export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPageProps) {
-    const { data } = useSuspenseQuery({
+    const { data, isFetching } = useSuspenseQuery({
         ...eventChainQueries.detail({ id: memoryId, fetchFn }),
         initialData,
+        initialDataUpdatedAt: 0,
     });
 
     const { chain, targetMemory } = data;
@@ -104,9 +111,17 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                         </Link>
                         <SectionHeading gradient="electric">Event Chain</SectionHeading>
                     </div>
-                    <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-                        Chronological chain including the selected event
-                    </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+                            Chronological chain including the selected event
+                        </p>
+                        {isFetching && (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-amber-500 font-medium bg-amber-50/50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200/50 dark:border-amber-900/30">
+                                <LoadingSpinner size="sm" className="text-amber-500" />
+                                Loading chain...
+                            </span>
+                        )}
+                    </div>
                 </PageLayout>
             </div>
 
@@ -114,7 +129,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                 <div className="flex flex-col space-y-0">
                     {chain.map((memory: ChainMemory, index: number) => (
                         <div key={memory.id} className="relative">
-                            {index < chain.length - 1 && (
+                            {(index < chain.length - 1 || (chain.length === 1 && isFetching)) && (
                                 <div className="absolute left-6 top-14 bottom-0 w-px bg-zinc-200 dark:bg-zinc-800" />
                             )}
                             <div
@@ -183,6 +198,25 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                             </div>
                         </div>
                     ))}
+                    {chain.length === 1 && isFetching && (
+                        <div className="relative">
+                            <div className="relative border border-dashed border-zinc-200 dark:border-zinc-800 rounded-md p-5 bg-zinc-50/50 dark:bg-zinc-900/30">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400">
+                                        <LoadingSpinner size="sm" className="text-zinc-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                            Loading other memories in this chain...
+                                        </p>
+                                        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                                            Retrieving preceding and succeeding events
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="mt-8 flex justify-center">
                     <Link to="/memories">

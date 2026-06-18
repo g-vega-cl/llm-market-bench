@@ -14,21 +14,21 @@ A living document of features and improvements in progress or planned for the pl
 - [x] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
   - This is basically what "Jules" does already, and I don not like Jules results....
 - [ ] **Best way to simulate a QA department**
+  - We could use backStopJS and other tools, but for now it's not necessary.
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
-- [ ] **Find trading papers not just investing** - But low sell high?
-- [ ] **Sector leaderboard**
+- [x] **Find trading papers not just investing** - But low sell high?
+  - Couldn't find any.
 - [ ] **A famous financial anomaly is that the stock market mostly goes up when it's closed:** -goes along with papers
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **and make sure you highlight which investable assets belong to each scenario.**
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
 - [ ] **Audit that alpaca is working as intended**
 - [ ] **Recheck calendar events**
-- [ ] **Also check alternative plays function**
-- [ ] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
+- [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
+  - Decided it was a bit inconvenient and not worth it.
 - [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
 - [ ] **Auto-Research Diff Viewer** - Implement a color-coded diff viewer in the Web Arena to compare experiment variants against the baseline logic.
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be

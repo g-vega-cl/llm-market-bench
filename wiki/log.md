@@ -1,3 +1,15 @@
+## [2026-06-18] feature | Seed empirical market anomalies database and document in wiki
+
+Expanded the core empirical database and documentation with 9 structural, calendar, and behavioral market anomalies, plus the Fama-French 5-Factor asset pricing model:
+- **Database Expansion**: Updated `seed_academic_papers.py` to seed 10 new high-importance, non-decaying `ACADEMIC_PAPER` memories into Supabase (`The Overnight Return Anomaly`, `The Turn-of-the-Month Effect`, `The Pre-Holiday Liquidity Vacuum`, `The January Effect`, `The Weekend Effect`, `Post-Earnings-Announcement Drift`, `Pre-FOMC Announcement Drift`, `The Index Inclusion Effect`, `Options Expiration Pinning`, and `A Five-Factor Asset Pricing Model`).
+- **Seeder Execution**: Ran the seeding script successfully, adding the 10 new papers to the active database.
+- **Academic Paper Seeding Test**: Updated the test suite `test_seed_academic_papers.py` to dynamically assert the size of the seeded collection (now 20 papers total).
+- **Concept Page**: Added `wiki/concepts/market-anomalies.md` documenting the phenomena, mechanisms, reference papers, and actionable trading agent applications.
+- **Documentation Update**: Refactored `wiki/entities/academic-paper-seeding.md` to update paper counts and align classification under the first-class `ACADEMIC_PAPER` memory type rather than the old `LESSON_LEARNED` mapping.
+- **Index Reference**: Linked the new page in `wiki/index.md`.
+
+**See**: [[concepts/market-anomalies]], [[entities/academic-paper-seeding]], [seed_academic_papers.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/seed_academic_papers.py), [test_seed_academic_papers.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_seed_academic_papers.py)
+
 ## [2026-06-18] bugfix | Add loading indicator to Event Chain Explorer page
 
 Introduced a loading indicator and timeline loading cards to `EventChainPage` to notify the user that other memories in the chain are being fetched in the background:

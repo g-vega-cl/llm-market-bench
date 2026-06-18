@@ -18,7 +18,7 @@ def test_seed_academic_papers(mock_add_memory):
 
     # Assertions
     assert len(results) == len(PAPERS), "Should return an ID for every paper"
-    assert mock_add_memory.call_count == len(PAPERS), "add_memory should be called exactly 10 times"
+    assert mock_add_memory.call_count == len(PAPERS), f"add_memory should be called exactly {len(PAPERS)} times"
 
     # Verify the arguments of the first call to ensure correct RAG formatting
     first_call_kwargs = mock_add_memory.call_args_list[0].kwargs

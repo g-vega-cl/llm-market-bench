@@ -5,7 +5,7 @@ category: entity
 
 # Academic Paper Seeding
 
-A curated seeding script (`seed_academic_papers.py`) that ingests the top 10 empirical asset pricing papers into the pgvector memory store as high-importance `LESSON_LEARNED` memories. This foundational knowledge grounds LLM trading agents in established financial science, ensuring decisions are informed by decades of peer-reviewed research on factor premiums, behavioral anomalies, and market efficiency.
+A curated seeding script (`seed_academic_papers.py`) that ingests 20 empirical asset pricing and market anomaly papers into the pgvector memory store as high-importance `ACADEMIC_PAPER` memories. This foundational knowledge grounds LLM trading agents in established financial science, ensuring decisions are informed by decades of peer-reviewed research on factor premiums, behavioral anomalies, and market efficiency.
 
 ## Purpose
 
@@ -13,17 +13,19 @@ The script populates the vector store with structured summaries of seminal paper
 
 ## Papers Included
 
-The dataset covers three pillars:
+The dataset covers five pillars:
 
-- **Factor Investing & Risk Premiums**: Fama-French (1992, 1993), Asness, Moskowitz & Pedersen (2013)
+- **Factor Investing & Risk Premiums**: Fama-French (1992, 1993, 2015), Asness, Moskowitz & Pedersen (2013)
 - **Behavioral Finance & Market Anomalies**: Lakonishok, Shleifer & Vishny (1994), Shleifer & Vishny (1995), Barberis, Shleifer & Vishny (1997), De Bondt & Thaler (1985)
 - **Anomalies and Empirical Evidence**: Jegadeesh & Titman (1993), Carhart (1997), Sloan (1996)
+- **Temporal & Calendar Anomalies**: Lou, Polk & Skouras (2019), McConnell & Xu (2008), Ariel (1990), Rozeff & Kinney (1976), French (1980)
+- **Information & Structural Plumbing**: Bernard & Thomas (1989), Lucca & Moench (2015), Shleifer (1986), Ni, Pearson & Poteshman (2005)
 
 Each paper is stored with metadata (`source_type`, `citation`, `pillar`) for attribution and filtering.
 
 ## Integration with RAG
 
-These memories are injected into the Tier 2 RAG (Verifier Path) via `retrieve_for_decision()`. Because they are `LESSON_LEARNED` with maximum importance, they reliably appear in the top results when the verifier queries for relevant academic principles. This complements the per-agent past decisions and shared market events already in the memory store.
+These memories are injected into the Tier 2 RAG (Verifier Path) via `retrieve_for_decision()`. Because they are `ACADEMIC_PAPER` memories with maximum importance, they reliably appear in the top results when the verifier queries for relevant academic principles. This complements the per-agent past decisions and shared market events already in the memory store.
 
 ## Seeding Process
 

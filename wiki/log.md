@@ -1,3 +1,12 @@
+## [2026-06-18] bugfix | Hide "Other Investable Assets" section when remaining assets is empty
+
+Resolved a UI rendering issue in `MemoryCard.tsx` where an empty "Other Investable Assets" section containing a confusing static placeholder was rendered for newly generated events:
+- **Conditional Visibility**: Updated the rendering logic to only show the "Other Investable Assets" container if there are unmapped assets (`remainingAssets.length > 0`).
+- **Cleaned Up Placeholder**: Removed the redundant empty/fallback placeholder branch to keep the layout concise.
+- **TDD Regression Guard**: Created a Vitest test case verifying that the section hides when all discovered assets are successfully mapped directly to structured scenarios, even if the legacy metadata contains the text `"Investable Assets"`.
+
+**See**: [[concepts/memory-feedback]], [MemoryCard.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoryCard.tsx), [MemoryCard.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoryCard.test.tsx)
+
 ## [2026-06-18] feature | Link Concept Tracker Table inline expansion to relevant memories and event chains
 
 Enhanced the interactive Concept Tracker table on the `/concepts` page to fetch and display semantically related memories and raw sources when a row is expanded:

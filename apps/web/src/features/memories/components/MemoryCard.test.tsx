@@ -101,4 +101,40 @@ describe('MemoryCard scenario rendering', () => {
         expect(screen.getByText('$SPY')).toBeInTheDocument();
         expect(screen.getByText('$GLD')).toBeInTheDocument();
     });
+
+    it('does not show Other Investable Assets section if all assets are mapped to scenarios', () => {
+        const memory = makeMemory();
+        memory.metadata = {
+            type: 'consensus_event',
+            impact: 'BULLISH',
+            scenario_analysis: 'Investable Assets: ...',
+            scenarios: [
+                {
+                    cleanHeader: 'Scenario A: Cut',
+                    percentage: '70%',
+                    outcome: 'Rallies as rate cut boosts growth',
+                    tradingPlan: 'Buy SPY and growth stocks',
+                    assets: [
+                        {
+                            ticker: 'SPY',
+                            name: 'SPDR S&P 500 ETF Trust',
+                            reason: 'Broad market ETF',
+                        },
+                    ],
+                },
+            ],
+            discovered_assets: [
+                {
+                    ticker: 'SPY',
+                    name: 'SPDR S&P 500 ETF Trust',
+                    reason: 'Broad market ETF',
+                },
+            ],
+        };
+
+        renderWithClient(<MemoryCard memory={memory} />);
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        expect(screen.queryByText('Other Investable Assets')).not.toBeInTheDocument();
+    });
 });

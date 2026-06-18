@@ -318,10 +318,7 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             )}
 
                             {/* Global Assets Section (only for remaining assets not listed inside scenarios) */}
-                            {(remainingAssets.length > 0 ||
-                                memory.metadata?.scenario_analysis?.includes(
-                                    'Investable Assets',
-                                )) && (
+                            {remainingAssets.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                                     <div className="flex items-center gap-2 mb-3">
                                         <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
@@ -330,41 +327,33 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {remainingAssets.length > 0 ? (
-                                            remainingAssets
-                                                .slice(0, 6)
-                                                .map((asset: DiscoveredAsset, idx: number) => (
-                                                    <button
-                                                        type="button"
-                                                        key={idx}
-                                                        onClick={() => setSelectedAsset(asset)}
-                                                        className="flex flex-col items-start justify-between p-3 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full"
-                                                    >
-                                                        <div className="flex flex-col w-full mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                                                    ${asset.ticker}
-                                                                </span>
-                                                                <span className="text-xs text-zinc-500">
-                                                                    {asset.name}
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
-                                                                {asset.reason}
+                                        {remainingAssets
+                                            .slice(0, 6)
+                                            .map((asset: DiscoveredAsset, idx: number) => (
+                                                <button
+                                                    type="button"
+                                                    key={idx}
+                                                    onClick={() => setSelectedAsset(asset)}
+                                                    className="flex flex-col items-start justify-between p-3 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left w-full"
+                                                >
+                                                    <div className="flex flex-col w-full mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                                ${asset.ticker}
+                                                            </span>
+                                                            <span className="text-xs text-zinc-500">
+                                                                {asset.name}
                                                             </span>
                                                         </div>
-                                                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                                                            View details →
+                                                        <span className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
+                                                            {asset.reason}
                                                         </span>
-                                                    </button>
-                                                ))
-                                        ) : (
-                                            <div className="col-span-full p-4 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-center">
-                                                <p className="text-xs text-zinc-500">
-                                                    FMP assets available for newly generated events.
-                                                </p>
-                                            </div>
-                                        )}
+                                                    </div>
+                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                                        View details →
+                                                    </span>
+                                                </button>
+                                            ))}
                                     </div>
                                 </div>
                             )}

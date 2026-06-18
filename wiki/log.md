@@ -250,4 +250,14 @@ Implemented constituent-level audit tracking for S&P 500 Market Health Barometer
 
 **See**: [[entities/web-app]], [BarometerAuditPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
 
+## [2026-06-18] fix | DeepSeek / Anthropic Hard Enforcement and MiniMax JSON Repair Bugs
+
+Resolved two critical bugs in the LLM analysis and consensus pipeline:
+- **DeepSeek/Anthropic Message Preservation**: Fixed a bug where `unflattened_messages` was captured *after* provider-specific message preparations (such as DeepSeek's `prepare_messages_for_instructor` or Anthropic's flattening) had already run and stripped `tool_calls` from the messages. The copy is now captured immediately after the tool execution loops run, preserving full `tool_calls` history for Layer 3 Hard Tool Enforcement validation.
+- **MiniMax JSON Repair**: Improved `_repair_json_string` in `analysis.py` to identify and escape unescaped single backslashes that mistakenly escape closing JSON delimiter quotes (e.g. `basis\"}` resulting from trailing markdown/backslash content), preventing `JSONDecodeError` on MiniMax and other raw JSON-response models.
+- **TDD verification**: Added new tests `test_deepseek_first_run_tool_check_preserves_calls` in `test_tool_enforcement.py` and `test_try_parse_json_with_trailing_backslash_escape` in `test_minimax_repair_bug.py`. Verified that the complete 773-test engine suite passes.
+
+**See**: [[concepts/tool-enforcement]], [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_tool_enforcement.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_tool_enforcement.py), [test_minimax_repair_bug.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_repair_bug.py)
+
+
 

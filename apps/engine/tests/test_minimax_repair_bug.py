@@ -36,3 +36,12 @@ def test_try_parse_double_escaped_json_string_with_newlines():
     assert result is not None
     assert len(result.decisions) == 1
     assert result.decisions[0].reasoning == "Line 1\nLine 2"
+
+
+def test_try_parse_json_with_trailing_backslash_escape():
+    """Test that a JSON string with a trailing backslash escaping the closing quote is repaired and successfully parsed."""
+    raw_data = '{"decisions": [{"signal": "HOLD", "confidence": 75, "reasoning": "thesis is intact despite -7.3% pullback from cost basis\\", "ticker": "GLW", "catalyst_type": "TECHNICAL", "catalyst_duration": "MEDIUM_TERM", "source_id": "s1", "allocation_percentage": 0, "is_priced_in": false, "is_priced_in_reasoning": "", "profit_potential_reasoning": "", "strategy_reasoning": "", "advance_planning_notes": "", "buy_tool_called": false, "sell_tool_called": false, "quantity": 0}], "macro_events": []}'
+    result = _try_parse_decisions_response(raw_data)
+    assert result is not None
+    assert len(result.decisions) == 1
+    assert "pullback from cost basis" in result.decisions[0].reasoning

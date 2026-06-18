@@ -100,6 +100,12 @@ def _repair_json_string(json_str: str) -> str:
     if isinstance(json_str, str):
         json_str = json_str.strip()
 
+        # Repair unescaped single backslashes that escape delimiter double-quotes
+        pattern = (
+            r'(?<!\\)\\"(?=\s*(?:\}\s*\]?|\}\s*\}|\]\s*\}|\]\s*\]|\}\s*,|\]\s*,|,\s*"\w+"\s*:|,\s*\}|,\s*\]|\s*$))'
+        )
+        json_str = re.sub(pattern, r'\\\\"', json_str)
+
         if json_str.startswith('"') and json_str.endswith('"'):
             json_str = json_str[1:-1]
             json_str = json_str.replace('\\"', '"').replace("\\\\n", "\\n").replace("\\\\r", "\\r")
@@ -509,6 +515,10 @@ async def analyze_with_provider(
 
             await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=enable_web_search)
 
+        # Keep an unflattened copy of the message history for tool call verification
+        # right after the tool loops run and BEFORE any flattening or preparation mutations.
+        unflattened_messages = copy.deepcopy(messages)
+
         # Final structured extraction using Instructor
         logger.debug("Executing final extraction for %s/%s", provider, model_name)
 
@@ -533,9 +543,6 @@ async def analyze_with_provider(
                         ),
                     }
                 )
-
-        # Keep an unflattened copy of the message history for tool call verification
-        unflattened_messages = copy.deepcopy(messages)
 
         # Anthropic-specific: flatten nested content blocks for Instructor compatibility
         if provider == "anthropic":

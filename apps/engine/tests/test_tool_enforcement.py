@@ -664,3 +664,70 @@ async def test_deepseek_sell_tool_missing_triggers_retry(mock_clients):
     assert call_count == 2
     assert resp.decisions[0].ticker == "SPOT"
     assert resp.decisions[0].sell_tool_called is True
+
+
+@pytest.mark.asyncio
+async def test_deepseek_first_run_tool_check_preserves_calls(mock_clients):
+    """Verify that if a DeepSeek SELL decision has its tool call on the first run, no retry is triggered."""
+    mock_instructor = mock_clients["instructor"]
+
+    # Only 1 output from Instructor (no retry needed)
+    mock_instructor.create.side_effect = [
+        [
+            DecisionsResponse(
+                decisions=[
+                    DecisionObject(
+                        signal="SELL",
+                        ticker="SPOT",
+                        confidence=95,
+                        reasoning="Sell SPOT",
+                        source_id="s_deepseek",
+                        sell_tool_called=True,
+                        quantity=25,
+                    )
+                ],
+                macro_events=[],
+            )
+        ]
+    ]
+
+    call_count = 0
+
+    async def fake_deepseek_run_tool_loop(raw_client, model_name, messages, *args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        # Append the tool call on the first run
+        messages.append(
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "calculate_sell_quantity",
+                            "arguments": '{"ticker": "SPOT", "percentage": 100}',
+                        },
+                        "id": "call_deepseek_first_run",
+                    }
+                ],
+            }
+        )
+
+    with (
+        patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock) as mock_run_loop,
+        patch("core.llm.logger.log_reasoning_trace", new_callable=AsyncMock),
+        patch("autoresearch.prompt_store.get_active_prompt", new_callable=AsyncMock, return_value=None),
+        patch("core.db.get_async_supabase_client", new_callable=AsyncMock),
+        patch("attribution.service.get_active_ledger_xml", new_callable=AsyncMock, return_value=""),
+    ):
+        mock_run_loop.side_effect = fake_deepseek_run_tool_loop
+
+        resp = await analyze_with_provider(
+            provider="deepseek",
+            model_name="deepseek-chat",
+            chunks=[{"source_id": "s_deepseek", "content": "..."}],
+            portfolio_context="- SPOT: 100 shares",
+        )
+
+    assert call_count == 1
+    assert resp.decisions[0].ticker == "SPOT"
+    assert resp.decisions[0].sell_tool_called is True

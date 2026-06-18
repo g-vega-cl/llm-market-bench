@@ -3,6 +3,14 @@ import type { Concept } from '../components/ConceptMap';
 
 export type { Concept };
 
+export interface ConceptMemory {
+    id: string;
+    content: string;
+    // biome-ignore lint/suspicious/noExplicitAny: metadata is a custom JSON object from DB
+    metadata: { impact?: string; [key: string]: any } | null;
+    similarity: number;
+}
+
 export async function fetchConcepts(): Promise<Concept[]> {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
@@ -18,4 +26,34 @@ export async function fetchConcepts(): Promise<Concept[]> {
         return [];
     }
     return data as Concept[];
+}
+
+export async function fetchConceptMemories(conceptId: string): Promise<ConceptMemory[]> {
+    const supabase = getSupabaseServerClient();
+
+    // 1. Fetch the concept vector
+    const { data: conceptData, error: conceptError } = await supabase
+        .from('concept_metrics')
+        .select('concept_vector')
+        .eq('id', conceptId)
+        .single();
+
+    if (conceptError || !conceptData?.concept_vector) {
+        console.error('Error fetching concept vector:', conceptError);
+        return [];
+    }
+
+    // 2. Query similar memories
+    const { data: memoriesData, error: memoriesError } = await supabase.rpc('match_memories', {
+        query_embedding: conceptData.concept_vector,
+        match_threshold: 0.3,
+        match_count: 5,
+    });
+
+    if (memoriesError) {
+        console.error('Error fetching matching memories:', memoriesError);
+        return [];
+    }
+
+    return memoriesData as ConceptMemory[];
 }

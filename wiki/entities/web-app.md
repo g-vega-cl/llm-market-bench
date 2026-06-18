@@ -145,7 +145,7 @@ Cross-cutting conventions: all "Load More" buttons use Button with isLoading, al
 To resolve complexity and low usability of the D3 2D PCA cluster map, the concepts visualization was refactored into a high-fidelity Concept Tracker dashboard:
 - **Tabbed Views**: Standardized views for "Trending" (sorted by momentum velocity), "Most Mentioned" (sorted by mention count), and "Newest" (sorted by chronological first seen timestamp).
 - **Text Filtering**: Equipped with a real-time name filter powered by the Design System `Input` component.
-- **Inline Expansion Details**: Shows detailed activity timelines (First/Last Seen dates), active duration, and original PCA vector coordinate mapping on row click, keeping the layout clean and actionable.
+- **Inline Expansion Details**: Shows detailed activity timelines (First/Last Seen dates), active duration, original PCA vector coordinate mapping, and a list of **semantically matched relevant sources and memories** fetched on-demand using vector similarity search (`match_memories` RPC). These sources are presented as clickable links navigating directly to their corresponding event chain page (`/memories/chain/$memoryId`).
 
 ## Deployment
 

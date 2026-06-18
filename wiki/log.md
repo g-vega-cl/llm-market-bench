@@ -1,3 +1,13 @@
+## [2026-06-18] feature | Link Concept Tracker Table inline expansion to relevant memories and event chains
+
+Enhanced the interactive Concept Tracker table on the `/concepts` page to fetch and display semantically related memories and raw sources when a row is expanded:
+- **On-Demand Vector Query**: Implemented `fetchConceptMemories` to fetch the concept's vector and call `match_memories` RPC on Supabase, retrieving the top 5 most similar memories.
+- **Rich Memory Cards**: Rendered matched memories inside the expanded details panel showing matching similarity percentage, sentiment impact badge (`BULLISH` / `BEARISH` / `NEUTRAL`), and full content.
+- **Dynamic Event Chain Navigation**: Linked each memory card to its respective event chain explorer page (`/memories/chain/$memoryId`), establishing a bidirectional navigation trail between trending concepts and historical cognitive memories.
+- **Type Safety & TDD**: Consolidated typescript type-safety for nested JSONB metadata, wrapped Vitest RTL tests in a custom `QueryClientProvider`, and added assertions to verify loading state, memory content rendering, and navigation link correctness.
+
+**See**: [[entities/web-app]], [ConceptMap.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/components/ConceptMap.tsx), [ConceptMap.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/components/ConceptMap.test.tsx), [fetch-concepts.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/api/fetch-concepts.ts)
+
 ## [2026-06-18] feature | Replace D3 PCA Concept Map with Interactive Concept Tracker Table
 
 Refactored the complex and unintuitive D3-based PCA concept map visualization on the `/concepts` page into an interactive, high-fidelity tabbed table:

@@ -1,6 +1,23 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { type Concept, ConceptMap } from './ConceptMap';
+
+// Mock the Link component from TanStack Router to prevent routing failures in tests
+vi.mock('@tanstack/react-router', () => ({
+    Link: ({
+        children,
+        to,
+        params,
+    }: {
+        children: React.ReactNode;
+        to: string;
+        params?: Record<string, unknown>;
+    }) => {
+        const path = to.replace('$memoryId', (params?.memoryId as string) || '');
+        return <a href={path}>{children}</a>;
+    },
+}));
 
 describe('ConceptMap (Tabbed Table)', () => {
     const mockData: Concept[] = [
@@ -36,8 +53,32 @@ describe('ConceptMap (Tabbed Table)', () => {
         },
     ];
 
+    const mockFetchMemoriesFn = vi.fn().mockResolvedValue([
+        {
+            id: 'memory-101',
+            content:
+                'MARKET EVENT: May 2026 US PPI Surge [ONGOING] | IMPACT: BEARISH | SUMMARY: A surprising 1.4% m/m US PPI surge',
+            metadata: { impact: 'BEARISH' },
+            similarity: 0.85,
+        },
+    ]);
+
+    const createTestQueryClient = () =>
+        new QueryClient({
+            defaultOptions: {
+                queries: {
+                    retry: false,
+                },
+            },
+        });
+
+    const renderWithQueryClient = (ui: React.ReactElement) => {
+        const queryClient = createTestQueryClient();
+        return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+    };
+
     it('renders the search input and tab controls', () => {
-        render(<ConceptMap data={mockData} />);
+        renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         expect(screen.getByPlaceholderText(/search concepts/i)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /trending/i })).toBeInTheDocument();
@@ -46,7 +87,7 @@ describe('ConceptMap (Tabbed Table)', () => {
     });
 
     it('filters rows based on search input', () => {
-        render(<ConceptMap data={mockData} />);
+        renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         // Initially, all 3 are visible
         expect(screen.getByText('Inflationary Shock')).toBeInTheDocument();
@@ -63,7 +104,7 @@ describe('ConceptMap (Tabbed Table)', () => {
     });
 
     it('orders data correctly when tabs are clicked', () => {
-        render(<ConceptMap data={mockData} />);
+        renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         // "Trending" is default tab: sorted by velocity_score desc (Generative AI (5.8) -> Inflationary Shock (2.5) -> Quantum Computing (0.5))
         const rowsBefore = screen.getAllByRole('row');
@@ -91,8 +132,8 @@ describe('ConceptMap (Tabbed Table)', () => {
         expect(rowsNewest[3]).toHaveTextContent('Inflationary Shock');
     });
 
-    it('expands row details when row is clicked', () => {
-        render(<ConceptMap data={mockData} />);
+    it('expands row details when row is clicked', async () => {
+        renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         // Details are not visible initially
         expect(screen.queryByText(/first seen:/i)).not.toBeInTheDocument();
@@ -105,5 +146,26 @@ describe('ConceptMap (Tabbed Table)', () => {
         expect(screen.getByText(/first seen:/i)).toBeInTheDocument();
         expect(screen.getByText(/last seen:/i)).toBeInTheDocument();
         expect(screen.getByText(/duration active:/i)).toBeInTheDocument();
+    });
+
+    it('fetches and renders related memories when row is expanded', async () => {
+        renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
+
+        // Click on the Inflationary Shock row
+        const rowHeader = screen.getByText('Inflationary Shock');
+        fireEvent.click(rowHeader);
+
+        // Verify that loading state or resolved state is shown
+        expect(screen.getByText(/loading related memories/i)).toBeInTheDocument();
+
+        // Wait for memories to load
+        const memoryContent = await screen.findByText(/MARKET EVENT: May 2026 US PPI Surge/);
+        expect(memoryContent).toBeInTheDocument();
+        expect(screen.getByText('85% Match')).toBeInTheDocument();
+        expect(screen.getByText('BEARISH')).toBeInTheDocument();
+
+        // Verify the event chain link
+        const link = screen.getByRole('link', { name: /view event chain/i });
+        expect(link).toHaveAttribute('href', '/memories/chain/memory-101');
     });
 });

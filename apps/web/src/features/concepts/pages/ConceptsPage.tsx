@@ -1,6 +1,6 @@
 import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import type { Concept } from '../components/ConceptMap';
+import type { Concept, ConceptMemory } from '../api/fetch-concepts';
 import { ConceptMap } from '../components/ConceptMap';
 import { conceptsQueries } from '../queries/options';
 
@@ -9,9 +9,10 @@ export type { Concept };
 interface ConceptsPageProps {
     initialData: Concept[];
     fetchFn: () => Promise<Concept[]>;
+    fetchMemoriesFn: (conceptId: string) => Promise<ConceptMemory[]>;
 }
 
-export function ConceptsPage({ initialData, fetchFn }: ConceptsPageProps) {
+export function ConceptsPage({ initialData, fetchFn, fetchMemoriesFn }: ConceptsPageProps) {
     const { data } = useSuspenseQuery({
         ...conceptsQueries.list({ fetchFn }),
         initialData,
@@ -28,7 +29,7 @@ export function ConceptsPage({ initialData, fetchFn }: ConceptsPageProps) {
                     </p>
                 </header>
 
-                <ConceptMap data={data} />
+                <ConceptMap data={data} fetchMemoriesFn={fetchMemoriesFn} />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-8">
                     <div>

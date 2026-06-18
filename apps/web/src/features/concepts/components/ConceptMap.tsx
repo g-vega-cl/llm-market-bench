@@ -10,8 +10,12 @@ import {
     TableRow,
 } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import * as React from 'react';
 import { useMemo, useState } from 'react';
+import type { ConceptMemory } from '../api/fetch-concepts';
+import { conceptsQueries } from '../queries/options';
 
 export type Concept = {
     id: string;
@@ -26,7 +30,13 @@ export type Concept = {
 
 type TabType = 'trending' | 'volume' | 'newest';
 
-export function ConceptMap({ data }: { data: Concept[] }) {
+export function ConceptMap({
+    data,
+    fetchMemoriesFn,
+}: {
+    data: Concept[];
+    fetchMemoriesFn: (conceptId: string) => Promise<ConceptMemory[]>;
+}) {
     const posthog = usePostHog();
     const [activeTab, setActiveTab] = useState<TabType>('trending');
     const [searchQuery, setSearchQuery] = useState('');
@@ -243,51 +253,12 @@ export function ConceptMap({ data }: { data: Concept[] }) {
                                         className="bg-zinc-50/40 dark:bg-zinc-950/40"
                                     >
                                         <TableCell colSpan={4} className="px-6 py-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm animate-fade-in">
-                                                <div className="space-y-1">
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
-                                                        Timeline Activity
-                                                    </span>
-                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
-                                                        <span className="font-semibold text-zinc-500">
-                                                            First Seen:
-                                                        </span>{' '}
-                                                        {formatDate(concept.first_mention_at)}
-                                                    </div>
-                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
-                                                        <span className="font-semibold text-zinc-500">
-                                                            Last Seen:
-                                                        </span>{' '}
-                                                        {formatDate(concept.last_mention_at)}
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
-                                                        Lifespan Duration
-                                                    </span>
-                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
-                                                        <span className="font-semibold text-zinc-500">
-                                                            Duration Active:
-                                                        </span>{' '}
-                                                        {getDurationDays(
-                                                            concept.first_mention_at,
-                                                            concept.last_mention_at,
-                                                        )}{' '}
-                                                        days
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
-                                                        Semantic Coordinates
-                                                    </span>
-                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300 font-mono text-zinc-500">
-                                                        X: {concept.pca_x?.toFixed(4) ?? 'N/A'}, Y:{' '}
-                                                        {concept.pca_y?.toFixed(4) ?? 'N/A'}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <ConceptDetails
+                                                concept={concept}
+                                                fetchMemoriesFn={fetchMemoriesFn}
+                                                formatDate={formatDate}
+                                                getDurationDays={getDurationDays}
+                                            />
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -303,6 +274,145 @@ export function ConceptMap({ data }: { data: Concept[] }) {
                     )}
                 </TableBody>
             </Table>
+        </div>
+    );
+}
+
+interface ConceptDetailsProps {
+    concept: Concept;
+    fetchMemoriesFn: (conceptId: string) => Promise<ConceptMemory[]>;
+    formatDate: (dateStr: string | null) => string;
+    getDurationDays: (first: string | null, last: string | null) => number;
+}
+
+function ConceptDetails({
+    concept,
+    fetchMemoriesFn,
+    formatDate,
+    getDurationDays,
+}: ConceptDetailsProps) {
+    const {
+        data: memories,
+        isLoading,
+        error,
+    } = useQuery({
+        ...conceptsQueries.memories(concept.id, () => fetchMemoriesFn(concept.id)),
+    });
+
+    return (
+        <div className="space-y-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm animate-fade-in">
+            {/* Top row: Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-4 border-b border-zinc-100 dark:border-zinc-900">
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                        Timeline Activity
+                    </span>
+                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                        <span className="font-semibold text-zinc-500">First Seen:</span>{' '}
+                        {formatDate(concept.first_mention_at)}
+                    </div>
+                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                        <span className="font-semibold text-zinc-500">Last Seen:</span>{' '}
+                        {formatDate(concept.last_mention_at)}
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                        Lifespan Duration
+                    </span>
+                    <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                        <span className="font-semibold text-zinc-500">Duration Active:</span>{' '}
+                        {getDurationDays(concept.first_mention_at, concept.last_mention_at)} days
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                        Semantic Coordinates
+                    </span>
+                    <div className="text-sm text-zinc-700 dark:text-zinc-300 font-mono text-zinc-500">
+                        X: {concept.pca_x?.toFixed(4) ?? 'N/A'}, Y:{' '}
+                        {concept.pca_y?.toFixed(4) ?? 'N/A'}
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Section: Related Memories */}
+            <div className="space-y-3 pt-2">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                    Sources & Related Memories
+                </span>
+
+                {isLoading && (
+                    <div className="py-4 text-center text-sm text-zinc-500 animate-pulse">
+                        Loading related memories...
+                    </div>
+                )}
+
+                {error && (
+                    <div className="py-4 text-center text-sm text-red-500">
+                        Failed to load related memories.
+                    </div>
+                )}
+
+                {!isLoading && !error && (!memories || memories.length === 0) && (
+                    <div className="py-4 text-center text-sm text-zinc-500">
+                        No related memories found.
+                    </div>
+                )}
+
+                {!isLoading && !error && memories && memories.length > 0 && (
+                    <div className="space-y-3">
+                        {memories.map((memory) => {
+                            const matchPercentage = Math.round(memory.similarity * 100);
+                            const impact = memory.metadata?.impact;
+
+                            return (
+                                <div
+                                    key={memory.id}
+                                    className="p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/60 rounded-lg flex flex-col md:flex-row md:items-start justify-between gap-4 transition-all hover:bg-zinc-100/60 dark:hover:bg-zinc-850"
+                                >
+                                    <div className="space-y-1.5 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {impact && (
+                                                <Badge
+                                                    variant="soft"
+                                                    colorScheme={
+                                                        impact === 'BULLISH'
+                                                            ? 'success'
+                                                            : impact === 'BEARISH'
+                                                              ? 'danger'
+                                                              : 'neutral'
+                                                    }
+                                                    size="xs"
+                                                >
+                                                    {impact}
+                                                </Badge>
+                                            )}
+                                            <Badge variant="soft" colorScheme="info" size="xs">
+                                                {matchPercentage}% Match
+                                            </Badge>
+                                        </div>
+                                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                            {memory.content}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center self-end md:self-start">
+                                        <Link
+                                            to="/memories/chain/$memoryId"
+                                            params={{ memoryId: memory.id }}
+                                            className="text-xs text-accent hover:text-accent/80 font-semibold flex items-center gap-1 transition-colors"
+                                        >
+                                            View Event Chain ↗
+                                        </Link>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

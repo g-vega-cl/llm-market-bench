@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getMemoryCategory, MemoriesList, type Memory } from './MemoriesList';
@@ -12,6 +13,20 @@ vi.mock('@tanstack/react-router', async () => {
         ),
     };
 });
+
+const createTestQueryClient = () =>
+    new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    });
+
+function renderWithClient(ui: React.ReactElement) {
+    const client = createTestQueryClient();
+    return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 const mockMemories: Memory[] = [
     {
@@ -75,7 +90,7 @@ const mockMemories: Memory[] = [
 describe('MemoriesList', () => {
     it('renders all memories passed to it', () => {
         const onFilterChange = vi.fn();
-        render(
+        renderWithClient(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
         expect(screen.getByText('Consensus on rate hike')).toBeInTheDocument();
@@ -85,7 +100,7 @@ describe('MemoriesList', () => {
 
     it('filter buttons use DS Button component and omit Decisions and Lessons', () => {
         const onFilterChange = vi.fn();
-        render(
+        renderWithClient(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
 
@@ -110,7 +125,7 @@ describe('MemoriesList', () => {
 
     it('triggers onFilterChange when a filter button is clicked', () => {
         const onFilterChange = vi.fn();
-        render(
+        renderWithClient(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
 
@@ -122,7 +137,7 @@ describe('MemoriesList', () => {
 
     it('displays metadata badges correctly', () => {
         const onFilterChange = vi.fn();
-        render(
+        renderWithClient(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
         expect(screen.getByText('BEARISH')).toBeInTheDocument();
@@ -132,13 +147,15 @@ describe('MemoriesList', () => {
 
     it('shows empty state when no memories are passed', () => {
         const onFilterChange = vi.fn();
-        render(<MemoriesList memories={[]} filter="all" onFilterChange={onFilterChange} />);
+        renderWithClient(
+            <MemoriesList memories={[]} filter="all" onFilterChange={onFilterChange} />,
+        );
         expect(screen.getByText('No memories found in this category')).toBeInTheDocument();
     });
 
     it('expands scenario analysis when button is clicked', () => {
         const onFilterChange = vi.fn();
-        render(
+        renderWithClient(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
 
@@ -153,7 +170,7 @@ describe('MemoriesList', () => {
 
     it('shows event chain link for memories with parent', () => {
         const onFilterChange = vi.fn();
-        render(
+        renderWithClient(
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
 

@@ -9,11 +9,10 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Review lessons learned and the learning loop** -
-- [ ] **Revisit the concepts map** - It should be something like "this new trend is comming up or leaving"
-  - Pass the price of many indexes to the LLM from the beginning (Add them to price update step) (This is part of the global macro tracker)
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
-- [ ] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
+- [x] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
+  - This is basically what "Jules" does already, and I don not like Jules results....
 - [ ] **More context on what lead to certain memory**
 - [ ] **Best way to simulate a QA department**
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**

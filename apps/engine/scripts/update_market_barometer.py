@@ -346,17 +346,19 @@ async def calculate_barometer():
     # Construct clean constituents details payload for audit trail
     constituents_payload = []
     for r in valid_results:
-        constituents_payload.append({
-            "symbol": r["symbol"],
-            "company_name": r["company_name"],
-            "market_cap": r["market_cap"],
-            "price": r["price"],
-            "pe": float(r["pe"]) if r["pe"] is not None else None,
-            "pb": float(r["pb"]) if r["pb"] is not None else None,
-            "ps": float(r["ps"]) if r["ps"] is not None else None,
-            "next_eps_est": float(r["next_eps_est"]) if r["next_eps_est"] is not None else None,
-            "beat": r["beat"],
-        })
+        constituents_payload.append(
+            {
+                "symbol": r["symbol"],
+                "company_name": r["company_name"],
+                "market_cap": r["market_cap"],
+                "price": r["price"],
+                "pe": float(r["pe"]) if r["pe"] is not None else None,
+                "pb": float(r["pb"]) if r["pb"] is not None else None,
+                "ps": float(r["ps"]) if r["ps"] is not None else None,
+                "next_eps_est": float(r["next_eps_est"]) if r["next_eps_est"] is not None else None,
+                "beat": r["beat"],
+            }
+        )
 
     logger.info(
         f"Calculated S&P 500 Aggregates: PE={pe_index}, PS={ps_index}, PB={pb_index}, FwdPE={fwd_pe_index}, BeatRate={beat_rate}"

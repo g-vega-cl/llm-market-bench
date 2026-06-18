@@ -107,6 +107,14 @@ The Event Chain feature visualizes the full geopolitical timeline of a memory by
 This architecture ensures optimal edge serverless TTFB (<5ms database select) and guarantees 100% flawless SSR hydration performance.
 
 
+### Memory-to-Source Citations (Lazy Newsletter Snapshots Fetching)
+
+To verify the origins and context behind a promoted memory (e.g. why an LLM prioritized a specific event or geopolitical shift), the system supports tracing memories back to the raw source newsletter snapshots:
+1. **Source IDs Storage**: When memories are created, the list of original database `newsletter_snapshots` IDs is stored within the memory's `metadata` JSONB column as `source_ids` (an array of strings) or `source_id` (a single string).
+2. **Secure RPC Gatekeeper**: Because raw newsletters contain proprietary data and public client direct selects from `newsletter_snapshots` are blocked by Row Level Security (RLS) policies, a secure PostgreSQL RPC function `get_referenced_newsletter_snapshots(target_source_ids TEXT[])` is exposed. It runs with `SECURITY DEFINER` privileges, verifying that the requested `source_id` is explicitly referenced in an active memory's metadata before returning its sender, subject, content, and date.
+3. **On-Demand Client Fetching**: When a memory card is expanded in the UI (`MemoryCard.tsx`), TanStack Query `useQuery` fetches the referenced source snapshots using the RPC client fetcher `fetchReferencedNewsletters`.
+4. **Cache & Performance**: The query uses a `staleTime` of 5 minutes to avoid redundant RPC roundtrips during collapse/expand toggles, ensuring the page's initial loader remains lightweight and high-performance.
+
 
 ## Related
 

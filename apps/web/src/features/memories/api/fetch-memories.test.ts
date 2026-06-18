@@ -109,7 +109,7 @@ describe('fetchMemories - Category Filtering (TDD)', () => {
     });
 });
 
-import { fetchMemoryById, fetchMemoryChain } from './fetch-memories';
+import { fetchMemoryById, fetchMemoryChain, fetchReferencedNewsletters } from './fetch-memories';
 
 describe('fetchMemoryById', () => {
     it('queries memories table by id', async () => {
@@ -154,5 +154,29 @@ describe('fetchMemoryChain', () => {
         await fetchMemoryChain(memoryId);
 
         expect(mockRpc).toHaveBeenCalledWith('get_memory_chain', { target_id: memoryId });
+    });
+});
+
+describe('fetchReferencedNewsletters', () => {
+    it('returns empty array when sourceIds is empty', async () => {
+        const result = await fetchReferencedNewsletters([]);
+        expect(result).toEqual([]);
+    });
+
+    it('calls get_referenced_newsletter_snapshots RPC with target_source_ids', async () => {
+        const mockRpc = vi
+            .fn()
+            .mockResolvedValue({ data: [{ source_id: 'src-1', content: 'test' }], error: null });
+        mockSupabaseClient = {
+            rpc: mockRpc,
+        } as unknown as MockSupabaseChain;
+
+        const sourceIds = ['src-1'];
+        const result = await fetchReferencedNewsletters(sourceIds);
+
+        expect(mockRpc).toHaveBeenCalledWith('get_referenced_newsletter_snapshots', {
+            target_source_ids: sourceIds,
+        });
+        expect(result).toEqual([{ source_id: 'src-1', content: 'test' }]);
     });
 });

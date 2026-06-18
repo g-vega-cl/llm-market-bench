@@ -73,7 +73,7 @@ async def test_calculate_barometer():
     assert pytest.approx(payload["pb_ratio"], 0.01) == 7.5
     assert pytest.approx(payload["forward_pe"], 0.01) == 18.75
     assert pytest.approx(payload["earnings_surprise_momentum"], 0.01) == 50.0
-    
+
     assert len(payload["constituents_data"]) == 2
     assert payload["constituents_data"][0]["symbol"] == "AAPL"
     assert payload["constituents_data"][0]["company_name"] == "Apple Inc."

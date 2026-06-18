@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import type { PaginatedMemories } from '../api/fetch-memories';
+import type { NewsletterSnapshot, PaginatedMemories } from '../api/fetch-memories';
 import { eventChainQueryKeys, memoriesQueryKeys } from './keys';
 
 /**
@@ -27,6 +27,20 @@ export const memoriesQueries = {
             queryKey: memoriesQueryKeys.detail(opts.id),
             queryFn: opts.fetchFn,
             staleTime: 1000 * 60 * 5,
+        }),
+
+    sources: <T extends NewsletterSnapshot[]>(opts: {
+        id: string;
+        sourceIds: string[];
+        fetchFn?: (sourceIds: string[]) => Promise<T>;
+    }) =>
+        queryOptions({
+            queryKey: memoriesQueryKeys.sources(opts.id, opts.sourceIds),
+            queryFn: () =>
+                opts.fetchFn
+                    ? opts.fetchFn(opts.sourceIds)
+                    : Promise.reject(new Error('fetchFn required')),
+            staleTime: 1000 * 60 * 5, // 5 minutes
         }),
 };
 

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Memory } from './MemoriesList';
@@ -12,6 +13,20 @@ vi.mock('@tanstack/react-router', async () => {
         ),
     };
 });
+
+const createTestQueryClient = () =>
+    new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    });
+
+function renderWithClient(ui: React.ReactElement) {
+    const client = createTestQueryClient();
+    return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 function makeMemory(overrides: Partial<Memory['metadata']> = {}): Memory {
     return {
@@ -43,7 +58,7 @@ describe('MemoryCard scenario rendering', () => {
             memory.metadata.scenario_analysis = undefined;
         }
 
-        render(<MemoryCard memory={memory} />);
+        renderWithClient(<MemoryCard memory={memory} />);
 
         expect(screen.queryByText('Show Analysis')).not.toBeInTheDocument();
     });
@@ -77,7 +92,7 @@ describe('MemoryCard scenario rendering', () => {
             ],
         };
 
-        render(<MemoryCard memory={memory} />);
+        renderWithClient(<MemoryCard memory={memory} />);
 
         fireEvent.click(screen.getByText('Show Analysis'));
 

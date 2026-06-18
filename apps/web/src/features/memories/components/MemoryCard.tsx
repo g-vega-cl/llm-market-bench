@@ -1,6 +1,9 @@
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
+import { fetchReferencedNewsletters } from '../api/fetch-memories';
+import { memoriesQueries } from '../queries/options';
 import { getMemoryCategory, type Memory } from './MemoriesList';
 
 export interface DiscoveredAsset {
@@ -68,6 +71,36 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             (a: DiscoveredAsset) => !scenarioTickers.has(a.ticker.toUpperCase()),
         );
     }, [memory.metadata?.discovered_assets, scenarios]);
+
+    const sourceIds = React.useMemo<string[]>(() => {
+        if (
+            memory.metadata &&
+            typeof memory.metadata === 'object' &&
+            !Array.isArray(memory.metadata)
+        ) {
+            const meta = memory.metadata as Record<string, unknown>;
+            if (Array.isArray(meta.source_ids)) {
+                return meta.source_ids.filter((id): id is string => typeof id === 'string');
+            }
+            if (typeof meta.source_id === 'string') {
+                return [meta.source_id];
+            }
+        }
+        return [];
+    }, [memory.metadata]);
+
+    const {
+        data: sources,
+        isLoading: isSourcesLoading,
+        error: sourcesError,
+    } = useQuery({
+        ...memoriesQueries.sources({
+            id: memory.id,
+            sourceIds,
+            fetchFn: fetchReferencedNewsletters,
+        }),
+        enabled: isExpanded && sourceIds.length > 0,
+    });
 
     const category = getMemoryCategory(memory);
     const badgeConfig = CATEGORY_BADGE_CONFIG[category] || CATEGORY_BADGE_CONFIG.other;
@@ -175,7 +208,9 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             )}
 
             {/* Scenario Analysis / Profit Section */}
-            {(memory.metadata?.scenario_analysis || scenarios.length > 0) && (
+            {(memory.metadata?.scenario_analysis ||
+                scenarios.length > 0 ||
+                sourceIds.length > 0) && (
                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <button
                         type="button"
@@ -201,78 +236,86 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                     {isExpanded && (
                         <div className="mt-4 p-4 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
-                            <div className="flex items-center gap-2 mb-3">
-                                <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
-                                    Scenario Analysis
-                                </h4>
-                            </div>
-
-                            <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
-                                {scenarios.map((scenario, i) => (
-                                    <div
-                                        key={i}
-                                        className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-                                    >
-                                        <div className="flex items-center gap-2 mb-2">
-                                            {scenario.cleanHeader && (
-                                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                                    {scenario.cleanHeader}
-                                                </span>
-                                            )}
-                                            {scenario.percentage && (
-                                                <Badge
-                                                    size="xs"
-                                                    variant="soft"
-                                                    colorScheme="accent"
-                                                    radius="md"
-                                                    className="tabular-nums"
-                                                >
-                                                    {scenario.percentage}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        {scenario.outcome && (
-                                            <div className="text-sm leading-relaxed mb-2">
-                                                {scenario.outcome}
-                                            </div>
-                                        )}
-                                        {scenario.tradingPlan && (
-                                            <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
-                                                    Trading Plan:
-                                                </span>
-                                                <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                                    {scenario.tradingPlan}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Actionable Assets nested directly inside the scenario card */}
-                                        {scenario.assets && scenario.assets.length > 0 && (
-                                            <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-                                                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
-                                                    Actionable Assets:
-                                                </span>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {scenario.assets.map((asset, assetIdx) => (
-                                                        <button
-                                                            type="button"
-                                                            key={assetIdx}
-                                                            onClick={() => setSelectedAsset(asset)}
-                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:scale-105 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
-                                                        >
-                                                            <span>${asset.ticker}</span>
-                                                            <span className="text-[10px] opacity-75 font-normal">
-                                                                ({asset.name})
-                                                            </span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
+                            {scenarios.length > 0 && (
+                                <>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                                            Scenario Analysis
+                                        </h4>
                                     </div>
-                                ))}
-                            </div>
+
+                                    <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300 mb-4">
+                                        {scenarios.map((scenario, i) => (
+                                            <div
+                                                key={i}
+                                                className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    {scenario.cleanHeader && (
+                                                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                            {scenario.cleanHeader}
+                                                        </span>
+                                                    )}
+                                                    {scenario.percentage && (
+                                                        <Badge
+                                                            size="xs"
+                                                            variant="soft"
+                                                            colorScheme="accent"
+                                                            radius="md"
+                                                            className="tabular-nums"
+                                                        >
+                                                            {scenario.percentage}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                {scenario.outcome && (
+                                                    <div className="text-sm leading-relaxed mb-2">
+                                                        {scenario.outcome}
+                                                    </div>
+                                                )}
+                                                {scenario.tradingPlan && (
+                                                    <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                                                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
+                                                            Trading Plan:
+                                                        </span>
+                                                        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                                            {scenario.tradingPlan}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Actionable Assets nested directly inside the scenario card */}
+                                                {scenario.assets && scenario.assets.length > 0 && (
+                                                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
+                                                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
+                                                            Actionable Assets:
+                                                        </span>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {scenario.assets.map(
+                                                                (asset, assetIdx) => (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={assetIdx}
+                                                                        onClick={() =>
+                                                                            setSelectedAsset(asset)
+                                                                        }
+                                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:scale-105 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
+                                                                    >
+                                                                        <span>${asset.ticker}</span>
+                                                                        <span className="text-[10px] opacity-75 font-normal">
+                                                                            ({asset.name})
+                                                                        </span>
+                                                                    </button>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
 
                             {/* Global Assets Section (only for remaining assets not listed inside scenarios) */}
                             {(remainingAssets.length > 0 ||
@@ -323,6 +366,91 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Source Citations Section */}
+                            {sourceIds.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                                            Source Citations
+                                        </h5>
+                                        <Badge variant="soft" colorScheme="neutral" size="sm">
+                                            {sourceIds.length}{' '}
+                                            {sourceIds.length === 1 ? 'source' : 'sources'}
+                                        </Badge>
+                                    </div>
+
+                                    {isSourcesLoading ? (
+                                        <div className="flex items-center gap-2 py-4 justify-center text-xs text-zinc-500">
+                                            <svg
+                                                className="animate-spin h-4 w-4 text-zinc-500"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <title>Loading spinner</title>
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                />
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                />
+                                            </svg>
+                                            Loading news sources...
+                                        </div>
+                                    ) : sourcesError ? (
+                                        <div className="p-3 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded border border-red-200 dark:border-red-900/30">
+                                            Failed to load sources.
+                                        </div>
+                                    ) : sources && sources.length > 0 ? (
+                                        <div className="flex flex-col space-y-3">
+                                            {sources.map((source, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="p-3 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                                                >
+                                                    <div className="flex items-start justify-between gap-4 mb-2">
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                                                {source.sender || 'Unknown Sender'}
+                                                            </span>
+                                                            <span className="text-[11px] text-zinc-500 truncate">
+                                                                {source.subject || '(No Subject)'}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[10px] text-zinc-400 font-mono flex-shrink-0 whitespace-nowrap">
+                                                            {source.date
+                                                                ? new Date(
+                                                                      source.date,
+                                                                  ).toLocaleDateString('en-US', {
+                                                                      month: 'short',
+                                                                      day: 'numeric',
+                                                                      year: 'numeric',
+                                                                      hour: '2-digit',
+                                                                      minute: '2-digit',
+                                                                  })
+                                                                : '-'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="max-h-[150px] overflow-y-auto pr-1 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-50 dark:bg-zinc-950/40 p-2 rounded border border-zinc-100 dark:border-zinc-800/40 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-850">
+                                                        {source.content}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-900/30 rounded border border-zinc-200 dark:border-zinc-800 text-center">
+                                            No source newsletter snapshots found.
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

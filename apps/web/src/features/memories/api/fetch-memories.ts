@@ -155,3 +155,25 @@ export async function fetchMemoryChain(memoryId: string): Promise<Memory[]> {
     if (error) throw error;
     return (data || []) as Memory[];
 }
+
+export interface NewsletterSnapshot {
+    source_id: string;
+    sender: string;
+    subject: string;
+    content: string;
+    date: string;
+}
+
+export async function fetchReferencedNewsletters(
+    sourceIds: string[],
+): Promise<NewsletterSnapshot[]> {
+    if (!sourceIds || sourceIds.length === 0) return [];
+
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.rpc('get_referenced_newsletter_snapshots', {
+        target_source_ids: sourceIds,
+    });
+
+    if (error) throw error;
+    return (data || []) as NewsletterSnapshot[];
+}

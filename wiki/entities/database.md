@@ -27,6 +27,8 @@ Supabase PostgreSQL with pgvector extension. Manages four domains: ingestion
 - **`match_memories`** — Cross-agent semantic global memory vector searches.
 - **`match_decisions`** — Per-agent trade reasoning searches scoped by `model_name`.
 - **`get_llm_leaderboard_metrics`** — Aggregates and calculates dynamic metrics (Return %, Win Rate, Verifier Approval Rate, Consistency Score, and composite Leaderboard Score) for all models over a selectable timeframe (`time_window_days`). For `MiniMax-M3`, the verifier approval rate is set to NULL, and the reasoning and composite scores are calculated ignoring the verifier.
+- **`get_referenced_newsletter_snapshots`** — Securely retrieves specific fields from `newsletter_snapshots` (sender, subject, content, date) for a given list of `target_source_ids`. Access is restricted to `anon` and `authenticated` roles and implemented via `SECURITY DEFINER` RLS bypass, validating that each snapshot's `source_id` is explicitly referenced inside a promoted memory's metadata (`source_ids` or `source_id`) before execution.
+
 
 
 ## JSONB Querying Conventions

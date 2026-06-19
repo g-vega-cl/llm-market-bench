@@ -21,6 +21,9 @@ To resolve this tradeoff, the platform implements **Structured Key Metrics Extra
 The tool delegates to the active `FinancialProvider` through the `MarketDataManager`:
 - **FMPProvider**: Fetches real-time structured key metrics from the FMP `/key-metrics/{symbol}` endpoint. It supports annual or quarterly periods and limits to minimize token count.
 
+> [!WARNING]
+> **yfinance Provider Deprecation**: The `YFinanceProvider` is deprecated and has been completely removed from the codebase. It must not be used to fetch market or fundamental data due to severe reliability concerns and Yahoo Finance scraping/rate-limiting restrictions. The factory raises a `ValueError` if a fallback to `yfinance` is requested. FMP (`FMPProvider`) is the sole active financial provider for these metrics.
+
 Standardized fields returned to the models include:
 - Valuation: `peRatio`, `priceToSalesRatio`, `pbRatio`, `enterpriseValueOverEBITDA`, `priceToFreeCashFlowsRatio`
 - Leverage & Liquidity: `debtToEquity`, `currentRatio`, `netDebt`, `marketCap`, `enterpriseValue`

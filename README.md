@@ -235,7 +235,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 - **Language**: Python 3.10+
 - **LLM Providers**: OpenAI, Anthropic, Google Gemini, DeepSeek
 - **Database**: Supabase Postgres with pgvector
-- **Market Data**: FMP, YFinance
+- **Market Data**: FMP (yfinance deprecated and removed)
 - **Embeddings**: Google Gemini (gemini-embedding-001)
 
 ### Frontend (Web)

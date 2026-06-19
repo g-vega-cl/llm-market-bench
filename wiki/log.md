@@ -1,3 +1,12 @@
+## [2026-06-19] documentation | Document yfinance deprecation and removal in wiki and README
+
+Updated project documentation to reflect that the yfinance provider is deprecated and has been completely removed from the codebase:
+- **Wiki Update**: Added a warning callout in the integration & providers section of [fundamental-analysis.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/wiki/concepts/fundamental-analysis.md) explaining the deprecation/removal of `YFinanceProvider` and the enforcement of `FMPProvider`.
+- **README Update**: Marked the Market Data technology stack entry in [README.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/README.md) to note that `yfinance` is deprecated and removed.
+- **TDD Verification**: Created [test_yfinance_deprecation_documentation.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_yfinance_deprecation_documentation.py) to assert presence of deprecation statements in documentation.
+
+**See**: [[concepts/fundamental-analysis]], [README.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/README.md), [test_yfinance_deprecation_documentation.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_yfinance_deprecation_documentation.py)
+
 ## [2026-06-19] refactor | Deprecate yfinance and implement server-side Valuation Audit Tool
 
 Removed deprecated `yfinance` provider completely and introduced a deterministic, server-side valuation audit tool to improve the Verifier Agent's intrinsic price and multiples calculations:

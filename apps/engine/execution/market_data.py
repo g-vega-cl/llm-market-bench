@@ -563,3 +563,52 @@ class MarketDataManager:
             return []
 
         return await provider.get_earnings_history(ticker, limit)
+
+    async def get_analyst_estimates(self, ticker: str, period: str = "annual", limit: int = 5) -> list[dict]:
+        """Fetch forward analyst consensus estimates for a ticker.
+
+        Delegates to the configured financial provider.
+        """
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for analyst estimates retrieval for {ticker}.")
+            return []
+
+        # Some providers might not implement it dynamically, check before calling
+        if not hasattr(provider, "get_analyst_estimates"):
+            logger.warning(f"Provider {provider.provider_name} does not support analyst estimates.")
+            return []
+
+        return await provider.get_analyst_estimates(ticker, period, limit)
+
+    async def get_financial_growth(self, ticker: str, period: str = "annual", limit: int = 5) -> list[dict]:
+        """Fetch historical financial growth metrics (YoY) for a ticker.
+
+        Delegates to the configured financial provider.
+        """
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for financial growth retrieval for {ticker}.")
+            return []
+
+        if not hasattr(provider, "get_financial_growth"):
+            logger.warning(f"Provider {provider.provider_name} does not support financial growth.")
+            return []
+
+        return await provider.get_financial_growth(ticker, period, limit)
+
+    async def get_company_profile(self, ticker: str) -> list[dict]:
+        """Fetch company profile (including beta, sector, shares outstanding) for a ticker.
+
+        Delegates to the configured financial provider.
+        """
+        provider = self.provider
+        if provider is None:
+            logger.error(f"No financial provider configured for company profile retrieval for {ticker}.")
+            return []
+
+        if not hasattr(provider, "get_company_profile"):
+            logger.warning(f"Provider {provider.provider_name} does not support company profile.")
+            return []
+
+        return await provider.get_company_profile(ticker)

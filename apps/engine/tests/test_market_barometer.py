@@ -93,7 +93,7 @@ async def test_calculate_barometer():
     # PB weights: AAPL (2000B PB 10 -> 200B book), MSFT (1000B PB 5 -> 200B book), TSLA (500B PB 12 -> 41.67B book)
     # Total Cap = 3500B, Total Book = 441.67B -> 3500 / 441.6666666666667 = 7.925
     assert pytest.approx(payload["pb_ratio"], 0.01) == 7.925
-    # Forward PE weights: 
+    # Forward PE weights:
     # AAPL: next_eps = 6.0, price = 100 -> shares = 20B -> fwd_income = 120B
     # MSFT: next_eps = 8.0, price = 200 -> shares = 5B -> fwd_income = 40B
     # TSLA: next_eps = 3.0, price = 150 -> shares = 3.33B -> fwd_income = 10B

@@ -8,7 +8,6 @@ from core.llm import tools
 from core.llm.handlers.base import execute_tool
 from execution.market_data import MarketDataManager
 from execution.providers.fmp import FMPProvider
-from execution.providers.yfinance import YFinanceProvider
 
 
 @pytest.mark.asyncio
@@ -78,46 +77,6 @@ async def test_fmp_provider_get_key_metrics():
             assert params["apikey"] == "test_api_key"
             assert params["period"] == "annual"
             assert params["limit"] == 1
-
-
-@pytest.mark.asyncio
-async def test_yfinance_provider_get_key_metrics():
-    """Test YFinanceProvider.get_key_metrics retrieves and maps to standardized format."""
-    provider = YFinanceProvider()
-
-    mock_ticker = MagicMock()
-    mock_ticker.info = {
-        "symbol": "AAPL",
-        "trailingPE": 30.5,
-        "priceToSalesTrailing12Months": 8.2,
-        "priceToBook": 45.1,
-        "enterpriseToEbitda": 24.3,
-        "debtToEquity": 210.0,  # yfinance returns debt to equity as % (210% = 2.1)
-        "currentRatio": 1.2,
-        "returnOnEquity": 1.75,
-        "dividendYield": 0.005,
-        "bookValue": 4.5,
-        "freeCashflow": 1000000,
-        "marketCap": 20000000,
-    }
-
-    with patch("yfinance.Ticker", return_value=mock_ticker):
-        metrics = await provider.get_key_metrics("AAPL", period="annual", limit=1)
-
-        assert len(metrics) == 1
-        m = metrics[0]
-        assert m["symbol"] == "AAPL"
-        assert m["peRatio"] == 30.5
-        assert m["priceToSalesRatio"] == 8.2
-        assert m["pbRatio"] == 45.1
-        assert m["enterpriseValueOverEBITDA"] == 24.3
-        assert m["debtToEquity"] == 2.1  # normalized from 210.0
-        assert m["currentRatio"] == 1.2
-        assert m["roe"] == 1.75
-        assert m["dividendYield"] == 0.005
-        assert m["bookValuePerShare"] == 4.5
-        assert m["freeCashFlowYield"] == 0.05
-        assert m["priceToFreeCashFlowsRatio"] == 20.0
 
 
 @pytest.mark.asyncio

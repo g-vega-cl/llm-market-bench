@@ -65,4 +65,11 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             args["market_id"],
             platform=args["platform"],
         )
+    elif name == "audit_financial_valuation":
+        return await tools.execute_financial_valuation_tool(
+            ticker=args["ticker"],
+            growth_rate=args.get("growth_rate"),
+            discount_rate=args.get("discount_rate"),
+            terminal_growth=args.get("terminal_growth", 0.025),
+        )
     return "Unknown tool"

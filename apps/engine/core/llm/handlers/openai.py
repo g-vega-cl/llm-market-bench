@@ -21,6 +21,7 @@ DEFAULT_OPENAI_TOOLS = [
     tools.GET_EARNINGS_HISTORY_TOOL,
     tools.SEARCH_PREDICTION_MARKETS_TOOL,
     tools.GET_PREDICTION_MARKET_ODDS_TOOL,
+    tools.AUDIT_FINANCIAL_VALUATION_TOOL,
 ]
 
 # OpenAI web search tool (native tool, not a function)

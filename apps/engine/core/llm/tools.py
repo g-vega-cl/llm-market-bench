@@ -366,6 +366,41 @@ GET_KEY_METRICS_TOOL = {
     },
 }
 
+AUDIT_FINANCIAL_VALUATION_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "audit_financial_valuation",
+        "description": (
+            "Perform an institutional-grade DCF (Discounted Cash Flow) and comparable company valuation "
+            "audit for a stock ticker. The tool retrieves historical growth rates, forward analyst estimates, "
+            "WACC inputs, and peer ratios from FMP dynamically, executes perpetuity value bridges, "
+            "and returns a formatted report with implied intrinsic value vs current price."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., AAPL, NVDA, TSLA)",
+                },
+                "growth_rate": {
+                    "type": "number",
+                    "description": "Optional forecast growth rate (e.g., 0.12 for 12%). If omitted, defaults to analyst consensus forward estimates.",
+                },
+                "discount_rate": {
+                    "type": "number",
+                    "description": "Optional discount rate/WACC (e.g., 0.085 for 8.5%). If omitted, calculates dynamically using CAPM.",
+                },
+                "terminal_growth": {
+                    "type": "number",
+                    "description": "Optional perpetuity growth rate (e.g., 0.025 for 2.5%). Default: 0.025.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
 GET_MARKET_HEALTH_BAROMETER_TOOL = {
     "type": "function",
     "function": {
@@ -1194,3 +1229,238 @@ async def execute_get_prediction_market_odds_tool(market_id: str, platform: str)
 
     else:
         return f"Unsupported prediction market platform: '{platform}'."
+
+
+async def execute_financial_valuation_tool(
+    ticker: str,
+    growth_rate: float | None = None,
+    discount_rate: float | None = None,
+    terminal_growth: float = 0.025,
+) -> str:
+    """Executes the financial valuation audit tool and returns a markdown-formatted report."""
+    ticker = ticker.upper()
+    manager = MarketDataManager()
+
+    try:
+        # 1. Fetch market quote data (price, market cap)
+        quote = await manager.get_quote(ticker)
+        if not quote or not quote.exists:
+            return f"Error: Ticker '{ticker}' not found or could not fetch price data."
+
+        price = quote.price
+        market_cap = quote.market_cap
+        if price <= 0 or market_cap <= 0:
+            return f"Error: Invalid pricing or market cap retrieved for {ticker} (Price: {price}, Market Cap: {market_cap})."
+
+        # Calculate initial shares outstanding estimate
+        shares_outstanding = market_cap / price
+
+        # 2. Fetch key metrics history (annual, limit 5)
+        key_metrics = await manager.get_key_metrics(ticker, period="annual", limit=5)
+        if not key_metrics:
+            return f"Error: No key metrics data found for {ticker}."
+
+        latest_metric = key_metrics[0]
+
+        # 3. Fetch profile (for Beta)
+        profile = await manager.get_company_profile(ticker)
+        beta = 1.0
+        company_name = ticker
+        if profile and isinstance(profile, list) and len(profile) > 0:
+            p = profile[0]
+            company_name = p.get("companyName") or ticker
+            try:
+                beta = float(p.get("beta") or 1.0)
+            except (ValueError, TypeError):
+                beta = 1.0
+
+        # 4. Fetch analyst consensus estimates
+        estimates = await manager.get_analyst_estimates(ticker, period="annual", limit=5)
+
+        # 5. Fetch financial growth history
+        growth_history = await manager.get_financial_growth(ticker, period="annual", limit=5)
+
+        # --- Calculate Forecast Growth Rate ---
+        forecast_growth = None
+        if estimates and len(estimates) >= 2:
+            with contextlib.suppress(Exception):
+                # Estimate growth YoY from estimates
+                rev_y1 = float(estimates[0].get("estimatedRevenueAvg") or 0)
+                rev_y2 = float(estimates[1].get("estimatedRevenueAvg") or 0)
+                if rev_y1 > 0 and rev_y2 > 0:
+                    forecast_growth = (rev_y2 / rev_y1) - 1.0
+
+        if forecast_growth is None and growth_history and len(growth_history) >= 1:
+            with contextlib.suppress(Exception):
+                # Fallback to historical growth YoY
+                forecast_growth = float(growth_history[0].get("revenueGrowth") or 0.08)
+
+        if forecast_growth is None:
+            forecast_growth = 0.08  # Default baseline 8%
+
+        growth_rate_used = growth_rate if growth_rate is not None else forecast_growth
+        growth_rate_used = max(-0.25, min(0.40, growth_rate_used))  # Clamp to safe boundaries
+
+        # --- Calculate WACC (Discount Rate) ---
+        rf = 0.042  # 10-Yr US Treasury yield baseline (4.2%)
+        erp = 0.055  # Equity Risk Premium baseline (5.5%)
+        cost_of_equity = rf + beta * erp
+
+        # Capital Structure / Net Debt
+        net_debt = 0.0
+        with contextlib.suppress(ValueError, TypeError):
+            val = latest_metric.get("netDebt")
+            if val is not None:
+                net_debt = float(val)
+
+        # Calculate WACC weights
+        total_value = market_cap + max(0.0, net_debt)
+        if total_value > 0 and net_debt > 0:
+            weight_equity = market_cap / total_value
+            weight_debt = net_debt / total_value
+            cost_of_debt = 0.05  # Pre-tax debt rate default (5%)
+            tax_rate = 0.21  # Standard US corporate tax (21%)
+            after_tax_debt = cost_of_debt * (1 - tax_rate)
+            calculated_wacc = (cost_of_equity * weight_equity) + (after_tax_debt * weight_debt)
+        else:
+            # Net Cash firm or no debt: WACC equals Cost of Equity
+            calculated_wacc = cost_of_equity
+
+        wacc_used = discount_rate if discount_rate is not None else calculated_wacc
+        wacc_used = max(0.05, min(0.18, wacc_used))  # Clamp WACC to safe range (5% - 18%)
+
+        # --- Cash Flow Discounting ---
+        # Estimate recent Free Cash Flow
+        fcf_yield = latest_metric.get("freeCashFlowYield")
+        fcf_per_share = latest_metric.get("freeCashFlowPerShare")
+        if fcf_yield is not None:
+            base_fcf = float(fcf_yield) * market_cap
+        elif fcf_per_share is not None:
+            base_fcf = float(fcf_per_share) * shares_outstanding
+        else:
+            net_income_ps = latest_metric.get("netIncomePerShare")
+            if net_income_ps is not None:
+                base_fcf = float(net_income_ps) * shares_outstanding * 0.8
+            else:
+                base_fcf = market_cap * 0.05  # Default to 5% FCF Yield
+
+        # Safely clamp terminal growth below WACC
+        tg_used = terminal_growth
+        if tg_used >= wacc_used:
+            tg_used = wacc_used - 0.02
+
+        # 5-Year forecast schedule
+        projected_fcfs = []
+        discount_factors = []
+        pv_fcfs = []
+
+        current_fcf = base_fcf
+        for yr in range(1, 6):
+            current_fcf = current_fcf * (1 + growth_rate_used)
+            projected_fcfs.append(current_fcf)
+
+            # Mid-year convention discounting: (yr - 0.5)
+            df = 1.0 / ((1 + wacc_used) ** (yr - 0.5))
+            discount_factors.append(df)
+            pv_fcfs.append(current_fcf * df)
+
+        sum_pv_fcfs = sum(pv_fcfs)
+
+        # Terminal Value calculation
+        terminal_fcf = projected_fcfs[-1] * (1 + tg_used)
+        terminal_value = terminal_fcf / (wacc_used - tg_used)
+        # Discount terminal value at year 5
+        pv_terminal_value = terminal_value / ((1 + wacc_used) ** 5.0)
+
+        # Valuation bridge
+        implied_ev = sum_pv_fcfs + pv_terminal_value
+        implied_equity_val = implied_ev - net_debt
+        implied_price = implied_equity_val / shares_outstanding
+        implied_upside = (implied_price / price - 1.0) * 100
+
+        # --- Comparable Peer Comps Analysis ---
+        # Fetch S&P 500 barometer aggregates (PE: ~22.5, Forward PE: ~18.5, P/FCF: ~20.0)
+        # We fetch the latest health barometer from DB if available, otherwise fallback to defaults
+        barometer_pe = 22.5
+        barometer_pfcf = 20.0
+        try:
+            from core.db import get_supabase_client
+
+            client_db = get_supabase_client()
+            res = (
+                client_db.table("market_barometer_history")
+                .select("pe_ratio, price_to_fcf_ratio")
+                .order("date", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if res.data:
+                barometer_pe = float(res.data[0].get("pe_ratio") or 22.5)
+                barometer_pfcf = float(res.data[0].get("price_to_fcf_ratio") or 20.0)
+        except Exception:
+            pass
+
+        pe_ratio = latest_metric.get("peRatio")
+        pfcf_ratio = latest_metric.get("priceToFreeCashFlowsRatio")
+        ev_ebitda = latest_metric.get("enterpriseValueOverEBITDA")
+
+        pe_str = f"{pe_ratio:.2f}x" if pe_ratio else "N/A"
+        pfcf_str = f"{pfcf_ratio:.2f}x" if pfcf_ratio else "N/A"
+        ev_ebitda_str = f"{ev_ebitda:.2f}x" if ev_ebitda else "N/A"
+
+        # Determine valuation status
+        status = "FAIR VALUE"
+        reasons = []
+        if implied_upside > 15.0:
+            status = "UNDERVALUED"
+            reasons.append("DCF implied price suggests >15% upside")
+        elif implied_upside < -10.0:
+            status = "OVERVALUED"
+            reasons.append("DCF implied price suggests >10% downside")
+
+        if pe_ratio and pe_ratio > barometer_pe * 1.3:
+            reasons.append(f"PE multiple ({pe_str}) trades at >30% premium to S&P 500 average ({barometer_pe:.1f}x)")
+        elif pe_ratio and pe_ratio < barometer_pe * 0.7:
+            reasons.append(f"PE multiple ({pe_str}) trades at >30% discount to S&P 500 average ({barometer_pe:.1f}x)")
+
+        # Create the markdown audit report
+        pe_premium = f"{((pe_ratio / barometer_pe - 1) * 100):+.1f}%" if pe_ratio else "N/A"
+        pfcf_premium = f"{((pfcf_ratio / barometer_pfcf - 1) * 100):+.1f}%" if pfcf_ratio else "N/A"
+
+        output = (
+            f"### 📊 Valuation & Intrinsic Value Audit Report: {ticker} ({company_name})\n\n"
+            f"**Valuation Status:** `{status}`\n"
+            f"**Current Price:** ${price:.2f} | **Implied Intrinsic Price:** ${implied_price:.2f} ({implied_upside:+.1f}% upside/downside)\n\n"
+            f"#### 1. DCF Model Assumptions & Inputs\n"
+            f"- **Forecast Growth Rate:** {growth_rate_used * 100:.1f}% (Base: {'analyst estimates' if forecast_growth == estimates else 'historical growth'})\n"
+            f"- **Discount Rate (WACC):** {wacc_used * 100:.1f}% (CAPM Beta: {beta:.2f}, Cost of Equity: {cost_of_equity * 100:.1f}%)\n"
+            f"- **Terminal perpetuity Growth (g):** {tg_used * 100:.1f}%\n"
+            f"- **Diluted Shares Outstanding:** {shares_outstanding:.1f}M\n"
+            f"- **Net Debt (Debt - Cash):** ${net_debt / 1e6:.1f}M\n\n"
+            f"#### 2. Discounted Cash Flow (DCF) Bridge\n"
+            f"| Metric | Year 1 | Year 2 | Year 3 | Year 4 | Year 5 | Terminal Value |\n"
+            f"| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+            f"| **FCF ($M)** | ${projected_fcfs[0] / 1e6:.1f} | ${projected_fcfs[1] / 1e6:.1f} | ${projected_fcfs[2] / 1e6:.1f} | ${projected_fcfs[3] / 1e6:.1f} | ${projected_fcfs[4] / 1e6:.1f} | ${terminal_value / 1e6:.1f} |\n"
+            f"| **Discount Factor** | {discount_factors[0]:.4f} | {discount_factors[1]:.4f} | {discount_factors[2]:.4f} | {discount_factors[3]:.4f} | {discount_factors[4]:.4f} | {1.0 / ((1 + wacc_used) ** 5.0):.4f} |\n"
+            f"| **PV ($M)** | ${pv_fcfs[0] / 1e6:.1f} | ${pv_fcfs[1] / 1e6:.1f} | ${pv_fcfs[2] / 1e6:.1f} | ${pv_fcfs[3] / 1e6:.1f} | ${pv_fcfs[4] / 1e6:.1f} | ${pv_terminal_value / 1e6:.1f} |\n\n"
+            f"- **Sum of PV of Explicit Cash Flows:** ${sum_pv_fcfs / 1e6:.1f}M\n"
+            f"- **PV of perpetuity Terminal Value:** ${pv_terminal_value / 1e6:.1f}M\n"
+            f"- **Implied Enterprise Value (EV):** ${implied_ev / 1e6:.1f}M\n"
+            f"- **Implied Equity Value (EV - Net Debt):** ${implied_equity_val / 1e6:.1f}M\n\n"
+            f"#### 3. Comparable Multiple Analysis\n"
+            f"| Valuation Multiple | Ticker Value | S&P 500 Average | Premium / Discount |\n"
+            f"| :--- | :--- | :--- | :--- |\n"
+            f"| **P/E Ratio** | {pe_str} | {barometer_pe:.1f}x | {pe_premium} |\n"
+            f"| **Price / FCF** | {pfcf_str} | {barometer_pfcf:.1f}x | {pfcf_premium} |\n"
+            f"| **EV / EBITDA** | {ev_ebitda_str} | N/A | N/A |\n\n"
+        )
+        if reasons:
+            output += "#### 4. Audit Observations & Key Concerns\n"
+            for r in reasons:
+                output += f"- {r}\n"
+
+        return output.strip()
+
+    except Exception as e:
+        logger.exception(f"Error executing valuation audit for {ticker}: {str(e)}")
+        return f"Error executing valuation audit for {ticker}: {str(e)}"

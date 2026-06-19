@@ -18,7 +18,6 @@ numpy
 httpx
 pyyaml
 requests
-yfinance
 scikit-learn
 alpaca-py
 ruff

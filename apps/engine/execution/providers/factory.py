@@ -4,7 +4,6 @@ from core.config import FINANCIAL_PROVIDER, logger
 
 from .base import FinancialProvider
 from .fmp import FMPProvider
-from .yfinance import YFinanceProvider
 
 
 def get_financial_provider(provider_name: str = None) -> FinancialProvider:
@@ -17,7 +16,7 @@ def get_financial_provider(provider_name: str = None) -> FinancialProvider:
     if target == "fmp":
         return FMPProvider()
     elif target == "yfinance":
-        return YFinanceProvider()
+        raise ValueError("yfinance provider is deprecated and removed. Please use 'fmp'.")
 
     # Default/Fallback
     logger.warning(f"Unknown financial provider '{target}'. Defaulting to fmp.")
@@ -28,6 +27,5 @@ def get_active_provider_class():
     """Returns the class of the currently configured provider."""
     _provider_map = {
         "fmp": FMPProvider,
-        "yfinance": YFinanceProvider,
     }
     return _provider_map.get(FINANCIAL_PROVIDER, FMPProvider)

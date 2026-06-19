@@ -1,3 +1,14 @@
+## [2026-06-19] refactor | Deprecate yfinance and implement server-side Valuation Audit Tool
+
+Removed deprecated `yfinance` provider completely and introduced a deterministic, server-side valuation audit tool to improve the Verifier Agent's intrinsic price and multiples calculations:
+- **yfinance Deprecation**: Overwrote provider mapping in factory and init, raising a ValueError on direct requests. Removed `yfinance.py` and its tests (`test_yfinance.py`, `test_yfinance_assets.py`). Cleaned up fallbacks in `.env` and `.env.example`, and removed the dependency from requirements lock.
+- **Data Ingestion Enrichment**: Added `/analyst-estimates`, `/financial-growth`, and `/profile` calls to `FMPProvider` to fetch forward consensus projections, historical YoY growth, and Beta.
+- **Valuation Audit Tool**: Implemented `audit_financial_valuation` tool executing a 5-year FCF DCF bridge and comparable peer multiples check.
+- **Verifier Agent Prompt Integration**: Updated the Verifier Agent's system prompt instructions in `prompts.py` to mandate calling `audit_financial_valuation` for vetting trades.
+- **TDD Tests & Documentation**: Created unit tests in `test_financial_growth.py` and `test_valuation_math_tools.py`. Updated documentation in `fundamental-analysis.md` and `agents.md`.
+
+**See**: [[concepts/fundamental-analysis]], [[concepts/agents]], [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [fmp.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/execution/providers/fmp.py)
+
 ## [2026-06-19] documentation | Remove File Change Tree from visual planning framework
 
 Refactored the visual planning framework to remove the "File Change Tree" requirement:

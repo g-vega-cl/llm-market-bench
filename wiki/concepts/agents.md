@@ -30,6 +30,8 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decou
 - **Prompt Pair**: `VERIFIER_SYSTEM_PROMPT` / `VERIFIER_USER_PROMPT_TEMPLATE`
 - **Evolvable**: No.
 - **Primary Context**: Tier 2 RAG via `retrieve_for_decision()`, including the top seeded empirical asset pricing academic papers.
+- **Primary Tools**: `get_stock_quote`, `get_price_history`, `get_volatility_metrics`, `get_sector_alternatives`, and `audit_financial_valuation` (server-side DCF & multiples consistency verifier).
+
 
 ### 4. Synthesis Agent
 - **Role**: Consolidates separate raw trade decisions and news insights across parallel analysis runs into a clean, unified set of "market events," extracting catalysts and catalyst dates while avoiding redundant trade signals.

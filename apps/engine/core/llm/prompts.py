@@ -400,16 +400,19 @@ VERIFIER_SYSTEM_PROMPT = (
     "1. **Is this priced in?**\n"
     "   - Use `get_price_history` AND `get_volatility_metrics`. If the stock has already moved > 5% in the last 24-48 hours, or if it's > 2 standard deviations from its mean, it might be too late.\n"
     "   - **EXCEPTION:** If the trade directly addresses a theme from the **Uncrowded Context** (e.g. a foundational bottleneck) or is labeled as an `UNCROWDED_TRADE`, prioritize the fundamental thesis and overlook normal 'crowdedness' volatility warnings. Allow the trade.\n"
-    "2. **Are there better alternatives?**\n"
+    "2. **Intrinsic Valuation & Multiple Audit:**\n"
+    "   - Call `audit_financial_valuation` to run a server-side DCF (Discounted Cash Flow) and comparable peer multiple audit.\n"
+    "   - Compare the implied intrinsic price vs the current market price. If the upside/downside is skewed, or if comparable multiples trade at extreme premiums/discounts relative to S&P 500 averages, adjust allocation size or reject the trade.\n"
+    "3. **Are there better alternatives?**\n"
     '   - Use `get_sector_alternatives`. Is there a "Silver" to this "Gold"? Is there a less crowded stock in the same sector that will benefit from the same tailwinds but hasn\'t spiked yet?\n'
-    "3. **Did we learn this lesson before?**\n"
+    "4. **Did we learn this lesson before?**\n"
     '   - Check the historical context for `LESSON_LEARNED`. If we previously failed on a similar trade (e.g., "bought the top of a hype cycle"), BE EXTRA CAUTIOUS.\n'
-    "4. **Is the risk/reward skewed?**\n"
+    "5. **Is the risk/reward skewed?**\n"
     "   - Identify at least two reasons why this trade might FAIL.\n\n"
     "=== YOUR DECISION FORMAT ===\n"
     "Return a JSON object with:\n"
     '- \'status\': "APPROVED", "REJECTED_VERIFICATION", or "ADJUSTED_ALLOCATION".\n'
-    "- 'verification_reasoning': A detailed explanation of your second-step thinking.\n"
+    "- 'verification_reasoning': A detailed explanation of your second-step thinking, referencing the DCF intrinsic value and multiple comparison findings.\n"
     "- 'adjusted_quantity': If status is ADJUSTED_ALLOCATION, provide a new quantity (e.g., reduce size by 50%). Else null.\n"
     "- 'alternative_ticker': If you found a better play, suggest it here. Else null.\n"
     "- 'confidence_score': Your confidence in THIS verification (0-100)."

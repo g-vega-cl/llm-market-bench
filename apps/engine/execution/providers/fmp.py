@@ -301,6 +301,9 @@ class FMPProvider(FinancialProvider):
                             "period": entry.get("period"),
                             "enterpriseValueOverEBITDA": entry.get("evToEBITDA"),
                             "freeCashFlowYield": entry.get("freeCashFlowYield"),
+                            "netDebt": entry.get("netDebt"),
+                            "marketCap": entry.get("marketCap"),
+                            "enterpriseValue": entry.get("enterpriseValue"),
                         }
 
                 # Process ratios
@@ -406,6 +409,54 @@ class FMPProvider(FinancialProvider):
                 return results
         except Exception as e:
             logger.error(f"Error fetching earnings history from FMP for {ticker}: {e}")
+            return []
+
+    async def get_analyst_estimates(self, ticker: str, period: str = "annual", limit: int = 5) -> list[dict]:
+        """Fetch forward analyst consensus estimates for a ticker from FMP."""
+        if not self.api_key:
+            return []
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/analyst-estimates",
+                    params={"symbol": ticker, "period": period, "limit": limit, "apikey": self.api_key},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Error fetching analyst estimates from FMP for {ticker}: {e}")
+            return []
+
+    async def get_company_profile(self, ticker: str) -> list[dict]:
+        """Fetch company profile (including beta, sector, shares outstanding) from FMP."""
+        if not self.api_key:
+            return []
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/profile",
+                    params={"symbol": ticker, "apikey": self.api_key},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Error fetching company profile from FMP for {ticker}: {e}")
+            return []
+
+    async def get_financial_growth(self, ticker: str, period: str = "annual", limit: int = 5) -> list[dict]:
+        """Fetch historical financial growth metrics (YoY) for a ticker from FMP."""
+        if not self.api_key:
+            return []
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/financial-growth",
+                    params={"symbol": ticker, "period": period, "limit": limit, "apikey": self.api_key},
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            logger.error(f"Error fetching financial growth from FMP for {ticker}: {e}")
             return []
 
     async def get_sp500_constituents(self) -> list[str]:

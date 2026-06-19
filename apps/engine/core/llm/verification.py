@@ -113,6 +113,7 @@ async def verify_trading_decision(
             tools.PRICE_HISTORY_TOOL,
             tools.VOLATILITY_METRICS_TOOL,
             tools.SECTOR_ALTERNATIVES_TOOL,
+            tools.AUDIT_FINANCIAL_VALUATION_TOOL,
         ]
 
         if provider == "openai":

@@ -20,13 +20,20 @@ To resolve this tradeoff, the platform implements **Structured Key Metrics Extra
 
 The tool delegates to the active `FinancialProvider` through the `MarketDataManager`:
 - **FMPProvider**: Fetches real-time structured key metrics from the FMP `/key-metrics/{symbol}` endpoint. It supports annual or quarterly periods and limits to minimize token count.
-- **YFinanceProvider**: Retrieves corresponding metrics from Yahoo Finance's `Ticker.info` object and normalizes the fields to match the FMP schema (including percentage conversions, e.g., normalizing Debt-to-Equity ratios).
 
 Standardized fields returned to the models include:
 - Valuation: `peRatio`, `priceToSalesRatio`, `pbRatio`, `enterpriseValueOverEBITDA`, `priceToFreeCashFlowsRatio`
-- Leverage & Liquidity: `debtToEquity`, `currentRatio`
+- Leverage & Liquidity: `debtToEquity`, `currentRatio`, `netDebt`, `marketCap`, `enterpriseValue`
 - Profitability & Returns: `roe` (Return on Equity), `dividendYield`, `freeCashFlowYield`
 - Per-Share Metrics: `bookValuePerShare`, `revenuePerShare`, `netIncomePerShare`, `freeCashFlowPerShare`
+
+## Valuation Audit Tool (`audit_financial_valuation`)
+
+To verify stock trades against intrinsic value without in-context mathematical hallucinations, the platform features a server-side **Valuation Audit Tool**. When called with a `ticker`, it:
+1. Retrieves historical growth rates via FMP `/financial-growth` and consensus projections via FMP `/analyst-estimates`.
+2. Computes the company's Weighted Average Cost of Capital (WACC) using the Capital Asset Pricing Model (CAPM) and weight factors.
+3. Formulates a 5-year discounted Free Cash Flow (FCF) schedule under a mid-year convention.
+4. Generates an EV-to-Equity Bridge, outputting the final implied price per share and comparing trailing multiples against index averages to audit valuation premium/discount.
 
 ## Volume & Liquidity Analysis
 
@@ -58,10 +65,10 @@ To aid event-driven thesis verification (e.g. trading around quarterly announcem
 
 The tool delegates to:
 - **FMPProvider**: Queries `/stable/earnings?symbol={ticker}`.
-- **YFinanceProvider**: Queries the `earnings_dates` DataFrame.
 
 ## Related
 
 - [[entities/engine]]
 - [[entities/pipeline]]
 - [[concepts/tool-enforcement]]
+

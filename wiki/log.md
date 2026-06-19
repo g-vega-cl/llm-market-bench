@@ -1,3 +1,11 @@
+## [2026-06-19] documentation | Remove File Change Tree from visual planning framework
+
+Refactored the visual planning framework to remove the "File Change Tree" requirement:
+- **Removed File Change Tree**: Removed "File Change Tree" from [visual-planning.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/wiki/concepts/visual-planning.md) components, mandatory sections list, and reusable templates.
+- **Renumbered Sections**: Renumbered the remaining visual components and mandatory sections accordingly.
+
+**See**: [[concepts/visual-planning]]
+
 ## [2026-06-19] feature | Resolved memories linking and performance playbook integration
 
 Resolved a gap in the memories feedback loop by linking resolved events with their resolutions and cause-and-effect outcomes in the frontend Memories dashboard:

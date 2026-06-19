@@ -19,19 +19,7 @@ Use a status board to indicate the active phase of the plan.
 Phase: Implementation (Awaiting "Go ahead")
 ```
 
-### 2. File Change Tree
-Always visualize the affected files using a structured Unicode file tree instead of bullet points or prose.
-```
-📁 apps/web/src/
-├── 📁 features/
-│   └── 📁 today/
-│       ├── 📄 AgentInsights.tsx (Modify: update table layout)
-│       └── 📄 MarketFeelingCard.tsx (New: add concerns list)
-└── 📁 shared/
-    └── 📄 Button.tsx (Modify: add type-safe variants)
-```
-
-### 3. Visual Sequence & Data Flow Diagrams
+### 2. Visual Sequence & Data Flow Diagrams
 Map interaction or data lifecycles using ASCII/Unicode flowchart arrows. Keep lines aligned and use clean nodes.
 ```
 [User Action] ──(click)──▶ [Route Loader] ──(query)──▶ [Supabase DB]
@@ -41,7 +29,7 @@ Map interaction or data lifecycles using ASCII/Unicode flowchart arrows. Keep li
                          [Suspense Fallback]
 ```
 
-### 4. Textual UI Mockups
+### 3. Textual UI Mockups
 For any UI/UX changes, render a clean, stylized ASCII/Unicode representation of the interface. This aligns user expectations immediately without requiring a full web preview.
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -54,7 +42,7 @@ For any UI/UX changes, render a clean, stylized ASCII/Unicode representation of 
 └────────────────────────────────────────────────────────┘
 ```
 
-### 5. TDD Test Case Flow
+### 4. TDD Test Case Flow
 Visualize the test inputs, expected transitions, and assertions.
 ```
 [Raw Response with <think>] ──(regex_strip)──▶ [Clean JSON String] ──(validate)──▶ [Assert Success]
@@ -69,11 +57,10 @@ A visual plan must structure information into the following distinct sections:
 | Section | Visual Element Used | Purpose |
 | :--- | :--- | :--- |
 | **1. Status Board** | Active phase indicator | High-level active phase |
-| **2. File Change Tree** | Unicode file directory tree | Explicit file paths, lines, and actions |
-| **3. Logic / Data Flow** | ASCII/Unicode flowchart | Technical execution flow or sequence |
-| **4. UI/UX Mockup** | Unicode box interface frame | Screen layout / state changes (if applicable) |
-| **5. TDD Validation** | Input-Output flowchart | Reproduction and regression test structure |
-| **6. Open Questions Board** | Markdown table | Unresolved design decisions / default actions |
+| **2. Logic / Data Flow** | ASCII/Unicode flowchart | Technical execution flow or sequence |
+| **3. UI/UX Mockup** | Unicode box interface frame | Screen layout / state changes (if applicable) |
+| **4. TDD Validation** | Input-Output flowchart | Reproduction and regression test structure |
+| **5. Open Questions Board** | Markdown table | Unresolved design decisions / default actions |
 
 ---
 
@@ -84,13 +71,6 @@ A visual plan must structure information into the following distinct sections:
 ### 📋 Visual Implementation Plan
 
 Phase: Drafting
-
-#### 📁 File Change Tree
-📁 apps/engine/
-├── 📁 core/
-│   └── 📄 analysis.py (Modify: add MiniMax extractor regex)
-└── 📁 tests/
-    └── 📄 test_minimax.py (New: TDD empty thoughts test)
 
 #### ⚙️ Data Flow
 [MiniMax API] ──(response)──▶ [analysis.py:_extract] ──(strip thoughts)──▶ [JSON Parser]

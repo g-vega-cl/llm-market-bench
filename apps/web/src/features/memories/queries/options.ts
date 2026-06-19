@@ -1,4 +1,6 @@
+import type { Memory } from '@llm-market-bench/database';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import type { CauseAndEffectEntry } from '~/features/cause-and-effect/api/fetch-cause-and-effect';
 import type { NewsletterSnapshot, PaginatedMemories } from '../api/fetch-memories';
 import { eventChainQueryKeys, memoriesQueryKeys } from './keys';
 
@@ -40,6 +42,28 @@ export const memoriesQueries = {
                 opts.fetchFn
                     ? opts.fetchFn(opts.sourceIds)
                     : Promise.reject(new Error('fetchFn required')),
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }),
+
+    resolutionChild: <T extends Memory | null>(opts: {
+        parentId: string;
+        fetchFn?: () => Promise<T>;
+    }) =>
+        queryOptions({
+            queryKey: memoriesQueryKeys.resolutionChild(opts.parentId),
+            queryFn: () =>
+                opts.fetchFn ? opts.fetchFn() : Promise.reject(new Error('fetchFn required')),
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }),
+
+    causeAndEffect: <T extends CauseAndEffectEntry | null>(opts: {
+        eventId: string;
+        fetchFn?: () => Promise<T>;
+    }) =>
+        queryOptions({
+            queryKey: memoriesQueryKeys.causeAndEffect(opts.eventId),
+            queryFn: () =>
+                opts.fetchFn ? opts.fetchFn() : Promise.reject(new Error('fetchFn required')),
             staleTime: 1000 * 60 * 5, // 5 minutes
         }),
 };

@@ -177,3 +177,16 @@ export async function fetchReferencedNewsletters(
     if (error) throw error;
     return (data || []) as NewsletterSnapshot[];
 }
+
+export async function fetchChildResolutionEvent(parentId: string): Promise<Memory | null> {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('memories')
+        .select('*, parent_id, status, relationship_type')
+        .eq('parent_id', parentId)
+        .eq('relationship_type', 'RESOLUTION')
+        .maybeSingle();
+
+    if (error) throw error;
+    return data as Memory | null;
+}

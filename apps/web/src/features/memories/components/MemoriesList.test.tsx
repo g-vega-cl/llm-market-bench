@@ -159,7 +159,7 @@ describe('MemoriesList', () => {
             <MemoriesList memories={mockMemories} filter="all" onFilterChange={onFilterChange} />,
         );
 
-        const analysisButton = screen.getByText('Show Analysis');
+        const analysisButton = screen.getAllByText('Show Analysis')[0];
         expect(screen.queryByText('Scenario Analysis')).not.toBeInTheDocument();
 
         fireEvent.click(analysisButton);

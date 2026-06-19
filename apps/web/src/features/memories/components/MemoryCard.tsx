@@ -2,7 +2,8 @@ import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import * as React from 'react';
-import { fetchReferencedNewsletters } from '../api/fetch-memories';
+import { fetchCauseAndEffectByEventId } from '~/features/cause-and-effect/api/fetch-cause-and-effect';
+import { fetchChildResolutionEvent, fetchReferencedNewsletters } from '../api/fetch-memories';
 import { memoriesQueries } from '../queries/options';
 import { getMemoryCategory, type Memory } from './MemoriesList';
 
@@ -100,6 +101,32 @@ export function MemoryCard({ memory }: MemoryCardProps) {
             fetchFn: fetchReferencedNewsletters,
         }),
         enabled: isExpanded && sourceIds.length > 0,
+    });
+
+    const isResolved = memory.status === 'RESOLVED';
+
+    const { data: childResolution } = useQuery({
+        ...memoriesQueries.resolutionChild({
+            parentId: memory.id,
+            fetchFn: () => fetchChildResolutionEvent(memory.id),
+        }),
+        enabled: isExpanded && isResolved,
+    });
+
+    const { data: parentCauseAndEffect } = useQuery({
+        ...memoriesQueries.causeAndEffect({
+            eventId: memory.id,
+            fetchFn: () => fetchCauseAndEffectByEventId(memory.id),
+        }),
+        enabled: isExpanded,
+    });
+
+    const { data: childCauseAndEffect } = useQuery({
+        ...memoriesQueries.causeAndEffect({
+            eventId: childResolution?.id || '',
+            fetchFn: () => fetchCauseAndEffectByEventId(childResolution?.id || ''),
+        }),
+        enabled: isExpanded && !!childResolution?.id,
     });
 
     const category = getMemoryCategory(memory);
@@ -207,10 +234,13 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 </div>
             )}
 
-            {/* Scenario Analysis / Profit Section */}
             {(memory.metadata?.scenario_analysis ||
                 scenarios.length > 0 ||
-                sourceIds.length > 0) && (
+                sourceIds.length > 0 ||
+                isResolved ||
+                !!childResolution ||
+                !!parentCauseAndEffect ||
+                !!childCauseAndEffect) && (
                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <button
                         type="button"
@@ -236,6 +266,83 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                     {isExpanded && (
                         <div className="mt-4 p-4 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
+                            {/* Resolution & Performance Analysis Section */}
+                            {(childResolution || parentCauseAndEffect || childCauseAndEffect) && (
+                                <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-emerald-500 text-lg">⚡</span>
+                                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                                            Resolution & Market Performance
+                                        </h4>
+                                    </div>
+
+                                    {childResolution && (
+                                        <div className="space-y-1">
+                                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+                                                Resolved By Event
+                                            </span>
+                                            <p className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
+                                                Resolved by:{' '}
+                                                <Link
+                                                    to="/memories/chain/$memoryId"
+                                                    params={{ memoryId: childResolution.id }}
+                                                    className="text-blue-500 hover:underline"
+                                                >
+                                                    {childResolution.content
+                                                        .split('|')[0]
+                                                        .replace('MARKET EVENT:', '')
+                                                        .trim()}
+                                                </Link>
+                                            </p>
+                                            <p className="text-xs text-zinc-500 italic mt-1 leading-relaxed">
+                                                {childResolution.content}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {(() => {
+                                        const activeCe =
+                                            childCauseAndEffect || parentCauseAndEffect;
+                                        if (!activeCe) return null;
+                                        return (
+                                            <div className="space-y-3 pt-3 border-t border-emerald-500/10">
+                                                <div>
+                                                    <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide block mb-1">
+                                                        Actual Market Outcome (Confidence:{' '}
+                                                        {activeCe.confidence}%)
+                                                    </span>
+                                                    <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-lg text-sm text-zinc-200 font-semibold leading-relaxed">
+                                                        {activeCe.market_outcome}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide block mb-1">
+                                                        Causal Analysis & Learning Playbook
+                                                    </span>
+                                                    <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-900/10 p-3 rounded-lg border border-zinc-800/30">
+                                                        {activeCe.analysis}
+                                                    </p>
+                                                </div>
+
+                                                {activeCe.tags && activeCe.tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                                        {activeCe.tags.map((tag) => (
+                                                            <span
+                                                                key={tag}
+                                                                className="px-3 py-1 bg-zinc-800 text-zinc-400 text-[10px] uppercase font-bold rounded-full border border-zinc-700"
+                                                            >
+                                                                {tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
+
                             {scenarios.length > 0 && (
                                 <>
                                     <div className="flex items-center gap-2 mb-3">

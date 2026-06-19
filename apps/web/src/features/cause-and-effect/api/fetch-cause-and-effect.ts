@@ -26,3 +26,17 @@ export async function fetchCauseAndEffect(limit?: number): Promise<CauseAndEffec
     if (error) throw error;
     return data as CauseAndEffectEntry[];
 }
+
+export async function fetchCauseAndEffectByEventId(
+    eventId: string,
+): Promise<CauseAndEffectEntry | null> {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('cause_and_effect')
+        .select('*, event:memories(*)')
+        .eq('event_id', eventId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return data as CauseAndEffectEntry | null;
+}

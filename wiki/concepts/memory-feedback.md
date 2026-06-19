@@ -24,10 +24,22 @@ counter-trades in a dedicated portfolio. Uses fresh market prices
 ## Cause & Effect Analysis
 
 Periodic retrospective audit that:
-1. Deduplicates against prior analyses
-2. Identifies most-affected companies per event (Gemini)
-3. Compares scenario analysis against actual price data
-4. Creates a searchable playbook of what narratives actually moved markets
+1. Deduplicates against prior analyses.
+2. Identifies most-affected companies per event (Gemini).
+3. Compares scenario analysis against actual price data.
+4. Creates a searchable playbook of what narratives actually moved markets.
+
+### Resolution Memory Chains & Performance Integration
+
+To close the loop on historical predictions and learn from resolved market events, the system links active memories with their eventual resolutions and causal outcomes:
+
+1. **Resolution Linkage**: When a target event is resolved, its status in the `memories` table is updated to `RESOLVED`. A child memory of type `RESOLUTION` is created, referencing the parent via `parent_id` and setting `relationship_type = 'RESOLUTION'`.
+2. **Causal Data Retrieval (`cause_and_effect` table)**: Causal metrics (actual outcomes, confidence scores, playbooks) are stored in the `cause_and_effect` table. Because mature cause-and-effect results might be saved under the parent event or the child resolution event, the frontend queries both (`fetchCauseAndEffectByEventId`) and merges the outcomes.
+3. **Consolidated UI Panel**: The memories dashboard (`MemoryCard.tsx`) renders a dedicated **Resolution & Market Performance** section for resolved events, featuring:
+   - **Resolved By Event**: A clickable link leading directly to the child resolution event's full geopolitical timeline in the Event Chain view.
+   - **Actual Market Outcome**: The true price impact and outcome (with the LLM's classification confidence).
+   - **Causal Analysis & Playbook**: A synthesized playbook detail detailing why/how the market reacted, aiding future human and agent learning.
+   - **Performance Tags**: Categorized tags (e.g. `energy-prices`, `geopolitics`) associated with the causal playbook.
 
 ## Structured Scenarios & Ticker Mapping
 

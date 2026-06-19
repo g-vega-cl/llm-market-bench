@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { fetchCauseAndEffectByEventId } from '../../cause-and-effect/api/fetch-cause-and-effect';
+import { fetchChildResolutionEvent } from '../api/fetch-memories';
 import type { Memory } from './MemoriesList';
 import { MemoryCard } from './MemoryCard';
 
@@ -11,6 +13,22 @@ vi.mock('@tanstack/react-router', async () => {
         Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
             <a {...props}>{children}</a>
         ),
+    };
+});
+
+vi.mock('../api/fetch-memories', async () => {
+    const actual = await vi.importActual('../api/fetch-memories');
+    return {
+        ...actual,
+        fetchChildResolutionEvent: vi.fn().mockResolvedValue(null),
+    };
+});
+
+vi.mock('../../cause-and-effect/api/fetch-cause-and-effect', async () => {
+    const actual = await vi.importActual('../../cause-and-effect/api/fetch-cause-and-effect');
+    return {
+        ...actual,
+        fetchCauseAndEffectByEventId: vi.fn().mockResolvedValue(null),
     };
 });
 
@@ -136,5 +154,61 @@ describe('MemoryCard scenario rendering', () => {
         fireEvent.click(screen.getByText('Show Analysis'));
 
         expect(screen.queryByText('Other Investable Assets')).not.toBeInTheDocument();
+    });
+
+    it('renders child resolution event details and cause-and-effect market outcomes when parent memory is resolved', async () => {
+        const memory = makeMemory();
+        memory.status = 'RESOLVED';
+
+        const mockChildEvent: Memory = {
+            id: 'child-1',
+            content:
+                'MARKET EVENT: US-Iran 14-Point MOU Signing [ONGOING] | SUMMARY: Geopolitical premium evaporates...',
+            created_at: new Date().toISOString(),
+            metadata: { type: 'consensus_event', impact: 'NEUTRAL' },
+            status: 'RESOLVED',
+            parent_id: 'test-1',
+            relationship_type: 'RESOLUTION',
+            relevance_score: null,
+            memory_type: 'MARKET_EVENT',
+            importance_score: null,
+            target_date: null,
+        };
+
+        const mockCausalOutcome = {
+            id: 'causal-1',
+            event_id: 'child-1',
+            market_outcome:
+                'Energy assets (XOM) corrected lower while broad market sentiment stabilized',
+            analysis:
+                'The Strait of Hormuz ceasefire served as a definitive geopolitical de-escalation signal...',
+            confidence: 85,
+            tags: ['energy-prices', 'geopolitics'],
+            created_at: new Date().toISOString(),
+        };
+
+        vi.mocked(fetchChildResolutionEvent).mockResolvedValue(mockChildEvent);
+        vi.mocked(fetchCauseAndEffectByEventId).mockImplementation(async (eventId) => {
+            if (eventId === 'child-1') {
+                return mockCausalOutcome;
+            }
+            return null;
+        });
+
+        renderWithClient(<MemoryCard memory={memory} />);
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Resolution & Market Performance/i)).toBeInTheDocument();
+            expect(screen.getByText(/Resolved by:/i)).toBeInTheDocument();
+
+            const childResolutions = screen.getAllByText(/US-Iran 14-Point MOU/i);
+            expect(childResolutions.length).toBeGreaterThan(0);
+
+            expect(screen.getByText(/Energy assets \(XOM\) corrected lower/i)).toBeInTheDocument();
+            expect(screen.getByText(/The Strait of Hormuz ceasefire/i)).toBeInTheDocument();
+            expect(screen.getByText(/Confidence: 85%/i)).toBeInTheDocument();
+            expect(screen.getByText(/energy-prices/i)).toBeInTheDocument();
+        });
     });
 });

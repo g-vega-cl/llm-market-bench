@@ -1,3 +1,13 @@
+## [2026-06-19] feature | Resolved memories linking and performance playbook integration
+
+Resolved a gap in the memories feedback loop by linking resolved events with their resolutions and cause-and-effect outcomes in the frontend Memories dashboard:
+- **Child Resolution Traversal**: Implemented `fetchChildResolutionEvent` to locate child memory items linked via `parent_id` and `relationship_type = 'RESOLUTION'`.
+- **Cause-and-Effect Aggregation**: Created `fetchCauseAndEffectByEventId` and updated the `MemoryCard.tsx` component to fetch and merge outcome data from both the parent resolved event and the child resolution event.
+- **Consolidated UI Panel**: Designed and integrated the "Resolution & Market Performance" panel, rendering a link to the resolution event's timeline, actual price performance results, confidence level, the LLM's causal playbook analysis, and associated topic tags.
+- **Documentation & TDD**: Added test coverage verifying the integrated queries and elements in `MemoryCard.test.tsx` and resolved tab-switching list query conflicts in `MemoriesList.test.tsx`. Documented the loop mechanics on the `memory-feedback.md` concept page.
+
+**See**: [[concepts/memory-feedback]], [MemoryCard.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoryCard.tsx), [MemoryCard.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoryCard.test.tsx), [MemoriesList.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoriesList.test.tsx)
+
 ## [2026-06-18] feature | Seed empirical market anomalies database and document in wiki
 
 Expanded the core empirical database and documentation with 9 structural, calendar, and behavioral market anomalies, plus the Fama-French 5-Factor asset pricing model:

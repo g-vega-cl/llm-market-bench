@@ -633,7 +633,7 @@ async def _stage_decision_processing(decisions, macro_events, data, aggregated_c
             logger.error(f"Background consensus/momentum failed: {e}")
             return []
 
-    _ = asyncio.create_task(run_consensus_background())
+    consensus_bg_task = asyncio.create_task(run_consensus_background())
 
     # --- Contrarian Analysis starts IMMEDIATELY (not after consensus) ---
     logger.info("Starting Contrarian Agent Analysis (in parallel with primary decisions)...")
@@ -690,7 +690,9 @@ async def _stage_decision_processing(decisions, macro_events, data, aggregated_c
         ]
         await asyncio.gather(*contrarian_tasks)
 
-    # Don't await consensus_bg_task - let it run in background
+    # Await consensus_bg_task at the end of decision processing to ensure it completes before exit
+    logger.info("Awaiting background consensus and momentum tasks to complete...")
+    await consensus_bg_task
 
     logger.info(f"Processing complete: {counters['saved']} saved, {counters['rejected']} rejected.")
 

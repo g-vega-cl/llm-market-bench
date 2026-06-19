@@ -96,6 +96,17 @@ To ensure parsing robustness and prevent decisions from being dropped:
 
 ---
 
+## Safety and Censorship Failure Modes
+
+Due to MiniMax being hosted by a Chinese provider with strict content moderation policies, the model is highly sensitive to geopolitical keywords (e.g. "Iran Deal", "Strait of Hormuz", "military conflicts").
+* **Symptom**: The API returns a `200 OK` extremely rapidly (e.g. 2ms) but with a blank choice content or finish reason other than `stop`.
+* **Observability & Logging**:
+  - **Empty Content/Choices**: If the API returns a success status but contains empty choices or the final extracted content is blank, the engine logs a warning containing the full raw response for diagnostics.
+  - **HTTP Status Errors**: If the MiniMax API returns a non-200 HTTP status code, `MiniMaxClient` catches the `httpx.HTTPStatusError`, extracts and logs the detailed response body (e.g., quota or authorization failure messages), and re-raises it.
+  - **Business Logic Errors (`base_resp` or `error`)**: MiniMax sometimes returns `200 OK` but includes errors in the JSON body (under `base_resp` or `error` keys). `MiniMaxClient` parses these keys, logs the specific error message, and raises a `ValueError` to ensure visibility.
+
+---
+
 ## Related Pages
 
 * [[entities/engine]]

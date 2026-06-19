@@ -151,6 +151,124 @@ class TestMiniMaxChatParsing:
             assert "processing_time_ms" in result
             assert result["processing_time_ms"] >= 0
 
+    @pytest.mark.asyncio
+    async def test_chat_raises_on_http_status_error(self):
+        """Test that chat raises httpx.HTTPStatusError on non-200 and logs error body."""
+        import httpx
+
+        from core.llm.minimax import MiniMaxClient
+
+        mock_request = httpx.Request("POST", "https://api.minimax.io/v1/text/chatcompletion_v2")
+        mock_response = httpx.Response(
+            status_code=400,
+            json={"error": {"message": "Invalid API Key"}},
+            request=mock_request,
+        )
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with (
+            patch.object(MiniMaxClient, "_get_client", return_value=mock_client),
+            patch("core.llm.minimax.logger") as mock_logger,
+        ):
+            client = MiniMaxClient(api_key="test-key")
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.chat(messages=[{"role": "user", "content": "test"}])
+
+            mock_logger.error.assert_called_once_with(
+                "MiniMax API HTTP error %d: %s",
+                400,
+                {"error": {"message": "Invalid API Key"}},
+            )
+
+    @pytest.mark.asyncio
+    async def test_chat_raises_on_base_resp_error(self):
+        """Test that chat raises ValueError on base_resp error."""
+        from core.llm.minimax import MiniMaxClient
+
+        mock_response_data = {
+            "base_resp": {
+                "status_code": 1004,
+                "status_msg": "API key invalid",
+            }
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with (
+            patch.object(MiniMaxClient, "_get_client", return_value=mock_client),
+            patch("core.llm.minimax.logger") as mock_logger,
+        ):
+            client = MiniMaxClient(api_key="test-key")
+            with pytest.raises(ValueError, match="MiniMax API error in base_resp: status_code=1004"):
+                await client.chat(messages=[{"role": "user", "content": "test"}])
+
+            mock_logger.error.assert_called_once_with(
+                "MiniMax API error in base_resp: status_code=1004, status_msg='API key invalid'"
+            )
+
+    @pytest.mark.asyncio
+    async def test_chat_raises_on_generic_error_field(self):
+        """Test that chat raises ValueError on generic error field in JSON response."""
+        from core.llm.minimax import MiniMaxClient
+
+        mock_response_data = {"error": "Quota Exceeded"}
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with (
+            patch.object(MiniMaxClient, "_get_client", return_value=mock_client),
+            patch("core.llm.minimax.logger") as mock_logger,
+        ):
+            client = MiniMaxClient(api_key="test-key")
+            with pytest.raises(ValueError, match="MiniMax API error: Quota Exceeded"):
+                await client.chat(messages=[{"role": "user", "content": "test"}])
+
+            mock_logger.error.assert_called_once_with("MiniMax API error: Quota Exceeded")
+
+    @pytest.mark.asyncio
+    async def test_chat_logs_warning_on_empty_choices(self):
+        """Test that chat logs a warning when choices is empty."""
+        from core.llm.minimax import MiniMaxClient
+
+        mock_response_data = {
+            "choices": [],
+            "model": "MiniMax-M3",
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with (
+            patch.object(MiniMaxClient, "_get_client", return_value=mock_client),
+            patch("core.llm.minimax.logger") as mock_logger,
+        ):
+            client = MiniMaxClient(api_key="test-key")
+            result = await client.chat(messages=[{"role": "user", "content": "test"}])
+
+            assert result["content"] == ""
+            assert result["finish_reason"] is None
+            mock_logger.warning.assert_called_once_with(
+                "MiniMax API returned response with empty choices. Full response: %s",
+                mock_response_data,
+            )
+
 
 class TestMiniMaxContextManager:
     """Tests for MiniMax async context manager."""

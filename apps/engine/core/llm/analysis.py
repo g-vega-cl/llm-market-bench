@@ -349,23 +349,39 @@ async def _analyze_with_minimax(
     content = _repair_json_string(content)
 
     if not content:
-        logger.warning("[minimax/%s] Empty content after extraction — returning empty response.", model_name)
+        logger.warning(
+            "[minimax/%s] Empty content after extraction — returning empty response. "
+            "Raw API Response: %s, Finish Reason: %s, Processing Time: %s ms",
+            model_name,
+            resp.get("raw_response"),
+            resp.get("finish_reason"),
+            resp.get("processing_time_ms"),
+        )
         return DecisionsResponse(decisions=[], macro_events=[])
 
     # Parse the content
     try:
         raw = _json.loads(content, strict=False)
-    except _json.JSONDecodeError:
+    except _json.JSONDecodeError as e:
         logger.warning(
-            "[minimax/%s] JSON decode failed — returning empty response. Content snippet: %.200s",
+            "[minimax/%s] JSON decode failed — returning empty response. "
+            "Content snippet: %.200s, Raw API Response: %s, Error: %s",
             model_name,
             content,
+            resp.get("raw_response"),
+            str(e),
         )
         return DecisionsResponse(decisions=[], macro_events=[])
 
     result = _try_parse_decisions_response(raw)
     if result is None:
-        logger.warning("[minimax/%s] DecisionsResponse parse failed — returning empty response.", model_name)
+        logger.warning(
+            "[minimax/%s] DecisionsResponse parse failed — returning empty response. "
+            "Parsed Dict: %s, Raw API Response: %s",
+            model_name,
+            raw,
+            resp.get("raw_response"),
+        )
         return DecisionsResponse(decisions=[], macro_events=[])
 
     # Pre-analysis ownership validation: convert phantom SELL → HOLD

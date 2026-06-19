@@ -279,6 +279,17 @@ class FMPProvider(FinancialProvider):
 
                 metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
 
+                # Fallback to annual if quarterly is not supported (e.g. 402/403 or non-200)
+                if period == "quarter" and (metrics_resp.status_code != 200 or ratios_resp.status_code != 200):
+                    logger.warning(
+                        f"FMP quarterly metrics not available for {ticker} (status {metrics_resp.status_code}/{ratios_resp.status_code}). "
+                        "Retrying with period='annual'..."
+                    )
+                    params["period"] = "annual"
+                    metrics_task = client.get(f"{self.BASE_URL}/key-metrics", params=params)
+                    ratios_task = client.get(f"{self.BASE_URL}/ratios", params=params)
+                    metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
+
                 metrics_resp.raise_for_status()
                 ratios_resp.raise_for_status()
 

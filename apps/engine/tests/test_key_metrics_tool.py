@@ -133,3 +133,50 @@ async def test_execute_tool_dispatches_get_key_metrics():
 
         assert res == "Mocked metrics response"
         mock_execute.assert_called_once_with("AAPL", period="quarter", limit=2)
+
+
+@pytest.mark.asyncio
+async def test_fmp_provider_get_key_metrics_fallback_to_annual():
+    """Test that get_key_metrics falls back to annual if quarterly returns a client error (e.g. 402/403)."""
+    provider = FMPProvider()
+    provider.api_key = "test_api_key"
+
+    def mock_get_impl(url, params=None):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+
+        if params and params.get("period") == "quarter":
+            mock_resp.status_code = 402
+            mock_resp.json.return_value = []
+        else:
+            mock_resp.status_code = 200
+            if "key-metrics" in url:
+                mock_resp.json.return_value = [
+                    {
+                        "symbol": "AAPL",
+                        "date": "2024-09-28",
+                        "fiscalYear": "2024",
+                        "period": "FY",
+                        "evToEBITDA": 24.3,
+                        "freeCashFlowYield": 0.035,
+                    }
+                ]
+            elif "ratios" in url:
+                mock_resp.json.return_value = [
+                    {
+                        "symbol": "AAPL",
+                        "date": "2024-09-28",
+                        "fiscalYear": "2024",
+                        "period": "FY",
+                        "priceToEarningsRatio": 30.5,
+                    }
+                ]
+        return mock_resp
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=mock_get_impl) as mock_get:
+        metrics = await provider.get_key_metrics("AAPL", period="quarter", limit=1)
+
+        assert len(metrics) == 1
+        assert metrics[0]["symbol"] == "AAPL"
+        assert metrics[0]["peRatio"] == 30.5
+        assert mock_get.call_count == 4

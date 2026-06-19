@@ -71,6 +71,7 @@ class MarketDataManager:
         "fetched_at": None,
         "ttl_seconds": 300,  # 5 minutes
     }
+    _market_status_lock = None
 
     # In-memory cache for screener results to avoid redundant API hits within a session
     _screener_cache: dict = {}
@@ -115,56 +116,68 @@ class MarketDataManager:
                 logger.debug(f"Using cached market status: {'OPEN' if cache['is_open'] else 'CLOSED'}")
                 return cache["is_open"]
 
-        try:
-            from zoneinfo import ZoneInfo
+        if MarketDataManager._market_status_lock is None:
+            import asyncio
 
-            now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
-        except ImportError:
-            # Fallback for environments without zoneinfo
-            # Assuming server is in ET or just using UTC-5 as an approximation
-            # But better to just use current local if zoneinfo fails
-            now_et = datetime.datetime.now()
-            logger.warning("zoneinfo not found, using local time for market hours baseline.")
+            MarketDataManager._market_status_lock = asyncio.Lock()
 
-        # 1. Primary Check: FMP API (Handles Holidays)
-        if FMP_API_KEY:
+        async with MarketDataManager._market_status_lock:
+            # Recheck cache after acquiring lock
+            if cache["fetched_at"] is not None:
+                elapsed = (now - cache["fetched_at"]).total_seconds()
+                if elapsed < cache["ttl_seconds"]:
+                    return cache["is_open"]
+
             try:
-                import httpx
+                from zoneinfo import ZoneInfo
 
-                async with httpx.AsyncClient() as client:
-                    # Use NASDAQ as the proxy for US Market status
-                    url = "https://financialmodelingprep.com/stable/exchange-market-hours"
-                    params = {"exchange": "NASDAQ", "apikey": FMP_API_KEY}
-                    resp = await client.get(url, params=params)
-                    resp.raise_for_status()
-                    data = resp.json()
+                now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
+            except ImportError:
+                # Fallback for environments without zoneinfo
+                # Assuming server is in ET or just using UTC-5 as an approximation
+                # But better to just use current local if zoneinfo fails
+                now_et = datetime.datetime.now()
+                logger.warning("zoneinfo not found, using local time for market hours baseline.")
 
-                    if data and isinstance(data, list):
-                        is_open = data[0].get("isMarketOpen", False)
-                        logger.info(f"FMP Market Status (NASDAQ): {'OPEN' if is_open else 'CLOSED'}")
+            # 1. Primary Check: FMP API (Handles Holidays)
+            if FMP_API_KEY:
+                try:
+                    import httpx
 
-                        # Cache the result
-                        cache["is_open"] = is_open
-                        cache["fetched_at"] = now
+                    async with httpx.AsyncClient() as client:
+                        # Use NASDAQ as the proxy for US Market status
+                        url = "https://financialmodelingprep.com/stable/exchange-market-hours"
+                        params = {"exchange": "NASDAQ", "apikey": FMP_API_KEY}
+                        resp = await client.get(url, params=params)
+                        resp.raise_for_status()
+                        data = resp.json()
 
-                        return is_open
-            except Exception as e:
-                logger.warning(f"Failed to fetch market status from FMP: {e}. Falling back to time-based check.")
+                        if data and isinstance(data, list):
+                            is_open = data[0].get("isMarketOpen", False)
+                            logger.info(f"FMP Market Status (NASDAQ): {'OPEN' if is_open else 'CLOSED'}")
 
-        # 2. Fallback Check: Time-based (Mon-Fri, 09:30-16:00 ET)
-        # Weekends
-        if now_et.weekday() >= 5:  # 5=Sat, 6=Sun
-            result = False
-        else:
-            market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
-            market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
-            result = market_start <= now_et <= market_end
+                            # Cache the result
+                            cache["is_open"] = is_open
+                            cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
 
-        # Cache the fallback result as well
-        cache["is_open"] = result
-        cache["fetched_at"] = now
+                            return is_open
+                except Exception as e:
+                    logger.warning(f"Failed to fetch market status from FMP: {e}. Falling back to time-based check.")
 
-        return result
+            # 2. Fallback Check: Time-based (Mon-Fri, 09:30-16:00 ET)
+            # Weekends
+            if now_et.weekday() >= 5:  # 5=Sat, 6=Sun
+                result = False
+            else:
+                market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+                market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+                result = market_start <= now_et <= market_end
+
+            # Cache the fallback result as well
+            cache["is_open"] = result
+            cache["fetched_at"] = datetime.datetime.now(datetime.UTC)
+
+            return result
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> TickerData | None:
         """Fetch stock quote, checking cache first unless force_refresh is True.

@@ -316,3 +316,33 @@ async def test_parallel_provider_isolation(mock_deps):
     assert "agent-1" in portfolios
     assert "agent-2" in portfolios
     assert portfolios["agent-1"] != portfolios["agent-2"]
+
+
+@pytest.mark.asyncio
+async def test_stage_decision_processing_awaits_consensus(mock_deps):
+    """Verify that _stage_decision_processing awaits the background consensus task."""
+    import asyncio
+
+    md = mock_deps
+
+    consensus_completed = False
+
+    async def slow_consensus(events):
+        nonlocal consensus_completed
+        await asyncio.sleep(0.1)
+        consensus_completed = True
+        return []
+
+    # Mock contrarian
+    md["analyze"].return_value = ([], [])
+
+    with patch("main.process_consensus", new_callable=AsyncMock, side_effect=slow_consensus):
+        portfolio = MagicMock()
+        md["Portfolio"].return_value = portfolio
+        portfolio.initialize = AsyncMock()
+        portfolio.get_portfolio_summary = AsyncMock(return_value="Summary")
+        portfolio.execute_trade = AsyncMock(return_value="uuid")
+
+        await _stage_decision_processing([], [], {}, "", "", MagicMock())
+
+        assert consensus_completed is True

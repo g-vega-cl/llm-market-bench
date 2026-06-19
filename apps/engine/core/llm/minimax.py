@@ -92,22 +92,57 @@ class MiniMaxClient:
             payload["response_format"] = response_format
 
         start_time = time.time()
-        response = await client.post(self.BASE_URL, json=payload)
-        response.raise_for_status()
+        try:
+            response = await client.post(self.BASE_URL, json=payload)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            try:
+                error_body = e.response.json()
+            except Exception:
+                error_body = e.response.text
+            logger.error(
+                "MiniMax API HTTP error %d: %s",
+                e.response.status_code,
+                error_body,
+            )
+            raise e
 
         elapsed_ms = int((time.time() - start_time) * 1000)
 
         data = response.json()
+
+        # Check for MiniMax specific API error in base_resp or error
+        if "base_resp" in data:
+            base_resp = data["base_resp"]
+            status_code = base_resp.get("status_code")
+            status_msg = base_resp.get("status_msg")
+            if status_code is not None and status_code != 0:
+                err_msg = f"MiniMax API error in base_resp: status_code={status_code}, status_msg='{status_msg}'"
+                logger.error(err_msg)
+                raise ValueError(err_msg)
+
+        if "error" in data:
+            error_data = data["error"]
+            err_msg = f"MiniMax API error: {error_data}"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
 
         # Extract usage info if available
         usage = data.get("usage", {})
         input_tokens = usage.get("prompt_tokens")
         output_tokens = usage.get("completion_tokens")
 
+        choices = data.get("choices", [])
+        if not choices:
+            logger.warning(
+                "MiniMax API returned response with empty choices. Full response: %s",
+                data,
+            )
+
         return {
-            "content": data.get("choices", [{}])[0].get("message", {}).get("content", ""),
+            "content": choices[0].get("message", {}).get("content", "") if choices else "",
             "model": data.get("model"),
-            "finish_reason": data.get("choices", [{}])[0].get("finish_reason"),
+            "finish_reason": choices[0].get("finish_reason") if choices else None,
             "usage": {
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,

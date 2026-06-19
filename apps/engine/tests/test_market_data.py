@@ -152,3 +152,39 @@ class TestCacheTTL:
 
             assert result.price == 420.0
             manager.provider.get_ticker_data.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_market_status_lock_prevents_thundering_herd():
+    """Test that concurrent is_market_open calls are serialized and make only 1 request."""
+    import asyncio
+
+    from execution.market_data import MarketDataManager
+
+    # Reset cache
+    MarketDataManager._market_status_cache = {
+        "is_open": None,
+        "fetched_at": None,
+        "ttl_seconds": 300,
+    }
+    MarketDataManager._market_status_lock = None
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [{"isMarketOpen": True}]
+
+    call_count = 0
+
+    async def slow_get(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        await asyncio.sleep(0.1)
+        return mock_resp
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=slow_get):
+        manager = MarketDataManager()
+
+        results = await asyncio.gather(manager.is_market_open(), manager.is_market_open(), manager.is_market_open())
+
+        assert all(results)
+        assert call_count == 1

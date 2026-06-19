@@ -351,6 +351,7 @@ export type Database = {
                     pb_ratio: number | null;
                     pe_ratio: number | null;
                     ps_ratio: number | null;
+                    pfcf_ratio: number | null;
                     updated_at: string | null;
                 };
                 Insert: {
@@ -361,6 +362,7 @@ export type Database = {
                     pb_ratio?: number | null;
                     pe_ratio?: number | null;
                     ps_ratio?: number | null;
+                    pfcf_ratio?: number | null;
                     updated_at?: string | null;
                 };
                 Update: {
@@ -371,6 +373,7 @@ export type Database = {
                     pb_ratio?: number | null;
                     pe_ratio?: number | null;
                     ps_ratio?: number | null;
+                    pfcf_ratio?: number | null;
                     updated_at?: string | null;
                 };
                 Relationships: [];

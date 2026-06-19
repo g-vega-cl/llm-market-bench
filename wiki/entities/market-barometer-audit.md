@@ -9,13 +9,13 @@ A dedicated audit page (`/barometer-audit`) that provides full transparency into
 
 ## Purpose
 
-- Verify index aggregate values (Trailing P/E, Forward P/E, P/B, P/S, Earnings Beat Rate) against underlying constituent data
+- Verify index aggregate values (Trailing P/E, Forward P/E, P/B, P/S, P/FCF, Earnings Beat Rate) against underlying constituent data
 - Explore individual stock metrics (market cap, price, ratios, beat status) with search, sort, and filter controls
 - Shareable, refreshable URLs via TanStack Start URL search params for reproducible audits
 
 ## Features
 
-- **Constituent Table**: Renders up to 100 S&P 500 components with computed columns (Trailing P/E, Forward P/E from next EPS estimate, P/S, P/B, Earnings Beat)
+- **Constituent Table**: Renders up to 100 S&P 500 components with computed columns (Trailing P/E, Forward P/E from next EPS estimate, P/S, P/B, P/FCF, Earnings Beat)
 - **Client‑Side Filters**: Search by ticker or company name; dropdown filter by beat status (all / beats / misses / no data)
 - **Column Sorting**: Click any header to sort ascending/descending; default sort by market cap descending
 - **Methodology Card**: Explains the cap‑weighted aggregate formulas (Sum(MCap) / Sum(Net Income) etc.)

@@ -337,6 +337,15 @@ class FMPProvider(FinancialProvider):
                 # Sort by date descending
                 sorted_dates = sorted(merged_by_date.keys(), reverse=True)
                 results = [merged_by_date[d] for d in sorted_dates[:limit]]
+                for entry in results:
+                    fcf_yield = entry.get("freeCashFlowYield")
+                    if fcf_yield is not None:
+                        try:
+                            fcf_yield_val = float(fcf_yield)
+                            if fcf_yield_val != 0:
+                                entry["priceToFreeCashFlowsRatio"] = 1.0 / fcf_yield_val
+                        except (ValueError, TypeError):
+                            pass
                 return results
 
         except Exception as e:

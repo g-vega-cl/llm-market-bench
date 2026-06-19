@@ -18,6 +18,7 @@ const mockBarometer: MarketBarometer = {
     forward_pe: 21.2,
     pb_ratio: 4.8,
     ps_ratio: 3.2,
+    pfcf_ratio: 28.4,
     earnings_surprise_momentum: 75.0,
     updated_at: '2026-06-17T16:00:00Z',
     constituents_data: [
@@ -29,6 +30,7 @@ const mockBarometer: MarketBarometer = {
             pe: 30.0,
             pb: 45.0,
             ps: 8.0,
+            pfcf: 27.2,
             next_eps_est: 8.0,
             beat: true,
         },
@@ -40,6 +42,7 @@ const mockBarometer: MarketBarometer = {
             pe: 35.0,
             pb: 12.0,
             ps: 11.0,
+            pfcf: 32.1,
             next_eps_est: 12.0,
             beat: false,
         },
@@ -51,6 +54,7 @@ const mockBarometer: MarketBarometer = {
             pe: 60.0,
             pb: 25.0,
             ps: 22.0,
+            pfcf: null,
             next_eps_est: null,
             beat: null,
         },
@@ -73,17 +77,22 @@ describe('BarometerAuditPage', () => {
         expect(screen.getByText('25.50')).toBeInTheDocument();
         expect(screen.getByText('Forward P/E')).toBeInTheDocument();
         expect(screen.getByText('21.20')).toBeInTheDocument();
+        expect(screen.getByText('Price-to-FCF')).toBeInTheDocument();
+        expect(screen.getByText('28.40')).toBeInTheDocument();
 
         // Assert table rows render
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
         expect(screen.getByText('$3.00T')).toBeInTheDocument();
         expect(screen.getByText('BEAT')).toBeInTheDocument();
+        expect(screen.getByText('P/FCF')).toBeInTheDocument();
+        expect(screen.getByText('27.20')).toBeInTheDocument();
 
         expect(screen.getByText('MSFT')).toBeInTheDocument();
         expect(screen.getByText('Microsoft Corp')).toBeInTheDocument();
         expect(screen.getByText('$3.20T')).toBeInTheDocument();
         expect(screen.getByText('MISS')).toBeInTheDocument();
+        expect(screen.getByText('32.10')).toBeInTheDocument();
     });
 
     it('filters constituents by search term', () => {

@@ -334,3 +334,14 @@ Implemented secure, lazy-loaded inline newsletter source citations for memories:
 
 **See**: [[concepts/memory-feedback]], [[entities/web-app]], [MemoryCard.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoryCard.tsx), [test_referenced_newsletters.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_referenced_newsletters.py)
 
+## [2026-06-19] feature | Add Price-to-FCF (P/FCF) metric to backend engine, LLM tools, and web barometer
+
+Added Price-to-Free-Cash-Flow (P/FCF) metric across the entire stack:
+- **Database Layer**: Created migration `20260621100000_add_pfcf_to_barometer.sql` to add `pfcf_ratio` column to the `market_barometer_history` table in Supabase. Manually updated `supabase-types.ts` Row, Insert, and Update interface definitions.
+- **Backend Provider & Tools**: Updated `FMPProvider` and `YFinanceProvider` to mathematically calculate constituent-level `priceToFreeCashFlowsRatio` from FCF yields (`1 / freeCashFlowYield`). Updated `execute_key_metrics_tool` and `execute_market_health_barometer_tool` to format and output P/FCF to the LLMs.
+- **Barometer Aggregator**: Updated `update_market_barometer.py` to retrieve constituent P/FCF, calculate the cap-weighted Index P/FCF, exclude companies with negative or zero free cash flow to prevent multiple distortion, and save index-level and constituent-level results to Supabase.
+- **Frontend Dashboard & Audit**: Updated `HomePage.tsx` to render the aggregate Price-to-FCF ratio on the S&P 500 Market Health Barometer glassmorphism card. Updated `BarometerAuditPage.tsx` to display aggregate P/FCF, include a P/FCF column in the constituent weightings table, and support sorting by P/FCF.
+- **TDD & Code Quality**: Added unit tests verifying `priceToFreeCashFlowsRatio` retrieval and formatting in `test_key_metrics_tool.py`. Updated `test_market_barometer.py` to verify cap-weighted index P/FCF calculation and negative FCF exclusion logic. Updated Vitest suite in `barometer-audit.test.tsx` to verify P/FCF rendering on the audit dashboard. All frontend and backend lints and tests pass.
+
+**See**: [[concepts/fundamental-analysis]], [[entities/web-app]], [HomePage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx), [BarometerAuditPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
+

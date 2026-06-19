@@ -959,6 +959,8 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
             output += f"- ROE: {fmt(entry.get('roe'), percentage=True)}\n"
             output += f"- Dividend Yield: {fmt(entry.get('dividendYield'), percentage=True)}\n"
             output += f"- Free Cash Flow Yield: {fmt(entry.get('freeCashFlowYield'), percentage=True)}\n"
+            if "priceToFreeCashFlowsRatio" in entry:
+                output += f"- Price/Free Cash Flow Ratio: {fmt(entry.get('priceToFreeCashFlowsRatio'))}\n"
             output += f"- Book Value Per Share: ${fmt(entry.get('bookValuePerShare'))}\n"
             output += f"- Revenue Per Share: ${fmt(entry.get('revenuePerShare'))}\n"
             if "netIncomePerShare" in entry:
@@ -989,12 +991,14 @@ async def execute_market_health_barometer_tool(limit: int = 5) -> str:
             fwd_pe = entry.get("forward_pe")
             pb = entry.get("pb_ratio")
             ps = entry.get("ps_ratio")
+            pfcf = entry.get("pfcf_ratio")
             surprise = entry.get("earnings_surprise_momentum")
 
             pe_val = f"{float(pe):.2f}" if pe is not None else "N/A"
             fwd_pe_val = f"{float(fwd_pe):.2f}" if fwd_pe is not None else "N/A"
             pb_val = f"{float(pb):.2f}" if pb is not None else "N/A"
             ps_val = f"{float(ps):.2f}" if ps is not None else "N/A"
+            pfcf_val = f"{float(pfcf):.2f}" if pfcf is not None else "N/A"
             surprise_val = f"{float(surprise):.1f}%" if surprise is not None else "N/A"
 
             output += f"\n- Date: {date_str}\n"
@@ -1002,6 +1006,7 @@ async def execute_market_health_barometer_tool(limit: int = 5) -> str:
             output += f"  * Aggregate Forward P/E:  {fwd_pe_val}\n"
             output += f"  * Aggregate P/S Ratio:   {ps_val}\n"
             output += f"  * Aggregate P/B Ratio:   {pb_val}\n"
+            output += f"  * Aggregate Price/FCF:    {pfcf_val}\n"
             output += f"  * Earnings Beat Rate:     {surprise_val} of companies beating expectations\n"
 
         return output

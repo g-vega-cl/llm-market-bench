@@ -193,6 +193,7 @@ describe('HomePage Dashboard', () => {
             forward_pe: 13.609154,
             pb_ratio: 6.701241,
             ps_ratio: 4.73962,
+            pfcf_ratio: 24.5,
             earnings_surprise_momentum: 92.929292,
             updated_at: '2026-06-17T14:19:15Z',
             constituents_data: [],
@@ -208,10 +209,12 @@ describe('HomePage Dashboard', () => {
         // Assert barometer section is rendered
         expect(within(dashboard).getByText('MARKET HEALTH BAROMETER (S&P 500)')).toBeDefined();
         expect(within(dashboard).getByText('28.36')).toBeDefined();
-        expect(within(dashboard).getByText('13.61')).toBeDefined();
+        expect(within(dashboard).getByText('Price-to-Book')).toBeDefined();
         expect(within(dashboard).getByText('6.70')).toBeDefined();
+        expect(within(dashboard).getByText('Price-to-Sales')).toBeDefined();
         expect(within(dashboard).getByText('4.74')).toBeDefined();
-        expect(within(dashboard).getByText('92.9%')).toBeDefined();
+        expect(within(dashboard).getByText('Price-to-FCF')).toBeDefined();
+        expect(within(dashboard).getByText('24.50')).toBeDefined();
         expect(within(dashboard).getByText('As of 2026-06-17')).toBeDefined();
     });
 });

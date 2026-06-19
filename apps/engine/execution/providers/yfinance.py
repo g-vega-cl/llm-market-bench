@@ -164,6 +164,10 @@ class YFinanceProvider(FinancialProvider):
                 except Exception:
                     pass
 
+            price_to_fcf = None
+            if fcf_yield and fcf_yield != 0:
+                price_to_fcf = 1.0 / fcf_yield
+
             metric = {
                 "symbol": ticker.upper(),
                 "date": date_str,
@@ -178,6 +182,7 @@ class YFinanceProvider(FinancialProvider):
                 "roe": info.get("returnOnEquity"),
                 "dividendYield": info.get("dividendYield"),
                 "freeCashFlowYield": fcf_yield,
+                "priceToFreeCashFlowsRatio": price_to_fcf,
                 "bookValuePerShare": info.get("bookValue"),
                 "revenuePerShare": info.get("revenuePerShare"),
             }

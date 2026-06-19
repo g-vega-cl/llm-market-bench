@@ -236,6 +236,7 @@ async def fetch_constituent_data(
         "pe": ratios.get("priceToEarningsRatio"),
         "pb": ratios.get("priceToBookRatio"),
         "ps": ratios.get("priceToSalesRatio"),
+        "pfcf": ratios.get("priceToFreeCashFlowsRatio"),
         "next_eps_est": next_eps_est,
         "beat": beat,
     }
@@ -290,6 +291,9 @@ async def calculate_barometer():
     sum_mcap_fwd = 0.0
     sum_fwd_income = 0.0
 
+    sum_mcap_pfcf = 0.0
+    sum_fcf = 0.0
+
     beats_count = 0
     total_beats_valid = 0
 
@@ -329,6 +333,13 @@ async def calculate_barometer():
                 sum_mcap_fwd += mcap
                 sum_fwd_income += fwd_income
 
+        # Price-to-Free-Cash-Flow / Free Cash Flow (exclude negative/zero FCF)
+        pfcf = r.get("pfcf")
+        if pfcf is not None and pfcf > 0:
+            pfcf_val = float(pfcf)
+            sum_mcap_pfcf += mcap
+            sum_fcf += mcap / pfcf_val
+
         # Earnings Beat
         beat = r["beat"]
         if beat is not None:
@@ -341,6 +352,7 @@ async def calculate_barometer():
     ps_index = (sum_mcap_ps / sum_revenue) if sum_revenue != 0 else None
     pb_index = (sum_mcap_pb / sum_book) if sum_book != 0 else None
     fwd_pe_index = (sum_mcap_fwd / sum_fwd_income) if sum_fwd_income != 0 else None
+    pfcf_index = (sum_mcap_pfcf / sum_fcf) if sum_fcf != 0 else None
     beat_rate = (beats_count / total_beats_valid * 100) if total_beats_valid > 0 else None
 
     # Construct clean constituents details payload for audit trail
@@ -355,13 +367,14 @@ async def calculate_barometer():
                 "pe": float(r["pe"]) if r["pe"] is not None else None,
                 "pb": float(r["pb"]) if r["pb"] is not None else None,
                 "ps": float(r["ps"]) if r["ps"] is not None else None,
+                "pfcf": float(r["pfcf"]) if r.get("pfcf") is not None else None,
                 "next_eps_est": float(r["next_eps_est"]) if r["next_eps_est"] is not None else None,
                 "beat": r["beat"],
             }
         )
 
     logger.info(
-        f"Calculated S&P 500 Aggregates: PE={pe_index}, PS={ps_index}, PB={pb_index}, FwdPE={fwd_pe_index}, BeatRate={beat_rate}"
+        f"Calculated S&P 500 Aggregates: PE={pe_index}, PS={ps_index}, PB={pb_index}, FwdPE={fwd_pe_index}, PFCF={pfcf_index}, BeatRate={beat_rate}"
     )
 
     # 3. Store to Supabase
@@ -375,6 +388,7 @@ async def calculate_barometer():
             "forward_pe": fwd_pe_index,
             "pb_ratio": pb_index,
             "ps_ratio": ps_index,
+            "pfcf_ratio": pfcf_index,
             "earnings_surprise_momentum": beat_rate,
             "constituents_data": constituents_payload,
             "updated_at": datetime.now().isoformat(),

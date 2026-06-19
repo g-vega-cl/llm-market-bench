@@ -23,6 +23,7 @@ interface Constituent {
     pe: number | null;
     pb: number | null;
     ps: number | null;
+    pfcf: number | null;
     next_eps_est: number | null;
     beat: boolean | null;
 }
@@ -42,6 +43,7 @@ const columns: ColumnConfig[] = [
     { label: 'Fwd P/E', field: 'next_eps_est', align: 'right' },
     { label: 'P/S', field: 'ps', align: 'right' },
     { label: 'P/B', field: 'pb', align: 'right' },
+    { label: 'P/FCF', field: 'pfcf', align: 'right' },
     { label: 'Earnings Beat', field: 'beat', align: 'center' },
 ];
 
@@ -208,12 +210,13 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
 
                 {/* Latest aggregates overlay */}
                 {barometer && (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         {[
                             { label: 'Trailing P/E', val: barometer.pe_ratio, highlight: true },
                             { label: 'Forward P/E', val: barometer.forward_pe, highlight: true },
                             { label: 'Price-to-Book', val: barometer.pb_ratio },
                             { label: 'Price-to-Sales', val: barometer.ps_ratio },
+                            { label: 'Price-to-FCF', val: barometer.pfcf_ratio },
                             {
                                 label: 'Earnings Beat Rate',
                                 val: barometer.earnings_surprise_momentum,
@@ -385,7 +388,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                     {processedConstituents.length === 0 ? (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={9}
+                                                colSpan={10}
                                                 className="text-center py-8 text-white/40"
                                             >
                                                 No constituents match search criteria.
@@ -430,6 +433,9 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                     </TableCell>
                                                     <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
                                                         {formatValue(c.pb)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                        {formatValue(c.pfcf)}
                                                     </TableCell>
                                                     <TableCell className="py-2.5 px-4 text-center">
                                                         {c.beat === true && (

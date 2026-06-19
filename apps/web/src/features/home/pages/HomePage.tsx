@@ -276,6 +276,7 @@ function BarometerSection({ barometer }: { barometer: MarketBarometer }) {
         },
         { label: 'Price-to-Book', value: barometer.pb_ratio, format: (v: number) => v.toFixed(2) },
         { label: 'Price-to-Sales', value: barometer.ps_ratio, format: (v: number) => v.toFixed(2) },
+        { label: 'Price-to-FCF', value: barometer.pfcf_ratio, format: (v: number) => v.toFixed(2) },
     ];
 
     const beatRate = barometer.earnings_surprise_momentum;
@@ -300,7 +301,7 @@ function BarometerSection({ barometer }: { barometer: MarketBarometer }) {
             </div>
 
             {/* Premium Glass Metrics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {metrics.map((m) => {
                     const hasValue = m.value !== null && m.value !== undefined;
                     return (

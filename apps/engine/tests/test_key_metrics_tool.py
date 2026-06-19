@@ -67,6 +67,7 @@ async def test_fmp_provider_get_key_metrics():
         assert m["pbRatio"] == 45.1
         assert m["enterpriseValueOverEBITDA"] == 24.3
         assert m["freeCashFlowYield"] == 0.035
+        assert m["priceToFreeCashFlowsRatio"] == pytest.approx(1.0 / 0.035)
         assert "ignoredField" not in m
 
         # Check API parameters
@@ -96,6 +97,8 @@ async def test_yfinance_provider_get_key_metrics():
         "returnOnEquity": 1.75,
         "dividendYield": 0.005,
         "bookValue": 4.5,
+        "freeCashflow": 1000000,
+        "marketCap": 20000000,
     }
 
     with patch("yfinance.Ticker", return_value=mock_ticker):
@@ -113,6 +116,8 @@ async def test_yfinance_provider_get_key_metrics():
         assert m["roe"] == 1.75
         assert m["dividendYield"] == 0.005
         assert m["bookValuePerShare"] == 4.5
+        assert m["freeCashFlowYield"] == 0.05
+        assert m["priceToFreeCashFlowsRatio"] == 20.0
 
 
 @pytest.mark.asyncio
@@ -143,6 +148,7 @@ async def test_execute_key_metrics_tool():
             "peRatio": 30.5,
             "debtToEquity": 2.1,
             "roe": 1.75,
+            "priceToFreeCashFlowsRatio": 28.57,
         }
     ]
 
@@ -154,6 +160,7 @@ async def test_execute_key_metrics_tool():
         assert "30.5" in result
         assert "2.1" in result
         assert "ROE: 175.00%" in result
+        assert "Price/Free Cash Flow Ratio: 28.57" in result
         mock_get.assert_called_once_with("AAPL", "annual", 1)
 
 

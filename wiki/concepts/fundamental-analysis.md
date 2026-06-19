@@ -23,7 +23,7 @@ The tool delegates to the active `FinancialProvider` through the `MarketDataMana
 - **YFinanceProvider**: Retrieves corresponding metrics from Yahoo Finance's `Ticker.info` object and normalizes the fields to match the FMP schema (including percentage conversions, e.g., normalizing Debt-to-Equity ratios).
 
 Standardized fields returned to the models include:
-- Valuation: `peRatio`, `priceToSalesRatio`, `pbRatio`, `enterpriseValueOverEBITDA`
+- Valuation: `peRatio`, `priceToSalesRatio`, `pbRatio`, `enterpriseValueOverEBITDA`, `priceToFreeCashFlowsRatio`
 - Leverage & Liquidity: `debtToEquity`, `currentRatio`
 - Profitability & Returns: `roe` (Return on Equity), `dividendYield`, `freeCashFlowYield`
 - Per-Share Metrics: `bookValuePerShare`, `revenuePerShare`, `netIncomePerShare`, `freeCashFlowPerShare`
@@ -45,6 +45,7 @@ A daily background script (`update_market_barometer.py`) gathers fundamental and
 - **Aggregate Forward P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Estimated Net Income}}$
 - **Aggregate P/S (Price-to-Sales)**: $\frac{\sum \text{Market Cap}}{\sum \text{Revenue}}$ (a distortion-free metric that includes loss-making companies)
 - **Aggregate P/B (Price-to-Book)**: $\frac{\sum \text{Market Cap}}{\sum \text{Book Value}}$
+- **Aggregate Price-to-FCF**: $\frac{\sum \text{Market Cap}}{\sum \text{Free Cash Flow}}$ (mathematically computed from FCF yields, excluding companies with negative or zero free cash flow to avoid skewing valuation metrics)
 - **Earnings Beat Rate**: Percentage of constituents whose most recent earnings report exceeded estimates.
 
 These daily snapshots are saved to `market_barometer_history` in Supabase. The latest snapshot is injected into the system prompt's global macroeconomic context (`macro_context`), the LLMs can call `get_market_health_barometer` to check historical valuation trends, and the metrics are displayed to users in a premium glassmorphism card on the dashboard [HomePage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx) (visualizing trailing/forward multiples and an animated earnings surprise beat rate progress bar).

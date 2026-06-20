@@ -19,8 +19,8 @@ The RPC takes `time_window_days INT` as an input parameter (supporting `7`, `30`
 ### 2. Metric Scoring Formulas
 
 #### A. Trading Performance (50% of Composite Score)
-* **Return %**: Calculated relative to the fixed starting cash balance of $10,000.00:
-  $$\text{Return \%} = \frac{\text{Total Equity} - 10000.00}{10000.00} \times 100$$
+* **Return %**: Calculated relative to the starting equity at the beginning of the selected time window (falling back to $10,000.00 if no snapshots exist):
+  $$\text{Return \%} = \frac{\text{Total Equity} - \text{Starting Equity}}{\text{Starting Equity}} \times 100$$
 * **Return Score**: Linear mapping between -15.0% (score of 0) and +15.0% (score of 100).
 * **Win Rate**: Percentage of realized trades yielding positive profit:
   $$\text{Win Rate} = \frac{\text{Trades with realized\_pnl} > 0}{\text{Total Trades}} \times 100$$

@@ -1,3 +1,11 @@
+## [2026-06-19] fix | Leaderboard timeframe dynamic return % and score calculation
+
+Resolved a database-level bug where the LLM Leaderboard timeframe filter (7d/30d/90d) did not change the return % and composite scores in the Podium cards and table.
+- **Database Layer**: Added migration `20260622000000_fix_leaderboard_timeframe_return.sql` redefining the `public.get_llm_leaderboard_metrics(time_window_days)` RPC function. It now calculates `return_pct` and `trading_performance_score` (and therefore `composite_score`) dynamically relative to the starting equity at the beginning of the selected time window (using the closest snapshot from `public.portfolio_performance`), falling back to the initial `$10,000.00` if no snapshot exists.
+- **TDD Verification**: Added a new React component test in `LeaderboardPage.test.tsx` simulating timeframe switches (e.g. clicking '7 Days') and asserting that `useQuery` is updated with the correct timeframe query key. Resolved Biome linter errors (casting any-types to strict mock signatures). All 63 web test suites and 777 backend engine test suites pass successfully.
+
+**See**: [[entities/llm-leaderboard]], [LeaderboardPage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/pages/LeaderboardPage.test.tsx), [20260622000000_fix_leaderboard_timeframe_return.sql](file:///Users/cesarvega/Documents/p-code/llm-market-bench/supabase/migrations/20260622000000_fix_leaderboard_timeframe_return.sql)
+
 ## [2026-06-12] feature | WebGL ShaderBackground component with 8 background variant themes
 
 Added `ShaderBackground` React component using WebGL fragment shaders to render animated backgrounds on the HomePage. Supports 8 variants: pointillism, waves, nexus, cosmic, emerald_tide, royal_bronze, css_emerald, plus the original CSS dot grid (now selected via dropdown). Includes WebGL context loss/restore handling, visibility-change pausing, logical CSS pixel density mapping via `u_pixelRatio`, and pixel-ratio-aware canvas sizing. Resolved all Biome linter errors (non-null assertions and top-level React hook false-positives for WebGL methods). HomePage updated with a `<select>` dropdown to switch between variants in real time.

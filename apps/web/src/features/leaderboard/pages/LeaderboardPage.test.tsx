@@ -1,4 +1,5 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
+import { useQuery } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LeaderboardPage } from './LeaderboardPage';
@@ -124,5 +125,27 @@ describe('LeaderboardPage', () => {
 
         // Comparison details should disappear
         expect(screen.queryByText('Comparative Diagnostics')).toBeNull();
+    });
+
+    it('switches timeframe and triggers a query update when timeframe buttons are clicked', () => {
+        const useQueryMock = useQuery as unknown as {
+            mockClear: () => void;
+            mock: {
+                calls: { queryKey: (string | number | null)[] }[][];
+            };
+        };
+        useQueryMock.mockClear();
+
+        render(<LeaderboardPage initialData={mockLeaderboardData} />);
+
+        // Click the '7 Days' button
+        const sevenDaysBtn = screen.getByText('7 Days');
+        expect(sevenDaysBtn).toBeDefined();
+        fireEvent.click(sevenDaysBtn);
+
+        // Check if useQuery was called with timeframe 7
+        const calls = useQueryMock.mock.calls;
+        const lastCallArgs = calls[calls.length - 1][0];
+        expect(lastCallArgs.queryKey).toEqual(['leaderboard', 7]);
     });
 });

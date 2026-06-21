@@ -314,7 +314,7 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
             "variant_tag": "baseline-tag",
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
             "prompt_content": "BASELINE_PROMPT_CONTENT",
-            "status": "kept",
+            "status": "baseline",
             "metrics": {"score": 80.0},
         },
         mock_active_prompt[0],
@@ -385,8 +385,10 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
 
     # Assert metrics update on active-tag
     assert any(up[0] == "prompt_experiments" and up[1].get("metrics") == {"score": 85.0} for up in db_updates)
-    # Assert active-tag status updated to kept (beats baseline 80)
-    assert any(up[0] == "prompt_experiments" and up[1].get("status") == "kept" for up in db_updates)
+    # Assert active-tag status updated to baseline (beats baseline 80)
+    assert any(up[0] == "prompt_experiments" and up[1].get("status") == "baseline" for up in db_updates)
+    # Assert other variants demoted to saved
+    assert any(up[0] == "prompt_experiments" and up[1].get("status") == "saved" for up in db_updates)
     # Assert insert contains parent_tag = 'active-tag' and mutated content
     assert len(db_inserts) == 1
     assert db_inserts[0][0] == "prompt_experiments"
@@ -427,7 +429,7 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
             "variant_tag": "baseline-tag",
             "prompt_name": "SECTOR_PREDICTOR_PROMPT",
             "prompt_content": "BASELINE_PROMPT_CONTENT",
-            "status": "kept",
+            "status": "baseline",
             "metrics": {"score": 80.0},
         },
         mock_active_prompt[0],
@@ -498,3 +500,105 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
     assert db_inserts[0][0] == "prompt_experiments"
     assert db_inserts[0][1]["parent_tag"] == "baseline-tag"
     assert db_inserts[0][1]["prompt_content"] == "MUTATED_PROMPT_CONTENT"
+
+
+@pytest.mark.asyncio
+@patch("tasks.predictor_autoresearch.get_gemini_client")
+async def test_predictor_autoresearch_always_inserts_active(mock_get_gemini):
+    """Test that even if the new prompt is identical to the current prompt, we still insert a new active variant to prevent timeline gaps."""
+    mock_client = MagicMock()
+    mock_chain = MagicMock()
+    mock_client.table.return_value = mock_chain
+
+    # Mock predictions: avg score = 85.0
+    mock_predictions = [
+        {"sector_percentile_score": 85.0, "pair_percentile_score": 85.0},
+    ]
+    mock_pred_execute = MagicMock(data=mock_predictions)
+
+    # Mock active prompt: tag='active-tag', content='IDENTICAL_CONTENT'
+    mock_active_prompt = [
+        {
+            "variant_tag": "active-tag",
+            "prompt_name": "SECTOR_PREDICTOR_PROMPT",
+            "prompt_content": "IDENTICAL_CONTENT",
+            "status": "active",
+            "metrics": {},
+        }
+    ]
+    mock_active_execute = MagicMock(data=mock_active_prompt)
+
+    # Mock all variants for baseline query
+    mock_all_variants = [
+        {
+            "variant_tag": "baseline-tag",
+            "prompt_name": "SECTOR_PREDICTOR_PROMPT",
+            "prompt_content": "IDENTICAL_CONTENT",
+            "status": "baseline",
+            "metrics": {"score": 80.0},
+        },
+        mock_active_prompt[0],
+    ]
+    mock_all_execute = MagicMock(data=mock_all_variants)
+
+    # DB call routing
+    def mock_table_routing(table_name):
+        chain = MagicMock()
+        chain.select.return_value = chain
+        chain.eq.return_value = chain
+        chain.order.return_value = chain
+        chain.limit.return_value = chain
+        chain.gte.return_value = chain
+        chain.lte.return_value = chain
+        chain.update.return_value = chain
+        chain.insert.return_value = chain
+
+        def mock_execute():
+            if table_name == "sector_predictions":
+                return mock_pred_execute
+            if table_name == "prompt_experiments":
+                calls = chain.eq.call_args_list
+                is_active_query = any(c[0] == ("status", "active") for c in calls)
+                if is_active_query:
+                    return mock_active_execute
+                return mock_all_execute
+            return MagicMock(data=[])
+
+        chain.execute.side_effect = mock_execute
+        return chain
+
+    mock_client.table.side_effect = mock_table_routing
+
+    # Mock Gemini researcher returning IDENTICAL content
+    gemini_client = MagicMock()
+    gemini_client.chat.completions.create = AsyncMock(return_value=MetaPromptResponse(new_prompt="IDENTICAL_CONTENT"))
+    mock_get_gemini.return_value = gemini_client
+
+    db_updates = []
+    db_inserts = []
+
+    def intercept_db(table_name):
+        chain = mock_table_routing(table_name)
+
+        def mock_update(data):
+            db_updates.append((table_name, data))
+            return chain
+
+        def mock_insert(data):
+            db_inserts.append((table_name, data))
+            return chain
+
+        chain.update.side_effect = mock_update
+        chain.insert.side_effect = mock_insert
+        return chain
+
+    mock_client.table.side_effect = intercept_db
+
+    with patch("tasks.predictor_autoresearch.get_supabase_client", return_value=mock_client):
+        await run_predictor_autoresearch()
+
+    # Assert that even though the content is identical, the new active variant is still inserted
+    assert len(db_inserts) == 1
+    assert db_inserts[0][0] == "prompt_experiments"
+    assert db_inserts[0][1]["prompt_content"] == "IDENTICAL_CONTENT"
+    assert db_inserts[0][1]["status"] == "active"

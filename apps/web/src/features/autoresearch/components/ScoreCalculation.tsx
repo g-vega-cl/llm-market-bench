@@ -7,8 +7,8 @@ export function ScoreCalculation() {
                 <SectionHeading>Scoring Methodology</SectionHeading>
                 <p className="text-zinc-600 dark:text-zinc-400 max-w-2xl">
                     Every experiment is evaluated against the market using a risk-adjusted return
-                    formula. This single number determines if a prompt is kept as the new baseline
-                    or discarded.
+                    formula. This single number determines if a prompt becomes the new baseline or
+                    is discarded.
                 </p>
             </div>
 

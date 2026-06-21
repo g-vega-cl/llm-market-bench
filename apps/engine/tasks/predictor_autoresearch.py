@@ -150,15 +150,19 @@ async def run_predictor_autoresearch():
         logger.info(
             f"RATCHET: Weekly score {weekly_score:.4f} failed to beat baseline {baseline_score:.4f}. Reverting to {baseline_tag}."
         )
-        # Revert active prompt in DB to baseline content
+        # Revert active prompt in DB to baseline content and mark as discarded
         client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
         current_prompt = baseline_content
         parent_tag = baseline_tag
     else:
         logger.info(
-            f"RATCHET: Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. Keeping {parent_tag}."
+            f"RATCHET: Weekly score {weekly_score:.4f} beats/equals baseline {baseline_score:.4f}. Establishing {parent_tag} as baseline."
         )
-        client.table("prompt_experiments").update({"status": "kept"}).eq("variant_tag", parent_tag).execute()
+        client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+        # Demote all other active/baseline predictor prompts to saved
+        client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
+            "prompt_name", "SECTOR_PREDICTOR_PROMPT"
+        ).neq("variant_tag", parent_tag).execute()
 
     # 5. Generate new prompt mutated from (post-revert) current_prompt
     meta_researcher = get_gemini_client()
@@ -166,10 +170,6 @@ async def run_predictor_autoresearch():
         new_prompt = await generate_new_prompt(current_prompt, weekly_score, meta_researcher)
     finally:
         await close_client(meta_researcher, "gemini")
-
-    if new_prompt == current_prompt:
-        logger.info("New prompt is identical to old prompt. Skipping insertion.")
-        return
 
     # 6. Insert new prompt and set status to active
     new_tag = f"sector-pred-{uuid.uuid4().hex[:8]}"

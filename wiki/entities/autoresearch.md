@@ -36,8 +36,9 @@ This split ensures that the "Brain" (System) is decoupled from the "Environment"
 ## Prompt Status Lifecycle
 
 Every variant saved in the `prompt_experiments` table transitions through a structured status lifecycle:
-- **`active`**: The prompt that is currently trading in the live market for the active trading week.
-- **`kept`**: An experiment variant that successfully beat the baseline and was ratified as a new baseline (stored as a successful step in our historical prompt progression).
+- **`active`**: The prompt variant that is currently trading/predicting in the live market for the active trading week.
+- **`baseline`**: The single best-performing evaluated prompt variant (all-time highest score) that serves as the foundation for future mutations.
+- **`saved`**: A historical prompt variant that once served as a baseline but has since been surpassed by a higher-scoring prompt.
 - **`discarded`**: An experiment variant that underperformed the baseline and was discarded. The system automatically reverts the active pointer back to the baseline prompt.
 - **`crashed`**: A variant that caused a trading crash (fewer than 2 trades executed during its active week), triggering the safety checker's revert action.
 

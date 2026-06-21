@@ -110,14 +110,19 @@ async def save_variant(
     # INSERT first — if this fails, nothing is lost.
     await sb_client.table("prompt_experiments").insert(insert_data).execute()
 
-    # NOW demote the previous active variants.
-    # neq() ensures we don't demote the row we just inserted.
+    # NOW update parent variant to baseline (if it exists), and demote other active/baseline variants to saved
+    if parent_tag:
+        await (
+            sb_client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+        )
+    # Demote all other active/baseline variants to saved
     await (
         sb_client.table("prompt_experiments")
-        .update({"status": "kept"})
-        .eq("status", "active")
+        .update({"status": "saved"})
+        .in_("status", ["active", "baseline"])
         .eq("prompt_name", prompt_name)
         .neq("variant_tag", tag)
+        .neq("variant_tag", parent_tag or "")
         .execute()
     )
 
@@ -191,7 +196,7 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         sb_client.table("prompt_experiments")
         .select("variant_tag")
         .eq("prompt_name", prompt_name)
-        .eq("status", "kept")
+        .in_("status", ["baseline", "saved"])
         .order("created_at", desc=True)
         .limit(1)
         .maybe_single()
@@ -211,7 +216,7 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         logger.info("Reverted to previous prompt variant: %s", tag)
         return tag
 
-    logger.warning("No previous kept variant to revert to (prompt_name=%s)", prompt_name)
+    logger.warning("No previous baseline/saved variant to revert to (prompt_name=%s)", prompt_name)
     return None
 
 
@@ -219,7 +224,7 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
     """Revert the active prompt to the all-time baseline (best score ever).
 
     Used when the current experiment underperforms vs the baseline.
-    Marks the current active as 'kept' (not 'crashed' — it didn't crash,
+    Marks the current active as 'discarded' (not 'crashed' — it didn't crash,
     it just failed to beat the baseline) and promotes the baseline variant
     to 'active'.
 

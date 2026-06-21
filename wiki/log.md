@@ -288,3 +288,15 @@ Six bug fixes addressing reliability issues found in production logs:
 
 **See**: `apps/engine/execution/providers/fmp.py`, `apps/engine/core/llm/minimax.py`, `apps/engine/analysis/market_feeling.py`, `apps/engine/analysis/discovery_agent.py`, `apps/engine/tests/test_fmp_error_logging.py`
 
+## [2026-06-21] refactor | Restructure prompt experiment statuses for baseline ratchet
+
+Aligned the prompt auto-research engine and dashboard status definitions with the ratchet philosophy:
+- **Database Schema**: Deployed migration `20260623000000_update_prompt_experiments_status.sql` changing the status constraint from `('active', 'kept', 'discarded', 'crashed')` to `('active', 'baseline', 'saved', 'discarded', 'crashed')`. Migrated all existing `kept` rows, setting the highest-scoring variants to `baseline` and others to `saved`.
+- **Autoresearch Ratchet**: Modified `prompt_store.py` and `predictor_autoresearch.py` to transition newly evaluated high-scoring prompts to `baseline` status, while demoting prior baselines to `saved`.
+- **Active Prompt Timeline**: Removed the identical-prompt return skip in `predictor_autoresearch.py` so a new active variant is always inserted weekly, avoiding timeline gaps.
+- **Frontend Badges**: Updated `AIPredictionsPage.tsx` and `ExperimentList.tsx` status indicators to display `'Baseline'` and `'Saved'` badges instead of `'Kept'`. Updated the description in `ScoreCalculation.tsx`.
+- **TDD Tests**: Updated `test_sector_predictions_audit.py` to assert new status transitions and added `test_predictor_autoresearch_always_inserts_active` to guard the weekly active prompt sequence.
+
+**See**: [[entities/sector-predictor-arena]], [[entities/autoresearch]], [prompt_store.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/prompt_store.py), [predictor_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/predictor_autoresearch.py)
+
+

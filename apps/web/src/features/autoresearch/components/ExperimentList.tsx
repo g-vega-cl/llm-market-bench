@@ -120,10 +120,17 @@ function StatusBadge({ status }: { status: string }) {
                     Active
                 </Badge>
             );
+        case 'baseline':
+            return (
+                <Badge colorScheme="accent" variant="soft">
+                    Baseline
+                </Badge>
+            );
+        case 'saved':
         case 'kept':
             return (
-                <Badge colorScheme="info" variant="soft">
-                    Kept
+                <Badge colorScheme="neutral" variant="soft">
+                    Saved
                 </Badge>
             );
         case 'discarded':

@@ -225,9 +225,14 @@ class DiscoveryAgent:
         validated = []
         for asset in assets:
             if isinstance(asset, dict) and "ticker" in asset:
+                ticker = str(asset.get("ticker", "")).upper().strip()
+                # Basic sanity check: US tickers are 1-5 alphanumeric chars (may include . and -)
+                if not ticker or len(ticker) > 5 or not re.match(r"^[A-Z0-9.\-]+$", ticker):
+                    logger.debug(f"DiscoveryAgent: Skipping invalid ticker format: '{ticker}'")
+                    continue
                 validated.append(
                     {
-                        "ticker": str(asset.get("ticker", "")).upper(),
+                        "ticker": ticker,
                         "name": asset.get("name", ""),
                         "reason": asset.get("reason", ""),
                     }

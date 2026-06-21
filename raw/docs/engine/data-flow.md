@@ -72,6 +72,17 @@ Enforces trading only during US market hours (weekdays, holiday-aware) via the F
 
 `get_history()` uses a persistent cache in the `price_history` table with date-coverage validation. To avoid serving stale single-date snapshots, the validator requires at least `ceil(days_requested / 2)` distinct dates across the cached entries. A cache with only one historical date (e.g., all rows from `2026-04-24`) will fail validation and trigger a re-fetch from the provider (FMP), ensuring the history stays fresh as new trading days accumulate. The benchmark tickers (defined in `analysis/correlation_matrix.py`) are backfilled hourly by `update_prices.py`; portfolio-specific tickers are backfilled on-demand when LLMs call the `get_price_history` tool.
 
+### FMP Provider Resilience
+
+**Files:** `apps/engine/execution/providers/fmp.py`
+
+The FMP provider implements two resilience mechanisms:
+
+- **Retry with exponential backoff**: `get_ticker_data` and `get_history` retry failed requests up to `MARKET_DATA_RETRIES` (configurable, default 2) times. Backoff is `2^attempt` seconds (1s, 2s). 402 quota errors are not retried (immediate return). Generic exceptions (including `ConnectTimeout`) are retried; HTTP status errors (4xx/5xx) log the response body and retry.
+- **HTTP timeouts**: All `httpx.AsyncClient` instances use `httpx.Timeout(10.0)` to prevent hanging connections.
+
+The `get_key_metrics` method falls back from quarterly to annual period on non-200 responses, and returns empty if both fail (previously crashed on 402).
+
 ### Dust Cleanup
 
 **Files:** `apps/engine/main.py`

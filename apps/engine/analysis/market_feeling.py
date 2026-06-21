@@ -537,7 +537,7 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
         result = await minimax.chat_with_json_response(
             messages=messages,
             temperature=0.4,  # Lower for more consistent structured output
-            max_completion_tokens=1024,
+            max_completion_tokens=16384,
         )
 
         await minimax.close()

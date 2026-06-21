@@ -1,28 +1,3 @@
-## [2026-06-12] feature | HomePage Background A/B Testing via PostHog
-
-Replaced the manual background dropdown selector on the HomePage with an automated, data-driven A/B test using PostHog feature flags.
-- **Background Removal**: Stripped the unused `waves`, `nexus`, `cosmic`, and `emerald_tide` GLSL shaders from `ShaderBackground.tsx` to optimize the component bundle.
-- **PostHog Integration**: Wired up the `homepage-bg-experiment` feature flag in `HomePage.tsx` via `@posthog/react`'s `usePostHog` to randomly assign users to one of 4 remaining variants (`css` [control], `css_emerald`, `pointillism`, `royal_bronze`).
-- **Experiment Launch**: Deployed the experiment remotely via the PostHog MCP server with a perfectly distributed 25% rollout configuration.
-- **TDD Safety Net**: Updated `HomePage.test.tsx` by mocking `@posthog/react` and verifying that the legacy manual dropdown is no longer rendered and the background is determined correctly by the feature flag.
-- **Documentation**: Updated `entities/shader-background.md` and `index.md` to reflect the removal of the 4 unused variants and the transition to the A/B testing mechanism.
-
-## [2026-06-13] new entity | Global Background component added
-
-Introduced a `GlobalBackground` component in the design system's layouts. It provides a fixed dot grid and colored ambient orbs behind all pages. The HomePage was refactored to remove its previous A/B-tested background (CSS variant and ShaderBackground) and rely on this global layer. The component is rendered in the root layout, simplifying background management.
-
-## [2026-06-13] refactor | Remove unused Badge dot variant and Card ghost variant
-
-Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.
-
-## [2026-06-14] feature | Volume & Liquidity Metrics in Price History
-
-Enhanced the `get_price_history` tool to support Volume and Liquidity analysis directly within the LLM tool loop.
-- **Execution Logic**: Modified `execute_price_history_tool` to output daily volume alongside historical prices and dynamically calculate Volume Context (ADV/RVOL) using the existing `compute_volume_context` engine function.
-- **Prompt Engineering**: Updated the `PRICE_HISTORY_TOOL` JSON schema description to explicitly notify trading agents that volume data and metrics are available.
-- **TDD Verification**: Authored `test_price_history_tool.py` to assert the inclusion of volume and context strings.
-- **Documentation**: Updated `fundamental-analysis.md` to reflect the new volume analysis capabilities.
-
 ## [2026-06-15] refactor | Remove unused Badge dot variant and Card ghost variant
 
 Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.
@@ -287,5 +262,29 @@ Resolved a critical verification extraction crash for non-Gemini models (specifi
 
 **See**: [[concepts/tool-enforcement]], [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py), [test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py)
 
+## [2026-06-21] bugfix | FMP retry/timeout, MiniMax token limit, DiscoveryAgent ticker validation
 
+Six bug fixes addressing reliability issues found in production logs:
+
+- **FMP Provider retries with exponential backoff**: `get_ticker_data` and `get_history` now retry failed requests up to `MARKET_DATA_RETRIES` (default 2) times with exponential backoff (`2^attempt` seconds). 402 quota errors are not retried. This resolves the ConnectTimeout failures for SPOT, PPTA, IBM, and UPS observed in logs.
+- **FMP HTTP timeouts**: All `httpx.AsyncClient()` instances in `fmp.py` now use `httpx.Timeout(10.0)` to prevent hanging connections.
+- **MiniMax token limit increase**: `market_feeling.py` now passes `max_completion_tokens=16384` (up from 1024) to prevent JSON truncation in the `why_explanation` field. The 1024 limit was causing `Unterminated string` parse failures.
+- **MiniMax empty content guard**: `chat_with_json_response` in `minimax.py` now safely handles `None` content by coalescing to `""` before `.strip()`, and raises `ValueError` on empty content instead of crashing.
+- **DiscoveryAgent ticker validation**: `_parse_json_response` now validates ticker format (1-5 chars, `^[A-Z0-9.\-]+$`) before returning, filtering out obviously invalid tickers like `HONIV` early.
+- **FMP key-metrics 402 fallback**: `get_key_metrics` now returns `[]` instead of crashing when both quarterly and annual endpoints return non-200 status codes.
+
+**See**: `apps/engine/execution/providers/fmp.py`, `apps/engine/core/llm/minimax.py`, `apps/engine/analysis/market_feeling.py`, `apps/engine/analysis/discovery_agent.py`, `apps/engine/tests/test_fmp_error_logging.py`
+
+## [2026-06-21] bugfix | FMP retry/timeout, MiniMax token limit, DiscoveryAgent ticker validation
+
+Six bug fixes addressing reliability issues found in production logs:
+
+- **FMP Provider retries with exponential backoff**: `get_ticker_data` and `get_history` now retry failed requests up to `MARKET_DATA_RETRIES` (default 2) times with exponential backoff (`2^attempt` seconds). 402 quota errors are not retried. This resolves the ConnectTimeout failures for SPOT, PPTA, IBM, and UPS observed in logs.
+- **FMP HTTP timeouts**: All `httpx.AsyncClient()` instances in `fmp.py` now use `httpx.Timeout(10.0)` to prevent hanging connections.
+- **MiniMax token limit increase**: `market_feeling.py` now passes `max_completion_tokens=16384` (up from 1024) to prevent JSON truncation in the `why_explanation` field. The 1024 limit was causing `Unterminated string` parse failures.
+- **MiniMax empty content guard**: `chat_with_json_response` in `minimax.py` now safely handles `None` content by coalescing to `""` before `.strip()`, and raises `ValueError` on empty content instead of crashing.
+- **DiscoveryAgent ticker validation**: `_parse_json_response` now validates ticker format (1-5 chars, `^[A-Z0-9.\-]+$`) before returning, filtering out obviously invalid tickers like `HONIV` early.
+- **FMP key-metrics 402 fallback**: `get_key_metrics` now returns `[]` instead of crashing when both quarterly and annual endpoints return non-200 status codes.
+
+**See**: `apps/engine/execution/providers/fmp.py`, `apps/engine/core/llm/minimax.py`, `apps/engine/analysis/market_feeling.py`, `apps/engine/analysis/discovery_agent.py`, `apps/engine/tests/test_fmp_error_logging.py`
 

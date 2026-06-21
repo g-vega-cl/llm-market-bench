@@ -6,7 +6,7 @@ from .base import FinancialProvider
 from .fmp import FMPProvider
 
 
-def get_financial_provider(provider_name: str = None) -> FinancialProvider:
+def get_financial_provider(provider_name: str | None = None) -> FinancialProvider:
     """Factory to return a financial provider instance.
 
     If provider_name is not provided, it defaults to the configured FINANCIAL_PROVIDER.

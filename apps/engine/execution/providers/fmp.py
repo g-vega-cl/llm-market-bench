@@ -3,21 +3,14 @@
 import asyncio
 import time
 from datetime import datetime, timedelta
-from typing import TypedDict
 
 import httpx
 
-from core.config import FMP_API_KEY, logger
+from core.config import FMP_API_KEY, MARKET_DATA_RETRIES, logger
 
-from .base import FinancialProvider, TickerData
+from .base import FinancialProvider, HistoryData, TickerData
 
-
-class HistoryEntry(TypedDict):
-    """Historical price entry with volume data."""
-
-    price: float
-    volume: int | None
-    fetched_at: str
+FMP_TIMEOUT = httpx.Timeout(10.0)
 
 
 class FMPProvider(FinancialProvider):
@@ -48,56 +41,62 @@ class FMPProvider(FinancialProvider):
         # Update last call time just before the request
         FMPProvider._last_call_time = time.time()
 
-        try:
-            async with httpx.AsyncClient() as client:
-                # 1. Get Consolidated Quote (Price + Market Cap)
-                quote_resp = await client.get(
-                    f"{self.BASE_URL}/quote", params={"symbol": ticker, "apikey": self.api_key}
-                )
-                quote_resp.raise_for_status()
-                quote_data = quote_resp.json()
-
-                if not quote_data:
-                    logger.warning(f"Ticker {ticker} not found on FMP.")
-                    return None
-
-                # Verify ticker match to handle potential FMP list shifting/search-like behavior
-                q = None
-                for candidate in quote_data:
-                    if str(candidate.get("symbol")).upper() == ticker.upper():
-                        q = candidate
-                        break
-
-                if q is None:
-                    logger.warning(
-                        f"FMP returned data but none matched requested ticker {ticker}. Response: {quote_data[:1]}"
+        for attempt in range(1, MARKET_DATA_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
+                    # 1. Get Consolidated Quote (Price + Market Cap)
+                    quote_resp = await client.get(
+                        f"{self.BASE_URL}/quote", params={"symbol": ticker, "apikey": self.api_key}
                     )
-                    return None
+                    quote_resp.raise_for_status()
+                    quote_data = quote_resp.json()
 
-                return TickerData(
-                    ticker=ticker,
-                    price=float(q.get("price", 0)),
-                    market_cap=float(q.get("marketCap", 0)),
-                    exists=True,
-                    currency=q.get("currency", "USD"),
-                    exchange=q.get("exchange"),
-                )
+                    if not quote_data:
+                        logger.warning(f"Ticker {ticker} not found on FMP.")
+                        return None
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 402:
-                logger.error(f"FMP API Quota Exceeded (402 Payment Required): {e.response.url}")
-            else:
+                    # Verify ticker match to handle potential FMP list shifting/search-like behavior
+                    q = None
+                    for candidate in quote_data:
+                        if str(candidate.get("symbol")).upper() == ticker.upper():
+                            q = candidate
+                            break
+
+                    if q is None:
+                        logger.warning(
+                            f"FMP returned data but none matched requested ticker {ticker}. Response: {quote_data[:1]}"
+                        )
+                        return None
+
+                    return TickerData(
+                        ticker=ticker,
+                        price=float(q.get("price", 0)),
+                        market_cap=float(q.get("marketCap", 0)),
+                        exists=True,
+                        currency=q.get("currency", "USD"),
+                        exchange=q.get("exchange"),
+                    )
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 402:
+                    logger.error(f"FMP API Quota Exceeded (402 Payment Required): {e.response.url}")
+                    return None  # Don't retry quota errors
                 logger.error(
                     f"HTTP error fetching data from FMP for {ticker}: "
                     f"status={e.response.status_code}, "
                     f"response={e.response.text[:500] if e.response.text else 'empty'}, "
                     f"error={repr(e)}"
                 )
-            return None
-        except Exception as e:
-            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
-            logger.exception(f"Unexpected error fetching data from FMP for {ticker}: {error_details}")
-            return None
+            except Exception as e:
+                error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+                logger.warning(f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed for {ticker} via FMP: {error_details}")
+
+            if attempt < MARKET_DATA_RETRIES:
+                wait_time = 2 ** (attempt - 1)
+                await asyncio.sleep(wait_time)
+
+        logger.error(f"All {MARKET_DATA_RETRIES} attempts failed for {ticker} via FMP.")
+        return None
 
     async def get_ticker_data_batch(self, tickers: list[str]) -> dict[str, TickerData]:
         """Fetch real-time/delayed ticker data for multiple symbols.
@@ -128,7 +127,7 @@ class FMPProvider(FinancialProvider):
 
         return results
 
-    async def get_history(self, ticker: str, days: int = 14) -> list[HistoryEntry]:
+    async def get_history(self, ticker: str, days: int = 14) -> list[HistoryData]:
         """Fetch historical price data with volume using FMP."""
         if not self.api_key:
             return []
@@ -140,33 +139,52 @@ class FMPProvider(FinancialProvider):
         from_str = start_date.strftime("%Y-%m-%d")
         to_str = end_date.strftime("%Y-%m-%d")
 
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{self.BASE_URL}/historical-price-eod/full",
-                    params={"symbol": ticker, "from": from_str, "to": to_str, "apikey": self.api_key},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-
-                historical_data = data if isinstance(data, list) else data.get("historical", [])
-
-                if not historical_data:
-                    logger.warning(f"No history found for {ticker} on FMP.")
-                    return []
-
-                results = []
-                for entry in historical_data:
-                    results.append(
-                        HistoryEntry(price=float(entry["close"]), volume=entry.get("volume"), fetched_at=entry["date"])
+        for attempt in range(1, MARKET_DATA_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
+                    resp = await client.get(
+                        f"{self.BASE_URL}/historical-price-eod/full",
+                        params={"symbol": ticker, "from": from_str, "to": to_str, "apikey": self.api_key},
                     )
+                    resp.raise_for_status()
+                    data = resp.json()
 
-                return results
+                    historical_data = data if isinstance(data, list) else data.get("historical", [])
 
-        except Exception as e:
-            error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
-            logger.error(f"Error fetching history from FMP for {ticker}: {error_details}")
-            return []
+                    if not historical_data:
+                        logger.warning(f"No history found for {ticker} on FMP.")
+                        return []
+
+                    results = []
+                    for entry in historical_data:
+                        results.append(
+                            HistoryData(
+                                price=float(entry["close"]), volume=entry.get("volume"), fetched_at=entry["date"]
+                            )
+                        )
+
+                    return results
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 402:
+                    logger.error(f"FMP API Quota Exceeded (402 Payment Required) for {ticker} history")
+                    return []
+                logger.error(
+                    f"HTTP error fetching history from FMP for {ticker}: "
+                    f"status={e.response.status_code}, error={repr(e)}"
+                )
+            except Exception as e:
+                error_details = f"{e} ({repr(e)})" if str(e) else repr(e)
+                logger.warning(
+                    f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed fetching history for {ticker} via FMP: {error_details}"
+                )
+
+            if attempt < MARKET_DATA_RETRIES:
+                wait_time = 2 ** (attempt - 1)
+                await asyncio.sleep(wait_time)
+
+        logger.error(f"All {MARKET_DATA_RETRIES} attempts failed fetching history for {ticker} via FMP.")
+        return []
 
     async def search_tickers(self, query: str, limit: int = 5) -> list[dict]:
         """Search for tickers by name or symbol using FMP."""
@@ -174,7 +192,7 @@ class FMPProvider(FinancialProvider):
             return []
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(
                     f"{self.BASE_URL}/search-symbol", params={"query": query, "limit": limit, "apikey": self.api_key}
                 )
@@ -249,7 +267,7 @@ class FMPProvider(FinancialProvider):
             params["dividendLowerThan"] = dividend_lower_than
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(f"{self.BASE_URL}/company-screener", params=params)
                 resp.raise_for_status()
                 return resp.json()
@@ -264,7 +282,7 @@ class FMPProvider(FinancialProvider):
             return []
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 # Build params with symbol instead of ticker path for stable API
                 params = {
                     "symbol": ticker,
@@ -289,6 +307,15 @@ class FMPProvider(FinancialProvider):
                     metrics_task = client.get(f"{self.BASE_URL}/key-metrics", params=params)
                     ratios_task = client.get(f"{self.BASE_URL}/ratios", params=params)
                     metrics_resp, ratios_resp = await asyncio.gather(metrics_task, ratios_task)
+
+                # If both attempts failed (e.g. 402 on both quarterly and annual), return empty
+                if metrics_resp.status_code != 200 or ratios_resp.status_code != 200:
+                    logger.warning(
+                        f"FMP key metrics unavailable for {ticker} "
+                        f"(metrics={metrics_resp.status_code}, ratios={ratios_resp.status_code}). "
+                        "Skipping."
+                    )
+                    return []
 
                 metrics_resp.raise_for_status()
                 ratios_resp.raise_for_status()
@@ -373,7 +400,7 @@ class FMPProvider(FinancialProvider):
             return []
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(f"{self.BASE_URL}/earnings", params={"symbol": ticker, "apikey": self.api_key})
                 resp.raise_for_status()
                 data = resp.json()
@@ -427,7 +454,7 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(
                     f"{self.BASE_URL}/analyst-estimates",
                     params={"symbol": ticker, "period": period, "limit": limit, "apikey": self.api_key},
@@ -443,7 +470,7 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(
                     f"{self.BASE_URL}/profile",
                     params={"symbol": ticker, "apikey": self.api_key},
@@ -459,7 +486,7 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(
                     f"{self.BASE_URL}/financial-growth",
                     params={"symbol": ticker, "period": period, "limit": limit, "apikey": self.api_key},
@@ -475,7 +502,7 @@ class FMPProvider(FinancialProvider):
         if not self.api_key:
             return []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                 resp = await client.get(f"{self.BASE_URL}/sp500-constituent", params={"apikey": self.api_key})
                 resp.raise_for_status()
                 data = resp.json()

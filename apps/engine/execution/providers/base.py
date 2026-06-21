@@ -1,6 +1,7 @@
 """Base interface for financial data providers."""
 
 from abc import ABC, abstractmethod
+from typing import TypedDict
 
 from pydantic import BaseModel
 
@@ -14,6 +15,14 @@ class TickerData(BaseModel):
     exists: bool = True
     currency: str = "USD"
     exchange: str | None = None
+
+
+class HistoryData(TypedDict):
+    """Historical price entry with volume data."""
+
+    price: float
+    volume: int | None
+    fetched_at: str
 
 
 class FinancialProvider(ABC):
@@ -47,11 +56,11 @@ class FinancialProvider(ABC):
         return results
 
     @abstractmethod
-    async def get_history(self, ticker: str, days: int = 14) -> list[dict]:
+    async def get_history(self, ticker: str, days: int = 14) -> list[HistoryData]:
         """Fetch historical price data for a ticker.
 
         Returns:
-            List of dicts with 'price' and 'fetched_at' (ISO timestamp).
+            List of HistoryData dicts with 'price', 'volume', and 'fetched_at' (ISO timestamp).
         """
         pass
 

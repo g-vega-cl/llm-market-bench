@@ -23,7 +23,7 @@ class TestFMPErrorLogging:
         """Test that HTTPStatusError logs the response body when available."""
         import logging
 
-        caplog.set_level(logging.ERROR)
+        caplog.set_level(logging.DEBUG)
 
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -43,20 +43,19 @@ class TestFMPErrorLogging:
 
         assert result is None
 
-        # Check that error was logged with response details
-        error_logs = [(c.levelno, c.message) for c in caplog.records if c.levelno >= logging.ERROR]
+        # HTTP status errors are logged at ERROR level (not retried like generic exceptions)
+        error_logs = [c.message for c in caplog.records if c.levelno == logging.ERROR]
         assert len(error_logs) > 0, "Expected error log"
-        error_msg = error_logs[0][1]
-        assert "500" in error_msg
-        assert "Internal Server Error Details" in error_msg
-        assert "HTTPStatusError" in error_msg or "Server Error" in error_msg
+        assert any("500" in msg and "Internal Server Error Details" in msg for msg in error_logs), (
+            f"Expected status code and response body in error message, got: {error_logs}"
+        )
 
     @pytest.mark.asyncio
     async def test_empty_response_error_logs_repr(self, fmp_provider, caplog):
-        """Test that empty error messages include repr() fallback."""
+        """Test that empty error messages include repr() fallback in retry attempts."""
         import logging
 
-        caplog.set_level(logging.ERROR)
+        caplog.set_level(logging.DEBUG)
 
         class EmptyStrError(Exception):
             def __str__(self):
@@ -75,11 +74,12 @@ class TestFMPErrorLogging:
 
         assert result is None
 
-        # Check that error was logged with repr fallback
-        error_logs = [(c.levelno, c.message) for c in caplog.records if c.levelno >= logging.ERROR]
-        assert len(error_logs) > 0, "Expected error log"
-        error_msg = error_logs[0][1]
-        assert "repr" in error_msg or "EmptyStrError" in error_msg, f"Expected repr in error message, got: {error_msg}"
+        # With retries, per-attempt errors are logged at WARNING level with repr fallback
+        warning_logs = [c.message for c in caplog.records if c.levelno == logging.WARNING]
+        assert len(warning_logs) > 0, "Expected warning log from retry attempt"
+        assert any("EmptyStrError" in msg for msg in warning_logs), (
+            f"Expected repr in warning message, got: {warning_logs}"
+        )
 
     @pytest.mark.asyncio
     async def test_402_error_is_logged_as_api_quota(self, fmp_provider, caplog):
@@ -118,10 +118,10 @@ class TestFMPErrorLoggingEdgeCases:
 
     @pytest.mark.asyncio
     async def test_generic_exception_logs_str_and_repr(self, caplog):
-        """Test that generic exceptions include both str and repr in log."""
+        """Test that generic exceptions include both str and repr in retry warning logs."""
         import logging
 
-        caplog.set_level(logging.ERROR)
+        caplog.set_level(logging.DEBUG)
 
         with patch("execution.providers.fmp.FMP_API_KEY", "test_api_key"):
             provider = FMPProvider()
@@ -143,8 +143,8 @@ class TestFMPErrorLoggingEdgeCases:
 
         assert result is None
 
-        # str(e) is not empty, so format should be: "{e} ({repr(e)})"
-        error_logs = [c.message for c in caplog.records if c.levelno >= logging.ERROR]
-        assert any("custom error message" in msg for msg in error_logs), (
-            f"Expected str error in message, got: {error_logs}"
+        # With retries, per-attempt errors are logged at WARNING level
+        warning_logs = [c.message for c in caplog.records if c.levelno == logging.WARNING]
+        assert any("custom error message" in msg for msg in warning_logs), (
+            f"Expected str error in warning message, got: {warning_logs}"
         )

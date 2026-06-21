@@ -184,7 +184,11 @@ class MiniMaxClient:
             response_format={"type": "json_object"},
         )
 
-        content = response["content"].strip()
+        content = response.get("content") or ""
+        content = content.strip()
+
+        if not content:
+            raise ValueError("MiniMax returned empty content")
 
         # Try to extract JSON from markdown code blocks if present
         if content.startswith("```"):

@@ -603,3 +603,61 @@ async def test_verification_deepseek_non_retryable_error_raises():
     assert mock_completions.create.call_count == 1, (
         f"Expected only 1 call (no retry for non-validation errors), got {mock_completions.create.call_count}"
     )
+
+
+@pytest.mark.asyncio
+async def test_verification_deepseek_schema_list_vs_single():
+    """Verify that deepseek verification correctly handles the response model without throwing AttributeError due to list type under MD_JSON mode."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="Earnings breakout",
+        ticker="AAPL",
+        source_id="src_ds_schema",
+        price=180.0,
+        model_provider="deepseek",
+        model_name="deepseek-v4-pro",
+    )
+
+    import json
+
+    import httpx
+    from httpx import Response
+
+    original_send = httpx.AsyncClient.send
+
+    async def mock_send(self, request, *args, **kwargs):
+        if "api.deepseek.com" in str(request.url):
+            content = {
+                "id": "chatcmpl-123",
+                "object": "chat.completion",
+                "created": 1677652288,
+                "model": "deepseek-chat",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": '```json\n{"status": "APPROVED", "verification_reasoning": "Looks good", "confidence_score": 90}\n```',
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 9, "completion_tokens": 12, "total_tokens": 21},
+            }
+            resp = Response(status_code=200, content=json.dumps(content).encode("utf-8"))
+            resp._request = request
+            return resp
+        return await original_send(self, request, *args, **kwargs)
+
+    with patch("httpx.AsyncClient.send", mock_send):
+        # Patch the tool loop to avoid extra tool calls during verification
+        with patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock):
+            result = await verify_trading_decision(
+                decision=decision,
+                portfolio_context="Cash: $10,000",
+                aggregated_context="Historical context",
+            )
+
+    assert result.status == "APPROVED"
+    assert result.confidence_score == 90

@@ -278,4 +278,14 @@ Separated the views and prompt experiments for the model portfolios (auto-resear
 
 **See**: [[entities/sector-predictor-arena]], [[entities/autoresearch]]
 
+## [2026-06-21] bugfix | DeepSeek Verifier Response Model Schema Crash
+
+Resolved a critical verification extraction crash for non-Gemini models (specifically DeepSeek) in `verify_trading_decision`:
+- **Problem**: When executing `verify_trading_decision`, the engine passed `response_model = list[VerificationResult]` to support Gemini's multi-block tool calling behavior. However, DeepSeek runs in Markdown JSON mode (`mode=instructor.Mode.MD_JSON`). Under `MD_JSON` mode, `instructor` attempts to retrieve the JSON schema by calling `.model_json_schema()` on the `response_model` directly, which threw an `AttributeError` for the native python `list` class. This crashed the verifier and resulted in all DeepSeek trades defaulting to `REJECTED_VERIFICATION`.
+- **Fix**: Modified [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py) to dynamically resolve the `response_model` (uses `list[VerificationResult]` only when `provider == "gemini"` and `VerificationResult` directly for other models). The output is flattened using `ensure_list` before downstream evaluation.
+- **TDD Safety Net**: Authored a mock-network test `test_verification_deepseek_schema_list_vs_single` in [test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py) to verify schema parsing and prevent future regressions.
+
+**See**: [[concepts/tool-enforcement]], [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py), [test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py)
+
+
 

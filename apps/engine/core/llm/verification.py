@@ -212,10 +212,12 @@ async def verify_trading_decision(
                 role = "model" if m.role == "model" else "user"
                 instructor_messages.append({"role": role, "content": content_text})
 
+        response_model = list[VerificationResult] if provider == "gemini" else VerificationResult
+
         # Anthropic calls via instructor require max_tokens
         create_args = {
             "model": model_name,
-            "response_model": list[VerificationResult],  # Use List to handle Gemini multi-block tool calls
+            "response_model": response_model,
             "messages": copy.deepcopy(instructor_messages),
             "max_retries": 2,
         }

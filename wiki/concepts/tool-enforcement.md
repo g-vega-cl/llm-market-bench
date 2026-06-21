@@ -36,6 +36,8 @@ logs. Execution authority means LLM specifies ticker + signal + allocation; the
 system computes price, quantity, limit price server-side.
 
 - **MiniMax Bypass**: Since MiniMax returns raw structured JSON (instead of using Instructor client tools), Layer 4 is bypassed. The system still computes price and quantity server-side to prevent price hallucinations.
+- **Verifier Response Schema Normalization**: To prevent structured schema extraction crashes (e.g. `type object 'list' has no attribute 'model_json_schema'` when DeepSeek is run in `instructor.Mode.MD_JSON` mode), the Verifier Agent's `response_model` is dynamically set. Gemini uses `list[VerificationResult]` (to support multi-block tool calling), while other providers (OpenAI, Anthropic, DeepSeek) use `VerificationResult` directly. The output is normalized via `ensure_list` before downstream checks.
+
 
 ## Price Hallucination Prevention
 

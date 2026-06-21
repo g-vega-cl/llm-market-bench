@@ -11,15 +11,14 @@ const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
     return fetchPortfolios();
 });
 
-const getComparisonData = createServerFn({ method: 'GET' })
-    .inputValidator((d: { benchmark: string; maxDays: number }) => d)
-    .handler(async ({ data }: { data: { benchmark: string; maxDays: number } }) => {
-        const { portfolios, startDate, endDate } = await fetchAllActivePortfolioPerformance(
-            data.maxDays,
-        );
-        const benchmarkData = await fetchBenchmarkHistory([data.benchmark], startDate, endDate);
-        return { portfolios, startDate, endDate, benchmarkData };
-    });
+const getComparisonData = createServerFn({ method: 'GET' }).handler(async () => {
+    const { portfolios, startDate, endDate } = await fetchAllActivePortfolioPerformance(
+        36500, // 100 years (full history)
+    );
+    const benchmarks = ['SPY', 'QQQ', 'DIA', 'IWM'];
+    const benchmarkData = await fetchBenchmarkHistory(benchmarks, startDate, endDate);
+    return { portfolios, startDate, endDate, benchmarkData };
+});
 
 export const Route = createFileRoute('/portfolios/')({
     loader: async () => await getPortfolios(),
@@ -35,9 +34,7 @@ function RouteComponent() {
         <PortfoliosPage
             initialData={initialData}
             fetchFn={() => getPortfoliosFn()}
-            comparisonFetchFn={(benchmark, maxDays) =>
-                getComparisonDataFn({ data: { benchmark, maxDays } })
-            }
+            comparisonFetchFn={() => getComparisonDataFn()}
         />
     );
 }

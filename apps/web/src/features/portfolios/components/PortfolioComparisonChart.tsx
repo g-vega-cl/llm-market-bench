@@ -116,6 +116,13 @@ export function PortfolioComparisonChart({
     const [clickedData, setClickedData] = React.useState<TooltipData | null>(null);
     const [latestData, setLatestData] = React.useState<TooltipData | null>(null);
 
+    const dateRange = React.useMemo(() => {
+        if (data.length === 0) return [new Date(), new Date()] as [Date, Date];
+        const allDates = data.flatMap((p) => p.performance.map((pp) => new Date(pp.date)));
+        if (allDates.length === 0) return [new Date(), new Date()] as [Date, Date];
+        return d3.extent(allDates) as [Date, Date];
+    }, [data]);
+
     const getLatestData = React.useCallback((): TooltipData | null => {
         if (data.length === 0) return null;
 
@@ -142,11 +149,15 @@ export function PortfolioComparisonChart({
             }
         }
 
-        const latestDate = data[0].performance[data[0].performance.length - 1]?.date || '';
+        const latestDate = data.reduce((latest, portfolio) => {
+            if (portfolio.performance.length === 0) return latest;
+            const d = portfolio.performance[portfolio.performance.length - 1].date;
+            return !latest || d > latest ? d : latest;
+        }, '');
 
         return {
             date: latestDate,
-            portfolioValues,
+            portfolioValues: portfolioValues,
             benchmarkValue,
             benchmarkTicker: selectedBenchmark,
             x: 0,
@@ -228,10 +239,7 @@ export function PortfolioComparisonChart({
 
         const allValues = [...allLines.map((d) => d.value), ...benchmarkLines.map((d) => d.value)];
 
-        const x = d3
-            .scaleTime()
-            .domain(d3.extent(allLines, (d) => d.date) as [Date, Date])
-            .range([0, width]);
+        const x = d3.scaleTime().domain(dateRange).range([0, width]);
 
         const yMin = d3.min(allValues, (d) => d) ?? -10;
         const yMax = d3.max(allValues, (d) => d) ?? 10;
@@ -478,7 +486,7 @@ export function PortfolioComparisonChart({
                 .attr('fill', '#f59e0b')
                 .text(benchmarkLabel);
         }
-    }, [data, benchmarkData, selectedBenchmark]);
+    }, [data, benchmarkData, selectedBenchmark, dateRange]);
 
     React.useEffect(() => {
         if (!svgRef.current) return;
@@ -488,15 +496,7 @@ export function PortfolioComparisonChart({
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
 
-        const x = d3
-            .scaleTime()
-            .domain(
-                d3.extent(data[0]?.performance.map((p) => new Date(p.date)) || [new Date()]) as [
-                    Date,
-                    Date,
-                ],
-            )
-            .range([0, width]);
+        const x = d3.scaleTime().domain(dateRange).range([0, width]);
 
         const allValues = data.flatMap((p) => p.performance.map((pp) => pp.value));
         const yMin = d3.min(allValues, (d) => d) ?? -10;
@@ -532,9 +532,7 @@ export function PortfolioComparisonChart({
         } else {
             const latest = latestData;
             if (latest && data.length > 0) {
-                const lastDate = new Date(
-                    data[0].performance[data[0].performance.length - 1]?.date || Date.now(),
-                );
+                const lastDate = new Date(latest.date || Date.now());
                 const _xPos = x(lastDate);
 
                 svg.select('.crosshair').attr('opacity', 0);
@@ -550,7 +548,7 @@ export function PortfolioComparisonChart({
                 svg.select('.benchmark-dot').attr('opacity', 0);
             }
         }
-    }, [clickedData, latestData, displayData, data]);
+    }, [clickedData, latestData, displayData, data, dateRange]);
 
     const sortedPortfolioValues = displayData?.portfolioValues
         ? [...displayData.portfolioValues].sort((a, b) => b.value - a.value)

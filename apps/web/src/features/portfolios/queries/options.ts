@@ -39,13 +39,10 @@ export const portfolioQueries = {
             staleTime: 1000 * 60 * 5, // 5 minutes
         }),
 
-    comparison: <T extends ComparisonData>(opts: {
-        benchmark: string;
-        fetchFn?: () => Promise<T>;
-    }) =>
+    comparison: <T extends ComparisonData>(opts?: { fetchFn?: () => Promise<T> }) =>
         queryOptions({
-            queryKey: portfolioQueryKeys.comparison(opts.benchmark),
-            queryFn: opts.fetchFn,
+            queryKey: portfolioQueryKeys.comparison(),
+            queryFn: opts?.fetchFn,
             staleTime: 1000 * 60 * 5, // 5 minutes
         }),
 

@@ -1,6 +1,7 @@
 import type { Portfolio } from '@llm-market-bench/database';
 import {
     Badge,
+    Button,
     Card,
     MetricTile,
     PageLayout,
@@ -21,10 +22,7 @@ type PortfolioWithActive = Portfolio & { is_active: boolean; is_autoresearch: bo
 interface PortfoliosPageProps {
     initialData: PortfolioWithActive[];
     fetchFn: () => Promise<PortfolioWithActive[]>;
-    comparisonFetchFn: (
-        benchmark: string,
-        maxDays: number,
-    ) => Promise<{
+    comparisonFetchFn: () => Promise<{
         portfolios: PortfolioPerformanceItem[];
         startDate: string;
         endDate: string;
@@ -115,20 +113,71 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
     });
 
     const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('SPY');
+    const [timeframe, setTimeframe] = React.useState<'7d' | '30d' | '90d' | 'all'>('90d');
     const [_isPending, startTransition] = React.useTransition();
 
     const { data: comparisonData } = useQuery({
         ...portfolioQueries.comparison({
-            benchmark: selectedBenchmark,
-            fetchFn: () => comparisonFetchFn(selectedBenchmark, 90),
+            fetchFn: () => comparisonFetchFn(),
         }),
         placeholderData: keepPreviousData,
     });
 
+    const processedComparisonData = React.useMemo(() => {
+        if (!comparisonData?.portfolios) return { portfolios: [], benchmarkData: {} };
+
+        const now = new Date();
+        const cutoffDate = (() => {
+            if (timeframe === 'all') return new Date(0);
+            const days = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90;
+            return new Date(
+                Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - days),
+            );
+        })();
+
+        // Slice portfolios and re-normalize relative to first date in sliced window
+        const portfolios = comparisonData.portfolios.map((portfolio) => {
+            const filteredPerf = portfolio.performance.filter(
+                (p) => new Date(p.date) >= cutoffDate,
+            );
+            if (filteredPerf.length === 0) {
+                return {
+                    portfolioId: portfolio.portfolioId,
+                    ownerId: portfolio.ownerId,
+                    performance: [],
+                };
+            }
+
+            const firstEquity = filteredPerf[0].totalEquity;
+            const performance = filteredPerf.map((p) => ({
+                date: p.date,
+                totalEquity: p.totalEquity,
+                value: firstEquity > 0 ? ((p.totalEquity - firstEquity) / firstEquity) * 100 : 0,
+            }));
+
+            return {
+                portfolioId: portfolio.portfolioId,
+                ownerId: portfolio.ownerId,
+                performance,
+            };
+        });
+
+        // Slice benchmark price history
+        const benchmarkData: Record<string, BenchmarkDataPoint[]> = {};
+        if (comparisonData.benchmarkData) {
+            for (const [ticker, points] of Object.entries(comparisonData.benchmarkData)) {
+                const filteredPoints = points.filter((p) => new Date(p.date) >= cutoffDate);
+                benchmarkData[ticker] = filteredPoints;
+            }
+        }
+
+        return { portfolios, benchmarkData };
+    }, [comparisonData, timeframe]);
+
     const active = data?.filter((p) => p.is_active !== false) ?? [];
     const deprecated = data?.filter((p) => p.is_active === false) ?? [];
 
-    const hasComparison = comparisonData?.portfolios && comparisonData.portfolios.length > 0;
+    const hasComparison = processedComparisonData.portfolios?.some((p) => p.performance.length > 0);
 
     return (
         <div className="min-h-screen">
@@ -152,27 +201,49 @@ export function PortfoliosPage({ initialData, fetchFn, comparisonFetchFn }: Port
                 {/* Performance Comparison Chart */}
                 {hasComparison && (
                     <section className="mb-16">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 w-full">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 w-full">
                             <div>
                                 <SectionHeading gradient="success">
                                     Performance Comparison
                                 </SectionHeading>
                                 <p className="text-sm text-zinc-500 mt-1">
-                                    Normalized percentage returns over the last 90 days
+                                    Normalized percentage returns over{' '}
+                                    {timeframe === 'all'
+                                        ? 'all available days'
+                                        : `the last ${timeframe}`}
                                 </p>
                             </div>
-                            <BenchmarkSelector
-                                selected={selectedBenchmark}
-                                onChange={(ticker) => {
-                                    startTransition(() => {
-                                        setSelectedBenchmark(ticker);
-                                    });
-                                }}
-                            />
+                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                <div className="flex gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80 shadow-sm">
+                                    {(['7d', '30d', '90d', 'all'] as const).map((tf) => (
+                                        <Button
+                                            key={tf}
+                                            variant={timeframe === tf ? 'solid' : 'ghost'}
+                                            colorScheme={timeframe === tf ? 'success' : 'neutral'}
+                                            onClick={() => {
+                                                startTransition(() => {
+                                                    setTimeframe(tf);
+                                                });
+                                            }}
+                                            className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150"
+                                        >
+                                            {tf.toUpperCase()}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <BenchmarkSelector
+                                    selected={selectedBenchmark}
+                                    onChange={(ticker) => {
+                                        startTransition(() => {
+                                            setSelectedBenchmark(ticker);
+                                        });
+                                    }}
+                                />
+                            </div>
                         </div>
                         <PortfolioComparisonChart
-                            data={comparisonData?.portfolios || []}
-                            benchmarkData={comparisonData?.benchmarkData}
+                            data={processedComparisonData.portfolios}
+                            benchmarkData={processedComparisonData.benchmarkData}
                             selectedBenchmark={selectedBenchmark}
                         />
                     </section>

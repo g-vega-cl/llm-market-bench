@@ -1,7 +1,3 @@
-## [2026-06-12] feature | PostHog MCP server plugin
-
-Added a local plugin wrapper (`packages/mcp-posthog/`) for the hosted PostHog MCP server, supporting both hosted SSE and personal API key authentication.- Integrated documentation in `concepts/mcp-setup.md` with step-by-step installation instructions for remote MCP servers.
-
 ## [2026-06-12] feature | HomePage Background A/B Testing via PostHog
 
 Replaced the manual background dropdown selector on the HomePage with an automated, data-driven A/B test using PostHog feature flags.
@@ -253,4 +249,12 @@ Refactored the Portfolios page comparison data flow to support client-side timef
 - Updated mock signatures to match new parameterless `comparisonFetchFn` interface
 
 **See**: [[sources/web-portfolios-source]], [[concepts/tanstack-query]]
+
+## [2026-06-21] feature | Interactive Daily Score Progression Inspection
+
+Added interactive score inspection and date display on the Day-by-Day Score Progression cards in the Auto-Research page.
+- **Date Display**: Parses `week_start` and renders individual offset date badges (e.g. `6/3` for Wednesday) next to day abbreviations.
+- **Constituents inspection**: Added stateful selection of weekdays. Clicking any non-future card reveals a detailed, scaled constituents breakdown panel showing excess return, opportunity cost, risk penalty, returns vs. SPY and Do-Nothing, and the step-by-step arithmetic equation.
+- **Refactoring & Accessibility**: Split card item rendering into a clean, semantic, accessible `<button>`-based `CheckpointCard` sub-component, reducing cognitive complexity and ensuring full keyboard and screen-reader support.
+- **TDD Safety Net**: Added unit tests in `DailyScoreDisplay.test.tsx` verifying correct date rendering, clickable state updates, toggle closing, and future-day disabled states.
 

@@ -6,6 +6,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
+import { useState } from 'react';
 
 interface DailyScoreDisplayProps {
     experiment: PromptExperiment;
@@ -53,6 +54,7 @@ interface Checkpoint {
     score: number;
     portfolio: number;
     isFuture: boolean;
+    dateStr?: string;
 }
 
 function getCheckpoints(
@@ -81,11 +83,15 @@ function getCheckpoints(
 
     return days.map((d, idx) => {
         let isFuture = false;
-        if (isActive && startDate) {
+        let dateStr = '';
+        if (startDate) {
             const checkpointDate = new Date(startDate);
             checkpointDate.setDate(startDate.getDate() + idx);
             checkpointDate.setHours(0, 0, 0, 0);
-            isFuture = checkpointDate > today;
+            if (isActive) {
+                isFuture = checkpointDate > today;
+            }
+            dateStr = `${checkpointDate.getMonth() + 1}/${checkpointDate.getDate()}`;
         }
 
         return {
@@ -93,16 +99,85 @@ function getCheckpoints(
             score: dailyScore * d.multiplier,
             portfolio: portfolioReturn * d.multiplier,
             isFuture,
+            dateStr,
         };
     });
+}
+
+interface CheckpointCardProps {
+    cp: Checkpoint;
+    idx: number;
+    isActive: boolean;
+    isSelected: boolean;
+    onSelect: () => void;
+}
+
+function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: CheckpointCardProps) {
+    let buttonClass = 'p-3 rounded-xl border transition-all duration-300 w-full text-left';
+
+    if (cp.isFuture) {
+        buttonClass +=
+            ' bg-zinc-950/20 border-zinc-900/50 opacity-40 select-none cursor-not-allowed';
+    } else if (isSelected) {
+        if (cp.score >= 0) {
+            buttonClass +=
+                ' bg-emerald-950/20 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer';
+        } else {
+            buttonClass +=
+                ' bg-rose-950/20 border-rose-500/60 shadow-[0_0_12px_rgba(239,68,68,0.15)] cursor-pointer';
+        }
+    } else if (idx === 4 && isActive) {
+        buttonClass +=
+            ' bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)] cursor-pointer hover:border-zinc-700';
+    } else {
+        buttonClass +=
+            ' bg-zinc-950/40 border-zinc-850 hover:border-zinc-700 cursor-pointer hover:bg-zinc-900/20';
+    }
+
+    return (
+        <button type="button" disabled={cp.isFuture} onClick={onSelect} className={buttonClass}>
+            <div className="flex items-center justify-between gap-1 w-full">
+                <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+                    {cp.day.substring(0, 3)}
+                </div>
+                {cp.dateStr && (
+                    <div className="text-[8px] font-bold text-zinc-400 font-mono bg-zinc-800 px-1 py-0.5 rounded-sm">
+                        {cp.dateStr}
+                    </div>
+                )}
+            </div>
+            {cp.isFuture ? (
+                <>
+                    <div className="text-xs font-mono font-bold mt-1 text-zinc-500">N/A</div>
+                    <div className="text-[8px] text-zinc-500 font-mono mt-0.5">P: N/A</div>
+                </>
+            ) : (
+                <>
+                    <div
+                        className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                    >
+                        {cp.score >= 0 ? '+' : ''}
+                        {cp.score.toFixed(3)}
+                    </div>
+                    <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
+                        P: {cp.portfolio.toFixed(2)}%
+                    </div>
+                </>
+            )}
+        </button>
+    );
 }
 
 export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
     const metrics = experiment.metrics || {};
     const isActive = metrics.score === null || metrics.score === undefined;
 
+    const [selectedDayName, setSelectedDayName] = useState<string | null>(null);
+
     const {
         portfolioReturn,
+        spyReturn,
+        doNothingReturn,
         opportunityCost,
         dailyExcessReturn,
         dailyDrawdownPenalty,
@@ -115,6 +190,16 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         experiment.week_start,
         isActive,
     );
+
+    const selectedCp = checkpoints.find((cp) => cp.day === selectedDayName);
+    const dayMultipliers: Record<string, number> = {
+        Monday: 0.15,
+        Tuesday: 0.35,
+        Wednesday: 0.55,
+        Thursday: 0.8,
+        Friday: 1.0,
+    };
+    const multiplier = selectedDayName ? dayMultipliers[selectedDayName] : 1.0;
 
     return (
         <Card className="p-8 space-y-6 bg-gradient-to-br from-zinc-900 to-black border-zinc-800 text-zinc-100 shadow-xl overflow-hidden relative">
@@ -207,45 +292,149 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
 
                 <div className="grid grid-cols-5 gap-2">
                     {checkpoints.map((cp, idx) => (
-                        <div
+                        <CheckpointCard
                             key={cp.day}
-                            className={`p-3 rounded-xl border transition-all duration-300 ${
-                                cp.isFuture
-                                    ? 'bg-zinc-950/20 border-zinc-900/50 opacity-40 select-none'
-                                    : idx === checkpoints.length - 1 && isActive
-                                      ? 'bg-zinc-800/40 border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.05)]'
-                                      : 'bg-zinc-950/40 border-zinc-850 hover:border-zinc-700'
-                            }`}
-                        >
-                            <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
-                                {cp.day.substring(0, 3)}
-                            </div>
-                            {cp.isFuture ? (
-                                <>
-                                    <div className="text-xs font-mono font-bold mt-1 text-zinc-500">
-                                        N/A
-                                    </div>
-                                    <div className="text-[8px] text-zinc-500 font-mono mt-0.5">
-                                        P: N/A
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div
-                                        className={`text-xs font-mono font-bold mt-1 ${cp.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
-                                    >
-                                        {cp.score >= 0 ? '+' : ''}
-                                        {cp.score.toFixed(3)}
-                                    </div>
-                                    <div className="text-[8px] text-zinc-400 font-mono mt-0.5">
-                                        P: {cp.portfolio.toFixed(2)}%
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                            cp={cp}
+                            idx={idx}
+                            isActive={isActive}
+                            isSelected={selectedDayName === cp.day}
+                            onSelect={() =>
+                                setSelectedDayName(selectedDayName === cp.day ? null : cp.day)
+                            }
+                        />
                     ))}
                 </div>
             </div>
+
+            {/* Selected Day Constituent Details Block */}
+            {selectedDayName && selectedCp && (
+                <div className="p-5 rounded-2xl bg-zinc-950/50 border border-zinc-800 space-y-4 animate-fade-in relative z-10">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                        <div className="flex flex-col">
+                            <h4 className="text-sm font-bold text-zinc-105 flex items-center space-x-2">
+                                <span className="flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-black">
+                                    ✓
+                                </span>
+                                <span>
+                                    Score Constituents — {selectedDayName}{' '}
+                                    {selectedCp.dateStr ? `(${selectedCp.dateStr})` : ''}
+                                </span>
+                            </h4>
+                            <p className="text-[10px] text-zinc-500 mt-0.5">
+                                Scaled values for day progression (multiplier:{' '}
+                                {multiplier.toFixed(2)})
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-end">
+                                <div className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">
+                                    Day Score
+                                </div>
+                                <div
+                                    className={`text-base font-black font-mono ${selectedCp.score >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}
+                                >
+                                    {selectedCp.score >= 0 ? '+' : ''}
+                                    {selectedCp.score.toFixed(4)}
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDayName(null)}
+                                className="text-zinc-450 hover:text-zinc-200 text-xs font-bold px-2 py-1 bg-zinc-900 border border-zinc-800 rounded hover:border-zinc-700 transition cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-3 bg-zinc-950/70 border border-zinc-900 rounded-xl space-y-1">
+                            <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                Excess Return (Scaled)
+                            </div>
+                            <div
+                                className={`text-sm font-mono font-bold ${dailyExcessReturn >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}
+                            >
+                                {dailyExcessReturn >= 0 ? '+' : ''}
+                                {(dailyExcessReturn * multiplier).toFixed(4)}%
+                            </div>
+                            <div className="text-[9px] text-zinc-500 font-mono">
+                                Base: {dailyExcessReturn.toFixed(4)}%
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-zinc-950/70 border border-zinc-900 rounded-xl space-y-1">
+                            <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                Opportunity Cost (Scaled)
+                            </div>
+                            <div className="text-sm font-mono font-bold text-rose-400">
+                                -{(opportunityCost * multiplier).toFixed(4)}%
+                            </div>
+                            <div className="text-[9px] text-zinc-500 font-mono">
+                                Base: -{opportunityCost.toFixed(4)}%
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-zinc-950/70 border border-zinc-900 rounded-xl space-y-1">
+                            <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                Risk Penalty (Scaled)
+                            </div>
+                            <div className="text-sm font-mono font-bold text-rose-400">
+                                -{(dailyDrawdownPenalty * multiplier).toFixed(4)}%
+                            </div>
+                            <div className="text-[9px] text-zinc-500 font-mono">
+                                Base: -{dailyDrawdownPenalty.toFixed(4)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Step-by-step arithmetic */}
+                    <div className="bg-zinc-950/80 rounded-xl p-3.5 font-mono text-[11px] border border-zinc-900 leading-relaxed text-zinc-400 space-y-2">
+                        <div className="text-zinc-500 text-[9px] uppercase font-bold tracking-wider border-b border-zinc-900 pb-1 mb-1.5 font-sans">
+                            Constituent Calculations
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between border-b border-dashed border-zinc-900/50 pb-1.5">
+                            <span>Portfolio Return (Scaled)</span>
+                            <span className="font-bold text-zinc-200">
+                                {(portfolioReturn * multiplier).toFixed(4)}%{' '}
+                                <span className="text-zinc-500 text-[10px]">
+                                    (Base: {portfolioReturn.toFixed(4)}%)
+                                </span>
+                            </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between border-b border-dashed border-zinc-900/50 pb-1.5">
+                            <span>S&P 500 Return (Scaled)</span>
+                            <span className="font-bold text-zinc-200">
+                                {(spyReturn * multiplier).toFixed(4)}%{' '}
+                                <span className="text-zinc-500 text-[10px]">
+                                    (Base: {spyReturn.toFixed(4)}%)
+                                </span>
+                            </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between border-b border-dashed border-zinc-900/50 pb-1.5">
+                            <span>Do-Nothing Return (Scaled)</span>
+                            <span className="font-bold text-zinc-200">
+                                {(doNothingReturn * multiplier).toFixed(4)}%{' '}
+                                <span className="text-zinc-500 text-[10px]">
+                                    (Base: {doNothingReturn.toFixed(4)}%)
+                                </span>
+                            </span>
+                        </div>
+                        <div className="text-zinc-500 text-[10px] pt-1 font-sans">
+                            Formula: score = (Excess Return - Opportunity Cost - Risk Penalty)
+                        </div>
+                        <div className="text-emerald-450 font-bold">
+                            score = {(dailyExcessReturn * multiplier).toFixed(4)}% -{' '}
+                            {(opportunityCost * multiplier).toFixed(4)}% -{' '}
+                            {(dailyDrawdownPenalty * multiplier).toFixed(4)}%
+                        </div>
+                        <div className="text-emerald-400 font-bold border-t border-zinc-900 pt-1.5 text-xs">
+                            score = {selectedCp.score >= 0 ? '+' : ''}
+                            {selectedCp.score.toFixed(4)}
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 }

@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DailyScoreDisplay } from './DailyScoreDisplay';
@@ -89,6 +89,114 @@ describe('DailyScoreDisplay', () => {
 
         const naPortfolioElements = screen.getAllByText('P: N/A');
         expect(naPortfolioElements.length).toBe(2); // Thu, Fri portfolio returns
+
+        vi.useRealTimers();
+    });
+
+    it('displays dates next to weekdays on the cards', () => {
+        const mockExperiment = {
+            variant_tag: 'V1.1',
+            week_start: '2026-06-01',
+            metrics: {
+                portfolio_return_pct: 3.5,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 2.0,
+                excess_return: 3.0,
+                opportunity_cost_penalty: 0,
+                max_drawdown: 5,
+                drawdown_penalty: 1.5,
+                score: 1.5,
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Verify dates are on the cards
+        expect(screen.getByText('6/1')).toBeInTheDocument(); // Mon
+        expect(screen.getByText('6/2')).toBeInTheDocument(); // Tue
+        expect(screen.getByText('6/3')).toBeInTheDocument(); // Wed
+        expect(screen.getByText('6/4')).toBeInTheDocument(); // Thu
+        expect(screen.getByText('6/5')).toBeInTheDocument(); // Fri
+    });
+
+    it('allows day inspection by clicking on a non-future card to see constituents', () => {
+        // Mock system time to Wednesday, June 3rd, 2026
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-06-03T12:00:00Z'));
+
+        const mockExperiment = {
+            variant_tag: 'V1.0',
+            week_start: '2026-06-01',
+            metrics: {
+                portfolio_return_pct: 2.0,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 1.5,
+                excess_return: 1.0,
+                opportunity_cost_penalty: 0.1,
+                max_drawdown: 1.0,
+                drawdown_penalty: 0.3,
+                score: 0.6,
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // By default, the details panel is not shown
+        expect(screen.queryByText(/Score Constituents/)).not.toBeInTheDocument();
+
+        // Click Wednesday card (June 3rd)
+        const wedCard = screen.getByText('6/3').closest('button');
+        expect(wedCard).toBeInTheDocument();
+        if (wedCard) {
+            fireEvent.click(wedCard);
+        }
+
+        // Wednesday is selected. It should render details panel showing constituents.
+        expect(screen.getByText(/Score Constituents — Wednesday/)).toBeInTheDocument();
+        expect(screen.getByText(/Excess Return \(Scaled\)/)).toBeInTheDocument();
+        expect(screen.getByText(/Opportunity Cost \(Scaled\)/)).toBeInTheDocument();
+        expect(screen.getByText(/Risk Penalty \(Scaled\)/)).toBeInTheDocument();
+
+        // Click again to toggle/close
+        if (wedCard) {
+            fireEvent.click(wedCard);
+        }
+        expect(screen.queryByText(/Score Constituents/)).not.toBeInTheDocument();
+
+        vi.useRealTimers();
+    });
+
+    it('does not allow inspecting future days', () => {
+        // Mock system time to Wednesday, June 3rd, 2026
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-06-03T12:00:00Z'));
+
+        const mockExperiment = {
+            variant_tag: 'V1.0',
+            week_start: '2026-06-01',
+            metrics: {
+                portfolio_return_pct: 2.0,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 1.5,
+                excess_return: 1.0,
+                opportunity_cost_penalty: 0.1,
+                max_drawdown: 1.0,
+                drawdown_penalty: 0.3,
+                score: null,
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Thursday (June 4th) is a future day
+        const thuCard = screen.getByText('6/4').closest('button');
+        expect(thuCard).toBeInTheDocument();
+        if (thuCard) {
+            fireEvent.click(thuCard);
+        }
+
+        // It should NOT render the details panel
+        expect(screen.queryByText(/Score Constituents/)).not.toBeInTheDocument();
 
         vi.useRealTimers();
     });

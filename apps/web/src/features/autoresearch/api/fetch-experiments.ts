@@ -12,6 +12,7 @@ export async function fetchExperiments(): Promise<PromptExperiment[]> {
     const { data, error } = await supabase
         .from('prompt_experiments')
         .select('*')
+        .eq('prompt_name', 'CORE_ANALYSIS_SYSTEM_PROMPT')
         .order('created_at', { ascending: false });
 
     if (error) {

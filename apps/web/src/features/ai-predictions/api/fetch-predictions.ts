@@ -1,3 +1,4 @@
+import type { PromptExperiment } from '@llm-market-bench/database';
 import { createClient } from '@supabase/supabase-js';
 
 export interface SectorPrediction {
@@ -36,4 +37,27 @@ export async function fetchAIPredictions(): Promise<SectorPrediction[]> {
     }
 
     return data as SectorPrediction[];
+}
+
+export async function fetchPredictorExperiments(): Promise<PromptExperiment[]> {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase credentials not found');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data, error } = await supabase
+        .from('prompt_experiments')
+        .select('*')
+        .eq('prompt_name', 'SECTOR_PREDICTOR_PROMPT')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return (data || []) as PromptExperiment[];
 }

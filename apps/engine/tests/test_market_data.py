@@ -181,7 +181,10 @@ async def test_market_status_lock_prevents_thundering_herd():
         await asyncio.sleep(0.1)
         return mock_resp
 
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=slow_get):
+    with (
+        patch("execution.market_data.FMP_API_KEY", "dummy_key"),
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=slow_get),
+    ):
         manager = MarketDataManager()
 
         results = await asyncio.gather(manager.is_market_open(), manager.is_market_open(), manager.is_market_open())

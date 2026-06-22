@@ -132,6 +132,10 @@ ANTHROPIC_WEB_SEARCH_VERSION = os.getenv("ANTHROPIC_WEB_SEARCH_VERSION", "web_se
 # Maximum web searches per request
 ANTHROPIC_MAX_WEB_SEARCHES = int(os.getenv("ANTHROPIC_MAX_WEB_SEARCHES", "3"))
 
+# MiniMax Anthropic-format base URL (M3 supports both OpenAI- and Anthropic-compatible endpoints).
+# Default per https://platform.minimax.io/docs/api-reference/text-anthropic-api.md
+MINIMAX_ANTHROPIC_BASE_URL = os.getenv("MINIMAX_ANTHROPIC_BASE_URL", "https://api.minimax.io/anthropic")
+
 # --- Auto-Research Configuration ---
 # Model used for the weekly meta-evaluation (prompt improvement).
 # Defaults to DeepSeek; override via AUTORESEARCH_MODEL env var.

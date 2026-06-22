@@ -1,9 +1,9 @@
-"""Tests for MiniMax 2.7 portfolio pipeline.
+"""Tests for MiniMax-M3 portfolio pipeline.
 
 Tests cover:
-1. The `minimax` provider branch in `analyze_with_provider`.
+1. The `minimax` provider branch in `analyze_with_provider` (using the Anthropic SDK).
 2. Reg T + cash/share hard-stop validation for MiniMax trades.
-3. Market order ±0.1% buffer price calculation.
+3. Market order ±0.5% buffer price calculation.
 """
 
 import os
@@ -118,7 +118,8 @@ class TestMinimaxAnalysisProvider:
 
     @pytest.mark.asyncio
     async def test_minimax_tool_loop_called(self):
-        """MiniMax must trigger the OpenAI tool loop handler since it supports tool calling."""
+        """MiniMax must trigger the Anthropic tool loop handler since M3
+        uses the Anthropic API format (native tool_use blocks)."""
         from core.llm.analysis import analyze_with_provider
 
         mock_instructor_client = MagicMock()
@@ -129,7 +130,10 @@ class TestMinimaxAnalysisProvider:
             mock_factory = MagicMock(return_value=mock_instructor_client)
             mock_factories.get.return_value = mock_factory
 
-            with patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop:
+            with (
+                patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthropic_loop,
+                patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop,
+            ):
                 # Also mock the final Instructor extraction call to return a DecisionsResponse
                 from core.models import DecisionsResponse
 
@@ -148,7 +152,8 @@ class TestMinimaxAnalysisProvider:
                     macro_context="",
                 )
 
-        mock_openai_loop.assert_called_once()
+        mock_anthropic_loop.assert_called_once()
+        mock_openai_loop.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

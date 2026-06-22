@@ -316,10 +316,13 @@ async def analyze_with_provider(
 
             await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=enable_web_search)
         elif provider == "minimax":
-            from .handlers import openai
+            from .handlers import anthropic
 
-            # MiniMax is OpenAI API compatible and runs the same tool loop handler
-            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
+            # MiniMax-M3 supports the Anthropic API format; reusing the anthropic
+            # tool-loop handler gives us native tool_use blocks and proper thinking
+            # control. Web search is disabled because M3 has no native server-side
+            # web_search tool via this endpoint.
+            await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=False)
 
         # Keep an unflattened copy of the message history for tool call verification
         # right after the tool loops run and BEFORE any flattening or preparation mutations.
@@ -405,10 +408,16 @@ async def analyze_with_provider(
                 error_str = str(e).lower()
 
                 # Check if it's a validation error that might be fixed with JSON repair
+                # Substrings 'no tool calls' / 'function call found' catch instructor's
+                # TOOLS-mode mismatch (provider returned raw JSON instead of tool_calls).
+                # The JSON repair path (which appends a 'give me clean JSON' user message)
+                # handles that case too, so we should retry instead of re-raising.
                 if (
                     "validation error" in error_str
                     or "input should be a valid" in error_str
                     or "list_type" in error_str
+                    or "no tool calls" in error_str
+                    or "function call found" in error_str
                 ):
                     logger.warning(
                         "[%s/%s] Instructor validation error (attempt %d/3): %s. Attempting JSON repair...",

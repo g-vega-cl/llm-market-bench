@@ -52,10 +52,22 @@ def get_gemini_client(api_key: str | None = None):
 def get_minimax_client(api_key: str | None = None):
     """Creates an async MiniMax client wrapped with Instructor.
 
-    Uses the OpenAI SDK pointed to MiniMax's base URL.
+    Uses the Anthropic SDK pointed at MiniMax's Anthropic-compatible endpoint.
+    M3 supports both OpenAI- and Anthropic-compatible APIs; the Anthropic
+    format gives us native tool_use blocks, proper thinking control, and
+    compatibility with our existing anthropic tool-loop handler.
+
+    The OpenAI-format endpoint is still used by auxiliary flows
+    (market_feeling, sector_predictor) via core.llm.minimax.MiniMaxClient.
     """
     key = api_key or config.MINIMAX_API_KEY
-    return instructor.from_openai(AsyncOpenAI(api_key=key, base_url="https://api.minimax.io/v1", timeout=TIMEOUT))
+    return instructor.from_anthropic(
+        AsyncAnthropic(
+            api_key=key,
+            base_url=config.MINIMAX_ANTHROPIC_BASE_URL,
+            timeout=TIMEOUT,
+        )
+    )
 
 
 # Provider Registry

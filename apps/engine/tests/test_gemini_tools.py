@@ -60,8 +60,12 @@ async def test_gemini_tool_loop_sets_include_server_side_tool_invocations():
     # The flag must be set nested under tool_config — this is what fixes the 400 error and Pydantic validation
     assert kwargs.get("tool_config") is not None
     assert kwargs.get("tool_config").include_server_side_tool_invocations is True
-    # automatic_function_calling must NOT be set — the two are mutually exclusive
-    assert kwargs.get("automatic_function_calling") is None
+    # Note: we now always pass automatic_function_calling.disable=True in config_kwargs
+    # to suppress SDK warnings. The SDK ignores AFC when tool_config is set (they're
+    # mutually exclusive in effect). See test_gemini_tool_loop_always_disables_afc_when_search_enabled.
+    afc = kwargs.get("automatic_function_calling")
+    if afc is not None:
+        assert afc.disable is True, "AFC must be disabled if set"
 
 
 @pytest.mark.asyncio
@@ -122,6 +126,54 @@ async def test_gemini_tool_loop_afc_fallback_when_sdk_lacks_flag():
     # Old SDK path: AFC should be disabled as before
     assert config.automatic_function_calling is not None
     assert config.automatic_function_calling.disable is True
+
+
+@pytest.mark.asyncio
+async def test_gemini_tool_loop_always_disables_afc_when_search_enabled():
+    """When google_search is enabled and SDK supports include_server_side_tool_invocations,
+    automatic_function_calling must STILL be explicitly disabled (the SDK defaults
+    AFC=true which causes noisy '[AFC] Tools at indices [0] are not compatible'
+    warnings on every request).
+
+    This is a defense-in-depth test: the existing
+    test_gemini_tool_loop_sets_include_server_side_tool_invocations only checks that
+    tool_config is set; it doesn't verify that AFC is also explicitly disabled,
+    which is what suppresses the SDK warning.
+    """
+    from core.llm.handlers import gemini
+
+    raw_client = MagicMock()
+    mock_aio = raw_client.aio
+    mock_aio.models.generate_content = AsyncMock(return_value=MagicMock(candidates=[MagicMock(content=None)]))
+
+    messages = [{"role": "user", "content": "analyse markets"}]
+
+    mock_config = MagicMock()
+    with (
+        patch.object(gemini, "_generate_content_config_supports", return_value=True),
+        patch("google.genai.types.GenerateContentConfig", return_value=mock_config) as mock_config_class,
+    ):
+        await gemini.run_tool_loop(
+            raw_client=raw_client,
+            model_name="gemini-3.1-flash-lite",
+            messages=messages,
+            override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
+            enable_google_search=True,
+        )
+
+    kwargs = mock_config_class.call_args.kwargs
+
+    # tool_config must still be set (per existing test)
+    assert kwargs.get("tool_config") is not None
+    assert kwargs.get("tool_config").include_server_side_tool_invocations is True
+
+    # AND automatic_function_calling.disable must be True to suppress SDK warning.
+    # Note: when tool_config is set, the SDK ignores AFC settings. But explicitly
+    # passing AFC=disable documents intent and prevents future regressions where
+    # someone removes the tool_config branch.
+    afc = kwargs.get("automatic_function_calling")
+    assert afc is not None, "automatic_function_calling must be explicitly set to disable"
+    assert afc.disable is True, "automatic_function_calling.disable must be True"
 
 
 @pytest.mark.asyncio

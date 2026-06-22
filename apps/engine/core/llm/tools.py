@@ -1297,12 +1297,24 @@ async def execute_financial_valuation_tool(
         # Calculate initial shares outstanding estimate
         shares_outstanding = market_cap / price
 
-        # 2. Fetch key metrics history (annual, limit 5)
-        key_metrics = await manager.get_key_metrics(ticker, period="annual", limit=5)
+        # 2. Fetch key metrics history — try quarterly first for earnings-week relevance,
+        # fall back to annual via the FMP provider's 402→annual fallback handler.
+        key_metrics = await manager.get_key_metrics(ticker, period="quarter", limit=2)
         if not key_metrics:
             return f"Error: No key metrics data found for {ticker}."
 
         latest_metric = key_metrics[0]
+
+        # Detect if we got annual fallback (FMP plan tier limits) so the report
+        # can flag the degradation for the LLM.
+        actual_period = str(latest_metric.get("period") or "")
+        metrics_degradation_note = ""
+        if "Q" not in actual_period.upper():
+            metrics_degradation_note = (
+                "\n> ⚠️ NOTE: FMP quarterly metrics unavailable on current plan "
+                "(402 Payment Required). DCF using annual fallback metrics; "
+                "earnings-week signals should be discounted accordingly.\n"
+            )
 
         # 3. Fetch profile (for Beta)
         profile = await manager.get_company_profile(ticker)
@@ -1431,16 +1443,17 @@ async def execute_financial_valuation_tool(
             client_db = get_supabase_client()
             res = (
                 client_db.table("market_barometer_history")
-                .select("pe_ratio, price_to_fcf_ratio")
+                .select("pe_ratio, pfcf_ratio")
                 .order("date", desc=True)
                 .limit(1)
                 .execute()
             )
             if res.data:
                 barometer_pe = float(res.data[0].get("pe_ratio") or 22.5)
-                barometer_pfcf = float(res.data[0].get("price_to_fcf_ratio") or 20.0)
-        except Exception:
-            pass
+                barometer_pfcf = float(res.data[0].get("pfcf_ratio") or 20.0)
+        except Exception as e:
+            # Don't silently swallow — log so future schema drift surfaces.
+            logger.warning(f"market_barometer_history query failed (using defaults 22.5/20.0): {e}")
 
         pe_ratio = latest_metric.get("peRatio")
         pfcf_ratio = latest_metric.get("priceToFreeCashFlowsRatio")
@@ -1472,7 +1485,8 @@ async def execute_financial_valuation_tool(
         output = (
             f"### 📊 Valuation & Intrinsic Value Audit Report: {ticker} ({company_name})\n\n"
             f"**Valuation Status:** `{status}`\n"
-            f"**Current Price:** ${price:.2f} | **Implied Intrinsic Price:** ${implied_price:.2f} ({implied_upside:+.1f}% upside/downside)\n\n"
+            f"**Current Price:** ${price:.2f} | **Implied Intrinsic Price:** ${implied_price:.2f} ({implied_upside:+.1f}% upside/downside)\n"
+            f"{metrics_degradation_note}\n"
             f"#### 1. DCF Model Assumptions & Inputs\n"
             f"- **Forecast Growth Rate:** {growth_rate_used * 100:.1f}% (Base: {'analyst estimates' if forecast_growth == estimates else 'historical growth'})\n"
             f"- **Discount Rate (WACC):** {wacc_used * 100:.1f}% (CAPM Beta: {beta:.2f}, Cost of Equity: {cost_of_equity * 100:.1f}%)\n"

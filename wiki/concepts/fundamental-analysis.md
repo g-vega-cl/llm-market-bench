@@ -38,6 +38,24 @@ To verify stock trades against intrinsic value without in-context mathematical h
 3. Formulates a 5-year discounted Free Cash Flow (FCF) schedule under a mid-year convention.
 4. Generates an EV-to-Equity Bridge, outputting the final implied price per share and comparing trailing multiples against index averages to audit valuation premium/discount.
 
+### Quarterly-First Metric Retrieval
+
+The audit tool requests `period="quarter", limit=2` first so that tickers with imminent earnings (e.g., MU reporting this week) receive the most recent quarterly data. The `FMPProvider.get_key_metrics` path automatically falls back to `period="annual"` when the stable `/key-metrics` and `/ratios` endpoints return `402 Payment Required` (a known constraint on certain FMP plan tiers).
+
+When the audit tool detects that it received annual data (the returned `period` field doesn't contain `Q`), it surfaces an inline note in the report:
+
+> ⚠️ NOTE: FMP quarterly metrics unavailable on current plan (402 Payment Required). DCF using annual fallback metrics; earnings-week signals should be discounted accordingly.
+
+This surfaces the degradation so the verifier can discount short-term catalysts appropriately instead of silently using stale annual data.
+
+### Barometer Premium/Discount Computation
+
+The valuation tool queries `market_barometer_history` for the latest cap-weighted S&P 500 aggregates and uses them as the baseline for premium/discount computation. Two key columns are read:
+- `pe_ratio` — S&P 500 trailing P/E baseline (default fallback: `22.5`)
+- `pfcf_ratio` — S&P 500 Price-to-FCF baseline (default fallback: `20.0`)
+
+The `pfcf_ratio` column was added by migration `20260621100000_add_pfcf_to_barometer.sql`. If the query fails (column drift, network error, etc.), the tool logs a `WARNING` so the degradation is visible in production rather than silently masking it via `except: pass`.
+
 ## Volume & Liquidity Analysis
 
 To assist trading agents in identifying accumulation, exhaustion, and liquidity dynamics, the system leverages raw daily trading volume from the `FinancialProvider`. 

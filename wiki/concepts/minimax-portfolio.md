@@ -1,5 +1,5 @@
 ---
-tags: [minimax, execution, concepts, margin, portfolio]
+tags: [minimax, execution, concepts, margin, portfolio, anthropic-sdk]
 category: concept
 ---
 
@@ -87,13 +87,26 @@ See `[[entities/llm-leaderboard]]` for more details.
 
 ## Extraction and Parser Alignment
 
-MiniMax-M3 is OpenAI API compatible and is fully integrated into the standard LLM tool execution loop using an Instructor-wrapped async OpenAI client. It leverages Instructor's structured tool-calling mode to guarantee that the primary Analysis Agent output conforms directly to the `DecisionsResponse` schema without requiring raw text JSON repair or extraction workarounds.
+MiniMax-M3 supports both the OpenAI-compatible and Anthropic-compatible API formats. The analysis pipeline now uses the **Anthropic SDK** pointed at MiniMax's Anthropic-compatible endpoint (`https://api.minimax.io/anthropic`), wrapped by Instructor's `from_anthropic` factory. This route gives M3 native `tool_use` content blocks (matching the protocol the rest of the analysis pipeline already speaks via `handlers/anthropic.run_tool_loop`) and unlocks M3's thinking control.
 
-However, for auxiliary modules that use the raw MiniMax Text Chat API directly (e.g., the [[concepts/market-feeling]] generator), the following robustness logic is preserved in the underlying `MiniMaxClient` utility:
+### Why Anthropic SDK for the analysis path
+
+1. **Native tool_use blocks.** M3 via the Anthropic endpoint emits proper `tool_use` content blocks. The OpenAI endpoint had been returning raw JSON text prefixed with literal `JSON` (e.g. `'JSON{\n  "decisions": [...]'`), which broke Instructor's default `Mode.TOOLS` parser with `"No tool calls or function call found in response (mode: TOOLS)"` and silently dropped the batch's 3 decisions + 6 macro_events.
+2. **Reuse of battle-tested tool-loop handler.** The existing `handlers/anthropic.run_tool_loop` already handles `tool_use` ↔ `function_response` circulation, multi-turn context, and `thought_signature` for Gemini 3. M3 reuses the same code path.
+3. **Retry predicate widened.** As defense-in-depth, the Instructor extraction retry loop now also catches `"no tool calls"` / `"function call found"` substrings (in addition to `"validation error"` / `"list_type"`), so any future provider that emits raw JSON instead of tool_calls will trigger JSON repair instead of raising immediately.
+
+### OpenAI-compatible endpoint still in use (auxiliary flows)
+
+Auxiliary modules that don't need tool calling (e.g. the [[concepts/market-feeling]] generator, `tasks/sector_predictor.py`) keep using the raw MiniMax Text Chat API via `core/llm/minimax.MiniMaxClient` (`https://api.minimax.io/v1/text/chatcompletion_v2`). These flows benefit from the simpler `response_format={"type": "json_object"}` round-trip and don't need Anthropic-format `tool_use` plumbing.
+
+### JSON repair helpers (defense-in-depth, retained)
+
+For flows that still hit raw JSON parsing paths, the following robustness logic is preserved in `core/llm/minimax.py` and `core/llm/analysis.py`:
 1. **Explicit Schema Enforcement:** The prompt template specifically instructs the model on the exact JSON schema fields to prevent validation errors at execution time.
-2. **Conditional Unescaping & Escape Alignment:** The JSON repair helper (`_repair_json_string`) performs quote (`\"` to `"`) and backslash-escaped newline unescaping inside double-escaped strings to ensure JSON compatibility.
-3. **Robust Scope Binding:** Fallback strategy lambdas bind repaired variables correctly to avoid closed-over variable references that could lead to evaluation failures.
+2. **Conditional Unescaping & Escape Alignment:** The JSON repair helper (`_repair_json_string` in `core/llm/analysis.py`) performs quote (`\"` to `"`) and backslash-escaped newline unescaping inside double-escaped strings to ensure JSON compatibility.
+3. **Robust Scope Binding:** Fallback strategy lambdas in `_try_parse_decisions_response` bind repaired variables correctly to avoid closed-over variable references that could lead to evaluation failures.
 4. **Raw Control Character Resiliency:** All `json.loads` calls in the MiniMax client and repair utilities use `strict=False` to tolerate unescaped control characters such as newlines or carriage returns in reasoning content.
+5. **TOOLS-Mode Repair Trigger:** The retry predicate now also matches `"no tool calls"` / `"function call found"` so a misconfigured provider that emits raw JSON triggers the repair path instead of dropping the batch.
 
 ---
 

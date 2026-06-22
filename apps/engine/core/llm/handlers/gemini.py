@@ -165,6 +165,12 @@ async def run_tool_loop(
             config_kwargs = {
                 "system_instruction": system_instruction,
                 "tools": gemini_tools,
+                # Always disable SDK-side automatic function calling. We read
+                # `part.function_call` manually from the response, so we never
+                # want the SDK to execute tools server-side. This also
+                # suppresses the noisy '[AFC] Tools at indices [0] are not
+                # compatible' warning printed at every request.
+                "automatic_function_calling": types.AutomaticFunctionCallingConfig(disable=True),
                 "safety_settings": [
                     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
                     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
@@ -180,15 +186,20 @@ async def run_tool_loop(
                 # and activates tool context circulation across turns.
                 # Without it the API throws 400 INVALID_ARGUMENT, the loop falls back to
                 # basic analysis, and HARD ENFORCEMENT discards all trade signals.
-                if (
+                #
+                # Note: tool_config and automatic_function_calling are mutually
+                # exclusive (per the SDK). When tool_config is set, the SDK ignores
+                # AFC. We still set AFC=disable above to suppress SDK warnings when
+                # google_search is OFF (the common case for analysis).
+                sdk_supports_tool_config = (
                     _generate_content_config_supports("tool_config")
                     and hasattr(types, "ToolConfig")
                     and "include_server_side_tool_invocations" in types.ToolConfig.model_fields
-                ):
+                )
+                if sdk_supports_tool_config:
                     config_kwargs["tool_config"] = types.ToolConfig(include_server_side_tool_invocations=True)
-                else:
-                    # Older google-genai SDK: fall back to disabling AFC only.
-                    config_kwargs["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
+                # Old-SDK fallback no longer needs the explicit AFC disable line
+                # — the default config_kwargs already sets it.
 
             config = types.GenerateContentConfig(**config_kwargs)
 

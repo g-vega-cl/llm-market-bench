@@ -15,7 +15,18 @@ executing trades, and running feedback loops.
 - **Ingestion** (`ingest/`) — Gmail API fetching, ad removal, calendar scraping
 - **Analysis** (`analysis/`) — LLM orchestration, Discovery Agent, momentum tracking, [[sources/correlation-matrix-source]]
 - **Macro Tracker** (`core/macro_tracker.py`) — 23-ticker global regime monitoring (equities, intl, commodities, fixed income, FX/risk, crypto)
-- **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax-M3 (fully integrated into the standard tool-calling and Instructor pipeline)
+- **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax-M3 (via Anthropic SDK on MiniMax's Anthropic-compatible endpoint; see [[concepts/minimax-portfolio]])
+- **LLM Client Factories** (`core/llm/clients.py`) — registry mapping each provider name to an `instructor`-wrapped SDK client. SDK choice is non-obvious and follows the upstream provider's compatible SDK:
+
+  | Provider | Model | SDK | Reason |
+  |---|---|---|---|
+  | `openai` | GPT-4o etc. | `AsyncOpenAI` | native |
+  | `anthropic` | Claude | `AsyncAnthropic` | native |
+  | `deepseek` | DeepSeek | `AsyncOpenAI` | DeepSeek exposes an OpenAI-compatible API |
+  | `gemini` | Gemini | `google.genai.Client` | native |
+  | `minimax` | MiniMax-M3 | `AsyncAnthropic` | MiniMax exposes an Anthropic-compatible API; gives us native `tool_use` blocks + thinking control |
+
+  `CLIENT_FACTORIES` is populated at import time, so tests must patch the dict (not the module-level factory functions) — see `tests/test_call_counts.py` for the established pattern.
 - **Execution** (`execution/`) — validation, Reg T checks, portfolio management (and the simplified market-order pipeline for MiniMax)
 - **Memory** (`memory/`) — pgvector embeddings, RAG retrieval, deduplication
 - **Attribution** (`attribution/`) — decision persistence and trade linking

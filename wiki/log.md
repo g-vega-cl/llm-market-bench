@@ -8,16 +8,6 @@ Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in
 
 **See**: [[concepts/tanstack-query]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx)
 
-## [2026-06-15] bugfix | Fix portfolios page benchmark selection cache pollution
-
-Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in the portfolios comparison chart failed to display their respective performance lines:
-- **React Query Cache Pollution**: Removed stale `initialData` parameter from `useSuspenseQuery` inside `PortfoliosPage.tsx` to stop old default ('SPY') benchmark data from seeding and freezing new query keys.
-- **Smooth Suspense Transition**: Integrated `React.useTransition` to wrap `setSelectedBenchmark` updates, allowing client-side background refetching to transition smoothly without triggering hard-suspense loaders.
-- **TDD Regression Suite**: Added `PortfoliosPageBenchmark.test.tsx` which simulates switching benchmark options and verifies the chart receives the correct dataset.
-- **Documentation**: Documented this specific React Query `initialData` gotcha in `concepts/tanstack-query.md`.
-
-**See**: [[concepts/tanstack-query]], [PortfoliosPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/pages/PortfoliosPage.tsx)
-
 ## [2026-06-15] fix | Eliminate benchmark switch flash and add D3 fade transition
 
 Root-caused and fixed a visual flash in the portfolio comparison chart when switching the benchmark dropdown:
@@ -305,4 +295,8 @@ Implemented a hybrid newsletter summary pre-filtering and dynamic retrieval mech
 - **TDD Verification**: Authored `test_newsletter_menu_flow.py` and updated call counts in `test_call_counts.py` and minimax pipeline integration tests in `test_minimax_pipeline.py`. 100% of tests pass.
 
 **See**: [[concepts/rag-strategy]], [[concepts/minimax-portfolio]], [[concepts/agents]], [[entities/engine]], [pre_filter.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/pre_filter.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_newsletter_menu_flow.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_newsletter_menu_flow.py)
+
+## [2026-06-22] test | Add summarize_newsletters mock to analysis tests
+
+Five analysis test files (`test_analysis_logic.py`, `test_batch_analysis.py`, `test_resilience.py`, `test_streaming_analysis.py`, `test_verification.py`) were updated to patch `analysis.pre_filter.summarize_newsletters` with an `AsyncMock(return_value={})`. This prevents tests from calling the real newsletter summarization function during analysis orchestration, which would fail without proper API credentials in CI. The `test_verification.py` file also gained a mock for `get_deepseek_client` to bypass `AsyncOpenAI` client construction in CI, allowing the test to focus on schema handling rather than network/auth concerns.
 

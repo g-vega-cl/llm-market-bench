@@ -67,6 +67,7 @@ class TestAnalyzeChunksStreaming:
         with (
             patch("analysis.analyze.Portfolio") as mock_portfolio_class,
             patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
         ):
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
@@ -126,6 +127,7 @@ class TestAnalyzeChunksStreaming:
         with (
             patch("analysis.analyze.Portfolio") as mock_portfolio_class,
             patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
         ):
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}
@@ -242,6 +244,7 @@ class TestDecisionCallback:
             with (
                 patch("analysis.analyze.Portfolio") as mock_portfolio_class,
                 patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+                patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
             ):
                 mock_portfolio = MagicMock()
                 mock_portfolio.positions = {}
@@ -342,6 +345,7 @@ class TestLoggingTiming:
             with (
                 patch("analysis.analyze.Portfolio") as mock_portfolio_class,
                 patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+                patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
             ):
                 mock_portfolio = MagicMock()
                 mock_portfolio.positions = {}

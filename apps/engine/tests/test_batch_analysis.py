@@ -78,9 +78,8 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
     with (
         patch("analysis.analyze.Portfolio") as mock_portfolio_class,
         patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+        patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
     ):
-        from unittest.mock import AsyncMock
-
         mock_portfolio = MagicMock()
         mock_portfolio.positions = {}
         mock_portfolio.initialize = AsyncMock(return_value=None)

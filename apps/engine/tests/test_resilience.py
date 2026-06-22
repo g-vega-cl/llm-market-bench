@@ -1,7 +1,7 @@
 """Tests for pipeline resilience and error handling."""
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -39,10 +39,9 @@ async def test_individual_task_failure_does_not_halt_pipeline():
         patch("analysis.analyze.Portfolio") as mock_portfolio_class,
         patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
         patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings,
+        patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
     ):
         mock_get_embeddings.return_value = [[0.1] * 768]
-
-        from unittest.mock import AsyncMock
 
         mock_portfolio = MagicMock()
         mock_portfolio.positions = {}

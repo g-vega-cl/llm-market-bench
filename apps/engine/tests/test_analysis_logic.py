@@ -117,11 +117,9 @@ class TestAnalysisOrchestration:
             patch("analysis.analyze.Portfolio") as mock_portfolio_class,
             patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
             patch("memory.embeddings.get_embeddings_batch") as mock_get_embeddings,
+            patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
         ):
             mock_get_embeddings.return_value = [[0.1] * 768]
-
-            # Mock portfolio instance
-            from unittest.mock import AsyncMock
 
             mock_portfolio = MagicMock()
             mock_portfolio.positions = {}

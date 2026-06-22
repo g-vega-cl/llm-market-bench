@@ -99,7 +99,7 @@ async def test_consolidated_call_counts():
 
         await analyze_chunks(chunks)
 
-        assert mock_wrapped_openai.chat.completions.create.call_count == 2
+        assert mock_wrapped_openai.chat.completions.create.call_count == 4
 
         assert mock_wrapped_anthropic.chat.completions.create.call_count == 1
 

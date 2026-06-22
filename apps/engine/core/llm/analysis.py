@@ -206,223 +206,6 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
     return None
 
 
-async def _analyze_with_minimax(
-    model_name: str,
-    chunks: list[dict],
-    context: str = "",
-    portfolio_context: str = "",
-    current_day_info: str = "No date context available.",
-    calendar_knowledge: str = "",
-    macro_context: str = "",
-) -> DecisionsResponse:
-    """Analysis pipeline for MiniMax M3.
-
-    MiniMax does not support the OpenAI function-calling / Instructor flow.
-    Instead we:
-      1. Build a flat JSON-in-text prompt using the existing prompt templates.
-      2. Call MiniMaxClient.chat() directly (raw HTTP).
-      3. Parse the text response into a DecisionsResponse using the existing
-         repair helpers — no Instructor, no tool loop.
-
-    Args:
-        model_name: MiniMax model identifier (e.g. ``MiniMax-M3``).
-        chunks: Newsletter chunks to analyse.
-        context: Aggregated historical context.
-        portfolio_context: Current portfolio summary text.
-        current_day_info: Today's date/calendar context string.
-        calendar_knowledge: Calendar strategy knowledge.
-        macro_context: Current macro-economic indicator summary.
-
-    Returns:
-        DecisionsResponse — empty on parse failure (never raises).
-    """
-    import json as _json
-
-    from core.llm.minimax import MiniMaxClient
-    from core.llm.prompt_factory import PromptFactory
-
-    news_content = "".join(
-        [f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n" for chunk in chunks]
-    )
-
-    held_tickers = _extract_held_tickers(portfolio_context)
-    held_tickers_list = ", ".join(held_tickers) if held_tickers else "None (you have no positions)"
-
-    # Build the standard analysis messages (no web search for MiniMax).
-    # PromptFactory returns [{"role": "system", ...}, {"role": "user", ...}]
-    messages = await PromptFactory.build_analysis_messages(
-        provider="minimax",
-        owner_id=model_name,
-        portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
-        context=context if context else "No relevant historical context found.",
-        news_content=news_content,
-        min_trade_value=1000,
-        current_day_info=current_day_info,
-        calendar_knowledge=calendar_knowledge,
-        macro_context=macro_context if macro_context else "No macro data available.",
-        held_tickers_list=held_tickers_list,
-        enable_web_search=False,
-    )
-
-    # Append an explicit JSON output instruction so MiniMax knows the expected format.
-    messages.append(
-        {
-            "role": "user",
-            "content": (
-                "Output your response ONLY as a valid JSON object with no additional text, "
-                "no markdown, and no code fences. The JSON must match this schema exactly:\n"
-                "{\n"
-                '  "decisions": [\n'
-                "    {\n"
-                '      "signal": "BUY" | "SELL" | "HOLD",\n'
-                '      "confidence": 0-100,\n'
-                '      "reasoning": "string",\n'
-                '      "ticker": "string",\n'
-                '      "catalyst_type": "MACRO" | "EARNINGS" | "M_A" | "PRODUCT" | "REGULATORY" | "EVENT" | "INNOVATION" | "TECHNICAL" | "UNCROWDED_TRADE" | "OTHER",\n'
-                '      "catalyst_duration": "INTRADAY" | "SHORT_TERM" | "MEDIUM_TERM" | "LONG_TERM",\n'
-                '      "source_id": "string",\n'
-                '      "allocation_percentage": 0-100,\n'
-                '      "is_priced_in": boolean,\n'
-                '      "is_priced_in_reasoning": "string",\n'
-                '      "profit_potential_reasoning": "string",\n'
-                '      "strategy_reasoning": "string",\n'
-                '      "advance_planning_notes": "string",\n'
-                '      "buy_tool_called": boolean,\n'
-                '      "sell_tool_called": boolean,\n'
-                '      "quantity": integer\n'
-                "    }\n"
-                "  ],\n"
-                '  "macro_events": [\n'
-                "    {\n"
-                '      "event_name": "string",\n'
-                '      "impact": "BULLISH" | "BEARISH" | "NEUTRAL",\n'
-                '      "catalyst_type": "MACRO" | "EARNINGS" | "M_A" | "PRODUCT" | "REGULATORY" | "EVENT" | "INNOVATION" | "TECHNICAL" | "UNCROWDED_TRADE" | "OTHER",\n'
-                '      "is_ongoing": boolean,\n'
-                '      "is_future_catalyst": boolean,\n'
-                '      "historical_parallel": "string",\n'
-                '      "expiry_date": "string",\n'
-                '      "importance_score": 1-10,\n'
-                '      "confidence": 0-100,\n'
-                '      "reasoning": "string",\n'
-                '      "scenario_analysis": "string",\n'
-                '      "source_id": "string"\n'
-                "    }\n"
-                "  ]\n"
-                "}"
-            ),
-        }
-    )
-
-    client = MiniMaxClient()
-    try:
-        resp = await client.chat(
-            messages=messages,
-            model=model_name,
-            temperature=0.3,
-            max_completion_tokens=4096,
-            response_format={"type": "json_object"},
-        )
-    except Exception:
-        logger.exception("[minimax/%s] API call failed — returning empty response.", model_name)
-        return DecisionsResponse(decisions=[], macro_events=[])
-    finally:
-        await client.close()
-
-    raw_content = resp.get("content") or ""
-    content = raw_content.strip()
-
-    # Strip <think>...</think> tags if present, including any unclosed <think> block
-    if "<think>" in content:
-        parts = content.split("<think>", 1)
-        before_think = parts[0]
-        after_think = parts[1]
-        content = before_think + after_think.split("</think>", 1)[1] if "</think>" in after_think else before_think
-        content = content.strip()
-
-    # Strip markdown code fences if present
-    if content.startswith("```"):
-        lines = content.split("\n")
-        # Remove first line (```json or ```) and last line (```)
-        content = "\n".join(lines[1:-1]) if len(lines) > 2 else ""
-
-    # Attempt to extract JSON substring if there is surrounding text
-    content = _repair_json_string(content)
-
-    if not content:
-        logger.warning(
-            "[minimax/%s] Empty content after extraction — returning empty response. "
-            "Raw API Response: %s, Finish Reason: %s, Processing Time: %s ms",
-            model_name,
-            resp.get("raw_response"),
-            resp.get("finish_reason"),
-            resp.get("processing_time_ms"),
-        )
-        return DecisionsResponse(decisions=[], macro_events=[])
-
-    # Parse the content
-    try:
-        raw = _json.loads(content, strict=False)
-    except _json.JSONDecodeError as e:
-        logger.warning(
-            "[minimax/%s] JSON decode failed — returning empty response. "
-            "Content snippet: %.200s, Raw API Response: %s, Error: %s",
-            model_name,
-            content,
-            resp.get("raw_response"),
-            str(e),
-        )
-        return DecisionsResponse(decisions=[], macro_events=[])
-
-    result = _try_parse_decisions_response(raw)
-    if result is None:
-        logger.warning(
-            "[minimax/%s] DecisionsResponse parse failed — returning empty response. "
-            "Parsed Dict: %s, Raw API Response: %s",
-            model_name,
-            raw,
-            resp.get("raw_response"),
-        )
-        return DecisionsResponse(decisions=[], macro_events=[])
-
-    # Pre-analysis ownership validation: convert phantom SELL → HOLD
-    validated = []
-    for decision in result.decisions:
-        if decision.signal == "SELL" and decision.ticker.upper() not in [t.upper() for t in held_tickers]:
-            logger.warning(
-                "[minimax/%s] PRE-ANALYSIS VALIDATION: SELL for %s rejected — ticker not held. Held: %s",
-                model_name,
-                decision.ticker,
-                held_tickers,
-            )
-            decision.signal = "HOLD"
-            decision.reasoning = (
-                f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held. "
-                f"Original reasoning: {decision.reasoning[:200]}"
-            )
-        validated.append(decision)
-    result.decisions = validated
-
-    await log_reasoning_trace(
-        task_type="INGESTION",
-        model_provider="minimax",
-        model_name=model_name,
-        prompt=messages,
-        response=result,
-        metadata={
-            "chunk_ids": [c.get("source_id") for c in chunks],
-            "portfolio_status": "injected" if portfolio_context else "none",
-        },
-    )
-
-    logger.info(
-        "[minimax/%s] Analysis complete: %d decisions, %d macro_events.",
-        model_name,
-        len(result.decisions),
-        len(result.macro_events),
-    )
-    return result
-
-
 async def analyze_with_provider(
     provider: str,
     model_name: str,
@@ -432,6 +215,7 @@ async def analyze_with_provider(
     current_day_info: str = "No date context available.",
     calendar_knowledge: str = "",
     macro_context: str = "",
+    summaries: dict | None = None,
 ) -> DecisionsResponse:
     """Analyzes a batch of newsletter chunks using the specified provider.
 
@@ -444,6 +228,7 @@ async def analyze_with_provider(
         current_day_info: Current date and week context.
         calendar_knowledge: Knowledge of calendar strategies.
         macro_context: Recent macro-economic indicators and anomalies.
+        summaries: Pre-filtered summary map from newsletters.
 
     Returns:
         A DecisionsResponse instance containing trading signals and macro events.
@@ -452,18 +237,6 @@ async def analyze_with_provider(
         ValueError: If the provider is not recognized.
         Exception: If the LLM API call fails after retries.
     """
-    # MiniMax uses its own raw HTTP client (not Instructor) and has no tool loop.
-    # Route it through a dedicated code path before the Instructor factory lookup.
-    if provider == "minimax":
-        return await _analyze_with_minimax(
-            model_name=model_name,
-            chunks=chunks,
-            context=context,
-            portfolio_context=portfolio_context,
-            current_day_info=current_day_info,
-            calendar_knowledge=calendar_knowledge,
-            macro_context=macro_context,
-        )
 
     factory = clients.CLIENT_FACTORIES.get(provider)
     if factory is None:
@@ -472,10 +245,22 @@ async def analyze_with_provider(
     client = factory()
 
     try:
-        # Construct batch prompt
-        news_content = "".join(
-            [f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n" for chunk in chunks]
-        )
+        # Construct batch prompt (menu summaries if available, fallback to full text)
+        if summaries:
+            news_content_parts = []
+            for chunk in chunks:
+                source_id = chunk["source_id"]
+                summary_text = summaries.get(source_id, "No summary available.")
+                sender = chunk.get("sender", "Unknown")
+                subject = chunk.get("subject", "No Subject")
+                news_content_parts.append(
+                    f"- Source ID: {source_id}\n  Sender: {sender}\n  Subject: {subject}\n  Summary: {summary_text}"
+                )
+            news_content = "\n".join(news_content_parts)
+        else:
+            news_content = "".join(
+                [f"\n---\nSource ID: {chunk['source_id']}\nContent: {chunk['content']}\n---\n" for chunk in chunks]
+            )
 
         # Extract held tickers from portfolio context for quick reference
         held_tickers = _extract_held_tickers(portfolio_context)
@@ -530,6 +315,11 @@ async def analyze_with_provider(
             from .handlers import gemini
 
             await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=enable_web_search)
+        elif provider == "minimax":
+            from .handlers import openai
+
+            # MiniMax is OpenAI API compatible and runs the same tool loop handler
+            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
 
         # Keep an unflattened copy of the message history for tool call verification
         # right after the tool loops run and BEFORE any flattening or preparation mutations.
@@ -736,6 +526,12 @@ async def analyze_with_provider(
 
                 await gemini.run_tool_loop(
                     raw_client, model_name, unflattened_messages, enable_google_search=enable_web_search
+                )
+            elif provider == "minimax":
+                from .handlers import openai
+
+                await openai.run_tool_loop(
+                    raw_client, model_name, unflattened_messages, provider, enable_web_search=enable_web_search
                 )
 
             # Re-prepare messages for Instructor extraction from the updated unflattened history

@@ -17,6 +17,9 @@ SYSTEM_PROMPT_CONSTRAINTS_HEADER = (
     "Use tools to verify market data, search for breaking news, and return structured decisions. "
     "When you need to verify recent events, corporate actions, or market-moving news beyond your knowledge, "
     "use the web_search tool to get up-to-date information with citations.\n\n"
+    "=== NEWS & HISTORY ON-DEMAND TOOLS ===\n"
+    '1. The user prompt provides today\'s "Newsletter Summary & Menu". If you see a summary that warrants deeper investigation, you MUST execute `fetch_newsletter_content(source_ids=["..."])` to get the full de-advertised text before making your decision. Do not guess raw newsletter details.\n'
+    '2. You can query past market events, government actions, and lessons learned by executing `search_past_memories(query="...", limit=5)`. Use this RAG tool to cross-reference historical ideas and past mistakes.\n\n'
     "=== HOW PRICES WORK ===\n"
     "The system pre-fetches and injects current market prices as VERIFIED MARKET DATA in your prompt. "
     "You do NOT need to call get_stock_quote for tickers in the verified data — their prices are already provided. "

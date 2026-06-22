@@ -49,12 +49,22 @@ def get_gemini_client(api_key: str | None = None):
     return instructor.from_genai(client, mode=instructor.Mode.GENAI_TOOLS)
 
 
+def get_minimax_client(api_key: str | None = None):
+    """Creates an async MiniMax client wrapped with Instructor.
+
+    Uses the OpenAI SDK pointed to MiniMax's base URL.
+    """
+    key = api_key or config.MINIMAX_API_KEY
+    return instructor.from_openai(AsyncOpenAI(api_key=key, base_url="https://api.minimax.io/v1", timeout=TIMEOUT))
+
+
 # Provider Registry
 CLIENT_FACTORIES = {
     "openai": get_openai_client,
     "anthropic": get_anthropic_client,
     "deepseek": get_deepseek_client,
     "gemini": get_gemini_client,
+    "minimax": get_minimax_client,
 }
 
 

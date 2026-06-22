@@ -15,7 +15,7 @@ executing trades, and running feedback loops.
 - **Ingestion** (`ingest/`) — Gmail API fetching, ad removal, calendar scraping
 - **Analysis** (`analysis/`) — LLM orchestration, Discovery Agent, momentum tracking, [[sources/correlation-matrix-source]]
 - **Macro Tracker** (`core/macro_tracker.py`) — 23-ticker global regime monitoring (equities, intl, commodities, fixed income, FX/risk, crypto)
-- **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek (plus a raw JSON-structured direct provider client for MiniMax-M3)
+- **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax-M3 (fully integrated into the standard tool-calling and Instructor pipeline)
 - **Execution** (`execution/`) — validation, Reg T checks, portfolio management (and the simplified market-order pipeline for MiniMax)
 - **Memory** (`memory/`) — pgvector embeddings, RAG retrieval, deduplication
 - **Attribution** (`attribution/`) — decision persistence and trade linking

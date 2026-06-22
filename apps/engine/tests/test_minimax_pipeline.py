@@ -46,44 +46,43 @@ class TestMinimaxAnalysisProvider:
     async def test_minimax_returns_decisions_response(self):
         """MiniMax provider branch returns a DecisionsResponse with parsed decisions."""
         from core.llm.analysis import analyze_with_provider
-        from core.llm.minimax import MiniMaxClient
+        from core.models import DecisionObject, DecisionsResponse
 
-        decision_json = _make_decision_response_json(
+        decisions_resp = DecisionsResponse(
             decisions=[
-                {
-                    "signal": "BUY",
-                    "confidence": 75,
-                    "reasoning": "Strong earnings beat.",
-                    "ticker": "AAPL",
-                    "catalyst_type": "EARNINGS",
-                    "catalyst_duration": "SHORT_TERM",
-                    "source_id": "test-chunk-001",
-                    "allocation_percentage": 20,
-                }
-            ]
+                DecisionObject(
+                    signal="BUY",
+                    confidence=75,
+                    reasoning="Strong earnings beat.",
+                    ticker="AAPL",
+                    catalyst_type="EARNINGS",
+                    catalyst_duration="SHORT_TERM",
+                    source_id="test-chunk-001",
+                    allocation_percentage=20,
+                )
+            ],
+            macro_events=[],
         )
 
-        mock_chat_response = {
-            "content": decision_json,
-            "model": MINIMAX_MODEL,
-            "finish_reason": "stop",
-            "usage": {"input_tokens": 100, "output_tokens": 50},
-            "processing_time_ms": 500,
-        }
+        mock_client = MagicMock()
+        mock_client.client = MagicMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=decisions_resp)
+        mock_factory = MagicMock(return_value=mock_client)
 
-        with patch("core.config.MINIMAX_API_KEY", "fake-minimax-key"):
-            with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)):
-                with patch.object(MiniMaxClient, "close", new=AsyncMock()):
-                    result = await analyze_with_provider(
-                        provider="minimax",
-                        model_name=MINIMAX_MODEL,
-                        chunks=[{"source_id": "test-chunk-001", "content": "Apple earnings beat."}],
-                        context="",
-                        portfolio_context="Cash Balance: $10,000",
-                        current_day_info="Today is Monday.",
-                        calendar_knowledge="",
-                        macro_context="",
-                    )
+        with (
+            patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
+            patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+        ):
+            result = await analyze_with_provider(
+                provider="minimax",
+                model_name=MINIMAX_MODEL,
+                chunks=[{"source_id": "test-chunk-001", "content": "Apple earnings beat."}],
+                context="",
+                portfolio_context="Cash Balance: $10,000",
+                current_day_info="Today is Monday.",
+                calendar_knowledge="",
+                macro_context="",
+            )
 
         assert len(result.decisions) == 1
         assert result.decisions[0].ticker == "AAPL"
@@ -93,67 +92,63 @@ class TestMinimaxAnalysisProvider:
     async def test_minimax_graceful_fallback_on_parse_error(self):
         """MiniMax returns empty DecisionsResponse on unparseable LLM output."""
         from core.llm.analysis import analyze_with_provider
-        from core.llm.minimax import MiniMaxClient
 
-        mock_chat_response = {
-            "content": "I'm sorry, I cannot make a trading decision right now.",
-            "model": MINIMAX_MODEL,
-            "finish_reason": "stop",
-            "usage": {"input_tokens": 50, "output_tokens": 20},
-            "processing_time_ms": 200,
-        }
+        mock_client = MagicMock()
+        mock_client.client = MagicMock()
+        mock_client.chat.completions.create = AsyncMock(side_effect=Exception("validation error"))
+        mock_factory = MagicMock(return_value=mock_client)
 
-        with patch("core.config.MINIMAX_API_KEY", "fake-minimax-key"):
-            with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)):
-                with patch.object(MiniMaxClient, "close", new=AsyncMock()):
-                    result = await analyze_with_provider(
-                        provider="minimax",
-                        model_name=MINIMAX_MODEL,
-                        chunks=[{"source_id": "test-chunk-002", "content": "Some news."}],
-                        context="",
-                        portfolio_context="",
-                        current_day_info="",
-                        calendar_knowledge="",
-                        macro_context="",
-                    )
+        with (
+            patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
+            patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+        ):
+            result = await analyze_with_provider(
+                provider="minimax",
+                model_name=MINIMAX_MODEL,
+                chunks=[{"source_id": "test-chunk-002", "content": "Some news."}],
+                context="",
+                portfolio_context="",
+                current_day_info="",
+                calendar_knowledge="",
+                macro_context="",
+            )
 
         assert result.decisions == []
         assert result.macro_events == []
 
     @pytest.mark.asyncio
-    async def test_minimax_no_tool_loop_called(self):
-        """MiniMax must NOT trigger an OpenAI/Anthropic tool loop — it calls chat() directly."""
+    async def test_minimax_tool_loop_called(self):
+        """MiniMax must trigger the OpenAI tool loop handler since it supports tool calling."""
         from core.llm.analysis import analyze_with_provider
-        from core.llm.minimax import MiniMaxClient
 
-        # Spy on the handlers to ensure they are NOT called
-        mock_chat_response = {
-            "content": _make_decision_response_json(),
-            "model": MINIMAX_MODEL,
-            "finish_reason": "stop",
-            "usage": {"input_tokens": 10, "output_tokens": 5},
-            "processing_time_ms": 100,
-        }
+        mock_instructor_client = MagicMock()
+        mock_instructor_client.client = MagicMock()  # raw client
 
-        with patch("core.config.MINIMAX_API_KEY", "fake-minimax-key"):
-            with patch.object(MiniMaxClient, "chat", new=AsyncMock(return_value=mock_chat_response)) as mock_chat:
-                with patch.object(MiniMaxClient, "close", new=AsyncMock()):
-                    with patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop:
-                        with patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthropic_loop:
-                            await analyze_with_provider(
-                                provider="minimax",
-                                model_name=MINIMAX_MODEL,
-                                chunks=[{"source_id": "s1", "content": "News."}],
-                                context="",
-                                portfolio_context="",
-                                current_day_info="",
-                                calendar_knowledge="",
-                                macro_context="",
-                            )
+        # Mock the factory to return our mock instructor client
+        with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
+            mock_factory = MagicMock(return_value=mock_instructor_client)
+            mock_factories.get.return_value = mock_factory
 
-        mock_chat.assert_called_once()
-        mock_openai_loop.assert_not_called()
-        mock_anthropic_loop.assert_not_called()
+            with patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop:
+                # Also mock the final Instructor extraction call to return a DecisionsResponse
+                from core.models import DecisionsResponse
+
+                mock_instructor_client.chat.completions.create = AsyncMock(
+                    return_value=DecisionsResponse(decisions=[], macro_events=[])
+                )
+
+                await analyze_with_provider(
+                    provider="minimax",
+                    model_name=MINIMAX_MODEL,
+                    chunks=[{"source_id": "s1", "content": "News."}],
+                    context="",
+                    portfolio_context="",
+                    current_day_info="",
+                    calendar_knowledge="",
+                    macro_context="",
+                )
+
+        mock_openai_loop.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

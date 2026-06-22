@@ -1,20 +1,3 @@
-## [2026-06-15] refactor | Remove unused Badge dot variant and Card ghost variant
-
-Removed `dot` variant from Badge primitive and `ghost` variant from Card primitive in the design system. Cleaned up related styles and conditional rendering. The Badge `showDot` prop remains for backward-compatible dot indicators. The Card ghost variant was removed as unused. Minor layout fixes applied to PortfoliosPage cards (h-full, flex, mt-auto) for equal-height card grid. Added unit test for card layout.
-
-## [2026-06-15] enhancement | Enhanced Market Feeling Card with Confidence Bar, Concerns, and Metadata
-
-- Added `MarketFeelingCard` component with `ConfidenceBar`, `ConcernsSection`, and `MetadataFooter` subcomponents.
-- New `fetchLatestMarketFeeling` server function queries `market_feeling` table directly.
-- Populated new fields: `sentimentLabel`, `sentimentEmoji`, `confidence`, `primaryConcern`, `secondaryConcern`, `modelUsed`, `lastAnalyzed`.
-- Improved caching in `fetchTodayData`: cache bypass adjusted to compare against cached limit instead of hardcoded 50; exported `clearTodayDataCache` for testing.
-- Routes updated to use `fetchLatestMarketFeeling` and `formatEasternTime`.
-- Tests added for new market feeling flow and cache behavior.
-
-## [2026-06-15] bugfix | Fix portfolio performance window truncation when a new portfolio starts
-
-The `fetchAllActivePortfolioPerformance` function incorrectly used the most recent portfolio start date to trim the performance window, causing older portfolios' history to be clipped whenever a new portfolio was created on the current day. This was corrected to use the earliest start date across all active portfolios, preserving full historical data for each agent while still honoring the `maxDays` parameter. A regression test was added to prevent future regressions.
-
 ## [2026-06-15] bugfix | Fix portfolios page benchmark selection cache pollution
 
 Resolved a bug where selecting alternative benchmarks (such as QQQ, GLD, TLT) in the portfolios comparison chart failed to display their respective performance lines:
@@ -299,4 +282,27 @@ Aligned the prompt auto-research engine and dashboard status definitions with th
 
 **See**: [[entities/sector-predictor-arena]], [[entities/autoresearch]], [prompt_store.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/prompt_store.py), [predictor_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/predictor_autoresearch.py)
 
+## [2026-06-22] feature | On-Demand News Summaries, Dynamic RAG, and MiniMax Tool Calling Integration
+
+Implemented a hybrid newsletter summary pre-filtering and dynamic retrieval mechanism, dynamic pgvector memories search, and native tool-calling integration for the MiniMax model:
+- **Newsletter Menu Triage**: Added a pre-filtering task (`apps/engine/analysis/pre_filter.py`) utilizing `deepseek-v4-flash` via Instructor to generate concise 1-2 sentence summaries (`NewsletterTriageResponse`) of daily newsletter chunks. These summaries are formatted as a menu inside the Analysis Agent prompt instead of the full raw emails to reduce token bloat.
+- **Dynamic Content Fetching**: Added a `fetch_newsletter_content` tool to retrieve the full de-advertised text of target newsletters from the database on demand when a menu summary warrants deeper investigation.
+- **Dynamic memories RAG**: Added a `search_past_memories` tool allowing the Analysis Agent to execute dynamic pgvector semantic searches against past events and historical trade lessons.
+- **MiniMax Tool Calling**: Configured `MiniMax-M3` to use the standard OpenAI tool execution handler, enabling native tool calling and Instructor structured output extraction, and bypassing the raw text JSON repair pipeline during primary analysis.
+- **System Prompt & Auto-Research Compatibility**: Embedded the instructions for the new on-demand tools inside the immutable `SYSTEM_PROMPT_CONSTRAINTS_HEADER` constant to keep them safe from auto-research weekly modifications.
+- **TDD Verification**: Authored `test_newsletter_menu_flow.py` and updated call counts in `test_call_counts.py` and minimax pipeline integration tests in `test_minimax_pipeline.py`. 100% of tests pass.
+
+**See**: [[concepts/rag-strategy]], [[concepts/minimax-portfolio]], [[concepts/agents]], [[entities/engine]], [pre_filter.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/pre_filter.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_newsletter_menu_flow.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_newsletter_menu_flow.py)
+
+## [2026-06-22] feature | Newsletter Pre-Filter, Dynamic RAG Tools, and MiniMax Tool-Calling Integration
+
+Implemented a hybrid newsletter summary pre-filtering and dynamic retrieval mechanism, dynamic pgvector memories search, and native tool-calling integration for the MiniMax model:
+- **Newsletter Menu Triage**: Added a pre-filtering task (`apps/engine/analysis/pre_filter.py`) utilizing `deepseek-v4-flash` via Instructor to generate concise 1-2 sentence summaries (`NewsletterTriageResponse`) of daily newsletter chunks. These summaries are formatted as a menu inside the Analysis Agent prompt instead of the full raw emails to reduce token bloat.
+- **Dynamic Content Fetching**: Added a `fetch_newsletter_content` tool to retrieve the full de-advertised text of target newsletters from the database on demand when a menu summary warrants deeper investigation.
+- **Dynamic memories RAG**: Added a `search_past_memories` tool allowing the Analysis Agent to execute dynamic pgvector semantic searches against past events and historical trade lessons.
+- **MiniMax Tool Calling**: Configured `MiniMax-M3` to use the standard OpenAI tool execution handler, enabling native tool calling and Instructor structured output extraction, and bypassing the raw text JSON repair pipeline during primary analysis.
+- **System Prompt & Auto-Research Compatibility**: Embedded the instructions for the new on-demand tools inside the immutable `SYSTEM_PROMPT_CONSTRAINTS_HEADER` constant to keep them safe from auto-research weekly modifications.
+- **TDD Verification**: Authored `test_newsletter_menu_flow.py` and updated call counts in `test_call_counts.py` and minimax pipeline integration tests in `test_minimax_pipeline.py`. 100% of tests pass.
+
+**See**: [[concepts/rag-strategy]], [[concepts/minimax-portfolio]], [[concepts/agents]], [[entities/engine]], [pre_filter.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/pre_filter.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_newsletter_menu_flow.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_newsletter_menu_flow.py)
 

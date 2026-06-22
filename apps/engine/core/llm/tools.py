@@ -503,6 +503,48 @@ GET_PREDICTION_MARKET_ODDS_TOOL = {
 }
 
 
+FETCH_NEWSLETTER_CONTENT_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "fetch_newsletter_content",
+        "description": "Fetch the full text content of one or more newsletter articles using their source IDs from today's menu.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "source_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of source IDs (e.g. ['news_goldmansachs_8b21c43f']) to fetch.",
+                }
+            },
+            "required": ["source_ids"],
+        },
+    },
+}
+
+SEARCH_PAST_MEMORIES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_past_memories",
+        "description": "Perform a semantic vector search (RAG) against past market events, government incentives, lessons learned, and historical trade reasoning.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Semantic query describing the topic, ticker, or historical pattern to search for.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of historical snippets to return (default 5).",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+}
+
+
 # =============================================================================
 # TOOL EXECUTION
 # =============================================================================
@@ -1464,3 +1506,75 @@ async def execute_financial_valuation_tool(
     except Exception as e:
         logger.exception(f"Error executing valuation audit for {ticker}: {str(e)}")
         return f"Error executing valuation audit for {ticker}: {str(e)}"
+
+
+async def execute_fetch_newsletter_content_tool(source_ids: list[str]) -> str:
+    """Retrieves the full text content of newsletters by their source IDs from the database.
+
+    Args:
+        source_ids: A list of source_id strings.
+
+    Returns:
+        A formatted string with the full content of requested newsletters.
+    """
+    if not source_ids:
+        return "No source IDs specified."
+
+    try:
+        client = get_supabase_client()
+        response = (
+            client.table("newsletter_snapshots")
+            .select("source_id, content, sender, subject, date")
+            .in_("source_id", source_ids)
+            .execute()
+        )
+
+        if not response.data:
+            return f"No newsletters found matching IDs: {source_ids}"
+
+        output = []
+        for item in response.data:
+            output.append(
+                f"=========================================\n"
+                f"Source ID: {item.get('source_id')}\n"
+                f"Sender: {item.get('sender', 'Unknown')}\n"
+                f"Subject: {item.get('subject', 'No Subject')}\n"
+                f"Date: {item.get('date', 'Unknown')}\n"
+                f"-----------------------------------------\n"
+                f"{item.get('content', '')}\n"
+                f"========================================="
+            )
+
+        return "\n\n".join(output)
+
+    except Exception as e:
+        logger.exception(f"Error executing fetch_newsletter_content tool: {e}")
+        return f"Error fetching newsletter content: {str(e)}"
+
+
+async def execute_search_past_memories_tool(query: str, limit: int = 5) -> str:
+    """Performs a semantic pgvector search against past memories and model trade decisions.
+
+    Args:
+        query: Semantic query text.
+        limit: Max context snippets to return.
+
+    Returns:
+        Formatted context string of vector search results.
+    """
+    if not query:
+        return "No query specified."
+
+    try:
+        from memory.store import retrieve_context
+
+        # retrieve_context runs the embedding call and match_memories/match_decisions RPCs
+        context = retrieve_context(query, limit=limit)
+        if not context:
+            return f"No relevant past memories or decisions found matching query: '{query}'."
+
+        return context
+
+    except Exception as e:
+        logger.exception(f"Error executing search_past_memories tool: {e}")
+        return f"Error performing historical RAG search: {str(e)}"

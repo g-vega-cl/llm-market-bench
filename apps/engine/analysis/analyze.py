@@ -75,6 +75,11 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     # 1. Filter malformed chunks and aggregate historical context
     valid_chunks = [c for c in chunks if c.get("source_id") and c.get("content")]
 
+    # Pre-filter newsletters to generate a concise summary menu
+    from .pre_filter import summarize_newsletters
+
+    summaries = await summarize_newsletters(valid_chunks)
+
     if len(valid_chunks) < len(chunks):
         logger.warning(f"Skipped {len(chunks) - len(valid_chunks)} malformed chunks.")
 
@@ -207,6 +212,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                     current_day_info=day_info,
                     calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
                     macro_context=macro_context_str,
+                    summaries=summaries,
                 )
             )
             task_configs.append(config)  # Track this task's model info
@@ -321,6 +327,11 @@ async def analyze_chunks_streaming(chunks: list[dict]):
         return
 
     valid_chunks = [c for c in chunks if c.get("source_id") and c.get("content")]
+
+    # Pre-filter newsletters to generate a concise summary menu
+    from .pre_filter import summarize_newsletters
+
+    summaries = await summarize_newsletters(valid_chunks)
 
     if len(valid_chunks) < len(chunks):
         logger.warning(f"Skipped {len(chunks) - len(valid_chunks)} malformed chunks.")
@@ -439,6 +450,7 @@ async def analyze_chunks_streaming(chunks: list[dict]):
                     current_day_info=day_info,
                     calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
                     macro_context=macro_context_str,
+                    summaries=summaries,
                 )
             )
             task_configs.append(config)

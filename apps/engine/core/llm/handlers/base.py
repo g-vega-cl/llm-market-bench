@@ -72,4 +72,8 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             discount_rate=args.get("discount_rate"),
             terminal_growth=args.get("terminal_growth", 0.025),
         )
+    elif name == "fetch_newsletter_content":
+        return await tools.execute_fetch_newsletter_content_tool(args["source_ids"])
+    elif name == "search_past_memories":
+        return await tools.execute_search_past_memories_tool(args["query"], args.get("limit", 5))
     return "Unknown tool"

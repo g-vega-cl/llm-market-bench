@@ -5,6 +5,7 @@ import {
     fetchBenchmarkHistory,
     fetchPortfolios,
 } from '~/features/portfolios/api/fetch-portfolios';
+import { BENCHMARK_OPTIONS } from '~/features/portfolios/components/BenchmarkSelector';
 import { PortfoliosPage } from '~/features/portfolios/pages/PortfoliosPage';
 
 const getPortfolios = createServerFn({ method: 'GET' }).handler(async () => {
@@ -15,7 +16,7 @@ const getComparisonData = createServerFn({ method: 'GET' }).handler(async () => 
     const { portfolios, startDate, endDate } = await fetchAllActivePortfolioPerformance(
         36500, // 100 years (full history)
     );
-    const benchmarks = ['SPY', 'QQQ', 'DIA', 'IWM'];
+    const benchmarks = BENCHMARK_OPTIONS.map((opt) => opt.ticker);
     const benchmarkData = await fetchBenchmarkHistory(benchmarks, startDate, endDate);
     return { portfolios, startDate, endDate, benchmarkData };
 });

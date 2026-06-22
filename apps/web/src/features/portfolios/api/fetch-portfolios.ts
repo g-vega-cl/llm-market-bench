@@ -302,22 +302,34 @@ export async function fetchBenchmarkHistory(
     if (tickers.length === 0) return {};
 
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-        .from('price_history')
-        .select('ticker, price, fetched_at')
-        .in('ticker', tickers)
-        .gte('fetched_at', startDate)
-        .lte('fetched_at', endDate)
-        .order('fetched_at', { ascending: true });
+    const allData: { ticker: string; price: number; fetched_at: string }[] = [];
+    const limit = 1000;
+    let from = 0;
 
-    if (error) throw error;
+    while (true) {
+        const { data, error } = await supabase
+            .from('price_history')
+            .select('ticker, price, fetched_at')
+            .in('ticker', tickers)
+            .gte('fetched_at', startDate)
+            .lte('fetched_at', endDate)
+            .order('fetched_at', { ascending: true })
+            .range(from, from + limit - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        allData.push(...data);
+        if (data.length < limit) break;
+        from += limit;
+    }
 
     const result: Record<string, BenchmarkDataPoint[]> = {};
     for (const ticker of tickers) {
         result[ticker] = [];
     }
 
-    data?.forEach((row) => {
+    allData.forEach((row) => {
         if (result[row.ticker]) {
             const date = row.fetched_at.split('T')[0];
             const existingIndex = result[row.ticker].findIndex((d) => d.date === date);

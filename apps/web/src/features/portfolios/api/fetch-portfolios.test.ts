@@ -31,8 +31,16 @@ vi.mock('../lib/config', () => ({
 }));
 
 function createMockSupabaseClient(mockData: PriceHistoryRecord[]): MockSupabaseChain {
+    let callCount = 0;
     const chain: MockSupabaseChain = {
-        order: vi.fn(() => Promise.resolve({ data: mockData, error: null })),
+        range: vi.fn(() => {
+            if (callCount === 0) {
+                callCount++;
+                return Promise.resolve({ data: mockData, error: null });
+            }
+            return Promise.resolve({ data: [], error: null });
+        }),
+        order: vi.fn(() => chain),
         lte: vi.fn(() => chain),
         gte: vi.fn(() => chain),
         in: vi.fn(() => chain),
@@ -167,4 +175,46 @@ test('fetchAllActivePortfolioPerformance does not restrict older portfolios when
     expect(oldPortfolio?.performance).toHaveLength(3);
     expect(oldPortfolio?.performance[0].date).toBe('2026-06-08');
     expect(newPortfolio?.performance).toHaveLength(1);
+});
+
+test('fetchBenchmarkHistory paginates multiple pages when data length is equal to limit', async () => {
+    const page1Data: PriceHistoryRecord[] = Array.from({ length: 1000 }, (_, i) => ({
+        ticker: 'SPY',
+        price: 100.0 + i,
+        fetched_at: new Date(
+            new Date('2024-01-01T12:00:00Z').getTime() + i * 24 * 60 * 60 * 1000,
+        ).toISOString(),
+    }));
+
+    const page2Data: PriceHistoryRecord[] = [
+        { ticker: 'SPY', price: 2000.0, fetched_at: '2027-01-01T12:00:00Z' },
+    ];
+
+    let callCount = 0;
+    const chain: MockSupabaseChain = {
+        range: vi.fn(() => {
+            if (callCount === 0) {
+                callCount++;
+                return Promise.resolve({ data: page1Data, error: null });
+            } else if (callCount === 1) {
+                callCount++;
+                return Promise.resolve({ data: page2Data, error: null });
+            }
+            return Promise.resolve({ data: [], error: null });
+        }),
+        order: vi.fn(() => chain),
+        lte: vi.fn(() => chain),
+        gte: vi.fn(() => chain),
+        in: vi.fn(() => chain),
+        select: vi.fn(() => chain),
+        from: vi.fn(() => chain),
+    };
+    mockSupabaseClient = chain;
+
+    const result = await fetchBenchmarkHistory(['SPY'], '2024-01-01', '2027-01-01');
+
+    expect(chain.range).toHaveBeenCalledTimes(2);
+    expect(result.SPY).toHaveLength(1001);
+    expect(result.SPY[0].price).toBe(100.0);
+    expect(result.SPY[1000].price).toBe(2000.0);
 });

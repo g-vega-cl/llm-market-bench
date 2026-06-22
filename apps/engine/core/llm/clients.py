@@ -59,6 +59,13 @@ def get_minimax_client(api_key: str | None = None):
 
 
 # Provider Registry
+# NOTE: This dict is populated at import time with function references to the
+# factories above. Tests must patch `CLIENT_FACTORIES` (not the individual
+# factory functions), because patching `core.llm.clients.get_*_client` only
+# replaces the module attribute — the dict still holds the originals and
+# `verify_trading_decision` (and other callers) will invoke the real factory,
+# which constructs a real SDK client that fails on missing credentials in CI.
+# See tests/test_verification.py for the established pattern.
 CLIENT_FACTORIES = {
     "openai": get_openai_client,
     "anthropic": get_anthropic_client,

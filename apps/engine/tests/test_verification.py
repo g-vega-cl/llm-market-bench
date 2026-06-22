@@ -665,12 +665,14 @@ async def test_verification_deepseek_schema_list_vs_single():
                     confidence_score=90,
                 )
             )
-            with patch("core.llm.clients.get_deepseek_client", return_value=mock_ds_client):
-                result = await verify_trading_decision(
-                    decision=decision,
-                    portfolio_context="Cash: $10,000",
-                    aggregated_context="Historical context",
-                )
+            with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
+                mock_factories.get.return_value = MagicMock(return_value=mock_ds_client)
+                with patch("core.llm.clients.close_client", new_callable=AsyncMock):
+                    result = await verify_trading_decision(
+                        decision=decision,
+                        portfolio_context="Cash: $10,000",
+                        aggregated_context="Historical context",
+                    )
 
     assert result.status == "APPROVED"
     assert result.confidence_score == 90

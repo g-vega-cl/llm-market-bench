@@ -300,3 +300,13 @@ Implemented a hybrid newsletter summary pre-filtering and dynamic retrieval mech
 
 Five analysis test files (`test_analysis_logic.py`, `test_batch_analysis.py`, `test_resilience.py`, `test_streaming_analysis.py`, `test_verification.py`) were updated to patch `analysis.pre_filter.summarize_newsletters` with an `AsyncMock(return_value={})`. This prevents tests from calling the real newsletter summarization function during analysis orchestration, which would fail without proper API credentials in CI. The `test_verification.py` file also gained a mock for `get_deepseek_client` to bypass `AsyncOpenAI` client construction in CI, allowing the test to focus on schema handling rather than network/auth concerns.
 
+## [2026-06-22] bugfix | Fix test_verification_deepseek_schema_list_vs_single CI failure (wrong patch target)
+
+`tests/test_verification.py::test_verification_deepseek_schema_list_vs_single` failed in CI with `openai.OpenAIError: Missing credentials` despite no real API calls being made.
+
+- **Root cause**: The test patched `core.llm.clients.get_deepseek_client`, but `verify_trading_decision` (`core/llm/verification.py:62`) looks up the client via the module-level dict `CLIENT_FACTORIES`, which is populated at import time with function references. Patching the module-level function attribute does **not** update the dict — the real factory still ran and `AsyncOpenAI.__init__` enforced credentials (`_enforce_credentials=True` default), failing without `DEEPSEEK_API_KEY` in CI.
+- **Fix**: Changed the test to patch `core.llm.clients.CLIENT_FACTORIES` (with `mock_factories.get.return_value = MagicMock(return_value=mock_ds_client)`) and added a `close_client` mock — matching the convention already used by all 13 other tests in `tests/test_verification.py` and 3 in `tests/test_verification_retry.py`. Verified: the single test passes with no API keys set; full 14-test file passes.
+- **Documentation**: Added an inline warning comment above `CLIENT_FACTORIES` in `core/llm/clients.py` explaining the import-time reference capture and pointing tests at the dict-patching pattern. Updated `[[sources/engine-testing-source]]` with a "LLM Client Factory Mocking" takeaway so future tests don't repeat the mistake.
+
+**See**: [[sources/engine-testing-source]], [core/llm/clients.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/clients.py), [tests/test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py)
+

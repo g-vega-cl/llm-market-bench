@@ -1,7 +1,3 @@
-## [2026-06-16] documentation | Simplified pipeline wiki and hardcoded ingest schedule for DST
-
-The `how-it-works.json` data source has been emptied, removing the detailed 7-phase breakdown from the web UI. The [[entities/pipeline]] wiki page has been condensed to a high-level 6-phase overview with UTC schedule details. The ingest workflow cron is now hardcoded to UTC to avoid GitHub Actions DST handling bug.
-
 ## [2026-06-16] refactor | Unified HomePage dashboard with table layout
 
 Merged separate mobile/desktop views into a single responsive Dashboard component. Replaced portfolio cards with a compact table row layout, collapsed the market feeling analysis into a toggleable section, and removed the desktop-specific BenchmarkCard and MarketFeelingCard in favor of inline rows. Simplified the sentiment header and removed the background selector experiment logic.
@@ -306,4 +302,8 @@ Configured infinite staleTime cache settings for static/archival queries across 
 - **Vertical TDD Unit Tests**: Added unit test files in `src/features/concepts/queries/options.test.ts`, `src/features/reasoning/queries/options.test.ts`, and `src/features/memories/queries/options.test.ts` to assert correct staleTime configuration.
 
 **See**: [concepts/options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/queries/options.ts), [reasoning/options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/reasoning/queries/options.ts), [memories/options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/queries/options.ts)
+
+## [2026-06-23] refactor | MiniMax provider switches to Anthropic SDK handler for tool calling
+
+MiniMax analysis now uses the Anthropic handler (`anthropic.run_tool_loop`) instead of the OpenAI handler. This aligns with the simplified MiniMax pipeline: no web search, `max_tokens=32000`, and system message handling via Anthropic conventions. The change affects both initial analysis and retry loops. Additionally, the batch analysis orchestrator now logs gather exceptions with `exc_info=res` to include the actual traceback, fixing a `NoneType: None` issue.
 

@@ -9,7 +9,9 @@ flows (market_feeling, sector_predictor) that don't need tool calling.
 
 import os
 import sys
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
@@ -99,4 +101,90 @@ def test_analyze_with_provider_minimax_dispatches_to_anthropic_handler():
 
         # Anthropic tool loop was called; OpenAI tool loop was not
         mock_anthro_loop.assert_called_once()
+        mock_openai_loop.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_minimax_parameters_and_system_message():
+    """Verify that provider='minimax' correctly passes max_tokens and system message to the Anthropic client."""
+    from core.llm import analysis as analysis_mod
+    from core.models import DecisionsResponse
+
+    decisions_resp = DecisionsResponse(decisions=[], macro_events=[])
+    mock_client = MagicMock()
+    mock_client.client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=decisions_resp)
+    mock_factory = MagicMock(return_value=mock_client)
+
+    with (
+        patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
+        patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()),
+    ):
+        await analysis_mod.analyze_with_provider(
+            provider="minimax",
+            model_name="MiniMax-M3",
+            chunks=[{"source_id": "s1", "content": "Test news"}],
+            context="",
+            portfolio_context="Cash: $10k",
+            current_day_info="",
+            calendar_knowledge="",
+            macro_context="",
+        )
+
+        assert mock_client.chat.completions.create.called
+        kwargs = mock_client.chat.completions.create.call_args.kwargs
+
+        assert "max_tokens" in kwargs
+        assert kwargs["max_tokens"] == 32000
+        assert "system" in kwargs
+        assert kwargs["system"] is not None
+
+
+@pytest.mark.asyncio
+async def test_minimax_retry_routes_to_anthropic_handler():
+    """Verify that when a tool retry occurs for minimax, it routes to the anthropic handler, not openai."""
+    from core.llm import analysis as analysis_mod
+    from core.models import DecisionObject, DecisionsResponse
+
+    decisions_resp_with_buy = DecisionsResponse(
+        decisions=[
+            DecisionObject(
+                ticker="MU",
+                signal="BUY",
+                confidence=90,
+                reasoning="Buy MU because of semiconductor demand.",
+                catalyst_type="EARNINGS",
+                catalyst_duration="SHORT_TERM",
+                source_id="s1",
+                allocation_percentage=10,
+                buy_tool_called=False,
+            )
+        ],
+        macro_events=[],
+    )
+
+    mock_client = MagicMock()
+    mock_client.client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(
+        side_effect=[decisions_resp_with_buy, DecisionsResponse(decisions=[], macro_events=[])]
+    )
+    mock_factory = MagicMock(return_value=mock_client)
+
+    with (
+        patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
+        patch("core.llm.handlers.anthropic.run_tool_loop", new=AsyncMock()) as mock_anthro_loop,
+        patch("core.llm.handlers.openai.run_tool_loop", new=AsyncMock()) as mock_openai_loop,
+    ):
+        await analysis_mod.analyze_with_provider(
+            provider="minimax",
+            model_name="MiniMax-M3",
+            chunks=[{"source_id": "s1", "content": "Test news"}],
+            context="",
+            portfolio_context="Cash: $10k",
+            current_day_info="",
+            calendar_knowledge="",
+            macro_context="",
+        )
+
+        assert mock_anthro_loop.call_count == 2
         mock_openai_loop.assert_not_called()

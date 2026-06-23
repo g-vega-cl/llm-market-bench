@@ -117,3 +117,35 @@ async def test_analyze_chunks_batch(mock_llm_analyze, mock_retrieve_context, moc
     # Verify attribution metadata was attached
     assert decisions[0].model_provider is not None
     assert decisions[0].model_name is not None
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_logs_gather_exceptions_with_exc_info():
+    """Verify that the orchestrator logs returned gather exceptions with exc_info=res so traceback is not NoneType: None."""
+    from unittest.mock import patch
+
+    with (
+        patch("analysis.analyze.retrieve_top_memories", return_value=[]),
+        patch("analysis.analyze.get_top_trending_concepts", return_value=[]),
+        patch("analysis.analyze.Portfolio.initialize", new=AsyncMock()),
+        patch("analysis.analyze.Portfolio.calculate_reg_t_metrics"),
+        patch("analysis.analyze.Portfolio.save_metrics", new=AsyncMock()),
+        patch("analysis.analyze.Portfolio.get_portfolio_summary", new=AsyncMock(return_value="")),
+        patch("core.macro_tracker.get_global_macro_context", new=AsyncMock(return_value="")),
+        patch("core.llm.analyze_with_provider", side_effect=ValueError("Test gather exception")),
+        patch("analysis.analyze.logger") as mock_logger,
+    ):
+        await analyze_chunks([{"source_id": "s1", "content": "Test news", "sender": "s", "subject": "subj"}])
+
+        assert mock_logger.error.called
+        calls = mock_logger.error.call_args_list
+        found = False
+        for call in calls:
+            if "Batch analysis task failed" in call.args[0]:
+                kwargs = call.kwargs
+                assert "exc_info" in kwargs
+                assert isinstance(kwargs["exc_info"], ValueError)
+                found = True
+        assert found
+        for call in mock_logger.exception.call_args_list:
+            assert "Batch analysis task failed" not in call.args[0]

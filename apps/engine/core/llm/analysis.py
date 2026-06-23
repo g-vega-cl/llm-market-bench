@@ -354,7 +354,7 @@ async def analyze_with_provider(
                 )
 
         # Anthropic-specific: flatten nested content blocks for Instructor compatibility
-        if provider == "anthropic":
+        if provider in ("anthropic", "minimax"):
             flattened = []
             for m in messages:
                 if isinstance(m, dict):
@@ -386,7 +386,7 @@ async def analyze_with_provider(
         if provider == "deepseek" and "deepseek" in model_name.lower():
             final_args["extra_body"] = {"thinking": {"type": "enabled"}}
 
-        if provider == "anthropic":
+        if provider in ("anthropic", "minimax"):
             final_args["max_tokens"] = 32000  # Increased from 8000 to handle long outputs
             if messages[0]["role"] == "system":
                 final_args["system"] = messages[0]["content"]
@@ -537,11 +537,9 @@ async def analyze_with_provider(
                     raw_client, model_name, unflattened_messages, enable_google_search=enable_web_search
                 )
             elif provider == "minimax":
-                from .handlers import openai
+                from .handlers import anthropic
 
-                await openai.run_tool_loop(
-                    raw_client, model_name, unflattened_messages, provider, enable_web_search=enable_web_search
-                )
+                await anthropic.run_tool_loop(raw_client, model_name, unflattened_messages, enable_web_search=False)
 
             # Re-prepare messages for Instructor extraction from the updated unflattened history
             messages_retry = copy.deepcopy(unflattened_messages)
@@ -562,7 +560,7 @@ async def analyze_with_provider(
                         }
                     )
 
-            if provider == "anthropic":
+            if provider in ("anthropic", "minimax"):
                 flattened = []
                 for m in messages_retry:
                     if isinstance(m, dict):
@@ -590,7 +588,7 @@ async def analyze_with_provider(
             if provider == "deepseek" and "deepseek" in model_name.lower():
                 final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}
 
-            if provider == "anthropic":
+            if provider in ("anthropic", "minimax"):
                 final_args_retry["max_tokens"] = 32000
                 if messages_retry[0]["role"] == "system":
                     final_args_retry["system"] = messages_retry[0]["content"]

@@ -234,7 +234,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
             config = task_configs[i]  # Use the tracked config for this specific task
 
             if isinstance(res, Exception):
-                logger.exception(f"Batch analysis task failed for {config['provider']} ({config['model']})")
+                logger.error(f"Batch analysis task failed for {config['provider']} ({config['model']})", exc_info=res)
             else:
                 # res is a DecisionsResponse object
                 # Process decisions

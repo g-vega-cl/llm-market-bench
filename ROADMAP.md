@@ -104,5 +104,3 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Get option information. Like Greeks, implied volatility, etc... Maybe from FMP?
 - [ ] - Benchify: check if "today vibes" also includes the emails. Also maybe add the FMP summary to it too.
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs
-- [ ] - Leaderboard: The 7/30/90 day filter is not changing the return % in the card depending on the value.
-- [ ] - the graph in portfolios used to show only the dates from the latest portfolio added, can we actually make it so we show x days of history? Maybe a predetermined 7d,30d,90d, all?

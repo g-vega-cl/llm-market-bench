@@ -307,3 +307,14 @@ Configured infinite staleTime cache settings for static/archival queries across 
 
 MiniMax analysis now uses the Anthropic handler (`anthropic.run_tool_loop`) instead of the OpenAI handler. This aligns with the simplified MiniMax pipeline: no web search, `max_tokens=32000`, and system message handling via Anthropic conventions. The change affects both initial analysis and retry loops. Additionally, the batch analysis orchestrator now logs gather exceptions with `exc_info=res` to include the actual traceback, fixing a `NoneType: None` issue.
 
+## [2026-06-23] bugfix | Fix test_orchestrator_logs_gather_exceptions_with_exc_info CI failure
+
+The test `test_orchestrator_logs_gather_exceptions_with_exc_info` was failing in CI/CD environments with `openai.OpenAIError: Missing credentials`.
+
+- **Root cause**: The test calls `analyze_chunks`, which executes the `summarize_newsletters` pre-filtering step. This step initializes the DeepSeek LLM client, failing when credentials are not present.
+- **Fix**: Added a patch for `analysis.pre_filter.summarize_newsletters` returning `AsyncMock(return_value={})` within the test's mock context manager.
+- **Verification**: Verified that the test and entire suite pass locally without any environment variables.
+
+**See**: [tests/test_batch_analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_batch_analysis.py)
+
+

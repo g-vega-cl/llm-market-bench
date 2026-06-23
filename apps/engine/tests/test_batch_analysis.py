@@ -133,6 +133,7 @@ async def test_orchestrator_logs_gather_exceptions_with_exc_info():
         patch("analysis.analyze.Portfolio.get_portfolio_summary", new=AsyncMock(return_value="")),
         patch("core.macro_tracker.get_global_macro_context", new=AsyncMock(return_value="")),
         patch("core.llm.analyze_with_provider", side_effect=ValueError("Test gather exception")),
+        patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
         patch("analysis.analyze.logger") as mock_logger,
     ):
         await analyze_chunks([{"source_id": "s1", "content": "Test news", "sender": "s", "subject": "subj"}])

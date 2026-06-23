@@ -1,3 +1,11 @@
+## [2026-06-23] fix | Schedule daily S&P 500 Market Health Barometer aggregator
+
+Scheduled the daily barometer aggregator script to run automatically after market close:
+- **Automation Schedule**: Created a new GitHub Actions workflow [update-barometer.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/update-barometer.yml) that runs `update_market_barometer.py` every weekday at 21:00 UTC (5 PM EDT / 4 PM EST).
+- **Audit Verification**: Manually ran `update_market_barometer.py` to successfully backfill the missing daily barometer records and verified that constituent-level data is correctly saved to the `market_barometer_history` table in Supabase.
+
+**See**: [[concepts/fundamental-analysis]], [[entities/market-barometer-audit]], [update-barometer.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/update-barometer.yml), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
+
 ## [2026-06-23] fix | Configure MiniMax client with ANTHROPIC_JSON instructor mode
 
 Resolved MiniMax-M3 structured extraction validation errors where instructor failed with a `too_short` list validation error on the empty tool call array:

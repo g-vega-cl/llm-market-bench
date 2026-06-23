@@ -26,6 +26,7 @@ A dedicated audit page (`/barometer-audit`) that provides full transparency into
 - **Route**: `/barometer-audit` (created via `createFileRoute` with `validateSearch` for optional `date` param)
 - **Server Loader**: Uses `createServerFn` to call `fetchMarketBarometerDates` and `fetchMarketBarometerForDate` from `~/features/home/api/fetch-barometer`
 - **Database Column**: Relies on the `constituents_data` JSONB column in `market_barometer_history` (added by migration `20260620000000_add_constituents_data_to_barometer.sql`)
+- **Automation Schedule**: Updated daily via GitHub Actions ([update-barometer.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/update-barometer.yml)) every weekday at 21:00 UTC (5 PM EDT / 4 PM EST, after US market close).
 
 ## Related
 

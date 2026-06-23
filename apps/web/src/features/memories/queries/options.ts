@@ -28,7 +28,7 @@ export const memoriesQueries = {
         queryOptions({
             queryKey: memoriesQueryKeys.detail(opts.id),
             queryFn: opts.fetchFn,
-            staleTime: 1000 * 60 * 5,
+            staleTime: Number.POSITIVE_INFINITY,
         }),
 
     sources: <T extends NewsletterSnapshot[]>(opts: {
@@ -42,7 +42,7 @@ export const memoriesQueries = {
                 opts.fetchFn
                     ? opts.fetchFn(opts.sourceIds)
                     : Promise.reject(new Error('fetchFn required')),
-            staleTime: 1000 * 60 * 5, // 5 minutes
+            staleTime: Number.POSITIVE_INFINITY,
         }),
 
     resolutionChild: <T extends Memory | null>(opts: {
@@ -53,7 +53,7 @@ export const memoriesQueries = {
             queryKey: memoriesQueryKeys.resolutionChild(opts.parentId),
             queryFn: () =>
                 opts.fetchFn ? opts.fetchFn() : Promise.reject(new Error('fetchFn required')),
-            staleTime: 1000 * 60 * 5, // 5 minutes
+            staleTime: Number.POSITIVE_INFINITY,
         }),
 
     causeAndEffect: <T extends CauseAndEffectEntry | null>(opts: {
@@ -64,7 +64,7 @@ export const memoriesQueries = {
             queryKey: memoriesQueryKeys.causeAndEffect(opts.eventId),
             queryFn: () =>
                 opts.fetchFn ? opts.fetchFn() : Promise.reject(new Error('fetchFn required')),
-            staleTime: 1000 * 60 * 5, // 5 minutes
+            staleTime: Number.POSITIVE_INFINITY,
         }),
 };
 

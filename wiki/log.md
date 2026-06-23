@@ -1,18 +1,3 @@
-## [2026-06-22] fix | Comparison chart pagination and benchmark coverage
-
-Resolved issue where the portfolios comparison chart did not render benchmarks for 30d and 7d timeframes:
-- **API Pagination**: Implemented sequential `.range()` query pagination in `fetchBenchmarkHistory` to bypass the default 1000-row Supabase/Postgrest result limit.
-- **Dropdown Benchmarks**: Updated the route server function in `routes/portfolios/index.tsx` to dynamically fetch history for all tickers defined in `BENCHMARK_OPTIONS` rather than a hardcoded subset of 4.
-- **Infinite Cache**: Configured `staleTime: Infinity` (via `Number.POSITIVE_INFINITY` in `options.ts`) for both comparison and benchmark history queries because historical/closed data never changes.
-- **Type Safety & Style**: Strictly typed the pagination data accumulator and resolved Biome check errors.
-- **TDD Tests**: Appended a dedicated paginated fetch unit test in `fetch-portfolios.test.ts`.
-
-**See**: [fetch-portfolios.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/api/fetch-portfolios.ts), [index.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/portfolios/index.tsx), [options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/queries/options.ts), [fetch-portfolios.test.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/portfolios/api/fetch-portfolios.test.ts)
-
-## [2026-06-16] fix | Hardcode ingest schedule to UTC for DST correctness
-
-GitHub Actions does not correctly handle DST when using the `timezone` field — it treats `America/New_York` as always UTC-5. The ingest workflow schedule has been converted to explicit UTC times (13:35, 15:35, 19:00) to match the intended 9:35 AM, 11:35 AM, and 3:00 PM ET during EDT (UTC-4). This ensures the pipeline runs at the correct market hours year-round without relying on GitHub's broken DST support.
-
 ## [2026-06-16] documentation | Simplified pipeline wiki and hardcoded ingest schedule for DST
 
 The `how-it-works.json` data source has been emptied, removing the detailed 7-phase breakdown from the web UI. The [[entities/pipeline]] wiki page has been condensed to a high-level 6-phase overview with UTC schedule details. The ingest workflow cron is now hardcoded to UTC to avoid GitHub Actions DST handling bug.
@@ -311,4 +296,14 @@ A user-shared engine log (`2026-06-22 17:14-17:21`) surfaced five regressions in
 - **TDD Verification**: Added `test_minimax_anthropic_sdk.py` (3 tests), `test_retry_predicate_widening.py` (2 tests), `test_valuation_audit_quarterly_first.py` (3 tests), and `test_gemini_tool_loop_always_disables_afc_when_search_enabled`. Updated `test_minimax_pipeline.test_minimax_tool_loop_called` to verify the Anthropic handler is invoked. Updated `test_call_counts.py` assertions (OpenAI 3 → Anthropic 2) to reflect MiniMax-M3's new SDK routing. Full engine test suite (780 tests) passes with `ruff check` clean.
 
 **See**: [[concepts/minimax-portfolio]], [[concepts/agents]], [[concepts/fundamental-analysis]], [[concepts/model-anomalies]], [[entities/engine]], [core/llm/clients.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/clients.py), [core/llm/analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [core/llm/tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [core/llm/handlers/gemini.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/gemini.py), [tests/test_minimax_anthropic_sdk.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_anthropic_sdk.py), [tests/test_retry_predicate_widening.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_retry_predicate_widening.py), [tests/test_valuation_audit_quarterly_first.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_valuation_audit_quarterly_first.py), [tests/test_call_counts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_call_counts.py)
+
+## [2026-06-23] feature | Infinite caching for static and archival pages
+
+Configured infinite staleTime cache settings for static/archival queries across concepts, reasoning, and memories features:
+- **Concepts**: Configured `staleTime: Number.POSITIVE_INFINITY` for `conceptsQueries.list` and `memories`.
+- **Reasoning**: Configured `staleTime: Number.POSITIVE_INFINITY` for `reasoningQueries.detail` (past decision traces).
+- **Memories**: Configured `staleTime: Number.POSITIVE_INFINITY` for `memoriesQueries.detail`, `sources`, `resolutionChild`, and `causeAndEffect` (immutable event graph items).
+- **Vertical TDD Unit Tests**: Added unit test files in `src/features/concepts/queries/options.test.ts`, `src/features/reasoning/queries/options.test.ts`, and `src/features/memories/queries/options.test.ts` to assert correct staleTime configuration.
+
+**See**: [concepts/options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/concepts/queries/options.ts), [reasoning/options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/reasoning/queries/options.ts), [memories/options.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/queries/options.ts)
 

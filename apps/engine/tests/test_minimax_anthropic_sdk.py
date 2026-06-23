@@ -43,6 +43,9 @@ def test_get_minimax_client_uses_anthropic_sdk():
 
         # instructor.from_anthropic was used to wrap the client
         mock_from_anthropic.assert_called_once()
+        import instructor
+
+        assert mock_from_anthropic.call_args.kwargs.get("mode") == instructor.Mode.ANTHROPIC_JSON
         mock_from_openai.assert_not_called()
 
 

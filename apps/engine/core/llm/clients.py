@@ -66,7 +66,8 @@ def get_minimax_client(api_key: str | None = None):
             api_key=key,
             base_url=config.MINIMAX_ANTHROPIC_BASE_URL,
             timeout=TIMEOUT,
-        )
+        ),
+        mode=instructor.Mode.ANTHROPIC_JSON,
     )
 
 

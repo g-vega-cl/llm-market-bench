@@ -1,3 +1,11 @@
+## [2026-06-23] fix | Configure MiniMax client with ANTHROPIC_JSON instructor mode
+
+Resolved MiniMax-M3 structured extraction validation errors where instructor failed with a `too_short` list validation error on the empty tool call array:
+- **Instructor Mode**: Configured the MiniMax client factory `get_minimax_client` in `clients.py` to use `instructor.Mode.ANTHROPIC_JSON` instead of the default `Mode.ANTHROPIC_TOOLS`. This instructs the client to parse raw JSON from text blocks directly.
+- **Verification**: Updated `test_minimax_anthropic_sdk.py` to assert Mode.ANTHROPIC_JSON configuration, and successfully verified the fix with an isolated dry-run query to MiniMax-M3.
+
+**See**: [[concepts/model-anomalies]], [clients.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/clients.py), [test_minimax_anthropic_sdk.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_anthropic_sdk.py)
+
 ## [2026-06-16] refactor | Unified HomePage dashboard with table layout
 
 Merged separate mobile/desktop views into a single responsive Dashboard component. Replaced portfolio cards with a compact table row layout, collapsed the market feeling analysis into a toggleable section, and removed the desktop-specific BenchmarkCard and MarketFeelingCard in favor of inline rows. Simplified the sentiment header and removed the background selector experiment logic.

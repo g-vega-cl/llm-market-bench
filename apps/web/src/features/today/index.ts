@@ -15,6 +15,7 @@ export { FutureCatalysts } from './components/FutureCatalysts';
 export { MarketStatusHero } from './components/MarketStatusHero';
 export { MarketUpdates } from './components/MarketUpdates';
 export { NewsletterFeed } from './components/NewsletterFeed';
+export { TodayStatusBar } from './components/TodayStatusBar';
 export { TradeActivity } from './components/TradeActivity';
 export { TodayPage } from './pages/TodayPage';
 export { todayQueryKeys } from './queries/keys';

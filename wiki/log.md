@@ -1,3 +1,14 @@
+## [2026-06-23] ui | Today page redesign — dense dashboard layout replaces gradient hero
+
+Removed the large `MarketStatusHero` gradient banner from the Today page and replaced it with a compact sticky `TodayStatusBar` and a dense 3-column dashboard layout:
+
+- **TodayStatusBar** (`components/TodayStatusBar.tsx`): New slim sticky bar (below the nav, `top-[57px]`) that shows TODAY date, market open/closed badge, sentiment emoji + label + direction badge, confidence bar, buy/sell/trade counts, newsletter and active-memory counts, and last-analysis timestamp — all in a single horizontally-scrollable row with `backdrop-blur-md`.
+- **Layout**: Removed the opaque `bg-zinc-50 dark:bg-zinc-950` wrapper so the site-wide dotted `GlobalBackground` shows through. Spacing collapsed from `space-y-24` to `space-y-6`. Grid: GlobalMacroStats full-width → `lg:grid-cols-3` (AgentInsights | NewsletterFeed | TradeActivity) → FutureCatalysts full-width.
+- **HeroBackground**: No longer used on the Today page; remains in use on Market Overview.
+- **Wiki updated**: `[[entities/web-app]]` Key Pages, `[[entities/design-system]]` Layouts section, and `HeroBackground.tsx` JSDoc.
+
+**See**: [TodayPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx), [TodayStatusBar.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/TodayStatusBar.tsx)
+
 ## [2026-06-23] fix | Schedule daily S&P 500 Market Health Barometer aggregator
 
 Scheduled the daily barometer aggregator script to run automatically after market close:

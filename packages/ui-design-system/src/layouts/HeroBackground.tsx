@@ -5,7 +5,8 @@ import { cn } from '../lib/cn';
  * HeroBackground layout.
  *
  * A gradient hero banner with dot-pattern overlay and animated blur orbs.
- * Used as the hero section on the Today and Market Overview pages.
+ * Used as the hero section on the Market Overview page.
+ * (Removed from the Today page in favour of the slim TodayStatusBar.)
  */
 
 export interface HeroBackgroundProps {

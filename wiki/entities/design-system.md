@@ -37,7 +37,8 @@ Higher-level compound components for specific UI patterns:
 ## Layouts
 
 - **PageLayout** — Full-page container with max-width constraints
-- **HeroBackground** — Decorative background for hero sections
+- **HeroBackground** — Decorative gradient background for hero sections (used on Market Overview; removed from Today in favour of `TodayStatusBar`)
+- **TodayStatusBar** — Slim sticky info bar for the Today page; shows market open/closed, sentiment, confidence, buy/sell counts, and last-analysis timestamp in a single scrollable row
 
 ## Utilities
 

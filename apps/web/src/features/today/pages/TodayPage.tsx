@@ -3,7 +3,7 @@ import { EmptyState, PageLayout } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { lazy, Suspense } from 'react';
 import type { TodayData } from '../api/fetch-today-data';
-import { MarketStatusHero } from '../components/MarketStatusHero';
+import { TodayStatusBar } from '../components/TodayStatusBar';
 
 const AgentInsights = lazy(() =>
     import('../components/AgentInsights').then((m) => ({ default: m.AgentInsights })),
@@ -28,6 +28,22 @@ interface TodayPageProps {
     fetchFn: () => Promise<TodayData>;
 }
 
+/** Thin skeleton placeholder for a dashboard card column */
+function CardSkeleton({ rows = 4 }: { rows?: number }) {
+    return (
+        <div className="space-y-3 animate-pulse">
+            <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/3" />
+            {Array.from({ length: rows }).map((_, i) => (
+                <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholder
+                    key={i}
+                    className="h-16 bg-zinc-100 dark:bg-zinc-800/70 rounded-xl"
+                />
+            ))}
+        </div>
+    );
+}
+
 export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
     const { data } = useSuspenseQuery({
         ...todayQueries.data({ fetchFn }),
@@ -44,59 +60,46 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
         !data.priceUpdates?.length;
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Market Status Hero */}
-            <MarketStatusHero data={data} />
+        <>
+            {/* Slim sticky status bar — replaces the full gradient hero */}
+            <TodayStatusBar data={data} />
 
-            <PageLayout className="space-y-24 pb-24">
-                {/* Global Macro, Bonds & Index Volatility Regime Stats */}
-                <Suspense
-                    fallback={
-                        <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-32 rounded-2xl w-full" />
-                    }
-                >
+            {/* Dashboard body — no opaque bg so the dotted GlobalBackground shows through */}
+            <PageLayout className="py-6 space-y-6" maxWidth="xl">
+                {/* Row 1: Global Macro Stats — full width */}
+                <Suspense fallback={<CardSkeleton rows={3} />}>
                     <GlobalMacroStats macroStats={data.macroStats} />
                 </Suspense>
 
+                {/* Row 2 / Empty state */}
                 {isEmpty ? (
                     <EmptyStateView
                         hasFutureEvents={!!data.futureEvents?.length}
                         futureEvents={data.futureEvents}
                     />
                 ) : (
-                    <div className="space-y-24 animate-slide-up">
-                        <Suspense
-                            fallback={
-                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
-                            }
-                        >
-                            <AgentInsights memories={data.memories} />
-                        </Suspense>
-                        <Suspense
-                            fallback={
-                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
-                            }
-                        >
-                            <NewsletterFeed newsletters={data.newsletters} />
-                        </Suspense>
-                        <Suspense
-                            fallback={
-                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
-                            }
-                        >
-                            <TradeActivity trades={data.trades} decisions={data.decisions} />
-                        </Suspense>
-                        <Suspense
-                            fallback={
-                                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
-                            }
-                        >
+                    <div className="space-y-6 animate-slide-up">
+                        {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | TradeActivity */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                            <Suspense fallback={<CardSkeleton rows={3} />}>
+                                <AgentInsights memories={data.memories} />
+                            </Suspense>
+                            <Suspense fallback={<CardSkeleton rows={3} />}>
+                                <NewsletterFeed newsletters={data.newsletters} />
+                            </Suspense>
+                            <Suspense fallback={<CardSkeleton rows={4} />}>
+                                <TradeActivity trades={data.trades} decisions={data.decisions} />
+                            </Suspense>
+                        </div>
+
+                        {/* Row 3: Future Catalysts — full width */}
+                        <Suspense fallback={<CardSkeleton rows={2} />}>
                             <FutureCatalysts events={data.futureEvents as Memory[]} />
                         </Suspense>
                     </div>
                 )}
             </PageLayout>
-        </div>
+        </>
     );
 }
 
@@ -127,12 +130,8 @@ function EmptyStateView({
             />
 
             {hasFutureEvents && (
-                <div className="pt-12 border-t border-zinc-200 dark:border-zinc-800 animate-slide-up animate-stagger-2">
-                    <Suspense
-                        fallback={
-                            <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 h-64 rounded-2xl w-full" />
-                        }
-                    >
+                <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 animate-slide-up animate-stagger-2">
+                    <Suspense fallback={<CardSkeleton rows={2} />}>
                         <FutureCatalysts events={futureEvents as Memory[]} />
                     </Suspense>
                 </div>

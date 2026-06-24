@@ -12,7 +12,7 @@ TypeScript, and TanStack Query.
 ## Key Pages
 
 - **Home** — Placeholder for the upcoming redesign
-- **Today** — Market status hero, LLM market feeling, daily trades, and the premium **Global Macro & Index Volatility Statistics** panel
+- **Today** — Dense dashboard with a slim sticky status bar (market open/closed, sentiment, confidence, trade counts) replacing the old gradient hero. Content is arranged as a 3-column grid: Global Macro & Index Volatility Statistics (full-width), then Agent Insights | Newsletter Feed | Trade Activity side-by-side, then Future Catalysts (full-width). The dotted GlobalBackground shows through (no opaque page wrapper).
 - **Portfolios** — Per-agent performance, positions, P&L
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid
 - **Reasoning Trace** — Full LLM conversation history with tabbed JSON inspection

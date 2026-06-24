@@ -100,6 +100,14 @@ describe('NewsletterFeed', () => {
             expect(screen.getByText('<squad@thedailyupside.com>')).toBeInTheDocument();
         });
 
+        it('renders sender badge with centered text styling', () => {
+            render(<NewsletterFeed newsletters={[makeNewsletter({ sender: 'Stock Analysis' })]} />);
+            const badge = screen.getByText('Stock Analysis');
+            expect(badge).toHaveClass('text-center');
+            expect(badge).toHaveClass('justify-center');
+            expect(badge).not.toHaveClass('text-left');
+        });
+
         it('does not render the empty-state message when newsletters are present', () => {
             render(<NewsletterFeed newsletters={[makeNewsletter()]} />);
             expect(screen.queryByText('No briefings ingested yet today')).not.toBeInTheDocument();

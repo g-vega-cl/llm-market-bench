@@ -338,3 +338,11 @@ Shortened and improved wrapping/responsiveness of the sender badges in the Daily
 
 **See**: [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx), [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx)
 
+## [2026-06-24] ui | Daily Intelligence Briefing — Center sender name in badge
+
+Centered the email sender name in the header badge on the Daily Intelligence Briefing cards:
+- **Styling Update**: Replaced `text-left` with `text-center justify-center` in the [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx) sender `Badge` element to center its wrapped name string.
+- **Verification**: Added an assertion in [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx) to verify the presence of `text-center` and `justify-center` classes.
+
+**See**: [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx), [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx)
+

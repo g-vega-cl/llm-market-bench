@@ -59,7 +59,7 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                                         variant="soft"
                                         colorScheme="accent"
                                         size="xs"
-                                        className="whitespace-normal break-words text-left"
+                                        className="whitespace-normal break-words text-center justify-center"
                                     >
                                         {formatSender(news.sender)}
                                     </Badge>

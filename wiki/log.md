@@ -1,3 +1,7 @@
+## [2026-06-24] feature | MiniMax Cognitive Prompt Nudge for Tools
+
+Implemented a dedicated prompt protocol nudge for MiniMax-M3 to execute quantity calculation tools (`calculate_buy_quantity`/`calculate_sell_quantity`) during the analysis phase. Updated [[concepts/minimax-portfolio]] and [[concepts/tool-enforcement]] to reflect the changes.
+
 ## [2026-06-24] documentation | MiniMax margin sizing and SMA floor hazards
 
 Added a warning section in [[concepts/minimax-portfolio]] detailing the leverage hazards of sizing MiniMax market orders at 100% buying power and how it leads to SMA Floor compliance rejections.

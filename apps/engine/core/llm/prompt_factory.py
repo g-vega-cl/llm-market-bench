@@ -105,6 +105,17 @@ class PromptFactory:
         else:
             system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 
+        # Prepend a strict model-specific nudge for MiniMax-M3 to execute tools
+        if provider == "minimax":
+            system_prompt = (
+                "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===\n"
+                "You are running under MiniMax-M3. You MUST call the `calculate_buy_quantity` tool for any ticker you plan to BUY, "
+                "and the `calculate_sell_quantity` tool for any ticker you plan to SELL. "
+                "Do NOT self-report tool usage without executing the tool calls. "
+                "Ensure that the tool execution blocks are present in your output BEFORE generating the final response schema. "
+                "This is mandatory for compliance verification.\n\n" + system_prompt
+            )
+
         # Inject portfolio ledger if applicable
         if owner_id:
             from attribution.service import get_active_ledger_xml

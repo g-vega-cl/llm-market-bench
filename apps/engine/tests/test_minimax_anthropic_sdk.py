@@ -191,3 +191,45 @@ async def test_minimax_retry_routes_to_anthropic_handler():
 
         assert mock_anthro_loop.call_count == 2
         mock_openai_loop.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_minimax_system_prompt_nudge():
+    """Verify that provider='minimax' prepends the system protocol nudge to the system message."""
+    from core.llm.prompt_factory import PromptFactory
+
+    messages = await PromptFactory.build_analysis_messages(
+        provider="minimax",
+        enable_web_search=False,
+        market_data_block="DATA",
+        owner_id="MiniMax-M3",
+        portfolio_context="CASH",
+        context="CONTEXT",
+        news_content="NEWS",
+        current_day_info="TODAY",
+        calendar_knowledge="CALENDAR",
+        macro_context="MACRO",
+        held_tickers_list=["AAPL"],
+    )
+
+    # First message in history should be the system message with the special prefix
+    assert messages[0]["role"] == "system"
+    system_content = messages[0]["content"]
+    assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" in system_content
+
+    # Verify standard provider (e.g. openai) does NOT get prepended with the minimax nudge
+    openai_messages = await PromptFactory.build_analysis_messages(
+        provider="openai",
+        enable_web_search=False,
+        market_data_block="DATA",
+        owner_id="gpt-5.4-nano",
+        portfolio_context="CASH",
+        context="CONTEXT",
+        news_content="NEWS",
+        current_day_info="TODAY",
+        calendar_knowledge="CALENDAR",
+        macro_context="MACRO",
+        held_tickers_list=["AAPL"],
+    )
+    assert openai_messages[0]["role"] == "system"
+    assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" not in openai_messages[0]["content"]

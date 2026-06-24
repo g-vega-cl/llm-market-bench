@@ -13,7 +13,9 @@ For each MiniMax market order, a corresponding limit order is placed on the Alpa
 
 ## Rationale
 
-MiniMax-M3 does not support native function calling for order placement, so the engine parses raw JSON decisions and executes them directly. The market order with buffer provides a pragmatic fallback that still respects risk limits and Reg T constraints.
+MiniMax-M3 does not support native function calling for order placement, so the engine parses raw JSON decisions and executes them directly. The market order with buffer provides a pragmatic fallback that still respects risk limits and Reg T constraints. 
+
+To ensure the model remains cognitively aligned with real-time portfolio metrics, it is prepended with a special system prompt protocol prefix that nudges it to call the `calculate_buy_quantity`/`calculate_sell_quantity` tools during the analysis phase. However, to prevent execution failures due to tool execution loop discrepancies, verification and tool-use rejections are bypassed at execution time.
 
 ## Margin & Sizing Hazards
 

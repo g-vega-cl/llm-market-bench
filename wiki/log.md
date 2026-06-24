@@ -1,4 +1,9 @@
+## [2026-06-24] documentation | MiniMax margin sizing and SMA floor hazards
+
+Added a warning section in [[concepts/minimax-portfolio]] detailing the leverage hazards of sizing MiniMax market orders at 100% buying power and how it leads to SMA Floor compliance rejections.
+
 ## [2026-06-17] feature | LLM Leaderboard & Screening Tool
+
 
 Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
 - **Database Layer**: Deployed Supabase migration `20260618000000_create_llm_leaderboard_rpc.sql` creating the `get_llm_leaderboard_metrics` function to dynamically calculate returns, realized P&L, win rates, verifier approval rates, average confidence, and consistency scores over selected timeframes (7d, 30d, 90d, All-Time).

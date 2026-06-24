@@ -26,6 +26,11 @@ interface Constituent {
     pfcf: number | null;
     next_eps_est: number | null;
     beat: boolean | null;
+    eps_actual: number | null;
+    eps_estimated: number | null;
+    revenue_beat: boolean | null;
+    revenue_actual: number | null;
+    revenue_estimated: number | null;
 }
 
 interface ColumnConfig {
@@ -45,6 +50,11 @@ const columns: ColumnConfig[] = [
     { label: 'P/B', field: 'pb', align: 'right' },
     { label: 'P/FCF', field: 'pfcf', align: 'right' },
     { label: 'Earnings Beat', field: 'beat', align: 'center' },
+    { label: 'Actual EPS', field: 'eps_actual', align: 'right' },
+    { label: 'Expected EPS', field: 'eps_estimated', align: 'right' },
+    { label: 'Revenue Beat', field: 'revenue_beat', align: 'center' },
+    { label: 'Actual Revenue', field: 'revenue_actual', align: 'right' },
+    { label: 'Expected Revenue', field: 'revenue_estimated', align: 'right' },
 ];
 
 const ALIGN_CLASS: Record<'left' | 'right' | 'center', string> = {
@@ -158,6 +168,20 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
     const formatValue = (val: number | null | undefined, decimals = 2) => {
         if (val === null || val === undefined) return '—';
         return val.toFixed(decimals);
+    };
+
+    const formatRevenue = (rev: number | null | undefined) => {
+        if (rev === null || rev === undefined) return '—';
+        if (rev >= 1e12) {
+            return `$${(rev / 1e12).toFixed(2)}T`;
+        }
+        if (rev >= 1e9) {
+            return `$${(rev / 1e9).toFixed(2)}B`;
+        }
+        if (rev >= 1e6) {
+            return `$${(rev / 1e6).toFixed(2)}M`;
+        }
+        return `$${rev.toLocaleString()}`;
     };
 
     return (
@@ -388,7 +412,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                     {processedConstituents.length === 0 ? (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={10}
+                                                colSpan={15}
                                                 className="text-center py-8 text-white/40"
                                             >
                                                 No constituents match search criteria.
@@ -461,6 +485,43 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                                 —
                                                             </span>
                                                         )}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                        {formatValue(c.eps_actual)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                        {formatValue(c.eps_estimated)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-center">
+                                                        {c.revenue_beat === true && (
+                                                            <Badge
+                                                                colorScheme="success"
+                                                                variant="soft"
+                                                                size="sm"
+                                                            >
+                                                                BEAT
+                                                            </Badge>
+                                                        )}
+                                                        {c.revenue_beat === false && (
+                                                            <Badge
+                                                                colorScheme="danger"
+                                                                variant="soft"
+                                                                size="sm"
+                                                            >
+                                                                MISS
+                                                            </Badge>
+                                                        )}
+                                                        {c.revenue_beat === null && (
+                                                            <span className="text-white/20 text-xs font-mono">
+                                                                —
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                        {formatRevenue(c.revenue_actual)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
+                                                        {formatRevenue(c.revenue_estimated)}
                                                     </TableCell>
                                                 </TableRow>
                                             );

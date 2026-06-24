@@ -30,6 +30,11 @@ async def test_calculate_barometer():
             "pfcf": 25.0,
             "next_eps_est": 6.0,
             "beat": True,
+            "eps_actual": 1.25,
+            "eps_estimated": 1.20,
+            "revenue_beat": True,
+            "revenue_actual": 90150000000.0,
+            "revenue_estimated": 89900000000.0,
         },
         # MSFT
         {
@@ -43,6 +48,11 @@ async def test_calculate_barometer():
             "pfcf": 15.0,
             "next_eps_est": 8.0,
             "beat": False,
+            "eps_actual": 2.10,
+            "eps_estimated": 2.15,
+            "revenue_beat": False,
+            "revenue_actual": 60200000000.0,
+            "revenue_estimated": 61000000000.0,
         },
         # TSLA
         {
@@ -56,6 +66,11 @@ async def test_calculate_barometer():
             "pfcf": -10.0,
             "next_eps_est": 3.0,
             "beat": True,
+            "eps_actual": 0.45,
+            "eps_estimated": 0.40,
+            "revenue_beat": None,
+            "revenue_actual": None,
+            "revenue_estimated": None,
         },
     ]
 
@@ -111,14 +126,31 @@ async def test_calculate_barometer():
     assert payload["constituents_data"][0]["company_name"] == "Apple Inc."
     assert payload["constituents_data"][0]["pe"] == 20.0
     assert payload["constituents_data"][0]["pfcf"] == 25.0
+    assert payload["constituents_data"][0]["eps_actual"] == 1.25
+    assert payload["constituents_data"][0]["eps_estimated"] == 1.20
+    assert payload["constituents_data"][0]["revenue_beat"] is True
+    assert payload["constituents_data"][0]["revenue_actual"] == 90150000000.0
+    assert payload["constituents_data"][0]["revenue_estimated"] == 89900000000.0
+
     assert payload["constituents_data"][1]["symbol"] == "MSFT"
     assert payload["constituents_data"][1]["company_name"] == "Microsoft Corp"
     assert payload["constituents_data"][1]["pe"] == 30.0
     assert payload["constituents_data"][1]["pfcf"] == 15.0
+    assert payload["constituents_data"][1]["eps_actual"] == 2.10
+    assert payload["constituents_data"][1]["eps_estimated"] == 2.15
+    assert payload["constituents_data"][1]["revenue_beat"] is False
+    assert payload["constituents_data"][1]["revenue_actual"] == 60200000000.0
+    assert payload["constituents_data"][1]["revenue_estimated"] == 61000000000.0
+
     assert payload["constituents_data"][2]["symbol"] == "TSLA"
     assert payload["constituents_data"][2]["company_name"] == "Tesla Inc"
     assert payload["constituents_data"][2]["pe"] == 50.0
     assert payload["constituents_data"][2]["pfcf"] == -10.0
+    assert payload["constituents_data"][2]["eps_actual"] == 0.45
+    assert payload["constituents_data"][2]["eps_estimated"] == 0.40
+    assert payload["constituents_data"][2]["revenue_beat"] is None
+    assert payload["constituents_data"][2]["revenue_actual"] is None
+    assert payload["constituents_data"][2]["revenue_estimated"] is None
 
 
 @pytest.mark.asyncio

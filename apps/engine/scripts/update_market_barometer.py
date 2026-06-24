@@ -216,14 +216,33 @@ async def fetch_constituent_data(
     )
 
     beat = None
+    eps_actual = None
+    eps_estimated = None
+    revenue_beat = None
+    revenue_actual = None
+    revenue_estimated = None
+
     if earnings_data and isinstance(earnings_data, list):
         # Find the most recent completed report (actual eps is not None)
         for earn in earnings_data:
-            act = earn.get("epsActual")
-            est = earn.get("epsEstimated")
-            if act is not None and est is not None and act != "" and est != "":
+            act_eps = earn.get("epsActual")
+            est_eps = earn.get("epsEstimated")
+            act_rev = earn.get("revenueActual")
+            est_rev = earn.get("revenueEstimated")
+
+            if act_eps is not None and est_eps is not None and act_eps != "" and est_eps != "":
                 try:
-                    beat = float(act) > float(est)
+                    eps_actual = float(act_eps)
+                    eps_estimated = float(est_eps)
+                    beat = eps_actual > eps_estimated
+
+                    if act_rev is not None and est_rev is not None and act_rev != "" and est_rev != "":
+                        try:
+                            revenue_actual = float(act_rev)
+                            revenue_estimated = float(est_rev)
+                            revenue_beat = revenue_actual > revenue_estimated
+                        except ValueError:
+                            pass
                     break
                 except ValueError:
                     pass
@@ -239,6 +258,11 @@ async def fetch_constituent_data(
         "pfcf": ratios.get("priceToFreeCashFlowsRatio"),
         "next_eps_est": next_eps_est,
         "beat": beat,
+        "eps_actual": eps_actual,
+        "eps_estimated": eps_estimated,
+        "revenue_beat": revenue_beat,
+        "revenue_actual": revenue_actual,
+        "revenue_estimated": revenue_estimated,
     }
 
 
@@ -370,6 +394,11 @@ async def calculate_barometer():
                 "pfcf": float(r["pfcf"]) if r.get("pfcf") is not None else None,
                 "next_eps_est": float(r["next_eps_est"]) if r["next_eps_est"] is not None else None,
                 "beat": r["beat"],
+                "eps_actual": float(r["eps_actual"]) if r.get("eps_actual") is not None else None,
+                "eps_estimated": float(r["eps_estimated"]) if r.get("eps_estimated") is not None else None,
+                "revenue_beat": r.get("revenue_beat"),
+                "revenue_actual": float(r["revenue_actual"]) if r.get("revenue_actual") is not None else None,
+                "revenue_estimated": float(r["revenue_estimated"]) if r.get("revenue_estimated") is not None else None,
             }
         )
 

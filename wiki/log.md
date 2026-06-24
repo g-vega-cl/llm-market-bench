@@ -1,3 +1,11 @@
+## [2026-06-24] feature | Add EPS and Revenue actual vs estimated columns to Barometer Audit
+
+Added detailed EPS and Revenue surprise columns to the Market Barometer Audit constituent grid for transparent information auditing:
+- **Data Engine**: Updated `update_market_barometer.py` to extract `epsActual`, `epsEstimated`, `revenueActual`, and `revenueEstimated` from the FMP `/earnings` response and save them (`eps_actual`, `eps_estimated`, `revenue_beat`, `revenue_actual`, `revenue_estimated`) in the constituent JSONB payload.
+- **Frontend Audit View**: Modified `BarometerAuditPage.tsx` to add five new columns: "Actual EPS", "Expected EPS", "Revenue Beat" (with BEAT/MISS badges), "Actual Revenue", and "Expected Revenue" (formatted dynamically in billions/millions).
+- **Sorting & UI layout**: Fully enabled client-side column sorting for all new metrics and adjusted columns layout so Actual/Expected columns display immediately after their respective beat/miss badges.
+- **TDD Verification**: Updated Vitest and pytest suites (`-barometer-audit.test.tsx` and `test_market_barometer.py`) to mock and assert correct extraction, persistence, rendering, and sorting of these new surprise metrics.
+
 ## [2026-06-24] fix | resolve barometer rate-limiting and missing beat data
 
 Resolved a concurrency rate-limiting bug in the daily S&P 500 Market Health Barometer calculation script where top constituents (such as AAPL, MSFT, and AMZN) were missing their earnings surprise beat/miss tags:

@@ -33,6 +33,11 @@ const mockBarometer: MarketBarometer = {
             pfcf: 27.2,
             next_eps_est: 8.0,
             beat: true,
+            eps_actual: 1.25,
+            eps_estimated: 1.2,
+            revenue_beat: true,
+            revenue_actual: 90150000000.0,
+            revenue_estimated: 89900000000.0,
         },
         {
             symbol: 'MSFT',
@@ -45,6 +50,11 @@ const mockBarometer: MarketBarometer = {
             pfcf: 32.1,
             next_eps_est: 12.0,
             beat: false,
+            eps_actual: 2.1,
+            eps_estimated: 2.15,
+            revenue_beat: false,
+            revenue_actual: 60200000000.0,
+            revenue_estimated: 61000000000.0,
         },
         {
             symbol: 'NVDA',
@@ -57,6 +67,11 @@ const mockBarometer: MarketBarometer = {
             pfcf: null,
             next_eps_est: null,
             beat: null,
+            eps_actual: null,
+            eps_estimated: null,
+            revenue_beat: null,
+            revenue_actual: null,
+            revenue_estimated: null,
         },
     ] as MarketBarometer['constituents_data'],
 };
@@ -84,15 +99,23 @@ describe('BarometerAuditPage', () => {
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
         expect(screen.getByText('$3.00T')).toBeInTheDocument();
-        expect(screen.getByText('BEAT')).toBeInTheDocument();
+        expect(screen.getAllByText('BEAT')).toHaveLength(2); // One for earnings, one for revenue
         expect(screen.getByText('P/FCF')).toBeInTheDocument();
         expect(screen.getByText('27.20')).toBeInTheDocument();
+        expect(screen.getByText('1.25')).toBeInTheDocument();
+        expect(screen.getByText('1.20')).toBeInTheDocument();
+        expect(screen.getByText('$90.15B')).toBeInTheDocument();
+        expect(screen.getByText('$89.90B')).toBeInTheDocument();
 
         expect(screen.getByText('MSFT')).toBeInTheDocument();
         expect(screen.getByText('Microsoft Corp')).toBeInTheDocument();
         expect(screen.getByText('$3.20T')).toBeInTheDocument();
-        expect(screen.getByText('MISS')).toBeInTheDocument();
+        expect(screen.getAllByText('MISS')).toHaveLength(2); // One for earnings, one for revenue
         expect(screen.getByText('32.10')).toBeInTheDocument();
+        expect(screen.getByText('2.10')).toBeInTheDocument();
+        expect(screen.getByText('2.15')).toBeInTheDocument();
+        expect(screen.getByText('$60.20B')).toBeInTheDocument();
+        expect(screen.getByText('$61.00B')).toBeInTheDocument();
     });
 
     it('filters constituents by search term', () => {

@@ -33,6 +33,7 @@
 
 ## Concepts
 
+- [[concepts/auditability]] — Philosophy and mechanisms of full calculation and data traceability
 - [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics
 - [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector
 - [[concepts/type-safety]] — Strict TypeScript type safety with zero any usage

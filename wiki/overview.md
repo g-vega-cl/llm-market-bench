@@ -35,6 +35,10 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 
 See [[entities/pipeline]] for the full walkthrough.
 
+## Core Tenets
+
+- **Information Auditability**: Every piece of data, metric, trade, and portfolio state is fully auditable. If someone asks "How was this calculated?" or "Where did this come from?", they can trace it directly to raw source inputs, LLM outputs, tool execution history, or specific mathematical formulas. See [[concepts/auditability]].
+
 ## Key Design Decisions
 
 - **Pre-injected market data**: Prices are fetched and injected into prompts

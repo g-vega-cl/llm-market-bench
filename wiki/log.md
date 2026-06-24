@@ -1,3 +1,10 @@
+## [2026-06-24] docs | Establish Information Auditability as a Core Tenet
+
+Added documentation establishing information auditability as a core architectural tenet of the platform:
+- **New Concept Page**: Created [[concepts/auditability]] detailing the philosophy of auditability and existing platform mechanisms (ingestion audit trails, decision/tool logging, trade attribution, and log auditing).
+- **Project Overview**: Updated [[overview]] to list Information Auditability under a new "Core Tenets" section.
+- **Index**: Registered the new concept page in [[index]].
+
 ## [2026-06-24] feature | MiniMax Cognitive Prompt Nudge for Tools
 
 Implemented a dedicated prompt protocol nudge for MiniMax-M3 to execute quantity calculation tools (`calculate_buy_quantity`/`calculate_sell_quantity`) during the analysis phase. Updated [[concepts/minimax-portfolio]] and [[concepts/tool-enforcement]] to reflect the changes.

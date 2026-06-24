@@ -53,10 +53,15 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
                         {/* Content Container */}
                         <div className="relative">
                             {/* Header */}
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="soft" colorScheme="accent" size="xs">
-                                        {news.sender}
+                            <div className="flex justify-between items-start gap-4 mb-4">
+                                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                    <Badge
+                                        variant="soft"
+                                        colorScheme="accent"
+                                        size="xs"
+                                        className="whitespace-normal break-words text-left"
+                                    >
+                                        {formatSender(news.sender)}
                                     </Badge>
                                 </div>
                                 <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5 tabular-nums">
@@ -104,4 +109,10 @@ export function NewsletterFeed({ newsletters }: NewsletterFeedProps) {
             </div>
         </section>
     );
+}
+
+export function formatSender(sender: string): string {
+    if (!sender) return '';
+    const cleaned = sender.replace(/<[^>]*>/g, '').trim();
+    return cleaned || sender;
 }

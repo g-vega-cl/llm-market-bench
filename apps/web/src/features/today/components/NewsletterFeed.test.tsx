@@ -79,6 +79,27 @@ describe('NewsletterFeed', () => {
             expect(screen.getByText('test@example.com')).toBeInTheDocument();
         });
 
+        it('cleans sender email addresses from name badges', () => {
+            render(
+                <NewsletterFeed
+                    newsletters={[
+                        makeNewsletter({ sender: 'The Daily Upside <squad@thedailyupside.com>' }),
+                    ]}
+                />,
+            );
+            expect(screen.getByText('The Daily Upside')).toBeInTheDocument();
+            expect(screen.queryByText(/squad@thedailyupside.com/)).not.toBeInTheDocument();
+        });
+
+        it('falls back to original sender when cleaning yields an empty string', () => {
+            render(
+                <NewsletterFeed
+                    newsletters={[makeNewsletter({ sender: '<squad@thedailyupside.com>' })]}
+                />,
+            );
+            expect(screen.getByText('<squad@thedailyupside.com>')).toBeInTheDocument();
+        });
+
         it('does not render the empty-state message when newsletters are present', () => {
             render(<NewsletterFeed newsletters={[makeNewsletter()]} />);
             expect(screen.queryByText('No briefings ingested yet today')).not.toBeInTheDocument();

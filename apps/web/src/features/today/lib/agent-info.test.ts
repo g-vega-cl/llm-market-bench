@@ -25,6 +25,11 @@ describe('getAgentInfo', () => {
         );
     });
 
+    it('performs matching for MiniMax', () => {
+        expect(getAgentInfo(MODELS.MINIMAX).name).toEqual('MiniMax');
+        expect(getAgentInfo('minimax').name).toEqual('MiniMax');
+    });
+
     it('performs fuzzy matching when input contains the MODELS key', () => {
         // e.g. input is 'some-prefix-gpt-5.4-nano-suffix', key is 'gpt-5.4-nano'
         expect(getAgentInfo(`prefix-${MODELS.GEMINI}-suffix`)).toEqual(

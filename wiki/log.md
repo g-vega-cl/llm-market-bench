@@ -1,47 +1,3 @@
-## [2026-06-16] fix | MiniMax empty response and DeepSeek tool call narration anomalies
-
-Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:21 UTC ingest run audit:
-- **MiniMax Empty Response & Tag Clash**: Stripped ` thinking... response` reasoning blocks (including unclosed blocks) from the raw response content in `_analyze_with_minimax` before attempting JSON extraction, preventing parser clashes with internal thoughts. Coerced `None` response content to `""` to prevent attribute errors, and passed `response_format={"type": "json_object"}` to force valid JSON output.
-- **DeepSeek Tool Call Narration**: Disabled `thinking` mode during the info-gathering tool execution loop (`run_tool_loop`) for DeepSeek to stop the reasoning model from narrating its planned tool calls in text instead of emitting structured API `tool_calls` objects.
-- **DeepSeek Final Extraction Thinking**: Explicitly enabled `thinking` mode (`extra_body={"thinking": {"type": "enabled"}}`) in the final extraction phase inside `analyze_with_provider` so the model uses its full reasoning capacity to formulate the final trade decisions.
-- **TDD Verification**: Created `test_reproduce_deepseek_minimax.py` reproducing the anomalies and verifying the fixes. Passed 100% of the 757-test suite.
-
-**See**: [[concepts/model-anomalies]], [[concepts/tool-enforcement]]
-
-## [2026-06-16] feature | Terminal-Friendly Visual Planning Framework
-
-Implemented a terminal-native visual planning framework to allow agents to generate rich, visual, Markdown-compliant plans:
-- **Concept Page**: Created [[concepts/visual-planning]] detailing Unicode box-drawing, ASCII flowcharts, progress trackers, and UI mockups.
-- **Mandatory Agent Guideline**: Updated the Plan First instructions in [[entities/gemini]] and [[concepts/agent-workflow]] to require visual planning for all non-trivial tasks.
-- **Wiki Integration**: Indexed and cross-linked the new planning page within the wiki index.
-
-**See**: [[concepts/visual-planning]], [[concepts/agent-workflow]], [[entities/gemini]]
-
-## [2026-06-16] documentation | Document Supabase Google OAuth Redirect Whitelisting
-
-Created a concept page to detail how Supabase Auth whitelisting and fallback logic handles requested redirects. Documents the difference between local dev ports (Netlify dev 3000 vs. Vite 3005) and production deployment whitelists, providing step-by-step instructions to prevent redirect-loop fallbacks to localhost:3000.
-
-**See**: [[concepts/supabase-redirect-whitelisting]], [[entities/web-app]]
-
-## [2026-06-17] feature | Prediction Market Tools and Database Schema
-
-Added prediction market capabilities to the engine:
-- New DB table `prediction_market_snapshots` for storing Polymarket/Kalshi odds
-- Two new LLM tools: `search_prediction_markets` (DB search) and `get_prediction_market_odds` (live API fetch)
-- Tool definitions registered across all providers (OpenAI, Anthropic, Gemini)
-- Execution handlers with dispatcher routing
-- Unit tests for search, live odds, and handler dispatch
-- Wiki updates: agents, database, ingestion pages updated
-- ROADMAP.md: added options/info item
-
-## [2026-06-17] refactor | Remove progress bar from visual planning framework
-
-Refactored the visual planning framework:
-- **Removed Progress Bar**: Removed the 0%-100% Unicode progress bars from `wiki/concepts/visual-planning.md` instructions, tables, and templates.
-- **Status Board**: Renamed "Progress Board" and "Progress Tracker" to "Status Board", focusing exclusively on the active phase rather than completion percentages.
-
-**See**: [[concepts/visual-planning]]
-
 ## [2026-06-17] feature | LLM Leaderboard & Screening Tool
 
 Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
@@ -345,4 +301,8 @@ Centered the email sender name in the header badge on the Daily Intelligence Bri
 - **Verification**: Added an assertion in [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx) to verify the presence of `text-center` and `justify-center` classes.
 
 **See**: [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx), [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx)
+
+## [2026-06-24] enhancement | Add MiniMax to agent-info display config
+
+Added `MODELS.MINIMAX` to the `agentConfig` mapping in `apps/web/src/features/today/lib/agent-info.ts`, along with a test case for exact and lowercase matching. This gives MiniMax a proper display name, color (`text-pink-500 / bg-pink-500`), and emoji (🟡) in the Today dashboard UI, completing the set of active trading models recognized by the frontend agent info utility.
 

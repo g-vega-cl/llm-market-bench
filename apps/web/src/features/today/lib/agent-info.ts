@@ -35,6 +35,12 @@ export const agentConfig: Record<
         bgColor: 'bg-purple-500',
         emoji: '🟣',
     },
+    [MODELS.MINIMAX]: {
+        name: 'MiniMax',
+        color: 'text-pink-500',
+        bgColor: 'bg-pink-500',
+        emoji: '🟡',
+    },
     [MODELS.CONTRARIAN]: {
         name: 'Contrarian',
         color: 'text-rose-500',

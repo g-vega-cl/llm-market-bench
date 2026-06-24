@@ -316,12 +316,8 @@ async def _process_single_decision(
                                 "trade_id": str(trade_id),
                                 "info": f"[MiniMax] Market order {d.signal} {qty} @ ${exec_price:.2f}",
                             }
-                            # Alpaca mirror with same 0.5% buffer as exec_price
-                            alpaca_limit = (
-                                round(exec_price * 1.005, 2)
-                                if d.signal.upper() == "BUY"
-                                else round(exec_price * 0.995, 2)
-                            )
+                            # Alpaca mirror limit matches the executed buffered price
+                            alpaca_limit = exec_price
                             import asyncio as _asyncio
 
                             from execution.alpaca_broker import AlpacaBroker

@@ -196,12 +196,12 @@ class TestMinimaxMarketOrderBuffer:
         assert abs(actual_pct - 0.005) < 1e-9
 
     def test_buy_alpaca_limit_uses_same_buffer(self):
-        """Alpaca limit order price for BUY should also use the 0.5% buffer."""
+        """Alpaca limit order price for BUY should be equal to the exec_price."""
         market_price = 100.00
         exec_price = round(market_price * 1.005, 2)
-        alpaca_limit = round(exec_price * 1.005, 2)
-        # Alpaca limit should be at or slightly above exec_price
-        assert alpaca_limit >= exec_price
+        alpaca_limit = exec_price
+        # Alpaca limit should match exec_price (no double buffering)
+        assert alpaca_limit == exec_price
 
 
 # ---------------------------------------------------------------------------

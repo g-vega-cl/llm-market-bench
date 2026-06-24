@@ -1,25 +1,22 @@
 ---
-tags: [minimax, execution, tool-calling, anthropic]
+tags: [minimax, execution, market-order, buffer]
 category: concept
 ---
 
 # MiniMax Portfolio
 
-MiniMax-M3 operates under a simplified execution model with a ±0.5% market order buffer and a dedicated Anthropic SDK handler for tool calling. This page documents the unique constraints and pipeline differences for the MiniMax provider.
+MiniMax-M3 uses a simplified execution model that bypasses the standard limit-order pipeline. Instead of placing native limit orders, the engine submits a **market order** with a ±0.5% price buffer to account for slippage. The executed price (`exec_price`) is the market price adjusted by this buffer.
 
-## Simplified Execution Model
+## Alpaca Mirror Orders
 
-- **Market orders only** — MiniMax does not use limit orders. All trades are executed as market orders with a ±0.5% price buffer to account for slippage.
-- **No web search** — The MiniMax pipeline disables web search (`enable_web_search=False`) to keep the analysis focused and deterministic.
-- **Anthropic SDK handler** — As of 2026-06-18, MiniMax tool calling is routed through the Anthropic handler (`anthropic.run_tool_loop`) instead of the OpenAI handler. This provides native support for Anthropic-style message flattening, system message injection, and `max_tokens=32000`.
+For each MiniMax market order, a corresponding limit order is placed on the Alpaca brokerage. The limit price is set to the same buffered `exec_price` — **no additional buffer is applied**. This ensures the Alpaca mirror matches the simulated execution exactly, avoiding the double-buffer bug that previously inflated limit prices.
 
-## Tool Calling
+## Rationale
 
-MiniMax uses the same tool definitions as other providers, but the underlying handler is now Anthropic. The handler manages the conversation loop, tool invocations, and response parsing. This change ensures consistent behavior with the Anthropic provider and simplifies maintenance.
+MiniMax-M3 does not support native function calling for order placement, so the engine parses raw JSON decisions and executes them directly. The market order with buffer provides a pragmatic fallback that still respects risk limits and Reg T constraints.
 
 ## Related
 
-- [[entities/pipeline]] — Full pipeline walkthrough
-- [[concepts/tool-enforcement]] — 4-layer hallucination prevention
-- [[concepts/execution]] — Trade validation and settlement
-- [[concepts/rag-strategy]] — Tiered context injection
+- [[entities/pipeline]]
+- [[concepts/execution]]
+- [[concepts/tool-enforcement]]

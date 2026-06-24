@@ -311,3 +311,11 @@ Also fixed a layout bug where `AgentInsights` and `NewsletterFeed` silently retu
 
 Tests added: `AIFeelingCard.test.tsx` (15 tests), `NewsletterFeed.test.tsx` (10 tests), plus 3 new empty-state tests in `AgentInsights.test.tsx`. Total test count: 310 (up from 282).
 
+## [2026-06-24] bugfix | Resolve MiniMax double-buffer bug and redundant market status checks
+
+Resolved two issues identified during the logs audit:
+- **MiniMax Double-Buffer**: Modified [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py#L319-L324) to set `alpaca_limit = exec_price` directly, resolving a bug where the 0.5% buffer was applied twice on Alpaca mirror orders.
+- **Redundant Market Status Checks**: Increased the market status cache `"ttl_seconds"` from `300` to `1800` (30 minutes) in [market_data.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/execution/market_data.py) to prevent redundant API queries to FMP during slow parallel analysis runs.
+- **TDD Verification**: Updated `test_buy_alpaca_limit_uses_same_buffer` in [test_minimax_pipeline.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_pipeline.py) to assert correct single-buffer limit price.
+
+**See**: [[concepts/minimax-portfolio]], [[entities/pipeline]], [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py), [market_data.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/execution/market_data.py), [test_minimax_pipeline.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_pipeline.py)

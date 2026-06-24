@@ -69,7 +69,7 @@ class MarketDataManager:
     _market_status_cache: dict = {
         "is_open": None,
         "fetched_at": None,
-        "ttl_seconds": 300,  # 5 minutes
+        "ttl_seconds": 1800,  # 30 minutes
     }
     _market_status_lock = None
 

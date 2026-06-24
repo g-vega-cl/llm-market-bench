@@ -319,3 +319,12 @@ Resolved two issues identified during the logs audit:
 - **TDD Verification**: Updated `test_buy_alpaca_limit_uses_same_buffer` in [test_minimax_pipeline.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_pipeline.py) to assert correct single-buffer limit price.
 
 **See**: [[concepts/minimax-portfolio]], [[entities/pipeline]], [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py), [market_data.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/execution/market_data.py), [test_minimax_pipeline.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_pipeline.py)
+
+## [2026-06-24] fix | Restore daily briefings visibility by adding newsletter_snapshots RLS policy and SELECT grant
+
+Resolved the issue where the Today page's Daily Intelligence Briefing section was stuck showing "No briefings ingested yet today" despite successful ingestion:
+- **Database Layer**: Deployed migration `20260624000000_add_newsletter_snapshots_read_policy.sql` adding RLS select policies and explicit `GRANT SELECT` statements on the `newsletter_snapshots` table for the `anon` and `authenticated` roles.
+- **Root Cause**: The web app calls `fetchTodayData` under the anonymous role client (`SUPABASE_ANON_KEY`). Since RLS was enabled on `newsletter_snapshots` but SELECT grants/policies were omitted to prevent arbitrary selects of raw emails, anonymous queries returned 0 results. The Today page relies on direct queries for today's newsletters. Adding SELECT policies/grants allows the web app to query the table.
+- **Verification**: Verified using a custom scratch script executing the Today page query pattern via the `anon` client credentials. Results returned went from 0 to 4.
+
+**See**: [[concepts/supabase-grant-convention]], [fetch-today-data.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/api/fetch-today-data.ts), [20260624000000_add_newsletter_snapshots_read_policy.sql](file:///Users/cesarvega/Documents/p-code/llm-market-bench/supabase/migrations/20260624000000_add_newsletter_snapshots_read_policy.sql)

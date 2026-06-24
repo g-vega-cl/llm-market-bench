@@ -63,12 +63,7 @@ This project has two consumers of the Data API:
 read RLS policy. Grant `ALL` to `service_role` on every table (engine needs
 full access).
 
-For tables that should NOT be publicly readable (e.g., `newsletter_snapshots`
-which has only a service_role policy), grant only to `service_role`:
-
-```sql
-GRANT ALL ON public.newsletter_snapshots TO service_role;
-```
+For tables that should NOT be publicly readable, grant only to `service_role`. Note that `newsletter_snapshots` originally had only a `service_role` policy but was updated to allow `SELECT` for `anon` and `authenticated` to support the Today page's Daily Intelligence Briefing.
 
 ## Existing Tables
 

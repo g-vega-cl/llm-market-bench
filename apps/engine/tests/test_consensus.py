@@ -408,3 +408,57 @@ async def test_process_consensus_accepts_specific_government_event(
     assert len(consensus_events) == 1
     assert consensus_events[0]["event_name"] == "US Farm Bill 2026"
     mock_add_memory.assert_called_once()
+
+
+@patch("analysis.consensus.DiscoveryService")
+@patch("analysis.consensus.synthesize_event")
+@patch("analysis.consensus.get_embeddings_batch")
+@patch("analysis.consensus.add_memory")
+@pytest.mark.asyncio
+async def test_process_consensus_similarity_threshold_075(
+    mock_add_memory, mock_get_embeddings, mock_synthesize, mock_discovery
+):
+    """Verify that the default similarity threshold is 0.75, allowing events with
+    0.78 similarity to be grouped and promoted."""
+    mock_add_memory.return_value = "new-uuid"
+    mock_discovery.return_value.discover_assets = AsyncMock(return_value=[])
+    mock_synthesize.return_value = {
+        "name": "Consensus Quantum Investment",
+        "summary": "Synthesized quantum investment details.",
+    }
+
+    events = [
+        MacroEvent(
+            event_name="Quantum Investment Event A",
+            impact="BULLISH",
+            confidence=85,
+            reasoning="Quantum computing advances.",
+            source_id="source1",
+            model_provider="openai",
+            model_name="gpt-4",
+        ),
+        MacroEvent(
+            event_name="Quantum Investment Event B",
+            impact="BULLISH",
+            confidence=80,
+            reasoning="Gov quantum investment.",
+            source_id="source1",
+            model_provider="anthropic",
+            model_name="claude-3",
+        ),
+    ]
+
+    # Two vectors with similarity of exactly 0.78:
+    # v1 = [1.0, 0.0]
+    # v2 = [0.78, 0.62577951]
+    mock_get_embeddings.return_value = [
+        [1.0, 0.0],
+        [0.78, 0.62577951],
+    ]
+
+    # Under the default threshold (which we want to be 0.75), they should group and be promoted.
+    consensus_events = await process_consensus(events, threshold=2)
+
+    assert len(consensus_events) == 1
+    assert consensus_events[0]["event_name"] == "Consensus Quantum Investment"
+    mock_add_memory.assert_called_once()

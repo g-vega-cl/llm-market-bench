@@ -9,7 +9,7 @@ Transforms individual LLM decisions into coherent market events.
 
 ## Event Consensus Protocol
 
-1. **Semantic Grouping**: Embeddings cluster events by cosine similarity across LLMs (threshold 0.85).
+1. **Semantic Grouping**: Embeddings cluster events by cosine similarity across LLMs (threshold 0.75).
    * **API Rate-Limit Resilience**: Uses `tenacity` exponential backoff retries (3 max attempts) to absorb transient errors like `429 RESOURCE_EXHAUSTED`.
    * **Exact-Match Fallback**: If the embedding API fails or mismatches, the engine gracefully falls back to exact string-based grouping to prevent pipeline crashes.
 2. **Weighted Consensus**: Cumulative model weight must exceed promotion threshold (default 2.0)

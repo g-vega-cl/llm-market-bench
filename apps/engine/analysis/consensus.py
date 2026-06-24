@@ -313,7 +313,7 @@ async def _synthesize_and_promote_group(
 
 
 async def process_consensus(
-    events: list[MacroEvent], threshold: float = 2.0, sim_threshold: float = 0.85
+    events: list[MacroEvent], threshold: float = 2.0, sim_threshold: float = 0.75
 ) -> list[dict]:
     """Process a list of macro events and identify consensus using semantic grouping,
     deduplication, weighted voting, and LLM synthesis.

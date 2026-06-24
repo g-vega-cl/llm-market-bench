@@ -1,3 +1,10 @@
+## [2026-06-24] feature | Decrease Event Consensus Similarity Threshold to 0.75
+
+Decreased the default semantic cosine similarity threshold for grouping events in consensus processing to enable promotion of more distinct events (e.g., the recent $2B quantum executive order/investment event):
+- **Consensus Engine**: Changed default `sim_threshold` parameter in `process_consensus` signature from `0.85` to `0.75` in [consensus.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/consensus.py).
+- **TDD Verification**: Added unit test `test_process_consensus_similarity_threshold_075` in [test_consensus.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_consensus.py) to assert that events with `0.78` similarity are correctly grouped and promoted under the new default, whereas they were previously ignored under the strict `0.85` threshold.
+- **Documentation**: Updated the consensus protocol threshold description in the [[concepts/consensus]] wiki page.
+
 ## [2026-06-24] feature | Add EPS and Revenue actual vs estimated columns to Barometer Audit
 
 Added detailed EPS and Revenue surprise columns to the Market Barometer Audit constituent grid for transparent information auditing:

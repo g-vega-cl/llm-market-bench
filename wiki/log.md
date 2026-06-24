@@ -1,3 +1,10 @@
+## [2026-06-24] fix | resolve barometer rate-limiting and missing beat data
+
+Resolved a concurrency rate-limiting bug in the daily S&P 500 Market Health Barometer calculation script where top constituents (such as AAPL, MSFT, and AMZN) were missing their earnings surprise beat/miss tags:
+- **Concurrency Fix**: Moved the `async with semaphore:` block in `fetch_with_retry` to wrap only the polite delay and active HTTP request instead of scoping the entire retry loop. This prevents rate-limited/sleeping tasks from blocking the queue and ensures proper exponential backoff retry cycles.
+- **TDD Verification**: Added unit test `test_fetch_with_retry_releases_semaphore_during_backoff` in `apps/engine/tests/test_market_barometer.py` asserting correct semaphore releasing behavior during sleeps.
+- **Data Remediation**: Executed the update script to successfully populate the 2026-06-24 snapshot with 100% valid beat/miss data for AAPL and all other constituents.
+
 ## [2026-06-24] docs | Establish Information Auditability as a Core Tenet
 
 Added documentation establishing information auditability as a core architectural tenet of the platform:

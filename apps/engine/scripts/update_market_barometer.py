@@ -134,29 +134,29 @@ async def fetch_with_retry(
     client: httpx.AsyncClient, url: str, params: dict, semaphore: asyncio.Semaphore, retries: int = 3
 ) -> list | dict | None:
     """Fetch JSON from FMP API with concurrency limiting and exponential backoff retry."""
-    async with semaphore:
-        backoff = 1.0
-        for attempt in range(retries):
-            try:
+    backoff = 1.0
+    for attempt in range(retries):
+        try:
+            async with semaphore:
                 # 0.2s polite delay to ensure we don't spam
                 await asyncio.sleep(0.2)
                 resp = await client.get(url, params=params)
 
-                if resp.status_code == 429:
-                    logger.warning(f"FMP Rate Limited (429) on {url}. Retrying in {backoff}s...")
-                    await asyncio.sleep(backoff)
-                    backoff *= 2
-                    continue
-
-                resp.raise_for_status()
-                return resp.json()
-            except Exception as e:
-                if attempt == retries - 1:
-                    logger.error(f"Failed FMP fetch for {url} after {retries} attempts: {e}")
-                    return None
+            if resp.status_code == 429:
+                logger.warning(f"FMP Rate Limited (429) on {url}. Retrying in {backoff}s...")
                 await asyncio.sleep(backoff)
                 backoff *= 2
-        return None
+                continue
+
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            if attempt == retries - 1:
+                logger.error(f"Failed FMP fetch for {url} after {retries} attempts: {e}")
+                return None
+            await asyncio.sleep(backoff)
+            backoff *= 2
+    return None
 
 
 async def fetch_constituent_data(

@@ -27,6 +27,8 @@ A dedicated audit page (`/barometer-audit`) that provides full transparency into
 - **Server Loader**: Uses `createServerFn` to call `fetchMarketBarometerDates` and `fetchMarketBarometerForDate` from `~/features/home/api/fetch-barometer`
 - **Database Column**: Relies on the `constituents_data` JSONB column in `market_barometer_history` (added by migration `20260620000000_add_constituents_data_to_barometer.sql`)
 - **Automation Schedule**: Updated daily via GitHub Actions ([update-barometer.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/update-barometer.yml)) every weekday at 21:00 UTC (5 PM EDT / 4 PM EST, after US market close).
+- **API Rate Limit Resilience**: Uses a concurrency-limited HTTP fetcher utilizing a `Semaphore(4)` and exponential backoff retry. The semaphore is explicitly released during backoff sleeps (retry waits) to prevent queue deadlocks and guarantee that transient rate limits do not cause high-cap tickers (e.g. AAPL) to fail and save with missing (`-`) beat information.
+
 
 ## Related
 

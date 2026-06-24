@@ -119,3 +119,62 @@ async def test_calculate_barometer():
     assert payload["constituents_data"][2]["company_name"] == "Tesla Inc"
     assert payload["constituents_data"][2]["pe"] == 50.0
     assert payload["constituents_data"][2]["pfcf"] == -10.0
+
+
+@pytest.mark.asyncio
+async def test_fetch_with_retry_releases_semaphore_during_backoff():
+    import asyncio
+
+    import httpx
+
+    from scripts.update_market_barometer import fetch_with_retry
+
+    # Mock responses
+    class MockResponse:
+        def __init__(self, status_code, json_data):
+            self.status_code = status_code
+            self._json_data = json_data
+
+        def json(self):
+            return self._json_data
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise httpx.HTTPStatusError("Error", request=None, response=self)
+
+    # Client mock that returns 429 on first call, 200 on second call
+    call_count = 0
+
+    async def mock_get(url, params=None):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return MockResponse(429, {"error": "rate limit"})
+        return MockResponse(200, {"success": True})
+
+    client = MagicMock()
+    client.get = mock_get
+
+    semaphore = asyncio.Semaphore(1)
+
+    task_b_completed_early = False
+
+    async def run_task_a():
+        # Task A will retry and eventually succeed on attempt 2 (after 1s sleep)
+        result = await fetch_with_retry(client, "http://dummy", {}, semaphore, retries=2)
+        assert result == {"success": True}
+
+    async def run_task_b():
+        nonlocal task_b_completed_early
+        await asyncio.sleep(0.1)  # Ensure Task A starts first
+        start_time = asyncio.get_event_loop().time()
+        # Task B should be able to run immediately if Task A released the semaphore
+        await fetch_with_retry(client, "http://dummy", {}, semaphore, retries=1)
+        end_time = asyncio.get_event_loop().time()
+        duration = end_time - start_time
+        # If it took less than 0.5s, it was not blocked by Task A's 1s sleep
+        if duration < 0.5:
+            task_b_completed_early = True
+
+    await asyncio.gather(run_task_a(), run_task_b())
+    assert task_b_completed_early, "Task B was blocked by Task A holding the semaphore during sleep"

@@ -103,4 +103,5 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: it's stock analysis also part of my sources?
 - [ ] - Get option information. Like Greeks, implied volatility, etc... Maybe from FMP?
 - [ ] - Benchify: check if "today vibes" also includes the emails. Also maybe add the FMP summary to it too.
-- [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs
+- [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
+- [ ] -Benchify: make sure quantum executive order is tracked under government (if we still tag that) - We must track more government stuff (Daily upside 22/06/26?)

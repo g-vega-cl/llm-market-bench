@@ -8,6 +8,9 @@ import { TodayStatusBar } from '../components/TodayStatusBar';
 const AgentInsights = lazy(() =>
     import('../components/AgentInsights').then((m) => ({ default: m.AgentInsights })),
 );
+const AIFeelingCard = lazy(() =>
+    import('../components/AIFeelingCard').then((m) => ({ default: m.AIFeelingCard })),
+);
 const FutureCatalysts = lazy(() =>
     import('../components/FutureCatalysts').then((m) => ({ default: m.FutureCatalysts })),
 );
@@ -79,7 +82,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                     />
                 ) : (
                     <div className="space-y-6 animate-slide-up">
-                        {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | TradeActivity */}
+                        {/* Row 2: 3-column grid — AgentInsights | NewsletterFeed | AI Feeling, then Market Execution full-width within the same grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                             <Suspense fallback={<CardSkeleton rows={3} />}>
                                 <AgentInsights memories={data.memories} />
@@ -88,11 +91,23 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                                 <NewsletterFeed newsletters={data.newsletters} />
                             </Suspense>
                             <Suspense fallback={<CardSkeleton rows={4} />}>
-                                <TradeActivity trades={data.trades} decisions={data.decisions} />
+                                <AIFeelingCard
+                                    marketFeeling={data.marketFeeling}
+                                    trades={data.trades}
+                                    isSentimentStale={data.isSentimentStale}
+                                />
                             </Suspense>
+                            <div className="lg:col-span-3">
+                                <Suspense fallback={<CardSkeleton rows={4} />}>
+                                    <TradeActivity
+                                        trades={data.trades}
+                                        decisions={data.decisions}
+                                    />
+                                </Suspense>
+                            </div>
                         </div>
 
-                        {/* Row 3: Future Catalysts — full width */}
+                        {/* Row 4: Future Catalysts — full width */}
                         <Suspense fallback={<CardSkeleton rows={2} />}>
                             <FutureCatalysts events={data.futureEvents as Memory[]} />
                         </Suspense>

@@ -71,4 +71,23 @@ describe('AgentInsights', () => {
         render(<AgentInsights memories={[createLessonMemory('gpt-5.4-nano')]} />);
         expect(screen.getByText(/Test lesson learned/i)).toBeInTheDocument();
     });
+
+    it('renders empty-state heading when no relevant memories exist', () => {
+        render(<AgentInsights memories={[]} />);
+        expect(screen.getByText('AI Cognitive Synthesis')).toBeInTheDocument();
+    });
+
+    it('renders empty-state message when no relevant memories exist', () => {
+        render(<AgentInsights memories={[]} />);
+        expect(screen.getByText('No insights synthesized yet today')).toBeInTheDocument();
+    });
+
+    it('renders empty-state when memories exist but none are relevant types', () => {
+        const irrelevantMemory = {
+            ...createLessonMemory(),
+            memory_type: 'SOME_OTHER_TYPE',
+        };
+        render(<AgentInsights memories={[irrelevantMemory]} />);
+        expect(screen.getByText('No insights synthesized yet today')).toBeInTheDocument();
+    });
 });

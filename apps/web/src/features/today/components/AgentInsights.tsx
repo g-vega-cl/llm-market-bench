@@ -13,7 +13,19 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
     );
     const incentives = memories.filter((m) => m.memory_type === 'GOVERNMENT_INCENTIVE');
 
-    if (!consensus.length && !lessons.length && !incentives.length) return null;
+    if (!consensus.length && !lessons.length && !incentives.length) {
+        return (
+            <section className="space-y-8 animate-slide-up">
+                <SectionHeading gradient="ai">AI Cognitive Synthesis</SectionHeading>
+                <div className="flex flex-col items-center justify-center py-12 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-center gap-3">
+                    <span className="text-3xl">🧠</span>
+                    <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
+                        No insights synthesized yet today
+                    </p>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="space-y-8 animate-slide-up">

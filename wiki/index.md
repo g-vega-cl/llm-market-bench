@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/ai-feeling-card]] — AI market sentiment card on the Today dashboard with buy/sell split, confidence bar, and stale detection
 - [[entities/market-barometer-audit]] — S&P 500 Market Health Barometer audit page with constituent-level data browser
 - [[entities/global-background]] — Fixed ambient background with dot grid and glowing orbs for the full application
 - [[entities/mcp-posthog]] — Local plugin wrapper for the hosted PostHog MCP server

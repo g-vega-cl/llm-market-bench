@@ -1,44 +1,3 @@
-## [2026-06-23] ui | Today page redesign — dense dashboard layout replaces gradient hero
-
-Removed the large `MarketStatusHero` gradient banner from the Today page and replaced it with a compact sticky `TodayStatusBar` and a dense 3-column dashboard layout:
-
-- **TodayStatusBar** (`components/TodayStatusBar.tsx`): New slim sticky bar (below the nav, `top-[57px]`) that shows TODAY date, market open/closed badge, sentiment emoji + label + direction badge, confidence bar, buy/sell/trade counts, newsletter and active-memory counts, and last-analysis timestamp — all in a single horizontally-scrollable row with `backdrop-blur-md`.
-- **Layout**: Removed the opaque `bg-zinc-50 dark:bg-zinc-950` wrapper so the site-wide dotted `GlobalBackground` shows through. Spacing collapsed from `space-y-24` to `space-y-6`. Grid: GlobalMacroStats full-width → `lg:grid-cols-3` (AgentInsights | NewsletterFeed | TradeActivity) → FutureCatalysts full-width.
-- **HeroBackground**: No longer used on the Today page; remains in use on Market Overview.
-- **Wiki updated**: `[[entities/web-app]]` Key Pages, `[[entities/design-system]]` Layouts section, and `HeroBackground.tsx` JSDoc.
-
-**See**: [TodayPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx), [TodayStatusBar.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/TodayStatusBar.tsx)
-
-## [2026-06-23] fix | Schedule daily S&P 500 Market Health Barometer aggregator
-
-Scheduled the daily barometer aggregator script to run automatically after market close:
-- **Automation Schedule**: Created a new GitHub Actions workflow [update-barometer.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/update-barometer.yml) that runs `update_market_barometer.py` every weekday at 21:00 UTC (5 PM EDT / 4 PM EST).
-- **Audit Verification**: Manually ran `update_market_barometer.py` to successfully backfill the missing daily barometer records and verified that constituent-level data is correctly saved to the `market_barometer_history` table in Supabase.
-
-**See**: [[concepts/fundamental-analysis]], [[entities/market-barometer-audit]], [update-barometer.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/update-barometer.yml), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
-
-## [2026-06-23] fix | Configure MiniMax client with ANTHROPIC_JSON instructor mode
-
-Resolved MiniMax-M3 structured extraction validation errors where instructor failed with a `too_short` list validation error on the empty tool call array:
-- **Instructor Mode**: Configured the MiniMax client factory `get_minimax_client` in `clients.py` to use `instructor.Mode.ANTHROPIC_JSON` instead of the default `Mode.ANTHROPIC_TOOLS`. This instructs the client to parse raw JSON from text blocks directly.
-- **Verification**: Updated `test_minimax_anthropic_sdk.py` to assert Mode.ANTHROPIC_JSON configuration, and successfully verified the fix with an isolated dry-run query to MiniMax-M3.
-
-**See**: [[concepts/model-anomalies]], [clients.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/clients.py), [test_minimax_anthropic_sdk.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_anthropic_sdk.py)
-
-## [2026-06-16] refactor | Unified HomePage dashboard with table layout
-
-Merged separate mobile/desktop views into a single responsive Dashboard component. Replaced portfolio cards with a compact table row layout, collapsed the market feeling analysis into a toggleable section, and removed the desktop-specific BenchmarkCard and MarketFeelingCard in favor of inline rows. Simplified the sentiment header and removed the background selector experiment logic.
-
-## [2026-06-16] fix | MiniMax empty response and DeepSeek tool call narration anomalies
-
-Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:21 UTC ingest run audit:
-- **MiniMax Empty Response & Tag Clash**: Stripped `<think>...</think>` reasoning blocks (including unclosed blocks) from the raw response content in `_analyze_with_minimax` before attempting JSON extraction, preventing parser clashes with internal thoughts. Coerced `None` response content to `""` to prevent attribute errors, and passed `response_format={"type": "json_object"}` to force valid JSON output.
-- **DeepSeek Tool Call Narration**: Disabled `thinking` mode during the info-gathering tool execution loop (`run_tool_loop`) for DeepSeek to stop the reasoning model from narrating its planned tool calls in text instead of emitting structured API `tool_calls` objects.
-- **DeepSeek Final Extraction Thinking**: Explicitly enabled `thinking` mode (`extra_body={"thinking": {"type": "enabled"}}`) in the final extraction phase inside `analyze_with_provider` so the model uses its full reasoning capacity to formulate the final trade decisions.
-- **TDD Verification**: Created `test_reproduce_deepseek_minimax.py` reproducing the anomalies and verifying the fixes. Passed 100% of the 757-test suite.
-
-**See**: [[concepts/model-anomalies]], [[concepts/tool-enforcement]], [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [deepseek.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/deepseek.py), [test_reproduce_deepseek_minimax.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_reproduce_deepseek_minimax.py)
-
 ## [2026-06-16] fix | MiniMax empty response and DeepSeek tool call narration anomalies
 
 Resolved two critical LLM engine anomalies identified during the 2026-06-16 15:21 UTC ingest run audit:
@@ -344,4 +303,11 @@ The test `test_orchestrator_logs_gather_exceptions_with_exc_info` was failing in
 
 **See**: [tests/test_batch_analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_batch_analysis.py)
 
+## [2026-06-24] ui | Today page — AIFeelingCard component and empty-state placeholders for AgentInsights, NewsletterFeed
+
+Added the `AIFeelingCard` component to the Today dashboard, replacing the previous `TradeActivity` slot in the 3-column grid. The card renders market sentiment (label, emoji, direction badge, confidence bar, why-explanation, primary concern, buy/sell split, timestamp, model name) from existing `marketFeeling` and `trades` data. `TradeActivity` moved to a full-width row below the grid.
+
+Also fixed a layout bug where `AgentInsights` and `NewsletterFeed` silently returned `null` when no data was available, causing gaps in the 3-column grid. Both now render their section heading + a dashed-border empty-state card when data is absent.
+
+Tests added: `AIFeelingCard.test.tsx` (15 tests), `NewsletterFeed.test.tsx` (10 tests), plus 3 new empty-state tests in `AgentInsights.test.tsx`. Total test count: 310 (up from 282).
 

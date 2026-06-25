@@ -18,13 +18,12 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [x] **Find trading papers not just investing** - But low sell high?
   - Couldn't find any.
-- [ ] **A famous financial anomaly is that the stock market mostly goes up when it's closed:** -goes along with papers
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
-- [ ] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
+- [x] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
 - [ ] **Recheck calendar events**
 - [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
   - Decided it was a bit inconvenient and not worth it.
@@ -85,7 +84,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - Benchify: a "keep an eye" section? It's the culmination of concepts + calendar?
 - [ ] - Benchify: audit the ad stripping llm
 - [ ] - Benchify: improve the follow a single thought, add dates, the model process, adapt the card and carousel to proper size or remove it. Make it a real that you can change.
-- [x] - Benchify: portfolio. I don't like that the individual portfolio view goes over device width in mobile
 - [ ] - Benchify: use unlightouse to audit our whole site and fix.
 - [x] - I don't see lightouse in CI
 - [ ] - Benchify: make agents think "what's going to happen tomorrow? What will happen next week?" How can I profit from that? Your scenario analysis and calendar should be useful for this. Pass it the exact date and time when making choices?
@@ -97,11 +95,10 @@ Allow the LLM to decide what to bring to context?
 Many of these things should be able to be picked up by autoresearch, I guess the loop is quite slow. How to speed up the loop?
 
 - [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
-- [ ] - Benchify: model that predicts the next best performing and uncorrelated sectors? ( I think I already have something like this
-- [ ] - Benchify: add volume? and volume derivated values?
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
 - [ ] - Benchify: it's stock analysis also part of my sources?
 - [ ] - Get option information. Like Greeks, implied volatility, etc... Maybe from FMP?
 - [ ] - Benchify: check if "today vibes" also includes the emails. Also maybe add the FMP summary to it too.
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
-- [ ] -Benchify: make sure quantum executive order is tracked under government (if we still tag that) - We must track more government stuff (Daily upside 22/06/26?)
+- [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
+- [ ] - Think about how tools are defined and used.

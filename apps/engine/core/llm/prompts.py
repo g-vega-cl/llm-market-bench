@@ -39,14 +39,14 @@ SYSTEM_PROMPT_CONSTRAINTS_HEADER = (
 )
 
 SYSTEM_PROMPT_MUTABLE_STRATEGIES = (
-    '=== REASONING RIGOR: THE "5 WHYS" TECHNIQUE ===\n'
-    'To ensure high-fidelity decisions, you MUST apply the **"5 Whys"** technique to your internal reasoning:\n'
-    "1. **Why** is this news market-moving?\n"
-    "2. **Why** will this specific asset benefit?\n"
-    "3. **Why** is this not already priced in?\n"
-    "4. **Why** is your proposed action the most efficient way to profit?\n"
-    "5. **Why** could this trade fail (Root Cause of Risk)?\n"
-    "Evidence of this recursive thinking must be visible in your `reasoning` or `profit_potential_reasoning` fields.\n\n"
+    '=== REASONING RIGOR: THE "5 WHYS" & REASONING TOOLBOX ===\n'
+    "To ensure high-fidelity decisions, you have a toolbox of advanced reasoning frameworks. "
+    "You should apply the most relevant method(s) from this arsenal to your internal reasoning:\n\n"
+    '1. **5 Whys (Causal Depth)**: Ask "Why" recursively at least 5 times to drill down to the root cause (e.g., **Why** is this news market-moving?).\n'
+    "2. **MECE (Structuring)**: Ensure scenario analysis, risk factors, or cataloged assets are Mutually Exclusive (no overlaps) and Collectively Exhaustive (no gaps).\n"
+    "3. **IS / IS NOT Analysis (Kepner-Tregoe)**: Isolate the precise causal variable by comparing what is affected (IS) against similar things that are completely unaffected (IS NOT).\n"
+    "4. **Ishikawa (Fishbone) / 6 Ms**: Categorize potential drivers across Machine (tech), Method (strategy), Material (data), Manpower (execution), Measurement (ratios), and Milieu (macro regime).\n\n"
+    "Evidence of this reasoning toolbox must be visible in your `reasoning` or `profit_potential_reasoning` fields.\n\n"
     "=== CALENDAR & SEASONAL STRATEGIES ===\n"
     "1. **Turn of the Month (ToM):** Equity markets tend to rally significantly in the window from the last trading day of a month through the first three days of the next. Focus on large-cap ETFs (SPY, QQQ).\n"
     "2. **Payday Anomaly:** Markets often see inflows around the 15th and 30th/31st of the month as automated 401k or salary-driven investments trigger.\n"
@@ -97,9 +97,9 @@ SYSTEM_PROMPT_MUTABLE_STRATEGIES = (
     "     - **For BUY:** You MUST execute `calculate_buy_quantity(ticker, percentage)` to determine the exact shares. The tool will ensure you meet the **10% Equity Floor**.\n"
     '     - **For SELL:** You MUST execute `calculate_sell_quantity(ticker, percentage)` to determine the exact shares. The tool will prevent you from leaving a **"dust" position** (<10% Equity) by mandating a full sell if necessary.\n'
     "     - **REJECTION RULE:** Any `BUY` or `SELL` decision where the respective calculation tool was not ACTUALLY EXECUTED via function calling will be REJECTED. Do not just guess the share count.\n"
-    '16. **REASONING RIGOR: THE "5 WHYS":**\n'
-    '     - Before providing your final decision, mentally (or in your reasoning) ask "Why" 5 times to validate the causal link between the news and your trade.\n'
-    "     - **Root Cause Identification:** What is the *actual* bottleneck or driver?\n"
+    '16. **REASONING RIGOR: THE "5 WHYS" & REASONING TOOLBOX:**\n'
+    "     - Mentally apply the best framework from your reasoning toolbox (5 Whys, MECE, IS / IS NOT, Ishikawa) to validate the causal link between the news and your trade.\n"
+    "     - **Root Cause Identification:** What is the *actual* bottleneck, driver, or isolated variable?\n"
     '     - **Profit Mechanism:** Explicitly state the "Chain of Events" that leads to profit.\n\n'
 )
 
@@ -307,6 +307,12 @@ CONTRARIAN_SYSTEM_PROMPT = (
     "- **Country ETFs:** If agents are ignoring a country mentioned in the news, look for its primary ETF (e.g., EWJ, EWY, EWW, EWZ).\n"
     "- **Advance Planning:** Should we exit a common consensus position to fund a better contrarian opportunity? Document in `advance_planning_notes`.\n"
     "- **Scenario Analysis:** If consensus assumes outcome X, what happens if outcome Y occurs? Document in `scenario_analysis`.\n\n"
+    "=== REASONING TOOLBOX: CHOOSE YOUR METHOD ===\n"
+    "To ensure high-fidelity contrarian logic, select the best framework(s) from your toolbox to pressure-test the consensus:\n"
+    "1. **5 Whys**: Drill down recursively to root drivers to see if consensus missed the real bottleneck.\n"
+    "2. **MECE (Structuring)**: Partition alternative contrarian scenarios and risk factors so there are no overlaps or gaps.\n"
+    "3. **IS / IS NOT Analysis (Kepner-Tregoe)**: Isolate variables by comparing where/when consensus holds (IS) vs where it completely breaks down (IS NOT).\n"
+    "4. **Ishikawa (Fishbone) / 6 Ms**: Analyze potential failures across Machine, Method, Material, Manpower, Measurement, and Milieu.\n\n"
     "=== HOW PRICES WORK ===\n"
     "The system pre-fetches and injects current market prices as VERIFIED MARKET DATA in the user prompt. "
     "Use these prices in your reasoning. "
@@ -354,6 +360,12 @@ MANAGER_SYSTEM_PROMPT = (
     "5. Identify if there were any 'hallucinations' or misinterpreted newsletter cues.\n"
     "6. Formulate a 'lesson learned' for the future.\n"
     "7. Extract if this was a failure of logic, timing, or external factors.\n\n"
+    "=== REASONING TOOLBOX: CHOOSE YOUR METHOD ===\n"
+    "To extract the best long-term lessons, select the best framework(s) from your toolbox:\n"
+    "1. **5 Whys (Causal Depth)**: Use the mandatory root cause analysis questions above to drill down to the fundamental driver.\n"
+    "2. **MECE (Structuring)**: Partition performance variables (logic vs timing vs external factors) without overlap or gaps.\n"
+    "3. **IS / IS NOT Analysis (Kepner-Tregoe)**: Compare this trade (IS) against similar trades that did not fail/succeed (IS NOT) to isolate the true root cause.\n"
+    "4. **Ishikawa (Fishbone) / 6 Ms**: Categorize performance issues across Machine, Method, Material, Manpower, Measurement, and Milieu.\n\n"
     "Return a JSON object with:\n"
     "- 'lesson': A concise (1-sentence) lesson learned.\n"
     "- 'is_regret': true if the trade was a clear mistake or the logic was flawed.\n"
@@ -457,6 +469,12 @@ CAUSE_AND_EFFECT_SYSTEM_PROMPT = (
     "5. EXPANDED RESEARCH: Look beyond the S&P 500. Identify if this event had specific impacts on particular sectors (e.g., Private Credit, Mega-cap Tech, Energy) or specific companies (e.g., Blue Owl, JPMorgan, Nvidia).\n"
     "   - If the event relates to liquidity, credit, or broad macro shifts, explicitly search for and document the ripple effects on related financial entities or supply chain bottle-necks.\n"
     '6. Identify relevant \'tags\' for this relationship (e.g., "monetary policy", "geopolitics", "tech earnings", "private credit").\n\n'
+    "=== REASONING TOOLBOX: CHOOSE YOUR METHOD ===\n"
+    "To trace cause and effect precisely, select the best framework(s) from your toolbox:\n"
+    "1. **5 Whys (Causal Depth)**: Use the Causal Recursion method above to identify the true root driver rather than the trigger headline.\n"
+    "2. **MECE (Structuring)**: Partition the ripple effects (primary, secondary, and tertiary) so they are mutually exclusive and collectively exhaustive.\n"
+    "3. **IS / IS NOT Analysis (Kepner-Tregoe)**: Compare which sectors/assets reacted (IS) vs similar ones that remained flat (IS NOT) to isolate the variable.\n"
+    "4. **Ishikawa (Fishbone) / 6 Ms**: Group the causes of the market movement across Machine, Method, Material, Manpower, Measurement, and Milieu.\n\n"
     "Return a JSON object with:\n"
     "- 'analysis': A detailed breakdown of the cause and effect (2-3 paragraphs), including sector-specific and company-specific details if applicable.\n"
     "- 'market_outcome': A concise summary of the actual market movement (e.g., \"Private credit firms like Blue Owl saw increased volatility as liquidity tightens\").\n"

@@ -80,6 +80,6 @@ graph TD
 
 - [[concepts/system-heavy-prompt]] — prompt architecture design
 - [[entities/pipeline]] — the daily running lifecycle
-- [[concepts/reasoning]] — reasoning loops and the 5 Whys
+- [[concepts/reasoning]] — reasoning loops, the 5 Whys, and the Reasoning Toolbox
 - [[concepts/minimax-portfolio]] — simplified portfolio execution model
 - [[concepts/memory-feedback]] — manager and contrarian feedback

@@ -46,7 +46,7 @@
 - [[concepts/code-reference-validation]] — Deterministic codebase path validation and linter scope analysis
 - [[concepts/test-coverage]] — Enforced coverage thresholds (70% engine / 40% web)
 - [[concepts/ingestion]] — Newsletter scraping, economic calendar, government tracking
-- [[concepts/reasoning]] — Parallel LLM analysis with tool-calling loops
+- [[concepts/reasoning]] — Parallel LLM analysis with the Reasoning Toolbox (5 Whys, MECE, IS/IS NOT, Ishikawa)
 - [[concepts/consensus]] — Semantic grouping, weighted voting, event promotion
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
 - [[concepts/alpaca-order-sync]] — Decoupled Alpaca order status sync (SUBMITTED → FILLED via daily cron)

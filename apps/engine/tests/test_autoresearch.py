@@ -1904,3 +1904,12 @@ class TestPromptConstraints:
         header, mutable, footer = split_prompt(CORE_ANALYSIS_SYSTEM_PROMPT)
         recombined = header + mutable + footer
         assert recombined == CORE_ANALYSIS_SYSTEM_PROMPT
+
+    def test_program_mentions_reasoning_frameworks(self):
+        from autoresearch.researcher import _load_research_program
+
+        program_text = _load_research_program()
+        assert "MECE" in program_text
+        assert "IS / IS NOT" in program_text
+        assert "Ishikawa" in program_text
+        assert "5 Whys" in program_text

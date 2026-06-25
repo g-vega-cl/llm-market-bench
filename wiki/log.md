@@ -1,3 +1,11 @@
+## [2026-06-25] feature | Integrate Advanced Reasoning Toolbox (5 Whys, MECE, IS/IS NOT, Ishikawa)
+
+Added a structured Reasoning Toolbox containing 5 Whys, MECE, Kepner-Tregoe (IS/IS NOT) analysis, and Ishikawa (Fishbone/6Ms) categorizations to the core trading and evaluation prompts:
+- **System Prompts**: Integrated the Reasoning Toolbox into `CORE_ANALYSIS_SYSTEM_PROMPT` (mutable strategies section and rule 16), `CONTRARIAN_SYSTEM_PROMPT`, `MANAGER_SYSTEM_PROMPT`, and `CAUSE_AND_EFFECT_SYSTEM_PROMPT` in [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py).
+- **Auto-Researcher**: Updated [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md) with a new `## Toolbox: Advanced Reasoning Frameworks` section, instructing the meta-improver on how and when to strategically suggest these frameworks to avoid regressions.
+- **TDD Verification**: Created `test_reasoning_toolbox_integration` in [test_reasoning_prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_reasoning_prompts.py) and `test_program_mentions_reasoning_frameworks` in [test_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_autoresearch.py) to assert presence of the key concepts across all targets.
+- **Documentation**: Updated the [[concepts/reasoning]] wiki page to describe the Reasoning Toolbox.
+
 ## [2026-06-24] feature | Decrease Event Consensus Similarity Threshold to 0.75
 
 Decreased the default semantic cosine similarity threshold for grouping events in consensus processing to enable promotion of more distinct events (e.g., the recent $2B quantum executive order/investment event):

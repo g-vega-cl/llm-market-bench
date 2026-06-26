@@ -110,12 +110,15 @@ async def _stage_dust_cleanup(sb_client):
                     f"[{model}] 10% dust threshold: ${threshold:,.2f} (total equity: ${portfolio.metrics.total_equity:,.2f})"
                 )
 
+            # Track positions before cleanup to detect which were removed/sold
+            before_positions = list(portfolio.positions.keys())
+
             # Run dust cleanup (modifies portfolio state in-place)
             await portfolio._check_and_sell_dust_positions(price_map)
 
             # Count cleaned positions
-            for ticker in list(portfolio.positions.keys()):
-                if ticker not in price_map:
+            for ticker in before_positions:
+                if ticker not in portfolio.positions:
                     cleaned_tickers.append((model, ticker))
                     total_cleaned += 1
 

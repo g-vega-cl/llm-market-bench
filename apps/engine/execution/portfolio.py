@@ -554,9 +554,8 @@ class Portfolio:
                 {"cash_balance": self.cash_balance, "sma": self.sma, "last_updated_at": "now()"}
             ).eq("id", self.id).execute()
 
-            # Recalculate metrics after dust cleanup
-            updated_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
-            self.calculate_reg_t_metrics(updated_prices)
+            # Recalculate metrics after dust cleanup using correct current prices
+            self.calculate_reg_t_metrics(current_prices)
             await self.save_metrics()
 
     async def record_performance_snapshot(self, current_prices: dict[str, float]):

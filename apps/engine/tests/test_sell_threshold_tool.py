@@ -167,3 +167,42 @@ async def test_exact_threshold_boundary(mock_supabase):
     trade_calls = [c for c in new_calls if len(c[0]) > 0 and c[0][0] == "trades"]
     assert len(trade_calls) == 0
     assert "AAPL" in portfolio.positions
+
+
+@pytest.mark.asyncio
+@patch("analysis.analyze.MODELS", [{"provider": "openai", "model": "test-agent"}])
+@patch("main.Portfolio")
+@patch("execution.market_data.MarketDataManager")
+async def test_stage_dust_cleanup_reports_correct_cleaned_count(mock_mdm, mock_portfolio_cls, mock_supabase):
+    """Verify that _stage_dust_cleanup properly counts and logs cleaned positions."""
+    from unittest.mock import AsyncMock
+
+    from main import _stage_dust_cleanup
+
+    mock_portfolio = MagicMock()
+    mock_portfolio.initialize = AsyncMock()
+    mock_portfolio_cls.return_value = mock_portfolio
+
+    # Setup portfolio with positions before cleanup
+    mock_portfolio.positions = {"AAPL": MagicMock(ticker="AAPL", quantity=5, average_cost_basis=100.0)}
+    mock_portfolio.metrics = MagicMock()
+    mock_portfolio.metrics.total_equity = 10000.0
+    mock_portfolio.cash_balance = 5000.0
+    mock_portfolio.id = "test-portfolio-id"
+
+    # Mock get_quotes
+    mock_quote = MagicMock(price=100.0)
+    mock_mdm.return_value.get_quotes = AsyncMock(return_value={"AAPL": mock_quote})
+
+    # Mock _check_and_sell_dust_positions to actually clean AAPL (remove it)
+    async def mock_check_and_sell(price_map):
+        mock_portfolio.positions = {}
+
+    mock_portfolio._check_and_sell_dust_positions = mock_check_and_sell
+
+    # Mock logger to verify it receives the correct log message
+    with patch("main.logger") as mock_logger:
+        await _stage_dust_cleanup(mock_supabase)
+
+        info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
+        assert any("Cleaned 1 dust positions" in msg for msg in info_calls)

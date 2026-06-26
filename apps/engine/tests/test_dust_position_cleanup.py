@@ -202,3 +202,33 @@ async def test_dust_cleanup_handles_exceptions_gracefully(mock_supabase):
     assert portfolio.cash_balance == 5500.0
     # Position is removed from local state before DB call
     assert "ERROR" not in portfolio.positions
+
+
+@pytest.mark.asyncio
+async def test_dust_cleanup_recalculates_metrics_with_current_prices(mock_supabase):
+    """Verify that after dust cleanup, metrics are calculated using actual current prices
+    for the remaining positions rather than their cost basis."""
+    portfolio = Portfolio(owner_id="test-agent")
+    await portfolio.initialize()
+
+    portfolio.positions = {
+        "DUST": MagicMock(ticker="DUST", quantity=2, average_cost_basis=100.0),
+        "KEEP": MagicMock(ticker="KEEP", quantity=10, average_cost_basis=100.0),
+    }
+    portfolio.metrics = MagicMock(total_equity=7200.0, sma=5000.0, buying_power=20000.0)
+    portfolio.cash_balance = 5000.0
+    portfolio.id = "test-portfolio-id"
+
+    current_prices = {"DUST": 100.0, "KEEP": 200.0}
+
+    await portfolio._check_and_sell_dust_positions(current_prices)
+
+    assert "DUST" not in portfolio.positions
+    assert "KEEP" in portfolio.positions
+    assert portfolio.cash_balance == 5200.0
+
+    # KEEP has quantity=10, current_price=200.0 -> Value = 2000.0
+    # Cash = 5200.0
+    # Total Equity = 5200.0 + 2000.0 = 7200.0
+    # (If the bug is present, KEEP is valued at cost basis $100 -> Value = 1000.0, Total Equity = 6200.0)
+    assert portfolio.metrics.total_equity == 7200.0

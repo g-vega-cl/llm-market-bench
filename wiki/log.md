@@ -1,69 +1,3 @@
-## [2026-06-26] feature | Update Default Allocation Percentage to 20%
-
-Updated the default allocation percentage for model trade decisions to 20% (instead of 100% or 5%) to reduce SMA and margin compliance hazards:
-- **Decision Models**: Updated `allocation_percentage` default value to `20` in `DecisionObject` class in [models.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/models.py).
-- **Execution Engine**: Updated fallback logic in [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py) to use `20` as the fallback allocation percentage for BUY signals when none is explicitly specified.
-- **TDD Verification**: Added unit test `test_decision_object_allocation_percentage_default` in [test_models.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_models.py) to assert the new default allocation.
-- **Documentation**: Updated [[concepts/minimax-portfolio]] to detail the new 20% fallback.
-
-## [2026-06-25] feature | Integrate Advanced Reasoning Toolbox (5 Whys, MECE, IS/IS NOT, Ishikawa)
-
-Added a structured Reasoning Toolbox containing 5 Whys, MECE, Kepner-Tregoe (IS/IS NOT) analysis, and Ishikawa (Fishbone/6Ms) categorizations to the core trading and evaluation prompts:
-- **System Prompts**: Integrated the Reasoning Toolbox into `CORE_ANALYSIS_SYSTEM_PROMPT` (mutable strategies section and rule 16), `CONTRARIAN_SYSTEM_PROMPT`, `MANAGER_SYSTEM_PROMPT`, and `CAUSE_AND_EFFECT_SYSTEM_PROMPT` in [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py).
-- **Auto-Researcher**: Updated [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md) with a new `## Toolbox: Advanced Reasoning Frameworks` section, instructing the meta-improver on how and when to strategically suggest these frameworks to avoid regressions.
-- **TDD Verification**: Created `test_reasoning_toolbox_integration` in [test_reasoning_prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_reasoning_prompts.py) and `test_program_mentions_reasoning_frameworks` in [test_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_autoresearch.py) to assert presence of the key concepts across all targets.
-- **Documentation**: Updated the [[concepts/reasoning]] wiki page to describe the Reasoning Toolbox.
-
-## [2026-06-24] feature | Decrease Event Consensus Similarity Threshold to 0.75
-
-Decreased the default semantic cosine similarity threshold for grouping events in consensus processing to enable promotion of more distinct events (e.g., the recent $2B quantum executive order/investment event):
-- **Consensus Engine**: Changed default `sim_threshold` parameter in `process_consensus` signature from `0.85` to `0.75` in [consensus.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/consensus.py).
-- **TDD Verification**: Added unit test `test_process_consensus_similarity_threshold_075` in [test_consensus.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_consensus.py) to assert that events with `0.78` similarity are correctly grouped and promoted under the new default, whereas they were previously ignored under the strict `0.85` threshold.
-- **Documentation**: Updated the consensus protocol threshold description in the [[concepts/consensus]] wiki page.
-
-## [2026-06-24] feature | Add EPS and Revenue actual vs estimated columns to Barometer Audit
-
-Added detailed EPS and Revenue surprise columns to the Market Barometer Audit constituent grid for transparent information auditing:
-- **Data Engine**: Updated `update_market_barometer.py` to extract `epsActual`, `epsEstimated`, `revenueActual`, and `revenueEstimated` from the FMP `/earnings` response and save them (`eps_actual`, `eps_estimated`, `revenue_beat`, `revenue_actual`, `revenue_estimated`) in the constituent JSONB payload.
-- **Frontend Audit View**: Modified `BarometerAuditPage.tsx` to add five new columns: "Actual EPS", "Expected EPS", "Revenue Beat" (with BEAT/MISS badges), "Actual Revenue", and "Expected Revenue" (formatted dynamically in billions/millions).
-- **Sorting & UI layout**: Fully enabled client-side column sorting for all new metrics and adjusted columns layout so Actual/Expected columns display immediately after their respective beat/miss badges.
-- **TDD Verification**: Updated Vitest and pytest suites (`-barometer-audit.test.tsx` and `test_market_barometer.py`) to mock and assert correct extraction, persistence, rendering, and sorting of these new surprise metrics.
-
-## [2026-06-24] fix | resolve barometer rate-limiting and missing beat data
-
-Resolved a concurrency rate-limiting bug in the daily S&P 500 Market Health Barometer calculation script where top constituents (such as AAPL, MSFT, and AMZN) were missing their earnings surprise beat/miss tags:
-- **Concurrency Fix**: Moved the `async with semaphore:` block in `fetch_with_retry` to wrap only the polite delay and active HTTP request instead of scoping the entire retry loop. This prevents rate-limited/sleeping tasks from blocking the queue and ensures proper exponential backoff retry cycles.
-- **TDD Verification**: Added unit test `test_fetch_with_retry_releases_semaphore_during_backoff` in `apps/engine/tests/test_market_barometer.py` asserting correct semaphore releasing behavior during sleeps.
-- **Data Remediation**: Executed the update script to successfully populate the 2026-06-24 snapshot with 100% valid beat/miss data for AAPL and all other constituents.
-
-## [2026-06-24] docs | Establish Information Auditability as a Core Tenet
-
-Added documentation establishing information auditability as a core architectural tenet of the platform:
-- **New Concept Page**: Created [[concepts/auditability]] detailing the philosophy of auditability and existing platform mechanisms (ingestion audit trails, decision/tool logging, trade attribution, and log auditing).
-- **Project Overview**: Updated [[overview]] to list Information Auditability under a new "Core Tenets" section.
-- **Index**: Registered the new concept page in [[index]].
-
-## [2026-06-24] feature | MiniMax Cognitive Prompt Nudge for Tools
-
-Implemented a dedicated prompt protocol nudge for MiniMax-M3 to execute quantity calculation tools (`calculate_buy_quantity`/`calculate_sell_quantity`) during the analysis phase. Updated [[concepts/minimax-portfolio]] and [[concepts/tool-enforcement]] to reflect the changes.
-
-## [2026-06-24] documentation | MiniMax margin sizing and SMA floor hazards
-
-Added a warning section in [[concepts/minimax-portfolio]] detailing the leverage hazards of sizing MiniMax market orders at 100% buying power and how it leads to SMA Floor compliance rejections.
-
-## [2026-06-17] feature | LLM Leaderboard & Screening Tool
-
-
-Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
-- **Database Layer**: Deployed Supabase migration `20260618000000_create_llm_leaderboard_rpc.sql` creating the `get_llm_leaderboard_metrics` function to dynamically calculate returns, realized P&L, win rates, verifier approval rates, average confidence, and consistency scores over selected timeframes (7d, 30d, 90d, All-Time).
-- **TypeScript Integration**: Added `LLMLeaderboardRow` types to `@llm-market-bench/database`.
-- **API Fetcher**: Created `fetch-leaderboard.ts` to execute RPC queries from the TanStack Start server layer.
-- **Visual Page & Routing**: Added new route `/leaderboard` and created the `LeaderboardPage` hub with a timeframe switcher.
-- **Aesthetic Components**: Designed a Bloomberg-meets-Wired podium layout (`LeaderboardPodium.tsx`), a sortable data grid (`LeaderboardTable.tsx`), and a side-by-side comparative diagnostics utility (`ModelComparison.tsx`) using the design system's glass Cards, Tables, and Badges.
-- **TDD & Quality**: Created `fetch-leaderboard.test.ts` and `LeaderboardPage.test.tsx` verifying data aggregation, metrics calculations, UI rendering, and comparison interactions. Passed 100% of test suites with zero lint or formatting errors.
-
-**See**: [leaderboard route](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/leaderboard/index.tsx), [fetch-leaderboard.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/leaderboard/api/fetch-leaderboard.ts)
-
 ## [2026-06-17] feature | LLM Leaderboard & Screening Tool
 
 Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
@@ -359,4 +293,11 @@ Centered the email sender name in the header badge on the Daily Intelligence Bri
 ## [2026-06-24] enhancement | Add MiniMax to agent-info display config
 
 Added `MODELS.MINIMAX` to the `agentConfig` mapping in `apps/web/src/features/today/lib/agent-info.ts`, along with a test case for exact and lowercase matching. This gives MiniMax a proper display name, color (`text-pink-500 / bg-pink-500`), and emoji (🟡) in the Today dashboard UI, completing the set of active trading models recognized by the frontend agent info utility.
+
+## [2026-06-26] fix | Dust cleanup metrics recalculation and cleaned position counting bugs
+
+Resolved two bugs in the Pre-Analysis Dust Cleanup phase of the daily pipeline:
+- **Metrics Recalculation**: Updated `_check_and_sell_dust_positions` in `portfolio.py` to recalculate portfolio metrics using correct `current_prices` instead of mapping remaining tickers to their average cost basis. This keeps the total equity and other Reg T margin metrics accurate after dust positions are automatically closed.
+- **Cleaned Position Counting**: Updated `_stage_dust_cleanup` in `main.py` to track position keys before the dust cleanup and compare them to position keys after the cleanup. This fixes the dead code that caused the reported cleaned count to always be 0.
+- **TDD Verification**: Added unit tests `test_dust_cleanup_recalculates_metrics_with_current_prices` in `test_dust_position_cleanup.py` and `test_stage_dust_cleanup_reports_correct_cleaned_count` in `test_sell_threshold_tool.py` to verify both fixes. All tests pass successfully.
 

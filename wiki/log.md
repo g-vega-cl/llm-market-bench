@@ -1,3 +1,11 @@
+## [2026-06-26] feature | Update Default Allocation Percentage to 20%
+
+Updated the default allocation percentage for model trade decisions to 20% (instead of 100% or 5%) to reduce SMA and margin compliance hazards:
+- **Decision Models**: Updated `allocation_percentage` default value to `20` in `DecisionObject` class in [models.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/models.py).
+- **Execution Engine**: Updated fallback logic in [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py) to use `20` as the fallback allocation percentage for BUY signals when none is explicitly specified.
+- **TDD Verification**: Added unit test `test_decision_object_allocation_percentage_default` in [test_models.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_models.py) to assert the new default allocation.
+- **Documentation**: Updated [[concepts/minimax-portfolio]] to detail the new 20% fallback.
+
 ## [2026-06-25] feature | Integrate Advanced Reasoning Toolbox (5 Whys, MECE, IS/IS NOT, Ishikawa)
 
 Added a structured Reasoning Toolbox containing 5 Whys, MECE, Kepner-Tregoe (IS/IS NOT) analysis, and Ishikawa (Fishbone/6Ms) categorizations to the core trading and evaluation prompts:

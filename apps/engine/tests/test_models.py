@@ -79,6 +79,20 @@ def test_decision_object_allocation_percentage_bounds():
     assert "allocation_percentage" in str(exc_info.value)
 
 
+def test_decision_object_allocation_percentage_default():
+    """Test that DecisionObject defaults allocation_percentage to 20."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="Test reasoning",
+        ticker="AAPL",
+        catalyst_type="MACRO",
+        catalyst_duration="INTRADAY",
+        source_id="test_source",
+    )
+    assert decision.allocation_percentage == 20
+
+
 def test_decisions_response_parse_json_string():
     """Test that DecisionsResponse correctly parses a JSON string of decisions."""
     json_str = json.dumps(

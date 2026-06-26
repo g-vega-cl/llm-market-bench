@@ -49,7 +49,7 @@ class DecisionObject(BaseModel):
     model_provider: str | None = Field(None, description="LLM provider that generated the decision")
     model_name: str | None = Field(None, description="Specific model name that generated the decision")
     allocation_percentage: int | None = Field(
-        None, ge=0, le=100, description="Percentage of portfolio buying power to allocate to this trade (0-100)"
+        20, ge=0, le=100, description="Percentage of portfolio buying power to allocate to this trade (0-100)"
     )
     is_priced_in: bool = Field(False, description="Whether the news is already priced into the stock price")
     is_priced_in_reasoning: str = Field(

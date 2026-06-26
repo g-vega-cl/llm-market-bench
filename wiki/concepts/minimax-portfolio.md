@@ -23,7 +23,7 @@ Because MiniMax-M3 bypasses standard verifier tool loops and JIT checks, it does
 
 * **The Sizing Risk**: If MiniMax signals a `BUY` with a high allocation percentage (e.g., 100% of available buying power), the engine sizes the transaction using gross leveraged buying power (4x excess liquidity).
 * **The Violation**: Highly leveraged purchases generate a massive margin loan (since the actual cash balance is much lower). Under Regulation T, this trade reduces the Special Memorandum Account (SMA) by 57% of the total cost. This reduction easily wipes out the SMA balance, driving it below the mandatory **10% SMA-to-equity floor** and resulting in an immediate `REJECTED_MARGIN` status.
-* **Mitigation**: When MiniMax suggests purchases, it should specify a low `allocation_percentage` (e.g. 5–30% of buying power) to stay within the SMA compliance floor.
+* **Mitigation**: When MiniMax suggests purchases, it should specify a low `allocation_percentage` (e.g. 5–30% of buying power) to stay within the SMA compliance floor. By default, the engine falls back to `20%` allocation (formerly `100%` or `5%`) if no explicit percentage is provided by the model or parsed from decisions.
 
 ## Related
 

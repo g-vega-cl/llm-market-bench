@@ -1,3 +1,13 @@
+## [2026-06-27] refactor | Authenticated Profile Route & Header Navigation Refactoring
+
+Replaced legacy mock `/posts` route with an authenticated `/profile` dashboard and updated navbar layout:
+- **Route Cleanup**: Removed legacy JSONPlaceholder `/posts` route files (`posts.tsx`, `posts.index.tsx`, `posts.$postId.tsx`, and `lib/posts.ts`) and removed `/posts` from navigation items.
+- **Protected Profile Route**: Added `/_authed/profile` displaying authenticated user email, session status, and security options using Design System primitives.
+- **Navbar Layout**: Positioned authenticated user's email at the far left of the sticky navigation header, linking to `/profile`.
+- **TDD Verification**: Authored tests in `-profile-navigation.test.tsx`. 100% of test suites and Biome linter checks pass.
+
+**See**: [[entities/web-app]], [profile.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/_authed/profile.tsx), [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx)
+
 ## [2026-06-17] feature | Leaderboard MiniMax Bypass & Card Height Fixes
 
 Updated the LLM Leaderboard to ignore verifier metrics for MiniMax-M3 and fix card height overflow:

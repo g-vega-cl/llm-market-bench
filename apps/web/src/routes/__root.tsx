@@ -78,7 +78,6 @@ export const navItems = [
     { to: '/leaderboard', label: 'Leaderboard' },
     { to: '/', label: 'Home', exact: true },
     { to: '/today', label: 'Today' },
-    { to: '/posts', label: 'Posts' },
     { to: '/concepts', label: 'Concepts' },
     { to: '/how-it-works', label: 'How it Works' },
     { to: '/reasoning', label: 'Reasoning' },
@@ -159,6 +158,22 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
                             'text-sm font-bold uppercase tracking-widest',
                         )}
                     >
+                        {user && (
+                            <Link
+                                to="/profile"
+                                className="shrink-0 hover:opacity-80 transition-opacity"
+                            >
+                                <Badge
+                                    variant="soft"
+                                    size="sm"
+                                    colorScheme="neutral"
+                                    className="normal-case tracking-normal cursor-pointer"
+                                >
+                                    {user.email}
+                                </Badge>
+                            </Link>
+                        )}
+
                         {navItems.map((item) => (
                             <NavLink
                                 key={item.to}
@@ -170,26 +185,16 @@ export function RootDocument({ children }: { children: React.ReactNode }) {
 
                         <div className="ml-auto flex items-center gap-4 shrink-0">
                             {user ? (
-                                <>
-                                    <Badge
-                                        variant="soft"
+                                <Link to="/logout">
+                                    <Button
+                                        variant="ghost"
                                         size="sm"
-                                        colorScheme="neutral"
-                                        className="normal-case tracking-normal"
+                                        colorScheme="danger"
+                                        className="uppercase tracking-widest"
                                     >
-                                        {user.email}
-                                    </Badge>
-                                    <Link to="/logout">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            colorScheme="danger"
-                                            className="uppercase tracking-widest"
-                                        >
-                                            Logout
-                                        </Button>
-                                    </Link>
-                                </>
+                                        Logout
+                                    </Button>
+                                </Link>
                             ) : (
                                 <Link to="/login">
                                     <Button

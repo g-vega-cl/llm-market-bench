@@ -16,6 +16,7 @@ TypeScript, and TanStack Query.
 - **Portfolios** — Per-agent performance, positions, P&L
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid
 - **Reasoning Trace** — Full LLM conversation history with tabbed JSON inspection
+- **Profile** — Protected user profile dashboard displaying account status and session metadata (`/_authed/profile`)
 
 ## Tech Stack
 
@@ -123,6 +124,14 @@ To display aggregate valuation and earnings metrics and support transparent data
 - **Animated Surprise Momentum Gauge**: Features a dynamic progress bar showcasing the overall S&P 500 constituent Earnings Beat Rate, styled with glowing emerald gradients and custom drop shadow filters.
 - **Barometer Audit Page (`/barometer-audit`)**: Created a dedicated audit page [BarometerAuditPage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx) displaying the methodology and formulas (Trailing P/E, Forward P/E, P/S, P/B, Beat Rate) along with an interactive table containing all constituent records (market cap, price, ratios, earnings beat status). Includes search by ticker/name, sorting by column, and filtering by beat status.
 - **TDD Verification**: Added unit tests in `HomePage.test.tsx` and `barometer-audit.test.tsx` checking correct structure rendering, filtering, and sorting, passing 100% of test suites with zero Biome linter errors.
+
+### Authenticated Profile Route & Header Navigation Refactoring (2026-06-27)
+
+To streamline user account management and clean up legacy mock routes:
+- **Posts Deprecation**: Fully removed the legacy JSONPlaceholder `/posts` mock routes (`posts.tsx`, `posts.index.tsx`, `posts.$postId.tsx`, and `lib/posts.ts`) and removed `/posts` from `navItems`.
+- **Protected Profile Route (`/_authed/profile`)**: Introduced a protected user profile route built under the `_authed` layout shell. Displays user email, authentication verification status, and log out options using Design System primitives (`Badge`, `Button`).
+- **Header Navigation Refactoring**: Updated [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx) to position the authenticated user's email badge at the far left of the sticky navigation bar, wrapping it inside a clickable `<Link to="/profile">` tag.
+- **TDD Verification**: Covered by unit tests in `-profile-navigation.test.tsx` verifying route protection, navItems sanitization, and click behavior.
 
 ## Design System
 

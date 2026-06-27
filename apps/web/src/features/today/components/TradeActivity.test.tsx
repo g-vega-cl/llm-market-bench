@@ -70,3 +70,32 @@ describe('TradeActivity filter logic', () => {
         expect(hasRejections).toBe(false);
     });
 });
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { TradeActivity } from './TradeActivity';
+
+describe('TradeActivity nested decision resolution', () => {
+    it('resolves reasoning from nested decisions attached to trade object', () => {
+        const mockTrade = {
+            id: 'trade-1',
+            executed_at: '2026-06-26T14:30:54Z',
+            signal: 'BUY',
+            ticker: 'USO',
+            price: 105.56,
+            decisions: [
+                {
+                    id: 'dec-1',
+                    ticker: 'USO',
+                    signal: 'BUY',
+                    created_at: '2026-06-26T14:30:50Z',
+                    reasoning: 'Nested decision reasoning for USO BUY',
+                    model_name: 'MiniMax-M3',
+                },
+            ],
+        };
+
+        render(<TradeActivity trades={[mockTrade]} decisions={[]} />);
+        fireEvent.click(screen.getByText('USO'));
+        expect(screen.getByText('Nested decision reasoning for USO BUY')).toBeInTheDocument();
+    });
+});

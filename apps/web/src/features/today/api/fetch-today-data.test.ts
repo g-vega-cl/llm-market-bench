@@ -282,4 +282,28 @@ describe('fetchTodayData zero-load TDD checks', () => {
         expect(limitValues).toEqual([1]);
         expect(result).toEqual({ sentiment_label: 'Bullish' });
     });
+
+    it('queries trades table with joined decisions (*, portfolios(owner_id), decisions(*))', async () => {
+        const selectQueries: Record<string, string> = {};
+        const fromSpy = vi.fn().mockImplementation((table) => {
+            const chain = {
+                select: vi.fn().mockImplementation((selectStr) => {
+                    selectQueries[table] = selectStr;
+                    return chain;
+                }),
+                eq: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                limit: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                in: vi.fn().mockImplementation(() => Promise.resolve({ data: [], error: null })),
+                or: vi.fn().mockReturnThis(),
+            };
+            return chain;
+        });
+
+        mockSupabaseClient = { from: fromSpy };
+
+        await fetchTodayData();
+        expect(selectQueries.trades).toBe('*, portfolios(owner_id), decisions(*)');
+    });
 });

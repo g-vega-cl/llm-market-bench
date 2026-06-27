@@ -19,7 +19,11 @@ import { MACRO_TICKERS, MACRO_TICKERS_LIST } from '../lib/macro-tickers';
 
 export interface TodayData {
     newsletters: (NewsletterSnapshot & { formattedTime: string })[];
-    trades: (Trade & { portfolios: { owner_id: string }; formattedTime: string })[];
+    trades: (Trade & {
+        portfolios: { owner_id: string };
+        decisions?: Decision | Decision[] | null;
+        formattedTime: string;
+    })[];
     decisions: (Decision & { formattedTime: string })[];
     memories: (Memory & { formattedShortDate: string; formattedDateTime: string })[];
     priceUpdates: MarketDataCache[];
@@ -174,7 +178,7 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
             .limit(limit),
         supabase
             .from('trades')
-            .select('*, portfolios(owner_id)')
+            .select('*, portfolios(owner_id), decisions(*)')
             .gte('executed_at', startOfDay)
             .order('executed_at', { ascending: false })
             .limit(limit),

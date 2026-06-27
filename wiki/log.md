@@ -1,3 +1,13 @@
+## [2026-06-27] bugfix | Guaranteed Trade Execution Reasoning Resolution via Joined Decisions Query
+
+Fixed an issue where executed trades (such as MiniMax trades) displayed "No reasoning found for this execution." on the Today dashboard feed:
+- **Root Cause Analysis**: Audit confirmed that full 5 Whys decision reasoning existed in the Supabase `decisions` table for executed trades. However, the serverless dashboard loader (`fetchTodayData`) applied `.limit(5)` to the decisions query to minimize SSR payload size. Because executed trades could occur earlier while subsequent decisions (HOLD, REJECTED) filled the 5-item decisions array, the underlying decisions for executed trades were trimmed from the array, causing frontend fallback.
+- **Joined Database Query**: Updated `fetchTodayData` in `fetch-today-data.ts` to execute `select('*, portfolios(owner_id), decisions(*)')` on the `trades` table query. This guarantees that every fetched trade row carries its atomic decision object directly attached to it regardless of feed limit constraints.
+- **Frontend Fallback Hierarchy**: Updated `TradeActivity.tsx` to inspect the trade's nested `decisions` property before falling back to looking in the general `decisions` array.
+- **TDD Test Coverage**: Added unit tests in `fetch-today-data.test.ts` asserting joined decision selection and `TradeActivity.test.tsx` verifying nested decision reasoning resolution.
+
+**See**: [fetch-today-data.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/api/fetch-today-data.ts), [TradeActivity.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/TradeActivity.tsx)
+
 ## [2026-06-17] feature | LLM Leaderboard & Screening Tool
 
 Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:

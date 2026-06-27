@@ -11,6 +11,7 @@ interface TradeItem {
     quantity?: number;
     price: number | string;
     portfolios?: { owner_id?: string };
+    decisions?: DecisionItem | DecisionItem[] | null;
     formattedTime?: string;
 }
 
@@ -63,9 +64,12 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     const allActivity = React.useMemo(() => {
         const activity: ActivityItem[] = [
             ...trades.map((t) => {
-                const decision = decisions.find(
-                    (d) => d.id === t.decision_id || (d.trade_id && d.trade_id === t.id),
-                );
+                const nestedDec = Array.isArray(t.decisions) ? t.decisions[0] : t.decisions;
+                const decision =
+                    nestedDec ||
+                    decisions.find(
+                        (d) => d.id === t.decision_id || (d.trade_id && d.trade_id === t.id),
+                    );
                 return {
                     ...t,
                     type: 'TRADE' as const,

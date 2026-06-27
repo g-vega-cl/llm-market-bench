@@ -960,6 +960,68 @@ class TestRunnerWindowDuplication:
         assert isinstance(we, date), f"week_end must be a date, got {type(we)}"
 
 
+class TestCrashRecoveryContinuesGeneration:
+    """When a crash occurs, runner must revert to baseline AND generate a new prompt variant."""
+
+    def test_crash_recovery_deploys_new_variant(self, monkeypatch):
+        from autoresearch import runner
+
+        async def fake_evaluate(ws, we):
+            return ("# report", {"score": -5.0}, "v-baseline")
+
+        async def fake_research(report):
+            from unittest.mock import MagicMock
+
+            res = MagicMock()
+            res.experiment_type = "incremental"
+            res.change_description = "Recovery experiment"
+            res.new_prompt_text = "new prompt"
+            res.model_dump.return_value = {}
+            return res
+
+        async def fake_check_safety(ws, we):
+            return (True, "Only 0 trades executed")
+
+        async def fake_get_active_variant():
+            return {"variant_tag": "v-baseline", "status": "active", "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT"}
+
+        async def fake_get_baseline_metrics():
+            return {"score": 1.0}
+
+        save_calls = []
+        revert_calls = []
+        update_calls = []
+
+        async def fake_save(**kw):
+            save_calls.append(kw)
+            return "v-new-recovery"
+
+        async def fake_revert_to_previous():
+            revert_calls.append("reverted")
+            return "v-baseline"
+
+        async def fake_update_metrics(tag, metrics):
+            update_calls.append((tag, metrics))
+
+        monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
+        monkeypatch.setattr(runner, "run_research", fake_research)
+        monkeypatch.setattr(runner, "_check_safety", fake_check_safety)
+        monkeypatch.setattr(runner, "get_active_variant", fake_get_active_variant)
+        monkeypatch.setattr(runner, "get_baseline_metrics", fake_get_baseline_metrics)
+        monkeypatch.setattr(runner, "save_variant", fake_save)
+        monkeypatch.setattr(runner, "revert_to_previous", fake_revert_to_previous)
+        monkeypatch.setattr(runner, "update_variant_metrics", fake_update_metrics)
+
+        import asyncio
+
+        asyncio.run(runner.run())
+
+        assert len(revert_calls) == 1, "Must revert to previous baseline upon crash"
+        assert len(save_calls) == 1, "Must deploy new variant off restored baseline"
+        assert save_calls[0]["parent_tag"] == "v-baseline"
+        assert len(update_calls) == 0, "Must not overwrite restored baseline metrics with crashed week metrics"
+
+
 # ---------------------------------------------------------------------------
 # Test 4: _check_safety queries trades table, not just decisions.
 # ---------------------------------------------------------------------------

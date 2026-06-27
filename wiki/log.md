@@ -1,23 +1,3 @@
-## [2026-06-27] bugfix | Guaranteed Trade Execution Reasoning Resolution via Joined Decisions Query
-
-Fixed an issue where executed trades (such as MiniMax trades) displayed "No reasoning found for this execution." on the Today dashboard feed:
-- **Root Cause Analysis**: Audit confirmed that full 5 Whys decision reasoning existed in the Supabase `decisions` table for executed trades. However, the serverless dashboard loader (`fetchTodayData`) applied `.limit(5)` to the decisions query to minimize SSR payload size. Because executed trades could occur earlier while subsequent decisions (HOLD, REJECTED) filled the 5-item decisions array, the underlying decisions for executed trades were trimmed from the array, causing frontend fallback.
-- **Joined Database Query**: Updated `fetchTodayData` in `fetch-today-data.ts` to execute `select('*, portfolios(owner_id), decisions(*)')` on the `trades` table query. This guarantees that every fetched trade row carries its atomic decision object directly attached to it regardless of feed limit constraints.
-- **Frontend Fallback Hierarchy**: Updated `TradeActivity.tsx` to inspect the trade's nested `decisions` property before falling back to looking in the general `decisions` array.
-- **TDD Test Coverage**: Added unit tests in `fetch-today-data.test.ts` asserting joined decision selection and `TradeActivity.test.tsx` verifying nested decision reasoning resolution.
-
-**See**: [fetch-today-data.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/api/fetch-today-data.ts), [TradeActivity.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/TradeActivity.tsx)
-
-## [2026-06-17] feature | LLM Leaderboard & Screening Tool
-
-Implemented a comprehensive screening and ranking leaderboard for comparing LLMs based on trading performance, reasoning quality, and consistency:
-- **Database Layer**: Deployed Supabase migration `20260618000000_create_llm_leaderboard_rpc.sql` creating the `get_llm_leaderboard_metrics` function to dynamically calculate returns, realized P&L, win rates, verifier approval rates, average confidence, and consistency scores over selected timeframes (7d, 30d, 90d, All-Time).
-- **TypeScript Integration**: Added `LLMLeaderboardRow` types to `@llm-market-bench/database`.
-- **API Fetcher**: Created `fetch-leaderboard.ts` to execute RPC queries from the TanStack Start server layer.
-- **Visual Page & Routing**: Added new route `/leaderboard` and created the `LeaderboardPage` hub with a timeframe switcher.
-- **Aesthetic Components**: Designed a Bloomberg-meets-Wired podium layout (`LeaderboardPodium.tsx`), a sortable data grid (`LeaderboardTable.tsx`), and a side-by-side comparative diagnostics utility (`ModelComparison.tsx`) using the design system's glass Cards, Tables, and Badges.
-- **TDD & Quality**: Created `fetch-leaderboard.test.ts` and `LeaderboardPage.test.tsx` verifying data aggregation, metrics calculations, UI rendering, and comparison interactions. Passed 100% of test suites with zero lint or formatting errors.
-
 ## [2026-06-17] feature | Leaderboard MiniMax Bypass & Card Height Fixes
 
 Updated the LLM Leaderboard to ignore verifier metrics for MiniMax-M3 and fix card height overflow:
@@ -310,4 +290,8 @@ Resolved two bugs in the Pre-Analysis Dust Cleanup phase of the daily pipeline:
 - **Metrics Recalculation**: Updated `_check_and_sell_dust_positions` in `portfolio.py` to recalculate portfolio metrics using correct `current_prices` instead of mapping remaining tickers to their average cost basis. This keeps the total equity and other Reg T margin metrics accurate after dust positions are automatically closed.
 - **Cleaned Position Counting**: Updated `_stage_dust_cleanup` in `main.py` to track position keys before the dust cleanup and compare them to position keys after the cleanup. This fixes the dead code that caused the reported cleaned count to always be 0.
 - **TDD Verification**: Added unit tests `test_dust_cleanup_recalculates_metrics_with_current_prices` in `test_dust_position_cleanup.py` and `test_stage_dust_cleanup_reports_correct_cleaned_count` in `test_sell_threshold_tool.py` to verify both fixes. All tests pass successfully.
+
+## [2026-06-27] feature | Continuous Crash Recovery Generation
+
+Updated `runner.py` so that when a prompt variant crashes (< 2 trades), the runner reverts to the baseline and immediately proceeds to generate a new candidate prompt off the baseline for the upcoming week, instead of skipping auto-research entirely. Added `TestCrashRecoveryContinuesGeneration` test coverage. Updated `wiki/entities/autoresearch.md` with the new behavior.
 

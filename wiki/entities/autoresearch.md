@@ -17,7 +17,7 @@ The auto-research system is configured via:
 ## Architecture
 
 The auto-research loop runs weekly:
-1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert.
+1. **Safety check** — did the prompt crash trading (< 2 trades)? If so, revert to baseline via `revert_to_previous()` and immediately proceed to Step 4 to generate a fresh candidate prompt off the baseline for the upcoming week.
 2. **Evaluate** — compute a single score: `(portfolio_return% - SPY_return%) - Opportunity Cost% - (max_drawdown% × 0.3)`. Update the completed week's metrics directly on the active prompt row (`P_active`) that actually ran during the week. Find the baseline (best score so far) and show Δ.
 3. **Revert on failure** — if score < baseline, revert the active prompt to the baseline via `revert_to_baseline()`. This revert happens **before** generating the new prompt in Step 4. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation, never from a failed experiment.
 4. **Research** — LLM proposes a new prompt variant (incremental or radical) building on top of the **post-revert baseline**.
@@ -86,6 +86,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-06-27**: **Continuous Crash Recovery Generation** — Updated `runner.py` so that when a prompt variant triggers the safety checker (< 2 trades), the runner demotes the crashed variant, restores the active baseline, and immediately proceeds with auto-research generation to deploy a new candidate prompt off the baseline for the upcoming trading week. Added `TestCrashRecoveryContinuesGeneration` test coverage.
 - **2026-06-01**: **Granular Valuation Ledger & Auditable Starting Prices/Hours** — Expanded the do-nothing return calculations and React dashboard to display exact initial vs. ending stock prices, starting/ending values, and the precise date and hour (`YYYY-MM-DD HH:MM`) when the database price records were fetched. Backfilled last week's active prompt experiment `v20260524-221848` in Supabase with complete granular hourly valuation ledger records.
 - **2026-05-31**: **Do-Nothing Legacy Position Valuations & DB Corrected Backfill** — Resolved a critical evaluation bug where legacy held positions without active trading activity for >14 days were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%. Modified `_do_nothing_return` in `metrics.py` to retrieve the latest known price up to `week_end` individually for each asset (removing the 14-day lookup limit). Backfilled the active prompt experiment (`37b238f1-96c6-4c98-9743-2c3f9ed980bd`) with the recalculated correct metrics (score: 8.4638, do_nothing_return_pct: -3.3962%).
 - **2026-05-29**: **Do-Nothing Formula Presentation & Instruction Alignment** — Aligned the meta-researcher's system instructions (`program.md`), the scoring methodology UI (`ScoreCalculation.tsx`), and the visual score breakdown UI (`ScoreBreakdown.tsx`) to represent the correct dual-benchmark score formula including both `SPY` and `Do-Nothing` portfolio return comparisons.

@@ -82,15 +82,14 @@ async def run(dry_run: bool = False):
     if is_crash:
         logger.warning("SAFETY: %s.", crash_reason)
         if dry_run:
-            logger.info("DRY RUN: Would revert to previous prompt (skipping).")
+            logger.info("DRY RUN: Would revert to previous prompt.")
         else:
-            logger.warning("AUTORESEARCH_RESULT: SKIPPED_CRASH | reason=%s", crash_reason)
+            logger.warning("AUTORESEARCH_RESULT: REVERTED_CRASH | reason=%s", crash_reason)
             reverted = await revert_to_previous()
             if reverted:
-                logger.info("Reverted to %s. Skipping auto-research this week.", reverted)
+                logger.info("Reverted to %s. Continuing auto-research generation off baseline.", reverted)
             else:
                 logger.warning("No previous variant to revert to. Keeping current prompt.")
-        return
 
     # Evaluate the week
     logger.info("Gathering performance data...")
@@ -101,7 +100,7 @@ async def run(dry_run: bool = False):
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)
         return
 
-    # Fetch currently active variant (the one that ran during the evaluated week)
+    # Fetch currently active variant (the one that ran during the evaluated week, or restored baseline if crashed)
     active_variant = await get_active_variant()
 
     # Log baseline comparison — enforce the Karpathy ratchet.
@@ -110,12 +109,14 @@ async def run(dry_run: bool = False):
     score = metrics["score"]
     baseline_metrics = await get_baseline_metrics()
 
-    if not dry_run and active_variant:
+    if not dry_run and active_variant and not is_crash:
         await update_variant_metrics(active_variant["variant_tag"], metrics)
         logger.info("Updated active variant %s with evaluated week's metrics", active_variant["variant_tag"])
 
     parent_tag = baseline_tag
-    if baseline_metrics:
+    if is_crash:
+        parent_tag = active_variant["variant_tag"] if active_variant else baseline_tag
+    elif baseline_metrics:
         baseline_score = baseline_metrics.get("score", 0)
         if score > baseline_score:
             logger.info("RATCHET: New score %.4f BEATS baseline %.4f. New baseline established.", score, baseline_score)

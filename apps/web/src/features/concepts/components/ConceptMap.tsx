@@ -393,6 +393,11 @@ function ConceptDetails({
                                             <Badge variant="soft" colorScheme="info" size="xs">
                                                 {matchPercentage}% Match
                                             </Badge>
+                                            {memory.created_at && (
+                                                <span className="text-xs text-zinc-400 font-mono">
+                                                    {formatDate(memory.created_at)}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
                                             {memory.content}

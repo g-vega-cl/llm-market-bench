@@ -60,6 +60,7 @@ describe('ConceptMap (Tabbed Table)', () => {
                 'MARKET EVENT: May 2026 US PPI Surge [ONGOING] | IMPACT: BEARISH | SUMMARY: A surprising 1.4% m/m US PPI surge',
             metadata: { impact: 'BEARISH' },
             similarity: 0.85,
+            created_at: '2026-05-24T12:00:00Z',
         },
     ]);
 
@@ -148,7 +149,7 @@ describe('ConceptMap (Tabbed Table)', () => {
         expect(screen.getByText(/duration active:/i)).toBeInTheDocument();
     });
 
-    it('fetches and renders related memories when row is expanded', async () => {
+    it('fetches and renders related memories with date when row is expanded', async () => {
         renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         // Click on the Inflationary Shock row
@@ -163,6 +164,7 @@ describe('ConceptMap (Tabbed Table)', () => {
         expect(memoryContent).toBeInTheDocument();
         expect(screen.getByText('85% Match')).toBeInTheDocument();
         expect(screen.getByText('BEARISH')).toBeInTheDocument();
+        expect(screen.getByText('May 24, 2026')).toBeInTheDocument();
 
         // Verify the event chain link
         const link = screen.getByRole('link', { name: /view event chain/i });

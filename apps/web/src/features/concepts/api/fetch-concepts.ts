@@ -9,6 +9,7 @@ export interface ConceptMemory {
     // biome-ignore lint/suspicious/noExplicitAny: metadata is a custom JSON object from DB
     metadata: { impact?: string; [key: string]: any } | null;
     similarity: number;
+    created_at?: string | null;
 }
 
 export async function fetchConcepts(): Promise<Concept[]> {
@@ -55,5 +56,21 @@ export async function fetchConceptMemories(conceptId: string): Promise<ConceptMe
         return [];
     }
 
-    return memoriesData as ConceptMemory[];
+    if (!memoriesData || memoriesData.length === 0) {
+        return [];
+    }
+
+    // 3. Fetch created_at timestamps for matching memories
+    const memoryIds = memoriesData.map((m: { id: string }) => m.id);
+    const { data: details } = await supabase
+        .from('memories')
+        .select('id, created_at')
+        .in('id', memoryIds);
+
+    const dateMap = new Map((details || []).map((d) => [d.id, d.created_at]));
+
+    return memoriesData.map((m: ConceptMemory) => ({
+        ...m,
+        created_at: dateMap.get(m.id) ?? null,
+    }));
 }

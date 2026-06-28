@@ -6,6 +6,7 @@ import {
     LoadingSpinner,
     PageLayout,
     SectionHeading,
+    Select,
 } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ interface ReasoningPageProps {
 export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
     const posthog = usePostHog();
     const [activeTab, setActiveTab] = React.useState<string>('ALL');
+    const [selectedModel, setSelectedModel] = React.useState<string>('ALL');
     const [selectedLogId, setSelectedLogId] = React.useState<string | null>(null);
 
     const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, error } =
@@ -37,8 +39,18 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
     const allLogs = React.useMemo(() => data?.pages.flatMap((page) => page.data) || [], [data]);
 
     const categories = ['ALL', ...new Set(allLogs?.map((l) => l.task_type) || [])];
-    const filteredLogs =
-        activeTab === 'ALL' ? allLogs : allLogs?.filter((l) => l.task_type === activeTab);
+    const availableModels = [
+        { label: 'All Models', value: 'ALL' },
+        ...Array.from(new Set(allLogs?.map((l) => l.model_name).filter(Boolean) || [])).map(
+            (m) => ({ label: m, value: m }),
+        ),
+    ];
+
+    const filteredLogs = allLogs?.filter((l) => {
+        const matchesTab = activeTab === 'ALL' || l.task_type === activeTab;
+        const matchesModel = selectedModel === 'ALL' || l.model_name === selectedModel;
+        return matchesTab && matchesModel;
+    });
 
     const selectedLog = allLogs?.find((l) => l.id === selectedLogId);
 
@@ -73,26 +85,43 @@ export function ReasoningPage({ initialData, fetchFn }: ReasoningPageProps) {
                     </p>
                 </header>
 
-                {/* Tabs */}
-                <div className="mb-6 md:mb-8 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-                    <div className="flex gap-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/50 rounded-2xl w-fit border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl min-w-max">
-                        {categories.map((cat) => (
-                            <Button
-                                key={cat}
-                                variant={activeTab === cat ? 'solid' : 'ghost'}
-                                size="sm"
-                                colorScheme={activeTab === cat ? 'accent' : 'neutral'}
-                                onClick={() => {
-                                    setActiveTab(cat);
-                                    posthog.capture('reasoning_category_filtered', {
-                                        category: cat,
-                                    });
-                                }}
-                                className="text-[10px] md:text-xs uppercase tracking-widest whitespace-nowrap min-h-[44px]"
-                            >
-                                {cat}
-                            </Button>
-                        ))}
+                {/* Filters Row (Tabs + Model Dropdown) */}
+                <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+                        <div className="flex gap-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/50 rounded-2xl w-fit border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl min-w-max">
+                            {categories.map((cat) => (
+                                <Button
+                                    key={cat}
+                                    variant={activeTab === cat ? 'solid' : 'ghost'}
+                                    size="sm"
+                                    colorScheme={activeTab === cat ? 'accent' : 'neutral'}
+                                    onClick={() => {
+                                        setActiveTab(cat);
+                                        posthog.capture('reasoning_category_filtered', {
+                                            category: cat,
+                                        });
+                                    }}
+                                    className="text-[10px] md:text-xs uppercase tracking-widest whitespace-nowrap min-h-[44px]"
+                                >
+                                    {cat}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Model Filter */}
+                    <div className="w-full md:w-64">
+                        <Select
+                            value={selectedModel}
+                            options={availableModels}
+                            onChange={(e) => {
+                                const newModel = e.target.value;
+                                setSelectedModel(newModel);
+                                posthog.capture('reasoning_model_filtered', {
+                                    model: newModel,
+                                });
+                            }}
+                        />
                     </div>
                 </div>
 

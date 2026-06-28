@@ -1,4 +1,14 @@
+## [2026-06-28] feature | UI Design System Select Primitive & Reasoning Model Filtering
+
+Expanded design system primitives and added model filtering to Reasoning audit trail:
+- **Design System Expansion**: Added reusable `Select` primitive to `packages/ui-design-system/src/primitives/Select.tsx` with full dark/light mode and zinc palette styling.
+- **Reasoning Page Filtering**: Integrated model filter dropdown in `ReasoningPage.tsx` dynamically listing models from active traces. Enables concurrent category and model filtering.
+- **Analytics & Testing**: Tracked model selection via PostHog (`reasoning_model_filtered`) and added unit test coverage in `ReasoningPage.test.tsx`.
+
+**See**: [[entities/web-app]], [Select.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/packages/ui-design-system/src/primitives/Select.tsx), [ReasoningPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/reasoning/pages/ReasoningPage.tsx)
+
 ## [2026-06-27] refactor | Authenticated Profile Route & Header Navigation Refactoring
+
 
 Replaced legacy mock `/posts` route with an authenticated `/profile` dashboard and updated navbar layout:
 - **Route Cleanup**: Removed legacy JSONPlaceholder `/posts` route files (`posts.tsx`, `posts.index.tsx`, `posts.$postId.tsx`, and `lib/posts.ts`) and removed `/posts` from navigation items.

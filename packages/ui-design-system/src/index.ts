@@ -49,6 +49,8 @@ export type { CardProps } from './primitives/Card';
 export { Card } from './primitives/Card';
 export type { InputProps, LabelProps } from './primitives/Input';
 export { Input, Label } from './primitives/Input';
+export type { SelectOption, SelectProps } from './primitives/Select';
+export { Select } from './primitives/Select';
 export type {
     TableCellProps,
     TableHeadProps,

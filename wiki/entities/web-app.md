@@ -133,7 +133,15 @@ To streamline user account management and clean up legacy mock routes:
 - **Header Navigation Refactoring**: Updated [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx) to position the authenticated user's email badge at the far left of the sticky navigation bar, wrapping it inside a clickable `<Link to="/profile">` tag.
 - **TDD Verification**: Covered by unit tests in `-profile-navigation.test.tsx` verifying route protection, navItems sanitization, and click behavior.
 
+### UI Design System Select Primitive & Reasoning Model Filtering (2026-06-28)
+
+To support standardized dropdown selection across the application and enhance LLM audit capabilities:
+- **Design System Primitive**: Added `Select` to `packages/ui-design-system/src/primitives/Select.tsx` and exported it from the design system package. Provides native select styling consistent with `Input` (zinc palette, focus ring styling, dark/light mode support).
+- **Reasoning Page Multi-Dimensional Filtering**: Updated `ReasoningPage.tsx` to extract unique LLM model names dynamically from active logs and display a model filter dropdown alongside task type tabs, enabling simultaneous category and model auditing. Added PostHog analytics capture (`reasoning_model_filtered`).
+- **TDD Verification**: Covered by unit test `ReasoningPage.test.tsx` verifying filtering behavior and dropdown accessibility.
+
 ## Design System
+
 
 "Bloomberg Terminal Meets Wired Magazine" at `packages/ui-design-system/`. Fully adopted across all pages as of 2026-05-14.
 

@@ -38,6 +38,7 @@ const mockBarometer: MarketBarometer = {
             revenue_beat: true,
             revenue_actual: 90150000000.0,
             revenue_estimated: 89900000000.0,
+            earnings_date: '2026-04-30',
         },
         {
             symbol: 'MSFT',
@@ -55,6 +56,7 @@ const mockBarometer: MarketBarometer = {
             revenue_beat: false,
             revenue_actual: 60200000000.0,
             revenue_estimated: 61000000000.0,
+            earnings_date: '2026-04-25',
         },
         {
             symbol: 'NVDA',
@@ -72,6 +74,7 @@ const mockBarometer: MarketBarometer = {
             revenue_beat: null,
             revenue_actual: null,
             revenue_estimated: null,
+            earnings_date: null,
         },
     ] as MarketBarometer['constituents_data'],
 };
@@ -95,6 +98,9 @@ describe('BarometerAuditPage', () => {
         expect(screen.getByText('Price-to-FCF')).toBeInTheDocument();
         expect(screen.getByText('28.40')).toBeInTheDocument();
 
+        // Assert table headers render
+        expect(screen.getByText('Earnings Date')).toBeInTheDocument();
+
         // Assert table rows render
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
@@ -106,6 +112,7 @@ describe('BarometerAuditPage', () => {
         expect(screen.getByText('1.20')).toBeInTheDocument();
         expect(screen.getByText('$90.15B')).toBeInTheDocument();
         expect(screen.getByText('$89.90B')).toBeInTheDocument();
+        expect(screen.getByText('2026-04-30')).toBeInTheDocument();
 
         expect(screen.getByText('MSFT')).toBeInTheDocument();
         expect(screen.getByText('Microsoft Corp')).toBeInTheDocument();
@@ -116,6 +123,7 @@ describe('BarometerAuditPage', () => {
         expect(screen.getByText('2.15')).toBeInTheDocument();
         expect(screen.getByText('$60.20B')).toBeInTheDocument();
         expect(screen.getByText('$61.00B')).toBeInTheDocument();
+        expect(screen.getByText('2026-04-25')).toBeInTheDocument();
     });
 
     it('filters constituents by search term', () => {

@@ -1,3 +1,13 @@
+## [2026-06-29] feature | Quarterly Earnings Verification & Barometer Audit Earnings Date Column
+
+Verified FMP earnings data availability and added report dates to the Market Health Barometer constituent audit table:
+- **FMP Endpoint Verification**: Confirmed that `/earnings` (actuals vs estimates calendar) and `/income-statement?period=quarter` are fully accessible (HTTP 200) under our FMP subscription key, while quarterly valuation ratios (`/key-metrics?period=quarter`) remain gated (HTTP 402).
+- **Backend Aggregator**: Updated `update_market_barometer.py` to extract `earnings_date` from FMP `/earnings` responses and preserve it within the `constituents_data` JSONB payload stored in `market_barometer_history`.
+- **Frontend Audit View**: Added `earnings_date` to the constituent interface and rendered a new sortable `Earnings Date` column in `BarometerAuditPage.tsx` next to `Earnings Beat`.
+- **Testing**: Added unit test coverage in `test_market_barometer.py` and `-barometer-audit.test.tsx`.
+
+**See**: [[entities/market-barometer-audit]], [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py), [BarometerAuditPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx)
+
 ## [2026-06-28] feature | UI Design System Select Primitive & Reasoning Model Filtering
 
 Expanded design system primitives and added model filtering to Reasoning audit trail:

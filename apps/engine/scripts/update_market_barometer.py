@@ -221,6 +221,7 @@ async def fetch_constituent_data(
     revenue_beat = None
     revenue_actual = None
     revenue_estimated = None
+    earnings_date = None
 
     if earnings_data and isinstance(earnings_data, list):
         # Find the most recent completed report (actual eps is not None)
@@ -235,6 +236,7 @@ async def fetch_constituent_data(
                     eps_actual = float(act_eps)
                     eps_estimated = float(est_eps)
                     beat = eps_actual > eps_estimated
+                    earnings_date = earn.get("date")
 
                     if act_rev is not None and est_rev is not None and act_rev != "" and est_rev != "":
                         try:
@@ -263,6 +265,7 @@ async def fetch_constituent_data(
         "revenue_beat": revenue_beat,
         "revenue_actual": revenue_actual,
         "revenue_estimated": revenue_estimated,
+        "earnings_date": earnings_date,
     }
 
 
@@ -399,6 +402,7 @@ async def calculate_barometer():
                 "revenue_beat": r.get("revenue_beat"),
                 "revenue_actual": float(r["revenue_actual"]) if r.get("revenue_actual") is not None else None,
                 "revenue_estimated": float(r["revenue_estimated"]) if r.get("revenue_estimated") is not None else None,
+                "earnings_date": r.get("earnings_date"),
             }
         )
 

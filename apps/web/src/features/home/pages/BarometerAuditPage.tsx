@@ -31,6 +31,7 @@ interface Constituent {
     revenue_beat: boolean | null;
     revenue_actual: number | null;
     revenue_estimated: number | null;
+    earnings_date: string | null;
 }
 
 interface ColumnConfig {
@@ -50,6 +51,7 @@ const columns: ColumnConfig[] = [
     { label: 'P/B', field: 'pb', align: 'right' },
     { label: 'P/FCF', field: 'pfcf', align: 'right' },
     { label: 'Earnings Beat', field: 'beat', align: 'center' },
+    { label: 'Earnings Date', field: 'earnings_date', align: 'center' },
     { label: 'Actual EPS', field: 'eps_actual', align: 'right' },
     { label: 'Expected EPS', field: 'eps_estimated', align: 'right' },
     { label: 'Revenue Beat', field: 'revenue_beat', align: 'center' },
@@ -412,7 +414,7 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                     {processedConstituents.length === 0 ? (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={15}
+                                                colSpan={16}
                                                 className="text-center py-8 text-white/40"
                                             >
                                                 No constituents match search criteria.
@@ -485,6 +487,9 @@ export function BarometerAuditPage({ dates, selectedDate, barometer }: Barometer
                                                                 —
                                                             </span>
                                                         )}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-4 text-center font-mono text-white/80 text-xs">
+                                                        {c.earnings_date || '—'}
                                                     </TableCell>
                                                     <TableCell className="py-2.5 px-4 text-right font-mono text-white/80 text-xs">
                                                         {formatValue(c.eps_actual)}

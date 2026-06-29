@@ -35,6 +35,7 @@ async def test_calculate_barometer():
             "revenue_beat": True,
             "revenue_actual": 90150000000.0,
             "revenue_estimated": 89900000000.0,
+            "earnings_date": "2026-04-30",
         },
         # MSFT
         {
@@ -53,6 +54,7 @@ async def test_calculate_barometer():
             "revenue_beat": False,
             "revenue_actual": 60200000000.0,
             "revenue_estimated": 61000000000.0,
+            "earnings_date": "2026-04-25",
         },
         # TSLA
         {
@@ -71,6 +73,7 @@ async def test_calculate_barometer():
             "revenue_beat": None,
             "revenue_actual": None,
             "revenue_estimated": None,
+            "earnings_date": None,
         },
     ]
 
@@ -131,6 +134,7 @@ async def test_calculate_barometer():
     assert payload["constituents_data"][0]["revenue_beat"] is True
     assert payload["constituents_data"][0]["revenue_actual"] == 90150000000.0
     assert payload["constituents_data"][0]["revenue_estimated"] == 89900000000.0
+    assert payload["constituents_data"][0]["earnings_date"] == "2026-04-30"
 
     assert payload["constituents_data"][1]["symbol"] == "MSFT"
     assert payload["constituents_data"][1]["company_name"] == "Microsoft Corp"
@@ -141,6 +145,7 @@ async def test_calculate_barometer():
     assert payload["constituents_data"][1]["revenue_beat"] is False
     assert payload["constituents_data"][1]["revenue_actual"] == 60200000000.0
     assert payload["constituents_data"][1]["revenue_estimated"] == 61000000000.0
+    assert payload["constituents_data"][1]["earnings_date"] == "2026-04-25"
 
     assert payload["constituents_data"][2]["symbol"] == "TSLA"
     assert payload["constituents_data"][2]["company_name"] == "Tesla Inc"
@@ -151,6 +156,7 @@ async def test_calculate_barometer():
     assert payload["constituents_data"][2]["revenue_beat"] is None
     assert payload["constituents_data"][2]["revenue_actual"] is None
     assert payload["constituents_data"][2]["revenue_estimated"] is None
+    assert payload["constituents_data"][2]["earnings_date"] is None
 
 
 @pytest.mark.asyncio

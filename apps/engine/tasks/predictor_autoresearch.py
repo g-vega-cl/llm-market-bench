@@ -49,11 +49,15 @@ async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_resea
     )
 
     try:
-        resp = await meta_researcher.chat.completions.create(
+        resp_awaitable = meta_researcher.chat.completions.create(
             model="gemini-3.1-flash-lite",
             response_model=MetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )
+        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+            resp = await resp_awaitable
+        else:
+            resp = resp_awaitable
         new_prompt = resp.new_prompt
         # Clean up any markdown blocks if the LLM wrapped the output
         if new_prompt.startswith("```"):

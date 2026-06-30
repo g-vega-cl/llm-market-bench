@@ -1,3 +1,14 @@
+## [2026-06-30] fix | Sector Predictor Autoresearch Gemini Await-Bug & Frontend Dates
+
+Fixed a critical await exception bug in the sector predictor autoresearch pipeline and enhanced the frontend model arena dashboard:
+- **Autoresearch Await Fix**: Resolved a `TypeError` in `predictor_autoresearch.py` where it attempted to `await` the synchronous Gemini client completions call. Implemented a robust, dynamic awaitable check (`hasattr(resp_awaitable, "__await__")`) that works correctly for both the synchronous production client and the `AsyncMock`s used in tests.
+- **Autoresearch Database Recovery**: Restored the missing active prompt variant pointers in the database by bootstrapping from the baseline. This allows future weekly scheduled autoresearch cron jobs to find and mutate the active predictor prompt.
+- **Frontend Dashboard Enhancements**: Refactored `AIPredictionsPage.tsx` to display variant metadata (Type, Active Period, Parent Variant, Created At) inside the details card. Added sortable "Type" and "Period" columns to the sidebar experiment history table.
+- **Cognitive Complexity Refactoring**: Extracted JSX layout components (`PredictorAutoresearchTab` and `PredictorExperimentRow`) to reduce cognitive complexity of the main page component below Biome's linting threshold.
+- **TDD Verification**: Updated `test_predictor_autoresearch.py` to use a sync mock for completions and verified that the entire test suite passes successfully.
+
+**See**: [[entities/sector-predictor-arena]], [predictor_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tasks/predictor_autoresearch.py), [AIPredictionsPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx)
+
 ## [2026-06-29] feature | Quarterly Earnings Verification & Barometer Audit Earnings Date Column
 
 Verified FMP earnings data availability and added report dates to the Market Health Barometer constituent audit table:

@@ -16,6 +16,42 @@ import { diffLines } from '~/features/autoresearch/utils/diff';
 import type { SectorPrediction } from '../api/fetch-predictions';
 import { AIPredictionChart } from '../components/AIPredictionChart';
 
+function formatStableDate(dateStr: string): string {
+    if (!dateStr) return 'N/A';
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const year = parts[0];
+        const monthStr = parts[1];
+        const dayStr = parts[2];
+        const months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+        ];
+        const monthIndex = parseInt(monthStr, 10) - 1;
+        if (monthIndex >= 0 && monthIndex < 12) {
+            const day = parseInt(dayStr, 10);
+            return `${months[monthIndex]} ${day}, ${year}`;
+        }
+    }
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
 export interface AIPredictionsPageProps {
     initialData: SectorPrediction[];
     experiments: PromptExperiment[];
@@ -277,203 +313,289 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                     </div>
                 </div>
             ) : (
-                <div className="space-y-8 animate-in fade-in duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 backdrop-blur-sm">
-                            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                                All-Time Baseline Score
-                            </h2>
-                            <div className="text-3xl font-black text-emerald-400 font-mono">
-                                {baselineScore}
-                            </div>
-                            <p className="text-slate-400 text-xs mt-2">
-                                The highest score achieved by evaluated prompt variants
-                            </p>
-                        </div>
-                        <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 backdrop-blur-sm">
-                            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                                Active Prompt
-                            </h2>
-                            <div className="text-3xl font-black text-blue-400 font-mono">
-                                {activeVariant}
-                            </div>
-                            <p className="text-slate-400 text-xs mt-2">
-                                The active prompt variant for the current weekly cycle
-                            </p>
-                        </div>
-                    </div>
-
-                    <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
-                        <SectionHeading className="text-slate-200 text-lg">
-                            Predictor Scoring Formula
-                        </SectionHeading>
-                        <p className="text-slate-400 text-sm leading-relaxed">
-                            Every weekly prediction is evaluated against the actual performance of
-                            the sector ETF universe. The score is calculated as the average of the
-                            selected sector's percentile return score and the uncorrelated pair's
-                            percentile return score:
-                        </p>
-                        <div className="py-4 px-6 bg-slate-900/60 border border-slate-700/50 rounded-xl flex flex-col items-center justify-center space-y-2">
-                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Weekly Predictor Score
-                            </div>
-                            <div className="text-xl font-mono font-bold text-slate-200 text-center leading-relaxed">
-                                Average( Sector Percentile + Pair Percentile )
-                            </div>
-                        </div>
-                    </Card>
-
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                        {/* Sidebar: List of Experiments */}
-                        <div className="xl:col-span-4 space-y-6">
-                            <div className="flex items-center justify-between px-2">
-                                <SectionHeading className="text-slate-200">History</SectionHeading>
-                                <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">
-                                    {experimentsList.length} Experiments
-                                </span>
-                            </div>
-                            <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow isHoverable={false} className="border-slate-800">
-                                            <TableHead className="text-slate-300">
-                                                Variant
-                                            </TableHead>
-                                            <TableHead className="text-slate-300">Score</TableHead>
-                                            <TableHead className="text-slate-300">Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {experimentsList.map((exp) => {
-                                            const score = exp.metrics?.score;
-                                            const formattedScore =
-                                                score !== undefined && score !== null
-                                                    ? score.toFixed(3)
-                                                    : 'N/A';
-                                            const isSelected = selectedExperiment?.id === exp.id;
-                                            return (
-                                                <TableRow
-                                                    key={exp.id}
-                                                    onClick={() => setSelectedExpId(exp.id)}
-                                                    className={`cursor-pointer border-slate-800 hover:bg-slate-800/30 ${
-                                                        isSelected ? 'bg-slate-800/50' : ''
-                                                    }`}
-                                                >
-                                                    <TableCell className="font-mono text-slate-200 font-medium">
-                                                        {exp.variant_tag}
-                                                    </TableCell>
-                                                    <TableCell
-                                                        className={`font-bold ${
-                                                            formattedScore === 'N/A'
-                                                                ? 'text-slate-500 font-medium'
-                                                                : score > 0
-                                                                  ? 'text-emerald-400'
-                                                                  : 'text-rose-400'
-                                                        }`}
-                                                    >
-                                                        {formattedScore}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <PredictorStatusBadge status={exp.status} />
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </div>
-
-                        {/* Details View */}
-                        <div className="xl:col-span-8 space-y-6">
-                            {selectedExperiment ? (
-                                <div className="space-y-6">
-                                    <div className="flex items-center space-x-4 px-2">
-                                        <SectionHeading className="text-slate-200">
-                                            Experiment Details
-                                        </SectionHeading>
-                                        <div className="h-px flex-1 bg-slate-800" />
-                                        <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                            {selectedExperiment.variant_tag}
-                                        </span>
-                                    </div>
-
-                                    <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-6">
-                                        <div className="space-y-2">
-                                            <SubHeading className="text-slate-300">
-                                                Change Description
-                                            </SubHeading>
-                                            <p className="text-slate-400 italic text-sm">
-                                                "
-                                                {selectedExperiment.change_description ||
-                                                    'No description provided.'}
-                                                "
-                                            </p>
-                                            <Badge
-                                                variant={
-                                                    selectedExperiment.experiment_type ===
-                                                    'baseline'
-                                                        ? 'solid'
-                                                        : 'soft'
-                                                }
-                                                className="mt-1"
-                                            >
-                                                {selectedExperiment.experiment_type}
-                                            </Badge>
-                                        </div>
-
-                                        {selectedExperiment.research_output?.hypothesis && (
-                                            <div className="space-y-2">
-                                                <SubHeading className="text-slate-300">
-                                                    Hypothesis
-                                                </SubHeading>
-                                                <div className="p-4 bg-slate-900/60 rounded-lg text-sm text-slate-300 border border-slate-800">
-                                                    {selectedExperiment.research_output.hypothesis}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {selectedExperiment.research_output?.thought_process && (
-                                            <div className="space-y-2">
-                                                <SubHeading className="text-slate-300">
-                                                    Meta-Researcher Logic
-                                                </SubHeading>
-                                                <div className="whitespace-pre-wrap text-sm text-slate-400 bg-slate-900/40 p-4 rounded-lg leading-relaxed border border-slate-800/50">
-                                                    {
-                                                        selectedExperiment.research_output
-                                                            .thought_process
-                                                    }
-                                                </div>
-                                            </div>
-                                        )}
-                                    </Card>
-
-                                    <PredictorPromptChanges
-                                        experiment={selectedExperiment}
-                                        parentExperiment={parentExperiment}
-                                    />
-
-                                    <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
-                                        <SectionHeading className="text-slate-200">
-                                            The Predictor Prompt
-                                        </SectionHeading>
-                                        <div className="relative group">
-                                            <pre className="p-4 bg-slate-950 text-slate-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-slate-850 max-h-[500px] overflow-y-auto">
-                                                {selectedExperiment.prompt_content}
-                                            </pre>
-                                        </div>
-                                    </Card>
-                                </div>
-                            ) : (
-                                <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500">
-                                    Select an experiment to view details
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <PredictorAutoresearchTab
+                    experimentsList={experimentsList}
+                    baselineScore={baselineScore}
+                    activeVariant={activeVariant}
+                    selectedExperiment={selectedExperiment}
+                    setSelectedExpId={setSelectedExpId}
+                    parentExperiment={parentExperiment}
+                />
             )}
         </div>
+    );
+}
+
+interface PredictorAutoresearchTabProps {
+    experimentsList: PromptExperiment[];
+    baselineScore: string;
+    activeVariant: string;
+    selectedExperiment: PromptExperiment | null;
+    setSelectedExpId: (id: string | null) => void;
+    parentExperiment: PromptExperiment | null;
+}
+
+function PredictorAutoresearchTab({
+    experimentsList,
+    baselineScore,
+    activeVariant,
+    selectedExperiment,
+    setSelectedExpId,
+    parentExperiment,
+}: PredictorAutoresearchTabProps) {
+    return (
+        <div className="space-y-8 animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 backdrop-blur-sm">
+                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                        All-Time Baseline Score
+                    </h2>
+                    <div className="text-3xl font-black text-emerald-400 font-mono">
+                        {baselineScore}
+                    </div>
+                    <p className="text-slate-400 text-xs mt-2">
+                        The highest score achieved by evaluated prompt variants
+                    </p>
+                </div>
+                <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 backdrop-blur-sm">
+                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                        Active Prompt
+                    </h2>
+                    <div className="text-3xl font-black text-blue-400 font-mono">
+                        {activeVariant}
+                    </div>
+                    <p className="text-slate-400 text-xs mt-2">
+                        The active prompt variant for the current weekly cycle
+                    </p>
+                </div>
+            </div>
+
+            <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
+                <SectionHeading className="text-slate-200 text-lg">
+                    Predictor Scoring Formula
+                </SectionHeading>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                    Every weekly prediction is evaluated against the actual performance of the
+                    sector ETF universe. The score is calculated as the average of the selected
+                    sector's percentile return score and the uncorrelated pair's percentile return
+                    score:
+                </p>
+                <div className="py-4 px-6 bg-slate-900/60 border border-slate-700/50 rounded-xl flex flex-col items-center justify-center space-y-2">
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Weekly Predictor Score
+                    </div>
+                    <div className="text-xl font-mono font-bold text-slate-200 text-center leading-relaxed">
+                        Average( Sector Percentile + Pair Percentile )
+                    </div>
+                </div>
+            </Card>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                {/* Sidebar: List of Experiments */}
+                <div className="xl:col-span-4 space-y-6">
+                    <div className="flex items-center justify-between px-2">
+                        <SectionHeading className="text-slate-200">History</SectionHeading>
+                        <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">
+                            {experimentsList.length} Experiments
+                        </span>
+                    </div>
+                    <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden">
+                        <Table>
+                            <TableHeader>
+                                <TableRow isHoverable={false} className="border-slate-800">
+                                    <TableHead className="text-slate-300">Variant</TableHead>
+                                    <TableHead className="text-slate-300">Type</TableHead>
+                                    <TableHead className="text-slate-300">Score</TableHead>
+                                    <TableHead className="text-slate-300">Period</TableHead>
+                                    <TableHead className="text-slate-300">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {experimentsList.map((exp) => (
+                                    <PredictorExperimentRow
+                                        key={exp.id}
+                                        exp={exp}
+                                        isSelected={selectedExperiment?.id === exp.id}
+                                        onSelect={setSelectedExpId}
+                                    />
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+
+                {/* Details View */}
+                <div className="xl:col-span-8 space-y-6">
+                    {selectedExperiment ? (
+                        <div className="space-y-6">
+                            <div className="flex items-center space-x-4 px-2">
+                                <SectionHeading className="text-slate-200">
+                                    Experiment Details
+                                </SectionHeading>
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                    {selectedExperiment.variant_tag}
+                                </span>
+                            </div>
+
+                            <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-6">
+                                {/* Metadata Row */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-900/40 rounded-xl border border-slate-800/50 text-xs">
+                                    <div>
+                                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                                            Experiment Type
+                                        </div>
+                                        <Badge
+                                            variant={
+                                                selectedExperiment.experiment_type === 'baseline'
+                                                    ? 'solid'
+                                                    : 'soft'
+                                            }
+                                        >
+                                            {selectedExperiment.experiment_type}
+                                        </Badge>
+                                    </div>
+                                    <div>
+                                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                                            Active Period
+                                        </div>
+                                        <div className="text-slate-300 font-medium">
+                                            {formatStableDate(selectedExperiment.week_start)} -{' '}
+                                            {formatStableDate(selectedExperiment.week_end)}
+                                        </div>
+                                    </div>
+                                    {selectedExperiment.parent_tag ? (
+                                        <div>
+                                            <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                                                Parent Variant
+                                            </div>
+                                            <div className="text-slate-300 font-mono font-medium">
+                                                {selectedExperiment.parent_tag}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                                                Parent Variant
+                                            </div>
+                                            <div className="text-slate-500 italic">None (Root)</div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                                            Created At
+                                        </div>
+                                        <div className="text-slate-300 font-medium">
+                                            {formatStableDate(selectedExperiment.created_at)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <SubHeading className="text-slate-300">
+                                        Change Description
+                                    </SubHeading>
+                                    <p className="text-slate-400 italic text-sm">
+                                        "
+                                        {selectedExperiment.change_description ||
+                                            'No description provided.'}
+                                        "
+                                    </p>
+                                </div>
+
+                                {selectedExperiment.research_output?.hypothesis && (
+                                    <div className="space-y-2">
+                                        <SubHeading className="text-slate-300">
+                                            Hypothesis
+                                        </SubHeading>
+                                        <div className="p-4 bg-slate-900/60 rounded-lg text-sm text-slate-300 border border-slate-800">
+                                            {selectedExperiment.research_output.hypothesis}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedExperiment.research_output?.thought_process && (
+                                    <div className="space-y-2">
+                                        <SubHeading className="text-slate-300">
+                                            Meta-Researcher Logic
+                                        </SubHeading>
+                                        <div className="whitespace-pre-wrap text-sm text-slate-400 bg-slate-900/40 p-4 rounded-lg leading-relaxed border border-slate-800/50">
+                                            {selectedExperiment.research_output.thought_process}
+                                        </div>
+                                    </div>
+                                )}
+                            </Card>
+
+                            <PredictorPromptChanges
+                                experiment={selectedExperiment}
+                                parentExperiment={parentExperiment}
+                            />
+
+                            <Card className="p-6 bg-slate-800/20 border-slate-700/50 space-y-4">
+                                <SectionHeading className="text-slate-200">
+                                    The Predictor Prompt
+                                </SectionHeading>
+                                <div className="relative group">
+                                    <pre className="p-4 bg-slate-950 text-slate-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-slate-850 max-h-[500px] overflow-y-auto">
+                                        {selectedExperiment.prompt_content}
+                                    </pre>
+                                </div>
+                            </Card>
+                        </div>
+                    ) : (
+                        <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500">
+                            Select an experiment to view details
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+interface PredictorExperimentRowProps {
+    exp: PromptExperiment;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+}
+
+function PredictorExperimentRow({ exp, isSelected, onSelect }: PredictorExperimentRowProps) {
+    const score = exp.metrics?.score;
+    const formattedScore = score !== undefined && score !== null ? score.toFixed(3) : 'N/A';
+    return (
+        <TableRow
+            onClick={() => onSelect(exp.id)}
+            className={`cursor-pointer border-slate-800 hover:bg-slate-800/30 ${
+                isSelected ? 'bg-slate-800/50' : ''
+            }`}
+        >
+            <TableCell className="font-mono text-slate-200 font-medium text-xs break-all max-w-[120px]">
+                {exp.variant_tag}
+            </TableCell>
+            <TableCell>
+                <Badge variant={exp.experiment_type === 'baseline' ? 'solid' : 'soft'}>
+                    {exp.experiment_type}
+                </Badge>
+            </TableCell>
+            <TableCell
+                className={`font-bold ${
+                    formattedScore === 'N/A'
+                        ? 'text-slate-500 font-medium'
+                        : score > 0
+                          ? 'text-emerald-400'
+                          : 'text-rose-400'
+                }`}
+            >
+                {formattedScore}
+            </TableCell>
+            <TableCell className="text-slate-400 text-xs whitespace-nowrap">
+                {formatStableDate(exp.week_start).split(',')[0]} -{' '}
+                {formatStableDate(exp.week_end).split(',')[0]}
+            </TableCell>
+            <TableCell>
+                <PredictorStatusBadge status={exp.status} />
+            </TableCell>
+        </TableRow>
     );
 }
 

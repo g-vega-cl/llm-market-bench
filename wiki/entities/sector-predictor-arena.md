@@ -47,14 +47,14 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 
 ### Engine Tasks
 * **Prediction Generation (`apps/engine/tasks/sector_predictor.py`)**: Runs prediction inference for DeepSeek (via instructor proxy) and MiniMax (via direct HTTP payload). Inserts predictions into `sector_predictions` table.
-* **Auto-Research Evolution (`apps/engine/tasks/predictor_autoresearch.py`)**: Orchestrates the weekly prompt evolution, updates database metrics, applies the ratchet revert step, and mutates the system prompt.
+* **Auto-Research Evolution (`apps/engine/tasks/predictor_autoresearch.py`)**: Orchestrates the weekly prompt evolution, updates database metrics, applies the ratchet revert step, and mutates the system prompt using a hybrid async/sync completions handler to prevent runtime await crashes.
 * **Inference Evaluation (`apps/engine/tasks/evaluate_predictions.py`)**: Computes percentile performance metrics against the corresponding weekly correlation run assets.
 
 ### Web Front-End
 * **Route**: `apps/web/src/routes/ai-predictions/index.tsx` using `createServerFn` and TanStack Start to load both predictions and predictor experiments.
 * **API Fetcher**: `apps/web/src/features/ai-predictions/api/fetch-predictions.ts` reading from `sector_predictions` (predictions) and `prompt_experiments` (scoped to `SECTOR_PREDICTOR_PROMPT` for experiments).
 * **Visuals**: `apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx` leveraging `d3` rendering pipeline.
-* **Pages**: `apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx` showing unified metrics, target track records, baseline stats, and interactive prompt changes.
+* **Pages**: `apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx` showing unified metrics, target track records, baseline stats, interactive prompt changes, and a detailed experiment history displaying active periods, mutation types, and parent references.
 
 ---
 

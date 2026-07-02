@@ -190,7 +190,7 @@ class DiscoveryAgent:
         """Extract and parse JSON from the response text."""
         json_match = None
 
-        json_block_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text, re.DOTALL)
+        json_block_match = re.search(r"```(?:json)?\s*([\{\[][\s\S]*?[\}\]])\s*```", text, re.DOTALL)
         if json_block_match:
             try:
                 parsed = json.loads(json_block_match.group(1))

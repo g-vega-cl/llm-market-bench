@@ -1,6 +1,14 @@
-"""Base logic for tool execution in LLM handlers."""
+import re
 
 from core.llm import tools
+
+
+def _is_valid_ticker(ticker: str) -> bool:
+    """Basic validation for US stock tickers (1-5 alphanumeric characters, optionally containing a single . or -)."""
+    if not ticker or not isinstance(ticker, str):
+        return False
+    ticker_clean = ticker.upper().strip()
+    return bool(re.match(r"^[A-Z0-9.\-]{1,5}$", ticker_clean))
 
 
 async def execute_tool(name: str, args: dict, model_name: str) -> str:
@@ -14,6 +22,14 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
     Returns:
         The tool's result as a string.
     """
+    if args and "ticker" in args:
+        ticker = args["ticker"]
+        if not _is_valid_ticker(ticker):
+            return (
+                f"Error: '{ticker}' is not a valid stock ticker. "
+                "Tickers must be 1 to 5 alphanumeric characters (A-Z, 0-9) and can optionally contain a single period or hyphen."
+            )
+
     if name == "get_stock_quote":
         return await tools.execute_stock_tool(args["ticker"])
     elif name == "get_price_history":

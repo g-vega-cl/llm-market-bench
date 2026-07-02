@@ -365,9 +365,15 @@ async def analyze_with_provider(
                             if isinstance(part, dict) and "text" in part:
                                 flat_content += part["text"]
                             elif isinstance(part, dict) and "input" in part:
-                                flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                                if provider == "minimax":
+                                    flat_content += f"\n(Executed tool {part['name']} with arguments: {part['input']})"
+                                else:
+                                    flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
                             elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
-                                flat_content += f"\n[Tool Result: {part['content']}]"
+                                if provider == "minimax":
+                                    flat_content += f"\n(Tool returned result: {part['content']})"
+                                else:
+                                    flat_content += f"\n[Tool Result: {part['content']}]"
                         content = flat_content
                     flattened.append({"role": m["role"], "content": str(content)})
             messages = flattened
@@ -486,6 +492,13 @@ async def analyze_with_provider(
                     missing_tool_decisions.append(d)
 
         if missing_tool_decisions:
+            # Append the assistant's previous decisions response so it has context for correction
+            try:
+                serialized_resp = final_resp.model_dump_json(indent=2)
+            except Exception:
+                serialized_resp = str(final_resp)
+            unflattened_messages.append({"role": "assistant", "content": serialized_resp})
+
             correction_lines = []
             for d in missing_tool_decisions:
                 tool_name = "calculate_buy_quantity" if d.signal == "BUY" else "calculate_sell_quantity"
@@ -571,9 +584,17 @@ async def analyze_with_provider(
                                 if isinstance(part, dict) and "text" in part:
                                     flat_content += part["text"]
                                 elif isinstance(part, dict) and "input" in part:
-                                    flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                                    if provider == "minimax":
+                                        flat_content += (
+                                            f"\n(Executed tool {part['name']} with arguments: {part['input']})"
+                                        )
+                                    else:
+                                        flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
                                 elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
-                                    flat_content += f"\n[Tool Result: {part['content']}]"
+                                    if provider == "minimax":
+                                        flat_content += f"\n(Tool returned result: {part['content']})"
+                                    else:
+                                        flat_content += f"\n[Tool Result: {part['content']}]"
                             content = flat_content
                         flattened.append({"role": m["role"], "content": str(content)})
                 messages_retry = flattened

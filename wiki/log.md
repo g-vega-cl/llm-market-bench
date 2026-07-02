@@ -346,3 +346,15 @@ Resolved two bugs in the Pre-Analysis Dust Cleanup phase of the daily pipeline:
 
 Updated `runner.py` so that when a prompt variant crashes (< 2 trades), the runner reverts to the baseline and immediately proceeds to generate a new candidate prompt off the baseline for the upcoming week, instead of skipping auto-research entirely. Added `TestCrashRecoveryContinuesGeneration` test coverage. Updated `wiki/entities/autoresearch.md` with the new behavior.
 
+## [2026-07-02] fix | Resolve ticker validation, MiniMax JSON format, Gemini retry context, and DiscoveryAgent list parsing issues
+
+Resolved multiple pipeline anomalies identified in the logs audit:
+- **Ticker Validation**: Added `_is_valid_ticker` guardrail to the central tool dispatcher `execute_tool` in [base.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/base.py) to validate stock ticker parameters (1-5 alphanumeric characters with optional single period or hyphen), preventing model ticker hallucinations (like `USSHORT` or `SOFTWARE`) from hitting external APIs.
+- **MiniMax JSON Format**: Restructured MiniMax/Anthropic message flattening in [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py) to use plain natural language annotations for tool calls and result histories instead of structured pseudo-tags for MiniMax, eliminating Pydantic JSON validation parsing crashes.
+- **Gemini Correction Context**: Updated [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py) retry logic to append the assistant's previous decisions JSON response before the user's correction prompt, restoring complete context so the model successfully performs missing tool calls and keeps its original decisions on retry.
+- **DiscoveryAgent JSON List Parsing**: Adjusted the regular expression in [discovery_agent.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/discovery_agent.py) to match JSON list blocks `[...]` in addition to dictionaries `{...}`, resolving discovery agent parsing failures for models that output pure lists.
+- **TDD Verification**: Created `test_audit_fixes.py` with 5 new unit tests covering ticker validation rules, blocked invalid execute-tool calls, list JSON parsing in DiscoveryAgent, MiniMax natural language flattening, and retry context insertion. All tests pass successfully.
+
+**See**: [base.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/base.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [discovery_agent.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/discovery_agent.py), [test_audit_fixes.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_audit_fixes.py)
+
+

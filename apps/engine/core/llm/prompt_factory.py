@@ -100,8 +100,14 @@ class PromptFactory:
         if owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
             from autoresearch.prompt_store import get_active_prompt
 
-            active = await get_active_prompt()
-            system_prompt = active if active else prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+            try:
+                active = await get_active_prompt()
+                system_prompt = active if active else prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+            except Exception:
+                logger.exception(
+                    f"Failed to fetch active prompt for model {owner_id} from database. Falling back to static baseline prompt."
+                )
+                system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
         else:
             system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
 

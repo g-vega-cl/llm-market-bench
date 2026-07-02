@@ -23,7 +23,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Add "learning from failures" to what I'm feeling right now.**
-- [x] **Add 5 Whys in some flow, not sure if we already have it somewhere. I want a "root cause method". MECE?**
 - [ ] **Recheck calendar events**
 - [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
   - Decided it was a bit inconvenient and not worth it.

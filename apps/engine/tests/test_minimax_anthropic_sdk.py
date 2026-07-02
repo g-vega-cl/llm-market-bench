@@ -17,6 +17,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 
+@pytest.fixture(autouse=True)
+def mock_active_prompt():
+    with patch("autoresearch.prompt_store.get_active_prompt", return_value=None):
+        yield
+
+
 def test_get_minimax_client_uses_anthropic_sdk():
     """get_minimax_client must construct AsyncAnthropic (not AsyncOpenAI)
     pointed at MiniMax's Anthropic-compatible endpoint."""

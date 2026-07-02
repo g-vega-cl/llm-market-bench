@@ -17,6 +17,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from core.config import MINIMAX_MODEL
 
+
+@pytest.fixture(autouse=True)
+def mock_active_prompt():
+    with patch("autoresearch.prompt_store.get_active_prompt", return_value=None):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

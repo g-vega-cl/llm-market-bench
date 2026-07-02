@@ -9,6 +9,7 @@
   "CONTRARIAN_AGENT_ID": "contrarian_agent",
   "AUTORESEARCH_EXPERIMENT_OWNER_IDS": [
     "gemini-3.1-flash-lite",
-    "deepseek-v4-pro"
+    "deepseek-v4-pro",
+    "MiniMax-M3"
   ]
 }

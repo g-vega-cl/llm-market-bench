@@ -1,3 +1,13 @@
+## [2026-07-02] feature | MiniMax Auto-Research Integration
+
+Integrated the MiniMax-M3 portfolio trading agent into the autonomous prompt improvement loop (auto-research):
+- **Auto-Research Active Prompt**: Added `"MiniMax-M3"` to `AUTORESEARCH_EXPERIMENT_OWNER_IDS` in `models.json`. When building the analysis system prompt, the engine now fetches the active database-backed experiment prompt instead of the hardcoded default prompt.
+- **Unique Path Preservation**: Kept MiniMax-M3's unique characteristics fully intact. It continues to skip skeptical verification and standard tool-call loops, size trades at a default 20% position size, and execute using market orders with a ±0.5% price buffer.
+- **Active Prompt Resiliency**: Added a fail-safe `try-except` block in `PromptFactory.build_analysis_messages` when loading the active database prompt. If database connectivity fails, the engine gracefully logs the traceback and falls back to the static baseline prompt, ensuring uninterrupted trading.
+- **TDD & Code Quality**: Authored a new test suite in `test_minimax_autoresearch.py` verifying active prompt loading and protocol nudge prepending. Mocked active prompt store queries in existing test suites `test_minimax_anthropic_sdk.py` and `test_minimax_pipeline.py` using pytest fixtures to prevent unmocked network/database requests. All 803 pytest checks and Ruff formatting/linter audits pass cleanly.
+
+**See**: [[concepts/minimax-portfolio]], [models.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/packages/config/models.json), [prompt_factory.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompt_factory.py), [test_minimax_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_autoresearch.py)
+
 ## [2026-06-30] fix | Sector Predictor Autoresearch Gemini Await-Bug & Frontend Dates
 
 Fixed a critical await exception bug in the sector predictor autoresearch pipeline and enhanced the frontend model arena dashboard:

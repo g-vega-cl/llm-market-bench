@@ -419,6 +419,7 @@ export type Database = {
                     market_direction: string | null;
                     memories_incorporated: number | null;
                     model_used: string | null;
+                    news_summary: string | null;
                     output_tokens: number | null;
                     primary_concern: string | null;
                     processing_time_ms: number | null;
@@ -439,6 +440,7 @@ export type Database = {
                     market_direction?: string | null;
                     memories_incorporated?: number | null;
                     model_used?: string | null;
+                    news_summary?: string | null;
                     output_tokens?: number | null;
                     primary_concern?: string | null;
                     processing_time_ms?: number | null;
@@ -459,6 +461,7 @@ export type Database = {
                     market_direction?: string | null;
                     memories_incorporated?: number | null;
                     model_used?: string | null;
+                    news_summary?: string | null;
                     output_tokens?: number | null;
                     primary_concern?: string | null;
                     processing_time_ms?: number | null;

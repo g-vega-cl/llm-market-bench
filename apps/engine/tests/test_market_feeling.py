@@ -443,3 +443,62 @@ class TestAnalyzeMarketFeeling:
 
             # Should return None on API failure, not crash
             assert result is None
+
+    @pytest.mark.asyncio
+    async def test_successful_analysis_saves_news_summary(self):
+        """Test that news_summary is parsed and saved on successful analysis."""
+        from analysis.market_feeling import analyze_market_feeling
+
+        # Create mock supabase client
+        mock_sb = MagicMock()
+        mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = [
+            {"id": "t1", "ticker": "AAPL", "signal": "BUY", "total_cost": 1500.00}
+        ]
+        mock_sb.table.return_value.select.return_value.execute.return_value.data = []
+
+        # Mock insert response
+        mock_insert_res = MagicMock()
+        mock_insert_res.data = [
+            {
+                "id": "mf123",
+                "sentiment_label": "Cautiously Optimistic",
+                "sentiment_emoji": "🤔",
+                "confidence_score": 85,
+                "why_explanation": "Test explanation",
+                "market_direction": "BULLISH",
+                "primary_concern": "Test concern",
+                "news_summary": "Test news summary",
+            }
+        ]
+        mock_sb.table.return_value.insert.return_value.execute.return_value = mock_insert_res
+
+        mock_llm_response = {
+            "sentiment_label": "Cautiously Optimistic",
+            "sentiment_emoji": "🤔",
+            "confidence_score": 85,
+            "why_explanation": "Test explanation",
+            "market_direction": "BULLISH",
+            "primary_concern": "Test concern",
+            "news_summary": "Test news summary",
+        }
+
+        with (
+            patch("analysis.market_feeling.get_supabase_client", return_value=mock_sb),
+            patch("analysis.market_feeling.MINIMAX_API_KEY", "fake-key"),
+            patch("analysis.market_feeling.MiniMaxClient") as MockClient,
+        ):
+            mock_client_instance = MagicMock()
+            mock_client_instance.chat_with_json_response = AsyncMock(return_value=mock_llm_response)
+            mock_client_instance.close = AsyncMock()
+            MockClient.return_value = mock_client_instance
+
+            result = await analyze_market_feeling()
+
+            assert result is not None
+            assert result["news_summary"] == "Test news summary"
+
+            # Assert that the insert call included news_summary
+            mock_sb.table.assert_any_call("market_feeling")
+            mock_sb.table.return_value.insert.assert_called_once()
+            inserted_record = mock_sb.table.return_value.insert.call_args[0][0]
+            assert inserted_record["news_summary"] == "Test news summary"

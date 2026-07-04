@@ -16,6 +16,7 @@ const makeFeeling = (overrides: Partial<FeelingWithTime> = {}): FeelingWithTime 
     primary_concern: 'Rising interest rates',
     secondary_concern: null,
     model_used: 'gpt-4o',
+    news_summary: null,
     attempts_summary: null,
     input_tokens: null,
     output_tokens: null,

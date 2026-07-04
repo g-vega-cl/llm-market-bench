@@ -88,7 +88,10 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                                 <AgentInsights memories={data.memories} />
                             </Suspense>
                             <Suspense fallback={<CardSkeleton rows={3} />}>
-                                <NewsletterFeed newsletters={data.newsletters} />
+                                <NewsletterFeed
+                                    newsletters={data.newsletters}
+                                    newsSummary={data.marketFeeling?.news_summary}
+                                />
                             </Suspense>
                             <Suspense fallback={<CardSkeleton rows={4} />}>
                                 <AIFeelingCard

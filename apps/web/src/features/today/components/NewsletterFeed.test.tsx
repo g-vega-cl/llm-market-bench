@@ -113,4 +113,41 @@ describe('NewsletterFeed', () => {
             expect(screen.queryByText('No briefings ingested yet today')).not.toBeInTheDocument();
         });
     });
+
+    describe('news summary', () => {
+        it('renders the AI news synthesis card when newsSummary prop is provided', () => {
+            render(
+                <NewsletterFeed
+                    newsletters={[makeNewsletter()]}
+                    newsSummary="Inflation cooled down this week, lifting investor sentiment."
+                />,
+            );
+            expect(screen.getByText('AI News Synthesis')).toBeInTheDocument();
+            expect(
+                screen.getByText('"Inflation cooled down this week, lifting investor sentiment."'),
+            ).toBeInTheDocument();
+        });
+
+        it('does not render the AI news synthesis card when newsSummary is not provided', () => {
+            render(<NewsletterFeed newsletters={[makeNewsletter()]} />);
+            expect(screen.queryByText('AI News Synthesis')).not.toBeInTheDocument();
+        });
+
+        it('renders the news summary and falls back to empty newsletters message when newsletters are empty but newsSummary is present', () => {
+            render(
+                <NewsletterFeed
+                    newsletters={[]}
+                    newsSummary="A summary with no individual newsletters"
+                />,
+            );
+            expect(screen.getByText('AI News Synthesis')).toBeInTheDocument();
+            expect(
+                screen.getByText('"A summary with no individual newsletters"'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('No individual briefings ingested yet today'),
+            ).toBeInTheDocument();
+            expect(screen.queryByText('No briefings ingested yet today')).not.toBeInTheDocument();
+        });
+    });
 });

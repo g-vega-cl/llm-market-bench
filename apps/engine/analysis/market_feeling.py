@@ -51,7 +51,8 @@ OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
   "why_explanation": "string (2-3 sentences explaining the reasoning behind this sentiment - be specific about what you're seeing in the trades, newsletters, barometer, and prediction markets)",
   "market_direction": "BULLISH|BEARISH|NEUTRAL",
   "primary_concern": "string (the most important risk or opportunity currently - be specific)",
-  "secondary_concern": "string (secondary consideration)"
+  "secondary_concern": "string (secondary consideration)",
+  "news_summary": "string (1-2 sentences summarizing today's news/newsletters ingested during the session; if no newsletters are present, write 'No news or newsletters were ingested today.')"
  }}"""
 
 WEEKEND_MARKET_FEELING_PROMPT = """You are an expert AI market analyst preparing a weekend market sentiment summary.
@@ -91,7 +92,8 @@ OUTPUT (JSON only, no markdown code blocks, no preamble, no postamble):
   "why_explanation": "string (2-3 sentences explaining the reasoning behind this weekend recap - be specific about what happened in the trades, newsletters, barometer, and prediction markets)",
   "market_direction": "BULLISH|BEARISH|NEUTRAL",
   "primary_concern": "string (the most important risk or opportunity for next week - be specific)",
-  "secondary_concern": "string (secondary consideration for next week)"
+  "secondary_concern": "string (secondary consideration for next week)",
+  "news_summary": "string (1-2 sentences summarizing this week's news/newsletters; if no newsletters are present, write 'No news or newsletters were ingested this week.')"
  }}"""
 
 
@@ -552,6 +554,7 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
             "why_explanation",
             "market_direction",
             "primary_concern",
+            "news_summary",
         ]
         for field in required_fields:
             if field not in result:
@@ -588,6 +591,7 @@ async def analyze_market_feeling(weekend_mode: bool = False) -> dict[str, Any] |
             "market_direction": result.get("market_direction", "NEUTRAL"),
             "primary_concern": result.get("primary_concern", ""),
             "secondary_concern": result.get("secondary_concern", ""),
+            "news_summary": result.get("news_summary", ""),
             "trades_summary": trades_summary,
             "attempts_summary": attempts_summary,
             "lessons_incorporated": lessons_count,

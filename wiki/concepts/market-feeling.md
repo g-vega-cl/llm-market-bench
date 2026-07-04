@@ -40,6 +40,7 @@ The output is stored in the `market_feeling` table (retained for 30 days):
 - `why_explanation` (2-3 sentence overview)
 - `market_direction` (BULLISH, BEARISH, NEUTRAL)
 - `primary_concern` / `secondary_concern`
+- `news_summary` (1-2 sentence synthesis of today's newsletters/news)
 
 ## Related
 

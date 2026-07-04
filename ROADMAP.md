@@ -101,3 +101,4 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
 - [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
 - [ ] - Think about how tools are defined and used.
+- [ ] - Benchify: you don't have to trade ultra-high caps, feel free to dabble on mediumer caps. But still liquid

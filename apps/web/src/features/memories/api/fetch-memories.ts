@@ -190,3 +190,142 @@ export async function fetchChildResolutionEvent(parentId: string): Promise<Memor
     if (error) throw error;
     return data as Memory | null;
 }
+
+async function loadGeminiApiKey(): Promise<string> {
+    if (process.env.GEMINI_API_KEY) {
+        return process.env.GEMINI_API_KEY;
+    }
+    const isServer = typeof window === 'undefined' || process.env.NODE_ENV === 'test';
+    if (!isServer) {
+        return '';
+    }
+    try {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        const paths = [
+            path.resolve(process.cwd(), 'apps/engine/.env'),
+            path.resolve(process.cwd(), '.env'),
+            path.resolve(process.cwd(), '../../apps/engine/.env'),
+            path.resolve(process.cwd(), '../engine/.env'),
+        ];
+        for (const p of paths) {
+            if (fs.existsSync(p)) {
+                const content = fs.readFileSync(p, 'utf-8');
+                const match = content.match(/^GEMINI_API_KEY=["']?([^"'\r\n]+)["']?/m);
+                if (match?.[1]) {
+                    return match[1];
+                }
+            }
+        }
+    } catch (_e) {
+        // Fallback
+    }
+    return '';
+}
+
+async function fetchEmbeddingSingle(url: string, text: string): Promise<number[]> {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: 'models/gemini-embedding-001',
+            content: { parts: [{ text }] },
+            outputDimensionality: 768,
+        }),
+    });
+
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini Embedding API returned status ${response.status}: ${errText}`);
+    }
+
+    const data = (await response.json()) as {
+        embedding?: { values?: number[] };
+    };
+
+    const values = data.embedding?.values;
+    if (!values || values.length === 0) {
+        throw new Error('No embedding values returned from Gemini REST API');
+    }
+
+    return values;
+}
+
+export async function getGeminiEmbedding(text: string): Promise<number[]> {
+    const apiKey = await loadGeminiApiKey();
+    if (!apiKey) {
+        throw new Error('GEMINI_API_KEY not found in engine .env or environment');
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
+    const cleanedText = text.replace(/\n/g, ' ');
+
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            return await fetchEmbeddingSingle(url, cleanedText);
+        } catch (error: unknown) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            if (attempt < 3) {
+                const delay = 2 ** attempt * 1000;
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    throw lastError || new Error('Failed to generate embedding after 3 attempts');
+}
+
+interface MatchedMemoryRow {
+    id: string;
+    content: string;
+    metadata: Record<string, unknown> | null;
+    similarity: number;
+}
+
+export async function searchMemories(
+    queryText: string,
+    limit: number = 50,
+    threshold: number = 0.4,
+): Promise<Memory[]> {
+    const embedding = await getGeminiEmbedding(queryText);
+    const supabase = getSupabaseBrowserClient();
+
+    // Call match_memories RPC
+    const { data, error: rpcError } = await supabase.rpc('match_memories', {
+        query_embedding: embedding,
+        match_threshold: threshold,
+        match_count: limit,
+    });
+
+    if (rpcError) throw rpcError;
+    const matchedRows = data as MatchedMemoryRow[] | null;
+    if (!matchedRows || matchedRows.length === 0) return [];
+
+    const ids = matchedRows.map((r) => r.id);
+
+    // Fetch full memory rows for these matched IDs to populate all required fields
+    const { data: fullMemories, error: selectError } = await supabase
+        .from('memories')
+        .select('*, parent_id, status, relationship_type')
+        .in('id', ids);
+
+    if (selectError) throw selectError;
+    if (!fullMemories) return [];
+
+    // Map matchedRows back with full records and include similarity
+    const matchedMap = new Map<string, number>();
+    for (const r of matchedRows) {
+        matchedMap.set(r.id, r.similarity);
+    }
+
+    const results = fullMemories.map((m: Memory) => ({
+        ...m,
+        similarity: matchedMap.get(m.id) ?? 0,
+    }));
+
+    // Sort by similarity descending (order returned by match_memories)
+    results.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+
+    return results as Memory[];
+}

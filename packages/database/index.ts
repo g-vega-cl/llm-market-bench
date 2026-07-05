@@ -10,6 +10,7 @@ type CleanRow<T extends keyof Database['public']['Tables']> = Omit<
 export type Memory = CleanRow<'memories'> & {
     // biome-ignore lint/suspicious/noExplicitAny: Intentional any for TanStack Start serialization
     metadata: Record<string, any> | null;
+    similarity?: number;
 };
 
 export type MemoryInsert = Omit<

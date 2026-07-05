@@ -179,4 +179,71 @@ describe('MemoriesPage (SSR-First)', () => {
         // The initial memories should still be visible (appended/concatenated)
         expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
     });
+
+    it('handles search query submission and clears results correctly', async () => {
+        const searchResultsMock = [
+            {
+                id: 'm3',
+                content: 'Trump energy deal nuclear',
+                created_at: '2026-05-23T12:00:00.000Z',
+                metadata: { type: 'consensus_event' },
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: null,
+                memory_type: 'MARKET_EVENT',
+                importance_score: null,
+                target_date: null,
+                similarity: 0.84,
+            },
+        ];
+
+        const searchFnMock = vi.fn().mockResolvedValue(searchResultsMock);
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoriesPage
+                    initialMemories={mockMemories}
+                    initialHasMore={false}
+                    initialCursor={null}
+                    fetchFn={vi.fn()}
+                    searchFn={searchFnMock}
+                />
+            </QueryClientProvider>,
+        );
+
+        // Standard browse mode shows initial memories
+        expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
+        expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
+
+        // Find input and type a query
+        const searchInput = screen.getByPlaceholderText(/Search memories/i);
+        fireEvent.change(searchInput, { target: { value: 'Trump energy' } });
+
+        // Submit form
+        const searchBtn = screen.getByRole('button', { name: 'Search' });
+        fireEvent.click(searchBtn);
+
+        // Assert searchFn is called with trimmed query
+        expect(searchFnMock).toHaveBeenCalledWith('Trump energy');
+
+        // Wait for results to render
+        await waitFor(() => {
+            expect(screen.getByText('Trump energy deal nuclear')).toBeInTheDocument();
+        });
+
+        // Similarity badge should be rendered (84%)
+        expect(screen.getByText('Match: 84%')).toBeInTheDocument();
+
+        // Initial memories should be hidden during search mode
+        expect(screen.queryByText('Market event consensus description')).not.toBeInTheDocument();
+
+        // Reset/Clear search
+        const resetBtn = screen.getByText('Reset Search');
+        fireEvent.click(resetBtn);
+
+        // Standard feed is restored
+        expect(screen.getByText('Market event consensus description')).toBeInTheDocument();
+        expect(screen.queryByText('Trump energy deal nuclear')).not.toBeInTheDocument();
+    });
 });

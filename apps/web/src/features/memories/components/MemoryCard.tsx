@@ -167,6 +167,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             Score: {memory.importance_score}/10
                         </Badge>
                     )}
+
+                    {memory.similarity != null && (
+                        <Badge variant="solid" colorScheme="accent" size="sm">
+                            Match: {Math.round(memory.similarity * 100)}%
+                        </Badge>
+                    )}
                 </div>
 
                 <span className="text-xs text-zinc-400 font-mono">

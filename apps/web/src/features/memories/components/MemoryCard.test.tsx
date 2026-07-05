@@ -211,4 +211,13 @@ describe('MemoryCard scenario rendering', () => {
             expect(screen.getByText(/energy-prices/i)).toBeInTheDocument();
         });
     });
+
+    it('renders similarity match badge when similarity is present', () => {
+        const memory = makeMemory();
+        memory.similarity = 0.84;
+
+        renderWithClient(<MemoryCard memory={memory} />);
+
+        expect(screen.getByText('Match: 84%')).toBeInTheDocument();
+    });
 });

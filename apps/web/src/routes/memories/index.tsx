@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
-import { fetchMemories } from '~/features/memories/api/fetch-memories';
+import { fetchMemories, searchMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
 const getMemories = createServerFn({ method: 'GET' })
@@ -10,6 +10,14 @@ const getMemories = createServerFn({ method: 'GET' })
         const category = data?.category;
         const limit = data?.limit ?? 50;
         return fetchMemories(cursor, limit, category);
+    });
+
+const queryMemories = createServerFn({ method: 'GET' })
+    .inputValidator((d: { query: string; limit?: number } | undefined) => d)
+    .handler(async ({ data }) => {
+        if (!data?.query) return [];
+        const limit = data.limit ?? 50;
+        return searchMemories(data.query, limit);
     });
 
 export const Route = createFileRoute('/memories/')({
@@ -57,6 +65,7 @@ export const Route = createFileRoute('/memories/')({
 function RouteComponent() {
     const initialData = Route.useLoaderData();
     const getMemoriesFn = useServerFn(getMemories);
+    const queryMemoriesFn = useServerFn(queryMemories);
 
     return (
         <MemoriesPage
@@ -64,6 +73,7 @@ function RouteComponent() {
             initialHasMore={initialData.hasMore}
             initialCursor={initialData.nextCursor}
             fetchFn={(cursor, category) => getMemoriesFn({ data: { cursor, category, limit: 50 } })}
+            searchFn={(query) => queryMemoriesFn({ data: { query } })}
         />
     );
 }

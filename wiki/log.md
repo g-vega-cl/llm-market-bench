@@ -1,3 +1,12 @@
+## [2026-07-06] refactor | Memories Search Simplification
+
+Refactored the memories search bar to use a local fuzzy text matching algorithm instead of Gemini API vector embeddings:
+- **Removed External API Dependency**: Removed `getGeminiEmbedding` and the Gemini API key loaders to prevent search failures caused by missing environment variables and rate limits.
+- **Levenshtein Fuzzy Matcher**: Implemented a local Edit Distance (Levenshtein) fuzzy matching algorithm on the server that ranks results based on query word overlap, allowing typo tolerance (e.g. matching `"trmp"` to `"Trump"`).
+- **Test Integrity & Linting**: Updated all Vitest test suites in `fetch-memories.test.ts` to mock and verify the local fuzzy matching scoring. Cleaned up all Biome formatting and cognitive complexity warnings.
+
+**See**: [[entities/web-app]], [fetch-memories.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/api/fetch-memories.ts), [fetch-memories.test.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/api/fetch-memories.test.ts)
+
 ## [2026-07-05] feature | Memory Fuzzy Search Bar
 
 Added a zero-dependency semantic similarity search bar to the AI Memories page:

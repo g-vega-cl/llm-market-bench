@@ -17,7 +17,7 @@ TypeScript, and TanStack Query.
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid
 - **Reasoning Trace** — Full LLM conversation history with tabbed JSON inspection
 - **Profile** — Protected user profile dashboard displaying account status and session metadata (`/_authed/profile`)
-- **Memories** — AI insights feed (Consensus events, post-mortems, academic principles). Integrated with a zero-dependency fuzzy search bar that generates vector embeddings via a direct REST call to Gemini (`gemini-embedding-001`) and queries Supabase's `match_memories` pgvector RPC, returning matches complete with inline similarity percentage badges.
+- **Memories** — AI insights feed (Consensus events, post-mortems, academic principles). Integrated with a local fuzzy search bar that matches keywords using a fast Edit Distance (Levenshtein) algorithm on fetched memories, returning matches complete with inline similarity percentage badges.
 
 ## Tech Stack
 

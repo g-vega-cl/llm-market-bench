@@ -191,141 +191,99 @@ export async function fetchChildResolutionEvent(parentId: string): Promise<Memor
     return data as Memory | null;
 }
 
-async function loadGeminiApiKey(): Promise<string> {
-    if (process.env.GEMINI_API_KEY) {
-        return process.env.GEMINI_API_KEY;
+function levenshtein(a: string, b: string): number {
+    const tmp: number[][] = [];
+    for (let i = 0; i <= a.length; i++) {
+        tmp[i] = [i];
     }
-    const isServer = typeof window === 'undefined' || process.env.NODE_ENV === 'test';
-    if (!isServer) {
-        return '';
+    for (let j = 0; j <= b.length; j++) {
+        tmp[0][j] = j;
     }
-    try {
-        const fs = await import('node:fs');
-        const path = await import('node:path');
-        const paths = [
-            path.resolve(process.cwd(), 'apps/engine/.env'),
-            path.resolve(process.cwd(), '.env'),
-            path.resolve(process.cwd(), '../../apps/engine/.env'),
-            path.resolve(process.cwd(), '../engine/.env'),
-        ];
-        for (const p of paths) {
-            if (fs.existsSync(p)) {
-                const content = fs.readFileSync(p, 'utf-8');
-                const match = content.match(/^GEMINI_API_KEY=["']?([^"'\r\n]+)["']?/m);
-                if (match?.[1]) {
-                    return match[1];
-                }
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            tmp[i][j] = Math.min(
+                tmp[i - 1][j] + 1, // deletion
+                tmp[i][j - 1] + 1, // insertion
+                tmp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1), // substitution
+            );
+        }
+    }
+    return tmp[a.length][b.length];
+}
+
+function computeSimilarity(content: string, queryWords: string[]): number {
+    const contentClean = content.trim().toLowerCase();
+    if (!contentClean) return 0;
+
+    // Tokenize content into words, ignoring common punctuation
+    const contentWords = contentClean
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (contentWords.length === 0) return 0;
+
+    let totalWordSimilarity = 0;
+    for (const qw of queryWords) {
+        let bestWordSimilarity = 0;
+        for (const cw of contentWords) {
+            const dist = levenshtein(qw, cw);
+            const maxLen = Math.max(qw.length, cw.length);
+            const wordSim = maxLen > 0 ? 1 - dist / maxLen : 0;
+            if (wordSim > bestWordSimilarity) {
+                bestWordSimilarity = wordSim;
             }
         }
-    } catch (_e) {
-        // Fallback
-    }
-    return '';
-}
-
-async function fetchEmbeddingSingle(url: string, text: string): Promise<number[]> {
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            model: 'models/gemini-embedding-001',
-            content: { parts: [{ text }] },
-            outputDimensionality: 768,
-        }),
-    });
-
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Gemini Embedding API returned status ${response.status}: ${errText}`);
-    }
-
-    const data = (await response.json()) as {
-        embedding?: { values?: number[] };
-    };
-
-    const values = data.embedding?.values;
-    if (!values || values.length === 0) {
-        throw new Error('No embedding values returned from Gemini REST API');
-    }
-
-    return values;
-}
-
-export async function getGeminiEmbedding(text: string): Promise<number[]> {
-    const apiKey = await loadGeminiApiKey();
-    if (!apiKey) {
-        throw new Error('GEMINI_API_KEY not found in engine .env or environment');
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
-    const cleanedText = text.replace(/\n/g, ' ');
-
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-            return await fetchEmbeddingSingle(url, cleanedText);
-        } catch (error: unknown) {
-            lastError = error instanceof Error ? error : new Error(String(error));
-            if (attempt < 3) {
-                const delay = 2 ** attempt * 1000;
-                await new Promise((resolve) => setTimeout(resolve, delay));
-            }
+        // Only consider it a match if it meets a minimum word similarity threshold (e.g. 0.6)
+        if (bestWordSimilarity >= 0.6) {
+            totalWordSimilarity += bestWordSimilarity;
         }
     }
 
-    throw lastError || new Error('Failed to generate embedding after 3 attempts');
+    return totalWordSimilarity / queryWords.length;
 }
 
-interface MatchedMemoryRow {
-    id: string;
-    content: string;
-    metadata: Record<string, unknown> | null;
-    similarity: number;
-}
-
-export async function searchMemories(
-    queryText: string,
-    limit: number = 50,
-    threshold: number = 0.4,
-): Promise<Memory[]> {
-    const embedding = await getGeminiEmbedding(queryText);
+export async function searchMemories(queryText: string, limit: number = 50): Promise<Memory[]> {
     const supabase = getSupabaseBrowserClient();
 
-    // Call match_memories RPC
-    const { data, error: rpcError } = await supabase.rpc('match_memories', {
-        query_embedding: embedding,
-        match_threshold: threshold,
-        match_count: limit,
-    });
-
-    if (rpcError) throw rpcError;
-    const matchedRows = data as MatchedMemoryRow[] | null;
-    if (!matchedRows || matchedRows.length === 0) return [];
-
-    const ids = matchedRows.map((r) => r.id);
-
-    // Fetch full memory rows for these matched IDs to populate all required fields
-    const { data: fullMemories, error: selectError } = await supabase
+    // 1. Fetch all memories from the database in descending chronological order
+    const { data: allMemories, error } = await supabase
         .from('memories')
         .select('*, parent_id, status, relationship_type')
-        .in('id', ids);
+        .order('created_at', { ascending: false });
 
-    if (selectError) throw selectError;
-    if (!fullMemories) return [];
+    if (error) throw error;
+    if (!allMemories || allMemories.length === 0) return [];
 
-    // Map matchedRows back with full records and include similarity
-    const matchedMap = new Map<string, number>();
-    for (const r of matchedRows) {
-        matchedMap.set(r.id, r.similarity);
+    const queryClean = queryText.trim().toLowerCase();
+    if (!queryClean) {
+        return allMemories.slice(0, limit);
     }
 
-    const results = fullMemories.map((m: Memory) => ({
-        ...m,
-        similarity: matchedMap.get(m.id) ?? 0,
-    }));
+    // Tokenize search query into words
+    const queryWords = queryClean.split(/\s+/).filter(Boolean);
+    if (queryWords.length === 0) {
+        return allMemories.slice(0, limit);
+    }
 
-    // Sort by similarity descending (order returned by match_memories)
-    results.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+    // Match and score each memory
+    const results = allMemories
+        .map((m: Memory) => ({
+            ...m,
+            similarity: computeSimilarity(m.content || '', queryWords),
+        }))
+        // Filter out records that don't match the query at all
+        .filter((m) => (m.similarity || 0) > 0);
 
-    return results as Memory[];
+    // Sort by similarity descending, then by created_at descending
+    results.sort((a, b) => {
+        if (Math.abs((b.similarity || 0) - (a.similarity || 0)) > 0.0001) {
+            return (b.similarity || 0) - (a.similarity || 0);
+        }
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+    });
+
+    return results.slice(0, limit);
 }

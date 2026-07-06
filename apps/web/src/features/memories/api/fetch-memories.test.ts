@@ -113,7 +113,6 @@ import {
     fetchMemoryById,
     fetchMemoryChain,
     fetchReferencedNewsletters,
-    getGeminiEmbedding,
     searchMemories,
 } from './fetch-memories';
 
@@ -187,76 +186,53 @@ describe('fetchReferencedNewsletters', () => {
     });
 });
 
-describe('getGeminiEmbedding', () => {
-    it('sends POST request to gemini embedding API and returns values', async () => {
-        const mockValues = [0.1, 0.2, 0.3];
-        const mockResponse = {
-            ok: true,
-            status: 200,
-            json: async () => ({ embedding: { values: mockValues } }),
-        };
-        const originalFetch = global.fetch;
-        global.fetch = vi.fn().mockResolvedValue(mockResponse);
-
-        process.env.GEMINI_API_KEY = 'test-api-key';
-
-        const result = await getGeminiEmbedding('test query');
-        expect(global.fetch).toHaveBeenCalled();
-        expect(result).toEqual(mockValues);
-
-        global.fetch = originalFetch;
-    });
-});
-
-describe('searchMemories', () => {
-    it('embeds query, runs match_memories RPC, fetches full memories, sorts by similarity', async () => {
-        const mockValues = [0.1, 0.2, 0.3];
-        const originalFetch = global.fetch;
-        global.fetch = vi.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            json: async () => ({ embedding: { values: mockValues } }),
-        });
-
-        // Mock Supabase calls
-        const mockMatchedRows = [
-            { id: 'id-2', similarity: 0.8 },
-            { id: 'id-1', similarity: 0.9 },
-        ];
-        const mockFullMemories = [
-            { id: 'id-1', content: 'content 1', created_at: '2026-07-04' },
-            { id: 'id-2', content: 'content 2', created_at: '2026-07-05' },
+describe('searchMemories (Fuzzy Levenshtein Search)', () => {
+    it('fetches all memories and computes similarity score client-side', async () => {
+        const mockData = [
+            {
+                id: 'id-1',
+                content: 'Huge energy deal signed by Trump today',
+                created_at: '2026-07-05',
+            },
+            { id: 'id-2', content: 'S&P 500 drop concerns investors', created_at: '2026-07-04' },
         ];
 
-        // Create a chain that handles RPC and select.in
-        // biome-ignore lint/suspicious/noExplicitAny: recursive mock chain for supabase test helper
-        const chain: any = {
-            rpc: vi.fn().mockResolvedValue({ data: mockMatchedRows, error: null }),
-            from: vi.fn(() => chain),
-            select: vi.fn(() => chain),
-            in: vi.fn().mockResolvedValue({ data: mockFullMemories, error: null }),
+        // Mock Supabase to return the memories
+        const mockOrder = vi.fn().mockResolvedValue({ data: mockData, error: null });
+        const mockSelect = vi.fn(() => ({ order: mockOrder }));
+        const chain = {
+            from: vi.fn(() => ({ select: mockSelect })),
         };
-        mockSupabaseClient = chain;
+        mockSupabaseClient = chain as unknown as MockSupabaseChain;
 
-        const results = await searchMemories('nuclear energy', 50, 0.4);
-
-        // Check searchMemories logic
-        expect(chain.rpc).toHaveBeenCalledWith('match_memories', {
-            query_embedding: mockValues,
-            match_threshold: 0.4,
-            match_count: 50,
-        });
+        const results = await searchMemories('energy trmp', 50);
 
         expect(chain.from).toHaveBeenCalledWith('memories');
-        expect(chain.in).toHaveBeenCalledWith('id', ['id-2', 'id-1']);
+        expect(mockSelect).toHaveBeenCalledWith('*, parent_id, status, relationship_type');
 
-        // Check that result list is sorted by similarity descending
-        expect(results).toHaveLength(2);
+        // Check that results contain calculated similarity
+        // "energy trmp" vs "Huge energy deal signed by Trump today"
+        // "energy" matches "energy" (score 1.0)
+        // "trmp" matches "Trump" (Levenshtein distance 1, length 5, score 1 - 1/5 = 0.8)
+        // Avg = 0.9
+        expect(results).toHaveLength(1); // id-2 should be excluded because similarity is 0
         expect(results[0].id).toBe('id-1');
-        expect(results[0].similarity).toBe(0.9);
-        expect(results[1].id).toBe('id-2');
-        expect(results[1].similarity).toBe(0.8);
+        expect(results[0].similarity).toBeCloseTo(0.9, 2);
+    });
 
-        global.fetch = originalFetch;
+    it('returns empty array when no memories match above threshold', async () => {
+        const mockData = [
+            { id: 'id-2', content: 'S&P 500 drop concerns investors', created_at: '2026-07-04' },
+        ];
+
+        const mockOrder = vi.fn().mockResolvedValue({ data: mockData, error: null });
+        const mockSelect = vi.fn(() => ({ order: mockOrder }));
+        const chain = {
+            from: vi.fn(() => ({ select: mockSelect })),
+        };
+        mockSupabaseClient = chain as unknown as MockSupabaseChain;
+
+        const results = await searchMemories('nuclear energy', 50);
+        expect(results).toEqual([]);
     });
 });

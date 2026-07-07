@@ -1,15 +1,3 @@
-## [2026-06-17] feature | S&P 500 Market Health Barometer Audit Page & transparent constituent tracking
-
-Implemented constituent-level audit tracking for S&P 500 Market Health Barometer:
-- **Database Layer**: Added migration `20260620000000_add_constituents_data_to_barometer.sql` introducing a `constituents_data` JSONB column to the `market_barometer_history` table to store atomic daily constituent snapshot weights. Manually updated `supabase-types.ts` Row, Insert, and Update interface definitions.
-- **Data Engine**: Updated the daily calculation script `update_market_barometer.py` to extract `companyName` and construct/persist the serialized array of constituent valuation metrics (market cap, price, trailing/forward P/E, P/B, P/S, earnings beat status) alongside the aggregates.
-- **Frontend APIs**: Added `fetchMarketBarometerDates` and `fetchMarketBarometerForDate` loader functions in `fetch-barometer.ts` to retrieve historical dates and daily snapshots.
-- **Audit View Routing**: Created the `/barometer-audit` route with TanStack Start's URL search params loader schema mapping, making selecting historical dates fully shareable and refreshable without client-side state.
-- **High-Density Audit Dashboard**: Created `BarometerAuditPage.tsx` outlining standard formulas (cap-weighted averages) and presenting a high-density constituent table with reactive client-side search, column sorting, and beat-status filtering. Added an "Audit Data" link to the dashboard's barometer header.
-- **TDD & Code Quality**: Updated Python backend tests to verify constituent snapshot generation. Created Vitest frontend test `barometer-audit.test.tsx` verifying data filtering, search, sorting, and fallback notice behaviors. Re-organized TS imports and refactored helper functions to fully comply with Biome's strict formatting and cognitive complexity constraints.
-
-**See**: [[entities/web-app]], [BarometerAuditPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
-
 ## [2026-06-18] fix | DeepSeek / Anthropic Hard Enforcement and MiniMax JSON Repair Bugs
 
 Resolved two critical bugs in the LLM analysis and consensus pipeline:
@@ -291,4 +279,10 @@ Resolved multiple pipeline anomalies identified in the logs audit:
 ## [2026-07-07] enhancement | DiscoveryAgent supports client dependency injection
 
 The DiscoveryAgent now accepts an optional `client` parameter in its constructor, enabling dependency injection for testing or alternative providers. This allows the agent to be instantiated without requiring actual API keys when a mock client is provided. A new test validates the injection behavior.
+
+## [2026-07-07] fix | Gemini synthesis fix and ticker false-positive filter
+
+- Changed `synthesize_event` to use `SynthesisResponse` directly (not a list) for Gemini responses, removing array handling.
+- Fixed `close_client` to use `"gemini"` instead of `"openai"`.
+- Added common political and macro acronyms to `_TICKER_FALSE_POSITIVES` to prevent false ticker extraction (TRUMP, BIDEN, HARRIS, USA, FED, FOMC, CPI, GDP, PCE, PMI, VIX, WACC, DCF).
 

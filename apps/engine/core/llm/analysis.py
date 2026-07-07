@@ -79,6 +79,19 @@ _TICKER_FALSE_POSITIVES = frozenset(
         "TOP",
         "OUT",
         "END",
+        "TRUMP",
+        "BIDEN",
+        "HARRIS",
+        "USA",
+        "FED",
+        "FOMC",
+        "CPI",
+        "GDP",
+        "PCE",
+        "PMI",
+        "VIX",
+        "WACC",
+        "DCF",
     }
 )
 

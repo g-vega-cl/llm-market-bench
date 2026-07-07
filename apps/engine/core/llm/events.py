@@ -95,8 +95,7 @@ async def synthesize_event(
 
         resp_awaitable = client.chat.completions.create(
             model=config.GEMINI_MODEL,
-            # Use List to handle Gemini's tendency to emit multiple tool calls for the schema
-            response_model=list[SynthesisResponse],
+            response_model=SynthesisResponse,
             messages=messages,
             max_retries=2,
         )
@@ -104,12 +103,12 @@ async def synthesize_event(
         import asyncio
 
         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            wrapper = await resp_awaitable
+            resp = await resp_awaitable
         else:
-            wrapper = resp_awaitable
+            resp = resp_awaitable
 
-        # Take the last synthesis result if multiple were returned
-        resp = wrapper[-1] if wrapper else SynthesisResponse(name=event_name, summary="Synthesis failed")
+        if not resp:
+            resp = SynthesisResponse(name=event_name, summary="Synthesis failed")
 
         # Post-process for date validity
         normalized_date, normalized_note = _normalize_future_date(resp.future_date, resp.future_date_note)
@@ -166,7 +165,7 @@ async def synthesize_event(
         }
     finally:
         # Ensure client is properly closed
-        await clients.close_client(client, "openai")
+        await clients.close_client(client, "gemini")
 
 
 async def analyze_event_relationship(new_event: str, potential_ancestors: list[dict]) -> dict[str, Any]:

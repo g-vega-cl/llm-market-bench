@@ -2,11 +2,11 @@ name: Ingestion & Consensus
 
 on:
   schedule:
-    # 9:35 AM, 11:35 AM, 3:00 PM ET = 13:35, 15:35, 19:00 UTC
+    # 9:35 AM, 11:35 AM, 2:00 PM ET = 13:35, 15:35, 18:00 UTC
     # Hardcoded for EDT (UTC-4, summer). GitHub Actions does not support DST
     # with the timezone field — it treats America/New_York as always UTC-5.
     - cron: "35 13,15 * * 1-5"
-    - cron: "0 19 * * 1-5"
+    - cron: "0 18 * * 1-5"
   workflow_dispatch:
 
 jobs:

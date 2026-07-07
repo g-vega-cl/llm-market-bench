@@ -1,4 +1,14 @@
+## [2026-07-07] refactor | Shift third daily ingestion run to 2:00 PM ET for late cron safety buffer
+
+Shifted the third daily automated run to 2:00 PM ET (18:00 UTC) to provide a 2-hour buffer before market close (4:00 PM ET) against GitHub Actions scheduled trigger delays:
+- **Pipeline Cron Configuration**: Modified [.github/workflows/ingest.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/ingest.yml) to change the third run schedule from `0 19 * * 1-5` (3:00 PM ET) to `0 18 * * 1-5` (2:00 PM ET).
+- **Pipeline Documentation**: Updated [wiki/entities/pipeline.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/wiki/entities/pipeline.md) to reflect the new schedule and corrected the math description regarding standard time (EST) offsets where runs execute one hour earlier local time.
+- **TDD Verification**: Created [test_workflow_schedule.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_workflow_schedule.py) to assert correct cron schedule strings. Tested using the full pytest engine suite (813 tests passing successfully).
+
+**See**: [[entities/pipeline]], [.github/workflows/ingest.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/ingest.yml), [test_workflow_schedule.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_workflow_schedule.py)
+
 ## [2026-06-18] fix | DeepSeek / Anthropic Hard Enforcement and MiniMax JSON Repair Bugs
+
 
 Resolved two critical bugs in the LLM analysis and consensus pipeline:
 - **DeepSeek/Anthropic Message Preservation**: Fixed a bug where `unflattened_messages` was captured *after* provider-specific message preparations (such as DeepSeek's `prepare_messages_for_instructor` or Anthropic's flattening) had already run and stripped `tool_calls` from the messages. The copy is now captured immediately after the tool execution loops run, preserving full `tool_calls` history for Layer 3 Hard Tool Enforcement validation.

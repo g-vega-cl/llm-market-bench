@@ -13,9 +13,9 @@ The pipeline is triggered by GitHub Actions with the following UTC cron expressi
 
 - **9:35 AM ET** → `35 13 * * 1-5`
 - **11:35 AM ET** → `35 15 * * 1-5`
-- **3:00 PM ET** → `0 19 * * 1-5`
+- **2:00 PM ET** → `0 18 * * 1-5`
 
-GitHub Actions does not correctly handle DST when using the `timezone` field — it treats `America/New_York` as always UTC-5. To avoid schedule drift during summer months, the times are expressed directly in UTC for the EDT offset. During EST (winter), the pipeline will run one hour later in local time (10:35 AM, 12:35 PM, 4:00 PM ET), which is acceptable for market coverage.
+GitHub Actions does not correctly handle DST when using the `timezone` field — it treats `America/New_York` as always UTC-5. To avoid schedule drift during summer months, the times are expressed directly in UTC for the EDT offset. During EST (winter), the pipeline will run one hour earlier in local time (8:35 AM, 10:35 AM, 1:00 PM EST). Because 8:35 AM EST is before market open, the first run will be automatically skipped.
 
 ## Phases
 

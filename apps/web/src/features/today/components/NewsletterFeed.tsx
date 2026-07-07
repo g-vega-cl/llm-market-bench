@@ -4,9 +4,10 @@ import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system'
 interface NewsletterFeedProps {
     newsletters: (NewsletterSnapshot & { formattedTime?: string })[];
     newsSummary?: string | null;
+    newsSummaryDate?: string | null;
 }
 
-export function NewsletterFeed({ newsletters, newsSummary }: NewsletterFeedProps) {
+export function NewsletterFeed({ newsletters, newsSummary, newsSummaryDate }: NewsletterFeedProps) {
     if (!newsletters.length && !newsSummary) {
         return (
             <section className="space-y-8 animate-slide-up">
@@ -39,11 +40,18 @@ export function NewsletterFeed({ newsletters, newsSummary }: NewsletterFeedProps
                 <Card className="relative overflow-hidden border border-electric-blue-100 dark:border-electric-blue-900/30 bg-electric-blue-50/10 dark:bg-electric-blue-950/5 rounded-3xl">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-electric-blue-500 to-deep-purple-500" />
                     <div className="relative pl-6 py-4 pr-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">🤖</span>
-                            <span className="text-xs font-black uppercase tracking-widest text-electric-blue-500 dark:text-electric-blue-400">
-                                AI News Synthesis
-                            </span>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">🤖</span>
+                                <span className="text-xs font-black uppercase tracking-widest text-electric-blue-500 dark:text-electric-blue-400">
+                                    AI News Synthesis
+                                </span>
+                            </div>
+                            {newsSummaryDate && (
+                                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                                    {newsSummaryDate}
+                                </span>
+                            )}
                         </div>
                         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-light italic">
                             "{newsSummary}"

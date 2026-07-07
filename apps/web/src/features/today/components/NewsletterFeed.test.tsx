@@ -133,6 +133,17 @@ describe('NewsletterFeed', () => {
             expect(screen.queryByText('AI News Synthesis')).not.toBeInTheDocument();
         });
 
+        it('renders the date of AI news synthesis when newsSummaryDate prop is provided', () => {
+            render(
+                <NewsletterFeed
+                    newsletters={[makeNewsletter()]}
+                    newsSummary="Inflation cooled down this week."
+                    newsSummaryDate="Tuesday, July 7, 2026"
+                />,
+            );
+            expect(screen.getByText('Tuesday, July 7, 2026')).toBeInTheDocument();
+        });
+
         it('renders the news summary and falls back to empty newsletters message when newsletters are empty but newsSummary is present', () => {
             render(
                 <NewsletterFeed

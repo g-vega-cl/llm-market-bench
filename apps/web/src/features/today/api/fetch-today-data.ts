@@ -32,7 +32,7 @@ export interface TodayData {
         formattedTargetMonthDay?: string;
         formattedTargetYear?: string;
     })[];
-    marketFeeling: (MarketFeeling & { formattedTime: string }) | null;
+    marketFeeling: (MarketFeeling & { formattedTime: string; formattedDate: string }) | null;
     macroStats: MacroStat[];
     serverTime?: string;
     isMarketOpen: boolean;
@@ -302,6 +302,7 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
             ? {
                   ...marketFeelingObj,
                   formattedTime: formatEasternTime(marketFeelingObj.created_at),
+                  formattedDate: formatEasternDate(marketFeelingObj.created_at),
               }
             : null,
         macroStats,

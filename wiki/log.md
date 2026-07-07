@@ -1,3 +1,12 @@
+## [2026-07-07] ui | Daily Intelligence Briefing AI News Synthesis Date
+
+Added the pre-formatted date of the news synthesis to the AI News Synthesis card on the Today page:
+- **Zero-Date Frontend Architecture**: Formatted the `created_at` timestamp of the latest `market_feeling` row on the server within `fetchTodayData()` using the centralized `formatEasternDate` utility.
+- **Frontend Dashboard Update**: Expanded `NewsletterFeedProps` to accept `newsSummaryDate` and updated `<NewsletterFeed>` to render the date in the top-right header of the AI News Synthesis card using a clean `font-mono` styling.
+- **Test Coverage**: Added test coverage in both `NewsletterFeed.test.tsx` (component-level) and `TodayPage.test.tsx` (integration-level) to verify correct propagation and rendering. Passed all 328 Vitest tests and Biome lints.
+
+**See**: [[entities/web-app]], [fetch-today-data.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/api/fetch-today-data.ts), [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx), [TodayPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx)
+
 ## [2026-07-06] refactor | Memories Search Simplification
 
 Refactored the memories search bar to use a local fuzzy text matching algorithm instead of Gemini API vector embeddings:

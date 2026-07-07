@@ -110,4 +110,41 @@ describe('TodayPage UI stability & TDD performance checks', () => {
 
         vi.useRealTimers();
     });
+
+    it('renders the AI News Synthesis card with news summary and the correct pre-formatted date', async () => {
+        const testData = {
+            ...emptyTodayData,
+            newsletters: [
+                {
+                    id: 'nl-1',
+                    subject: 'Test Subject',
+                    content: 'Test newsletter content',
+                    sender: 'test@example.com',
+                    chunk_hash: 'abc123',
+                    date: '2025-06-24',
+                    ingested_at: '2025-06-24T09:00:00Z',
+                    source_id: 'src-1',
+                    formattedTime: '09:00 AM',
+                },
+            ],
+            marketFeeling: {
+                ...emptyTodayData.marketFeeling,
+                news_summary: 'Overall market feeling is positive.',
+                formattedDate: 'Thursday, May 28, 2026',
+            },
+        } as unknown as TodayData;
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <TodayPage initialData={testData} fetchFn={vi.fn().mockResolvedValue(testData)} />
+            </QueryClientProvider>,
+        );
+
+        // Verify the AI News Synthesis heading and content is rendered (wrapped in Suspense)
+        expect(await screen.findByText('AI News Synthesis')).toBeInTheDocument();
+        expect(screen.getByText('"Overall market feeling is positive."')).toBeInTheDocument();
+
+        // Verify it displays the specific date passed to the synthesis card
+        expect(screen.getByText('Thursday, May 28, 2026')).toBeInTheDocument();
+    });
 });

@@ -4,6 +4,7 @@ import contextlib
 import json
 import logging
 import re
+from typing import Any
 
 from core.config import GEMINI_MODEL
 from core.llm import clients, prompts, tools
@@ -29,10 +30,10 @@ def get_provider_from_model(model_name: str) -> str:
 class DiscoveryAgent:
     """Agent that uses reasoning and tools to find thematic stock beneficiaries."""
 
-    def __init__(self, model_name: str = GEMINI_MODEL):
+    def __init__(self, model_name: str = GEMINI_MODEL, client: Any = None):
         self.model_name = model_name
         self.provider = get_provider_from_model(model_name)
-        self.client = clients.CLIENT_FACTORIES[self.provider]()
+        self.client = client or clients.CLIENT_FACTORIES[self.provider]()
 
         # Handlers translate canonical defs to provider-specific format internally.
         self.discovery_tools = [tools.RUN_STOCK_SCREENER_TOOL]

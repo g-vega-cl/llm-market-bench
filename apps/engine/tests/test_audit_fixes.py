@@ -1,5 +1,6 @@
 import os
 import sys
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -33,7 +34,7 @@ async def test_execute_tool_invalid_ticker():
 
 def test_discovery_agent_parse_json_list():
     """Verify that DiscoveryAgent parses JSON list blocks (Fix #4)."""
-    agent = DiscoveryAgent(model_name="openai/gpt-4o-mini")
+    agent = DiscoveryAgent(model_name="openai/gpt-4o-mini", client=MagicMock())
     text_with_list = """
 Some introductory text...
 ```json
@@ -47,6 +48,26 @@ Some trailing text...
     assert len(parsed) == 1
     assert parsed[0]["ticker"] == "META"
     assert parsed[0]["name"] == "Meta Platforms"
+
+
+def test_discovery_agent_di_no_keys():
+    """Verify that DiscoveryAgent can be initialized with an injected client even without API keys."""
+    # Temporarily clean out environment keys if they exist
+    old_env = {k: os.environ.get(k) for k in ["OPENAI_API_KEY", "OPENAI_ADMIN_KEY"]}
+    for k in old_env:
+        if k in os.environ:
+            del os.environ[k]
+
+    try:
+        mock_client = MagicMock()
+        # This should fail if client dependency injection is not implemented yet
+        agent = DiscoveryAgent(model_name="openai/gpt-4o-mini", client=mock_client)
+        assert agent.client is mock_client
+    finally:
+        # Restore environment keys
+        for k, v in old_env.items():
+            if v is not None:
+                os.environ[k] = v
 
 
 @pytest.mark.asyncio

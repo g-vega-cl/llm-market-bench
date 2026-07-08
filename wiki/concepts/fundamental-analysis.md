@@ -25,10 +25,14 @@ The tool delegates to the active `FinancialProvider` through the `MarketDataMana
 > **yfinance Provider Deprecation**: The `YFinanceProvider` is deprecated and has been completely removed from the codebase. It must not be used to fetch market or fundamental data due to severe reliability concerns and Yahoo Finance scraping/rate-limiting restrictions. The factory raises a `ValueError` if a fallback to `yfinance` is requested. FMP (`FMPProvider`) is the sole active financial provider for these metrics.
 
 Standardized fields returned to the models include:
-- Valuation: `peRatio`, `priceToSalesRatio`, `pbRatio`, `enterpriseValueOverEBITDA`, `priceToFreeCashFlowsRatio`
+- Valuation: `peRatio`, `priceToSalesRatio`, `pbRatio`, `bookToMarketRatio` (computed as `1 / pbRatio`), `enterpriseValueOverEBITDA`, `priceToFreeCashFlowsRatio`
 - Leverage & Liquidity: `debtToEquity`, `currentRatio`, `netDebt`, `marketCap`, `enterpriseValue`
 - Profitability & Returns: `roe` (Return on Equity), `dividendYield`, `freeCashFlowYield`
 - Per-Share Metrics: `bookValuePerShare`, `revenuePerShare`, `netIncomePerShare`, `freeCashFlowPerShare`
+- Current Derived Valuation (summary output via `get_key_metrics` tool):
+  - **Forward P/E**: Calculated as $\text{Current Price} / \text{Next FY Estimated EPS}$ based on forward analyst estimates.
+  - **CAPE (Cyclically Adjusted P/E)**: Calculated as $\text{Current Price} / \text{Average Historical EPS}$ over the last 10 annual periods (minimum 3 years required).
+
 
 ## Valuation Audit Tool (`audit_financial_valuation`)
 

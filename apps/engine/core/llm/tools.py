@@ -1011,6 +1011,78 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
         if not data:
             return f"No fundamental key metrics found for {ticker}."
 
+        # Fetch quote, estimates, and annual history to calculate Forward P/E and CAPE
+        price = None
+        forward_pe = None
+        cape_val = None
+        avg_eps = None
+        eps_count = 0
+        next_eps_est = None
+
+        try:
+            quote = await manager.get_quote(ticker)
+            if quote and quote.exists:
+                price = quote.price
+        except Exception as e:
+            logger.warning(f"Failed to fetch quote for new metrics calculation for {ticker}: {e}")
+
+        # Helper to safely format decimal/float metrics
+        def fmt(val, percentage=False):
+            if val is None:
+                return "N/A"
+            if percentage:
+                return f"{val * 100:.2f}%"
+            return f"{val:.2f}"
+
+        if price and price > 0:
+            # Calculate Forward P/E
+            try:
+                estimates = await manager.get_analyst_estimates(ticker, period="annual", limit=5)
+                if estimates and isinstance(estimates, list):
+                    from datetime import datetime
+
+                    now_year = datetime.now().year
+                    for est in estimates:
+                        est_date = est.get("date")
+                        if est_date:
+                            try:
+                                est_year = int(est_date.split("-")[0])
+                                if est_year >= now_year:
+                                    next_eps_est = est.get("epsAvg")
+                                    break
+                            except ValueError:
+                                pass
+                    if next_eps_est is None and estimates:
+                        next_eps_est = estimates[0].get("epsAvg")
+                    if next_eps_est is not None:
+                        try:
+                            next_eps_est_val = float(next_eps_est)
+                            if next_eps_est_val > 0:
+                                forward_pe = price / next_eps_est_val
+                        except (ValueError, TypeError):
+                            pass
+            except Exception as e:
+                logger.warning(f"Failed to calculate Forward P/E for {ticker}: {e}")
+
+            # Calculate CAPE (10-Yr Avg EPS)
+            try:
+                # Fetch up to 10 annual records
+                annual_metrics = await manager.get_key_metrics(ticker, period="annual", limit=10)
+                if annual_metrics:
+                    eps_values = []
+                    for yr_entry in annual_metrics:
+                        val = yr_entry.get("netIncomePerShare")
+                        if val is not None:
+                            with contextlib.suppress(ValueError, TypeError):
+                                eps_values.append(float(val))
+                    if len(eps_values) >= 3:
+                        avg_eps = sum(eps_values) / len(eps_values)
+                        eps_count = len(eps_values)
+                        if avg_eps > 0:
+                            cape_val = price / avg_eps
+            except Exception as e:
+                logger.warning(f"Failed to calculate CAPE for {ticker}: {e}")
+
         output = f"Fundamental Key Metrics for {ticker} ({period.capitalize()} periods, recent first):\n"
         for i, entry in enumerate(data, 1):
             date_str = entry.get("date") or "N/A"
@@ -1019,17 +1091,14 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
 
             output += f"\n--- Period {i}: {period_str} {year_str} (Date: {date_str}) ---\n"
 
-            # Helper to safely format decimal/float metrics
-            def fmt(val, percentage=False):
-                if val is None:
-                    return "N/A"
-                if percentage:
-                    return f"{val * 100:.2f}%"
-                return f"{val:.2f}"
-
             output += f"- P/E Ratio: {fmt(entry.get('peRatio'))}\n"
             output += f"- Price/Sales Ratio: {fmt(entry.get('priceToSalesRatio'))}\n"
-            output += f"- Price/Book Ratio: {fmt(entry.get('pbRatio'))}\n"
+
+            pb = entry.get("pbRatio")
+            book_to_market = (1.0 / pb) if (pb is not None and pb != 0) else None
+            output += f"- Price/Book Ratio: {fmt(pb)}\n"
+            output += f"- Book-to-Market Ratio: {fmt(book_to_market)}\n"
+
             output += f"- EV/EBITDA: {fmt(entry.get('enterpriseValueOverEBITDA'))}\n"
             output += f"- Debt/Equity: {fmt(entry.get('debtToEquity'))}\n"
             output += f"- Current Ratio: {fmt(entry.get('currentRatio'))}\n"
@@ -1044,6 +1113,22 @@ async def execute_key_metrics_tool(ticker: str, period: str = "annual", limit: i
                 output += f"- Net Income Per Share: ${fmt(entry.get('netIncomePerShare'))}\n"
             if "freeCashFlowPerShare" in entry:
                 output += f"- Free Cash Flow Per Share: ${fmt(entry.get('freeCashFlowPerShare'))}\n"
+
+        output += "\n--- Current Valuation Metrics (Derived) ---\n"
+        if price and price > 0:
+            output += f"- Current Stock Price: ${price:.2f}\n"
+            if forward_pe is not None:
+                output += f"- Forward P/E: {fmt(forward_pe)} (based on Next FY EPS Est. of ${fmt(next_eps_est)})\n"
+            else:
+                output += "- Forward P/E: N/A\n"
+            if cape_val is not None:
+                output += f"- CAPE ({eps_count}-Yr Avg EPS): {fmt(cape_val)} (Average EPS: ${fmt(avg_eps)})\n"
+            else:
+                output += "- CAPE (10-Yr Avg EPS): N/A\n"
+        else:
+            output += "- Current Stock Price: N/A\n"
+            output += "- Forward P/E: N/A\n"
+            output += "- CAPE (10-Yr Avg EPS): N/A\n"
 
         return output
     except Exception as e:

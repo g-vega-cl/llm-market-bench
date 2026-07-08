@@ -1,31 +1,3 @@
-## [2026-07-08] fix | Map Gemini assistant role to model for retry and verification calls
-
-Resolved a ValueError: Unsupported role: assistant crash in the ingestion and consensus pipeline when a Gemini model run fails validation (e.g. missing mandatory tool calls) and triggers a retry, or when executing decision verification:
-- **Role Translation**: Added mapping in [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py) and [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py) to translate `"assistant"` to `"model"` in message payloads when the provider is `"gemini"`, aligning with Google GenAI SDK schema rules.
-- **TDD Verification**: Added unit test `test_analyze_with_provider_gemini_missing_tool_call_retry` in [test_gemini_tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_gemini_tools.py) to simulate a Gemini model run with missing tool calls, confirming that the retry message history correctly formats the role as `"model"` and successfully completes the analysis.
-
-**See**: [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py), [test_gemini_tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_gemini_tools.py)
-
-## [2026-07-07] refactor | Shift third daily ingestion run to 2:00 PM ET for late cron safety buffer
-
-
-Shifted the third daily automated run to 2:00 PM ET (18:00 UTC) to provide a 2-hour buffer before market close (4:00 PM ET) against GitHub Actions scheduled trigger delays:
-- **Pipeline Cron Configuration**: Modified [.github/workflows/ingest.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/ingest.yml) to change the third run schedule from `0 19 * * 1-5` (3:00 PM ET) to `0 18 * * 1-5` (2:00 PM ET).
-- **Pipeline Documentation**: Updated [wiki/entities/pipeline.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/wiki/entities/pipeline.md) to reflect the new schedule and corrected the math description regarding standard time (EST) offsets where runs execute one hour earlier local time.
-- **TDD Verification**: Created [test_workflow_schedule.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_workflow_schedule.py) to assert correct cron schedule strings. Tested using the full pytest engine suite (813 tests passing successfully).
-
-**See**: [[entities/pipeline]], [.github/workflows/ingest.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/ingest.yml), [test_workflow_schedule.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_workflow_schedule.py)
-
-## [2026-06-18] fix | DeepSeek / Anthropic Hard Enforcement and MiniMax JSON Repair Bugs
-
-
-Resolved two critical bugs in the LLM analysis and consensus pipeline:
-- **DeepSeek/Anthropic Message Preservation**: Fixed a bug where `unflattened_messages` was captured *after* provider-specific message preparations (such as DeepSeek's `prepare_messages_for_instructor` or Anthropic's flattening) had already run and stripped `tool_calls` from the messages. The copy is now captured immediately after the tool execution loops run, preserving full `tool_calls` history for Layer 3 Hard Tool Enforcement validation.
-- **MiniMax JSON Repair**: Improved `_repair_json_string` in `analysis.py` to identify and escape unescaped single backslashes that mistakenly escape closing JSON delimiter quotes (e.g. `basis\"}` resulting from trailing markdown/backslash content), preventing `JSONDecodeError` on MiniMax and other raw JSON-response models.
-- **TDD verification**: Added new tests `test_deepseek_first_run_tool_check_preserves_calls` in `test_tool_enforcement.py` and `test_try_parse_json_with_trailing_backslash_escape` in `test_minimax_repair_bug.py`. Verified that the complete 773-test engine suite passes.
-
-**See**: [[concepts/tool-enforcement]], [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_tool_enforcement.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_tool_enforcement.py), [test_minimax_repair_bug.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_repair_bug.py)
-
 ## [2026-06-18] feature | Memories inline newsletter snippet citations and secure RPC
 
 
@@ -304,4 +276,17 @@ The DiscoveryAgent now accepts an optional `client` parameter in its constructor
 - Changed `synthesize_event` to use `SynthesisResponse` directly (not a list) for Gemini responses, removing array handling.
 - Fixed `close_client` to use `"gemini"` instead of `"openai"`.
 - Added common political and macro acronyms to `_TICKER_FALSE_POSITIVES` to prevent false ticker extraction (TRUMP, BIDEN, HARRIS, USA, FED, FOMC, CPI, GDP, PCE, PMI, VIX, WACC, DCF).
+
+## [2026-07-08] feature | Derive Forward P/E, CAPE, and Book-to-Market in key metrics tool
+
+Enhanced `execute_key_metrics_tool` to dynamically calculate three new valuation metrics:
+- **Book-to-Market Ratio** — computed as `1 / pbRatio` for each historical period entry
+- **Forward P/E** — `price / next_fy_estimated_eps` using analyst estimates (requires quote + estimate data)
+- **CAPE (Cyclically Adjusted P/E)** — `price / average_eps` over up to 10 annual periods (minimum 3 years; requires quote + historical EPS data)
+
+A new "Current Valuation Metrics (Derived)" summary section is appended to the tool output. If quote or estimate data is unavailable, the section gracefully reports N/A. Tests added in `test_key_metrics_tool.py` verify formatting and mathematical correctness with defensive mock isolation.
+
+**ROADMAP.md**: Marked this item as completed.
+
+**See**: [[concepts/fundamental-analysis]], `apps/engine/core/llm/tools.py`
 

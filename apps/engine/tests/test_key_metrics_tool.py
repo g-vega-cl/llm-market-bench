@@ -111,8 +111,12 @@ async def test_execute_key_metrics_tool():
         }
     ]
 
-    with patch.object(MarketDataManager, "get_key_metrics", new_callable=AsyncMock) as mock_get:
+    with (
+        patch.object(MarketDataManager, "get_key_metrics", new_callable=AsyncMock) as mock_get,
+        patch.object(MarketDataManager, "get_quote", new_callable=AsyncMock) as mock_get_quote,
+    ):
         mock_get.return_value = mock_metrics
+        mock_get_quote.return_value = None
         result = await tools.execute_key_metrics_tool("AAPL", period="annual", limit=1)
 
         assert "AAPL" in result
@@ -180,3 +184,57 @@ async def test_fmp_provider_get_key_metrics_fallback_to_annual():
         assert metrics[0]["symbol"] == "AAPL"
         assert metrics[0]["peRatio"] == 30.5
         assert mock_get.call_count == 4
+
+
+@pytest.mark.asyncio
+async def test_execute_key_metrics_tool_includes_new_metrics():
+    """Test execute_key_metrics_tool returns Book-to-Market, Forward P/E, and CAPE."""
+    mock_metrics = [
+        {
+            "symbol": "AAPL",
+            "date": "2024-09-28",
+            "calendarYear": "2024",
+            "period": "FY",
+            "peRatio": 30.5,
+            "pbRatio": 5.0,
+            "debtToEquity": 2.1,
+            "roe": 1.75,
+            "priceToFreeCashFlowsRatio": 28.57,
+            "netIncomePerShare": 6.0,
+        },
+        {
+            "symbol": "AAPL",
+            "date": "2023-09-30",
+            "calendarYear": "2023",
+            "period": "FY",
+            "netIncomePerShare": 5.0,
+        },
+        {
+            "symbol": "AAPL",
+            "date": "2022-09-24",
+            "calendarYear": "2022",
+            "period": "FY",
+            "netIncomePerShare": 4.0,
+        },
+    ]
+
+    mock_quote = MagicMock()
+    mock_quote.exists = True
+    mock_quote.price = 150.0
+
+    mock_estimates = [{"date": "2025-09-30", "epsAvg": 7.5}]
+
+    with (
+        patch.object(MarketDataManager, "get_key_metrics", new_callable=AsyncMock) as mock_get_metrics,
+        patch.object(MarketDataManager, "get_quote", new_callable=AsyncMock) as mock_get_quote,
+        patch.object(MarketDataManager, "get_analyst_estimates", new_callable=AsyncMock) as mock_get_estimates,
+    ):
+        mock_get_metrics.return_value = mock_metrics
+        mock_get_quote.return_value = mock_quote
+        mock_get_estimates.return_value = mock_estimates
+
+        result = await tools.execute_key_metrics_tool("AAPL", period="annual", limit=3)
+
+        assert "Book-to-Market Ratio: 0.20" in result
+        assert "Forward P/E: 20.00" in result
+        assert "CAPE (3-Yr Avg EPS): 30.00" in result

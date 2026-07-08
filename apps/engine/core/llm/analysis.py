@@ -400,6 +400,11 @@ async def analyze_with_provider(
             "max_retries": 2,
         }
 
+        if provider == "gemini":
+            for msg in final_args["messages"]:
+                if isinstance(msg, dict) and msg.get("role") == "assistant":
+                    msg["role"] = "model"
+
         # DeepSeek specific: Enable thinking mode during final extraction so the model uses its
         # full reasoning capacity to formulate the final trade decisions.
         if provider == "deepseek" and "deepseek" in model_name.lower():
@@ -618,6 +623,11 @@ async def analyze_with_provider(
                 "messages": copy.deepcopy(messages_retry),
                 "max_retries": 2,
             }
+
+            if provider == "gemini":
+                for msg in final_args_retry["messages"]:
+                    if isinstance(msg, dict) and msg.get("role") == "assistant":
+                        msg["role"] = "model"
 
             if provider == "deepseek" and "deepseek" in model_name.lower():
                 final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}

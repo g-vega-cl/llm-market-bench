@@ -315,7 +315,7 @@ async def test_analyze_with_provider_gemini_tool_loop():
         mock_aio.models.generate_content = AsyncMock(side_effect=[mock_resp_1, mock_resp_2])
 
         # Mock final instructor extraction
-        mock_client.chat.completions.create = AsyncMock(return_value=[mock_final_decision])
+        mock_client.chat.completions.create = MagicMock(return_value=[mock_final_decision])
 
         # Execute
         result = await analyze_with_provider("gemini", GEMINI_MODEL, mock_chunks)
@@ -325,3 +325,73 @@ async def test_analyze_with_provider_gemini_tool_loop():
         assert result.decisions[0].ticker == "AAPL"
         assert mock_manager.get_quote.call_count == 1
         assert mock_aio.models.generate_content.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_analyze_with_provider_gemini_missing_tool_call_retry():
+    """Test that analyze_with_provider handles a Gemini tool loop retry.
+
+    It should map 'assistant' roles to 'model' roles before passing messages
+    to instructor to avoid ValueError: Unsupported role: assistant.
+    """
+    mock_chunks = [{"source_id": "src_g1", "content": "Buy Apple stock now"}]
+
+    mock_client = MagicMock()
+    mock_raw_client = mock_client.client
+
+    # 1. No tool calls are returned, but first output has a BUY decision
+    mock_part = MagicMock()
+    mock_part.text = "I recommend buying AAPL."
+    mock_part.function_call = None
+
+    mock_content = MagicMock()
+    mock_content.parts = [mock_part]
+
+    mock_candidate = MagicMock()
+    mock_candidate.content = mock_content
+
+    mock_resp = MagicMock()
+    mock_resp.candidates = [mock_candidate]
+
+    # Decisions Response
+    mock_final_decision = DecisionsResponse(
+        decisions=[
+            DecisionObject(
+                signal="BUY", confidence=95, reasoning="Buy.", ticker="AAPL", source_id="src_g1", price=150.0
+            )
+        ]
+    )
+
+    with (
+        patch("core.llm.tools.MarketDataManager") as mock_manager_cls,
+        patch("core.llm.analysis.clients.CLIENT_FACTORIES") as mock_factories,
+        patch("autoresearch.prompt_store.get_active_prompt", AsyncMock(return_value="FAKE_ACTIVE_PROMPT")),
+    ):
+        mock_manager = mock_manager_cls.return_value
+        mock_manager.get_quote = AsyncMock(
+            return_value=MagicMock(ticker="AAPL", price=150.0, market_cap=2.5e12, exists=True)
+        )
+
+        mock_factories.get.return_value = lambda: mock_client
+
+        mock_aio = mock_raw_client.aio
+        mock_aio.models.generate_content = AsyncMock(return_value=mock_resp)
+
+        # Mock the create method. We expect it to be called twice:
+        # 1st call for the initial analysis
+        # 2nd call for retry after missing tool loop
+        mock_client.chat.completions.create = AsyncMock(side_effect=[[mock_final_decision], [mock_final_decision]])
+
+        # Execute
+        result = await analyze_with_provider("gemini", GEMINI_MODEL, mock_chunks)
+
+        # Assertions
+        assert len(result.decisions) == 1
+        assert mock_client.chat.completions.create.call_count == 2
+
+        # Verify that in the second call, there are no messages with role="assistant"
+        second_call_args = mock_client.chat.completions.create.call_args_list[1]
+        messages_sent = second_call_args.kwargs["messages"]
+        for m in messages_sent:
+            if isinstance(m, dict):
+                assert m.get("role") != "assistant", "Role 'assistant' must be converted to 'model'"

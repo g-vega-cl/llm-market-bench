@@ -1,4 +1,13 @@
+## [2026-07-08] fix | Map Gemini assistant role to model for retry and verification calls
+
+Resolved a ValueError: Unsupported role: assistant crash in the ingestion and consensus pipeline when a Gemini model run fails validation (e.g. missing mandatory tool calls) and triggers a retry, or when executing decision verification:
+- **Role Translation**: Added mapping in [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py) and [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py) to translate `"assistant"` to `"model"` in message payloads when the provider is `"gemini"`, aligning with Google GenAI SDK schema rules.
+- **TDD Verification**: Added unit test `test_analyze_with_provider_gemini_missing_tool_call_retry` in [test_gemini_tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_gemini_tools.py) to simulate a Gemini model run with missing tool calls, confirming that the retry message history correctly formats the role as `"model"` and successfully completes the analysis.
+
+**See**: [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py), [test_gemini_tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_gemini_tools.py)
+
 ## [2026-07-07] refactor | Shift third daily ingestion run to 2:00 PM ET for late cron safety buffer
+
 
 Shifted the third daily automated run to 2:00 PM ET (18:00 UTC) to provide a 2-hour buffer before market close (4:00 PM ET) against GitHub Actions scheduled trigger delays:
 - **Pipeline Cron Configuration**: Modified [.github/workflows/ingest.yml](file:///Users/cesarvega/Documents/p-code/llm-market-bench/.github/workflows/ingest.yml) to change the third run schedule from `0 19 * * 1-5` (3:00 PM ET) to `0 18 * * 1-5` (2:00 PM ET).

@@ -221,6 +221,10 @@ async def verify_trading_decision(
             "messages": copy.deepcopy(instructor_messages),
             "max_retries": 2,
         }
+        if provider == "gemini":
+            for msg in create_args["messages"]:
+                if isinstance(msg, dict) and msg.get("role") == "assistant":
+                    msg["role"] = "model"
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
 

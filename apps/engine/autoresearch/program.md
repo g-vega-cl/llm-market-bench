@@ -59,7 +59,7 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 7.  **get_price_history**: Fetches historical stock prices.
 8.  **get_position_pnl**: Fetches unrealized P&L details for a single ticker.
 9.  **get_volatility_metrics**: Calculates stock price volatility metrics.
-10. **get_sector_alternatives**: Finds alternative tickers in the same sector.
+10. **get_sector_alternatives**: Identifies industry competitors (FMP), statistically correlated assets (database), and historical related plays (decision history) for a ticker.
 11. **search_related_tickers**: Searches for tickers related to a thematic keyword.
 12. **run_stock_screener**: Screens stocks based on ratios, volume, etc.
 13. **find_uncorrelated_assets**: Screens for assets uncorrelated to the current portfolio.

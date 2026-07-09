@@ -1,3 +1,13 @@
+## [2026-07-09] improvement | Enhanced Sector Alternatives Tool with Hybrid Retrieval
+
+Upgraded `execute_sector_alternatives_tool` to perform a robust, multi-stage hybrid search:
+- **Industry Competitors**: Resolves ticker's sector and industry classification using `MarketDataManager.get_company_profile()` and queries standard competitors via FMP screener API.
+- **Statistical Correlations**: Fetches highly positive rolling pearson correlation pairs (>= 0.40) from the database's weekly `correlation_data` table.
+- **Historical Decisions**: Retains the vector database lookup over past trade decisions (`match_decisions` RPC) to preserve qualitative peers.
+- **TDD Test Coverage**: Added a comprehensive test suite in `test_sector_alternatives.py` verifying correct mock mapping, retrieval aggregation, correlation threshold filters, and formatting output.
+
+**See**: [[entities/pipeline]], [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [test_sector_alternatives.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_sector_alternatives.py)
+
 ## [2026-07-09] feature | Pull-Based Autoresearch and Dynamic Tool-Selection Architecture
 
 Converted the trading agent from a push-based data-injection model to a pull-based tool-calling model:

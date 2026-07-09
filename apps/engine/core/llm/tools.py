@@ -829,45 +829,127 @@ async def execute_stock_screener_tool(
 
 
 async def execute_sector_alternatives_tool(ticker: str) -> str:
-    """Identifies sector alternatives for a ticker using vector search on past decisions."""
+    """Identifies sector alternatives for a ticker using FMP industry screener, correlation matrix, and decision history."""
     client = get_supabase_client()
-    try:
-        ticker = ticker.upper()
+    ticker = ticker.upper()
 
+    industry_competitors = []
+    correlated_plays = []
+    historical_plays = []
+
+    # 1. Fetch Company Profile & Screen Stocks from FMP
+    manager = MarketDataManager()
+    sector = None
+    industry = None
+    try:
+        profiles = await manager.get_company_profile(ticker)
+        if profiles and isinstance(profiles, list):
+            profile = profiles[0]
+            sector = profile.get("sector")
+            industry = profile.get("industry")
+
+        if sector or industry:
+            screen_results = await manager.screen_stocks(sector=sector, industry=industry, limit=5)
+            if screen_results:
+                for item in screen_results:
+                    sym = item.get("symbol")
+                    if sym and sym != ticker:
+                        name = item.get("companyName", "")
+                        price = item.get("price", 0.0)
+                        mcap = item.get("marketCap", 0.0)
+                        mcap_str = f"${mcap / 1e9:.2f}B" if mcap else "unknown"
+                        industry_competitors.append(f"{sym} ({name}) - Price: ${price:.2f}, Market Cap: {mcap_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching company profile/screening for sector alternatives: {e}")
+
+    # 2. Fetch Statistical Correlations from Database
+    try:
+        runs = client.table("correlation_runs").select("id").order("run_date", desc=True).limit(1).execute()
+        if runs.data:
+            run_id = runs.data[0]["id"]
+            res_a = client.table("correlation_data").select("*").eq("run_id", run_id).eq("ticker_a", ticker).execute()
+            res_b = client.table("correlation_data").select("*").eq("run_id", run_id).eq("ticker_b", ticker).execute()
+
+            corr_rows = (res_a.data or []) + (res_b.data or [])
+
+            filtered_corrs = []
+            for row in corr_rows:
+                corr = row.get("pearson_corr")
+                if corr is not None and corr >= 0.40:
+                    other_ticker = row.get("ticker_b") if row.get("ticker_a") == ticker else row.get("ticker_a")
+                    ret_other = row.get("returns_b_90d") if row.get("ticker_a") == ticker else row.get("returns_a_90d")
+                    ret_other_val = f"{ret_other:.2f}%" if ret_other is not None else "N/A"
+                    filtered_corrs.append({"ticker": other_ticker, "corr": corr, "ret": ret_other_val})
+
+            filtered_corrs.sort(key=lambda x: x["corr"], reverse=True)
+            for c in filtered_corrs[:5]:
+                correlated_plays.append(f"{c['ticker']} (Correlation: {c['corr']:.4f} | 90d Return: {c['ret']})")
+    except Exception as e:
+        logger.warning(f"Error fetching correlation data for sector alternatives: {e}")
+
+    # 3. Vector Search on Past Decisions
+    try:
         query_text = f"Market analysis and trading decision for {ticker} stock in this sector"
         embedding = get_embedding(query_text)
-
-        if not embedding:
-            return f"Could not generate embedding for {ticker} to find alternatives."
-
-        res = client.rpc(
-            "match_decisions",
-            {
-                "query_embedding": embedding,
-                "match_threshold": 0.5,
-                "match_count": 10,
-            },
-        ).execute()
-
-        related_tickers = set()
-        if res.data:
-            for item in res.data:
-                t = item.get("ticker")
-                if t and t != ticker:
-                    related_tickers.add(t)
-
-        if not related_tickers:
-            mem_res = client.table("memories").select("content").ilike("content", f"%{ticker}%").limit(5).execute()
-
-            if mem_res.data:
-                return f"No direct competitors found in decision history, but {ticker} appears in recent market events. Consider searching for standard competitors manually."
-
-            return f"No alternative plays found for {ticker}."
-
-        alts = list(related_tickers)[:5]
-        return f"Sector Alternatives / Related Plays for {ticker} (based on history): {', '.join(alts)}"
+        if embedding:
+            res = client.rpc(
+                "match_decisions",
+                {
+                    "query_embedding": embedding,
+                    "match_threshold": 0.5,
+                    "match_count": 10,
+                },
+            ).execute()
+            if res.data:
+                related_tickers_set = set()
+                for item in res.data:
+                    t = item.get("ticker")
+                    if t and t != ticker:
+                        related_tickers_set.add(t)
+                historical_plays = list(related_tickers_set)[:5]
     except Exception as e:
-        return f"Error finding alternatives for {ticker}: {str(e)}"
+        logger.warning(f"Error fetching decision history vector search: {e}")
+
+    # Aggregating results
+    output = f"Sector Alternatives & Related Plays for {ticker}:\n\n"
+    has_results = False
+
+    if sector or industry:
+        output += f"1. Industry Competitors (Sector: {sector or 'Unknown'}, Industry: {industry or 'Unknown'}):\n"
+        if industry_competitors:
+            for item in industry_competitors:
+                output += f"   - {item}\n"
+            has_results = True
+        else:
+            output += "   - No other liquid stocks found in this industry.\n"
+        output += "\n"
+
+    if correlated_plays:
+        output += "2. Highly Correlated Assets (90d Pearson Correlation >= 0.40):\n"
+        for item in correlated_plays:
+            output += f"   - {item}\n"
+        output += "\n"
+        has_results = True
+
+    if historical_plays:
+        output += "3. Historical Related Plays (From past agent decisions):\n"
+        output += f"   - {', '.join(historical_plays)}\n"
+        output += "\n"
+        has_results = True
+
+    if not has_results:
+        try:
+            mem_res = client.table("memories").select("content").ilike("content", f"%{ticker}%").limit(5).execute()
+            if mem_res.data:
+                return (
+                    f"No direct competitors or correlated assets found for {ticker}, but "
+                    f"the ticker appears in recent market events. Consider searching for standard competitors manually."
+                )
+        except Exception:
+            pass
+        return f"No alternative plays or correlated assets found for {ticker}."
+
+    return output.strip()
 
 
 async def execute_buy_quantity_tool(ticker: str, owner_id: str, percentage: int) -> str:
@@ -1030,7 +1112,7 @@ async def execute_find_uncorrelated_assets_tool(
     client = get_supabase_client()
 
     try:
-        runs = client.table("correlation_runs").select("id").order("run_date", ascending=False).limit(1).execute()
+        runs = client.table("correlation_runs").select("id").order("run_date", desc=True).limit(1).execute()
 
         if not runs.data:
             return (

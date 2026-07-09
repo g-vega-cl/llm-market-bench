@@ -24,14 +24,15 @@ The auto-research loop runs weekly:
 5. **Deploy** — always activate the new variant generated in step 4. Save it as a new database row with empty metrics (`{}`), status `active`, and scheduled for the upcoming week (advanced by 7 days from the prior week).
 6. **Track** — if this week's score > baseline, it becomes the new baseline (best prompt+score pair). The baseline only moves up.
 
-## System-Heavy Prompt Architecture
+## Pull-Based Tool-Selection & System-Heavy Prompt Architecture
 
-As of **2026-05-24**, the system is built on a **System-Heavy** architecture to maximize the surface area of evolution for the meta-researcher.
+To keep prompts compact and empower the trading agent to autonomously seek information when needed, the system uses a **Pull-Based Tool-Selection** architecture combined with a **System-Heavy** split:
 
 - **System Prompt (The Rulebook)**: Contains 100% of the trading logic, risk management (SMA rules), SOPs (5-Whys), and tool-usage requirements. This part is stored in the database and is mutated by the meta-researcher.
-- **User Prompt (The Data Case)**: Reduced to a minimal skeleton that only handles dynamic data injection (News snippets, Portfolio status, Historical context). This part is static in the source code.
+- **Dynamic Tool Selection (Weekly Toolbox Selection)**: The meta-researcher decides which tools from the toolbox are enabled for the trading agent during the upcoming week (e.g., pulling newsletters, retrieving the XML portfolio ledger, fetching market sentiment).
+- **User Prompt (Static Trigger & Schema)**: Stripped of all automatic data injection (no pre-loaded newsletters or portfolio ledger XML). It is reduced to a minimal static trigger containing today's date context and the hardcoded output JSON schema constraints (frozen, cannot be altered by the meta-researcher).
 
-This split ensures that the "Brain" (System) is decoupled from the "Environment" (User), allowing the Auto-Research engine to iterate on the very rules of the system itself.
+This decouples the "Brain" (System and tool choices) from the "Environment" (User prompt), allowing the Auto-Research engine to optimize not just the guidelines of the agent but its cognitive tools and info-gathering strategy itself.
 
 ## Prompt Status Lifecycle
 
@@ -86,6 +87,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-07-09**: **Pull-Based Meta-Evolutionary Tool Selection Architecture** — Converted the trading agent from a push-based data-injection model to a pull-based tool-calling model. The meta-researcher (autoresearcher) now dynamically selects which tools are enabled for the agent each week by outputting a list of string names in `selected_tools`. The system automatically wraps these selections, force-injects execution safety tools (`calculate_buy_quantity`, `calculate_sell_quantity`), intercepts the generic `web_search` to map to native provider search capabilities, and strips portfolio ledger data/newsletter menus from the user prompt (reducing the user prompt to a minimal trigger with date context and hardcoded output JSON format).
 - **2026-06-27**: **Continuous Crash Recovery Generation** — Updated `runner.py` so that when a prompt variant triggers the safety checker (< 2 trades), the runner demotes the crashed variant, restores the active baseline, and immediately proceeds with auto-research generation to deploy a new candidate prompt off the baseline for the upcoming trading week. Added `TestCrashRecoveryContinuesGeneration` test coverage.
 - **2026-06-01**: **Granular Valuation Ledger & Auditable Starting Prices/Hours** — Expanded the do-nothing return calculations and React dashboard to display exact initial vs. ending stock prices, starting/ending values, and the precise date and hour (`YYYY-MM-DD HH:MM`) when the database price records were fetched. Backfilled last week's active prompt experiment `v20260524-221848` in Supabase with complete granular hourly valuation ledger records.
 - **2026-05-31**: **Do-Nothing Legacy Position Valuations & DB Corrected Backfill** — Resolved a critical evaluation bug where legacy held positions without active trading activity for >14 days were omitted from end-of-week price history snapshots and valued at $0.00, artificially tanking the "Do-Nothing" return to -38.33%. Modified `_do_nothing_return` in `metrics.py` to retrieve the latest known price up to `week_end` individually for each asset (removing the 14-day lookup limit). Backfilled the active prompt experiment (`37b238f1-96c6-4c98-9743-2c3f9ed980bd`) with the recalculated correct metrics (score: 8.4638, do_nothing_return_pct: -3.3962%).

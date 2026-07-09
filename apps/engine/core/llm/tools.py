@@ -6,6 +6,7 @@ function-tool schema). Handlers translate to provider-specific formats via
 """
 
 import contextlib
+import contextvars
 
 from core.config import logger
 from core.db import get_supabase_client
@@ -542,6 +543,95 @@ SEARCH_PAST_MEMORIES_TOOL = {
             "required": ["query"],
         },
     },
+}
+
+
+active_news_summaries = contextvars.ContextVar("active_news_summaries", default=None)
+active_news_chunks = contextvars.ContextVar("active_news_chunks", default=None)
+
+
+WEB_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "web_search",
+        "description": "Perform a general web search to find breaking news, stock prices, or market reports.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query to look up on the web.",
+                }
+            },
+            "required": ["query"],
+        },
+    },
+}
+
+
+GET_PORTFOLIO_LEDGER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_portfolio_ledger",
+        "description": "Retrieve the current portfolio cash, total equity, buying power (SMA), and details of all stock holdings including their average cost basis and current market value.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+GET_TODAYS_NEWS_MENU_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_todays_news_menu",
+        "description": "Retrieve a list of concise summaries and subjects of today's newsletters (the headline menu).",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+GET_MARKET_FEELING_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_market_feeling",
+        "description": "Retrieve the latest generated market sentiment label, confidence score, emoji, and qualitative feeling details from other LLM models.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+
+CANONICAL_TOOLS_REGISTRY = {
+    "get_stock_quote": STOCK_TOOL,
+    "get_price_history": PRICE_HISTORY_TOOL,
+    "get_position_pnl": POSITION_PNL_TOOL,
+    "get_volatility_metrics": VOLATILITY_METRICS_TOOL,
+    "get_sector_alternatives": SECTOR_ALTERNATIVES_TOOL,
+    "calculate_buy_quantity": CALCULATE_BUY_QUANTITY_TOOL,
+    "calculate_sell_quantity": CALCULATE_SELL_QUANTITY_TOOL,
+    "run_stock_screener": RUN_STOCK_SCREENER_TOOL,
+    "search_related_tickers": SEARCH_RELATED_TICKERS_TOOL,
+    "find_uncorrelated_assets": FIND_UNCORRELATED_ASSETS_TOOL,
+    "get_key_metrics": GET_KEY_METRICS_TOOL,
+    "audit_financial_valuation": AUDIT_FINANCIAL_VALUATION_TOOL,
+    "get_market_health_barometer": GET_MARKET_HEALTH_BAROMETER_TOOL,
+    "get_earnings_history": GET_EARNINGS_HISTORY_TOOL,
+    "search_prediction_markets": SEARCH_PREDICTION_MARKETS_TOOL,
+    "get_prediction_market_odds": GET_PREDICTION_MARKET_ODDS_TOOL,
+    "fetch_newsletter_content": FETCH_NEWSLETTER_CONTENT_TOOL,
+    "search_past_memories": SEARCH_PAST_MEMORIES_TOOL,
+    "get_portfolio_ledger": GET_PORTFOLIO_LEDGER_TOOL,
+    "get_todays_news_menu": GET_TODAYS_NEWS_MENU_TOOL,
+    "get_market_feeling": GET_MARKET_FEELING_TOOL,
+    "web_search": WEB_SEARCH_TOOL,
 }
 
 
@@ -1677,3 +1767,114 @@ async def execute_search_past_memories_tool(query: str, limit: int = 5) -> str:
     except Exception as e:
         logger.exception(f"Error executing search_past_memories tool: {e}")
         return f"Error performing historical RAG search: {str(e)}"
+
+
+async def execute_get_portfolio_ledger_tool(owner_id: str) -> str:
+    """Retrieves current cash, total equity, buying power (SMA), active positions, and recent trade thesis history."""
+    try:
+        client = get_supabase_client()
+
+        # 1. Fetch general portfolio details
+        p_res = client.table("portfolios").select("*").eq("owner_id", owner_id).execute()
+        if not p_res.data:
+            return f"No portfolio ledger found for owner: {owner_id}"
+
+        p_data = p_res.data[0]
+        cash = float(p_data.get("cash_balance", 0.0))
+        sma = float(p_data.get("sma", 0.0))
+        buying_power = float(p_data.get("buying_power", 0.0))
+        total_equity = float(p_data.get("total_equity", 0.0))
+
+        # 2. Fetch positions and PnL
+        pos_res = client.table("position_pnl").select("*").eq("owner_id", owner_id).execute()
+        positions_str = ""
+        if pos_res.data:
+            positions_str = "\nStock Holdings:\n"
+            for pos in pos_res.data:
+                qty = pos.get("quantity", 0)
+                if float(qty) <= 0:
+                    continue
+                ticker = pos["ticker"]
+                avg_cost = float(pos.get("average_cost_basis", 0.0))
+                curr_price = float(pos.get("current_price", 0.0))
+                pnl_usd = float(pos.get("unrealized_pnl_usd", 0.0))
+                pnl_pct = float(pos.get("unrealized_pnl_pct", 0.0))
+                positions_str += (
+                    f"- {ticker}: {qty} shares | Avg Cost: ${avg_cost:.2f} | "
+                    f"Current Price: ${curr_price:.2f} | Unrealized PnL: ${pnl_usd:+,.2f} ({pnl_pct:+.2f}%)\n"
+                )
+        else:
+            positions_str = "\nStock Holdings: None (you have no active stock positions)\n"
+
+        # 3. Fetch thesis history / ledger XML (reusing the function we already have)
+        from attribution.service import get_active_ledger_xml
+
+        ledger_xml = await get_active_ledger_xml(client, owner_id)
+        ledger_str = f"\n{ledger_xml}" if ledger_xml else ""
+
+        return (
+            f"=== PORTFOLIO LEDGER ===\n"
+            f"Account Owner: {owner_id}\n"
+            f"Total Account Equity: ${total_equity:,.2f}\n"
+            f"Cash Balance: ${cash:,.2f}\n"
+            f"Buying Power (SMA): ${buying_power:,.2f}\n"
+            f"SMA High Water Mark: ${sma:,.2f}\n"
+            f"{positions_str}"
+            f"{ledger_str}"
+        )
+    except Exception as e:
+        logger.exception(f"Error in execute_get_portfolio_ledger_tool: {e}")
+        return f"Error retrieving portfolio ledger: {str(e)}"
+
+
+async def execute_get_todays_news_menu_tool() -> str:
+    """Retrieves the pre-filtered summaries and subjects of today's newsletters."""
+    try:
+        summaries = active_news_summaries.get()
+        chunks = active_news_chunks.get()
+
+        if not chunks:
+            return "No news chunks available for today."
+
+        news_content_parts = []
+        if summaries:
+            for chunk in chunks:
+                source_id = chunk["source_id"]
+                summary_text = summaries.get(source_id, "No summary available.")
+                sender = chunk.get("sender", "Unknown")
+                subject = chunk.get("subject", "No Subject")
+                news_content_parts.append(
+                    f"- Source ID: {source_id}\n  Sender: {sender}\n  Subject: {subject}\n  Summary: {summary_text}"
+                )
+        else:
+            for chunk in chunks:
+                news_content_parts.append(
+                    f"- Source ID: {chunk['source_id']}\n  Sender: {chunk.get('sender', 'Unknown')}\n  Subject: {chunk.get('subject', 'No Subject')}\n  (Full text available via fetch_newsletter_content)"
+                )
+
+        return "=== TODAY'S NEWSLETTER MENU ===\n" + "\n".join(news_content_parts)
+    except Exception as e:
+        logger.exception(f"Error in execute_get_todays_news_menu_tool: {e}")
+        return f"Error retrieving newsletter menu: {str(e)}"
+
+
+async def execute_get_market_feeling_tool() -> str:
+    """Retrieves the latest generated market sentiment and feeling."""
+    try:
+        from analysis.market_feeling import get_latest_market_feeling
+
+        feeling = await get_latest_market_feeling()
+        if not feeling:
+            return "No market feeling records found."
+
+        return (
+            f"=== LATEST MARKET FEELING ===\n"
+            f"Sentiment: {feeling.get('sentiment_label')} {feeling.get('sentiment_emoji')}\n"
+            f"Confidence: {feeling.get('confidence_score')}%\n"
+            f"Feelings: {feeling.get('feeling_text')}\n"
+            f"Causal Cues: {feeling.get('causal_cues')}\n"
+            f"Timestamp: {feeling.get('created_at')}"
+        )
+    except Exception as e:
+        logger.exception(f"Error in execute_get_market_feeling_tool: {e}")
+        return f"Error retrieving market feeling: {str(e)}"

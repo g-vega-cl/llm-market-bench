@@ -122,8 +122,9 @@ class PromptFactory:
                 "This is mandatory for compliance verification.\n\n" + system_prompt
             )
 
-        # Inject portfolio ledger if applicable
-        if owner_id:
+        # Inject portfolio ledger if applicable (only for NON-experiment group agents)
+        is_experiment = owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS
+        if owner_id and not is_experiment:
             from attribution.service import get_active_ledger_xml
             from core.db import get_async_supabase_client
 
@@ -136,10 +137,13 @@ class PromptFactory:
                 logger.error(f"Failed to fetch ledger for {owner_id}: {e}")
 
         kwargs["market_data_block"] = market_data_block
+        user_template = (
+            prompts.EXPERIMENT_USER_PROMPT_TEMPLATE if is_experiment else prompts.ANALYSIS_USER_PROMPT_TEMPLATE
+        )
         return cls._build_messages(
             provider,
             system_prompt,
-            prompts.ANALYSIS_USER_PROMPT_TEMPLATE,
+            user_template,
             enable_web_search=enable_web_search,
             **kwargs,
         )

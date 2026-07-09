@@ -1,3 +1,14 @@
+## [2026-07-09] feature | Pull-Based Autoresearch and Dynamic Tool-Selection Architecture
+
+Converted the trading agent from a push-based data-injection model to a pull-based tool-calling model:
+- **Trading Tools**: Implemented 3 new on-demand news triaging and portfolio tools (`get_portfolio_ledger`, `get_todays_news_menu`, `get_market_feeling`) with thread-safe `contextvars.ContextVar` variables linking daily pipeline run newsletters to tool invocation scopes.
+- **Autoresearch Schema & Selection**: Added `selected_tools` to the `PromptResearchResult` Pydantic model and updated `program.md` so the meta-researcher (autoresearcher) dynamically selects which tools are enabled for the agent each week.
+- **Dynamic Tool Mapping**: Updated `analyze_with_provider` in `analysis.py` to fetch the active variant's `selected_tools` from database, map names to schemas via `CANONICAL_TOOLS_REGISTRY` in `tools.py`, force-inject execution safety tools (`calculate_buy_quantity`, `calculate_sell_quantity`), and intercept the generic `web_search` to map to native provider-specific search capabilities.
+- **User Prompt Reduction**: Skip automatic ledger XML injection and use `EXPERIMENT_USER_PROMPT_TEMPLATE` for experiment group agents, stripping newsletters and ledger details to keep the user prompt to a minimal trigger with date context and the hardcoded output JSON format.
+- **TDD & Code Quality**: Added unit tests in `test_pull_based_autoresearch.py` verifying all schemas, template mappings, and tool selection interception logic. Updated existing tests in `test_autoresearch.py` to support the new schema. 100% of the pytest test suite (822 tests) passes successfully with zero Ruff format or lint warnings.
+
+**See**: [[entities/autoresearch]], [[entities/pipeline]], [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_pull_based_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pull_based_autoresearch.py)
+
 ## [2026-06-18] feature | Memories inline newsletter snippet citations and secure RPC
 
 

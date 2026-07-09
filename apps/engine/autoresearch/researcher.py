@@ -27,6 +27,20 @@ def _load_research_program() -> str:
 
 class PromptResearchResult(BaseModel):
     new_prompt_text: str = Field(..., description="The complete modified prompt text")
+    selected_tools: list[str] = Field(
+        ...,
+        description=(
+            "List of allowed tool names for the trading agent, chosen from: "
+            "'get_stock_quote', 'get_price_history', 'get_position_pnl', 'get_volatility_metrics', "
+            "'get_sector_alternatives', 'search_related_tickers', 'run_stock_screener', "
+            "'find_uncorrelated_assets', 'get_key_metrics', 'get_market_health_barometer', "
+            "'get_earnings_history', 'search_prediction_markets', 'get_prediction_market_odds', "
+            "'audit_financial_valuation', 'fetch_newsletter_content', 'search_past_memories', "
+            "'get_portfolio_ledger', 'get_todays_news_menu', 'get_market_feeling'. "
+            "Do NOT include execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') "
+            "as they are automatically force-injected by the system."
+        ),
+    )
     change_description: str = Field(..., description="One sentence explaining what was changed and why")
     experiment_type: str = Field(..., description="'incremental' or 'radical'")
     research_reasoning: str = Field(..., description="Detailed reasoning for this change")

@@ -1343,6 +1343,7 @@ class TestActivationGate:
 
         defaults = dict(
             new_prompt_text="test prompt",
+            selected_tools=["get_portfolio_ledger"],
             change_description="test change",
             experiment_type="incremental",
             research_reasoning="test reasoning",

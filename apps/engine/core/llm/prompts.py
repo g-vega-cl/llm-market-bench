@@ -232,6 +232,45 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
 Return ONLY the structured JSON object with 'decisions' and 'macro_events'."""
 
 
+EXPERIMENT_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
+{current_day_info}
+
+Please analyze the market, execute any required tools to pull details on news and your portfolio, and return your decisions.
+
+=== OUTPUT FORMAT REQUIREMENTS ===
+Your final response MUST be a structured JSON object matching this schema. Any BUY or SELL decision MUST execute the corresponding calculate_buy_quantity/calculate_sell_quantity tool first in your conversation history.
+No markdown formatting before or after the JSON block. Just the raw JSON matching:
+{{
+  "decisions": [
+    {{
+      "ticker": "string",
+      "signal": "BUY | SELL | HOLD",
+      "allocation_percentage": 0,
+      "catalyst_type": "MACRO | EARNINGS | M_A | PRODUCT | REGULATORY | EVENT | INNOVATION | TECHNICAL | UNCROWDED_TRADE | OTHER",
+      "catalyst_duration": "SHORT_TERM | MEDIUM_TERM | LONG_TERM",
+      "confidence": 0,
+      "reasoning": "string",
+      "source_id": "string"
+    }}
+  ],
+  "macro_events": [
+    {{
+      "event_name": "string",
+      "impact": "BULLISH | BEARISH | NEUTRAL",
+      "catalyst_type": "MACRO | EARNINGS | M_A | PRODUCT | REGULATORY | EVENT | INNOVATION | TECHNICAL | UNCROWDED_TRADE | OTHER",
+      "is_ongoing": false,
+      "is_future_catalyst": false,
+      "expiry_date": "string",
+      "importance_score": 5,
+      "confidence": 0,
+      "reasoning": "string",
+      "scenario_analysis": "string",
+      "source_id": "string"
+    }}
+  ]
+}}"""
+
+
 SYNTHESIS_SYSTEM_PROMPT = (
     "You are a senior financial analyst. Return structured JSON with name, summary, scenarios, and any future date.\n\n"
     "=== YOUR TASK ===\n"

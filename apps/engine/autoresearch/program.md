@@ -48,12 +48,38 @@ As a prompt researcher, you have an arsenal of mental frameworks you can strateg
 - Rotate between: momentum-focused, value-focused, contrarian-focused, macro-event-focused prompt structures
 - If the control group significantly outperforms, consider reverting toward the baseline
 
+## Toolbox: Available Trading Agent Tools
+The trading agent has a comprehensive set of tools. You must choose which of these tools are enabled for the agent during the upcoming week. The agent receives NO automatic news context or portfolio data in its prompt text—it must call these tools to gather information:
+1.  **get_portfolio_ledger**: (Pull-based) Retrieves cash balance, total equity, buying power (SMA), active stock holdings, and previous trade theses history.
+2.  **get_todays_news_menu**: (Pull-based) Retrieves a concise summary menu of today's newsletter headlines.
+3.  **fetch_newsletter_content**: Fetches full newsletter texts by Source IDs.
+4.  **get_market_feeling**: Retrieves daily AI market sentiment/feeling.
+5.  **search_past_memories**: Semantic pgvector RAG search against past market events and lessons learned.
+6.  **get_stock_quote**: Fetches the current stock quote.
+7.  **get_price_history**: Fetches historical stock prices.
+8.  **get_position_pnl**: Fetches unrealized P&L details for a single ticker.
+9.  **get_volatility_metrics**: Calculates stock price volatility metrics.
+10. **get_sector_alternatives**: Finds alternative tickers in the same sector.
+11. **search_related_tickers**: Searches for tickers related to a thematic keyword.
+12. **run_stock_screener**: Screens stocks based on ratios, volume, etc.
+13. **find_uncorrelated_assets**: Screens for assets uncorrelated to the current portfolio.
+14. **get_key_metrics**: Retrieves financial ratios and metrics.
+15. **get_market_health_barometer**: Gets overall market health index details.
+16. **get_earnings_history**: Fetches earnings history/calendar.
+17. **search_prediction_markets**: Searches Kalshi/Polymarket for event contracts.
+18. **get_prediction_market_odds**: Fetches event contract odds.
+19. **audit_financial_valuation**: Runs valuation/DCF model calculations.
+20. **web_search**: General search for breaking news/prices.
+
+*Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
+
 ## Output Format
 Return ONLY a valid JSON object with these fields:
 
 ```json
 {
   "new_prompt_text": "<full modified strategy and analysis section only>",
+  "selected_tools": ["get_portfolio_ledger", "get_todays_news_menu", "search_past_memories"],
   "change_description": "<1 sentence: what you changed and why>",
   "experiment_type": "incremental",
   "research_reasoning": "<detailed: why this change, what you expect to happen, what risks you considered>",
@@ -64,5 +90,7 @@ Return ONLY a valid JSON object with these fields:
 Rules:
 - `experiment_type` must be "incremental" or "radical"
 - `confidence` must be 0-100
+- `selected_tools` must contain only valid tool names listed in the toolbox above.
 - `new_prompt_text` must be the COMPLETE modified strategy and analysis section only (do NOT output header/footer constraints or JSON schemas)
 - NEVER leave placeholder text like "<insert here>" — write the actual prompt
+

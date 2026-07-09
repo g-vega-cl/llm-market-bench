@@ -257,7 +257,48 @@ async def analyze_with_provider(
 
     client = factory()
 
+    from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
+    from core.llm import tools
+
+    # Set active newsletter chunks and summaries context for pull tools
+    token_summaries = tools.active_news_summaries.set(summaries)
+    token_chunks = tools.active_news_chunks.set(chunks)
+
     try:
+        # Determine allowed tools for experiment variant
+        override_tools = None
+        enable_web_search = False
+        if model_name in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
+            try:
+                from autoresearch.prompt_store import get_active_variant
+
+                variant = await get_active_variant()
+                if variant:
+                    research_output = variant.get("research_output")
+                    if isinstance(research_output, dict):
+                        selected_tool_names = research_output.get("selected_tools")
+                        if isinstance(selected_tool_names, list):
+                            override_tools = []
+                            for name in selected_tool_names:
+                                t_def = tools.CANONICAL_TOOLS_REGISTRY.get(name)
+                                if t_def:
+                                    override_tools.append(t_def)
+                                else:
+                                    logger.warning(f"Active prompt variant specified invalid tool name: {name}")
+
+                            # Force-inject calculate_buy_quantity and calculate_sell_quantity for safety
+                            safety_tools = [tools.CALCULATE_BUY_QUANTITY_TOOL, tools.CALCULATE_SELL_QUANTITY_TOOL]
+                            for st in safety_tools:
+                                if st not in override_tools:
+                                    override_tools.append(st)
+
+                            # Intercept web_search tool to configure native web search flag
+                            if tools.WEB_SEARCH_TOOL in override_tools:
+                                enable_web_search = True
+                                override_tools = [t for t in override_tools if t != tools.WEB_SEARCH_TOOL]
+            except Exception as e:
+                logger.warning(f"Failed to fetch selected tools for experiment variant: {e}. Defaulting to all tools.")
+
         # Construct batch prompt (menu summaries if available, fallback to full text)
         if summaries:
             news_content_parts = []
@@ -279,20 +320,20 @@ async def analyze_with_provider(
         held_tickers = _extract_held_tickers(portfolio_context)
         held_tickers_list = ", ".join(held_tickers) if held_tickers else "None (you have no positions)"
 
-        # Determine if web search should be enabled for this provider
-        enable_web_search = False
-        if provider == "anthropic":
-            from core.config import ENABLE_ANTHROPIC_WEB_SEARCH
+        # Determine if web search should be enabled for this provider (if not overridden by experiment variant)
+        if override_tools is None:
+            if provider == "anthropic":
+                from core.config import ENABLE_ANTHROPIC_WEB_SEARCH
 
-            enable_web_search = ENABLE_ANTHROPIC_WEB_SEARCH
-        elif provider == "gemini":
-            from core.config import ENABLE_GEMINI_WEB_SEARCH
+                enable_web_search = ENABLE_ANTHROPIC_WEB_SEARCH
+            elif provider == "gemini":
+                from core.config import ENABLE_GEMINI_WEB_SEARCH
 
-            enable_web_search = ENABLE_GEMINI_WEB_SEARCH
-        elif provider == "openai":
-            from core.config import ENABLE_OPENAI_WEB_SEARCH
+                enable_web_search = ENABLE_GEMINI_WEB_SEARCH
+            elif provider == "openai":
+                from core.config import ENABLE_OPENAI_WEB_SEARCH
 
-            enable_web_search = ENABLE_OPENAI_WEB_SEARCH
+                enable_web_search = ENABLE_OPENAI_WEB_SEARCH
 
         messages = await PromptFactory.build_analysis_messages(
             provider=provider,
@@ -313,21 +354,45 @@ async def analyze_with_provider(
         if provider == "openai":
             from .handlers import openai
 
-            await openai.run_tool_loop(raw_client, model_name, messages, provider, enable_web_search=enable_web_search)
+            await openai.run_tool_loop(
+                raw_client,
+                model_name,
+                messages,
+                provider,
+                override_tools=override_tools,
+                enable_web_search=enable_web_search,
+            )
         elif provider == "deepseek":
             from .handlers import deepseek
 
             await deepseek.run_tool_loop(
-                raw_client, model_name, messages, provider, enable_web_search=enable_web_search
+                raw_client,
+                model_name,
+                messages,
+                provider,
+                override_tools=override_tools,
+                enable_web_search=enable_web_search,
             )
         elif provider == "anthropic":
             from .handlers import anthropic
 
-            await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=enable_web_search)
+            await anthropic.run_tool_loop(
+                raw_client,
+                model_name,
+                messages,
+                override_tools=override_tools,
+                enable_web_search=enable_web_search,
+            )
         elif provider == "gemini":
             from .handlers import gemini
 
-            await gemini.run_tool_loop(raw_client, model_name, messages, enable_google_search=enable_web_search)
+            await gemini.run_tool_loop(
+                raw_client,
+                model_name,
+                messages,
+                override_tools=override_tools,
+                enable_google_search=enable_web_search,
+            )
         elif provider == "minimax":
             from .handlers import anthropic
 
@@ -335,7 +400,13 @@ async def analyze_with_provider(
             # tool-loop handler gives us native tool_use blocks and proper thinking
             # control. Web search is disabled because M3 has no native server-side
             # web_search tool via this endpoint.
-            await anthropic.run_tool_loop(raw_client, model_name, messages, enable_web_search=False)
+            await anthropic.run_tool_loop(
+                raw_client,
+                model_name,
+                messages,
+                override_tools=override_tools,
+                enable_web_search=False,
+            )
 
         # Keep an unflattened copy of the message history for tool call verification
         # right after the tool loops run and BEFORE any flattening or preparation mutations.
@@ -547,30 +618,54 @@ async def analyze_with_provider(
                 from .handlers import openai
 
                 await openai.run_tool_loop(
-                    raw_client, model_name, unflattened_messages, provider, enable_web_search=enable_web_search
+                    raw_client,
+                    model_name,
+                    unflattened_messages,
+                    provider,
+                    override_tools=override_tools,
+                    enable_web_search=enable_web_search,
                 )
             elif provider == "deepseek":
                 from .handlers import deepseek
 
                 await deepseek.run_tool_loop(
-                    raw_client, model_name, unflattened_messages, provider, enable_web_search=enable_web_search
+                    raw_client,
+                    model_name,
+                    unflattened_messages,
+                    provider,
+                    override_tools=override_tools,
+                    enable_web_search=enable_web_search,
                 )
             elif provider == "anthropic":
                 from .handlers import anthropic
 
                 await anthropic.run_tool_loop(
-                    raw_client, model_name, unflattened_messages, enable_web_search=enable_web_search
+                    raw_client,
+                    model_name,
+                    unflattened_messages,
+                    override_tools=override_tools,
+                    enable_web_search=enable_web_search,
                 )
             elif provider == "gemini":
                 from .handlers import gemini
 
                 await gemini.run_tool_loop(
-                    raw_client, model_name, unflattened_messages, enable_google_search=enable_web_search
+                    raw_client,
+                    model_name,
+                    unflattened_messages,
+                    override_tools=override_tools,
+                    enable_google_search=enable_web_search,
                 )
             elif provider == "minimax":
                 from .handlers import anthropic
 
-                await anthropic.run_tool_loop(raw_client, model_name, unflattened_messages, enable_web_search=False)
+                await anthropic.run_tool_loop(
+                    raw_client,
+                    model_name,
+                    unflattened_messages,
+                    override_tools=override_tools,
+                    enable_web_search=False,
+                )
 
             # Re-prepare messages for Instructor extraction from the updated unflattened history
             messages_retry = copy.deepcopy(unflattened_messages)
@@ -808,6 +903,8 @@ async def analyze_with_provider(
         logger.error("Error analyzing batch with %s/%s: %s", provider, model_name, e)
         raise
     finally:
+        tools.active_news_summaries.reset(token_summaries)
+        tools.active_news_chunks.reset(token_chunks)
         await clients.close_client(client, provider)
 
 

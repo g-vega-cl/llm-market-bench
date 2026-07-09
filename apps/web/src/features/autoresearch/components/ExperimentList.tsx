@@ -77,7 +77,19 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                             }
                         >
                             <TableCell className="font-mono font-medium">
-                                {exp.variant_tag}
+                                <div className="flex items-center gap-2">
+                                    <span>{exp.variant_tag}</span>
+                                    {(exp.research_output as { selected_tools?: string[] })
+                                        ?.selected_tools && (
+                                        <Badge
+                                            colorScheme="accent"
+                                            variant="outline"
+                                            className="text-[9px] px-1.5 py-0 font-sans tracking-wide"
+                                        >
+                                            🛠️ Pull
+                                        </Badge>
+                                    )}
+                                </div>
                             </TableCell>
                             <TableCell>
                                 <Badge

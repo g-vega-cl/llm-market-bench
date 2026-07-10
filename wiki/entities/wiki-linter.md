@@ -1,52 +1,43 @@
 ---
-tags: [wiki, linting, quality, llm]
+tags: [linting, wiki, documentation, pre-commit]
 category: entity
 ---
 
 # Wiki Linter
 
-The Wiki Linter is a multi-stage quality assurance system that ensures the project wiki remains structural sound, interlinked, and semantically consistent.
+Automated quality assurance for the project wiki. Combines two layers: a fast structural linter that runs on every commit, and a weekly LLM-powered deep lint for semantic contradictions and stale claims.
 
-## Components
+## Structural Lint (`wiki_lint.py`)
 
-### 1. Structural Lint (`apps/engine/wiki_lint.py`)
-A fast, rule-based linter that checks for:
-- **Missing Frontmatter**: Ensures all non-scaffold pages have valid YAML frontmatter (tags, category).
-- **Broken Links**: Validates that all wiki links (using double brackets) resolve to existing files.
-- **Orphan Pages**: Identifies pages that have no incoming links from other wiki pages.
-- **Index Coverage**: Ensures all pages are referenced in `wiki/index.md`.
+Executed via pre-commit hook in under 20ms. Checks:
+- **Frontmatter completeness**: ensures every page has `tags` and `category`.
+- **Broken wiki-links**: validates that all wiki-style cross-references point to existing pages.
+- **Orphan detection**: flags pages with no incoming links (excluding scaffold files).
+- **Index coverage** (optional): confirms all pages are listed in `index.md`.
+- **Code reference validation** (NEW): scans page content for backticked or linked paths under `apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/` and verifies they exist on disk. Prevents stale documentation references. Implemented via `validate_codebase_references()` in `wiki_lint.py`, with exclusions for template files and placeholders.
 
-### 2. LLM Semantic Lint (`apps/engine/wiki_lint_llm.py`)
-An LLM-powered auditor (typically using `deepseek/deepseek-v4-pro` via OpenRouter) that performs deep semantic analysis. It identifies contradictions, data gaps, stale claims, and weak cross-references.
+Errors are reported with tags like `[orphan]`, `[broken-link]`, `[broken-code-ref]`.
 
-- **Operational Status**: Fully operational as of 2026-05-16. 
-- **Performance**: Capable of processing ~50 pages (~75k chars) in a single pass.
-- **Reporting**: Automated GitHub Issue creation for any findings.
+## LLM-Powered Deep Lint (`wiki_lint_llm.py`)
 
-## Observability & Debugging
+Runs weekly via GitHub Actions (Saturday 10:00 ET) or manually. Sends all wiki pages to an LLM (DeepSeek or other via OpenRouter) to detect:
+- Contradictions between pages
+- Stale claims outdated by recent code changes
+- Missing concept pages or weak cross-references
+- Data gaps and thin pages
 
-The LLM linter follows the project's **Observability Standards**:
-- **Centralized Logging**: Uses the `engine` logger (configured in `apps/engine/core/config.py`).
-- **Robust JSON Extraction**: Uses a combination of `re.finditer(r"\{", raw)` and `json.JSONDecoder().raw_decode` to surgically locate the first valid JSON object. This strategy handles duplicate JSON outputs, conversational prefaces, and trailing garbage that often cause standard `json.loads` or `strip()`-based approaches to fail.
-- **Context Optimization**: LLM input is capped at 75k characters with `max_tokens` tuned to 4096 to prevent truncation and "Unterminated string" errors during high-volume linting.
-- **Detailed Diagnostics**: On JSON parsing failures, it logs the **raw response content** to stderr. This allows for immediate root-cause analysis of empty responses, model refusals, or structural anomalies in GitHub Actions logs.
+Recent improvements:
+- **File manifest injection** (2026-07-10): the prompt now includes a JSON manifest of all wiki files, preventing false-positive "missing page" errors caused by text truncation.
+- **Increased input size**: max input raised from 75k to 120k chars to accommodate more files.
 
-## Execution
+## Files
 
-### GitHub Actions
-The linter runs weekly via `.github/workflows/wiki-lint.yml`. Findings are automatically converted into GitHub Issues labeled `wiki-lint`.
-
-### Local Execution
-```sh
-# Structural lint only
-python apps/engine/wiki_lint.py
-
-# LLM lint (requires OPENROUTER_API_KEY)
-python apps/engine/wiki_lint_llm.py --model "deepseek/deepseek-v4-pro"
-```
+- `apps/engine/wiki_lint.py` – structural linter
+- `apps/engine/wiki_lint_llm.py` – LLM-based deep lint
+- `apps/engine/tests/test_code_reference_validation.py` – unit tests for path validation
 
 ## Related
+
 - [[concepts/project-linting]]
-- [[entities/auto-wiki]]
-- [[concepts/observability-standard]]
 - [[concepts/code-reference-validation]]
+- [[entities/auto-wiki]]

@@ -135,3 +135,4 @@ To verify the origins and context behind a promoted memory (e.g. why an LLM prio
 - [[concepts/rag-strategy]]
 - [[concepts/auto-research-prompt-improver]]
 - [[entities/autoresearch]]
+- [[concepts/consensus]]

@@ -20,22 +20,22 @@ GitHub Actions does not correctly handle DST when using the `timezone` field —
 ## Phases
 
 ### 1. Ingestion
-Fetch newsletters, economic calendar events, and government data. See [[concepts/ingestion]].
+Fetch newsletters, economic calendar events, and government data. Runs the **De-Advertisement Agent** to sanitize incoming newsletter texts. See [[concepts/ingestion]].
 
 ### 2. Pre-Analysis
-Market hours check, dust cleanup, and macro tracking across 23 tickers in 6 categories (equities, international, commodities, fixed income, FX/risk, crypto). See [[entities/macro-tracker]].
+Market hours check, dust cleanup, and macro tracking across 23 tickers. No specialized agents run in this phase. See [[entities/macro-tracker]].
 
 ### 3. Analysis
-Parallel LLM analysis with tool-calling loops. Each agent receives pre-injected market data and follows a mandatory Search/Plan/TDD workflow. See [[concepts/reasoning]] and [[concepts/agent-workflow]].
+Parallel LLM analysis with tool-calling loops. Runs 5 instances of the **Analysis Agent** (OpenAI, Anthropic, Gemini, DeepSeek, MiniMax) to generate proposed trades. Propose-phase validations run the **Verifier Agent** to double-check trades and the **Contrarian Agent** to run crowded-trade counter-actions. See [[concepts/reasoning]] and [[concepts/agent-workflow]].
 
 ### 4. Consensus
-Semantic grouping of agent outputs, weighted voting, event promotion, and trend tracking. See [[concepts/consensus]].
+Semantic grouping of agent outputs, weighted voting, event promotion, and trend tracking. Runs the **Synthesis Agent** to consolidate proposed decisions into clean events and the **Relationship Agent** to map chronological/semantic links in the event chain graph. See [[concepts/consensus]].
 
 ### 5. Execution
-Pre-market validation, Reg T checks, trade settlement, and attribution. Includes standard limit orders and a simplified market order pipeline for MiniMax with a ±0.5% buffer. See [[concepts/execution]] and [[concepts/minimax-portfolio]].
+Pre-market validation, Reg T checks, trade settlement, and attribution. No specialized agents run in this phase (simulated execution is programmatic). See [[concepts/execution]] and [[concepts/minimax-portfolio]].
 
 ### 6. Feedback
-Post-mortem analysis, contrarian review, cause & effect tracking, and weekly auto-research prompt improvement. See [[concepts/memory-feedback]] and [[entities/autoresearch]].
+Post-mortem analysis, contrarian review, cause & effect tracking, and weekly auto-research prompt improvement. Runs the **Manager Agent** for multi-horizon post-mortems (generating lessons learned) and the **Cause & Effect Agent** for price-impact audits. Also triggers the weekly auto-research prompt improvement. See [[concepts/memory-feedback]] and [[entities/autoresearch]].
 
 ## Related
 

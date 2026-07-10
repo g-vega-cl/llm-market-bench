@@ -45,3 +45,4 @@ The UI displays the avatars of these models directly on the market consensus car
 - [[entities/pipeline]]
 - [[concepts/reasoning]]
 - [[concepts/execution]]
+- [[concepts/memory-feedback]]

@@ -66,10 +66,10 @@ Output format:
 def collect_wiki_content() -> str:
     """Read wiki pages. Truncates to stay within reasonable context limits."""
     parts = []
-    # Only read the first 75k chars to ensure we don't blow the context window
+    # Only read the first 120k chars to ensure we don't blow the context window
     # and leave room for the model to think and respond.
     current_size = 0
-    max_input_size = 75000
+    max_input_size = 120000
 
     for f in sorted(WIKI_DIR.rglob("*.md")):
         rel = str(f.relative_to(WIKI_DIR))
@@ -86,13 +86,25 @@ def collect_wiki_content() -> str:
     return "\n".join(parts)
 
 
-def call_openrouter(content: str, model: str, api_key: str) -> dict:
+def call_openrouter(content: str, model: str, api_key: str, all_files: list[str] | None = None) -> dict:
     """Send wiki content to the LLM and return parsed findings."""
+    if all_files is None:
+        all_files = []
+
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Lint these wiki pages:\n\n{content}"},
+            {
+                "role": "user",
+                "content": (
+                    f"Here is a manifest of all files present in the wiki directory:\n"
+                    f"{json.dumps(all_files, indent=2)}\n\n"
+                    f"Use this manifest to verify if cross-referenced links/pages actually exist in the project "
+                    f"(even if their contents were truncated or not fully provided in the content below).\n\n"
+                    f"Lint these wiki pages:\n\n{content}"
+                ),
+            },
         ],
         "temperature": 0.1,  # Lower temperature for more stable JSON
         "max_tokens": 4096,  # 4k is usually plenty for 10 findings and more stable than 8k on many providers
@@ -178,11 +190,12 @@ def main():
     logger.info(f"Collecting wiki pages from: {WIKI_DIR}")
     content = collect_wiki_content()
     total_chars = len(content)
-    total_files = len(list(WIKI_DIR.rglob("*.md")))
+    all_files = sorted([str(f.relative_to(WIKI_DIR)) for f in WIKI_DIR.rglob("*.md")])
+    total_files = len(all_files)
     logger.info(f"  {total_files} files, {total_chars} chars")
 
     try:
-        result = call_openrouter(content, model, api_key)
+        result = call_openrouter(content, model, api_key, all_files=all_files)
     except requests.RequestException as e:
         logger.error(f"OpenRouter API error: {e}")
         sys.exit(1)

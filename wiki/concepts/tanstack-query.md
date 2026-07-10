@@ -14,7 +14,7 @@ To maintain high cohesion and follow a clean vertical feature-sliced monorepo st
 - **Feature-Specific Query Options & Keys**
   - Located inside each vertical feature slice at `apps/web/src/features/[feature]/queries/options.ts` and `keys.ts` (e.g., `portfolioQueries`, `reasoningQueries`, `todayQueries`).
   - These are the single source of truth for query definitions, imported and consumed by the frontend pages and components (e.g., `ReasoningPage.tsx` consumes `reasoningQueries.list`).
-  - **Cleanup (2026-05-21)**: A duplicate centralized factory (`apps/web/src/lib/queries.ts` and `apps/web/src/lib/query-keys.ts`) was audited, identified as dead code, and deleted to preserve codebase cleanliness.
+  - **Cleanup (2026-05-21)**: A duplicate centralized factory (`src/lib/queries.ts` and `src/lib/query-keys.ts` under `apps/web/`) was audited, identified as dead code, and deleted to preserve codebase cleanliness.
 
 ## Query Options Factory Pattern
 

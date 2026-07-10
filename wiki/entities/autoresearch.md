@@ -45,7 +45,7 @@ Every variant saved in the `prompt_experiments` table transitions through a stru
 
 ## Files
 
-- `program.md` — the meta-researcher's instructions (constraints and goals)
+- [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md) — the meta-researcher's instructions (constraints and goals)
 - `metrics.py` — Wall Street metrics computation + `compute_score()`
 - `evaluator.py` — gathers weekly data, computes baseline, formats report
 - `researcher.py` — calls DeepSeek v4 Pro with structured output

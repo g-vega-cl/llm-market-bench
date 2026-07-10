@@ -1,3 +1,12 @@
+## [2026-07-10] fix | Reconciled Wiki Lint Audits and Implemented Codebase Path Validation
+
+Addressed multiple findings from the LLM-powered Wiki Lint audit (Issue #60) to resolve contradictions, stale documentation, missing pages, and data gaps:
+- **Codebase Reference Validation**: Implemented deterministic path check in [wiki_lint.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint.py) and added unit tests in [test_code_reference_validation.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_code_reference_validation.py).
+- **LLM-Linter Manifest**: Added file path manifest array to [wiki_lint_llm.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint_llm.py) to resolve false-positive missing page errors caused by alphabetical text truncation.
+- **Documentation Refactoring**: Reconciled the 8 specialized agents with the 6 pipeline phases, resolved execution & slippage contradictions, updated dynamic/deleted path references, expanded model anomaly SOP details, and resolved cross-linking gaps.
+
+**See**: [[entities/wiki-linter]], [[concepts/code-reference-validation]], [wiki_lint.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint.py), [wiki_lint_llm.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint_llm.py), [test_code_reference_validation.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_code_reference_validation.py)
+
 ## [2026-07-09] improvement | Enhanced Sector Alternatives Tool with Hybrid Retrieval
 
 Upgraded `execute_sector_alternatives_tool` to perform a robust, multi-stage hybrid search:

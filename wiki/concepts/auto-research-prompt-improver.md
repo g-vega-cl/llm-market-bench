@@ -51,7 +51,7 @@ Week 4: score=2.5 → Baseline: 2.5 (Δ: +0.50) ✓  → deploy
 
 To protect system stability and parse compatibility, constraints and output formatting rules are frozen. The auto-research runner extracts only the mutable strategy section from the prompt variants and presents it to the researcher. The proposed strategy improvements are automatically recombined with the frozen header/footer constraints (defined in [prompts.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/prompts.py)) before deployment.
 
-The researcher's `program.md` specifies:
+The researcher's instructions in [program.md](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/autoresearch/program.md) specify:
 - Only modify the strategy and analysis rules section of the prompt
 - Keep the prompt under 1000 words
 - Compatible with Gemini Flash and DeepSeek Flash

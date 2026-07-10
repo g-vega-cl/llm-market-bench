@@ -36,3 +36,4 @@ Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual 
 - [[concepts/visual-planning]]
 - [[entities/engine]]
 - [[entities/gemini]]
+- [[concepts/observability-standard]]

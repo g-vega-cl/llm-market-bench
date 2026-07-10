@@ -46,11 +46,22 @@ Anomalies are flagged when model behavior violates expected output invariants. C
 
 When an anomaly is flagged, follow these resolution steps:
 
-1. **Check Provider Status**: Verify if the LLM provider is experiencing an outage, high latency, or degraded service on their status page.
-2. **Verify Context Window & Input**: Ensure the context payload (newsletters, market data) has not exceeded the model's actual maximum token limit or been truncated unexpectedly.
-3. **Analyze Prompt Misalignment**: Check if recent prompt changes or auto-research ratchet updates caused the model to become overly conservative or confused.
-4. **Failover**: If the issue is provider-side or persistent, manually switch the affected agent to a secondary provider (e.g., failover from Gemini to Claude) in the configuration.
-5. **Document**: Record the anomaly, date, model version, and resolution in the incident log.
+1. **Check Provider Status**: Verify if the LLM provider is experiencing an outage or high latency by visiting their status pages:
+   - OpenRouter Status: [status.openrouter.ai](https://status.openrouter.ai/)
+   - Gemini API (Google Cloud Status): [status.cloud.google.com](https://status.cloud.google.com/)
+   - OpenAI Status: [status.openai.com](https://status.openai.com/)
+   - Anthropic Status: [status.anthropic.com](https://status.anthropic.com/)
+   - DeepSeek Status: [status.deepseek.com](https://status.deepseek.com/)
+2. **Verify Context Window & Token Usage**:
+   - Review the stdout/stderr console logs of the pipeline runner. The log entries are formatted based on the standard `LOG_FORMAT` defined in [config.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/config.py).
+   - Check the injected context (newsletters, database metrics) to ensure it does not exceed the model's token limits.
+3. **Analyze Prompt Misalignment**:
+   - Check if recent prompt mutations from auto-research introduced confusing logic. Inspect the active prompt variant in the database table `prompt_experiments` where `status = 'active'`.
+4. **Trigger Provider Failover**:
+   - If the provider issue is persistent, edit [models.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/packages/config/models.json) to switch the affected agent (e.g. `GEMINI_MODEL`, `DEEPSEEK_MODEL`) to a different fallback model name.
+   - Update the API keys if needed in the local engine environment configuration file `.env` (located at `apps/engine/.env`).
+5. **Document Incident**:
+   - Record the incident date, affected model version, error logs, and the specific mitigation steps applied in `wiki/log.md` (or the corresponding monthly log under `wiki/log/`).
 
 ## Related
 

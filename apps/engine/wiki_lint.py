@@ -21,6 +21,35 @@ WIKI_DIR = REPO_ROOT / "wiki"
 # Files that are scaffold — don't flag as orphans
 SCAFFOLD_FILES = {"SCHEMA.md", "index.md", "log.md"}
 
+# Matches strings starting with key project directories inside backticks or links
+PATH_RE = re.compile(r"(?:`|\[.*?\]\()(apps|packages|scripts|supabase|wiki|\.github)\/([a-zA-Z0-9_\-\.\/]+)(?:`|\))")
+
+# Files to exclude from codebase path checks (their content is schemas / guidelines containing templates/examples)
+EXCLUDED_FROM_CODEBASE_CHECK = {"SCHEMA.md", "concepts/code-reference-validation.md"}
+
+
+def validate_codebase_references(content: str, repo_root: Path, file_rel: str) -> list[str]:
+    """Scans content for repo paths and validates their existence on disk."""
+    if file_rel in EXCLUDED_FROM_CODEBASE_CHECK:
+        return []
+
+    errors = []
+    matches = PATH_RE.findall(content)
+    for prefix, subpath in matches:
+        relative_path = f"{prefix}/{subpath}"
+        cleaned_path = relative_path.rstrip(".,;")
+
+        # Skip paths that contain uppercase variables/placeholders or nonexistent/temp-broken tests
+        if "YYYY-MM" in cleaned_path or "nonexistent" in cleaned_path or "temp-broken" in cleaned_path:
+            continue
+
+        full_path = repo_root / cleaned_path
+        if not full_path.exists():
+            errors.append(f"Broken code reference: `{cleaned_path}` does not exist on disk")
+
+    return errors
+
+
 # Regex for [[page-name]] wiki links
 LINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 
@@ -109,6 +138,11 @@ def lint(fix: bool = False) -> list[str]:
         incoming = graph[rel][1]
         if rel not in SCAFFOLD_FILES and not incoming:
             issues.append(f"[orphan] {rel}: no incoming links from any wiki page")
+
+        # 4. Codebase references validation
+        code_errors = validate_codebase_references(content, REPO_ROOT, rel)
+        for err in code_errors:
+            issues.append(f"[broken-code-ref] {rel}: {err}")
 
     # 4. Index coverage
     index_path = WIKI_DIR / "index.md"

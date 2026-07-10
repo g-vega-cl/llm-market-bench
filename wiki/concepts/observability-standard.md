@@ -48,3 +48,4 @@ When the engine rejects a model's trading recommendation due to a safety guardra
 - [[entities/pipeline]]
 - [[entities/auto-wiki]]
 - [[sources/anomaly-detector-source]]
+- [[concepts/agent-workflow]]

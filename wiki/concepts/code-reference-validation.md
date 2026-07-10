@@ -37,9 +37,9 @@ To bridge this gap, validation is divided into two distinct logical layers based
 
 By validating code paths deterministically in the local structural linter, we prevent broken documentation references from entering the main branch immediately and with zero performance or monetary overhead.
 
-## Proposed Path-Only Validation Strategy
+## Path-Only Validation Strategy
 
-The most robust way to validate code references is a **Path-Only Validation** check integrated directly into `wiki_lint.py`. 
+This codebase path-validation check is fully active and integrated directly into the structural linter `wiki_lint.py`. It runs locally on every commit via the pre-commit hook.
 
 ### 1. Extraction Pattern
 Wiki pages reference codebase paths in two standard markdown structures:

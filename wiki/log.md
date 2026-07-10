@@ -1,54 +1,3 @@
-## [2026-07-10] fix | Fixed Price Pre-Injection Gap in Primary Analysis Loop
-
-Resolved an architectural gap where the primary trading agent prompt was not receiving verified market prices for tickers mentioned in the news chunks, despite prompt instructions stating prices were pre-injected:
-- **Pre-injection Integration**: Updated both `analyze_chunks` and `analyze_chunks_streaming` in [analyze.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/analyze.py) to extract tickers from valid newsletter chunks using `_extract_tickers_from_chunks()`, batch-fetch their quotes along with holdings and major indices via `MarketDataManager.get_quotes()`, construct the `market_data_block`, and pass it to `llm.analyze_with_provider()`.
-- **Handler Argument**: Added `market_data_block` parameter to `analyze_with_provider` in [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py) to receive and pass it to `PromptFactory.build_analysis_messages()`. This ensures `{market_data_block}` in the user prompt is correctly replaced with verified prices instead of resolving to `""`.
-- **TDD Test Coverage**: Added a comprehensive unit test in `TestPrimaryAnalysisInjectedPricesIntegration` within [test_pre_injected_prices.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pre_injected_prices.py) to verify news ticker extraction and correct prompt block injection. All 828 tests pass with zero formatting or lint warnings.
-
-**See**: [[concepts/tool-enforcement]], [analyze.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/analyze.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_pre_injected_prices.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pre_injected_prices.py)
-
-## [2026-07-10] fix | Reconciled Wiki Lint Audits and Implemented Codebase Path Validation
-
-Addressed multiple findings from the LLM-powered Wiki Lint audit (Issue #60) to resolve contradictions, stale documentation, missing pages, and data gaps:
-- **Codebase Reference Validation**: Implemented deterministic path check in [wiki_lint.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint.py) and added unit tests in [test_code_reference_validation.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_code_reference_validation.py).
-- **LLM-Linter Manifest**: Added file path manifest array to [wiki_lint_llm.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint_llm.py) to resolve false-positive missing page errors caused by alphabetical text truncation.
-- **Documentation Refactoring**: Reconciled the 8 specialized agents with the 6 pipeline phases, resolved execution & slippage contradictions, updated dynamic/deleted path references, expanded model anomaly SOP details, and resolved cross-linking gaps.
-
-**See**: [[entities/wiki-linter]], [[concepts/code-reference-validation]], [wiki_lint.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint.py), [wiki_lint_llm.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/wiki_lint_llm.py), [test_code_reference_validation.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_code_reference_validation.py)
-
-## [2026-07-09] improvement | Enhanced Sector Alternatives Tool with Hybrid Retrieval
-
-Upgraded `execute_sector_alternatives_tool` to perform a robust, multi-stage hybrid search:
-- **Industry Competitors**: Resolves ticker's sector and industry classification using `MarketDataManager.get_company_profile()` and queries standard competitors via FMP screener API.
-- **Statistical Correlations**: Fetches highly positive rolling pearson correlation pairs (>= 0.40) from the database's weekly `correlation_data` table.
-- **Historical Decisions**: Retains the vector database lookup over past trade decisions (`match_decisions` RPC) to preserve qualitative peers.
-- **TDD Test Coverage**: Added a comprehensive test suite in `test_sector_alternatives.py` verifying correct mock mapping, retrieval aggregation, correlation threshold filters, and formatting output.
-
-**See**: [[entities/pipeline]], [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [test_sector_alternatives.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_sector_alternatives.py)
-
-## [2026-07-09] feature | Pull-Based Autoresearch and Dynamic Tool-Selection Architecture
-
-Converted the trading agent from a push-based data-injection model to a pull-based tool-calling model:
-- **Trading Tools**: Implemented 3 new on-demand news triaging and portfolio tools (`get_portfolio_ledger`, `get_todays_news_menu`, `get_market_feeling`) with thread-safe `contextvars.ContextVar` variables linking daily pipeline run newsletters to tool invocation scopes.
-- **Autoresearch Schema & Selection**: Added `selected_tools` to the `PromptResearchResult` Pydantic model and updated `program.md` so the meta-researcher (autoresearcher) dynamically selects which tools are enabled for the agent each week.
-- **Dynamic Tool Mapping**: Updated `analyze_with_provider` in `analysis.py` to fetch the active variant's `selected_tools` from database, map names to schemas via `CANONICAL_TOOLS_REGISTRY` in `tools.py`, force-inject execution safety tools (`calculate_buy_quantity`, `calculate_sell_quantity`), and intercept the generic `web_search` to map to native provider-specific search capabilities.
-- **User Prompt Reduction**: Skip automatic ledger XML injection and use `EXPERIMENT_USER_PROMPT_TEMPLATE` for experiment group agents, stripping newsletters and ledger details to keep the user prompt to a minimal trigger with date context and the hardcoded output JSON format.
-- **TDD & Code Quality**: Added unit tests in `test_pull_based_autoresearch.py` verifying all schemas, template mappings, and tool selection interception logic. Updated existing tests in `test_autoresearch.py` to support the new schema. 100% of the pytest test suite (822 tests) passes successfully with zero Ruff format or lint warnings.
-
-**See**: [[entities/autoresearch]], [[entities/pipeline]], [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_pull_based_autoresearch.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pull_based_autoresearch.py)
-
-## [2026-06-18] feature | Memories inline newsletter snippet citations and secure RPC
-
-
-Implemented secure, lazy-loaded inline newsletter source citations for memories:
-- **Database Layer**: Deployed Supabase migration `20260621000000_add_referenced_newsletters_rpc.sql` creating the `get_referenced_newsletter_snapshots` function with `SECURITY DEFINER` access. This securely exposes only those newsletter snippets that are explicitly linked inside a promoted memory's `metadata.source_ids`.
-- **API Fetcher**: Added `fetchReferencedNewsletters` in `fetch-memories.ts` to call the new RPC.
-- **Frontend Integration**: Updated `MemoryCard.tsx` to extract `source_ids` and query for their content on-demand via TanStack Query (`useQuery`) when a card is expanded.
-- **Aesthetic UI**: Rendered source cards inside the expanded panel showing sender, subject, formatted date, and a scrollable viewport of the original news chunk.
-- **TDD & Code Quality**: Created integration test `test_referenced_newsletters.py` verifying correct database RPC filters, added unit tests in `fetch-memories.test.ts`, and updated `MemoryCard.test.tsx` and `MemoriesList.test.tsx` to provide `QueryClientProvider` context. All tests pass with zero Biome/Ruff linting warnings.
-
-**See**: [[concepts/memory-feedback]], [[entities/web-app]], [MemoryCard.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/memories/components/MemoryCard.tsx), [test_referenced_newsletters.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_referenced_newsletters.py)
-
 ## [2026-06-19] feature | Add Price-to-FCF (P/FCF) metric to backend engine, LLM tools, and web barometer
 
 Added Price-to-Free-Cash-Flow (P/FCF) metric across the entire stack:
@@ -328,4 +277,11 @@ A new "Current Valuation Metrics (Derived)" summary section is appended to the t
 **ROADMAP.md**: Marked this item as completed.
 
 **See**: [[concepts/fundamental-analysis]], `apps/engine/core/llm/tools.py`
+
+## [2026-07-10] fix | PCA index shifting and Government pipeline async crash
+
+- **PCA utils**: Fixed index shifting bug when malformed vectors cause some concepts to be skipped during PCA coordinate updates. The mapping now uses valid concepts only, ensuring correct (id, pca_x, pca_y) alignment.
+- **Government pipeline**: Fixed a TypeError when the Gemini client returns a synchronous response object but the pipeline awaited it. Added coroutine detection to handle both sync and async calls.
+- **Gemini client**: Updated `get_gemini_client` to wrap the instructor client's `chat.completions.create` as an async function using `asyncio.to_thread`, enabling async operations without blocking.
+- **Tests**: Added unit tests for both fixes in `test_pca_utils.py` and `test_government_pipeline.py`.
 

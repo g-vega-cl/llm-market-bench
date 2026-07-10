@@ -25,7 +25,7 @@ Concept velocity tracked via hybrid formula: `Momentum = Intensity × Growth`.
 - Intensity: log-scaled mention count
 - Growth: short-vs-long window mention rate
 - Stale concepts decay via half-life
-- PCA reduces embedding vectors to 2D coordinates for semantic tracking (viewable in narrative details)
+- **PCA Dimensionality Reduction**: PCA reduces embedding vectors to 2D coordinates for semantic tracking (viewable in narrative details). The coordinate calculation ensures vector parsing alignment to prevent index-shifting/data-corruption if a concept vector is malformed or skipped.
 
 ## Horizon Watch
 

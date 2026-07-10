@@ -32,6 +32,7 @@ def update_pca_coordinates(sb_client: Client):
         ids = []
 
         # 2. Parse vectors
+        valid_concepts = []
         for c in concepts:
             try:
                 # concept_vector is stored as a JSON string or list in DB
@@ -40,6 +41,7 @@ def update_pca_coordinates(sb_client: Client):
 
                 vectors.append(vec)
                 ids.append(c["id"])
+                valid_concepts.append(c)
             except Exception as e:
                 logger.warning(f"Skipping malformed vector for concept '{c.get('concept_name', 'UNKNOWN')}': {e}")
 
@@ -65,13 +67,8 @@ def update_pca_coordinates(sb_client: Client):
         # Check if we can upsert. concept_metrics has 'id' as primary key.
 
         updates = []
-        for i, _concept_id in enumerate(ids):
-            # Find the original row data
-            # Optimization: We could map ID to row, but order is preserved in our lists
-            # We iterate through 'vectors' and 'ids' which came from 'concepts' list in order.
-            # So concepts[i] corresponds to ids[i]
-
-            row = concepts[i].copy()
+        for i, row_data in enumerate(valid_concepts):
+            row = row_data.copy()
             row["pca_x"] = float(X_pca[i, 0])
             row["pca_y"] = float(X_pca[i, 1])
 

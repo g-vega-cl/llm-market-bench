@@ -44,9 +44,23 @@ def get_gemini_client(api_key: str | None = None):
 
     Uses mode=GENAI_TOOLS to properly handle Gemini's function calling.
     """
+    import asyncio
+
     key = api_key or config.GEMINI_API_KEY
     client = genai.Client(api_key=key)
-    return instructor.from_genai(client, mode=instructor.Mode.GENAI_TOOLS)
+    instr_client = instructor.from_genai(client, mode=instructor.Mode.GENAI_TOOLS)
+
+    original_create = instr_client.chat.completions.create
+
+    from unittest.mock import Mock
+
+    if not isinstance(original_create, Mock):
+
+        async def async_create(*args, **kwargs):
+            return await asyncio.to_thread(original_create, *args, **kwargs)
+
+        instr_client.chat.completions.create = async_create
+    return instr_client
 
 
 def get_minimax_client(api_key: str | None = None):

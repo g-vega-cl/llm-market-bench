@@ -39,7 +39,7 @@ class GovernmentPipeline:
         try:
             # We use DecisionsResponse but primarily interested in macro_events
             # We'll use a specialized prompt if needed, but the MacroEvent model has what we need
-            res = await self.client.chat.completions.create(
+            create_call = self.client.chat.completions.create(
                 model=GEMINI_MODEL,
                 response_model=DecisionsResponse,
                 messages=[
@@ -50,6 +50,13 @@ class GovernmentPipeline:
                     {"role": "user", "content": prompt},
                 ],
             )
+
+            import asyncio
+
+            if asyncio.iscoroutine(create_call) or hasattr(create_call, "__await__"):
+                res = await create_call
+            else:
+                res = create_call
 
             count = 0
             for event in res.macro_events:

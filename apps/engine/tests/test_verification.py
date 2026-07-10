@@ -579,8 +579,8 @@ async def test_verification_deepseek_non_retryable_error_raises():
 
         mock_instructor_client = MagicMock()
         mock_completions = MagicMock()
-        # Rate limit error — should NOT retry
-        mock_completions.create = AsyncMock(side_effect=Exception("Rate limit exceeded"))
+        # API key invalid — should NOT retry
+        mock_completions.create = AsyncMock(side_effect=Exception("API key invalid"))
         mock_instructor_client.completions = mock_completions
         mock_client.chat = mock_instructor_client
         mock_client.client = MagicMock()
@@ -599,7 +599,7 @@ async def test_verification_deepseek_non_retryable_error_raises():
     # Non-retryable errors should be caught at the outer try/except
     # and default to REJECTED with error message
     assert result.status == "REJECTED_VERIFICATION"
-    assert "Rate limit exceeded" in result.verification_reasoning
+    assert "API key invalid" in result.verification_reasoning
     assert mock_completions.create.call_count == 1, (
         f"Expected only 1 call (no retry for non-validation errors), got {mock_completions.create.call_count}"
     )
@@ -676,3 +676,48 @@ async def test_verification_deepseek_schema_list_vs_single():
 
     assert result.status == "APPROVED"
     assert result.confidence_score == 90
+
+
+@pytest.mark.asyncio
+async def test_verification_transient_error_retries():
+    """Test that transient errors (like Rate limit exceeded) trigger retries (up to 3 attempts)."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=80,
+        reasoning="Transient error test",
+        ticker="TRAN",
+        source_id="src_tran",
+        price=50.0,
+        model_provider="deepseek",
+        model_name="deepseek-v4-pro",
+    )
+
+    with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
+        mock_factory = MagicMock()
+        mock_client = MagicMock()
+
+        mock_instructor_client = MagicMock()
+        mock_completions = MagicMock()
+        # Rate limit error — should retry up to 3 times
+        mock_completions.create = AsyncMock(side_effect=Exception("Rate limit exceeded"))
+        mock_instructor_client.completions = mock_completions
+        mock_client.chat = mock_instructor_client
+        mock_client.client = MagicMock()
+
+        mock_factory.return_value = mock_client
+        mock_factories.get.return_value = mock_factory
+
+        # Mock asyncio.sleep to avoid waiting in tests
+        with (
+            patch("core.llm.handlers.deepseek.run_tool_loop", new_callable=AsyncMock),
+            patch("core.llm.clients.close_client", new_callable=AsyncMock),
+            patch("core.llm.verification.asyncio_sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            result = await verify_trading_decision(
+                decision=decision, portfolio_context="Cash: $10,000", aggregated_context="Historical context"
+            )
+
+    assert result.status == "REJECTED_VERIFICATION"
+    assert "Rate limit exceeded" in result.verification_reasoning
+    assert mock_completions.create.call_count == 3
+    assert mock_sleep.call_count == 3

@@ -3,6 +3,7 @@
 import asyncio
 import copy
 import logging
+from asyncio import sleep as asyncio_sleep
 
 from core.llm import clients, tools
 from core.llm.logger import log_reasoning_trace
@@ -36,7 +37,7 @@ async def verify_trading_decision(
     Returns:
         A VerificationResult object.
     """
-    if decision.signal == "HOLD":
+    if decision.signal.upper() == "HOLD":
         return VerificationResult(
             status="APPROVED",
             verification_reasoning="HOLD decisions do not require second-step verification.",
@@ -56,7 +57,14 @@ async def verify_trading_decision(
         "deepseek_reasoner": DEEPSEEK_MODEL,
     }
 
+    AGENT_PROVIDER_MAPPING = {
+        "contrarian_agent": "gemini",
+        "post_mortem_agent": "anthropic",
+        "deepseek_reasoner": "deepseek",
+    }
+
     if model_name in AGENT_MODEL_MAPPING:
+        provider = AGENT_PROVIDER_MAPPING[model_name]
         model_name = AGENT_MODEL_MAPPING[model_name]
 
     factory = clients.CLIENT_FACTORIES.get(provider)
@@ -268,6 +276,22 @@ async def verify_trading_decision(
                 last_error = e
                 error_str = str(e).lower()
                 attempt_num = attempt + 1
+                is_transient = any(
+                    k in error_str
+                    for k in [
+                        "rate limit",
+                        "429",
+                        "timeout",
+                        "502",
+                        "503",
+                        "504",
+                        "bad gateway",
+                        "service unavailable",
+                        "connection",
+                        "temporary",
+                        "try again",
+                    ]
+                )
 
                 if (
                     "validation error" in error_str
@@ -291,8 +315,17 @@ async def verify_trading_decision(
                         }
                     )
                     create_args["messages"] = copy.deepcopy(instructor_messages)
+                elif is_transient:
+                    logger.warning(
+                        "[%s/%s] Verification Instructor transient error (attempt %d/3): %s. Retrying after delay...",
+                        provider,
+                        model_name,
+                        attempt_num,
+                        str(e)[:200],
+                    )
+                    await asyncio_sleep(2**attempt)
                 else:
-                    # Non-validation error — log and re-raise to outer handler
+                    # Non-validation, non-transient error — log and re-raise to outer handler
                     logger.error(
                         "[%s/%s] Verification Instructor non-retryable error on attempt %d/3: %s",
                         provider,
@@ -324,9 +357,12 @@ async def verify_trading_decision(
         resp = wrapped_results[-1] if wrapped_results else None
 
         if resp is None:
+            reasoning = "No verification returned"
+            if last_error:
+                reasoning = f"Verification failed due to error: {last_error}. Defaulting to rejection."
             final_resp = VerificationResult(
                 status="REJECTED_VERIFICATION",
-                verification_reasoning="No verification returned",
+                verification_reasoning=reasoning,
                 confidence_score=0,
             )
             logger.info(

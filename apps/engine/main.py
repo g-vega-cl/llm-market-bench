@@ -528,12 +528,29 @@ async def _process_single_decision(
                         if qty <= 0:
                             qty = getattr(d, "quantity", 0) or 1
 
-                        if (
-                            verification
-                            and verification.status == "ADJUSTED_ALLOCATION"
-                            and verification.adjusted_quantity
-                        ):
-                            qty = verification.adjusted_quantity
+                        if verification and verification.status == "ADJUSTED_ALLOCATION":
+                            if verification.adjusted_quantity and verification.adjusted_quantity > 0:
+                                qty = verification.adjusted_quantity
+                            else:
+                                # Fail-safe: Reject if verifier wanted to adjust allocation but failed to provide a valid quantity
+                                logger.warning(
+                                    f"[{d.ticker}] REJECTED (Verification): Status is ADJUSTED_ALLOCATION "
+                                    f"but adjusted_quantity is invalid ({verification.adjusted_quantity})."
+                                )
+                                save_decision(
+                                    sb_client,
+                                    d,
+                                    status="REJECTED_VERIFICATION",
+                                    metadata={
+                                        "reason": (
+                                            f"Verifier specified ADJUSTED_ALLOCATION but provided invalid adjusted_quantity: "
+                                            f"{verification.adjusted_quantity}"
+                                        )
+                                    },
+                                )
+                                async with counters["lock"]:
+                                    counters["rejected"] += 1
+                                return False
 
                         if qty <= 0:
                             async with counters["lock"]:

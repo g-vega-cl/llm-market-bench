@@ -285,3 +285,13 @@ A new "Current Valuation Metrics (Derived)" summary section is appended to the t
 - **Gemini client**: Updated `get_gemini_client` to wrap the instructor client's `chat.completions.create` as an async function using `asyncio.to_thread`, enabling async operations without blocking.
 - **Tests**: Added unit tests for both fixes in `test_pca_utils.py` and `test_government_pipeline.py`.
 
+## [2026-07-10] fix | Verifier safeguards, JIT adjusted failsafe, and transient error retries
+
+- **JIT Adjusted Failsafe**: Fixed a critical gap where status `ADJUSTED_ALLOCATION` with an empty or invalid `adjusted_quantity` would silently bypass adjustments and execute the full unadjusted quantity. The JIT engine now rejects the trade with `REJECTED_VERIFICATION` (failing safe).
+- **Specialized Provider Mapping**: Fixed a potential model provider mismatch crash by introducing `AGENT_PROVIDER_MAPPING` to dynamically update the `provider` parameter alongside specialized agent model mappings.
+- **HOLD Gate Case-Insensitivity**: Updated the verifier's early-exit check to `decision.signal.upper() == "HOLD"`, making the signal gate case-insensitive.
+- **Transient API Retries**: Implemented up to 3 retries with exponential backoff inside `verify_trading_decision` for transient client and network errors (429 rate limits, connection timeouts, gateway issues) before defaulting to fail-safe rejection.
+- **TDD Verification**: Created `test_verification_adjusted_failsafe.py` and updated `test_verification.py` to cover all new safeguards and retry mechanisms. All tests pass with 100% style compliance.
+
+**See**: [[concepts/agents]], [[concepts/tool-enforcement]], `apps/engine/core/llm/verification.py`, `apps/engine/main.py`, `apps/engine/tests/test_verification_adjusted_failsafe.py`
+

@@ -50,10 +50,9 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Wiki Lint Remediation (from 2026-05-16 Audit)** — [Issue #20](https://github.com/g-vega-cl/llm-market-bench/issues/20)
   - [x] [Medium] Confirm terminal state of legacy `PENDING` orders and simplify `concepts/alpaca-order-sync.md`.
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
-- [ ] -Benchify: audit price fetching and how we pass it to LLMs
+- [x] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
-- [ ] Benchify: try to predict the next sectors that will perform well?
-- [ ] Benchify: audit the verifier.
+- [x] Benchify: audit the verifier.
 - [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
 - [ ] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
 - [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.

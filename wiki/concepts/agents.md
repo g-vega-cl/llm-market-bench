@@ -31,6 +31,10 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decou
 - **Evolvable**: No.
 - **Primary Context**: Tier 2 RAG via `retrieve_for_decision()`, including the top seeded empirical asset pricing academic papers.
 - **Primary Tools**: `get_stock_quote`, `get_price_history`, `get_volatility_metrics`, `get_sector_alternatives` (hybrid retrieval aggregating FMP industry screener competitors, statistical database correlations, and past decision history), and `audit_financial_valuation` (server-side DCF & multiples consistency verifier).
+- **Execution Safeguards**:
+  - **Case-Insensitive Gates**: Safely bypasses mixed/lowercase `"HOLD"` signals without calling the backend LLM.
+  - **Specialized Provider Mapping**: Dynamically updates the client provider (e.g. from `"openai"` to `"deepseek"`) alongside specialized agent model substitutions (like `deepseek_reasoner`) to avoid runtime API mismatches.
+  - **Transient Retry Resilience**: Performs up to 3 attempts with exponential backoff for transient HTTP errors (429, timeouts, bad gateways, connection drops) before falling back to fail-safe rejection.
 
 
 ### 4. Synthesis Agent

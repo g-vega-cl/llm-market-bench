@@ -229,6 +229,7 @@ async def analyze_with_provider(
     calendar_knowledge: str = "",
     macro_context: str = "",
     summaries: dict | None = None,
+    market_data_block: str = "",
 ) -> DecisionsResponse:
     """Analyzes a batch of newsletter chunks using the specified provider.
 
@@ -347,6 +348,7 @@ async def analyze_with_provider(
             macro_context=macro_context if macro_context else "No macro data available.",
             held_tickers_list=held_tickers_list,
             enable_web_search=enable_web_search,
+            market_data_block=market_data_block,
         )
 
         # Tool execution loop (delegated to provider-specific handlers)

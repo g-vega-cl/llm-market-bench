@@ -248,3 +248,80 @@ class TestValidationEnumStatuses:
         from execution.validation import ValidationStatus
 
         assert hasattr(ValidationStatus, "REJECTED_STALE_QUOTE")
+
+
+@pytest.mark.asyncio
+class TestPrimaryAnalysisInjectedPricesIntegration:
+    """Verify that primary analysis extracts tickers from chunks and passes a populated market_data_block."""
+
+    async def test_analyze_chunks_passes_market_data_block(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from analysis.analyze import analyze_chunks
+
+        chunks = [{"source_id": "chunk-1", "content": "We look at $TSLA and $NVDA. Major news today."}]
+
+        build_analysis_mock = AsyncMock(return_value=[])
+
+        from execution.providers.base import TickerData
+
+        tsla_quote = TickerData(ticker="TSLA", price=250.0, market_cap=800_000_000_000, exists=True)
+        nvda_quote = TickerData(ticker="NVDA", price=120.0, market_cap=3_000_000_000_000, exists=True)
+        mock_quotes = {"TSLA": tsla_quote, "NVDA": nvda_quote}
+
+        for idx in ["SPY", "QQQ", "DIA", "IWM"]:
+            mock_quotes[idx] = TickerData(ticker=idx, price=100.0, market_cap=0, exists=True)
+
+        # Mock Supabase
+        mock_sb = MagicMock()
+        mock_sb.table.return_value.select.return_value.eq.return_value.in_.return_value.execute.return_value = (
+            MagicMock(data=[])
+        )
+
+        with (
+            patch("analysis.analyze.Portfolio") as mock_portfolio_class,
+            patch("analysis.analyze.MarketDataManager") as mock_market_data_class,
+            patch("analysis.analyze.get_supabase_client", return_value=mock_sb),
+            patch("analysis.pre_filter.summarize_newsletters", AsyncMock(return_value={})),
+            patch("core.llm.prompt_factory.PromptFactory.build_analysis_messages", build_analysis_mock),
+            patch("analysis.analyze.MODELS", [{"provider": "openai", "model": "gpt-4"}]),
+        ):
+            mock_portfolio = MagicMock()
+            mock_portfolio.positions = {"AAPL": MagicMock(quantity=10, average_cost_basis=150.0)}
+            mock_portfolio.initialize = AsyncMock(return_value=None)
+            mock_portfolio.calculate_reg_t_metrics = MagicMock()
+            mock_portfolio.save_metrics = AsyncMock(return_value=None)
+            mock_portfolio.get_portfolio_summary = AsyncMock(return_value="- AAPL: 10 shares")
+            mock_portfolio_class.return_value = mock_portfolio
+
+            mock_market_data = MagicMock()
+            mock_market_data.get_quotes = AsyncMock(return_value=mock_quotes)
+            mock_quotes["AAPL"] = TickerData(ticker="AAPL", price=175.0, market_cap=2_500_000_000_000, exists=True)
+            mock_market_data_class.return_value = mock_market_data
+
+            mock_client = MagicMock()
+            from core.models import DecisionsResponse
+
+            mock_client.chat.completions.create = MagicMock(
+                return_value=DecisionsResponse(decisions=[], macro_events=[])
+            )
+            mock_factory = MagicMock(return_value=mock_client)
+
+            with (
+                patch("core.llm.analysis.clients.CLIENT_FACTORIES", {"openai": mock_factory}),
+                patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock) as mock_run_tool_loop,
+                patch("core.macro_tracker.get_global_macro_context", AsyncMock(return_value="Mock Macro")),
+            ):
+                mock_run_tool_loop.side_effect = lambda *args, **kwargs: None
+                await analyze_chunks(chunks)
+
+            assert build_analysis_mock.called
+            call_kwargs = build_analysis_mock.call_args.kwargs
+            assert "market_data_block" in call_kwargs
+            mkt_block = call_kwargs["market_data_block"]
+            assert "TSLA" in mkt_block
+            assert "$250.00" in mkt_block
+            assert "NVDA" in mkt_block
+            assert "$120.00" in mkt_block
+            assert "AAPL" in mkt_block
+            assert "$175.00" in mkt_block

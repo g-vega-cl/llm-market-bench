@@ -102,18 +102,22 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     else:
         aggregated_context = ""
         uncrowded_context = ""
-
-    # 1. Initialize all portfolios and fetch prices in parallel for all models
+    # 1. Initialize all portfolios and collect holdings
     portfolios = {}
-    all_tickers = set()
+    all_holdings = set()
     for config in MODELS:
         model = config["model"]
         portfolio = Portfolio(owner_id=model)
         await portfolio.initialize()
         portfolios[model] = portfolio
-        all_tickers.update(portfolio.positions.keys())
+        all_holdings.update(portfolio.positions.keys())
 
-    # 2. Batch fetch prices for all unique holdings
+    # 2. Extract news tickers + holdings + major indices
+    from core.llm.analysis import _extract_tickers_from_chunks
+
+    all_tickers = _extract_tickers_from_chunks(valid_chunks, list(all_holdings))
+
+    # 3. Batch fetch prices for all unique tickers in parallel
     market_data = MarketDataManager()
 
     from core.macro_tracker import get_global_macro_context
@@ -121,10 +125,20 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     macro_context_str = await get_global_macro_context(market_data)
 
     price_map = {}
+    quotes = {}
     if all_tickers:
-        logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
+        logger.info(f"Fetching current prices for {len(all_tickers)} unique tickers in parallel...")
         quotes = await market_data.get_quotes(list(all_tickers))
         price_map = {ticker: data.price for ticker, data in quotes.items()}
+
+    # 4. Construct the common verified market data block for injected context
+    mkt_lines = ["=== VERIFIED MARKET DATA ==="]
+    for t in sorted(all_tickers):
+        q = quotes.get(t)
+        if q and q.exists:
+            mkt_lines.append(f"  {t:<6} ${q.price:.2f}  Market Cap: ${q.market_cap / 1e9:.2f}B  Status: VALID")
+    mkt_lines.append("GROUND RULES: Trades execute at market price at settlement. Do NOT produce price fields.")
+    market_data_block = "\n".join(mkt_lines)
 
     tasks = []
     task_configs = []  # NEW: Keep track of which model is associated with each task
@@ -213,6 +227,7 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                     calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
                     macro_context=macro_context_str,
                     summaries=summaries,
+                    market_data_block=market_data_block,
                 )
             )
             task_configs.append(config)  # Track this task's model info
@@ -354,15 +369,22 @@ async def analyze_chunks_streaming(chunks: list[dict]):
     else:
         aggregated_context = ""
 
+    # 1. Initialize all portfolios and collect holdings
     portfolios = {}
-    all_tickers = set()
+    all_holdings = set()
     for config in MODELS:
         model = config["model"]
         portfolio = Portfolio(owner_id=model)
         await portfolio.initialize()
         portfolios[model] = portfolio
-        all_tickers.update(portfolio.positions.keys())
+        all_holdings.update(portfolio.positions.keys())
 
+    # 2. Extract news tickers + holdings + major indices
+    from core.llm.analysis import _extract_tickers_from_chunks
+
+    all_tickers = _extract_tickers_from_chunks(valid_chunks, list(all_holdings))
+
+    # 3. Batch fetch prices for all unique tickers in parallel
     market_data = MarketDataManager()
 
     from core.macro_tracker import get_global_macro_context
@@ -370,10 +392,20 @@ async def analyze_chunks_streaming(chunks: list[dict]):
     macro_context_str = await get_global_macro_context(market_data)
 
     price_map = {}
+    quotes = {}
     if all_tickers:
-        logger.info(f"Fetching current prices for {len(all_tickers)} unique portfolio tickers in parallel...")
+        logger.info(f"Fetching current prices for {len(all_tickers)} unique tickers in parallel...")
         quotes = await market_data.get_quotes(list(all_tickers))
         price_map = {ticker: data.price for ticker, data in quotes.items()}
+
+    # 4. Construct the common verified market data block for injected context
+    mkt_lines = ["=== VERIFIED MARKET DATA ==="]
+    for t in sorted(all_tickers):
+        q = quotes.get(t)
+        if q and q.exists:
+            mkt_lines.append(f"  {t:<6} ${q.price:.2f}  Market Cap: ${q.market_cap / 1e9:.2f}B  Status: VALID")
+    mkt_lines.append("GROUND RULES: Trades execute at market price at settlement. Do NOT produce price fields.")
+    market_data_block = "\n".join(mkt_lines)
 
     tasks = []
     task_configs = []
@@ -451,6 +483,7 @@ async def analyze_chunks_streaming(chunks: list[dict]):
                     calendar_knowledge=CALENDAR_STRATEGY_KNOWLEDGE,
                     macro_context=macro_context_str,
                     summaries=summaries,
+                    market_data_block=market_data_block,
                 )
             )
             task_configs.append(config)

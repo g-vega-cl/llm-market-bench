@@ -1,3 +1,12 @@
+## [2026-07-10] fix | Fixed Price Pre-Injection Gap in Primary Analysis Loop
+
+Resolved an architectural gap where the primary trading agent prompt was not receiving verified market prices for tickers mentioned in the news chunks, despite prompt instructions stating prices were pre-injected:
+- **Pre-injection Integration**: Updated both `analyze_chunks` and `analyze_chunks_streaming` in [analyze.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/analyze.py) to extract tickers from valid newsletter chunks using `_extract_tickers_from_chunks()`, batch-fetch their quotes along with holdings and major indices via `MarketDataManager.get_quotes()`, construct the `market_data_block`, and pass it to `llm.analyze_with_provider()`.
+- **Handler Argument**: Added `market_data_block` parameter to `analyze_with_provider` in [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py) to receive and pass it to `PromptFactory.build_analysis_messages()`. This ensures `{market_data_block}` in the user prompt is correctly replaced with verified prices instead of resolving to `""`.
+- **TDD Test Coverage**: Added a comprehensive unit test in `TestPrimaryAnalysisInjectedPricesIntegration` within [test_pre_injected_prices.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pre_injected_prices.py) to verify news ticker extraction and correct prompt block injection. All 828 tests pass with zero formatting or lint warnings.
+
+**See**: [[concepts/tool-enforcement]], [analyze.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/analyze.py), [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_pre_injected_prices.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pre_injected_prices.py)
+
 ## [2026-07-10] fix | Reconciled Wiki Lint Audits and Implemented Codebase Path Validation
 
 Addressed multiple findings from the LLM-powered Wiki Lint audit (Issue #60) to resolve contradictions, stale documentation, missing pages, and data gaps:

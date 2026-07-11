@@ -218,3 +218,60 @@ class TestRetrieveForDecisionModelFilter:
         mem_call = mock_rpc.call_args_list[0]
         assert "filter_model_name" not in mem_call[1]
         assert mem_call[1].get("filter_memory_types") is None
+
+
+class TestRetrieveContextModelFilter:
+    """Tests that retrieve_context and retrieve_context_batch enforce model_name."""
+
+    @patch("memory.store.get_embeddings_batch")
+    @patch("memory.store.get_supabase_client")
+    def test_retrieve_context_passes_model_name_to_match_decisions(self, mock_get_supabase, mock_get_embeddings):
+        mock_get_embeddings.return_value = [[0.1] * 768]
+        mock_client = MagicMock()
+        mock_rpc = MagicMock()
+        mock_client.rpc = mock_rpc
+        mock_get_supabase.return_value = mock_client
+
+        mock_mem_response = MagicMock()
+        mock_mem_response.data = []
+        mock_dec_response = MagicMock()
+        mock_dec_response.data = []
+
+        mock_rpc.side_effect = [mock_mem_response, mock_dec_response]
+
+        from memory.store import retrieve_context
+
+        retrieve_context(query_text="Apple iPhone demand", model_name="gpt-4o")
+
+        # match_memories - first call
+        mem_call = mock_rpc.call_args_list[0]
+        assert mem_call[0][0] == "match_memories"
+
+        # match_decisions - second call, should filter by model_name
+        dec_call = mock_rpc.call_args_list[1]
+        assert dec_call[0][0] == "match_decisions"
+        assert dec_call[0][1]["filter_model_name"] == "gpt-4o"
+
+    @patch("memory.store.get_embeddings_batch")
+    @patch("memory.store.get_supabase_client")
+    def test_retrieve_context_batch_passes_model_name_to_match_decisions(self, mock_get_supabase, mock_get_embeddings):
+        mock_get_embeddings.return_value = [[0.1] * 768]
+        mock_client = MagicMock()
+        mock_rpc = MagicMock()
+        mock_client.rpc = mock_rpc
+        mock_get_supabase.return_value = mock_client
+
+        mock_mem_response = MagicMock()
+        mock_mem_response.data = []
+        mock_dec_response = MagicMock()
+        mock_dec_response.data = []
+
+        mock_rpc.side_effect = [mock_mem_response, mock_dec_response]
+
+        from memory.store import retrieve_context_batch
+
+        retrieve_context_batch(queries=["Test query"], model_name="contrarian_agent")
+
+        dec_call = mock_rpc.call_args_list[1]
+        assert dec_call[0][0] == "match_decisions"
+        assert dec_call[0][1]["filter_model_name"] == "contrarian_agent"

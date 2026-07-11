@@ -53,8 +53,8 @@ A living document of features and improvements in progress or planned for the pl
 - [x] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
 - [x] Benchify: audit the verifier.
-- [ ] - Benchify: consider bonds? Also add as part of the score benchmark, the cost of opportunity with bonds.
-- [ ] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
+- [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
+- [x] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
 - [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other

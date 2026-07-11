@@ -44,7 +44,7 @@ async def verify_step_15():
         return
 
     print("\n2. Retrieving context for query: 'Apple iPhone demand'")
-    context = retrieve_context("Apple iPhone demand")
+    context = retrieve_context("Apple iPhone demand", model_name="gpt-4o")
 
     if decision.reasoning in context:
         print(f"✅ Context retrieved correctly:\n{context}")

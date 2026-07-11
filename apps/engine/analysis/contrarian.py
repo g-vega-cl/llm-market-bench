@@ -69,10 +69,14 @@ async def run_contrarian_analysis(
     if not context:
         queries = [chunk["content"] for chunk in chunks if chunk.get("content")]
         if queries:
-            context_results = retrieve_context_fn(queries)
+            context_results = retrieve_context_fn(queries, model_name="contrarian_agent")
             # Include government incentives and lessons for contrarian as well
-            gov_context = retrieve_context_fn(queries, limit=2, memory_types=["GOVERNMENT_INCENTIVE"])
-            lesson_context = retrieve_context_fn(queries, limit=2, memory_types=["LESSON_LEARNED"])
+            gov_context = retrieve_context_fn(
+                queries, model_name="contrarian_agent", limit=2, memory_types=["GOVERNMENT_INCENTIVE"]
+            )
+            lesson_context = retrieve_context_fn(
+                queries, model_name="contrarian_agent", limit=2, memory_types=["LESSON_LEARNED"]
+            )
             all_contexts = context_results + gov_context + lesson_context
             context = "\n".join(list(set([c for c in all_contexts if c])))
     news_content = "".join(

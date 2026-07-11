@@ -68,9 +68,9 @@ async def test_memories_rag_tool_success():
     with patch("memory.store.retrieve_context", return_value=mock_context_str) as mock_retrieve:
         from core.llm.tools import execute_search_past_memories_tool
 
-        result = await execute_search_past_memories_tool("Fed rates", limit=3)
+        result = await execute_search_past_memories_tool("Fed rates", limit=3, model_name="test_model")
 
-        mock_retrieve.assert_called_once_with("Fed rates", limit=3)
+        mock_retrieve.assert_called_once_with("Fed rates", model_name="test_model", limit=3)
         assert "Fed keeps interest rates unchanged" in result
         assert "AAPL BUY" in result
 

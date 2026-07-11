@@ -295,3 +295,14 @@ A new "Current Valuation Metrics (Derived)" summary section is appended to the t
 
 **See**: [[concepts/agents]], [[concepts/tool-enforcement]], `apps/engine/core/llm/verification.py`, `apps/engine/main.py`, `apps/engine/tests/test_verification_adjusted_failsafe.py`
 
+## [2026-07-10] fix | Enforce agent-level model scoping for memory RAG
+
+Enforced strict agent model-level scoping across all memory retrieval paths to eliminate cross-agent decision contamination:
+- **Scoping Fix**: Modified `retrieve_context` and `retrieve_context_batch` in `apps/engine/memory/store.py` to require a `model_name` parameter. This parameter is propagated as `filter_model_name` to the Supabase `match_decisions` RPC call.
+- **Agent Integration**: Updated the `search_past_memories` tool in `apps/engine/core/llm/tools.py` and the tool dispatcher in `apps/engine/core/llm/handlers/base.py` to pass the executing agent's `model_name` to the context retriever.
+- **Contrarian Agent**: Updated `apps/engine/analysis/contrarian.py` to pass `model_name="contrarian_agent"`, scoping its RAG queries to its own historical decisions.
+- **TDD Tests**: Added `TestRetrieveContextModelFilter` to `apps/engine/tests/test_store_sanitization.py` to assert correct parameter propagation. Updated all existing `retrieve_context` calls in `test_memory_rag.py`, `verify_step_15.py`, and `test_newsletter_menu_flow.py` to satisfy the updated signature.
+
+**See**: [[concepts/rag-strategy]], [[concepts/memory-feedback]], [store.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/memory/store.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [base.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/base.py), [contrarian.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/contrarian.py)
+
+

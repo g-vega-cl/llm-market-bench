@@ -210,14 +210,15 @@ def retrieve_for_decision(
         return ""
 
 
-def retrieve_context(query_text: str, limit: int = 3) -> str:
+def retrieve_context(query_text: str, model_name: str, limit: int = 3) -> str:
     """Retrieves relevant past events/reasoning for a single text snippet."""
-    results = retrieve_context_batch([query_text], limit=limit)
+    results = retrieve_context_batch([query_text], model_name=model_name, limit=limit)
     return results[0] if results else ""
 
 
 def retrieve_context_batch(
     queries: list[str],
+    model_name: str,
     limit: int = 3,
     memory_types: list[str] = None,
     embeddings: list[list[float]] = None,
@@ -226,6 +227,7 @@ def retrieve_context_batch(
 
     Args:
         queries: List of text snippets to search for.
+        model_name: Scopes trade decision context to this specific agent.
         limit: Number of relevant snippets to return per query.
         memory_types: Optional list of memory types to filter by.
         embeddings: Optional pre-calculated embeddings.
@@ -270,6 +272,7 @@ def retrieve_context_batch(
                     "query_embedding": embedding,
                     "match_threshold": 0.5,
                     "match_count": limit,
+                    "filter_model_name": model_name,
                 },
             ).execute()
 

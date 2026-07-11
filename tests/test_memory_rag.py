@@ -40,7 +40,7 @@ class TestMemoryRAG(unittest.IsolatedAsyncioTestCase):
         with patch('memory.store.get_supabase_client', return_value=mock_supabase), \
              patch('memory.store.get_embeddings_batch', return_value=mock_embeddings):
             
-            results = retrieve_context_batch(["Test query"], limit=3)
+            results = retrieve_context_batch(["Test query"], model_name="test_model", limit=3)
             
             print(f"Results: {results}")
             

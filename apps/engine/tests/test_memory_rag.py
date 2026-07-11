@@ -27,7 +27,7 @@ async def test_memory_flow():
         return
 
     print("\n2. Retrieving context for query: 'What did the Fed do recently?'")
-    context = retrieve_context("What did the Fed do recently?")
+    context = retrieve_context("What did the Fed do recently?", model_name="test_model")
 
     if test_content in context:
         print(f"✅ Context retrieved correctly:\n{context}")

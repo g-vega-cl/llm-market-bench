@@ -91,7 +91,9 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
     elif name == "fetch_newsletter_content":
         return await tools.execute_fetch_newsletter_content_tool(args["source_ids"])
     elif name == "search_past_memories":
-        return await tools.execute_search_past_memories_tool(args["query"], args.get("limit", 5))
+        return await tools.execute_search_past_memories_tool(
+            args["query"], limit=args.get("limit", 5), model_name=model_name
+        )
     elif name == "get_portfolio_ledger":
         return await tools.execute_get_portfolio_ledger_tool(owner_id=model_name)
     elif name == "get_todays_news_menu":

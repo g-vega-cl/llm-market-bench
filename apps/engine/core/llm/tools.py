@@ -1823,12 +1823,13 @@ async def execute_fetch_newsletter_content_tool(source_ids: list[str]) -> str:
         return f"Error fetching newsletter content: {str(e)}"
 
 
-async def execute_search_past_memories_tool(query: str, limit: int = 5) -> str:
+async def execute_search_past_memories_tool(query: str, limit: int = 5, model_name: str | None = None) -> str:
     """Performs a semantic pgvector search against past memories and model trade decisions.
 
     Args:
         query: Semantic query text.
         limit: Max context snippets to return.
+        model_name: Optional model name to filter trade decisions by.
 
     Returns:
         Formatted context string of vector search results.
@@ -1840,7 +1841,7 @@ async def execute_search_past_memories_tool(query: str, limit: int = 5) -> str:
         from memory.store import retrieve_context
 
         # retrieve_context runs the embedding call and match_memories/match_decisions RPCs
-        context = retrieve_context(query, limit=limit)
+        context = retrieve_context(query, model_name=model_name or "unknown_agent", limit=limit)
         if not context:
             return f"No relevant past memories or decisions found matching query: '{query}'."
 

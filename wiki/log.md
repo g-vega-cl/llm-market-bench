@@ -1,50 +1,3 @@
-## [2026-06-19] feature | Add Price-to-FCF (P/FCF) metric to backend engine, LLM tools, and web barometer
-
-Added Price-to-Free-Cash-Flow (P/FCF) metric across the entire stack:
-- **Database Layer**: Created migration `20260621100000_add_pfcf_to_barometer.sql` to add `pfcf_ratio` column to the `market_barometer_history` table in Supabase. Manually updated `supabase-types.ts` Row, Insert, and Update interface definitions.
-- **Backend Provider & Tools**: Updated `FMPProvider` and `YFinanceProvider` to mathematically calculate constituent-level `priceToFreeCashFlowsRatio` from FCF yields (`1 / freeCashFlowYield`). Updated `execute_key_metrics_tool` and `execute_market_health_barometer_tool` to format and output P/FCF to the LLMs.
-- **Barometer Aggregator**: Updated `update_market_barometer.py` to retrieve constituent P/FCF, calculate the cap-weighted Index P/FCF, exclude companies with negative or zero free cash flow to prevent multiple distortion, and save index-level and constituent-level results to Supabase.
-- **Frontend Dashboard & Audit**: Updated `HomePage.tsx` to render the aggregate Price-to-FCF ratio on the S&P 500 Market Health Barometer glassmorphism card. Updated `BarometerAuditPage.tsx` to display aggregate P/FCF, include a P/FCF column in the constituent weightings table, and support sorting by P/FCF.
-- **TDD & Code Quality**: Added unit tests verifying `priceToFreeCashFlowsRatio` retrieval and formatting in `test_key_metrics_tool.py`. Updated `test_market_barometer.py` to verify cap-weighted index P/FCF calculation and negative FCF exclusion logic. Updated Vitest suite in `barometer-audit.test.tsx` to verify P/FCF rendering on the audit dashboard. All frontend and backend lints and tests pass.
-
-**See**: [[concepts/fundamental-analysis]], [[entities/web-app]], [HomePage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx), [BarometerAuditPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/BarometerAuditPage.tsx), [update_market_barometer.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/scripts/update_market_barometer.py)
-
-## [2026-06-19] improvement | MiniMax error handling, market status lock, FMP quarterly fallback, consensus await
-
-- **MiniMax error logging**: Enhanced MiniMaxClient and analysis.py to log raw API responses, finish reasons, and processing times when MiniMax returns empty or unparseable content. Added explicit handling for HTTP status errors, `base_resp` business-logic errors, generic `error` fields, and empty `choices` arrays — with dedicated error/warning log messages for each case.
-- **Market status thundering herd prevention**: Added `asyncio.Lock` to `MarketDataManager.is_market_open()` to serialize concurrent calls, ensuring only one FMP API request is made per cache TTL window. Fetched-at timestamps now use UTC consistently.
-- **FMP quarterly → annual fallback**: `FMPProvider.get_key_metrics()` now falls back to `period="annual"` when quarterly metrics return a non-200 status code (e.g., 402/403 for unsupported symbols).
-- **Consensus await**: `_stage_decision_processing()` now awaits the background consensus task before returning, ensuring consensus and momentum processing complete before the pipeline exits.
-
-**See**: [[concepts/minimax-portfolio]], `apps/engine/core/llm/minimax.py`, `apps/engine/core/llm/analysis.py`, `apps/engine/execution/market_data.py`, `apps/engine/execution/providers/fmp.py`, `apps/engine/main.py`
-
-## [2026-06-21] refactor | Portfolios page client-side timeframe filtering & D3 alignment fix
-
-Refactored the Portfolios page comparison data flow to support client-side timeframe filtering (7d, 30d, 90d, all) with zero network requests on filter changes.
-
-**Backend changes**:
-- `getComparisonData` server function now fetches full portfolio history (36500 days) and all 4 benchmarks (SPY, QQQ, DIA, IWM) in a single payload
-- Removed `benchmark` and `maxDays` input validation — comparison query key is now parameterless
-
-**Client-side changes**:
-- `PortfoliosPage.tsx` gained a `timeframe` state with `useMemo`-based data slicing and re-normalization (returns reset to 0% at window start)
-- `PortfolioComparisonChart.tsx` now uses a shared `dateRange` computed via `d3.extent` across all portfolios, fixing the bug where x-axis domain was derived from `data[0]` only
-- Timeframe buttons use `Button` with `solid`/`ghost` variants and `success`/`neutral` color schemes
-
-**Test coverage**:
-- Added test verifying 30D filter slices data client-side without additional network calls
-- Updated mock signatures to match new parameterless `comparisonFetchFn` interface
-
-**See**: [[sources/web-portfolios-source]], [[concepts/tanstack-query]]
-
-## [2026-06-21] feature | Interactive Daily Score Progression Inspection
-
-Added interactive score inspection and date display on the Day-by-Day Score Progression cards in the Auto-Research page.
-- **Date Display**: Parses `week_start` and renders individual offset date badges (e.g. `6/3` for Wednesday) next to day abbreviations.
-- **Constituents inspection**: Added stateful selection of weekdays. Clicking any non-future card reveals a detailed, scaled constituents breakdown panel showing excess return, opportunity cost, risk penalty, returns vs. SPY and Do-Nothing, and the step-by-step arithmetic equation.
-- **Refactoring & Accessibility**: Split card item rendering into a clean, semantic, accessible `<button>`-based `CheckpointCard` sub-component, reducing cognitive complexity and ensuring full keyboard and screen-reader support.
-- **TDD Safety Net**: Added unit tests in `DailyScoreDisplay.test.tsx` verifying correct date rendering, clickable state updates, toggle closing, and future-day disabled states.
-
 ## [2026-06-21] refactor | Scoped Portfolio and Sector Predictor Prompt Experiments
 
 Separated the views and prompt experiments for the model portfolios (auto-research) and the market sector predictors to align with vertical design guidelines and prevent mixed metrics.
@@ -305,4 +258,17 @@ Enforced strict agent model-level scoping across all memory retrieval paths to e
 
 **See**: [[concepts/rag-strategy]], [[concepts/memory-feedback]], [store.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/memory/store.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [base.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/handlers/base.py), [contrarian.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/contrarian.py)
 
+## [2026-07-13] feature | Sequential Decoupling (Consensus-First Trading)
+
+- **Decoupled Pydantic Schemas**: Split combined analysis output into `MacroEventsResponse` and `TradingDecisionsResponse` to give LLMs a single objective.
+- **Prompt Templates Updated**: Refactored core prompts to separate macro event extraction (`MACRO_ANALYSIS_SYSTEM_PROMPT`/`MACRO_ANALYSIS_USER_PROMPT_TEMPLATE`) from trading decisions (`ANALYSIS_USER_PROMPT_TEMPLATE`), injecting synthesized consensus context into the trading pass.
+- **Dynamic Prompt Builder**: Updated `PromptFactory.build_analysis_messages` to support dynamic reconstruction of database prompt strategies under the trading-only constraints with backward-compatible defaults.
+- **Sequential Execution Passes**: Refactored `analyze_chunks` in `analyze.py` to run `analyze_macro_events` to extract and group consensus events first, and then run `analyze_trading_decisions` to generate final trading signals.
+- **TDD Verification**: Created `test_decoupled_analysis.py` and updated legacy tests to assert correctness under the sequential decoupling architecture.
+
+**See**: [[concepts/ingestion]], [[concepts/consensus]], [[entities/engine]], `apps/engine/core/models.py`, `apps/engine/core/llm/prompts.py`, `apps/engine/core/llm/prompt_factory.py`, `apps/engine/core/llm/analysis.py`, `apps/engine/analysis/analyze.py`, `apps/engine/tests/test_decoupled_analysis.py`
+
+## [2026-07-13] wiki | Update pipeline page for decoupled analysis
+
+Updated [[entities/pipeline]] to reflect the two-pass sequential analysis: macro event extraction → consensus → trading decisions.
 

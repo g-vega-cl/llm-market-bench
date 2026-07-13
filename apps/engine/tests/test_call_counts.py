@@ -99,13 +99,15 @@ async def test_consolidated_call_counts():
 
         await analyze_chunks(chunks)
 
-        # OpenAI SDK: openai + deepseek only (minimax moved to Anthropic SDK)
-        assert mock_wrapped_openai.chat.completions.create.call_count == 3
+        # OpenAI SDK: openai + deepseek only (minimax moved to Anthropic SDK) - 2 passes per model + 1 newsletter summary call
+        assert mock_wrapped_openai.chat.completions.create.call_count == 5
 
-        # Anthropic SDK: anthropic + minimax (minimax uses Anthropic-compatible endpoint)
-        assert mock_wrapped_anthropic.chat.completions.create.call_count == 2
 
-        assert mock_wrapped_gemini.chat.completions.create.call_count == 1
+        # Anthropic SDK: anthropic + minimax (minimax uses Anthropic-compatible endpoint) - 2 passes per model
+        assert mock_wrapped_anthropic.chat.completions.create.call_count == 4
+
+        assert mock_wrapped_gemini.chat.completions.create.call_count == 2
+
 
 
 if __name__ == "__main__":

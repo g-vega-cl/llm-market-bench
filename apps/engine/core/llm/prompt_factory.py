@@ -102,7 +102,19 @@ class PromptFactory:
 
             try:
                 active = await get_active_prompt()
-                system_prompt = active if active else prompts.CORE_ANALYSIS_SYSTEM_PROMPT
+                if active:
+                    from core.llm.prompts import (
+                        SYSTEM_PROMPT_CONSTRAINTS_FOOTER,
+                        SYSTEM_PROMPT_CONSTRAINTS_HEADER,
+                        split_prompt,
+                    )
+
+                    _, mutable_strategies, _ = split_prompt(active)
+                    system_prompt = (
+                        SYSTEM_PROMPT_CONSTRAINTS_HEADER + mutable_strategies + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+                    )
+                else:
+                    system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT
             except Exception:
                 logger.exception(
                     f"Failed to fetch active prompt for model {owner_id} from database. Falling back to static baseline prompt."
@@ -136,10 +148,12 @@ class PromptFactory:
             except Exception as e:
                 logger.error(f"Failed to fetch ledger for {owner_id}: {e}")
 
+        kwargs.setdefault("consensus_context", "No consensus events promoted for today's session.")
         kwargs["market_data_block"] = market_data_block
         user_template = (
             prompts.EXPERIMENT_USER_PROMPT_TEMPLATE if is_experiment else prompts.ANALYSIS_USER_PROMPT_TEMPLATE
         )
+
         return cls._build_messages(
             provider,
             system_prompt,
@@ -218,4 +232,11 @@ class PromptFactory:
         """Builds messages for de-advertisement module."""
         return cls._build_messages(
             provider, prompts.DE_ADVERTISEMENT_SYSTEM_PROMPT, prompts.DE_ADVERTISEMENT_USER_PROMPT_TEMPLATE, **kwargs
+        )
+
+    @classmethod
+    def build_macro_analysis_messages(cls, provider: str, **kwargs) -> list[dict[str, Any]]:
+        """Builds messages for the macro events extraction loop."""
+        return cls._build_messages(
+            provider, prompts.MACRO_ANALYSIS_SYSTEM_PROMPT, prompts.MACRO_ANALYSIS_USER_PROMPT_TEMPLATE, **kwargs
         )

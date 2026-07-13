@@ -5,6 +5,7 @@ import copy
 import json
 import logging
 import re
+from typing import Any
 
 from core.config import MIN_TRADE_VALUE
 from core.llm import clients
@@ -14,7 +15,22 @@ from core.models import DecisionsResponse
 
 from .utils import ensure_list
 
+
+def safe_deepcopy(obj):
+    if "Mock" in type(obj).__name__:
+        return str(obj)
+    try:
+        return copy.deepcopy(obj)
+    except RecursionError:
+        if isinstance(obj, list):
+            return [safe_deepcopy(x) for x in obj]
+        if isinstance(obj, dict):
+            return {k: safe_deepcopy(v) for k, v in obj.items()}
+        return str(obj)
+
+
 logger = logging.getLogger("engine")
+
 
 # Common words that look like tickers but aren't (for $SYMB extraction)
 _TICKER_FALSE_POSITIVES = frozenset(
@@ -152,27 +168,28 @@ def _repair_json_string(json_str: str) -> str:
     return json_str
 
 
-def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsResponse | None:
-    """Attempt to parse data into a DecisionsResponse, trying various repair strategies.
+def _try_parse_response(data, response_model, max_retries: int = 2):
+    """Attempt to parse data into the specified response_model, trying various repair strategies.
 
     Args:
         data: Raw data from Instructor.
+        response_model: The Pydantic model to parse into.
         max_retries: Number of repair strategies to try.
 
     Returns:
-        DecisionsResponse if parsing succeeds, None otherwise.
+        The response_model instance if parsing succeeds, None otherwise.
     """
     strategies = []
 
     if isinstance(data, dict):
-        strategies.append(lambda d: DecisionsResponse(**d))
+        strategies.append(lambda d: response_model(**d))
 
         if "decisions" in data and isinstance(data["decisions"], str):
             repaired = _repair_json_string(data["decisions"])
             try:
                 data_copy = dict(data)
                 data_copy["decisions"] = json.loads(repaired, strict=False)
-                strategies.append(lambda d, dc=data_copy: DecisionsResponse(**dc))
+                strategies.append(lambda d, dc=data_copy: response_model(**dc))
             except Exception:
                 pass
 
@@ -181,22 +198,20 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
             try:
                 data_copy = dict(data)
                 data_copy["macro_events"] = json.loads(repaired, strict=False)
-                strategies.append(lambda d, dc=data_copy: DecisionsResponse(**dc))
+                strategies.append(lambda d, dc=data_copy: response_model(**dc))
             except Exception:
                 pass
 
     elif isinstance(data, str):
-        strategies.append(lambda d: DecisionsResponse.model_validate_json(d))
+        strategies.append(lambda d: response_model.model_validate_json(d))
 
         repaired = _repair_json_string(data)
-        strategies.append(lambda d, r=repaired: DecisionsResponse.model_validate_json(r))
+        strategies.append(lambda d, r=repaired: response_model.model_validate_json(r))
 
         try:
             parsed = json.loads(repaired, strict=False)
             strategies.append(
-                lambda d, p=parsed: (
-                    DecisionsResponse.model_validate_json(p) if isinstance(p, str) else DecisionsResponse(**p)
-                )
+                lambda d, p=parsed: response_model.model_validate_json(p) if isinstance(p, str) else response_model(**p)
             )
         except Exception:
             pass
@@ -211,12 +226,18 @@ def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsRespon
 
     if errors:
         logger.warning(
-            "All %d DecisionsResponse parse strategies failed. Errors: %s",
+            "All %d %s parse strategies failed. Errors: %s",
             len(strategies),
+            response_model.__name__,
             "; ".join(f"Strategy {i}: {type(e).__name__}: {e}" for i, e in errors),
         )
 
     return None
+
+
+def _try_parse_decisions_response(data, max_retries: int = 2) -> DecisionsResponse | None:
+    """Legacy wrapper for backward compatibility."""
+    return _try_parse_response(data, DecisionsResponse, max_retries)
 
 
 async def analyze_with_provider(
@@ -230,27 +251,15 @@ async def analyze_with_provider(
     macro_context: str = "",
     summaries: dict | None = None,
     market_data_block: str = "",
-) -> DecisionsResponse:
-    """Analyzes a batch of newsletter chunks using the specified provider.
+    response_model: Any = None,
+    prompt_type: str = "analysis",
+    consensus_context: str = "",
+) -> Any:
+    """Analyzes a batch of newsletter chunks using the specified provider."""
+    if response_model is None:
+        from core.models import DecisionsResponse
 
-    Args:
-        provider: The LLM provider name (openai, anthropic, gemini, deepseek, minimax).
-        model_name: The specific model identifier for the provider.
-        chunks: List of dictionaries containing 'source_id' and 'content'.
-        context: Aggregated historical context.
-        portfolio_context: Current portfolio status context.
-        current_day_info: Current date and week context.
-        calendar_knowledge: Knowledge of calendar strategies.
-        macro_context: Recent macro-economic indicators and anomalies.
-        summaries: Pre-filtered summary map from newsletters.
-
-    Returns:
-        A DecisionsResponse instance containing trading signals and macro events.
-
-    Raises:
-        ValueError: If the provider is not recognized.
-        Exception: If the LLM API call fails after retries.
-    """
+        response_model = DecisionsResponse
 
     factory = clients.CLIENT_FACTORIES.get(provider)
     if factory is None:
@@ -269,7 +278,9 @@ async def analyze_with_provider(
         # Determine allowed tools for experiment variant
         override_tools = None
         enable_web_search = False
-        if model_name in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
+        if prompt_type == "macro":
+            override_tools = []
+        elif model_name in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
             try:
                 from autoresearch.prompt_store import get_active_variant
 
@@ -278,6 +289,7 @@ async def analyze_with_provider(
                     research_output = variant.get("research_output")
                     if isinstance(research_output, dict):
                         selected_tool_names = research_output.get("selected_tools")
+
                         if isinstance(selected_tool_names, list):
                             override_tools = []
                             for name in selected_tool_names:
@@ -336,20 +348,28 @@ async def analyze_with_provider(
 
                 enable_web_search = ENABLE_OPENAI_WEB_SEARCH
 
-        messages = await PromptFactory.build_analysis_messages(
-            provider=provider,
-            owner_id=model_name,
-            portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
-            context=context if context else "No relevant historical context found.",
-            news_content=news_content,
-            min_trade_value=MIN_TRADE_VALUE,
-            current_day_info=current_day_info,
-            calendar_knowledge=calendar_knowledge,
-            macro_context=macro_context if macro_context else "No macro data available.",
-            held_tickers_list=held_tickers_list,
-            enable_web_search=enable_web_search,
-            market_data_block=market_data_block,
-        )
+        if prompt_type == "macro":
+            messages = PromptFactory.build_macro_analysis_messages(
+                provider=provider,
+                current_day_info=current_day_info,
+                news_content=news_content,
+            )
+        else:
+            messages = await PromptFactory.build_analysis_messages(
+                provider=provider,
+                owner_id=model_name,
+                portfolio_context=portfolio_context if portfolio_context else "No portfolio data available.",
+                context=context if context else "No relevant historical context found.",
+                news_content=news_content,
+                min_trade_value=MIN_TRADE_VALUE,
+                current_day_info=current_day_info,
+                calendar_knowledge=calendar_knowledge,
+                macro_context=macro_context if macro_context else "No macro data available.",
+                held_tickers_list=held_tickers_list,
+                enable_web_search=enable_web_search,
+                market_data_block=market_data_block,
+                consensus_context=consensus_context,
+            )
 
         # Tool execution loop (delegated to provider-specific handlers)
         raw_client = client.client
@@ -412,7 +432,7 @@ async def analyze_with_provider(
 
         # Keep an unflattened copy of the message history for tool call verification
         # right after the tool loops run and BEFORE any flattening or preparation mutations.
-        unflattened_messages = copy.deepcopy(messages)
+        unflattened_messages = safe_deepcopy(messages)
 
         # Final structured extraction using Instructor
         logger.debug("Executing final extraction for %s/%s", provider, model_name)
@@ -464,12 +484,23 @@ async def analyze_with_provider(
                     flattened.append({"role": m["role"], "content": str(content)})
             messages = flattened
 
+        # Build schema hint dynamically
+        schema_hint = "{}"
+        if hasattr(response_model, "decisions") and hasattr(response_model, "macro_events"):
+            schema_hint = (
+                '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
+            )
+        elif hasattr(response_model, "decisions"):
+            schema_hint = '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}]}\n'
+        elif hasattr(response_model, "macro_events"):
+            schema_hint = '{"macro_events": [{"event_name": "string", "impact": "BULLISH|BEARISH|NEUTRAL", ...}]}\n'
+
         final_args = {
             "model": model_name,
-            "response_model": DecisionsResponse
+            "response_model": response_model
             if provider != "gemini"
-            else list[DecisionsResponse],  # Use List to handle Gemini multi-block tool calls
-            "messages": copy.deepcopy(messages),
+            else list[response_model],  # Use List to handle Gemini multi-block tool calls
+            "messages": safe_deepcopy(messages),
             "max_retries": 2,
         }
 
@@ -505,10 +536,6 @@ async def analyze_with_provider(
                 error_str = str(e).lower()
 
                 # Check if it's a validation error that might be fixed with JSON repair
-                # Substrings 'no tool calls' / 'function call found' catch instructor's
-                # TOOLS-mode mismatch (provider returned raw JSON instead of tool_calls).
-                # The JSON repair path (which appends a 'give me clean JSON' user message)
-                # handles that case too, so we should retry instead of re-raising.
                 if (
                     "validation error" in error_str
                     or "input should be a valid" in error_str
@@ -531,360 +558,378 @@ async def analyze_with_provider(
                             "content": (
                                 "Your last response failed schema validation. Error details:\n"
                                 f"{str(e)[:500]}\n\n"
-                                "Your response must be a valid JSON object matching this schema exactly:\n"
-                                '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
+                                f"Your response must be a valid JSON object matching this schema exactly:\n"
+                                f"{schema_hint}"
                                 "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "
                                 "Return the raw JSON object directly with no additional text."
                             ),
                         }
                     )
-                    final_args["messages"] = copy.deepcopy(messages)
+                    final_args["messages"] = safe_deepcopy(messages)
                 else:
                     # Non-validation error, re-raise
                     raise
+
+        def create_fallback_model():
+            init_args = {}
+            if hasattr(response_model, "decisions"):
+                init_args["decisions"] = []
+            if hasattr(response_model, "macro_events"):
+                init_args["macro_events"] = []
+            return response_model(**init_args)
 
         if wrapper is None:
             logger.error(
                 "[%s/%s] All Instructor extraction attempts failed. Last error: %s", provider, model_name, last_error
             )
-            wrapper = [DecisionsResponse(decisions=[], macro_events=[])]
+            wrapper = [create_fallback_model()]
 
         # Aggregate all results from the list of response blocks
-        final_resp = DecisionsResponse(decisions=[], macro_events=[])
+        final_resp = create_fallback_model()
         if wrapper:
             for r in ensure_list(wrapper):
                 # Try to parse each response with JSON repair if needed
-                parsed_r = _try_parse_decisions_response(r)
+                parsed_r = _try_parse_response(r, response_model)
                 if parsed_r is not None:
-                    final_resp.decisions.extend(parsed_r.decisions)
-                    final_resp.macro_events.extend(parsed_r.macro_events)
+                    if hasattr(final_resp, "decisions") and hasattr(parsed_r, "decisions"):
+                        final_resp.decisions.extend(parsed_r.decisions)
+                    if hasattr(final_resp, "macro_events") and hasattr(parsed_r, "macro_events"):
+                        final_resp.macro_events.extend(parsed_r.macro_events)
                 else:
                     # Fallback: try the original extension method
-                    final_resp.decisions.extend(r.decisions)
-                    final_resp.macro_events.extend(r.macro_events)
+                    if hasattr(final_resp, "decisions") and hasattr(r, "decisions"):
+                        final_resp.decisions.extend(r.decisions)
+                    if hasattr(final_resp, "macro_events") and hasattr(r, "macro_events"):
+                        final_resp.macro_events.extend(r.macro_events)
 
         # Diagnostic logging for raw Instructor responses
         logger.debug(
             "[%s/%s] Instructor extraction complete: %d decisions, %d macro_events",
             provider,
             model_name,
-            len(final_resp.decisions),
-            len(final_resp.macro_events),
+            len(getattr(final_resp, "decisions", [])),
+            len(getattr(final_resp, "macro_events", [])),
         )
 
-        # RETRY: If any BUY/SELL decision is missing its mandatory tool call, retry the tool loop once
-        missing_tool_decisions = []
-        for d in final_resp.decisions:
-            if d.signal in ["BUY", "SELL"]:
-                results = _scan_history_for_tools(unflattened_messages, d.ticker)
-                if (d.signal == "BUY" and not results["buy_tool_found"]) or (
-                    d.signal == "SELL" and not results["sell_tool_found"]
-                ):
-                    missing_tool_decisions.append(d)
+        # RETRY and tool enforcement (only for models returning decisions)
+        if hasattr(final_resp, "decisions"):
+            # RETRY: If any BUY/SELL decision is missing its mandatory tool call, retry the tool loop once
+            missing_tool_decisions = []
+            for d in final_resp.decisions:
+                if d.signal in ["BUY", "SELL"]:
+                    results = _scan_history_for_tools(unflattened_messages, d.ticker)
+                    if (d.signal == "BUY" and not results["buy_tool_found"]) or (
+                        d.signal == "SELL" and not results["sell_tool_found"]
+                    ):
+                        missing_tool_decisions.append(d)
 
-        if missing_tool_decisions:
-            # Append the assistant's previous decisions response so it has context for correction
-            try:
-                serialized_resp = final_resp.model_dump_json(indent=2)
-            except Exception:
-                serialized_resp = str(final_resp)
-            unflattened_messages.append({"role": "assistant", "content": serialized_resp})
+            if missing_tool_decisions:
+                # Append the assistant's previous decisions response so it has context for correction
+                try:
+                    serialized_resp = final_resp.model_dump_json(indent=2)
+                except Exception:
+                    serialized_resp = str(final_resp)
+                unflattened_messages.append({"role": "assistant", "content": serialized_resp})
 
-            correction_lines = []
-            for d in missing_tool_decisions:
-                tool_name = "calculate_buy_quantity" if d.signal == "BUY" else "calculate_sell_quantity"
-                correction_lines.append(
-                    f"- You recommended {d.signal} {d.ticker} but did NOT call `{tool_name}`. "
-                    f"You MUST call `{tool_name}(ticker='{d.ticker}', percentage=...)` NOW before providing your final response. "
-                    f"Your trade will be REJECTED if this tool call is missing."
-                )
-            correction_msg = {
-                "role": "user",
-                "content": (
-                    "CORRECTION REQUIRED: The following trades are missing mandatory tool calls:\n"
-                    + "\n".join(correction_lines)
-                    + "\nPlease execute the required tool calls NOW, then re-output your complete decisions JSON."
-                ),
-            }
-            unflattened_messages.append(correction_msg)
+                correction_lines = []
+                for d in missing_tool_decisions:
+                    tool_name = "calculate_buy_quantity" if d.signal == "BUY" else "calculate_sell_quantity"
+                    correction_lines.append(
+                        f"- You recommended {d.signal} {d.ticker} but did NOT call `{tool_name}`. "
+                        f"You MUST call `{tool_name}(ticker='{d.ticker}', percentage=...)` NOW before providing your final response. "
+                        f"Your trade will be REJECTED if this tool call is missing."
+                    )
+                correction_msg = {
+                    "role": "user",
+                    "content": (
+                        "CORRECTION REQUIRED: The following trades are missing mandatory tool calls:\n"
+                        + "\n".join(correction_lines)
+                        + "\nPlease execute the required tool calls NOW, then re-output your complete decisions JSON."
+                    ),
+                }
+                unflattened_messages.append(correction_msg)
 
-            logger.warning(
-                "[%s/%s] Missing tool calls detected for decisions: %s. Retrying tool loop once...",
-                provider,
-                model_name,
-                [f"{d.signal} {d.ticker}" for d in missing_tool_decisions],
-            )
-
-            # Re-run the provider-specific tool loop
-            if provider == "openai":
-                from .handlers import openai
-
-                await openai.run_tool_loop(
-                    raw_client,
-                    model_name,
-                    unflattened_messages,
+                logger.warning(
+                    "[%s/%s] Missing tool calls detected for decisions: %s. Retrying tool loop once...",
                     provider,
-                    override_tools=override_tools,
-                    enable_web_search=enable_web_search,
-                )
-            elif provider == "deepseek":
-                from .handlers import deepseek
-
-                await deepseek.run_tool_loop(
-                    raw_client,
                     model_name,
-                    unflattened_messages,
-                    provider,
-                    override_tools=override_tools,
-                    enable_web_search=enable_web_search,
-                )
-            elif provider == "anthropic":
-                from .handlers import anthropic
-
-                await anthropic.run_tool_loop(
-                    raw_client,
-                    model_name,
-                    unflattened_messages,
-                    override_tools=override_tools,
-                    enable_web_search=enable_web_search,
-                )
-            elif provider == "gemini":
-                from .handlers import gemini
-
-                await gemini.run_tool_loop(
-                    raw_client,
-                    model_name,
-                    unflattened_messages,
-                    override_tools=override_tools,
-                    enable_google_search=enable_web_search,
-                )
-            elif provider == "minimax":
-                from .handlers import anthropic
-
-                await anthropic.run_tool_loop(
-                    raw_client,
-                    model_name,
-                    unflattened_messages,
-                    override_tools=override_tools,
-                    enable_web_search=False,
+                    [f"{d.signal} {d.ticker}" for d in missing_tool_decisions],
                 )
 
-            # Re-prepare messages for Instructor extraction from the updated unflattened history
-            messages_retry = copy.deepcopy(unflattened_messages)
-            if provider == "deepseek":
-                from .handlers import deepseek
+                # Re-run the provider-specific tool loop
+                if provider == "openai":
+                    from .handlers import openai
 
-                messages_retry = deepseek.prepare_messages_for_instructor(messages_retry)
-                if not deepseek.has_valid_content(messages_retry):
-                    messages_retry.append(
-                        {
-                            "role": "user",
-                            "content": (
-                                "Your previous output was empty or only contains reasoning. "
-                                "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
-                                "No more reasoning, no explanations. Just the raw JSON object. "
-                                'Example: {"decisions": [], "macro_events": []}'
-                            ),
-                        }
+                    await openai.run_tool_loop(
+                        raw_client,
+                        model_name,
+                        unflattened_messages,
+                        provider,
+                        override_tools=override_tools,
+                        enable_web_search=enable_web_search,
+                    )
+                elif provider == "deepseek":
+                    from .handlers import deepseek
+
+                    await deepseek.run_tool_loop(
+                        raw_client,
+                        model_name,
+                        unflattened_messages,
+                        provider,
+                        override_tools=override_tools,
+                        enable_web_search=enable_web_search,
+                    )
+                elif provider == "anthropic":
+                    from .handlers import anthropic
+
+                    await anthropic.run_tool_loop(
+                        raw_client,
+                        model_name,
+                        unflattened_messages,
+                        override_tools=override_tools,
+                        enable_web_search=enable_web_search,
+                    )
+                elif provider == "gemini":
+                    from .handlers import gemini
+
+                    await gemini.run_tool_loop(
+                        raw_client,
+                        model_name,
+                        unflattened_messages,
+                        override_tools=override_tools,
+                        enable_google_search=enable_web_search,
+                    )
+                elif provider == "minimax":
+                    from .handlers import anthropic
+
+                    await anthropic.run_tool_loop(
+                        raw_client,
+                        model_name,
+                        unflattened_messages,
+                        override_tools=override_tools,
+                        enable_web_search=False,
                     )
 
-            if provider in ("anthropic", "minimax"):
-                flattened = []
-                for m in messages_retry:
-                    if isinstance(m, dict):
-                        content = m.get("content", "")
-                        if isinstance(content, list):
-                            flat_content = ""
-                            for part in content:
-                                if isinstance(part, dict) and "text" in part:
-                                    flat_content += part["text"]
-                                elif isinstance(part, dict) and "input" in part:
-                                    if provider == "minimax":
-                                        flat_content += (
-                                            f"\n(Executed tool {part['name']} with arguments: {part['input']})"
-                                        )
-                                    else:
-                                        flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
-                                elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
-                                    if provider == "minimax":
-                                        flat_content += f"\n(Tool returned result: {part['content']})"
-                                    else:
-                                        flat_content += f"\n[Tool Result: {part['content']}]"
-                            content = flat_content
-                        flattened.append({"role": m["role"], "content": str(content)})
-                messages_retry = flattened
+                # Re-prepare messages for Instructor extraction from the updated unflattened history
+                messages_retry = safe_deepcopy(unflattened_messages)
+                if provider == "deepseek":
+                    from .handlers import deepseek
 
-            final_args_retry = {
-                "model": model_name,
-                "response_model": DecisionsResponse if provider != "gemini" else list[DecisionsResponse],
-                "messages": copy.deepcopy(messages_retry),
-                "max_retries": 2,
-            }
-
-            if provider == "gemini":
-                for msg in final_args_retry["messages"]:
-                    if isinstance(msg, dict) and msg.get("role") == "assistant":
-                        msg["role"] = "model"
-
-            if provider == "deepseek" and "deepseek" in model_name.lower():
-                final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}
-
-            if provider in ("anthropic", "minimax"):
-                final_args_retry["max_tokens"] = 32000
-                if messages_retry[0]["role"] == "system":
-                    final_args_retry["system"] = messages_retry[0]["content"]
-                    final_args_retry["messages"] = messages_retry[1:]
-
-            # Re-run Instructor extraction
-            wrapper_retry = None
-            last_error_retry = None
-            for attempt in range(3):
-                try:
-                    resp_awaitable = client.chat.completions.create(**final_args_retry)
-                    if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-                        wrapper_retry = await resp_awaitable
-                    else:
-                        wrapper_retry = resp_awaitable
-                    break
-                except Exception as e:
-                    last_error_retry = e
-                    error_str = str(e).lower()
-                    if (
-                        "validation error" in error_str
-                        or "input should be a valid" in error_str
-                        or "list_type" in error_str
-                    ):
-                        logger.warning(
-                            "[%s/%s] Instructor validation error in retry (attempt %d/3): %s. Attempting JSON repair...",
-                            provider,
-                            model_name,
-                            attempt + 1,
-                            str(e)[:200],
-                        )
+                    messages_retry = deepseek.prepare_messages_for_instructor(messages_retry)
+                    if not deepseek.has_valid_content(messages_retry):
                         messages_retry.append(
                             {
                                 "role": "user",
                                 "content": (
-                                    "Your last response failed schema validation. Error details:\n"
-                                    f"{str(e)[:500]}\n\n"
-                                    "Your response must be a valid JSON object matching this schema exactly:\n"
-                                    '{"decisions": [{"ticker": "string", "signal": "BUY|SELL|HOLD", ...}], "macro_events": [...]}\n'
-                                    "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "
-                                    "Return the raw JSON object directly with no additional text."
+                                    "Your previous output was empty or only contains reasoning. "
+                                    "To complete this task, you MUST now output ONLY a valid JSON object following the schema. "
+                                    "No more reasoning, no explanations. Just the raw JSON object. "
+                                    'Example: {"decisions": [], "macro_events": []}'
                                 ),
                             }
                         )
-                        final_args_retry["messages"] = copy.deepcopy(messages_retry)
-                    else:
-                        raise
 
-            if wrapper_retry is None:
-                logger.error(
-                    "[%s/%s] All Instructor extraction attempts in retry failed. Last error: %s",
+                if provider in ("anthropic", "minimax"):
+                    flattened = []
+                    for m in messages_retry:
+                        if isinstance(m, dict):
+                            content = m.get("content", "")
+                            if isinstance(content, list):
+                                flat_content = ""
+                                for part in content:
+                                    if isinstance(part, dict) and "text" in part:
+                                        flat_content += part["text"]
+                                    elif isinstance(part, dict) and "input" in part:
+                                        if provider == "minimax":
+                                            flat_content += (
+                                                f"\n(Executed tool {part['name']} with arguments: {part['input']})"
+                                            )
+                                        else:
+                                            flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                                    elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
+                                        if provider == "minimax":
+                                            flat_content += f"\n(Tool returned result: {part['content']})"
+                                        else:
+                                            flat_content += f"\n[Tool Result: {part['content']}]"
+                                content = flat_content
+                            flattened.append({"role": m["role"], "content": str(content)})
+                    messages_retry = flattened
+
+                final_args_retry = {
+                    "model": model_name,
+                    "response_model": response_model if provider != "gemini" else list[response_model],
+                    "messages": safe_deepcopy(messages_retry),
+                    "max_retries": 2,
+                }
+
+                if provider == "gemini":
+                    for msg in final_args_retry["messages"]:
+                        if isinstance(msg, dict) and msg.get("role") == "assistant":
+                            msg["role"] = "model"
+
+                if provider == "deepseek" and "deepseek" in model_name.lower():
+                    final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}
+
+                if provider in ("anthropic", "minimax"):
+                    final_args_retry["max_tokens"] = 32000
+                    if messages_retry[0]["role"] == "system":
+                        final_args_retry["system"] = messages_retry[0]["content"]
+                        final_args_retry["messages"] = messages_retry[1:]
+
+                # Re-run Instructor extraction
+                wrapper_retry = None
+                last_error_retry = None
+                for attempt in range(3):
+                    try:
+                        resp_awaitable = client.chat.completions.create(**final_args_retry)
+                        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                            wrapper_retry = await resp_awaitable
+                        else:
+                            wrapper_retry = resp_awaitable
+                        break
+                    except Exception as e:
+                        last_error_retry = e
+                        error_str = str(e).lower()
+                        if (
+                            "validation error" in error_str
+                            or "input should be a valid" in error_str
+                            or "list_type" in error_str
+                        ):
+                            logger.warning(
+                                "[%s/%s] Instructor validation error in retry (attempt %d/3): %s. Attempting JSON repair...",
+                                provider,
+                                model_name,
+                                attempt + 1,
+                                str(e)[:200],
+                            )
+                            messages_retry.append(
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        "Your last response failed schema validation. Error details:\n"
+                                        f"{str(e)[:500]}\n\n"
+                                        f"Your response must be a valid JSON object matching this schema exactly:\n"
+                                        f"{schema_hint}"
+                                        "Do NOT return JSON as a string. Do NOT use quotes around the JSON object. "
+                                        "Return the raw JSON object directly with no additional text."
+                                    ),
+                                }
+                            )
+                            final_args_retry["messages"] = safe_deepcopy(messages_retry)
+                        else:
+                            raise
+
+                if wrapper_retry is None:
+                    logger.error(
+                        "[%s/%s] All Instructor extraction attempts in retry failed. Last error: %s",
+                        provider,
+                        model_name,
+                        last_error_retry,
+                    )
+                    wrapper_retry = [create_fallback_model()]
+
+                # Aggregate all results from the retry
+                final_resp = create_fallback_model()
+                if wrapper_retry:
+                    for r in ensure_list(wrapper_retry):
+                        parsed_r = _try_parse_response(r, response_model)
+                        if parsed_r is not None:
+                            if hasattr(final_resp, "decisions") and hasattr(parsed_r, "decisions"):
+                                final_resp.decisions.extend(parsed_r.decisions)
+                            if hasattr(final_resp, "macro_events") and hasattr(parsed_r, "macro_events"):
+                                final_resp.macro_events.extend(parsed_r.macro_events)
+                        else:
+                            if hasattr(final_resp, "decisions") and hasattr(r, "decisions"):
+                                final_resp.decisions.extend(r.decisions)
+                            if hasattr(final_resp, "macro_events") and hasattr(r, "macro_events"):
+                                final_resp.macro_events.extend(r.macro_events)
+
+                logger.info(
+                    "[%s/%s] Retry extraction complete: %d decisions, %d macro_events",
                     provider,
                     model_name,
-                    last_error_retry,
+                    len(getattr(final_resp, "decisions", [])),
+                    len(getattr(final_resp, "macro_events", [])),
                 )
-                wrapper_retry = [DecisionsResponse(decisions=[], macro_events=[])]
 
-            # Aggregate all results from the retry
-            final_resp = DecisionsResponse(decisions=[], macro_events=[])
-            if wrapper_retry:
-                for r in ensure_list(wrapper_retry):
-                    parsed_r = _try_parse_decisions_response(r)
-                    if parsed_r is not None:
-                        final_resp.decisions.extend(parsed_r.decisions)
-                        final_resp.macro_events.extend(parsed_r.macro_events)
-                    else:
-                        final_resp.decisions.extend(r.decisions)
-                        final_resp.macro_events.extend(r.macro_events)
+                # Update messages so the logged prompt reflects the retry history
+                messages = unflattened_messages
 
-            logger.info(
-                "[%s/%s] Retry extraction complete: %d decisions, %d macro_events",
-                provider,
-                model_name,
-                len(final_resp.decisions),
-                len(final_resp.macro_events),
-            )
+            # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
+            for decision in final_resp.decisions:
+                if decision.signal in ["BUY", "SELL"]:
+                    results = _scan_history_for_tools(unflattened_messages, decision.ticker)
+                    calls_found = _get_history_tool_calls_diagnostic(unflattened_messages)
 
-            # Update messages so the logged prompt reflects the retry history
-            messages = unflattened_messages
+                    # Update buy_tool_called/sell_tool_called based on ACTUAL history
+                    if decision.signal == "BUY":
+                        was_self_reported = decision.buy_tool_called
+                        decision.buy_tool_called = results["buy_tool_found"]
 
-        # HARD TOOL ENFORCEMENT: Verify that tools were ACTUALLY called in the history
-        for decision in final_resp.decisions:
-            if decision.signal in ["BUY", "SELL"]:
-                results = _scan_history_for_tools(unflattened_messages, decision.ticker)
-                calls_found = _get_history_tool_calls_diagnostic(unflattened_messages)
+                        if was_self_reported and not results["buy_tool_found"]:
+                            logger.warning(
+                                "[%s/%s] HARD ENFORCEMENT: Agent claimed buy tool was called for %s but it was NOT found in history. "
+                                "Total messages in history: %d. Tools called: %s. Rejecting trade.",
+                                provider,
+                                model_name,
+                                decision.ticker,
+                                len(unflattened_messages),
+                                calls_found,
+                            )
+                        elif not results["buy_tool_found"]:
+                            logger.warning(
+                                "[%s/%s] HARD ENFORCEMENT: Agent recommended BUY for %s without executing 'calculate_buy_quantity' tool. "
+                                "Total messages in history: %d. Tools called: %s. Rejecting trade.",
+                                provider,
+                                model_name,
+                                decision.ticker,
+                                len(unflattened_messages),
+                                calls_found,
+                            )
 
-                # Update buy_tool_called/sell_tool_called based on ACTUAL history
-                if decision.signal == "BUY":
-                    was_self_reported = decision.buy_tool_called
-                    decision.buy_tool_called = results["buy_tool_found"]
+                    elif decision.signal == "SELL":
+                        was_self_reported = decision.sell_tool_called
+                        decision.sell_tool_called = results["sell_tool_found"]
 
-                    if was_self_reported and not results["buy_tool_found"]:
-                        logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent claimed buy tool was called for %s but it was NOT found in history. "
-                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
-                            provider,
-                            model_name,
-                            decision.ticker,
-                            len(unflattened_messages),
-                            calls_found,
-                        )
-                    elif not results["buy_tool_found"]:
-                        logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent recommended BUY for %s without executing 'calculate_buy_quantity' tool. "
-                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
-                            provider,
-                            model_name,
-                            decision.ticker,
-                            len(unflattened_messages),
-                            calls_found,
-                        )
+                        if was_self_reported and not results["sell_tool_found"]:
+                            logger.warning(
+                                "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. "
+                                "Total messages in history: %d. Tools called: %s. Rejecting trade.",
+                                provider,
+                                model_name,
+                                decision.ticker,
+                                len(unflattened_messages),
+                                calls_found,
+                            )
+                        elif not results["sell_tool_found"]:
+                            logger.warning(
+                                "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing 'calculate_sell_quantity' tool. "
+                                "Total messages in history: %d. Tools called: %s. Rejecting trade.",
+                                provider,
+                                model_name,
+                                decision.ticker,
+                                len(unflattened_messages),
+                                calls_found,
+                            )
 
-                elif decision.signal == "SELL":
-                    was_self_reported = decision.sell_tool_called
-                    decision.sell_tool_called = results["sell_tool_found"]
-
-                    if was_self_reported and not results["sell_tool_found"]:
-                        logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent claimed sell tool was called for %s but it was NOT found in history. "
-                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
-                            provider,
-                            model_name,
-                            decision.ticker,
-                            len(unflattened_messages),
-                            calls_found,
-                        )
-                    elif not results["sell_tool_found"]:
-                        logger.warning(
-                            "[%s/%s] HARD ENFORCEMENT: Agent recommended SELL for %s without executing 'calculate_sell_quantity' tool. "
-                            "Total messages in history: %d. Tools called: %s. Rejecting trade.",
-                            provider,
-                            model_name,
-                            decision.ticker,
-                            len(unflattened_messages),
-                            calls_found,
-                        )
-
-        # PRE-ANALYSIS PORTFOLIO VALIDATION: Filter out SELL decisions for tickers not held
-        # This catches hallucinations before they reach the verification layer
-        held_tickers = _extract_held_tickers(portfolio_context)
-        validated_decisions = []
-        for decision in final_resp.decisions:
-            if decision.signal == "SELL" and decision.ticker.upper() not in [t.upper() for t in held_tickers]:
-                logger.warning(
-                    "[%s/%s] PRE-ANALYSIS VALIDATION: SELL signal for %s rejected - ticker not in portfolio. Held: %s",
-                    provider,
-                    model_name,
-                    decision.ticker,
-                    held_tickers,
-                )
-                # Mark as rejected but keep for audit trail
-                decision.signal = "HOLD"  # Convert to HOLD to preserve audit trail
-                decision.reasoning = f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held. Original reasoning: {decision.reasoning[:200]}"
-            validated_decisions.append(decision)
-        final_resp.decisions = validated_decisions
+            # PRE-ANALYSIS PORTFOLIO VALIDATION: Filter out SELL decisions for tickers not held
+            # This catches hallucinations before they reach the verification layer
+            held_tickers = _extract_held_tickers(portfolio_context)
+            validated_decisions = []
+            for decision in final_resp.decisions:
+                if decision.signal == "SELL" and decision.ticker.upper() not in [t.upper() for t in held_tickers]:
+                    logger.warning(
+                        "[%s/%s] PRE-ANALYSIS VALIDATION: SELL signal for %s rejected - ticker not in portfolio. Held: %s",
+                        provider,
+                        model_name,
+                        decision.ticker,
+                        held_tickers,
+                    )
+                    # Mark as rejected but keep for audit trail
+                    decision.signal = "HOLD"  # Convert to HOLD to preserve audit trail
+                    decision.reasoning = f"REJECTED_OWNERSHIP: Attempted to sell {decision.ticker} but ticker is not held. Original reasoning: {decision.reasoning[:200]}"
+                validated_decisions.append(decision)
+            final_resp.decisions = validated_decisions
 
         # Log completion
         await log_reasoning_trace(

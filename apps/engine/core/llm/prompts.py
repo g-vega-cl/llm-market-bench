@@ -117,13 +117,9 @@ SYSTEM_PROMPT_CONSTRAINTS_FOOTER = (
     "4. DURATION: Estimate SHORT_TERM, MEDIUM_TERM, LONG_TERM.\n"
     "5. CONFIDENCE: Provide a score (0-100).\n"
     "6. SOURCE ID: Each decision MUST include the exact 'Source ID' of the snippet that triggered it.\n\n"
-    "=== OUTPUT FORMAT: MACRO EVENTS ===\n"
-    "1. Identify major global themes, macro-economic shifts, or significant events.\n"
-    "2. Bullish/Bearish/Neutral: Provide reasoning for market sentiment.\n"
-    "3. Ongoing vs Future: Mark 'is_ongoing' for current trends, 'is_future_catalyst' ONLY for strictly scheduled upcoming events (e.g., 'OPEC meeting').\n"
-    "4. Scenario Analysis: MANDATORY for Future Catalysts. Provide at least TWO potential outcomes (Scenario A/B) with probabilities and trading plans.\n\n"
-    "Return the result as a structured JSON object containing a list of 'decisions' and a list of 'macro_events'.\n"
+    "Return the result as a structured JSON object containing a list of 'decisions'.\n"
 )
+
 
 CORE_ANALYSIS_SYSTEM_PROMPT = (
     SYSTEM_PROMPT_CONSTRAINTS_HEADER + SYSTEM_PROMPT_MUTABLE_STRATEGIES + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
@@ -216,7 +212,7 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
 ### YOUR CURRENT PORTFOLIO (SOURCE OF TRUTH):
 {portfolio_context}
 
-=== HELD TICKERS QUICK REFERENCE ===
+### HELD TICKERS QUICK REFERENCE:
 **You currently hold these tickers (for SELL validation): {held_tickers_list}**
 **Any ticker NOT in this list CANNOT be sold.**
 
@@ -226,14 +222,21 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
 ### HISTORICAL CONTEXT (PAST EVENTS & LESSONS):
 {context}
 
+### SYNTHESIZED TODAY'S MACRO CONSENSUS EVENTS:
+{consensus_context}
+
 ### NEWS BATCH:
 {news_content}
 
-Return ONLY the structured JSON object with 'decisions' and 'macro_events'."""
+
+Return ONLY the structured JSON object with 'decisions'."""
 
 
 EXPERIMENT_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
 {current_day_info}
+
+### TODAY'S SYNTHESIZED MACRO CONSENSUS EVENTS:
+{consensus_context}
 
 Please analyze the market, execute any required tools to pull details on news and your portfolio, and return your decisions.
 
@@ -252,23 +255,39 @@ No markdown formatting before or after the JSON block. Just the raw JSON matchin
       "reasoning": "string",
       "source_id": "string"
     }}
-  ],
-  "macro_events": [
-    {{
-      "event_name": "string",
-      "impact": "BULLISH | BEARISH | NEUTRAL",
-      "catalyst_type": "MACRO | EARNINGS | M_A | PRODUCT | REGULATORY | EVENT | INNOVATION | TECHNICAL | UNCROWDED_TRADE | OTHER",
-      "is_ongoing": false,
-      "is_future_catalyst": false,
-      "expiry_date": "string",
-      "importance_score": 5,
-      "confidence": 0,
-      "reasoning": "string",
-      "scenario_analysis": "string",
-      "source_id": "string"
-    }}
   ]
 }}"""
+
+
+MACRO_ANALYSIS_SYSTEM_PROMPT = (
+    "You are a macroeconomic analyst for a hedge fund. Your sole job is to identify major global themes, "
+    "macroeconomic shifts, or significant market events from raw news chunks.\n\n"
+    "=== MISSION ===\n"
+    "Scan the provided news snippets and extract a list of significant macro events. "
+    "For each event, analyze potential scenarios and outcomes, and detail how it impacts the market.\n\n"
+    "=== REQUIRED OUTPUT FORMAT ===\n"
+    "Return a structured JSON object containing a list of 'macro_events'. Each event must match this schema:\n"
+    "- event_name: Concise name (include specific legislation/regulation names if applicable).\n"
+    "- impact: BULLISH, BEARISH, or NEUTRAL.\n"
+    "- catalyst_type: The category of event.\n"
+    "- is_ongoing: True if this is an unfolding trend, structural shift, or past action currently materializing.\n"
+    "- is_future_catalyst: True ONLY if this is a pending, scheduled upcoming event with a specific day or date window.\n"
+    "- expiry_date: Timeframe/date of expiration (optional, e.g. YYYY-MM-DD).\n"
+    "- importance_score: Scale 1-10.\n"
+    "- confidence: 0-100.\n"
+    "- reasoning: Structural analysis explaining why this event is significant.\n"
+    "- scenario_analysis: MANDATORY for Future Catalysts. Detail at least two scenarios (Scenario A/B) with probabilities and sector impacts.\n"
+    "- source_id: The newsletter snippet Source ID.\n"
+)
+
+
+MACRO_ANALYSIS_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
+{current_day_info}
+
+### NEWS BATCH:
+{news_content}
+
+Return ONLY the structured JSON object with 'macro_events'."""
 
 
 SYNTHESIS_SYSTEM_PROMPT = (

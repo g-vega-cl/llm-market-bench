@@ -57,52 +57,115 @@ def _process_single_result(res, config, task_index):
     return valid_decisions, valid_events
 
 
-async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list[MacroEvent], str, str]:
-    """Orchestrate the parallel analysis of newsletter chunks using multiple LLMs.
-
-    Args:
-        chunks: List of newsletter chunk dictionaries, each containing
-            'source_id' and 'content' keys.
-
-    Returns:
-        Tuple of (list of DecisionObject, list of MacroEvent, str (aggregated_context), str (uncrowded_context)).
-        Failed analyses are logged but do not halt the pipeline.
-    """
+async def analyze_macro_events(chunks: list[dict]) -> list[MacroEvent]:
+    """Pass 1: Run parallel LLM analysis to extract macro events from newsletters/news chunks."""
     if not chunks:
-        logger.warning("No chunks to analyze.")
-        return [], [], "", ""
+        logger.warning("No chunks for macro analysis.")
+        return []
 
-    # 1. Filter malformed chunks and aggregate historical context
     valid_chunks = [c for c in chunks if c.get("source_id") and c.get("content")]
+    if not valid_chunks:
+        logger.warning("No valid chunks for macro analysis.")
+        return []
 
-    # Pre-filter newsletters to generate a concise summary menu
+    from zoneinfo import ZoneInfo
+
+    from core.models import MacroEventsResponse
+
+    now = datetime.now(ZoneInfo("America/New_York"))
+    day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
+
+    tasks = []
+    task_configs = []
+    BATCH_SIZE = 20
+    for config in MODELS:
+        provider = config["provider"]
+        model = config["model"]
+
+        for i in range(0, len(valid_chunks), BATCH_SIZE):
+            batch = valid_chunks[i : i + BATCH_SIZE]
+            tasks.append(
+                llm.analyze_with_provider(
+                    provider=provider,
+                    model_name=model,
+                    chunks=batch,
+                    current_day_info=day_info,
+                    prompt_type="macro",
+                    response_model=MacroEventsResponse,
+                )
+            )
+            task_configs.append(config)
+
+    logger.info(f"Starting {len(tasks)} parallel macro event extraction calls across {len(MODELS)} models...")
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    valid_events = []
+    for i, res in enumerate(results):
+        config = task_configs[i]
+        if isinstance(res, Exception):
+            logger.error(
+                f"Batch analysis task failed for {config['provider']} ({config['model']}): {res}", exc_info=res
+            )
+        else:
+            for event in getattr(res, "macro_events", []):
+                event.model_provider = config["provider"]
+                event.model_name = config["model"]
+                valid_events.append(event)
+
+    return valid_events
+
+
+async def analyze_trading_decisions(
+    chunks: list[dict], consensus_events: list[dict], sb_client
+) -> tuple[list[DecisionObject], str]:
+    """Pass 2: Run parallel LLM analysis to make trading decisions, using consensus context."""
+    if not chunks:
+        logger.warning("No chunks for trading analysis.")
+        return [], ""
+
+    valid_chunks = [c for c in chunks if c.get("source_id") and c.get("content")]
+    if not valid_chunks:
+        logger.warning("No valid chunks for trading analysis.")
+        return [], ""
+
+    # Build consensus events context block
+    c_lines = ["=== SYNTHESIZED TODAY'S MACRO CONSENSUS EVENTS ==="]
+    if consensus_events:
+        for idx, event in enumerate(consensus_events):
+            if hasattr(event, "event_name"):
+                name = event.event_name
+                summary = event.reasoning
+                scenarios = getattr(event, "scenario_analysis", None)
+            else:
+                name = event.get("event_name", "Unknown Event")
+                summary = event.get("summary", "No summary")
+                scenarios = event.get("scenarios")
+            c_lines.append(f"{idx + 1}. {name}")
+            c_lines.append(f"   Summary: {summary}")
+            if scenarios:
+                c_lines.append(f"   Scenarios & Trading Plans: {scenarios}")
+    else:
+        c_lines.append("No consensus events promoted for today's session.")
+    consensus_context_str = "\n".join(c_lines)
+
+    # 1. Retrieve RAG and trending context
+    [chunk["content"] for chunk in valid_chunks]
+    historical_context = retrieve_top_memories(limit=5)
+    trending_concepts = get_top_trending_concepts(limit=5)
+    aggregated_context = historical_context
+    if trending_concepts:
+        if aggregated_context:
+            aggregated_context += f"\n\n{trending_concepts}"
+        else:
+            aggregated_context = trending_concepts
+    uncrowded_context = ""
+
+    # Pre-filter newsletter summaries menu
     from .pre_filter import summarize_newsletters
 
     summaries = await summarize_newsletters(valid_chunks)
 
-    if len(valid_chunks) < len(chunks):
-        logger.warning(f"Skipped {len(chunks) - len(valid_chunks)} malformed chunks.")
-
-    if not valid_chunks:
-        logger.warning("No valid chunks to analyze after filtering.")
-        return [], [], "", ""
-
-    queries = [chunk["content"] for chunk in valid_chunks]
-
-    if queries:
-        historical_context = retrieve_top_memories(limit=5)
-        trending_concepts = get_top_trending_concepts(limit=5)
-        aggregated_context = historical_context
-        if trending_concepts:
-            if aggregated_context:
-                aggregated_context += f"\n\n{trending_concepts}"
-            else:
-                aggregated_context = trending_concepts
-        uncrowded_context = ""
-    else:
-        aggregated_context = ""
-        uncrowded_context = ""
-    # 1. Initialize all portfolios and collect holdings
+    # 2. Portfolios and holdings
     portfolios = {}
     all_holdings = set()
     for config in MODELS:
@@ -112,14 +175,13 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         portfolios[model] = portfolio
         all_holdings.update(portfolio.positions.keys())
 
-    # 2. Extract news tickers + holdings + major indices
+    # 3. Extract news tickers + holdings + major indices
     from core.llm.analysis import _extract_tickers_from_chunks
 
     all_tickers = _extract_tickers_from_chunks(valid_chunks, list(all_holdings))
 
-    # 3. Batch fetch prices for all unique tickers in parallel
+    # 4. Fetch quotes & verified market data block
     market_data = MarketDataManager()
-
     from core.macro_tracker import get_global_macro_context
 
     macro_context_str = await get_global_macro_context(market_data)
@@ -131,7 +193,6 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
         quotes = await market_data.get_quotes(list(all_tickers))
         price_map = {ticker: data.price for ticker, data in quotes.items()}
 
-    # 4. Construct the common verified market data block for injected context
     mkt_lines = ["=== VERIFIED MARKET DATA ==="]
     for t in sorted(all_tickers):
         q = quotes.get(t)
@@ -140,27 +201,44 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
     mkt_lines.append("GROUND RULES: Trades execute at market price at settlement. Do NOT produce price fields.")
     market_data_block = "\n".join(mkt_lines)
 
+    # 5. Calendar dates context
+    import calendar
+
+    from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
+    from core.models import TradingDecisionsResponse
+
+    now = datetime.now()
+    day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
+    last_day = calendar.monthrange(now.year, now.month)[1]
+    days_to_end = last_day - now.day
+    if now.day in [1, 2, 3]:
+        day_info += f" We are in the Turn of the Month (ToM) window (Day {now.day})."
+    elif days_to_end == 0:
+        day_info += " Today is the LAST trading day of the month (ToM Start)."
+    else:
+        day_info += f" {days_to_end} days until month-end."
+
+    if now.day == 15:
+        day_info += " Today is mid-month (Payday Anomaly)."
+    elif now.day == 14:
+        day_info += " Tomorrow is mid-month payday."
+
+    # 6. Construct tasks for trading pass
     tasks = []
-    task_configs = []  # NEW: Keep track of which model is associated with each task
+    task_configs = []
     for config in MODELS:
         provider = config["provider"]
         model = config["model"]
 
-        # Use pre-initialized portfolio and pre-fetched prices
         portfolio = portfolios[model]
         portfolio.calculate_reg_t_metrics(price_map)
         await portfolio.save_metrics()
-
         portfolio_ctx = await portfolio.get_portfolio_summary(price_map)
 
-        # Idempotency Filter: Skip chunks that this model has already analyzed
-        # We check the decisions table for (source_id, model_name)
+        # Idempotency Filter
         chunks_to_analyze = []
         try:
-            sb_client = get_supabase_client()
             source_ids = [c["source_id"] for c in valid_chunks]
-
-            # Query for existing decisions for this model and these source_ids
             existing_res = (
                 sb_client.table("decisions")
                 .select("source_id")
@@ -168,54 +246,21 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                 .in_("source_id", source_ids)
                 .execute()
             )
-
             analyzed_ids = set([r["source_id"] for r in existing_res.data or []])
             chunks_to_analyze = [c for c in valid_chunks if c["source_id"] not in analyzed_ids]
-
             if len(chunks_to_analyze) < len(valid_chunks):
                 logger.info(f"[{model}] Skipping {len(valid_chunks) - len(chunks_to_analyze)} chunks already analyzed.")
-
         except Exception:
             logger.exception(f"Error filtering idempotent chunks for {model}")
-            chunks_to_analyze = valid_chunks  # Fallback to all if DB fails
+            chunks_to_analyze = valid_chunks
 
         if not chunks_to_analyze:
             logger.info(f"[{model}] All chunks already analyzed. Skipping analysis task.")
             continue
 
-        import calendar
-
-        now = datetime.now()
-        day_info = f"Today is {now.strftime('%A, %B %d, %Y')}."
-
-        # Check Month Boundaries (ToM)
-        last_day = calendar.monthrange(now.year, now.month)[1]
-        days_to_end = last_day - now.day
-        if now.day in [1, 2, 3]:
-            day_info += f" We are in the Turn of the Month (ToM) window (Day {now.day})."
-        elif days_to_end == 0:
-            day_info += " Today is the LAST trading day of the month (ToM Start)."
-        else:
-            day_info += f" {days_to_end} days until month-end."
-
-        # Check Payday Anomaly
-        if now.day == 15:
-            day_info += " Today is mid-month (Payday Anomaly)."
-        elif now.day == 14:
-            day_info += " Tomorrow is mid-month payday."
-
-        from core.llm.prompts import CALENDAR_STRATEGY_KNOWLEDGE
-
-        # --- Chunk Batching (Best Practice) ---
-        # We split news chunks into batches of 20 to ensure:
-        # 1. Output Token Safety: Prevents exceeding the 16k output limit (esp. Claude-Haiku 4.5).
-        # 2. Reasoning Quality: Models perform better when focused on 10 stories vs 50+.
-        # 3. Parallelism: Multiple smaller calls finish faster than one giant call.
         BATCH_SIZE = 20
         for i in range(0, len(chunks_to_analyze), BATCH_SIZE):
             batch = chunks_to_analyze[i : i + BATCH_SIZE]
-
-            # Store metadata about the chunk list to reconstruct results later
             tasks.append(
                 llm.analyze_with_provider(
                     provider=provider,
@@ -228,97 +273,75 @@ async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list
                     macro_context=macro_context_str,
                     summaries=summaries,
                     market_data_block=market_data_block,
+                    response_model=TradingDecisionsResponse,
+                    prompt_type="analysis",
+                    consensus_context=consensus_context_str,
                 )
             )
-            task_configs.append(config)  # Track this task's model info
+            task_configs.append(config)
 
-    logger.info(
-        f"Starting {len(tasks)} parallel model calls (batched) across "
-        f"{len(chunks)} original chunks and {len(MODELS)} models."
-    )
+    logger.info(f"Starting {len(tasks)} parallel trading analysis calls...")
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    try:
-        # 3. Run all tasks in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+    valid_decisions = []
+    for i, res in enumerate(results):
+        config = task_configs[i]
+        if isinstance(res, Exception):
+            logger.error(
+                f"Batch analysis task failed for {config['provider']} ({config['model']}): {res}", exc_info=res
+            )
+        else:
+            for j, decision in enumerate(res.decisions):
+                decision.model_provider = config["provider"]
+                decision.model_name = config["model"]
+                decision.original_index = (i * 1000) + j
 
-        valid_decisions = []
-        valid_events = []
+                # Stamp injected_market_price
+                if decision.ticker and (getattr(decision, "injected_market_price", None) is None):
+                    ticker = decision.ticker.upper()
+                    if ticker in price_map:
+                        decision.injected_market_price = price_map[ticker]
+                    else:
+                        try:
+                            logger.info(
+                                f"[{config['model']}] Price missing for {ticker} (tool-called). Backfilling from market data..."
+                            )
+                            mdm = MarketDataManager()
+                            quote = await mdm.get_quote(ticker)
+                            if quote and quote.exists:
+                                decision.injected_market_price = quote.price
+                        except Exception as bp_err:
+                            logger.warning(f"Failed to backfill price for {ticker}: {bp_err}")
 
-        # 4. Process results
-        for i, res in enumerate(results):
-            config = task_configs[i]  # Use the tracked config for this specific task
+                valid_decisions.append(decision)
 
-            if isinstance(res, Exception):
-                logger.error(f"Batch analysis task failed for {config['provider']} ({config['model']})", exc_info=res)
-            else:
-                # res is a DecisionsResponse object
-                # Process decisions
-                for j, decision in enumerate(res.decisions):
-                    decision.model_provider = config["provider"]
-                    decision.model_name = config["model"]
-                    # original_index preserves the order within the task batch results
-                    # and implicitly the batch sequence. Since each model's batches
-                    # are generated in order, this number remains unique and stable per model.
-                    decision.original_index = (i * 1000) + j
+    return valid_decisions, uncrowded_context
 
-                    # Stamp injected_market_price from the price_map the LLM actually saw.
-                    # This MUST use the pre-analysis price_map, not a fresh network fetch —
-                    # otherwise the staleness check compares a post-analysis price against the
-                    # JIT execution price, producing false drift detections. The LLM decided
-                    # based on the price in price_map (or a tool call); we record that price.
-                    if decision.ticker and (getattr(decision, "injected_market_price", None) is None):
-                        ticker = decision.ticker.upper()
-                        if ticker in price_map:
-                            decision.injected_market_price = price_map[ticker]
-                        else:
-                            # Ticker not in pre-fetched price_map — LLM discovered it via a tool
-                            # call (get_stock_quote). Fall back to a fresh fetch as best effort.
-                            try:
-                                logger.info(
-                                    f"[{config['model']}] Price missing for {ticker} (tool-called). Backfilling from market data..."
-                                )
-                                mdm = MarketDataManager()
-                                quote = await mdm.get_quote(ticker)
-                                if quote and quote.exists:
-                                    decision.injected_market_price = quote.price
-                                    logger.info(
-                                        f"[{config['model']}] Backfilled {ticker} price: ${decision.injected_market_price:.2f}"
-                                    )
-                            except Exception as bp_err:
-                                logger.warning(f"Failed to backfill price for {ticker}: {bp_err}")
 
-                    valid_decisions.append(decision)
+async def analyze_chunks(chunks: list[dict]) -> tuple[list[DecisionObject], list[MacroEvent], str, str]:
+    """Legacy combined analysis orchestrator. Decouples internally to maintain backward compatibility."""
+    logger.info("Executing legacy analyze_chunks via decoupled sequential pipelines...")
+    sb_client = get_supabase_client()
+    macro_events = await analyze_macro_events(chunks)
 
-                # Process macro events
-                for event in res.macro_events:
-                    event.model_provider = config["provider"]
-                    event.model_name = config["model"]
-                    valid_events.append(event)
+    from analysis.consensus import process_consensus
 
-        # Check for total or partial LLM failures
-        if not valid_decisions and not valid_events:
-            exception_count = sum(1 for r in results if isinstance(r, Exception))
-            if exception_count == len(MODELS):
-                logger.error(
-                    f"CRITICAL: All {len(MODELS)} LLM providers failed. "
-                    f"No decisions or events generated. Pipeline continuing but data is incomplete."
-                )
-            elif exception_count > 0:
-                logger.warning(
-                    f"{exception_count}/{len(MODELS)} LLM providers failed. "
-                    f"No results generated from successful providers."
-                )
+    consensus_events = await process_consensus(macro_events)
 
-        logger.info(
-            f"Completed analysis. Generated {len(valid_decisions)} decisions "
-            f"and {len(valid_events)} macro events from {len(results)} batched calls."
-        )
-        return valid_decisions, valid_events, aggregated_context, uncrowded_context
-    finally:
-        from execution.providers.factory import get_active_provider_class
+    decisions, uncrowded_ctx = await analyze_trading_decisions(chunks, consensus_events, sb_client)
 
-        provider_cls = get_active_provider_class()
-        await provider_cls.disconnect_all()
+    # Retrieve RAG context as aggregated context to match legacy return
+    [c for c in chunks if c.get("source_id") and c.get("content")]
+    historical_context = retrieve_top_memories(limit=5)
+    trending_concepts = get_top_trending_concepts(limit=5)
+    aggregated_context = historical_context
+    if trending_concepts:
+        if aggregated_context:
+            aggregated_context += f"\n\n{trending_concepts}"
+        else:
+            aggregated_context = trending_concepts
+
+    return decisions, macro_events, aggregated_context, uncrowded_ctx
 
 
 async def analyze_chunks_streaming(chunks: list[dict]):

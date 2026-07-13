@@ -262,3 +262,42 @@ class DiscoveryRankingResponse(BaseModel):
     ranked_assets: list[RankedAsset] = Field(
         default_factory=list, description="List of assets ranked by thematic relevance"
     )
+
+
+class MacroEventsResponse(BaseModel):
+    """Container for macro events identified from batch analysis."""
+
+    macro_events: list[MacroEvent] = Field(
+        default_factory=list, description="List of broad market events or themes identified"
+    )
+
+    @field_validator("macro_events", mode="before")
+    @classmethod
+    def parse_json_string(cls, v):
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v)
+            except Exception:
+                return v
+        return v
+
+
+class TradingDecisionsResponse(BaseModel):
+    """Container for trading decisions generated from batch analysis."""
+
+    decisions: list[DecisionObject] = Field(
+        default_factory=list, description="List of trading decisions generated"
+    )
+
+    @field_validator("decisions", mode="before")
+    @classmethod
+    def parse_json_string(cls, v):
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v)
+            except Exception:
+                return v
+        return v
+

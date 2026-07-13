@@ -9,7 +9,10 @@ Transforms individual LLM decisions into coherent market events.
 
 ## Event Consensus Protocol
 
+The Event Consensus Protocol is executed between the two analysis passes of the daily pipeline. The macro events extracted by individual models in **Pass 1** are grouped, promoted, and synthesized. The resulting promoted consensus events are then formatted and injected as today's macro context (`{consensus_context}`) into **Pass 2** to drive informed asset-level trading decisions.
+
 1. **Semantic Grouping**: Embeddings cluster events by cosine similarity across LLMs (threshold 0.75).
+
    * **API Rate-Limit Resilience**: Uses `tenacity` exponential backoff retries (3 max attempts) to absorb transient errors like `429 RESOURCE_EXHAUSTED`.
    * **Exact-Match Fallback**: If the embedding API fails or mismatches, the engine gracefully falls back to exact string-based grouping to prevent pipeline crashes.
 2. **Weighted Consensus**: Cumulative model weight must exceed promotion threshold (default 2.0)

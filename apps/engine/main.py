@@ -619,7 +619,15 @@ async def _process_single_decision(
             return False
 
 
-async def _stage_decision_processing(decisions, macro_events, data, aggregated_context, uncrowded_context, sb_client):
+async def _stage_decision_processing(
+    decisions,
+    macro_events,
+    data,
+    aggregated_context,
+    uncrowded_context,
+    sb_client,
+    consensus_events: list | None = None,
+):
     """Stage 3: Decision attribution, validation, and execution with concurrency.
 
     Now runs:
@@ -631,9 +639,13 @@ async def _stage_decision_processing(decisions, macro_events, data, aggregated_c
     # --- Start Consensus/Momentum as background tasks (fire-and-forget) ---
     async def run_consensus_background():
         try:
-            logger.info("Running Event Consensus Protocol (background)...")
-            consensus_events = await process_consensus(macro_events)
-            logger.info(f"Background consensus finished. Promoted {len(consensus_events)} events.")
+            nonlocal consensus_events
+            if consensus_events is None:
+                logger.info("Running Event Consensus Protocol (background)...")
+                consensus_events = await process_consensus(macro_events)
+                logger.info(f"Background consensus finished. Promoted {len(consensus_events)} events.")
+            else:
+                logger.info("Using pre-computed consensus events for momentum analysis.")
 
             logger.info("Starting Trend & Concept Momentum Analysis (background)...")
             await analyze_momentum(sb_client, consensus_events)
@@ -819,7 +831,12 @@ async def run_ingest(force: bool = False):
 
         try:
             decisions, macro_events, agg_ctx, uncrowded_ctx = await _stage_analysis_and_consensus(data, sb_client)
-            await _stage_decision_processing(decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client)
+            from analysis.consensus import get_last_consensus_events
+
+            consensus_events = get_last_consensus_events()
+            await _stage_decision_processing(
+                decisions, macro_events, data, agg_ctx, uncrowded_ctx, sb_client, consensus_events
+            )
             await _stage_snapshots_and_pca(sb_client)
 
             # Market Feeling Analysis: Generate LLM-driven sentiment (after execution to include trades)

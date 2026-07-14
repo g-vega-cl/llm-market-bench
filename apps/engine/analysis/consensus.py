@@ -20,6 +20,15 @@ from memory.store import add_memory, find_potential_ancestors, update_memory_sta
 logger = logging.getLogger("engine")
 
 
+_last_consensus_events = []
+
+
+def get_last_consensus_events() -> list[dict]:
+    """Retrieve the consensus events generated in the last call to process_consensus."""
+    global _last_consensus_events
+    return _last_consensus_events
+
+
 def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     """Computes the cosine similarity between two vectors."""
     if not v1 or not v2:
@@ -185,37 +194,45 @@ async def _synthesize_and_promote_group(
     is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
     historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
 
-    # Discover real assets specifically per scenario
+    # Discover real assets specifically per scenario (parallelized)
+    import asyncio
+
     scenarios_data = []
     global_discovered_assets = []
     seen_tickers = set()
 
-    for s in synthesis.get("scenarios", []):
+    async def discover_scenario_assets(s):
         header = s.get("cleanHeader", "")
         outcome = s.get("outcome", "")
         trading_plan = s.get("tradingPlan", "")
-
-        # Discover assets specifically for this scenario's trading plan!
         theme = f"{header}: {outcome} -> Trading Plan: {trading_plan}"
-        scenario_assets = await discovery_service.discover_assets(theme)
+        try:
+            scenario_assets = await discovery_service.discover_assets(theme)
+        except Exception as e:
+            logger.error(f"Error discovering assets for scenario {header}: {e}")
+            scenario_assets = []
+        return {
+            "cleanHeader": header,
+            "percentage": s.get("percentage"),
+            "outcome": outcome,
+            "tradingPlan": trading_plan,
+            "assets": scenario_assets,
+        }
 
-        # Add scenario tag and unique tickers to the global discovered list
-        for asset in scenario_assets:
-            asset["scenario"] = header
-            ticker = asset["ticker"].upper()
-            if ticker not in seen_tickers:
-                global_discovered_assets.append(asset)
-                seen_tickers.add(ticker)
-
-        scenarios_data.append(
-            {
-                "cleanHeader": header,
-                "percentage": s.get("percentage"),
-                "outcome": outcome,
-                "tradingPlan": trading_plan,
-                "assets": scenario_assets,
-            }
-        )
+    scenarios = synthesis.get("scenarios", [])
+    if scenarios:
+        discovery_tasks = [discover_scenario_assets(s) for s in scenarios]
+        scenarios_results = await asyncio.gather(*discovery_tasks)
+        for s_data in scenarios_results:
+            header = s_data["cleanHeader"]
+            scenario_assets = s_data["assets"]
+            for asset in scenario_assets:
+                asset["scenario"] = header
+                ticker = asset["ticker"].upper()
+                if ticker not in seen_tickers:
+                    global_discovered_assets.append(asset)
+                    seen_tickers.add(ticker)
+            scenarios_data.append(s_data)
 
     # For backward-compatibility fallback if no scenarios were returned by Gemini
     if not scenarios_data:
@@ -370,6 +387,8 @@ async def process_consensus(
             if res:
                 consensus_reached.append(res)
 
+    global _last_consensus_events
+    _last_consensus_events = consensus_reached
     return consensus_reached
 
 

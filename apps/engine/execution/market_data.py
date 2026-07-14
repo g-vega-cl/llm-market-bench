@@ -323,11 +323,26 @@ class MarketDataManager:
 
         # 1. Check Cache
         if not force_refresh:
-            for ticker in tickers:
-                cached = self._get_from_cache(ticker)
-                if cached:
-                    results[ticker] = cached
-                    missing_tickers.remove(ticker)
+            try:
+                response = self.client.table("market_data_cache").select("*").in_("ticker", tickers).execute()
+                if response.data:
+                    now = datetime.datetime.now(datetime.UTC)
+                    for record in response.data:
+                        ticker = record["ticker"]
+                        fetched_at = datetime.datetime.fromisoformat(record["fetched_at"].replace("Z", "+00:00"))
+                        if (now - fetched_at).total_seconds() <= self.cache_ttl_seconds:
+                            results[ticker] = TickerData(
+                                ticker=ticker,
+                                price=float(record["price"]),
+                                market_cap=float(record["market_cap"]) if record.get("market_cap") else 0,
+                                exists=True,
+                            )
+                            if ticker in missing_tickers:
+                                missing_tickers.remove(ticker)
+                        else:
+                            logger.debug(f"Cache entry for {ticker} is stale.")
+            except Exception as e:
+                logger.error(f"Error reading market data cache batch: {e}")
 
         if not missing_tickers:
             return results

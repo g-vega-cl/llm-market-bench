@@ -804,15 +804,23 @@ async def execute_stock_screener_tool(
         if not results:
             return "No stocks found matching the criteria."
 
-        enriched_results = []
-        for item in results:
+        async def enrich_item(item):
             ticker = item.get("symbol")
             if ticker:
-                history = await manager.get_history(ticker, days=20)
-                vol_context = compute_volume_context(history) if history else "no volume data"
+                try:
+                    history = await manager.get_history(ticker, days=20)
+                    vol_context = compute_volume_context(history) if history else "no volume data"
+                except Exception as e:
+                    logger.error(f"Error enriching ticker {ticker} in screener: {e}")
+                    vol_context = "error fetching volume data"
             else:
                 vol_context = "unknown"
-            enriched_results.append({**item, "volume_context": vol_context})
+            return {**item, "volume_context": vol_context}
+
+        import asyncio
+
+        enrich_tasks = [enrich_item(item) for item in results]
+        enriched_results = await asyncio.gather(*enrich_tasks)
 
         output = f"Stock Screening Results (Top {len(enriched_results)}):\n"
         for item in enriched_results:

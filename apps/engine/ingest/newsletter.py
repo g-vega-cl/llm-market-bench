@@ -334,11 +334,13 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
 
         logger.info(f"Found {len(messages)} messages. Starting processing...")
 
-        # Phase 1: Fetch all raw message bodies (fast, Gmail API only)
+        # Phase 1: Fetch all raw message bodies (fast, Gmail API only, run in parallel)
         raw_results = []
         attempted_senders = set()
-        for msg_ref in messages:
-            raw_snapshot, sender = await _fetch_raw_message(service, msg_ref)
+        fetch_tasks = [_fetch_raw_message(service, msg_ref) for msg_ref in messages]
+        fetch_results = await asyncio.gather(*fetch_tasks)
+
+        for raw_snapshot, sender in fetch_results:
             if sender:
                 attempted_senders.add(sender)
             if raw_snapshot:

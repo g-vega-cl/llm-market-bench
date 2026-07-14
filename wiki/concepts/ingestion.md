@@ -7,7 +7,7 @@ category: concept
 
 Three parallel ingestion streams that feed the pipeline:
 
-- **Newsletters**: Gmail API → HTML parsing (BeautifulSoup) → ad removal
+- **Newsletters**: Gmail API (parallel fetches via `asyncio.gather`) → HTML parsing (BeautifulSoup) → ad removal
   (Gemini Flash, parallel via `asyncio.gather` running asynchronously via non-blocking `asyncio.to_thread` client calls) → deterministic hashing → single-transaction bulk `UPSERT` into `newsletter_snapshots` (with automated sequential fallback on failure).
   Source IDs use the `news_{sender_clean}_{MD5[:8]}` pattern for idempotency; chunk hashes are SHA-256.
 - **Economic Calendar**: Periodic cron fetches global macro catalysts →
@@ -15,6 +15,11 @@ Three parallel ingestion streams that feed the pipeline:
 - **Government Tracking**: Scans for policy bills, subsidies, regulatory changes
   across G7 and major G20 economies. Stores as `GOVERNMENT_INCENTIVE` memories.
 - **Prediction Markets (Hybrid)**: Periodically fetches active, high-volume sentiment data from Polymarket and Kalshi APIs, filtered via a lightweight LLM classifier, and upserts them to `prediction_market_snapshots`. Also exposed as real-time tools for active agent queries.
+
+## Performance Optimizations
+
+*   **Parallel Gmail API Fetching**: Payloads for all matching emails are retrieved in parallel via `asyncio.gather` rather than sequentially, reducing Gmail API roundtrip overhead.
+*   **Batched Cache Lookups**: When checking the local ticker price cache in `MarketDataManager.get_quotes`, a single batched query is sent to Supabase using `.in_("ticker", tickers)` instead of executing sequential, individual cache check queries for each symbol.
 
 ## Key Design
 

@@ -297,3 +297,15 @@ Restored and updated the 7-phase daily pipeline flow inside `wiki/entities/pipel
 **See**: [[entities/pipeline]], [test_compile_how_it_works.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_compile_how_it_works.py), [how-it-works.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/config/how-it-works.json)
 
 
+
+## [2026-07-14] optimization | Pipeline Concurrency and Consensus Double-Invocation fix
+
+Optimized Gmail Ingestion, stock screening, scenario asset discovery, and database cache checking to run concurrently, and resolved the consensus double-invocation bug.
+- **Gmail Ingestion parallelization**: Updated `ingest_newsletters` in `newsletter.py` to fetch raw email messages from Gmail concurrently using `asyncio.gather`, avoiding sequential roundtrip latency.
+- **Market Data Cache batching**: Updated `get_quotes` in `market_data.py` to batch retrieve cached ticker quotes using a single `.in_("ticker", tickers)` Supabase query rather than executing sequential per-ticker lookup queries.
+- **Stock Screener parallelization**: Updated `execute_stock_screener_tool` in `tools.py` to parallelize price history enrichment for all screened stock symbols concurrently via `asyncio.gather`.
+- **Scenario Discovery parallelization**: Updated `_synthesize_and_promote_group` in `consensus.py` to run asset discovery for all promoted scenarios concurrently using `asyncio.gather`.
+- **Double-Consensus bypass**: Fixed a major pipeline inefficiency where `process_consensus` was run twice (once synchronously in `analyze_chunks`, and again as a redundant background task in `_stage_decision_processing`). Implemented a global consensus events cache (`_last_consensus_events` / `get_last_consensus_events`) in `consensus.py` and passed it to `_stage_decision_processing` to skip the redundant background run.
+- **TDD Verification**: Created `test_pipeline_optimizations.py` to assert parallel execution timing limits, database query batching correctness, and consensus invocation counts. All tests pass successfully.
+
+**See**: [newsletter.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/ingest/newsletter.py), [market_data.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/execution/market_data.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [consensus.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/consensus.py), [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py), [test_pipeline_optimizations.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pipeline_optimizations.py)

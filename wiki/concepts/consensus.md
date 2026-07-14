@@ -43,6 +43,12 @@ Promoted consensus events (`MARKET_EVENT` memory type) store the models that rea
 
 The UI displays the avatars of these models directly on the market consensus cards to indicate consensus visually. The old overall "Consensus" percentage bar has been removed to avoid confusion.
 
+## Performance & Execution Optimizations
+
+*   **Single-Consensus Invocation Architecture**: Resolved the double-consensus bug where `process_consensus` was executed twice. A global memory cache (`_last_consensus_events` / `get_last_consensus_events`) in `consensus.py` allows the synchronously-derived consensus events from Pass 1 to be reused during the background momentum/decay processing stage, preventing redundant LLM and database executions.
+*   **Parallel Scenario Asset Discovery**: In `_synthesize_and_promote_group`, asset discovery tasks for all scenarios under a promoted consensus event are processed concurrently using `asyncio.gather`, improving throughput.
+*   **Parallel Screener History Enrichment**: The stock screening tool (`execute_stock_screener_tool`) enriches screened tickers in parallel using `asyncio.gather` for price history lookups, preventing sequential database request bottlenecks.
+
 ## Related
 
 - [[entities/pipeline]]

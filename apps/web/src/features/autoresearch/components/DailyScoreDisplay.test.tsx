@@ -4,6 +4,49 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DailyScoreDisplay } from './DailyScoreDisplay';
 
+const mockSupabaseClient = {
+    from: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockReturnThis(),
+    lte: vi.fn().mockReturnThis(),
+    order: vi.fn().mockImplementation(() =>
+        Promise.resolve({
+            data: [
+                {
+                    portfolio_id: 'gemini-portfolio-id',
+                    total_equity: 10000,
+                    date: '2026-06-01',
+                    portfolios: { owner_id: 'gemini-3.1-flash-lite' },
+                },
+                {
+                    portfolio_id: 'gemini-portfolio-id',
+                    total_equity: 10200,
+                    date: '2026-06-05',
+                    portfolios: { owner_id: 'gemini-3.1-flash-lite' },
+                },
+                {
+                    portfolio_id: 'deepseek-portfolio-id',
+                    total_equity: 10000,
+                    date: '2026-06-01',
+                    portfolios: { owner_id: 'deepseek-v4-pro' },
+                },
+                {
+                    portfolio_id: 'deepseek-portfolio-id',
+                    total_equity: 9800,
+                    date: '2026-06-05',
+                    portfolios: { owner_id: 'deepseek-v4-pro' },
+                },
+            ],
+            error: null,
+        }),
+    ),
+};
+
+vi.mock('~/lib/supabase-client', () => ({
+    getSupabaseBrowserClient: () => mockSupabaseClient,
+}));
+
 describe('DailyScoreDisplay', () => {
     it('renders live status and daily tracking score when experiment is active', () => {
         const mockExperiment = {
@@ -199,5 +242,57 @@ describe('DailyScoreDisplay', () => {
         expect(screen.queryByText(/Score Constituents/)).not.toBeInTheDocument();
 
         vi.useRealTimers();
+    });
+
+    it('displays detailed audit formulas and portfolio constituents', async () => {
+        const mockExperiment = {
+            variant_tag: 'V1.0',
+            week_start: '2026-06-01',
+            week_end: '2026-06-05',
+            metrics: {
+                portfolio_return_pct: 2.0,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 1.5,
+                excess_return: 1.0,
+                opportunity_cost_penalty: 0.1,
+                max_drawdown: 1.0,
+                drawdown_penalty: 0.3,
+                score: 0.6,
+                portfolio_details: {
+                    'gemini-portfolio-id': {
+                        owner_id: 'gemini-3.1-flash-lite',
+                        do_nothing_return_pct: 1.2,
+                    },
+                    'deepseek-portfolio-id': {
+                        owner_id: 'deepseek-v4-pro',
+                        do_nothing_return_pct: 1.8,
+                    },
+                },
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Click Wednesday card (June 3rd)
+        const wedCard = screen.getByText('6/3').closest('button');
+        expect(wedCard).toBeInTheDocument();
+        if (wedCard) {
+            fireEvent.click(wedCard);
+        }
+
+        // Check that the detailed breakdown and formulas are visible
+        expect(screen.getByText(/^1. Excess Return Calculation:$/)).toBeInTheDocument();
+        expect(screen.getByText(/Formula: Portfolio - S&P 500/)).toBeInTheDocument();
+        expect(screen.getByText(/^Base Excess Return Calculation:$/)).toBeInTheDocument();
+        expect(screen.getByText(/^Base Calculation:$/)).toBeInTheDocument();
+
+        // Check constituent display for Do-Nothing Return
+        expect(screen.getByText(/Gemini 3.1 Flash Lite/)).toBeInTheDocument();
+        expect(screen.getByText(/DeepSeek V4 Pro/)).toBeInTheDocument();
+
+        // Check constituent display for Portfolio Return
+        // Wait for async actual returns query to resolve
+        const actualReturnsTexts = await screen.findAllByText(/1.1000%/); // 2.0% * 0.55 = 1.1000%
+        expect(actualReturnsTexts.length).toBeGreaterThan(0);
     });
 });

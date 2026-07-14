@@ -6,7 +6,17 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getSupabaseBrowserClient } from '~/lib/supabase-client';
+
+function getAgentDisplayName(ownerId: string | null | undefined): string {
+    if (!ownerId) return 'Unknown Agent';
+    const normalized = ownerId.toLowerCase().replace(/[\s_-]+/g, '-');
+    if (normalized.includes('gemini-3.1-flash-lite')) return 'Gemini 3.1 Flash Lite';
+    if (normalized.includes('deepseek-v4-pro')) return 'DeepSeek V4 Pro';
+    if (normalized.includes('minimax-m3') || normalized.includes('minimax')) return 'MiniMax-M3';
+    return ownerId;
+}
 
 interface DailyScoreDisplayProps {
     experiment: PromptExperiment;
@@ -168,17 +178,156 @@ function CheckpointCard({ cp, idx, isActive, isSelected, onSelect }: CheckpointC
     );
 }
 
+interface ActualReturns {
+    [ownerId: string]: {
+        startEquity: number;
+        endEquity: number;
+        actualReturn: number;
+    };
+}
+
+interface PortfolioDetail {
+    owner_id: string;
+    initial_equity?: number;
+    initial_cash?: number;
+    end_equity?: number;
+    do_nothing_return_pct?: number;
+    positions?: Record<string, unknown>;
+}
+
+type PerformanceRow = {
+    portfolio_id: string;
+    total_equity: string | number;
+    date: string;
+    portfolios:
+        | {
+              owner_id: string;
+          }
+        | null
+        | undefined;
+};
+
+function groupPerformanceData(data: PerformanceRow[]) {
+    const grouped: Record<string, { date: string; equity: number }[]> = {};
+    const ownerIdMap: Record<string, string> = {};
+
+    for (const row of data) {
+        const ownerId = row.portfolios?.owner_id;
+        const pid = row.portfolio_id;
+        if (!ownerId) continue;
+        ownerIdMap[pid] = ownerId;
+        if (!grouped[pid]) {
+            grouped[pid] = [];
+        }
+        grouped[pid].push({
+            date: row.date,
+            equity: Number(row.total_equity),
+        });
+    }
+    return { grouped, ownerIdMap };
+}
+
+function calculateActualReturns(
+    grouped: Record<string, { date: string; equity: number }[]>,
+    ownerIdMap: Record<string, string>,
+): ActualReturns {
+    const results: ActualReturns = {};
+    for (const [pid, history] of Object.entries(grouped)) {
+        if (history.length < 2) continue;
+        history.sort((a, b) => a.date.localeCompare(b.date));
+        const startEquity = history[0].equity;
+        const endEquity = history[history.length - 1].equity;
+        const ownerId = ownerIdMap[pid];
+        if (startEquity > 0) {
+            results[ownerId] = {
+                startEquity,
+                endEquity,
+                actualReturn: ((endEquity - startEquity) / startEquity) * 100,
+            };
+        }
+    }
+    return results;
+}
+
+async function fetchPortfolioPerformanceData(
+    portfolioIds: string[],
+    weekStart: string,
+    weekEnd: string,
+) {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase
+        .from('portfolio_performance')
+        .select('portfolio_id, total_equity, date, portfolios!inner(owner_id)')
+        .in('portfolio_id', portfolioIds)
+        .gte('date', weekStart)
+        .lte('date', weekEnd)
+        .order('date', { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+    return data;
+}
+
 export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
     const metrics = experiment.metrics || {};
     const isActive = metrics.score === null || metrics.score === undefined;
 
     const [selectedDayName, setSelectedDayName] = useState<string | null>(null);
+    const [actualReturns, setActualReturns] = useState<ActualReturns | null>(null);
+    const [isLoadingActuals, setIsLoadingActuals] = useState(false);
+
+    useEffect(() => {
+        if (!experiment.week_start || !experiment.week_end) return;
+        const portfolioDetails = (metrics.portfolio_details || {}) as Record<
+            string,
+            PortfolioDetail
+        >;
+        const portfolioIds = Object.keys(portfolioDetails);
+        if (portfolioIds.length === 0) return;
+
+        let isMounted = true;
+        setIsLoadingActuals(true);
+
+        const loadActuals = async () => {
+            try {
+                const data = await fetchPortfolioPerformanceData(
+                    portfolioIds,
+                    experiment.week_start,
+                    experiment.week_end,
+                );
+
+                if (!data) return;
+
+                const { grouped, ownerIdMap } = groupPerformanceData(
+                    data as unknown as PerformanceRow[],
+                );
+                const results = calculateActualReturns(grouped, ownerIdMap);
+
+                if (isMounted) {
+                    setActualReturns(results);
+                }
+            } catch (e) {
+                console.error('Failed to load actual returns:', e);
+            } finally {
+                if (isMounted) {
+                    setIsLoadingActuals(false);
+                }
+            }
+        };
+
+        loadActuals();
+        return () => {
+            isMounted = false;
+        };
+    }, [experiment.week_start, experiment.week_end, metrics.portfolio_details]);
 
     const {
         portfolioReturn,
         spyReturn,
         doNothingReturn,
         opportunityCost,
+        maxDrawdown,
         dailyExcessReturn,
         dailyDrawdownPenalty,
         dailyScore,
@@ -389,50 +538,263 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                     </div>
 
                     {/* Step-by-step arithmetic */}
-                    <div className="bg-zinc-950/80 rounded-xl p-3.5 font-mono text-[11px] border border-zinc-900 leading-relaxed text-zinc-400 space-y-2">
-                        <div className="text-zinc-500 text-[9px] uppercase font-bold tracking-wider border-b border-zinc-900 pb-1 mb-1.5 font-sans">
-                            Constituent Calculations
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:justify-between border-b border-dashed border-zinc-900/50 pb-1.5">
-                            <span>Portfolio Return (Scaled)</span>
-                            <span className="font-bold text-zinc-200">
-                                {(portfolioReturn * multiplier).toFixed(4)}%{' '}
-                                <span className="text-zinc-500 text-[10px]">
-                                    (Base: {portfolioReturn.toFixed(4)}%)
-                                </span>
-                            </span>
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:justify-between border-b border-dashed border-zinc-900/50 pb-1.5">
-                            <span>S&P 500 Return (Scaled)</span>
-                            <span className="font-bold text-zinc-200">
-                                {(spyReturn * multiplier).toFixed(4)}%{' '}
-                                <span className="text-zinc-500 text-[10px]">
-                                    (Base: {spyReturn.toFixed(4)}%)
-                                </span>
-                            </span>
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:justify-between border-b border-dashed border-zinc-900/50 pb-1.5">
-                            <span>Do-Nothing Return (Scaled)</span>
-                            <span className="font-bold text-zinc-200">
-                                {(doNothingReturn * multiplier).toFixed(4)}%{' '}
-                                <span className="text-zinc-500 text-[10px]">
-                                    (Base: {doNothingReturn.toFixed(4)}%)
-                                </span>
-                            </span>
-                        </div>
-                        <div className="text-zinc-500 text-[10px] pt-1 font-sans">
-                            Formula: score = (Excess Return - Opportunity Cost - Risk Penalty)
-                        </div>
-                        <div className="text-emerald-450 font-bold">
-                            score = {(dailyExcessReturn * multiplier).toFixed(4)}% -{' '}
-                            {(opportunityCost * multiplier).toFixed(4)}% -{' '}
-                            {(dailyDrawdownPenalty * multiplier).toFixed(4)}%
-                        </div>
-                        <div className="text-emerald-400 font-bold border-t border-zinc-900 pt-1.5 text-xs">
-                            score = {selectedCp.score >= 0 ? '+' : ''}
-                            {selectedCp.score.toFixed(4)}
-                        </div>
-                    </div>
+                    {(() => {
+                        const formatVal = (val: number) => `${val.toFixed(4)}%`;
+                        const formatValWithParentheses = (val: number) =>
+                            val < 0 ? `(${val.toFixed(4)}%)` : `${val.toFixed(4)}%`;
+
+                        return (
+                            <div className="bg-zinc-950/80 rounded-xl p-4 font-mono text-[11px] border border-zinc-900 leading-relaxed text-zinc-400 space-y-4">
+                                <div className="text-zinc-500 text-[9px] uppercase font-bold tracking-wider border-b border-zinc-900 pb-1.5 font-sans">
+                                    Detailed Audit Ledger
+                                </div>
+
+                                {/* 1. Excess Return */}
+                                <div className="space-y-1.5 border-b border-zinc-900/60 pb-3">
+                                    <div className="font-bold text-zinc-200">
+                                        1. Excess Return Calculation:
+                                    </div>
+                                    <div className="text-[10px] text-zinc-500">
+                                        Formula: Portfolio - S&P 500 + (Portfolio - Do-Nothing)
+                                    </div>
+                                    <div className="pl-3 border-l-2 border-zinc-800 text-[10px] space-y-1">
+                                        <div className="text-zinc-450 font-bold">
+                                            Base Excess Return Calculation:
+                                        </div>
+                                        <div className="text-zinc-350">
+                                            {formatValWithParentheses(portfolioReturn)} -{' '}
+                                            {formatValWithParentheses(spyReturn)} + (
+                                            {formatValWithParentheses(portfolioReturn)} -{' '}
+                                            {formatValWithParentheses(doNothingReturn)}) ={' '}
+                                            {dailyExcessReturn >= 0 ? '+' : ''}
+                                            {dailyExcessReturn.toFixed(4)}%
+                                        </div>
+                                        <div className="text-zinc-450 font-bold mt-1">
+                                            Scaled Excess Return (x {multiplier.toFixed(2)}):
+                                        </div>
+                                        <div className="text-zinc-350">
+                                            {formatValWithParentheses(portfolioReturn * multiplier)}{' '}
+                                            - {formatValWithParentheses(spyReturn * multiplier)} + (
+                                            {formatValWithParentheses(portfolioReturn * multiplier)}{' '}
+                                            -{' '}
+                                            {formatValWithParentheses(doNothingReturn * multiplier)}
+                                            ) = {dailyExcessReturn >= 0 ? '+' : ''}
+                                            {(dailyExcessReturn * multiplier).toFixed(4)}%
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. Portfolio Return Breakdown */}
+                                <div className="space-y-1.5 border-b border-zinc-900/60 pb-3">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between font-bold text-zinc-200">
+                                        <span>
+                                            2. Portfolio Return (Compounded equal-weighted daily
+                                            returns of agents)
+                                        </span>
+                                        <span>
+                                            {(portfolioReturn * multiplier).toFixed(4)}%{' '}
+                                            <span className="text-[10px] font-normal text-zinc-500">
+                                                (Base: {portfolioReturn.toFixed(4)}%)
+                                            </span>
+                                        </span>
+                                    </div>
+                                    {actualReturns && Object.keys(actualReturns).length > 0 ? (
+                                        <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 space-y-1">
+                                            <div className="font-bold text-[9px] uppercase tracking-wider text-zinc-650">
+                                                Constituent Portfolios (Actual Returns for the
+                                                Week):
+                                            </div>
+                                            {Object.entries(actualReturns).map(
+                                                ([ownerId, retData]) => (
+                                                    <div
+                                                        key={ownerId}
+                                                        className="flex justify-between pl-1"
+                                                    >
+                                                        <span>
+                                                            ● {getAgentDisplayName(ownerId)}
+                                                        </span>
+                                                        <span className="text-zinc-300">
+                                                            {(
+                                                                retData.actualReturn * multiplier
+                                                            ).toFixed(4)}
+                                                            %{' '}
+                                                            <span className="opacity-70 text-[9px] text-zinc-500">
+                                                                (Base:{' '}
+                                                                {formatVal(retData.actualReturn)})
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    ) : isLoadingActuals ? (
+                                        <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 animate-pulse">
+                                            Loading individual actual portfolio returns...
+                                        </div>
+                                    ) : (
+                                        <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-600 italic">
+                                            No constituent portfolio actuals available
+                                            (live/simulated).
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 3. Do-Nothing Return Breakdown */}
+                                <div className="space-y-1.5 border-b border-zinc-900/60 pb-3">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between font-bold text-zinc-200">
+                                        <span>
+                                            3. Do-Nothing Return (Average of starting-asset
+                                            buy-and-hold returns)
+                                        </span>
+                                        <span>
+                                            {(doNothingReturn * multiplier).toFixed(4)}%{' '}
+                                            <span className="text-[10px] font-normal text-zinc-500">
+                                                (Base: {doNothingReturn.toFixed(4)}%)
+                                            </span>
+                                        </span>
+                                    </div>
+                                    {(() => {
+                                        const details = (metrics.portfolio_details || {}) as Record<
+                                            string,
+                                            PortfolioDetail
+                                        >;
+                                        const detailEntries = Object.entries(details);
+                                        if (detailEntries.length === 0) {
+                                            return (
+                                                <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-600 italic">
+                                                    No constituent do-nothing details available
+                                                    (live/simulated).
+                                                </div>
+                                            );
+                                        }
+
+                                        const equationTerms = detailEntries
+                                            .map(([_, d]) => {
+                                                const val = d.do_nothing_return_pct ?? 0;
+                                                return val < 0
+                                                    ? `(${val.toFixed(4)}%)`
+                                                    : `${val.toFixed(4)}%`;
+                                            })
+                                            .join(' + ');
+
+                                        return (
+                                            <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 space-y-1.5">
+                                                <div className="font-bold text-[9px] uppercase tracking-wider text-zinc-650">
+                                                    Base Calculation:
+                                                </div>
+                                                <div className="text-zinc-350">
+                                                    ({equationTerms}) / {detailEntries.length} ={' '}
+                                                    {doNothingReturn.toFixed(4)}%
+                                                </div>
+                                                <div className="font-bold text-[9px] uppercase tracking-wider text-zinc-650 pt-1">
+                                                    Constituent Portfolios (Do-Nothing Returns for
+                                                    the Week):
+                                                </div>
+                                                {detailEntries.map(([pid, detail]) => {
+                                                    const dnReturn =
+                                                        detail.do_nothing_return_pct ?? 0;
+                                                    return (
+                                                        <div
+                                                            key={pid}
+                                                            className="flex justify-between pl-1"
+                                                        >
+                                                            <span>
+                                                                ●{' '}
+                                                                {getAgentDisplayName(
+                                                                    detail.owner_id,
+                                                                )}
+                                                            </span>
+                                                            <span className="text-zinc-300">
+                                                                {(dnReturn * multiplier).toFixed(4)}
+                                                                %{' '}
+                                                                <span className="opacity-70 text-[9px] text-zinc-500">
+                                                                    (Base: {formatVal(dnReturn)})
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+
+                                {/* 4. Opportunity Cost */}
+                                <div className="space-y-1.5 border-b border-zinc-900/60 pb-3">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between font-bold text-zinc-200">
+                                        <span>4. Opportunity Cost</span>
+                                        <span>
+                                            -{(opportunityCost * multiplier).toFixed(4)}%{' '}
+                                            <span className="text-[10px] font-normal text-zinc-500">
+                                                (Base: -{opportunityCost.toFixed(4)}%)
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* 5. Risk Penalty */}
+                                <div className="space-y-1.5 border-b border-zinc-900/60 pb-3">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between font-bold text-zinc-200">
+                                        <span>5. Risk Penalty (Max Drawdown * 0.3)</span>
+                                        <span>
+                                            -{(dailyDrawdownPenalty * multiplier).toFixed(4)}%{' '}
+                                            <span className="text-[10px] font-normal text-zinc-500">
+                                                (Base: -{dailyDrawdownPenalty.toFixed(4)}%)
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="pl-3 border-l-2 border-zinc-800 text-[10px] text-zinc-500 space-y-1">
+                                        <div className="text-zinc-350">
+                                            Base: {maxDrawdown.toFixed(4)}% * 0.3 ={' '}
+                                            {dailyDrawdownPenalty.toFixed(4)}%
+                                        </div>
+                                        <div className="text-zinc-350">
+                                            Scaled: {(maxDrawdown * multiplier).toFixed(4)}% * 0.3 ={' '}
+                                            {(dailyDrawdownPenalty * multiplier).toFixed(4)}%
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 6. Final Score Assembly */}
+                                <div className="space-y-1.5 pt-1">
+                                    <div className="font-bold text-zinc-200">
+                                        6. Final Score Assembly:
+                                    </div>
+                                    <div className="text-[10px] text-zinc-500">
+                                        Formula: score = (Excess Return - Opportunity Cost - Risk
+                                        Penalty)
+                                    </div>
+                                    <div className="pl-3 border-l-2 border-zinc-850 text-[10px]">
+                                        <div className="text-emerald-450 font-bold">
+                                            Base Score Calculation:
+                                        </div>
+                                        <div className="text-zinc-350 font-bold">
+                                            score = {dailyExcessReturn.toFixed(4)}% -{' '}
+                                            {opportunityCost.toFixed(4)}% -{' '}
+                                            {dailyDrawdownPenalty.toFixed(4)}%
+                                        </div>
+                                        <div className="text-zinc-350 font-bold text-xs pt-0.5">
+                                            score = {dailyScore >= 0 ? '+' : ''}
+                                            {dailyScore.toFixed(4)}
+                                        </div>
+
+                                        <div className="text-emerald-450 font-bold mt-2">
+                                            Scaled Day Score Calculation:
+                                        </div>
+                                        <div className="text-zinc-350 font-bold">
+                                            score = {(dailyExcessReturn * multiplier).toFixed(4)}% -{' '}
+                                            {(opportunityCost * multiplier).toFixed(4)}% -{' '}
+                                            {(dailyDrawdownPenalty * multiplier).toFixed(4)}%
+                                        </div>
+                                        <div className="text-emerald-400 font-bold text-xs pt-0.5">
+                                            score = {selectedCp.score >= 0 ? '+' : ''}
+                                            {selectedCp.score.toFixed(4)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
         </Card>

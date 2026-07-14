@@ -1,3 +1,14 @@
+## [2026-07-14] feature | Detailed audit breakdown and portfolio constituents in DailyScoreDisplay
+
+Implemented a highly detailed mathematical breakdown and portfolio constituent view in the daily calculations audit panel inside the Autoresearch ("autoreturn") dashboard:
+- **Mathematical Transparency**: Added precise base math equations for the components (Excess Return, Portfolio Return, Do-Nothing Return, Opportunity Cost, Risk Penalty, and Final Score Assembly) to show exactly how daily scores are calculated from portfolios and benchmark returns.
+- **Portfolio Constituents Breakdown**: Individual portfolios (e.g., Gemini 3.1 Flash Lite, DeepSeek V4 Pro) and their specific base and scaled actual or do-nothing returns are displayed inside the Day Inspection panel.
+- **Async Actual Returns Loading**: Fetches the `portfolio_performance` histories for active portfolios dynamically from the database to compute the actual weekly returns.
+- **TDD Integration Tests**: Created a robust test in `DailyScoreDisplay.test.tsx` mocking Supabase queries and verifying that the formulas, equations, and individual portfolio constituents render correctly.
+- **Formatting and Linting**: Fully verified clean Biome checks and 100% passing tests (329 tests total).
+
+**See**: [DailyScoreDisplay.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx), [DailyScoreDisplay.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.test.tsx)
+
 ## [2026-06-21] refactor | Scoped Portfolio and Sector Predictor Prompt Experiments
 
 Separated the views and prompt experiments for the model portfolios (auto-research) and the market sector predictors to align with vertical design guidelines and prevent mixed metrics.

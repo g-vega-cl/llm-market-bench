@@ -48,7 +48,7 @@ This is executed automatically on a scheduled **GitHub Action workflow** (`.gith
 - **Cadence**: Scheduled to run **every 30 minutes** during US market hours:
   - **Cron Trigger**: `cron: "0,30 14-21 * * 1-5"` (approximately 14:00 - 21:00 UTC / 10:00 AM - 5:00 PM ET, Monday to Friday).
   - Can also be triggered manually via a `workflow_dispatch` event on GitHub.
-- **Ingestion Pipeline Sync**: In addition to the dedicated price updater, the primary daily ingestion and consensus pipeline workflow (`.github/workflows/ingest.yml`) runs at **9:35 AM ET, 11:35 AM ET, and 3:00 PM ET** on trading days, which also refreshes quotes and triggers the same underlying pre-calculations.
+- **Ingestion Pipeline Sync**: In addition to the dedicated price updater, the primary daily ingestion and consensus pipeline workflow (`.github/workflows/ingest.yml`) runs at **9:35 AM ET, 10:35 AM ET (winter timezone offset run), 11:35 AM ET, and 2:00 PM ET** on trading days, which also refreshes quotes and triggers the same underlying pre-calculations.
 - **Cache Persistence**: The calculated statistics (rolling 30-day volatility `stdev_pct`, `today_pct_change`, `price`, `regime_flag`) are saved to the persistent Supabase `market_data_cache` table. This allows the serverless loader (`fetch-today-data.ts`) to retrieve all 23 tickers in a single consolidated database query in less than 5ms.
 
 ## History

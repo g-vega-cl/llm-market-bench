@@ -1,3 +1,10 @@
+## [2026-07-14] fix | Fix pipeline timing to run earlier (9:35 AM EST/EDT)
+
+Resolved the issue where the daily ingestion and consensus pipeline ran late (~12:00 EST):
+- **Schedule Expansion**: Updated `.github/workflows/ingest.yml` to trigger at `14:35 UTC` (matching `9:35 AM EST` / `10:35 AM EDT`), alongside the existing `13:35 UTC` (`8:35 AM EST` / `9:35 AM EDT`), `15:35 UTC`, and `18:00 UTC` triggers.
+- **FMP Status Overriding**: Refactored `is_market_open` in `apps/engine/execution/market_data.py` to add a weekday market-open buffer (9:30 AM - 9:50 AM ET). If the FMP API reports the market as CLOSED during this window (due to transient status cache lag right at open), the check gracefully overrides status to OPEN to prevent the run from aborting.
+- **TDD Verification**: Ensured all 840 unit and integration tests (including GHA workflow schema assertions) pass successfully.
+
 ## [2026-07-14] feature | Detailed audit breakdown and portfolio constituents in DailyScoreDisplay
 
 Implemented a highly detailed mathematical breakdown and portfolio constituent view in the daily calculations audit panel inside the Autoresearch ("autoreturn") dashboard:

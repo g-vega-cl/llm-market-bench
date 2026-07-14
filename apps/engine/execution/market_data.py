@@ -156,6 +156,27 @@ class MarketDataManager:
                             is_open = data[0].get("isMarketOpen", False)
                             logger.info(f"FMP Market Status (NASDAQ): {'OPEN' if is_open else 'CLOSED'}")
 
+                            # Fallback to time-based override for transient API cache lag right at market open
+                            # (9:30 AM - 9:50 AM ET on weekdays)
+                            if not is_open:
+                                try:
+                                    from zoneinfo import ZoneInfo
+
+                                    now_et_check = datetime.datetime.now(ZoneInfo("America/New_York"))
+                                except ImportError:
+                                    now_et_check = datetime.datetime.now()
+
+                                if now_et_check.weekday() < 5:
+                                    market_open_threshold = now_et_check.replace(
+                                        hour=9, minute=30, second=0, microsecond=0
+                                    )
+                                    buffer_end = now_et_check.replace(hour=9, minute=50, second=0, microsecond=0)
+                                    if market_open_threshold <= now_et_check <= buffer_end:
+                                        logger.info(
+                                            "FMP reported CLOSED, but time is within the market-open buffer (9:30-9:50 AM ET) on a weekday. Overriding to OPEN."
+                                        )
+                                        is_open = True
+
                             # Cache the result
                             cache["is_open"] = is_open
                             cache["fetched_at"] = datetime.datetime.now(datetime.UTC)

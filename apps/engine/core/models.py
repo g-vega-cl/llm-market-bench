@@ -277,6 +277,7 @@ class MacroEventsResponse(BaseModel):
         if isinstance(v, str):
             try:
                 import json
+
                 return json.loads(v)
             except Exception:
                 return v
@@ -286,9 +287,7 @@ class MacroEventsResponse(BaseModel):
 class TradingDecisionsResponse(BaseModel):
     """Container for trading decisions generated from batch analysis."""
 
-    decisions: list[DecisionObject] = Field(
-        default_factory=list, description="List of trading decisions generated"
-    )
+    decisions: list[DecisionObject] = Field(default_factory=list, description="List of trading decisions generated")
 
     @field_validator("decisions", mode="before")
     @classmethod
@@ -296,8 +295,8 @@ class TradingDecisionsResponse(BaseModel):
         if isinstance(v, str):
             try:
                 import json
+
                 return json.loads(v)
             except Exception:
                 return v
         return v
-

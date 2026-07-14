@@ -102,12 +102,10 @@ async def test_consolidated_call_counts():
         # OpenAI SDK: openai + deepseek only (minimax moved to Anthropic SDK) - 2 passes per model + 1 newsletter summary call
         assert mock_wrapped_openai.chat.completions.create.call_count == 5
 
-
         # Anthropic SDK: anthropic + minimax (minimax uses Anthropic-compatible endpoint) - 2 passes per model
         assert mock_wrapped_anthropic.chat.completions.create.call_count == 4
 
         assert mock_wrapped_gemini.chat.completions.create.call_count == 2
-
 
 
 if __name__ == "__main__":

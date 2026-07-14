@@ -1,1 +1,101 @@
-[]
+[
+    {
+        "phase": 1,
+        "title": "Ingestion & Normalization",
+        "badge": "Tripled Trigger: US Market Hours",
+        "description": "GitHub Actions fires the pipeline during US market hours (3 times daily) to parse newsletter inputs.",
+        "bullets": [
+            "Newsletter Ingestion: Scrapes newsletters, feeds, and economic data from Gmail and external APIs.",
+            "De-Advertisement: Gemini Flash filters out ads, noise, and sponsor blocks from incoming text."
+        ],
+        "tags": ["FMP Cache", "Gmail API", "Ingestion"],
+        "icon": "📰"
+    },
+    {
+        "phase": 2,
+        "title": "Pre-Analysis Setup",
+        "badge": "Market Hours Check",
+        "description": "Before LLM analysis, the engine validates market status and cleans up stale states.",
+        "bullets": [
+            "FMP-Verified Market Hours: Checks NYSE/NASDAQ status with 5-minute TTL caching to verify they are open.",
+            "Dust Cleanup: Cleans dust positions (<10% equity) before analysis to prevent model confusion.",
+            "Global Macro Snapshot: Quotes 16 key assets for Risk-On/Risk-Off macro baseline.",
+            "Light Context Injection: Injects top-5 trending concepts, anomalies, and historical memories."
+        ],
+        "tags": ["Market Hours", "Macro Tracker", "Dust Cleanup"],
+        "icon": "⚙️"
+    },
+    {
+        "phase": 3,
+        "title": "Macro Event Extraction & Consensus",
+        "badge": "Pass 1: Semantic Grouping",
+        "description": "The first pass of LLM analysis extracts and clusters macroeconomic events.",
+        "bullets": [
+            "Asynchronous Chunk Batching: Splits newsletter content into parallel batches of 20 chunks.",
+            "Semantic Grouping: Embeds and clusters events via pgvector cosine similarity.",
+            "Weighted Consensus: Promotes events based on cumulative model weight and voting.",
+            "Temporal Deduplication: Discards duplicate events within a recency window.",
+            "Relationship Analysis: Maps parent/child relationships in the event graph."
+        ],
+        "tags": ["MacroEventsResponse", "pgvector", "Cosine Clustering"],
+        "icon": "🧩"
+    },
+    {
+        "phase": 4,
+        "title": "Trading Decisions",
+        "badge": "Pass 2: Trading Strategy",
+        "description": "The second pass receives newsletter summaries, portfolio context, and the synthesized macro events.",
+        "bullets": [
+            "Parallel LLM Analysis: OpenAI, Claude, Gemini, DeepSeek, and MiniMax analyze context in parallel to propose trades.",
+            "PromptFactory: Builds semantically identical instructions for model comparability.",
+            "DiscoveryAgent: Loops up to 3 steps to identify investable assets based on macro consensus.",
+            "DeepSeek Thinking Mode: Preserves Chain-of-Thought reasoning for deep analysis."
+        ],
+        "tags": ["TradingDecisionsResponse", "PromptFactory", "DiscoveryAgent"],
+        "icon": "🤖"
+    },
+    {
+        "phase": 5,
+        "title": "The Skeptical Verifier",
+        "badge": "4-Layer Audit",
+        "description": "A dedicated Skeptical Agent intercepts and audits every BUY/SELL signal (except MiniMax).",
+        "bullets": [
+            "4-Layer Enforcement: Strengthens prompts, injects portfolio truth, and verifies tool usage.",
+            "Hard Tool Enforcement: Verifies trading calculations are actual tool calls, not text claims.",
+            "Ownership Pre-Validation: Rejects SELL signals for unheld positions.",
+            "50% Confidence Penalty: Deducts confidence points for signals missing tool calls."
+        ],
+        "tags": ["Skeptical Agent", "RAG Context", "Tool Enforcement"],
+        "icon": "🔍"
+    },
+    {
+        "phase": 6,
+        "title": "Execution & Settlement",
+        "badge": "Reg T Compliance",
+        "description": "Approved trades undergo strict margin, sizing, and pricing checks.",
+        "bullets": [
+            "5.0% Price Banding: Rejects trades if the AI's execution price deviates >5% from the market price.",
+            "Reg T Margin Validation: Performs real-time margin and buying power checks.",
+            "10% Minimum Position Rule: Auto-upsizes buy orders and closes out small holdings.",
+            "Atomic Settlement: Commits changes to the ledger atomically to prevent ledger bugs.",
+            "Two-Phase Attribution Locking: Links decisions to executed trade IDs.",
+            "Alpaca Broker Mirroring: Submits limit orders to Alpaca paper-trading accounts."
+        ],
+        "tags": ["Reg T Margin", "Atomic Settlement", "Two-Phase Attribution"],
+        "icon": "⚖️"
+    },
+    {
+        "phase": 7,
+        "title": "Learning & Feedback",
+        "badge": "Adaptive Feedback Loop",
+        "description": "The pipeline closes the loop by auditing historical results and updating system memories.",
+        "bullets": [
+            "Manager Agent: Runs post-mortems at 5, 14, and 30 days to store lessons learned.",
+            "Contrarian Agent: Checks crowded trades and issues counter-positioning.",
+            "Cause & Effect Analysis: Audits retrospective price impact of AI trading signals.",
+            "Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe."
+        ],
+        "tags": ["Manager Agent", "Contrarian Agent", "Cause & Effect"],
+        "icon": "🧠"
+    }
+]

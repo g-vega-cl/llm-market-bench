@@ -268,7 +268,14 @@ Enforced strict agent model-level scoping across all memory retrieval paths to e
 
 **See**: [[concepts/ingestion]], [[concepts/consensus]], [[entities/engine]], `apps/engine/core/models.py`, `apps/engine/core/llm/prompts.py`, `apps/engine/core/llm/prompt_factory.py`, `apps/engine/core/llm/analysis.py`, `apps/engine/analysis/analyze.py`, `apps/engine/tests/test_decoupled_analysis.py`
 
-## [2026-07-13] wiki | Update pipeline page for decoupled analysis
+## [2026-07-13] wiki | Update How It Works page and compile pipeline to json
 
-Updated [[entities/pipeline]] to reflect the two-pass sequential analysis: macro event extraction → consensus → trading decisions.
+Restored and updated the 7-phase daily pipeline flow inside `wiki/entities/pipeline.md` to match the newly decoupled two-pass sequential architecture (macro consensus-first trading) and satisfy compilation regex constraints.
+- **Wiki Refinement**: Updated [[entities/pipeline]] to define all 7 phases with their respective icons, badges, tags, descriptions, and list bullets mapping the real execution flow.
+- **TDD Test Suite**: Added `test_actual_pipeline_markdown` in [test_compile_how_it_works.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_compile_how_it_works.py) to assert correct extraction of exactly 7 phases from the living wiki document.
+- **JSON Recompilation**: Re-ran the compiler script `compile_how_it_works.py` to regenerate the dynamic `how-it-works.json` config loaded by the frontend.
+- **Validation**: All tests pass successfully (72 test files, 328 tests) with clean Biome check formatting.
+
+**See**: [[entities/pipeline]], [test_compile_how_it_works.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_compile_how_it_works.py), [how-it-works.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/config/how-it-works.json)
+
 

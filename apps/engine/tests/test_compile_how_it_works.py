@@ -53,3 +53,22 @@ Before LLM analysis, the engine prepares context.
     assert p2["description"] == "Before LLM analysis, the engine prepares context."
     assert len(p2["bullets"]) == 2
     assert p2["bullets"][1] == "Portfolio Initialization: Fetches current prices"
+
+
+def test_actual_pipeline_markdown():
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    wiki_path = repo_root / "wiki" / "entities" / "pipeline.md"
+    assert wiki_path.exists()
+    content = wiki_path.read_text(encoding="utf-8")
+    phases = parse_pipeline_markdown(content)
+    assert len(phases) == 7
+    for p in phases:
+        assert p["phase"] in range(1, 8)
+        assert p["title"]
+        assert p["icon"]
+        assert p["badge"]
+        assert p["tags"]
+        assert p["description"]
+        assert p["bullets"]

@@ -92,6 +92,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
                                     newsletters={data.newsletters}
                                     newsSummary={data.marketFeeling?.news_summary}
                                     newsSummaryDate={data.marketFeeling?.formattedDate}
+                                    newsSummaryTime={data.marketFeeling?.formattedTime}
                                 />
                             </Suspense>
                             <Suspense fallback={<CardSkeleton rows={4} />}>

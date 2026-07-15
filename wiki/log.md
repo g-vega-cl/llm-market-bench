@@ -1,3 +1,13 @@
+## [2026-07-15] feature | Add hour of analysis to AI News Synthesis
+
+Added the formatted hour of analysis to the AI News Synthesis card header on the Today page:
+- **Card UI Update**: Updated `<NewsletterFeed>` to accept `newsSummaryTime` as a prop and render it alongside `newsSummaryDate` in the card header, separated by a bullet (e.g., `Tuesday, July 7, 2026 • 10:45 AM ET`).
+- **Dashboard Data Binding**: Modified `<TodayPage>` to pass the pre-computed `formattedTime` field of the `marketFeeling` object to the synthesis card as `newsSummaryTime`.
+- **TDD Tests**: Added unit tests in `NewsletterFeed.test.tsx` verifying combined date and time rendering, and updated `TodayPage.test.tsx` assertions to match the new format.
+- **Verification**: Verified zero linting or typechecking issues and 100% passing tests.
+
+**See**: [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx), [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx), [TodayPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx), [TodayPage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.test.tsx)
+
 ## [2026-07-15] feature | Link Today Dashboard memory cards to Event Chain details page
 
 Linked the "AI Cognitive Synthesis" memory cards on the Today dashboard to their detailed Event Chain pages to improve exploration of AI reasoning narratives:

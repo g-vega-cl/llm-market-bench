@@ -144,7 +144,7 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         expect(await screen.findByText('AI News Synthesis')).toBeInTheDocument();
         expect(screen.getByText('"Overall market feeling is positive."')).toBeInTheDocument();
 
-        // Verify it displays the specific date passed to the synthesis card
-        expect(screen.getByText('Thursday, May 28, 2026')).toBeInTheDocument();
+        // Verify it displays the specific date and time passed to the synthesis card
+        expect(screen.getByText('Thursday, May 28, 2026 • 10:45 AM ET')).toBeInTheDocument();
     });
 });

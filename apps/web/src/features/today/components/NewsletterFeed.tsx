@@ -5,9 +5,15 @@ interface NewsletterFeedProps {
     newsletters: (NewsletterSnapshot & { formattedTime?: string })[];
     newsSummary?: string | null;
     newsSummaryDate?: string | null;
+    newsSummaryTime?: string | null;
 }
 
-export function NewsletterFeed({ newsletters, newsSummary, newsSummaryDate }: NewsletterFeedProps) {
+export function NewsletterFeed({
+    newsletters,
+    newsSummary,
+    newsSummaryDate,
+    newsSummaryTime,
+}: NewsletterFeedProps) {
     if (!newsletters.length && !newsSummary) {
         return (
             <section className="space-y-8 animate-slide-up">
@@ -47,9 +53,11 @@ export function NewsletterFeed({ newsletters, newsSummary, newsSummaryDate }: Ne
                                     AI News Synthesis
                                 </span>
                             </div>
-                            {newsSummaryDate && (
+                            {(newsSummaryDate || newsSummaryTime) && (
                                 <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
                                     {newsSummaryDate}
+                                    {newsSummaryDate && newsSummaryTime ? ' • ' : ''}
+                                    {newsSummaryTime}
                                 </span>
                             )}
                         </div>

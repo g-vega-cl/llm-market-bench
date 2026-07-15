@@ -168,6 +168,54 @@ def _repair_json_string(json_str: str) -> str:
     return json_str
 
 
+def _flatten_messages_for_minimax(messages: list) -> list:
+    """Flatten tool loop conversation history into a single user message for MiniMax-M3.
+
+    This prevents MiniMax-M3 from imitating or repeating previous assistant messages
+    or tool calls from the multi-turn history.
+    """
+    system_msg = None
+    first_user_msg = None
+    history_blocks = []
+
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role")
+        content = m.get("content", "")
+
+        # If content is a list of blocks, flatten it to natural language
+        if isinstance(content, list):
+            flat_content = ""
+            for part in content:
+                if isinstance(part, dict) and "text" in part:
+                    flat_content += part["text"]
+                elif isinstance(part, dict) and "input" in part:
+                    flat_content += f"\n(Executed tool {part['name']} with arguments: {part['input']})"
+                elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
+                    flat_content += f"\n(Tool returned result: {part['content']})"
+            content = flat_content
+
+        if role == "system":
+            system_msg = {"role": "system", "content": str(content)}
+        elif role == "user" and first_user_msg is None:
+            first_user_msg = {"role": "user", "content": str(content)}
+        else:
+            # Collect intermediate assistant thoughts and tool results
+            prefix = "Assistant" if role == "assistant" else "User"
+            history_blocks.append(f"\n[{prefix}]: {str(content)}")
+
+    combined_content = first_user_msg["content"] if first_user_msg else ""
+    if history_blocks:
+        combined_content += "\n\n=== Tool Execution History ===\n" + "\n".join(history_blocks)
+
+    new_messages = []
+    if system_msg:
+        new_messages.append(system_msg)
+    new_messages.append({"role": "user", "content": combined_content})
+    return new_messages
+
+
 def _try_parse_response(data, response_model, max_retries: int = 2):
     """Attempt to parse data into the specified response_model, trying various repair strategies.
 
@@ -460,7 +508,9 @@ async def analyze_with_provider(
                 )
 
         # Anthropic-specific: flatten nested content blocks for Instructor compatibility
-        if provider in ("anthropic", "minimax"):
+        if provider == "minimax":
+            messages = _flatten_messages_for_minimax(messages)
+        elif provider == "anthropic":
             flattened = []
             for m in messages:
                 if isinstance(m, dict):
@@ -471,15 +521,9 @@ async def analyze_with_provider(
                             if isinstance(part, dict) and "text" in part:
                                 flat_content += part["text"]
                             elif isinstance(part, dict) and "input" in part:
-                                if provider == "minimax":
-                                    flat_content += f"\n(Executed tool {part['name']} with arguments: {part['input']})"
-                                else:
-                                    flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                                flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
                             elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
-                                if provider == "minimax":
-                                    flat_content += f"\n(Tool returned result: {part['content']})"
-                                else:
-                                    flat_content += f"\n[Tool Result: {part['content']}]"
+                                flat_content += f"\n[Tool Result: {part['content']}]"
                         content = flat_content
                     flattened.append({"role": m["role"], "content": str(content)})
             messages = flattened
@@ -729,7 +773,9 @@ async def analyze_with_provider(
                             }
                         )
 
-                if provider in ("anthropic", "minimax"):
+                if provider == "minimax":
+                    messages_retry = _flatten_messages_for_minimax(messages_retry)
+                elif provider == "anthropic":
                     flattened = []
                     for m in messages_retry:
                         if isinstance(m, dict):
@@ -740,17 +786,9 @@ async def analyze_with_provider(
                                     if isinstance(part, dict) and "text" in part:
                                         flat_content += part["text"]
                                     elif isinstance(part, dict) and "input" in part:
-                                        if provider == "minimax":
-                                            flat_content += (
-                                                f"\n(Executed tool {part['name']} with arguments: {part['input']})"
-                                            )
-                                        else:
-                                            flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
+                                        flat_content += f"\n[Tool Call: {part['name']}({part['input']})]"
                                     elif isinstance(part, dict) and "content" in part and "tool_use_id" in part:
-                                        if provider == "minimax":
-                                            flat_content += f"\n(Tool returned result: {part['content']})"
-                                        else:
-                                            flat_content += f"\n[Tool Result: {part['content']}]"
+                                        flat_content += f"\n[Tool Result: {part['content']}]"
                                 content = flat_content
                             flattened.append({"role": m["role"], "content": str(content)})
                     messages_retry = flattened

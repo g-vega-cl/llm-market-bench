@@ -239,3 +239,67 @@ async def test_minimax_system_prompt_nudge():
     )
     assert openai_messages[0]["role"] == "system"
     assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" not in openai_messages[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_minimax_history_flattening_to_single_user_message():
+    """Verify that provider='minimax' flattens multi-turn tool history into a single user message."""
+    from core.llm import analysis as analysis_mod
+    from core.models import DecisionsResponse
+
+    decisions_resp = DecisionsResponse(decisions=[], macro_events=[])
+
+    mock_client = MagicMock()
+    mock_client.client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=decisions_resp)
+    mock_factory = MagicMock(return_value=mock_client)
+
+    async def mock_run_tool_loop(client, model, messages, **kwargs):
+        messages.append({
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": "Analyzing the situation."},
+                {"type": "tool_use", "id": "t1", "name": "calculate_buy_quantity", "input": {"ticker": "SMH", "percentage": 14}}
+            ]
+        })
+        messages.append({
+            "role": "user",
+            "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "Success"}]
+        })
+        messages.append({
+            "role": "assistant",
+            "content": [{"type": "text", "text": "Final analysis complete."}]
+        })
+
+    with (
+        patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
+        patch("core.llm.handlers.anthropic.run_tool_loop", new=mock_run_tool_loop),
+    ):
+        await analysis_mod.analyze_with_provider(
+            provider="minimax",
+            model_name="MiniMax-M3",
+            chunks=[{"source_id": "s1", "content": "Test news"}],
+            context="",
+            portfolio_context="Cash: $10k",
+            current_day_info="",
+            calendar_knowledge="",
+            macro_context="",
+        )
+
+        assert mock_client.chat.completions.create.called
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+
+        # Verify that system prompt is extracted correctly
+        assert "=== SYSTEM PROTOCOL: MANDATORY TOOL USE FOR MINIMAX ===" in call_kwargs["system"]
+
+        # Verify messages list is flattened to exactly 1 user message
+        flat_messages = call_kwargs["messages"]
+        assert len(flat_messages) == 1
+        user_msg = flat_messages[0]
+        assert user_msg["role"] == "user"
+
+        # Verify natural language representation of tool use and tool result is present
+        assert "(Executed tool calculate_buy_quantity with arguments: {'ticker': 'SMH', 'percentage': 14})" in user_msg["content"]
+        assert "(Tool returned result: Success)" in user_msg["content"]
+        assert "[Assistant]: Final analysis complete." in user_msg["content"]
+

@@ -1,3 +1,13 @@
+## [2026-07-15] fix | Flatten MiniMax-M3 tool loop history to single user message
+
+Resolved schema validation failures where MiniMax-M3 copied/imitated its previous assistant messages (or tool call syntax) from the multi-turn conversation history during structured JSON extraction:
+- **Conversation Flattening**: Added `_flatten_messages_for_minimax()` helper function in `apps/engine/core/llm/analysis.py` to completely collapse multi-turn tool loops into a single system message and a single user message containing the initial user prompt and concatenated tool calls/results.
+- **Handler Integration**: Integrated the flattening helper into both the initial Instructor extraction pass and the subsequent schema error retry loops for the `minimax` provider.
+- **TDD Tests**: Added `test_minimax_history_flattening_to_single_user_message` in `apps/engine/tests/test_minimax_anthropic_sdk.py` to verify that multi-turn history compiles to exactly one user message containing all executed tools and outputs.
+- **Wiki Documentation**: Updated [[concepts/model-anomalies]] to document the mock imitation issue and the new single-user message flattening mitigation.
+
+**See**: [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_minimax_anthropic_sdk.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_anthropic_sdk.py), [[concepts/model-anomalies]]
+
 ## [2026-07-15] feature | Add hour of analysis to AI News Synthesis
 
 Added the formatted hour of analysis to the AI News Synthesis card header on the Today page:

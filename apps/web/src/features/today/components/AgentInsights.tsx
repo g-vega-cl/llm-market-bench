@@ -1,5 +1,6 @@
 import type { Memory } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Link } from '@tanstack/react-router';
 import { getAgentInfo } from '../lib/agent-info';
 
 interface AgentInsightsProps {
@@ -36,166 +37,229 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 {consensus.map((m, idx) => {
                     const agents = extractAgents(m);
                     return (
-                        <Card
+                        <Link
                             key={m.id}
-                            isHoverable
-                            padding="lg"
-                            className="relative bg-gradient-to-br from-deep-purple-50/50 via-electric-blue-50/30 to-transparent dark:from-deep-purple-950/20 dark:via-electric-blue-950/10 border-l-4 border-l-deep-purple-500 hover:shadow-deep-purple-500/10 animate-slide-up sm:p-8"
-                            style={{ animationDelay: `${idx * 100}ms` }}
+                            to="/memories/chain/$memoryId"
+                            params={{ memoryId: m.id }}
+                            className="block group/card-link no-underline text-inherit cursor-pointer hover:no-underline"
                         >
-                            {/* Glow Effect on Hover */}
-                            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-deep-purple-500/0 via-transparent to-electric-blue-500/0 group-hover:from-deep-purple-500/5 group-hover:to-electric-blue-500/5 transition-all duration-500 pointer-events-none" />
+                            <Card
+                                isHoverable
+                                padding="lg"
+                                className="relative bg-gradient-to-br from-deep-purple-50/50 via-electric-blue-50/30 to-transparent dark:from-deep-purple-950/20 dark:via-electric-blue-950/10 border-l-4 border-l-deep-purple-500 hover:shadow-deep-purple-500/10 animate-slide-up sm:p-8"
+                                style={{ animationDelay: `${idx * 100}ms` }}
+                            >
+                                {/* Glow Effect on Hover */}
+                                <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-deep-purple-500/0 via-transparent to-electric-blue-500/0 group-hover:from-deep-purple-500/5 group-hover:to-electric-blue-500/5 transition-all duration-500 pointer-events-none" />
 
-                            {/* Agent Participation */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge severity="medium" variant="soft" radius="lg" size="sm">
-                                        Market Consensus
-                                    </Badge>
-                                    {agents.length > 0 && (
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                            {agents.slice(0, 4).map((agent, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={`w-7 h-7 rounded-full ${agent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900 shadow-md hover:scale-110 transition-transform cursor-help`}
-                                                    title={agent.name}
-                                                >
-                                                    {agent.emoji}
-                                                </div>
-                                            ))}
-                                            {agents.length > 4 && (
-                                                <div className="w-7 h-7 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[9px] font-bold text-zinc-600 dark:text-zinc-300 border-2 border-white dark:border-zinc-900 shadow-md">
-                                                    +{agents.length - 4}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                    {m.formattedDateTime ? m.formattedDateTime : 'Pending'}
-                                </span>
-                            </div>
-
-                            {/* Content */}
-                            <p className="text-lg text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-4 relative">
-                                <span className="absolute -top-3 -left-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
-                                    "
-                                </span>
-                                {m.content}
-                                <span className="absolute -bottom-6 -right-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
-                                    "
-                                </span>
-                            </p>
-
-                            {/* Metadata */}
-                            {m.metadata?.importance_score && (
-                                <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-deep-purple-500 rounded-full shadow-lg" />
-                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                            Importance: {m.metadata.importance_score}/10
-                                        </span>
-                                    </div>
-                                    {m.metadata?.tickers && m.metadata.tickers.length > 0 && (
-                                        <div className="flex gap-2 flex-wrap">
-                                            {m.metadata.tickers
-                                                .slice(0, 5)
-                                                .map((ticker: string, i: number) => (
-                                                    <span
+                                {/* Agent Participation */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge
+                                            severity="medium"
+                                            variant="soft"
+                                            radius="lg"
+                                            size="sm"
+                                        >
+                                            Market Consensus
+                                        </Badge>
+                                        {agents.length > 0 && (
+                                            <div className="flex items-center gap-1 flex-wrap">
+                                                {agents.slice(0, 4).map((agent, i) => (
+                                                    <div
                                                         key={i}
-                                                        className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded-md uppercase tracking-wide border border-zinc-200 dark:border-zinc-700 hover:border-deep-purple-400 transition-colors"
+                                                        className={`w-7 h-7 rounded-full ${agent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900 shadow-md hover:scale-110 transition-transform cursor-help`}
+                                                        title={agent.name}
                                                     >
-                                                        {ticker}
-                                                    </span>
+                                                        {agent.emoji}
+                                                    </div>
                                                 ))}
-                                        </div>
-                                    )}
+                                                {agents.length > 4 && (
+                                                    <div className="w-7 h-7 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[9px] font-bold text-zinc-600 dark:text-zinc-300 border-2 border-white dark:border-zinc-900 shadow-md">
+                                                        +{agents.length - 4}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                        {m.formattedDateTime ? m.formattedDateTime : 'Pending'}
+                                    </span>
                                 </div>
-                            )}
-                        </Card>
+
+                                {/* Content */}
+                                <p className="text-lg text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic border-l-4 border-deep-purple-300 dark:border-deep-purple-700 pl-4 relative">
+                                    <span className="absolute -top-3 -left-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
+                                        "
+                                    </span>
+                                    {m.content}
+                                    <span className="absolute -bottom-6 -right-2 text-4xl text-deep-purple-200 dark:text-deep-purple-800">
+                                        "
+                                    </span>
+                                </p>
+
+                                {/* Footer: Metadata & Link */}
+                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex-wrap gap-2">
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                        {m.metadata?.importance_score && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 bg-deep-purple-500 rounded-full shadow-lg" />
+                                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                    Importance: {m.metadata.importance_score}/10
+                                                </span>
+                                            </div>
+                                        )}
+                                        {m.metadata?.tickers && m.metadata.tickers.length > 0 && (
+                                            <div className="flex gap-2 flex-wrap">
+                                                {m.metadata.tickers
+                                                    .slice(0, 5)
+                                                    .map((ticker: string, i: number) => (
+                                                        <span
+                                                            key={i}
+                                                            className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold rounded-md uppercase tracking-wide border border-zinc-200 dark:border-zinc-700 group-hover/card-link:border-deep-purple-400 transition-colors"
+                                                        >
+                                                            {ticker}
+                                                        </span>
+                                                    ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-xs font-semibold text-deep-purple-600 dark:text-deep-purple-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                        View event chain{' '}
+                                        <span className="inline-block transition-transform group-hover/card-link:translate-x-0.5">
+                                            →
+                                        </span>
+                                    </span>
+                                </div>
+                            </Card>
+                        </Link>
                     );
                 })}
 
                 {/* Government Incentives */}
                 {incentives.map((m, idx) => (
-                    <Card
+                    <Link
                         key={m.id}
-                        isHoverable
-                        padding="lg"
-                        className="bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 hover:shadow-emerald-500/10 animate-slide-up sm:p-8"
-                        style={{ animationDelay: `${(consensus.length + idx) * 100}ms` }}
+                        to="/memories/chain/$memoryId"
+                        params={{ memoryId: m.id }}
+                        className="block group/card-link no-underline text-inherit cursor-pointer hover:no-underline"
                     >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge colorScheme="success" variant="soft" radius="lg" size="sm">
-                                    Government Incentive
-                                </Badge>
-                                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
-                                    <span>💰</span> Policy Alert
+                        <Card
+                            isHoverable
+                            padding="lg"
+                            className="bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 hover:shadow-emerald-500/10 animate-slide-up sm:p-8"
+                            style={{ animationDelay: `${(consensus.length + idx) * 100}ms` }}
+                        >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge
+                                        colorScheme="success"
+                                        variant="soft"
+                                        radius="lg"
+                                        size="sm"
+                                    >
+                                        Government Incentive
+                                    </Badge>
+                                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1">
+                                        <span>💰</span> Policy Alert
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                    {m.formattedShortDate ? m.formattedShortDate : 'Pending'}
                                 </span>
                             </div>
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                {m.formattedShortDate ? m.formattedShortDate : 'Pending'}
-                            </span>
-                        </div>
-                        <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">
-                            {m.content}
-                        </p>
-                        {m.metadata?.budget && (
-                            <div className="mt-4 flex items-center gap-2">
-                                <span className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider rounded-lg border border-emerald-200 dark:border-emerald-800">
-                                    Budget: {m.metadata.budget}
+                            <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">
+                                {m.content}
+                            </p>
+
+                            {/* Footer: Budget & Link */}
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex-wrap gap-2">
+                                <div>
+                                    {m.metadata?.budget && (
+                                        <span className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                            Budget: {m.metadata.budget}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                    View event chain{' '}
+                                    <span className="inline-block transition-transform group-hover/card-link:translate-x-0.5">
+                                        →
+                                    </span>
                                 </span>
                             </div>
-                        )}
-                    </Card>
+                        </Card>
+                    </Link>
                 ))}
 
                 {/* Lessons Learned */}
                 {lessons.map((m, idx) => (
-                    <Card
+                    <Link
                         key={m.id}
-                        isHoverable
-                        padding="lg"
-                        className="bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 hover:shadow-amber-500/10 animate-slide-up sm:p-8"
-                        style={{
-                            animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms`,
-                        }}
+                        to="/memories/chain/$memoryId"
+                        params={{ memoryId: m.id }}
+                        className="block group/card-link no-underline text-inherit cursor-pointer hover:no-underline"
                     >
-                        {(() => {
-                            const lessonAgent = getAgentInfo(m.metadata?.model_name);
-                            return (
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <Badge severity="high" variant="soft" radius="lg" size="sm">
-                                            Lesson Learned
-                                        </Badge>
-                                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
-                                            <span>📝</span> Post-Analysis
-                                        </span>
-                                        {lessonAgent.name !== 'Unknown' && (
-                                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                                                {lessonAgent.name}
+                        <Card
+                            isHoverable
+                            padding="lg"
+                            className="bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 hover:shadow-amber-500/10 animate-slide-up sm:p-8"
+                            style={{
+                                animationDelay: `${(consensus.length + incentives.length + idx) * 100}ms`,
+                            }}
+                        >
+                            {(() => {
+                                const lessonAgent = getAgentInfo(m.metadata?.model_name);
+                                return (
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <Badge
+                                                severity="high"
+                                                variant="soft"
+                                                radius="lg"
+                                                size="sm"
+                                            >
+                                                Lesson Learned
+                                            </Badge>
+                                            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                                <span>📝</span> Post-Analysis
                                             </span>
-                                        )}
+                                            {lessonAgent.name !== 'Unknown' && (
+                                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                                                    {lessonAgent.name}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                                            {m.formattedShortDate
+                                                ? m.formattedShortDate
+                                                : 'Pending'}
+                                        </span>
                                     </div>
-                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
-                                        {m.formattedShortDate ? m.formattedShortDate : 'Pending'}
-                                    </span>
+                                );
+                            })()}
+                            <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                "{m.content}"
+                            </p>
+
+                            {/* Footer: Related Trade & Link */}
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex-wrap gap-2">
+                                <div>
+                                    {m.metadata?.related_trade && (
+                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                            Related Trade: {m.metadata.related_trade}
+                                        </span>
+                                    )}
                                 </div>
-                            );
-                        })()}
-                        <p className="text-base text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed italic bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
-                            "{m.content}"
-                        </p>
-                        {m.metadata?.related_trade && (
-                            <div className="mt-4 flex items-center gap-2">
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    Related Trade: {m.metadata.related_trade}
+                                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 group-hover/card-link:translate-x-0.5 transition-transform">
+                                    View event chain{' '}
+                                    <span className="inline-block transition-transform group-hover/card-link:translate-x-0.5">
+                                        →
+                                    </span>
                                 </span>
                             </div>
-                        )}
-                    </Card>
+                        </Card>
+                    </Link>
                 ))}
             </div>
         </section>

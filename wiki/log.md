@@ -1,3 +1,13 @@
+## [2026-07-15] feature | Link Today Dashboard memory cards to Event Chain details page
+
+Linked the "AI Cognitive Synthesis" memory cards on the Today dashboard to their detailed Event Chain pages to improve exploration of AI reasoning narratives:
+- **Interactive Routing**: Wrapped the Market Consensus, Government Incentives, and Lessons Learned memory cards inside standard TanStack Router `<Link>` wrappers to allow full-card click navigations directly to `/memories/chain/$memoryId`.
+- **View Chain Footers**: Appended a persistent `"View event chain →"` text button inside each card variant, styled matching their section's specific color schemes (deep-purple, emerald, and amber) with subtle horizontal hover translations.
+- **TDD Tests**: Added comprehensive unit test coverage in `AgentInsights.test.tsx` verifying that cards rendered for `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, and `LESSON_LEARNED`/`POST_MORTEM` memory types correctly resolve to the correct chain dynamic route.
+- **Linting & Verification**: Ensured 100% passing tests and formatted clean Biome standards across the web workspace.
+
+**See**: [[entities/web-app]], [AgentInsights.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/AgentInsights.tsx), [AgentInsights.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/AgentInsights.test.tsx)
+
 ## [2026-07-14] fix | Fix pipeline timing to run earlier (9:35 AM EST/EDT)
 
 Resolved the issue where the daily ingestion and consensus pipeline ran late (~12:00 EST):

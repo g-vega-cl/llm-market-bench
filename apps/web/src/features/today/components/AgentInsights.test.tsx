@@ -1,7 +1,32 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MODELS } from '~/config/models';
 import { AgentInsights } from './AgentInsights';
+
+vi.mock('@tanstack/react-router', async () => {
+    const actual = await vi.importActual('@tanstack/react-router');
+    return {
+        ...actual,
+        Link: ({
+            children,
+            to,
+            params,
+            ...props
+        }: {
+            children: React.ReactNode;
+            to: string;
+            params?: { memoryId?: string };
+            [key: string]: unknown;
+        }) => {
+            const href = to.replace('$memoryId', params?.memoryId || '');
+            return (
+                <a href={href} {...props}>
+                    {children}
+                </a>
+            );
+        },
+    };
+});
 
 describe('AgentInsights', () => {
     const createLessonMemory = (modelName?: string, id = '1') => ({
@@ -16,6 +41,39 @@ describe('AgentInsights', () => {
         importance_score: null,
         target_date: null,
         metadata: modelName ? { model_name: modelName } : {},
+    });
+
+    const createConsensusMemory = (id = '1') => ({
+        id,
+        content: 'Test consensus event',
+        created_at: '2025-04-01T12:00:00Z',
+        memory_type: 'MARKET_EVENT',
+        status: 'ACTIVE',
+        parent_id: null,
+        relationship_type: null,
+        relevance_score: null,
+        importance_score: 8,
+        target_date: null,
+        metadata: {
+            participating_agents: ['gemini-2-pro'],
+            tickers: ['NVDA'],
+        },
+    });
+
+    const createIncentiveMemory = (id = '2') => ({
+        id,
+        content: 'Test incentive event',
+        created_at: '2025-04-01T12:00:00Z',
+        memory_type: 'GOVERNMENT_INCENTIVE',
+        status: 'ACTIVE',
+        parent_id: null,
+        relationship_type: null,
+        relevance_score: null,
+        importance_score: null,
+        target_date: null,
+        metadata: {
+            budget: '$10B',
+        },
     });
 
     it('renders agent name text for known Gemini model', () => {
@@ -89,5 +147,26 @@ describe('AgentInsights', () => {
         };
         render(<AgentInsights memories={[irrelevantMemory]} />);
         expect(screen.getByText('No insights synthesized yet today')).toBeInTheDocument();
+    });
+
+    it('links Consensus memory card to its event chain page', () => {
+        render(<AgentInsights memories={[createConsensusMemory('consensus-123')]} />);
+        const link = screen.getByRole('link');
+        expect(link).toHaveAttribute('href', '/memories/chain/consensus-123');
+        expect(screen.getByText(/View event chain/i)).toBeInTheDocument();
+    });
+
+    it('links Government Incentive memory card to its event chain page', () => {
+        render(<AgentInsights memories={[createIncentiveMemory('incentive-123')]} />);
+        const link = screen.getByRole('link');
+        expect(link).toHaveAttribute('href', '/memories/chain/incentive-123');
+        expect(screen.getByText(/View event chain/i)).toBeInTheDocument();
+    });
+
+    it('links Lesson Learned memory card to its event chain page', () => {
+        render(<AgentInsights memories={[createLessonMemory(undefined, 'lesson-123')]} />);
+        const link = screen.getByRole('link');
+        expect(link).toHaveAttribute('href', '/memories/chain/lesson-123');
+        expect(screen.getByText(/View event chain/i)).toBeInTheDocument();
     });
 });

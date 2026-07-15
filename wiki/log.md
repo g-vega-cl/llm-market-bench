@@ -1,80 +1,3 @@
-## [2026-07-15] fix | Flatten MiniMax-M3 tool loop history to single user message
-
-Resolved schema validation failures where MiniMax-M3 copied/imitated its previous assistant messages (or tool call syntax) from the multi-turn conversation history during structured JSON extraction:
-- **Conversation Flattening**: Added `_flatten_messages_for_minimax()` helper function in `apps/engine/core/llm/analysis.py` to completely collapse multi-turn tool loops into a single system message and a single user message containing the initial user prompt and concatenated tool calls/results.
-- **Handler Integration**: Integrated the flattening helper into both the initial Instructor extraction pass and the subsequent schema error retry loops for the `minimax` provider.
-- **TDD Tests**: Added `test_minimax_history_flattening_to_single_user_message` in `apps/engine/tests/test_minimax_anthropic_sdk.py` to verify that multi-turn history compiles to exactly one user message containing all executed tools and outputs.
-- **Wiki Documentation**: Updated [[concepts/model-anomalies]] to document the mock imitation issue and the new single-user message flattening mitigation.
-
-**See**: [analysis.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/analysis.py), [test_minimax_anthropic_sdk.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_minimax_anthropic_sdk.py), [[concepts/model-anomalies]]
-
-## [2026-07-15] feature | Add hour of analysis to AI News Synthesis
-
-Added the formatted hour of analysis to the AI News Synthesis card header on the Today page:
-- **Card UI Update**: Updated `<NewsletterFeed>` to accept `newsSummaryTime` as a prop and render it alongside `newsSummaryDate` in the card header, separated by a bullet (e.g., `Tuesday, July 7, 2026 • 10:45 AM ET`).
-- **Dashboard Data Binding**: Modified `<TodayPage>` to pass the pre-computed `formattedTime` field of the `marketFeeling` object to the synthesis card as `newsSummaryTime`.
-- **TDD Tests**: Added unit tests in `NewsletterFeed.test.tsx` verifying combined date and time rendering, and updated `TodayPage.test.tsx` assertions to match the new format.
-- **Verification**: Verified zero linting or typechecking issues and 100% passing tests.
-
-**See**: [NewsletterFeed.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.tsx), [NewsletterFeed.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/NewsletterFeed.test.tsx), [TodayPage.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.tsx), [TodayPage.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/pages/TodayPage.test.tsx)
-
-## [2026-07-15] feature | Link Today Dashboard memory cards to Event Chain details page
-
-Linked the "AI Cognitive Synthesis" memory cards on the Today dashboard to their detailed Event Chain pages to improve exploration of AI reasoning narratives:
-- **Interactive Routing**: Wrapped the Market Consensus, Government Incentives, and Lessons Learned memory cards inside standard TanStack Router `<Link>` wrappers to allow full-card click navigations directly to `/memories/chain/$memoryId`.
-- **View Chain Footers**: Appended a persistent `"View event chain →"` text button inside each card variant, styled matching their section's specific color schemes (deep-purple, emerald, and amber) with subtle horizontal hover translations.
-- **TDD Tests**: Added comprehensive unit test coverage in `AgentInsights.test.tsx` verifying that cards rendered for `MARKET_EVENT`, `GOVERNMENT_INCENTIVE`, and `LESSON_LEARNED`/`POST_MORTEM` memory types correctly resolve to the correct chain dynamic route.
-- **Linting & Verification**: Ensured 100% passing tests and formatted clean Biome standards across the web workspace.
-
-**See**: [[entities/web-app]], [AgentInsights.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/AgentInsights.tsx), [AgentInsights.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/AgentInsights.test.tsx)
-
-## [2026-07-14] fix | Fix pipeline timing to run earlier (9:35 AM EST/EDT)
-
-Resolved the issue where the daily ingestion and consensus pipeline ran late (~12:00 EST):
-- **Schedule Expansion**: Updated `.github/workflows/ingest.yml` to trigger at `14:35 UTC` (matching `9:35 AM EST` / `10:35 AM EDT`), alongside the existing `13:35 UTC` (`8:35 AM EST` / `9:35 AM EDT`), `15:35 UTC`, and `18:00 UTC` triggers.
-- **FMP Status Overriding**: Refactored `is_market_open` in `apps/engine/execution/market_data.py` to add a weekday market-open buffer (9:30 AM - 9:50 AM ET). If the FMP API reports the market as CLOSED during this window (due to transient status cache lag right at open), the check gracefully overrides status to OPEN to prevent the run from aborting.
-- **TDD Verification**: Ensured all 840 unit and integration tests (including GHA workflow schema assertions) pass successfully.
-
-## [2026-07-14] feature | Detailed audit breakdown and portfolio constituents in DailyScoreDisplay
-
-Implemented a highly detailed mathematical breakdown and portfolio constituent view in the daily calculations audit panel inside the Autoresearch ("autoreturn") dashboard:
-- **Mathematical Transparency**: Added precise base math equations for the components (Excess Return, Portfolio Return, Do-Nothing Return, Opportunity Cost, Risk Penalty, and Final Score Assembly) to show exactly how daily scores are calculated from portfolios and benchmark returns.
-- **Portfolio Constituents Breakdown**: Individual portfolios (e.g., Gemini 3.1 Flash Lite, DeepSeek V4 Pro) and their specific base and scaled actual or do-nothing returns are displayed inside the Day Inspection panel.
-- **Async Actual Returns Loading**: Fetches the `portfolio_performance` histories for active portfolios dynamically from the database to compute the actual weekly returns.
-- **TDD Integration Tests**: Created a robust test in `DailyScoreDisplay.test.tsx` mocking Supabase queries and verifying that the formulas, equations, and individual portfolio constituents render correctly.
-- **Formatting and Linting**: Fully verified clean Biome checks and 100% passing tests (329 tests total).
-
-**See**: [DailyScoreDisplay.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx), [DailyScoreDisplay.test.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.test.tsx)
-
-## [2026-06-21] refactor | Scoped Portfolio and Sector Predictor Prompt Experiments
-
-Separated the views and prompt experiments for the model portfolios (auto-research) and the market sector predictors to align with vertical design guidelines and prevent mixed metrics.
-
-**Backend & API Changes**:
-- **Portfolio Autoresearch API**: Restricted `fetchExperiments` to query only `CORE_ANALYSIS_SYSTEM_PROMPT` variants, keeping the Auto-Research page focused on portfolio prompts.
-- **Predictor Experiments API**: Introduced `fetchPredictorExperiments` under `fetch-predictions.ts` to retrieve `SECTOR_PREDICTOR_PROMPT` prompt variants.
-- **Route Loader**: Modified the `/ai-predictions` route to load both predictions and predictor experiments.
-
-**Frontend UI Changes**:
-- **Predictions Page Tabs**: Built a sleek, glassmorphic tabbed layout on the AI Sector Predictions Arena page, splitting it into **Arena Dashboard** (forecasting track record) and **Prompt Auto-Research** (prompt evolution).
-- **Prompt Auto-Research Dashboard**: Displayed all-time baseline scores, active prompt variant details, scoring formula breakdowns, and the history of `SECTOR_PREDICTOR_PROMPT` mutations.
-- **Unified Diff Inspection**: Reused the Longest Common Subsequence line diff algorithm (`diffLines`) to render prompt modifications and collapsible changes-only diffs.
-
-**TDD & Linting**:
-- **API Test Suite**: Authored TDD tests verifying correct table query routing and scoping filters for both APIs.
-- **Strict Format Enforcement**: Verified 100% passing test suite (274 tests) and clean Biome formatting/linter conformance.
-
-**See**: [[entities/sector-predictor-arena]], [[entities/autoresearch]]
-
-## [2026-06-21] bugfix | DeepSeek Verifier Response Model Schema Crash
-
-Resolved a critical verification extraction crash for non-Gemini models (specifically DeepSeek) in `verify_trading_decision`:
-- **Problem**: When executing `verify_trading_decision`, the engine passed `response_model = list[VerificationResult]` to support Gemini's multi-block tool calling behavior. However, DeepSeek runs in Markdown JSON mode (`mode=instructor.Mode.MD_JSON`). Under `MD_JSON` mode, `instructor` attempts to retrieve the JSON schema by calling `.model_json_schema()` on the `response_model` directly, which threw an `AttributeError` for the native python `list` class. This crashed the verifier and resulted in all DeepSeek trades defaulting to `REJECTED_VERIFICATION`.
-- **Fix**: Modified [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py) to dynamically resolve the `response_model` (uses `list[VerificationResult]` only when `provider == "gemini"` and `VerificationResult` directly for other models). The output is flattened using `ensure_list` before downstream evaluation.
-- **TDD Safety Net**: Authored a mock-network test `test_verification_deepseek_schema_list_vs_single` in [test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py) to verify schema parsing and prevent future regressions.
-
-**See**: [[concepts/tool-enforcement]], [verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/verification.py), [test_verification.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_verification.py)
-
 ## [2026-06-21] bugfix | FMP retry/timeout, MiniMax token limit, DiscoveryAgent ticker validation
 
 Six bug fixes addressing reliability issues found in production logs:
@@ -326,8 +249,6 @@ Restored and updated the 7-phase daily pipeline flow inside `wiki/entities/pipel
 
 **See**: [[entities/pipeline]], [test_compile_how_it_works.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_compile_how_it_works.py), [how-it-works.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/config/how-it-works.json)
 
-
-
 ## [2026-07-14] optimization | Pipeline Concurrency and Consensus Double-Invocation fix
 
 Optimized Gmail Ingestion, stock screening, scenario asset discovery, and database cache checking to run concurrently, and resolved the consensus double-invocation bug.
@@ -339,3 +260,8 @@ Optimized Gmail Ingestion, stock screening, scenario asset discovery, and databa
 - **TDD Verification**: Created `test_pipeline_optimizations.py` to assert parallel execution timing limits, database query batching correctness, and consensus invocation counts. All tests pass successfully.
 
 **See**: [newsletter.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/ingest/newsletter.py), [market_data.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/execution/market_data.py), [tools.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/core/llm/tools.py), [consensus.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/analysis/consensus.py), [main.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/main.py), [test_pipeline_optimizations.py](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/engine/tests/test_pipeline_optimizations.py)
+
+## [2026-07-15] enhancement | Add Pydantic field validators for LLM output resilience
+
+Added `normalize_signal`, `normalize_catalyst_type`, `normalize_catalyst_duration` validators to `DecisionObject`; `normalize_impact`, `normalize_catalyst_type` to `MacroEvent`; and `normalize_status` to `VerificationResult`. These gently coerce non‑canonical or mis‑cased values (e.g., `"buy"` → `"BUY"`, `"short term"` → `"SHORT_TERM"`, `"rejected"` → `"REJECTED_VERIFICATION"`) and map unrecognized catalyst types to safe fallbacks (`OTHER` for decisions, `MACRO` for macro events). New test suite `test_model_resilience.py` validates the resilience behaviour. This hardens the pipeline against LLM output formatting drift.
+

@@ -85,6 +85,74 @@ class DecisionObject(BaseModel):
         """Normalize ticker symbols to uppercase."""
         return v.upper()
 
+    @field_validator("signal", mode="before")
+    @classmethod
+    def normalize_signal(cls, v: str) -> str:
+        """Normalize signal casing and whitespace."""
+        if isinstance(v, str):
+            v_upper = v.upper().strip()
+            if v_upper in {"BUY", "SELL", "HOLD"}:
+                return v_upper
+        return v
+
+    @field_validator("catalyst_type", mode="before")
+    @classmethod
+    def normalize_catalyst_type(cls, v: str) -> str:
+        """Gracefully handle custom or mismatched catalyst types by mapping or defaulting to OTHER."""
+        if not isinstance(v, str):
+            return v
+        v_upper = v.upper().strip()
+        allowed = {
+            "MACRO",
+            "EARNINGS",
+            "M_A",
+            "PRODUCT",
+            "REGULATORY",
+            "EVENT",
+            "INNOVATION",
+            "TECHNICAL",
+            "UNCROWDED_TRADE",
+            "OTHER",
+        }
+        if v_upper in allowed:
+            return v_upper
+
+        # Common variations mapping
+        mapping = {
+            "MERGERS": "M_A",
+            "ACQUISITIONS": "M_A",
+            "MERGER": "M_A",
+            "ACQUISITION": "M_A",
+            "M&A": "M_A",
+            "MACRO_ECONOMICS": "MACRO",
+            "MACROECONOMIC": "MACRO",
+            "POLITICS": "MACRO",
+            "GEOPOLITICS": "MACRO",
+            "REGULATION": "REGULATORY",
+            "LEGISLATION": "REGULATORY",
+            "EARNING": "EARNINGS",
+            "PRODUCT_LAUNCH": "PRODUCT",
+        }
+        return mapping.get(v_upper, "OTHER")
+
+    @field_validator("catalyst_duration", mode="before")
+    @classmethod
+    def normalize_catalyst_duration(cls, v: str) -> str:
+        """Gracefully handle duration formatting variations, falling back to SHORT_TERM."""
+        if not isinstance(v, str):
+            return v
+        v_upper = v.upper().replace("-", "_").replace(" ", "_").strip()
+        allowed = {"INTRADAY", "SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"}
+        if v_upper in allowed:
+            return v_upper
+
+        mapping = {
+            "SHORT": "SHORT_TERM",
+            "MEDIUM": "MEDIUM_TERM",
+            "LONG": "LONG_TERM",
+        }
+        return mapping.get(v_upper, "SHORT_TERM")
+
 
 class MacroEvent(BaseModel):
     """Represents a broad market theme or event identified by LLM analysis.
@@ -136,6 +204,56 @@ class MacroEvent(BaseModel):
     source_id: str = Field("unknown", description="ID of the source newsletter chunk")
     model_provider: str | None = Field(None)
     model_name: str | None = Field(None)
+
+    @field_validator("impact", mode="before")
+    @classmethod
+    def normalize_impact(cls, v: str) -> str:
+        """Normalize impact casing and whitespace."""
+        if isinstance(v, str):
+            v_upper = v.upper().strip()
+            if v_upper in {"BULLISH", "BEARISH", "NEUTRAL"}:
+                return v_upper
+        return v
+
+    @field_validator("catalyst_type", mode="before")
+    @classmethod
+    def normalize_catalyst_type(cls, v: str) -> str:
+        """Gracefully handle custom or mismatched catalyst types for MacroEvent, defaulting to MACRO."""
+        if not isinstance(v, str):
+            return v
+        v_upper = v.upper().strip()
+        allowed = {
+            "MACRO",
+            "EARNINGS",
+            "M_A",
+            "PRODUCT",
+            "REGULATORY",
+            "EVENT",
+            "INNOVATION",
+            "TECHNICAL",
+            "UNCROWDED_TRADE",
+            "OTHER",
+        }
+        if v_upper in allowed:
+            return v_upper
+
+        # Common variations mapping
+        mapping = {
+            "MERGERS": "M_A",
+            "ACQUISITIONS": "M_A",
+            "MERGER": "M_A",
+            "ACQUISITION": "M_A",
+            "M&A": "M_A",
+            "MACRO_ECONOMICS": "MACRO",
+            "MACROECONOMIC": "MACRO",
+            "POLITICS": "MACRO",
+            "GEOPOLITICS": "MACRO",
+            "REGULATION": "REGULATORY",
+            "LEGISLATION": "REGULATORY",
+            "EARNING": "EARNINGS",
+            "PRODUCT_LAUNCH": "PRODUCT",
+        }
+        return mapping.get(v_upper, "MACRO")
 
 
 class DecisionsResponse(BaseModel):
@@ -196,6 +314,18 @@ class VerificationResult(BaseModel):
     adjusted_quantity: int | None = Field(None, description="New quantity if allocation is adjusted")
     alternative_ticker: str | None = Field(None, description="Suggested alternative stock ticker")
     confidence_score: int = Field(..., ge=0, le=100, description="Confidence score for this verification")
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v: str) -> str:
+        """Normalize verification status casing and mapping."""
+        if isinstance(v, str):
+            v_upper = v.upper().strip()
+            if v_upper in {"APPROVED", "REJECTED_VERIFICATION", "ADJUSTED_ALLOCATION"}:
+                return v_upper
+            if v_upper == "REJECTED":
+                return "REJECTED_VERIFICATION"
+        return v
 
 
 class CauseAndEffectResult(BaseModel):

@@ -33,6 +33,7 @@
 
 ## Concepts
 
+- [[concepts/output-normalization]] — LLM output sanitization via Pydantic validators for signal/catalyst/impact/status resilience
 - [[concepts/auditability]] — Philosophy and mechanisms of full calculation and data traceability
 - [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics
 - [[concepts/system-heavy-prompt]] — System-Heavy architecture: System Prompt = rulebook, User Prompt = data injector

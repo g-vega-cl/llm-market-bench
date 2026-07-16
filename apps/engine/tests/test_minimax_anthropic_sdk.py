@@ -255,21 +255,24 @@ async def test_minimax_history_flattening_to_single_user_message():
     mock_factory = MagicMock(return_value=mock_client)
 
     async def mock_run_tool_loop(client, model, messages, **kwargs):
-        messages.append({
-            "role": "assistant",
-            "content": [
-                {"type": "text", "text": "Analyzing the situation."},
-                {"type": "tool_use", "id": "t1", "name": "calculate_buy_quantity", "input": {"ticker": "SMH", "percentage": 14}}
-            ]
-        })
-        messages.append({
-            "role": "user",
-            "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "Success"}]
-        })
-        messages.append({
-            "role": "assistant",
-            "content": [{"type": "text", "text": "Final analysis complete."}]
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "text": "Analyzing the situation."},
+                    {
+                        "type": "tool_use",
+                        "id": "t1",
+                        "name": "calculate_buy_quantity",
+                        "input": {"ticker": "SMH", "percentage": 14},
+                    },
+                ],
+            }
+        )
+        messages.append(
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "Success"}]}
+        )
+        messages.append({"role": "assistant", "content": [{"type": "text", "text": "Final analysis complete."}]})
 
     with (
         patch("core.llm.clients.CLIENT_FACTORIES", {"minimax": mock_factory}),
@@ -299,7 +302,9 @@ async def test_minimax_history_flattening_to_single_user_message():
         assert user_msg["role"] == "user"
 
         # Verify natural language representation of tool use and tool result is present
-        assert "(Executed tool calculate_buy_quantity with arguments: {'ticker': 'SMH', 'percentage': 14})" in user_msg["content"]
+        assert (
+            "(Executed tool calculate_buy_quantity with arguments: {'ticker': 'SMH', 'percentage': 14})"
+            in user_msg["content"]
+        )
         assert "(Tool returned result: Success)" in user_msg["content"]
         assert "[Assistant]: Final analysis complete." in user_msg["content"]
-

@@ -16,7 +16,9 @@ STATUS_MAP = {
 
 def ensure_gitignore(target_gitignore=None):
     """Ensure git-history/ is in the root .gitignore."""
-    gitignore_path = Path(target_gitignore) if target_gitignore else Path(__file__).resolve().parent.parent.parent / ".gitignore"
+    gitignore_path = (
+        Path(target_gitignore) if target_gitignore else Path(__file__).resolve().parent.parent.parent / ".gitignore"
+    )
     if not gitignore_path.exists():
         return
 
@@ -48,7 +50,7 @@ def export_git_history(target_dir=None):
     print("[git-history] Fetching git logs...", flush=True)
     # Fetch all commits with date, author, subject, body, and name status
     git_log_cmd = (
-        'git log --reverse --name-status --date=short '
+        "git log --reverse --name-status --date=short "
         '--pretty=format:"__GIT_HISTORY_COMMIT_START__|%H|%ad|%an|%s%n%b%n__GIT_HISTORY_COMMIT_FILES__"'
     )
 

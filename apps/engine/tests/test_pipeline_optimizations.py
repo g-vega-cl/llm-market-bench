@@ -25,18 +25,22 @@ async def test_get_quotes_uses_batched_cache_query():
         mock_select = mock_table.select.return_value
         mock_in = mock_select.in_.return_value
         mock_execute = mock_in.execute.return_value
+        import datetime
+
+        now_str = datetime.datetime.now(datetime.UTC).isoformat()
+
         mock_execute.data = [
             {
                 "ticker": "AAPL",
                 "price": 175.0,
                 "market_cap": 3000000000000.0,
-                "fetched_at": "2026-07-14T12:00:00+00:00",
+                "fetched_at": now_str,
             },
             {
                 "ticker": "MSFT",
                 "price": 400.0,
                 "market_cap": 3000000000000.0,
-                "fetched_at": "2026-07-14T12:00:00+00:00",
+                "fetched_at": now_str,
             },
         ]
 

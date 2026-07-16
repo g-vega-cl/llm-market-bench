@@ -99,3 +99,47 @@ describe('TradeActivity nested decision resolution', () => {
         expect(screen.getByText('Nested decision reasoning for USO BUY')).toBeInTheDocument();
     });
 });
+
+describe('TradeActivity stats rendering', () => {
+    it('correctly calculates total activity count (trades + rejections) in the Total pill', () => {
+        const mockTrades = [
+            {
+                id: 'trade-1',
+                executed_at: '2026-06-26T14:30:54Z',
+                signal: 'BUY',
+                ticker: 'USO',
+                price: 105.56,
+            },
+        ];
+        const mockDecisions = [
+            {
+                id: 'dec-1',
+                ticker: 'USO',
+                signal: 'BUY',
+                created_at: '2026-06-26T14:30:50Z',
+                status: 'REJECTED_RISK',
+            },
+            {
+                id: 'dec-2',
+                ticker: 'AAPL',
+                signal: 'SELL',
+                created_at: '2026-06-26T14:30:51Z',
+                status: 'REJECTED_MARGIN',
+            },
+        ];
+
+        render(<TradeActivity trades={mockTrades} decisions={mockDecisions} />);
+
+        // Find Total button and check its value (should be 3)
+        const totalButton = screen.getByRole('button', { name: /Total/i });
+        expect(totalButton).toHaveTextContent('3');
+
+        // Find Executed button and check its value (should be 1)
+        const executedButton = screen.getByRole('button', { name: /Executed/i });
+        expect(executedButton).toHaveTextContent('1');
+
+        // Find Rejected button and check its value (should be 2)
+        const rejectedButton = screen.getByRole('button', { name: /Rejected/i });
+        expect(rejectedButton).toHaveTextContent('2');
+    });
+});

@@ -101,6 +101,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
     }, [trades, decisions, rejections, filter]);
 
     // Calculate stats
+    const totalActivity = trades.length + rejections.length;
     const totalTrades = trades.length;
     const buyTrades = trades.filter((t) => t.signal === 'BUY').length;
     const sellTrades = trades.filter((t) => t.signal === 'SELL').length;
@@ -115,7 +116,7 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                 <div className="flex flex-wrap items-center gap-3">
                     <StatPill
                         label="Total"
-                        value={totalTrades}
+                        value={totalActivity}
                         colorScheme="neutral"
                         isActive={filter === 'ALL'}
                         onClick={() => setFilter('ALL')}

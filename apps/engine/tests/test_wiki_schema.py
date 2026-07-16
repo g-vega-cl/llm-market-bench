@@ -24,10 +24,10 @@ def test_schema_contains_page_deletion_rule():
 
 
 def test_schema_deletion_log_format():
-    """SCHEMA.md must document the required log-entry format for deletions."""
+    """SCHEMA.md must document that page deletions are tracked via Git history."""
     content = SCHEMA_PATH.read_text()
-    assert "scope removed" in content.lower(), (
-        "wiki/SCHEMA.md must include the required log format ('scope removed') for page deletions."
+    assert "git commit history" in content.lower(), (
+        "wiki/SCHEMA.md must document that page deletions are tracked via Git commit history."
     )
 
 
@@ -133,8 +133,7 @@ def test_main_calls_apply_page_deletions(tmp_path, monkeypatch, result):
 
     monkeypatch.setattr(aw, "apply_page_deletions", fake_apply)
 
-    # Patch write_log_entry and write_new_page to no-ops
-    monkeypatch.setattr(aw, "write_log_entry", lambda *a, **kw: None)
+    # Patch write_new_page and add_index_entries to no-ops
     monkeypatch.setattr(aw, "write_new_page", lambda *a, **kw: None)
     monkeypatch.setattr(aw, "add_index_entries", lambda *a, **kw: None)
 

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[git-history] Regenerating git-history after commit..."
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+"$REPO_ROOT/apps/engine/.venv/bin/python3" "$REPO_ROOT/apps/engine/export_git_history.py" || echo "[git-history] WARNING: Git history sync failed"

@@ -31,9 +31,6 @@ from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-
-from apps.engine.scripts.wiki_log_rotate import rotate_log  # noqa: E402
-
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 WIKI_DIR = REPO_ROOT / "wiki"
@@ -165,7 +162,6 @@ The wiki lives at wiki/ with this structure:
   interactions/ — promoted Q&A discussions
   sources/    — synthesized summaries of raw/docs/ files
   index.md    — content catalog with [[links]]
-  log.md      — append-only chronological record
   overview.md — high-level project synthesis
   SCHEMA.md   — conventions documentation
 
@@ -177,11 +173,9 @@ Every page starts with YAML frontmatter:
 
 Cross-references use [[entities/page-name]] style. Naming is kebab-case.
 
-Log entries use format: ## [YYYY-MM-DD] type | Title
-
 Pages must always reflect the current state of the codebase. Do not use strikethroughs
-or "mark superseded" — remove or rewrite outdated content directly. The log.md and Git
-history are the record of what changed and when.
+or "mark superseded" — remove or rewrite outdated content directly. Git history is the
+record of what changed and when.
 For pages whose scope (subsystem, entity, concept) has been fully removed from the codebase,
 the page itself must be deleted — add it to `deleted_pages` in your response.
 
@@ -189,9 +183,7 @@ the page itself must be deleted — add it to `deleted_pages` in your response.
 
 - **New modules/packages/apps** → create entity page in entities/
 - **New ideas/patterns/abstractions** → create concept page in concepts/
-- **Any non-trivial code change** → append log entry
-- **Significant refactors** → append log entry
-- **Bug fixes with impact** → append log entry
+- **Updates to existing components** → rewrite or expand their respective wiki pages to match current behavior
 
 ## What to Skip
 
@@ -206,7 +198,6 @@ Output ONLY valid JSON (no markdown, no explanation, no code fences):
 
 {
   "should_update": true,
-  "log_entry": "## [YYYY-MM-DD] type | Title\\n\\nDescription...",
   "new_pages": [
     {
       "path": "entities/my-feature.md",
@@ -221,12 +212,10 @@ Output ONLY valid JSON (no markdown, no explanation, no code fences):
 
 Include `deleted_pages` only when the staged diff fully removes a subsystem or component
 that has a corresponding wiki page. Do not list pages for refactors or renames — only
-permanent scope removal (the code no longer exists anywhere in the project).
+permanent scope removal (the code no exists anywhere in the project).
 
 If no documentation is needed, return:
 {"should_update": false}
-
-For the log_entry, use the actual current date.
 """
 
 
@@ -344,23 +333,7 @@ def _parse_llm_response(raw: str) -> dict:
         return json.loads(raw)
 
 
-def write_log_entry(entry: str) -> None:
-    log_path = WIKI_DIR / "log.md"
-
-    # Ensure it ends with a newline if it exists and has content
-    if log_path.exists() and log_path.stat().st_size > 0:
-        with open(log_path, "rb") as f:
-            f.seek(-1, os.SEEK_END)
-            last_char = f.read(1)
-        if last_char != b"\n":
-            with open(log_path, "a") as f:
-                f.write("\n")
-
-    with open(log_path, "a") as f:
-        f.write("\n" + entry.strip() + "\n")
-
-    if log_path.stat().st_size > 30000 and rotate_log(WIKI_DIR):
-        print("  [auto-wiki] rotated log.md to archive", file=sys.stderr)
+# write_log_entry deprecated
 
 
 def apply_page_deletions(paths: list[str]) -> None:
@@ -467,19 +440,10 @@ def apply_changes(result: dict) -> None:
     """Apply all wiki mutations described in *result* (from the LLM).
 
     Handles:
-    - Appending a log entry to log.md
     - Writing new pages
     - Deleting pages whose scope was removed (via apply_page_deletions)
     - Adding entries to index.md
     """
-    today = format_date_for_log()
-
-    log_entry = result.get("log_entry", "")
-    if log_entry:
-        # Replace placeholder date with actual date
-        log_entry = re.sub(r"## \[\d{4}-\d{2}-\d{2}\]", f"## [{today}]", log_entry)
-        write_log_entry(log_entry)
-        print("  [auto-wiki] appended to log.md", file=sys.stderr)
 
     for page in result.get("new_pages", []):
         path = page.get("path", "")

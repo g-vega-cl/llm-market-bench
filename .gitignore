@@ -26,3 +26,6 @@ htmlcov/
 *.sqlite
 
 .antigravitycli
+
+# Git History Cache
+git-history/

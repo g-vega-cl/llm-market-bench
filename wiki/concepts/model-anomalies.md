@@ -61,7 +61,7 @@ When an anomaly is flagged, follow these resolution steps:
    - If the provider issue is persistent, edit [models.json](file:///Users/cesarvega/Documents/p-code/llm-market-bench/packages/config/models.json) to switch the affected agent (e.g. `GEMINI_MODEL`, `DEEPSEEK_MODEL`) to a different fallback model name.
    - Update the API keys if needed in the local engine environment configuration file `.env` (located at `apps/engine/.env`).
 5. **Document Incident**:
-   - Record the incident date, affected model version, error logs, and the specific mitigation steps applied in `wiki/log.md` (or the corresponding monthly log under `wiki/log/`).
+    - Record the incident date, affected model version, error logs, and the specific mitigation steps applied in the Git commit message body when committing the fix.
 
 ## Related
 

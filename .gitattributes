@@ -1,4 +1,0 @@
-# Use union merge strategy for wiki log files to automatically resolve
-# merge conflicts by keeping both sets of changes.
-wiki/log.md merge=union
-wiki/log/*.md merge=union

@@ -62,7 +62,6 @@ and curates sources.
 ```
 wiki/
   index.md       # Content catalog by category
-  log.md         # Append-only chronological record
   SCHEMA.md      # Page formats, naming, linking conventions
   overview.md    # High-level synthesis
   entities/      # Entity pages — one per major component
@@ -143,7 +142,7 @@ qmd embed
 ### Conventions
 
 - **Living Synthesis**: The wiki is a "compiled" state of knowledge, not a graveyard of old claims. When new information supersedes the old, update the pages to reflect the current best understanding. Remove or replace stale content rather than using strikethroughs.
-- **Log for History**: Use `log.md`, its `log/` archives, and Git as the chronological record. Every wiki update should be logged in `log.md` with a brief description. It automatically rotates monthly when it exceeds 30KB.
+- **Git for History**: Use Git and conventional commit messages as the chronological change record. Maintain high quality commit logs with descriptive bodies for searchability.
 - **Cite Sources**: When adding knowledge, cite the source (e.g., `[[sources/source-name]]`).
 - **Cross-Link**: Maintain referential integrity. Concepts and entities mentioned should link to their respective pages.
 - **Answers become pages**: High-value results from queries or discussions should be filed back into the wiki.

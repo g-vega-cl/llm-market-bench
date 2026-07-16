@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+"$REPO_ROOT/apps/engine/.venv/bin/python3" "$REPO_ROOT/apps/engine/commit_msg_lint.py" "$1"

@@ -6,6 +6,8 @@
 
 ## Entities
 
+- [[entities/git-history]] — Automated Git history export to structured Markdown with QMD indexing
+- [[entities/commit-msg-lint]] — Conventional Commits enforcement via pre-commit hook
 - [[entities/ai-feeling-card]] — AI market sentiment card on the Today dashboard with buy/sell split, confidence bar, and stale detection
 - [[entities/market-barometer-audit]] — S&P 500 Market Health Barometer audit page with constituent-level data browser
 - [[entities/global-background]] — Fixed ambient background with dot grid and glowing orbs for the full application
@@ -33,6 +35,7 @@
 
 ## Concepts
 
+- [[concepts/git-history-tracking]] — Git history as the authoritative chronological record, replacing wiki log.md
 - [[concepts/output-normalization]] — LLM output sanitization via Pydantic validators for signal/catalyst/impact/status resilience
 - [[concepts/auditability]] — Philosophy and mechanisms of full calculation and data traceability
 - [[concepts/posthog-stealth-proxy]] — Same-origin reverse proxy architecture to bypass ad blockers for PostHog analytics

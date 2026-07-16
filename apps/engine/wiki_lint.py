@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
 
 # Files that are scaffold — don't flag as orphans
-SCAFFOLD_FILES = {"SCHEMA.md", "index.md", "log.md"}
+SCAFFOLD_FILES = {"SCHEMA.md", "index.md"}
 
 # Matches strings starting with key project directories inside backticks or links
 PATH_RE = re.compile(r"(?:`|\[.*?\]\()(apps|packages|scripts|supabase|wiki|\.github)\/([a-zA-Z0-9_\-\.\/]+)(?:`|\))")

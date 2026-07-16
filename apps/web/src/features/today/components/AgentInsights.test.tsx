@@ -169,4 +169,17 @@ describe('AgentInsights', () => {
         expect(link).toHaveAttribute('href', '/memories/chain/lesson-123');
         expect(screen.getByText(/View event chain/i)).toBeInTheDocument();
     });
+
+    it('renders agreed models as an inline text list for consensus memory', () => {
+        const consensusMemory = {
+            ...createConsensusMemory('consensus-123'),
+            metadata: {
+                participating_agents: ['gpt-5.4-nano', 'gemini-3.1-flash-lite'],
+                tickers: ['NVDA'],
+            },
+        };
+        render(<AgentInsights memories={[consensusMemory]} />);
+        expect(screen.getByText('Agreed:')).toBeInTheDocument();
+        expect(screen.getByText('OpenAI, Gemini')).toBeInTheDocument();
+    });
 });

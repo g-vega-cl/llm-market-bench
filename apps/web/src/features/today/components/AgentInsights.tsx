@@ -64,22 +64,13 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                             Market Consensus
                                         </Badge>
                                         {agents.length > 0 && (
-                                            <div className="flex items-center gap-1 flex-wrap">
-                                                {agents.slice(0, 4).map((agent, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className={`w-7 h-7 rounded-full ${agent.bgColor} flex items-center justify-center text-xs border-2 border-white dark:border-zinc-900 shadow-md hover:scale-110 transition-transform cursor-help`}
-                                                        title={agent.name}
-                                                    >
-                                                        {agent.emoji}
-                                                    </div>
-                                                ))}
-                                                {agents.length > 4 && (
-                                                    <div className="w-7 h-7 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[9px] font-bold text-zinc-600 dark:text-zinc-300 border-2 border-white dark:border-zinc-900 shadow-md">
-                                                        +{agents.length - 4}
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                                                <span>•</span>
+                                                <span>Agreed:</span>
+                                                <span className="text-zinc-600 dark:text-zinc-300">
+                                                    {agents.map((a) => a.name).join(', ')}
+                                                </span>
+                                            </span>
                                         )}
                                     </div>
                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">

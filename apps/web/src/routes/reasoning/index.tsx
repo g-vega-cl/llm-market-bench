@@ -10,7 +10,7 @@ const getReasoningLogs = createServerFn({ method: 'GET' })
     });
 
 export const Route = createFileRoute('/reasoning/')({
-    loader: async () => await getReasoningLogs({ data: { limit: 5 } }),
+    loader: async () => await getReasoningLogs({ data: { limit: 12 } }),
     component: RouteComponent,
 });
 

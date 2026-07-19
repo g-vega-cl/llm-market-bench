@@ -38,6 +38,7 @@ async def test_case_insensitivity():
 
     mock_chain.select.return_value = mock_chain
     mock_chain.eq.return_value = mock_chain
+    mock_chain.or_.return_value = mock_chain
     mock_chain.lte.return_value = mock_chain
     mock_chain.update.return_value = mock_chain
 
@@ -188,6 +189,7 @@ async def test_dynamic_reference_universe_isolation():
     mock_sec_pred_chain = MagicMock()
     mock_sec_pred_chain.select.return_value = mock_sec_pred_chain
     mock_sec_pred_chain.eq.return_value = mock_sec_pred_chain
+    mock_sec_pred_chain.or_.return_value = mock_sec_pred_chain
     mock_sec_pred_chain.lte.return_value = mock_sec_pred_chain
     mock_sec_pred_chain.update.side_effect = mock_update_routing
     mock_sec_pred_chain.execute.return_value = mock_select_execute

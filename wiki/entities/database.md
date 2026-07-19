@@ -1,50 +1,54 @@
 ---
-tags: [database, supabase, postgresql, pgvector]
+tags: [database, supabase, schema, postgres, pgvector]
 category: entity
 ---
 
 # Database
 
-Supabase PostgreSQL with pgvector extension. Manages four domains: ingestion
-(newsletter snapshots), memory & retrieval (vector embeddings), market data
-(price cache), and trading (portfolios, positions, trades).
+Supabase PostgreSQL instance that powers the entire LLM Market Bench platform. It stores everything from real-time portfolio snapshots and trade audit logs to LLM predictions, raw analysis outputs, and vector embeddings for RAG.
 
-## Key Tables
+## Core Tables
 
-- **`portfolios`** — Financial state per LLM agent (cash, equity, buying power, SMA)
-- **`portfolio_positions`** — Active holdings (ticker, quantity, cost basis)
-- **`trades`** — Immutable trade ledger with decision_id FK for audit trail
-- **`memories`** — Semantic events with vector embeddings for RAG (MARKET_EVENT, LESSON_LEARNED, etc.)
-- **`decisions`** — LLM reasoning with status tracking (VALIDATED, EXECUTED, REJECTED_*)
-- **`newsletter_snapshots`** — Cleaned newsletter content with chunk hashing for dedup
-- **`concept_metrics`** — Momentum tracking with PCA coordinates
-- **`market_feeling`** — LLM-driven sentiment (refreshed multiple times daily)
-- **`prediction_market_snapshots`** — Filtered Polymarket and Kalshi active market odds for sentiment checking
-- **`system_audits`** — Weekly anomaly detection findings
+### Portfolios & Trading
+- `portfolios` – current holdings, cash, and equity for each agent
+- `trades` – normalized trade history with linking to analysis sessions
+- `portfolio_snapshots` – daily portfolio state (PnL, positions, benchmark)
+- `orders` – order lifecycle (from planned to Alpaca-submitted to filled)
 
-## Database RPC Functions
+### Analysis Pipeline
+- `analysis_sessions` – low-level LLM outputs, tool calls, and execution traces
+- `newsletter_ingestions` – raw scraped/processed newsletter content
+- `market_data_cache` – cached price histories and reference data
+- `economic_events` – economic calendar events and government data
+- `feedback_analyses` – post-mortem contrarian analysis and cause–effect records
 
-- **`match_memories`** — Cross-agent semantic global memory vector searches.
-- **`match_decisions`** — Per-agent trade reasoning searches scoped by `model_name`.
-- **`get_llm_leaderboard_metrics`** — Aggregates and calculates dynamic metrics (Return %, Win Rate, Verifier Approval Rate, Consistency Score, and composite Leaderboard Score) for all models over a selectable timeframe (`time_window_days`). For `MiniMax-M3`, the verifier approval rate is set to NULL, and the reasoning and composite scores are calculated ignoring the verifier.
-- **`get_referenced_newsletter_snapshots`** — Securely retrieves specific fields from `newsletter_snapshots` (sender, subject, content, date) for a given list of `target_source_ids`. Access is restricted to `anon` and `authenticated` roles and implemented via `SECURITY DEFINER` RLS bypass, validating that each snapshot's `source_id` is explicitly referenced inside a promoted memory's metadata (`source_ids` or `source_id`) before execution.
+### LLM Predictions & Arena
+- `sector_predictions` – LLM-generated sector and pair predictions with evaluation results
+  - Core fields: `prediction_date`, `target_date`, `timeframe`, `model_name`, `prompt_tag`, `predicted_sector`, `predicted_pair`, `reasoning`, `sector_percentile_score`, `pair_percentile_score`, `status` (`pending`/`evaluated`)
+  - New return columns (2026-07-19 migration): `predicted_sector_return` (float), `predicted_pair_return` (float), `benchmark_spy_return` (float) – actual window returns of the predicted sector, pair basket, and S&P 500 benchmark
+  - Audit data: `evaluation_audit_data` (JSONB) – stores starting prices, ending prices, and percentage returns per ticker for SPY, the sector ETF, and each pair ETF, along with start/end dates
+- `prompt_experiments` – prompt variant registry for the sector predictor arena and main trading prompts
 
+### Vector Search & Knowledge
+- `knowledge_base` – chunked and embedded documents (academic papers, manuals, market heuristics)
+- `market_anomalies` – catalog of documented market patterns
 
+### Meta & Configuration
+- `pipeline_runs` – daily pipeline run logs and phase status
+- `agent_configs` – per-agent settings and model assignments
+- `research_loops` – autonomous prompt improvement cycles
 
-## JSONB Querying Conventions
+## Migrations
+All schema changes are tracked via timestamped migration files in `supabase/migrations/`. Recent additions include:
 
-When querying nested fields inside `JSONB` columns (such as `metadata` in `memories` or `decisions`) via the Supabase client or PostgREST:
-
-- **Always use `->>` (Text Extraction)** instead of `->` (Object Extraction) for comparing primitive string or number values.
-  - *Correct:* `query.eq('metadata->>source_type', 'academic_paper')` (queries standard string against text).
-  - *Incorrect:* `query.eq('metadata->source_type', 'academic_paper')` (PostgreSQL attempts to cast `'academic_paper'` to a JSON object/string literal, causing casting error `22P02`).
-- **NULL checking**: Both `->>` and `->` can check for SQL NULL values (using `.is('metadata->>key', null)`), but `->>` is preferred for consistency across key extraction.
-- **Exceptions**: The `->` operator should be used when querying JSON boolean literals (e.g. `true`/`false`), checking JSON containment (`@>`), or extracting nested objects as valid sub-JSON objects.
+- `20260719000000_add_returns_to_sector_predictions.sql` – adds actual return columns to `sector_predictions`
+- `20260719010000_add_evaluation_audit_data_to_sector_predictions.sql` – adds `evaluation_audit_data` JSONB column
 
 ## Related
 
+- [[entities/pipeline]]
 - [[entities/engine]]
-- [[entities/web-app]]
-- [[concepts/memory-feedback]]
-- [[concepts/rag-strategy]]
+- [[entities/sector-predictor-arena]]
+- [[concepts/auditability]]
 - [[concepts/supabase-grant-convention]]
+- [[sources/database-schema-source]]

@@ -45,6 +45,7 @@ async def test_run_evaluation_runner():
     # Define a helper to handle the chain calls dynamically
     mock_chain.select.return_value = mock_chain
     mock_chain.eq.return_value = mock_chain
+    mock_chain.or_.return_value = mock_chain
     mock_chain.lte.return_value = mock_chain
     mock_chain.update.return_value = mock_chain
 

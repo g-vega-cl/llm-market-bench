@@ -114,21 +114,21 @@ async def run_evaluation():
     today = datetime.now(UTC).date()
 
     try:
-        # Fetch pending predictions where target_date <= today
+        # Fetch pending predictions OR evaluated predictions missing evaluation_audit_data where target_date <= today
         response = (
             client.table("sector_predictions")
             .select("*")
-            .eq("status", "pending")
+            .or_("status.eq.pending,evaluation_audit_data.is.null")
             .lte("target_date", today.isoformat())
             .execute()
         )
     except Exception as e:
-        logger.exception(f"Failed to query pending predictions from DB: {e}")
+        logger.exception(f"Failed to query predictions to evaluate/backfill from DB: {e}")
         return
 
     pending = response.data
     if not pending:
-        logger.info("No pending sector predictions ripe for evaluation.")
+        logger.info("No sector predictions ripe for evaluation or return backfill.")
         return
 
     logger.info(f"Found {len(pending)} pending predictions to evaluate.")
@@ -208,7 +208,9 @@ async def run_evaluation():
         ref_tickers = run_tickers_by_date.get(pred_date_str, SECTOR_TICKERS)
         ref_tickers_upper = {t.upper() for t in ref_tickers}
 
-        # Always include the prediction's specific sector and pair in the universe
+        # Always include SPY benchmark, predicted sector, and predicted pair in the universe
+        ref_tickers_upper.add("SPY")
+
         predicted_sec = p.get("predicted_sector")
         if predicted_sec:
             predicted_sec = predicted_sec.upper()
@@ -219,8 +221,9 @@ async def run_evaluation():
         for t in predicted_pair:
             ref_tickers_upper.add(t)
 
-        # Calculate returns for the specific reference universe
+        # Calculate returns and capture audit prices for the specific reference universe
         sector_returns = {}
+        ticker_prices = {}
         for ticker in ref_tickers_upper:
             history = prices_history.get(ticker, [])
             p_start = get_price_for_date(history, pred_date)
@@ -229,6 +232,7 @@ async def run_evaluation():
             if p_start is not None and p_end is not None and p_start > 0:
                 ret = ((p_end / p_start) - 1.0) * 100.0
                 sector_returns[ticker] = ret
+                ticker_prices[ticker] = {"start_price": p_start, "end_price": p_end, "return_pct": ret}
 
         if not sector_returns:
             logger.warning(f"No price history found for any sectors for prediction {pred_id}. Skipping.")
@@ -242,19 +246,47 @@ async def run_evaluation():
             logger.warning(f"Predicted pair {predicted_pair} contains tickers without return data. Skipping.")
             continue
 
-        # Compute percentile scores
+        # Compute percentile scores and actual returns
         sec_score = calculate_percentile_score(predicted_sec, sector_returns)
         pair_score = calculate_pair_percentile_score(predicted_pair, sector_returns)
 
+        predicted_sec_ret = sector_returns.get(predicted_sec)
+        pair_rets = [sector_returns.get(t) for t in predicted_pair if t in sector_returns]
+        predicted_pair_ret = (sum(pair_rets) / len(pair_rets)) if pair_rets else None
+        spy_ret = sector_returns.get("SPY")
+
+        audit_data = {
+            "start_date": pred_date_str,
+            "end_date": target_date.isoformat(),
+            "spy": ticker_prices.get("SPY"),
+            "sector": (
+                {"ticker": predicted_sec, **ticker_prices[predicted_sec]}
+                if predicted_sec in ticker_prices
+                else None
+            ),
+            "pair": [
+                {"ticker": t, **ticker_prices[t]} for t in predicted_pair if t in ticker_prices
+            ],
+        }
+
         try:
             client.table("sector_predictions").update(
-                {"sector_percentile_score": sec_score, "pair_percentile_score": pair_score, "status": "evaluated"}
+                {
+                    "sector_percentile_score": sec_score,
+                    "pair_percentile_score": pair_score,
+                    "predicted_sector_return": predicted_sec_ret,
+                    "predicted_pair_return": predicted_pair_ret,
+                    "benchmark_spy_return": spy_ret,
+                    "evaluation_audit_data": audit_data,
+                    "status": "evaluated",
+                }
             ).eq("id", pred_id).execute()
             logger.info(
-                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Pair {predicted_pair}: {pair_score:.1f}%)"
+                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Pair {predicted_pair}: {pair_score:.1f}%, SPY: {spy_ret})"
             )
         except Exception as e:
             logger.exception(f"Failed to update prediction {pred_id} in database: {e}")
+
 
 
 if __name__ == "__main__":

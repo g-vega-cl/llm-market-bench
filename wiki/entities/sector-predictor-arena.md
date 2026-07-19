@@ -34,7 +34,11 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
    * If it underperforms, the active prompt variant is reverted to the baseline variant (`revert_to_baseline()`) before mutating.
 5. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active prompt to deploy the next week's variant.
 
-### 4. Robust Frontend Visuals
+### 4. Robust Frontend Visuals & Audit Transparency
+* **Top Accuracy Chart & Status Filtering**: Historical accuracy trends are placed at the top of the dashboard, supporting instant filtering across `All Forecasts`, `🔮 Active Forecasts`, and `🎯 Past Outcomes`.
+* **S&P 500 Benchmark Window Returns**: Evaluated predictions display actual window returns (`predicted_sector_return`, `predicted_pair_return`, `benchmark_spy_return`) alongside outperformance vs the S&P 500 (SPY) benchmark (e.g. `+2.4% vs S&P 500`).
+* **🔍 Data Audit & Price Verification**: Each evaluated outcome card renders an explicit price audit block (`evaluation_audit_data` JSONB) displaying starting prices, ending prices, percentage returns, and date windows for SPY, Sector ETF, and Pair ETFs so users can independently verify data accuracy.
+* **Score Constituents Breakdown**: Each card explicitly exposes its 50/50 constituents (50% Sector Score, 50% Pair Score) and the composite formula $( \text{Sector Score} + \text{Pair Score} ) \div 2$ inline.
 * **Timeframe Filters**: The dashboard allows filtering/splitting the chart by prediction horizon (e.g., viewing 7d, 30d, 60d, 90d individually) to prevent target date collisions and ensure statistical meaning.
 * **Single Data Point Resilience**: The time scale domain adds a $\pm 1$-day margin when only a single data point is evaluated, preventing D3 coordinate scaling crashes.
 * **Unified Metrics**: Summary card statistics and chart plotting use the same formula (averaging both sector and pair scores).

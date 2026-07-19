@@ -22,21 +22,21 @@ The project enforces code quality through two linters, both wired into the pre-c
   - `scripts/*.py` — E402 (sys.path manipulation for executable scripts)
   - `tests/*.py` — SIM117 (nested `with` often clearer in test setup)
   - `tests/test_concurrency_invariants.py` — B023 (closures called within same iteration, false positive)
-- **Installed**: In `apps/engine/venv/`, pinned in `requirements.txt`
+- **Installed**: In `apps/engine/.venv/`, pinned in `requirements.txt`
 
 Commands:
 ```sh
 # Lint
-./apps/engine/venv/bin/ruff check apps/engine/
+./apps/engine/.venv/bin/ruff check apps/engine/
 
 # Auto-fix safe issues
-./apps/engine/venv/bin/ruff check --fix apps/engine/
+./apps/engine/.venv/bin/ruff check --fix apps/engine/
 
 # Auto-fix all (including unsafe renames, nested-with collapse)
-./apps/engine/venv/bin/ruff check --fix --unsafe-fixes apps/engine/
+./apps/engine/.venv/bin/ruff check --fix --unsafe-fixes apps/engine/
 
 # Format
-./apps/engine/venv/bin/ruff format apps/engine/
+./apps/engine/.venv/bin/ruff format apps/engine/
 ```
 
 ### Biome (TypeScript — `apps/web/`, `packages/`)

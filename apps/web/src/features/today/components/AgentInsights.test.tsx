@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MODELS } from '~/config/models';
 import { AgentInsights } from './AgentInsights';
@@ -181,5 +181,34 @@ describe('AgentInsights', () => {
         render(<AgentInsights memories={[consensusMemory]} />);
         expect(screen.getByText('Agreed:')).toBeInTheDocument();
         expect(screen.getByText('OpenAI, Gemini')).toBeInTheDocument();
+    });
+
+    it('renders total insights badge and view toggle buttons when memories are present', () => {
+        render(
+            <AgentInsights memories={[createConsensusMemory('1'), createIncentiveMemory('2')]} />,
+        );
+        expect(screen.getByText(/2 Insights/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /List/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Cards/i })).toBeInTheDocument();
+    });
+
+    it('toggles view mode when clicking List and Cards buttons', () => {
+        render(
+            <AgentInsights
+                memories={[createConsensusMemory('1'), createLessonMemory(MODELS.GEMINI, '2')]}
+            />,
+        );
+
+        const cardsBtn = screen.getByRole('button', { name: /Cards/i });
+        const listBtn = screen.getByRole('button', { name: /List/i });
+
+        // By default list mode is selected
+        expect(listBtn).toHaveAttribute('data-active', 'true');
+        expect(cardsBtn).toHaveAttribute('data-active', 'false');
+
+        // Click Cards toggle
+        fireEvent.click(cardsBtn);
+        expect(cardsBtn).toHaveAttribute('data-active', 'true');
+        expect(listBtn).toHaveAttribute('data-active', 'false');
     });
 });

@@ -12,7 +12,7 @@ TypeScript, and TanStack Query.
 ## Key Pages
 
 - **Home** — Placeholder for the upcoming redesign
-- **Today** — Dense dashboard with a slim sticky status bar (market open/closed, sentiment, confidence, trade counts) replacing the old gradient hero. Content is arranged in four rows: (1) Global Macro & Index Volatility Statistics (full-width), (2) 3-column grid — Agent Insights (where cards like Consensus, Incentives, and Lessons link directly to their detailed event chain pages `/memories/chain/$memoryId`) | Newsletter Feed | AI Feeling card (`AIFeelingCard`), (3) Market Execution & Guardrails / Trade Activity (full-width), (4) Future Catalysts (full-width). The dotted GlobalBackground shows through (no opaque page wrapper).
+- **Today** — Dense dashboard with a slim sticky status bar (market open/closed, sentiment, confidence, trade counts) replacing the old gradient hero. Content is arranged in four rows: (1) Global Macro & Index Volatility Statistics (full-width), (2) 3-column grid — Agent Insights (`AgentInsights`, with dual-mode List/Cards switcher where items link directly to `/memories/chain/$memoryId`) | Newsletter Feed | AI Feeling card (`AIFeelingCard`), (3) Market Execution & Guardrails / Trade Activity (full-width), (4) Future Catalysts (full-width). The dotted GlobalBackground shows through (no opaque page wrapper).
 - **Portfolios** — Per-agent performance, positions, P&L
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid
 - **Reasoning Trace** — Full LLM conversation history with tabbed JSON inspection
@@ -140,6 +140,14 @@ To support standardized dropdown selection across the application and enhance LL
 - **Design System Primitive**: Added `Select` to `packages/ui-design-system/src/primitives/Select.tsx` and exported it from the design system package. Provides native select styling consistent with `Input` (zinc palette, focus ring styling, dark/light mode support).
 - **Reasoning Page Multi-Dimensional Filtering**: Updated `ReasoningPage.tsx` to extract unique LLM model names dynamically from active logs and display a model filter dropdown alongside task type tabs, enabling simultaneous category and model auditing. Added PostHog analytics capture (`reasoning_model_filtered`).
 - **TDD Verification**: Covered by unit test `ReasoningPage.test.tsx` verifying filtering behavior and dropdown accessibility.
+
+### Compact AI Cognitive Synthesis & View Mode Switcher (2026-07-20)
+
+To resolve excessive vertical scrolling on the Today dashboard caused by stacked full-height memory cards:
+- **High-Density Header List**: Refactored [AgentInsights.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/today/components/AgentInsights.tsx) to default to a high-density vertical header list view (`Card` with `padding="sm"`). Displays concise 2-line quote excerpts, category badges, agent labels, timestamp, metadata tags (tickers, importance score, budget), and event chain links (`/memories/chain/$memoryId`).
+- **Interactive View Switcher**: Integrated an inline toggle (`≡ List` vs `⊞ Cards`) in the section header alongside an insight count pill (`🧠 {n} Insights`). Switches between high-density list rows and compact 2-column cards matching the *Daily Intelligence Briefing* style.
+- **TDD Verification**: Covered by unit tests in `AgentInsights.test.tsx` checking count badge rendering, list items, and view state toggles.
+
 
 ## Design System
 

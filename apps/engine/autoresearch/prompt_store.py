@@ -147,7 +147,7 @@ async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSI
 
 
 async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
-    """Return the prompt variant with the highest score achieved so far."""
+    """Return the prompt variant with the highest score achieved so far among pull-based variants."""
     sb_client = await get_async_supabase_client()
     # Fetch all variants for this prompt name. Since it's a weekly loop,
     # the number of rows will remain small (e.g., 52 per year).
@@ -160,6 +160,19 @@ async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT"
     max_score = -float("inf")
 
     for v in res.data:
+        # Require variant to be pull-native (has research_output containing selected_tools)
+        ro = v.get("research_output")
+        if isinstance(ro, str):
+            import json
+
+            try:
+                ro = json.loads(ro)
+            except (json.JSONDecodeError, TypeError):
+                ro = {}
+
+        if not isinstance(ro, dict) or not ro.get("selected_tools"):
+            continue
+
         m = v.get("metrics", {})
         if isinstance(m, str):
             import json

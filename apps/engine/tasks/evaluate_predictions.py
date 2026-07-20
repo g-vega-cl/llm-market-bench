@@ -260,13 +260,9 @@ async def run_evaluation():
             "end_date": target_date.isoformat(),
             "spy": ticker_prices.get("SPY"),
             "sector": (
-                {"ticker": predicted_sec, **ticker_prices[predicted_sec]}
-                if predicted_sec in ticker_prices
-                else None
+                {"ticker": predicted_sec, **ticker_prices[predicted_sec]} if predicted_sec in ticker_prices else None
             ),
-            "pair": [
-                {"ticker": t, **ticker_prices[t]} for t in predicted_pair if t in ticker_prices
-            ],
+            "pair": [{"ticker": t, **ticker_prices[t]} for t in predicted_pair if t in ticker_prices],
         }
 
         try:
@@ -286,7 +282,6 @@ async def run_evaluation():
             )
         except Exception as e:
             logger.exception(f"Failed to update prediction {pred_id} in database: {e}")
-
 
 
 if __name__ == "__main__":

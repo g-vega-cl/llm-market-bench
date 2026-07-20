@@ -1532,10 +1532,11 @@ class TestBaselineMetricsOrdering:
         """get_all_time_baseline must find the variant with the highest score."""
         from autoresearch import prompt_store
 
+        tools_output = {"selected_tools": ["get_portfolio_ledger"]}
         variants = [
-            {"variant_tag": "v1", "metrics": {"score": 1.0}},
-            {"variant_tag": "v2", "metrics": {"score": 3.0}},
-            {"variant_tag": "v3", "metrics": {"score": 2.0}},
+            {"variant_tag": "v1", "metrics": {"score": 1.0}, "research_output": tools_output},
+            {"variant_tag": "v2", "metrics": {"score": 3.0}, "research_output": tools_output},
+            {"variant_tag": "v3", "metrics": {"score": 2.0}, "research_output": tools_output},
         ]
 
         client, recorder = _make_async_client(data=variants)
@@ -1556,10 +1557,11 @@ class TestBaselineMetricsOrdering:
         """get_all_time_baseline must ignore variants without a score key in metrics."""
         from autoresearch import prompt_store
 
+        tools_output = {"selected_tools": ["get_portfolio_ledger"]}
         variants = [
-            {"variant_tag": "v_old", "metrics": {"composite": 0.5}},
-            {"variant_tag": "v_demoted", "metrics": {"old_score": 0.4271}},
-            {"variant_tag": "v_baseline", "metrics": {"score": 0.0}},
+            {"variant_tag": "v_old", "metrics": {"composite": 0.5}, "research_output": tools_output},
+            {"variant_tag": "v_demoted", "metrics": {"old_score": 0.4271}, "research_output": tools_output},
+            {"variant_tag": "v_baseline", "metrics": {"score": 0.0}, "research_output": tools_output},
         ]
 
         client, recorder = _make_async_client(data=variants)
@@ -1976,3 +1978,36 @@ class TestPromptConstraints:
         assert "IS / IS NOT" in program_text
         assert "Ishikawa" in program_text
         assert "5 Whys" in program_text
+
+
+class TestPullBaselineIsolation:
+    @pytest.mark.asyncio
+    async def test_get_all_time_baseline_isolates_pull_variants(self):
+        """Verify get_all_time_baseline ignores pre-pull variants (missing selected_tools) and returns best pull variant."""
+        from unittest.mock import patch
+
+        from autoresearch import prompt_store
+
+        rows = [
+            {
+                "variant_tag": "v_pre_pull",
+                "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT",
+                "metrics": {"score": 4.2006},
+                "research_output": None,  # Pre-pull (push model)
+            },
+            {
+                "variant_tag": "v_pull",
+                "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT",
+                "metrics": {"score": -4.5858},
+                "research_output": {"selected_tools": ["get_portfolio_ledger", "get_todays_news_menu"]},  # Pull model
+            },
+        ]
+
+        client, recorder = _make_async_client(data=rows)
+
+        with patch("autoresearch.prompt_store.get_async_supabase_client", return_value=client):
+            baseline = await prompt_store.get_all_time_baseline("CORE_ANALYSIS_SYSTEM_PROMPT")
+
+        assert baseline is not None
+        assert baseline["variant_tag"] == "v_pull"
+        assert baseline["metrics"]["score"] == -4.5858

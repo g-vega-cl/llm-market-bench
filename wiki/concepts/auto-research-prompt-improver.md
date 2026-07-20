@@ -63,6 +63,7 @@ To optimize agent prompt length and keep reasoning context concise, the auto-res
 - The agent must use tools like `get_portfolio_ledger` and `get_todays_news_menu` to pull detailed raw contents on-demand.
 - The meta-researcher optimizes the agent's strategy and *also* chooses which cognitive tools are enabled for the trading agent during the upcoming week by outputting a list of string names in `selected_tools`.
 - **Default Baseline & Fallbacks**: The initial bootstrapped baseline prompt in `bootstrap.py` is configured with default pull tools (`["get_portfolio_ledger", "get_todays_news_menu", "web_search"]`). If an active prompt variant in the database fails to specify a tools list, the engine automatically defaults tool routing to these baseline pull tools to guarantee operational safety.
+- **Pull Baseline Isolation**: `get_all_time_baseline()` in `prompt_store.py` explicitly filters candidate variants to require a non-empty `selected_tools` list in `research_output`. This isolates the pull-based evolution cycle from pre-pull legacy push variants (such as `v20260705-221937`), ensuring the meta-researcher always builds on top of pull-native prompt text and tool configurations.
 
 ## Isolated Research Loops
 

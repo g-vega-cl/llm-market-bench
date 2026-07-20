@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from attribution.service import save_decision
+from attribution.service import get_active_ledger_xml, save_decision
 from core.config import GEMINI_MODEL
 from core.models import DecisionObject
 
@@ -147,3 +147,48 @@ def test_save_decision_raises_on_empty_response(mock_supabase):
 
     with pytest.raises(RuntimeError, match="no data returned"):
         save_decision(mock_supabase, decision)
+
+
+@pytest.mark.asyncio
+async def test_get_active_ledger_xml_success():
+    """Test get_active_ledger_xml returns valid XML format for active holdings without TypeError."""
+    mock_client = MagicMock()
+
+    # Mock portfolios response
+    portfolios_mock = MagicMock()
+    portfolios_mock.select.return_value.eq.return_value.execute.return_value.data = [{"id": "p-123"}]
+
+    # Mock portfolio_positions response
+    positions_mock = MagicMock()
+    positions_mock.select.return_value.eq.return_value.gt.return_value.execute.return_value.data = [
+        {"ticker": "AAPL", "quantity": 10}
+    ]
+
+    # Mock decisions response
+    decisions_mock = MagicMock()
+    decisions_mock.select.return_value.eq.return_value.eq.return_value.in_.return_value.order.return_value.limit.return_value.execute.return_value.data = [
+        {
+            "ticker": "AAPL",
+            "signal": "BUY",
+            "reasoning": "Strong quarterly report",
+            "metadata": None,
+            "created_at": "2026-07-20T10:00:00Z",
+        }
+    ]
+
+    tables = {
+        "portfolios": portfolios_mock,
+        "portfolio_positions": positions_mock,
+        "decisions": decisions_mock,
+    }
+
+    def table_router(table_name):
+        return tables.get(table_name, MagicMock())
+
+    mock_client.table.side_effect = table_router
+
+    xml = await get_active_ledger_xml(mock_client, "owner_1")
+    assert "<CURRENT_PORTFOLIO_LEDGER>" in xml
+    assert '<POSITION ticker="AAPL"' in xml
+    assert "<REASONING>Strong quarterly report</REASONING>" in xml
+

@@ -93,14 +93,14 @@ async def get_active_ledger_xml(sb_client: Client, owner_id: str) -> str:
     and any advance planning notes, preventing the "context black hole" problem.
     """
     # 1. Get portfolio
-    p_res = await sb_client.table("portfolios").select("id").eq("owner_id", owner_id).execute()
+    p_res = sb_client.table("portfolios").select("id").eq("owner_id", owner_id).execute()
     if not p_res.data:
         return ""
     portfolio_id = p_res.data[0]["id"]
 
     # 2. Get current holdings
     pos_res = (
-        await sb_client.table("portfolio_positions")
+        sb_client.table("portfolio_positions")
         .select("ticker, quantity")
         .eq("portfolio_id", portfolio_id)
         .gt("quantity", 0)
@@ -114,7 +114,7 @@ async def get_active_ledger_xml(sb_client: Client, owner_id: str) -> str:
 
     # 3. Get recent executed decisions for these tickers
     dec_res = (
-        await sb_client.table("decisions")
+        sb_client.table("decisions")
         .select("ticker, signal, reasoning, metadata, created_at")
         .eq("model_name", owner_id)
         .eq("status", "EXECUTED")

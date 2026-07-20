@@ -46,9 +46,10 @@ The rolling volatility, percentage change, and regime classification metrics are
 This is executed automatically on a scheduled **GitHub Action workflow** (`.github/workflows/update-prices.yml`) to keep the data fresh:
 
 - **Cadence**: Scheduled to run **every 30 minutes** during US market hours:
-  - **Cron Trigger**: `cron: "0,30 14-21 * * 1-5"` (approximately 14:00 - 21:00 UTC / 10:00 AM - 5:00 PM ET, Monday to Friday).
+  - **Cron Trigger**: `cron: "0,30 13-21 * * 1-5"` (13:00 - 21:00 UTC, covering both EDT 9:30 AM open and EST 9:30 AM open with pre-market failsafe skip).
   - Can also be triggered manually via a `workflow_dispatch` event on GitHub.
-- **Ingestion Pipeline Sync**: In addition to the dedicated price updater, the primary daily ingestion and consensus pipeline workflow (`.github/workflows/ingest.yml`) runs at **9:35 AM ET, 10:35 AM ET (winter timezone offset run), 11:35 AM ET, and 2:00 PM ET** on trading days, which also refreshes quotes and triggers the same underlying pre-calculations.
+- **Ingestion Pipeline Sync**: In addition to the dedicated price updater, the primary daily ingestion and consensus pipeline workflow (`.github/workflows/ingest.yml`) triggers at **9:35 AM ET, 10:35 AM ET, 11:35 AM ET, and 2:00 PM ET** on trading days via dual UTC offset crons (`cron: "35 13,14,15,16 * * 1-5"` and `"0 18,19 * * 1-5"`). Pre-market runs outside market hours (e.g. 13:35 UTC in EST) are gracefully skipped by the engine's `is_market_open()` failsafe.
+
 - **Cache Persistence**: The calculated statistics (rolling 30-day volatility `stdev_pct`, `today_pct_change`, `price`, `regime_flag`) are saved to the persistent Supabase `market_data_cache` table. This allows the serverless loader (`fetch-today-data.ts`) to retrieve all 23 tickers in a single consolidated database query in less than 5ms.
 
 ## History

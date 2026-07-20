@@ -191,4 +191,3 @@ async def test_get_active_ledger_xml_success():
     assert "<CURRENT_PORTFOLIO_LEDGER>" in xml
     assert '<POSITION ticker="AAPL"' in xml
     assert "<REASONING>Strong quarterly report</REASONING>" in xml
-

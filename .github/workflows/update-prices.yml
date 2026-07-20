@@ -2,9 +2,12 @@ name: Price Update
 
 on:
   schedule:
-    # Every 30 minutes during market hours (approx 14:00 - 21:00 UTC)
-    - cron: "0,30 14-21 * * 1-5"
+    # Every 30 minutes during market hours (approx 13:00 - 21:00 UTC)
+    # Covers EDT 9:30 AM open (13:30 UTC) and EST 9:30 AM open (14:30 UTC).
+    # Pre-market runs are safely skipped by is_market_open() failsafe.
+    - cron: "0,30 13-21 * * 1-5"
   workflow_dispatch:
+
 
 jobs:
   update-prices:

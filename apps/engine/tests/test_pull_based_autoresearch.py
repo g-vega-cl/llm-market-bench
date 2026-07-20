@@ -259,3 +259,51 @@ async def test_analyze_with_provider_pulls_tools():
         # Safety tools must be force-injected
         assert "calculate_buy_quantity" in override_tool_names
         assert "calculate_sell_quantity" in override_tool_names
+
+
+@pytest.mark.asyncio
+async def test_analyze_with_provider_pulls_tools_fallback():
+    """Verify that if active variant is missing research_output/selected_tools, it falls back to default pull tools."""
+    from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
+
+    exp_owner = list(AUTORESEARCH_EXPERIMENT_OWNER_IDS)[0]
+
+    mock_variant = {
+        "variant_tag": "v1",
+        "research_output": None,
+    }
+
+    mock_client = MagicMock()
+    mock_factory = MagicMock(return_value=mock_client)
+
+    with (
+        patch("core.llm.clients.CLIENT_FACTORIES", {"openai": mock_factory}),
+        patch("autoresearch.prompt_store.get_active_variant", return_value=mock_variant),
+        patch(
+            "core.llm.prompt_factory.PromptFactory.build_analysis_messages",
+            return_value=[{"role": "system", "content": "mock"}],
+        ),
+        patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock) as mock_tool_loop,
+        patch("core.llm.analysis._try_parse_decisions_response") as mock_parser,
+    ):
+        mock_parser.return_value = MagicMock()
+
+        await analyze_with_provider(
+            provider="openai",
+            model_name=exp_owner,
+            chunks=[{"source_id": "news_1", "content": "mock"}],
+            summaries={"news_1": "summary"},
+        )
+
+        mock_tool_loop.assert_called_once()
+        called_kwargs = mock_tool_loop.call_args[1]
+        override_tools = called_kwargs["override_tools"]
+
+        # If fallback works, it should load the pull-based tools anyway
+        override_tool_names = [t["function"]["name"] for t in override_tools]
+        assert "get_portfolio_ledger" in override_tool_names
+        assert "get_todays_news_menu" in override_tool_names
+        assert "web_search" not in override_tool_names
+        assert called_kwargs.get("enable_web_search") is True
+        assert "calculate_buy_quantity" in override_tool_names
+        assert "calculate_sell_quantity" in override_tool_names

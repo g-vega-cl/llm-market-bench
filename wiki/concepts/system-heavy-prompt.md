@@ -21,6 +21,7 @@ Traditional LLM prompts mix **Static Logic** (rules, SOPs, constraints) with **D
    - A minimal skeleton containing only section labels, `{placeholder}` variables for runtime data injection, and a single closing task directive ("Return ONLY...").
    - Contains no persona openers, no instructions, no SOPs.
    - Static in source code for all agents.
+   - For auto-research experiment agents, the template used is `EXPERIMENT_USER_PROMPT_TEMPLATE` (a pull-based template). It strips all newsletter text and raw ledger data, relying on dynamic tool selection to retrieve this context and reducing the prompt cache footprint significantly.
 
 ## Motivations
 

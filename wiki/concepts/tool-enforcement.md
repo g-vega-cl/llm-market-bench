@@ -18,6 +18,7 @@ Few-shot examples show correct vs incorrect patterns.
 
 Portfolio source-of-truth statement + held tickers quick reference + verified
 market data block injected before LLM reasons.
+- **Dynamic Tool-Selection Fallback**: For auto-research experiment agents running under the pull-based paradigm, the tools list is dynamically resolved from the database variant metadata. If the variant lacks configured tools or is an uninitialized bootstrap baseline, the engine automatically defaults allowed tools to the pull-based baseline list: `["get_portfolio_ledger", "get_todays_news_menu", "web_search"]` (plus force-injected safety tools).
 
 ## Layer 3: Post-Analysis Verification
 

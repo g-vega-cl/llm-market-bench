@@ -35,6 +35,7 @@ async def bootstrap():
         metrics={"score": 0, "excess_return": 0, "max_drawdown": 0, "note": "Initial baseline"},
         change_description="Initial baseline prompt from source code.",
         experiment_type="baseline",
+        research_output={"selected_tools": ["get_portfolio_ledger", "get_todays_news_menu", "web_search"]},
     )
 
     logger.info("Successfully bootstrapped with variant: %s", tag)

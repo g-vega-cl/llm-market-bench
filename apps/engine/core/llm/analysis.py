@@ -333,32 +333,49 @@ async def analyze_with_provider(
                 from autoresearch.prompt_store import get_active_variant
 
                 variant = await get_active_variant()
+                selected_tool_names = None
                 if variant:
                     research_output = variant.get("research_output")
                     if isinstance(research_output, dict):
                         selected_tool_names = research_output.get("selected_tools")
 
-                        if isinstance(selected_tool_names, list):
-                            override_tools = []
-                            for name in selected_tool_names:
-                                t_def = tools.CANONICAL_TOOLS_REGISTRY.get(name)
-                                if t_def:
-                                    override_tools.append(t_def)
-                                else:
-                                    logger.warning(f"Active prompt variant specified invalid tool name: {name}")
+                # If no tools are specified in the active variant, default to the baseline pull tools
+                if not isinstance(selected_tool_names, list):
+                    selected_tool_names = ["get_portfolio_ledger", "get_todays_news_menu", "web_search"]
+                    logger.info(
+                        f"No selected_tools found in active variant for experiment agent {model_name}. "
+                        f"Defaulting to baseline pull tools: {selected_tool_names}"
+                    )
 
-                            # Force-inject calculate_buy_quantity and calculate_sell_quantity for safety
-                            safety_tools = [tools.CALCULATE_BUY_QUANTITY_TOOL, tools.CALCULATE_SELL_QUANTITY_TOOL]
-                            for st in safety_tools:
-                                if st not in override_tools:
-                                    override_tools.append(st)
+                override_tools = []
+                for name in selected_tool_names:
+                    t_def = tools.CANONICAL_TOOLS_REGISTRY.get(name)
+                    if t_def:
+                        override_tools.append(t_def)
+                    else:
+                        logger.warning(f"Active prompt variant specified invalid tool name: {name}")
 
-                            # Intercept web_search tool to configure native web search flag
-                            if tools.WEB_SEARCH_TOOL in override_tools:
-                                enable_web_search = True
-                                override_tools = [t for t in override_tools if t != tools.WEB_SEARCH_TOOL]
+                # Force-inject calculate_buy_quantity and calculate_sell_quantity for safety
+                safety_tools = [tools.CALCULATE_BUY_QUANTITY_TOOL, tools.CALCULATE_SELL_QUANTITY_TOOL]
+                for st in safety_tools:
+                    if st not in override_tools:
+                        override_tools.append(st)
+
+                # Intercept web_search tool to configure native web search flag
+                if tools.WEB_SEARCH_TOOL in override_tools:
+                    enable_web_search = True
+                    override_tools = [t for t in override_tools if t != tools.WEB_SEARCH_TOOL]
             except Exception as e:
-                logger.warning(f"Failed to fetch selected tools for experiment variant: {e}. Defaulting to all tools.")
+                logger.warning(
+                    f"Failed to fetch selected tools for experiment variant: {e}. Defaulting to baseline pull tools."
+                )
+                override_tools = [
+                    tools.CANONICAL_TOOLS_REGISTRY["get_portfolio_ledger"],
+                    tools.CANONICAL_TOOLS_REGISTRY["get_todays_news_menu"],
+                    tools.CALCULATE_BUY_QUANTITY_TOOL,
+                    tools.CALCULATE_SELL_QUANTITY_TOOL,
+                ]
+                enable_web_search = True
 
         # Construct batch prompt (menu summaries if available, fallback to full text)
         if summaries:

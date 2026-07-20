@@ -56,6 +56,14 @@ The researcher's instructions in [program.md](file:///Users/cesarvega/Documents/
 - Keep the prompt under 1000 words
 - Compatible with Gemini Flash and DeepSeek Flash
 
+## Pull-Based Tool Selection
+
+To optimize agent prompt length and keep reasoning context concise, the auto-research system operates under a **pull-based** paradigm:
+- Rather than pre-injecting the full news list and raw portfolio ledger XML into the user message template, the agent receives a minimal trigger prompt `EXPERIMENT_USER_PROMPT_TEMPLATE` with today's headlines summary menu.
+- The agent must use tools like `get_portfolio_ledger` and `get_todays_news_menu` to pull detailed raw contents on-demand.
+- The meta-researcher optimizes the agent's strategy and *also* chooses which cognitive tools are enabled for the trading agent during the upcoming week by outputting a list of string names in `selected_tools`.
+- **Default Baseline & Fallbacks**: The initial bootstrapped baseline prompt in `bootstrap.py` is configured with default pull tools (`["get_portfolio_ledger", "get_todays_news_menu", "web_search"]`). If an active prompt variant in the database fails to specify a tools list, the engine automatically defaults tool routing to these baseline pull tools to guarantee operational safety.
+
 ## Isolated Research Loops
 
 While the primary loop targets the `CORE_ANALYSIS_SYSTEM_PROMPT` to refine full-portfolio strategies, the auto-research runner supports fully isolated prompt evaluation cycles. 

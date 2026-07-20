@@ -29,6 +29,7 @@ async def bootstrap():
         metrics={"score": 0, "excess_return": 0, "max_drawdown": 0, "note": "System-Heavy Baseline"},
         change_description="Refactored System-Heavy architecture: moved trading logic from User to System message.",
         experiment_type="baseline",
+        research_output={"selected_tools": ["get_portfolio_ledger", "get_todays_news_menu", "web_search"]},
     )
 
     logger.info("Successfully bootstrapped with variant: %s", tag)

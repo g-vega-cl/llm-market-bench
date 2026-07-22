@@ -52,8 +52,17 @@ This is executed automatically on a scheduled **GitHub Action workflow** (`.gith
 
 - **Cache Persistence**: The calculated statistics (rolling 30-day volatility `stdev_pct`, `today_pct_change`, `price`, `regime_flag`) are saved to the persistent Supabase `market_data_cache` table. This allows the serverless loader (`fetch-today-data.ts`) to retrieve all 23 tickers in a single consolidated database query in less than 5ms.
 
+## Tool Execution & Autoresearcher Integration
+
+For pull-based agents (e.g., candidate variants managed by the auto-researcher), the macro context is not automatically injected in the user prompt. Instead, the agent can call two specific tools to retrieve macro and volatility states:
+- **`get_global_macro_context`**: Fetches the raw global macro environment status for all 23 economic indicators, interest rates, commodities, and volatility regime classifications from the database cache.
+- **`get_volatility_index_details`**: Performs high-fidelity calculations specifically for VIX proxy ETFs (`VIXY` and `VIXM`) over a lookback window (default: 90 trading days). Computes annualized realized volatility, VIXY price percentile ranks, moving average crossover trends, volatility curve state (Contango vs. Backwardation structure proxy), and rolling 30-day Pearson correlation with `SPY`.
+
+*Decoupling Note:* Core instructions previously appended to the raw macro text block (encouraging risk-on/risk-off analysis and advising against betting against macro trends) have been decoupled from the database data generator and moved directly into the static prompt templates (`ANALYSIS_USER_PROMPT_TEMPLATE` in `prompts.py`), keeping the tool outputs clean and raw.
+
 ## History
 
+- **2026-07-22**: Decoupled prompt instructions from core tracker data block. Implemented and registered `get_global_macro_context` and `get_volatility_index_details` tools for pull-based auto-researcher agents.
 - **2026-05-28**: Resolved the "Market" section percentage returns reporting discrepancy for pure EOD tickers like `TLT` and `IEF`. Fixed a caching bug where the DB cache validation (`_validate_date_coverage` in `market_data.py`) returned a false cache hit for EOD tickers due to `.limit(90)` spanning over 45 calendar dates. Implemented an explicit staleness check (>4 calendar days old) to reject frozen caches, added `force_refresh` support to `get_history()`, and updated `update_prices.py` to force-refresh benchmark histories on daily cron syncs. Fully backfilled the historic price database to the current date, ensuring correct dashboard computations.
 - **2026-05-27**: Relocated `SPY`, `TLT` (representing Bond yields), `IWM`, and `VIXY` to a new dynamic `'Market'` tab displayed as the default view, removing the static Benchmark Heroes top row and moving `QQQ` into `'Equities'`. Fixed stale calculations (such as the -8.44% OIL/USO bug) by adding the 8 missing macro tickers (`EWY`, `MCHI`, `INDA`, `SLV`, `USO`, `IEF`, `UUP`, `VIXY`) to `update_prices.py` to keep their 90-day EOD history fresh daily. Also implemented robust date filtering (excluding today's ET date) and deduplication (keeping the latest price per unique calendar day) in the frontend `buildHistoryGroup` query layer to prevent intraday snapshots from polluting return calculations. Covered by new Vitest unit tests.
 - **2026-05-13**: Expanded from 16 to 23 tickers and 4 to 6 categories.

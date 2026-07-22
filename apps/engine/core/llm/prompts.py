@@ -219,6 +219,8 @@ ANALYSIS_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
 ### GLOBAL MACRO ENVIRONMENT:
 {macro_context}
 
+**Instruction:** Use this snapshot to understand if markets are risk-on, risk-off, or experiencing abnormal volatility. Do not bet against severe macro trends without an extraordinary catalyst.
+
 ### HISTORICAL CONTEXT (PAST EVENTS & LESSONS):
 {context}
 

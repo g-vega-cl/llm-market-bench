@@ -608,6 +608,37 @@ GET_MARKET_FEELING_TOOL = {
     },
 }
 
+GET_GLOBAL_MACRO_CONTEXT_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_global_macro_context",
+        "description": "Fetch a broad, clean snapshot of the global macroeconomic environment including equity indices, commodity prices, crypto, interest rate/bond yield proxies (IEF/TLT), and volatility ETF proxies (VIXY) with daily % changes and volatility regime classifications.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+GET_VOLATILITY_INDEX_DETAILS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_volatility_index_details",
+        "description": "Fetch high-fidelity historical stats, percentiles, trends, and curve structure (contango/backwardation proxy) for the VIX short-term (VIXY) and mid-term (VIXM) index ETFs to detect volatility expansion/contraction regimes.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "lookback_days": {
+                    "type": "integer",
+                    "description": "Number of history days to use for calculating percentile ranks and moving averages (default: 90).",
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -631,6 +662,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_portfolio_ledger": GET_PORTFOLIO_LEDGER_TOOL,
     "get_todays_news_menu": GET_TODAYS_NEWS_MENU_TOOL,
     "get_market_feeling": GET_MARKET_FEELING_TOOL,
+    "get_global_macro_context": GET_GLOBAL_MACRO_CONTEXT_TOOL,
+    "get_volatility_index_details": GET_VOLATILITY_INDEX_DETAILS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
 }
 
@@ -1969,3 +2002,145 @@ async def execute_get_market_feeling_tool() -> str:
     except Exception as e:
         logger.exception(f"Error in execute_get_market_feeling_tool: {e}")
         return f"Error retrieving market feeling: {str(e)}"
+
+
+async def execute_get_global_macro_context_tool() -> str:
+    """Retrieves the global macroeconomic context without hardcoded instructions."""
+    try:
+        from core.macro_tracker import get_global_macro_context
+
+        manager = MarketDataManager()
+        return await get_global_macro_context(manager)
+    except Exception as e:
+        logger.exception(f"Error in execute_get_global_macro_context_tool: {e}")
+        return f"Error retrieving global macro context: {str(e)}"
+
+
+async def execute_get_volatility_index_details_tool(lookback_days: int = 90) -> str:
+    """Retrieves high-fidelity historical stats, percentiles, trends, and curve structure for VIXY/VIXM."""
+    try:
+        manager = MarketDataManager()
+        # Fetch histories
+        vixy_data = await manager.get_history("VIXY", days=lookback_days)
+        vixm_data = await manager.get_history("VIXM", days=lookback_days)
+        spy_data = await manager.get_history("SPY", days=lookback_days)
+
+        if not vixy_data or not vixm_data or not spy_data:
+            return "Error: Could not retrieve price history for VIXY, VIXM, or SPY."
+
+        # Map to dates
+        vixy_by_date = {row["fetched_at"][:10]: float(row["price"]) for row in vixy_data}
+        vixm_by_date = {row["fetched_at"][:10]: float(row["price"]) for row in vixm_data}
+        spy_by_date = {row["fetched_at"][:10]: float(row["price"]) for row in spy_data}
+
+        # Align on overlapping dates
+        common_dates = sorted(list(set(vixy_by_date.keys()) & set(vixm_by_date.keys()) & set(spy_by_date.keys())))
+
+        if len(common_dates) < 5:
+            return f"Insufficient overlapping price history (found only {len(common_dates)} days) to compute volatility metrics."
+
+        # Build chronological price lists
+        vixy_prices = [vixy_by_date[d] for d in common_dates]
+        vixm_prices = [vixm_by_date[d] for d in common_dates]
+        spy_prices = [spy_by_date[d] for d in common_dates]
+
+        # Calculate daily returns
+        vixy_returns = []
+        vixm_returns = []
+        spy_returns = []
+        for i in range(1, len(common_dates)):
+            vixy_returns.append((vixy_prices[i] - vixy_prices[i - 1]) / vixy_prices[i - 1])
+            vixm_returns.append((vixm_prices[i] - vixm_prices[i - 1]) / vixm_prices[i - 1])
+            spy_returns.append((spy_prices[i] - spy_prices[i - 1]) / spy_prices[i - 1])
+
+        import statistics
+
+        def pearson_correlation(x: list[float], y: list[float]) -> float:
+            if len(x) != len(y) or len(x) < 2:
+                return 0.0
+            mean_x = sum(x) / len(x)
+            mean_y = sum(y) / len(y)
+            diffs_x = [xv - mean_x for xv in x]
+            diffs_y = [yv - mean_y for yv in y]
+            num = sum(dx * dy for dx, dy in zip(diffs_x, diffs_y, strict=True))
+            den_x = sum(dx * dx for dx in diffs_x)
+            den_y = sum(dy * dy for dy in diffs_y)
+            if den_x == 0 or den_y == 0:
+                return 0.0
+            return num / ((den_x * den_y) ** 0.5)
+
+        # 1. Current Stats & Daily Change
+        curr_vixy = vixy_prices[-1]
+        curr_vixm = vixm_prices[-1]
+        vixy_1d_return = vixy_returns[-1] * 100 if vixy_returns else 0.0
+        vixm_1d_return = vixm_returns[-1] * 100 if vixm_returns else 0.0
+
+        # 2. realized Volatilities (Annualized Standard Deviation)
+        # Using up to last 30 daily returns
+        sub_returns_vixy = vixy_returns[-30:]
+        vixy_realized_vol = statistics.stdev(sub_returns_vixy) * (252**0.5) * 100 if len(sub_returns_vixy) >= 2 else 0.0
+
+        # 3. Volatility of Volatility (VVIX proxy - 10-day realized volatility of VIXY)
+        sub_returns_10d = vixy_returns[-10:]
+        vix_vol_of_vol = statistics.stdev(sub_returns_10d) * (252**0.5) * 100 if len(sub_returns_10d) >= 2 else 0.0
+
+        # 4. Percentiles over lookback window
+        smaller_vixy = sum(1 for p in vixy_prices if p < curr_vixy)
+        vixy_price_percentile = (smaller_vixy / len(vixy_prices)) * 100
+
+        # 5. Moving Average Trends
+        sma_10 = sum(vixy_prices[-10:]) / min(10, len(vixy_prices))
+        sma_30 = sum(vixy_prices[-30:]) / min(30, len(vixy_prices))
+        if curr_vixy > sma_10 > sma_30:
+            trend_state = "STRONG VOLATILITY EXPANSION (VIXY > SMA_10 > SMA_30)"
+        elif curr_vixy < sma_10 < sma_30:
+            trend_state = "STRONG VOLATILITY CONTRACTION (VIXY < SMA_10 < SMA_30)"
+        elif curr_vixy > sma_30:
+            trend_state = "MODERATE VOLATILITY EXPANSION (VIXY > SMA_30)"
+        else:
+            trend_state = "CONSOLIDATION / MEAN REVERSION"
+
+        # 6. Term Structure (VIXY/VIXM ratio)
+        ratios = [vixy_prices[idx] / vixm_prices[idx] for idx in range(len(vixy_prices))]
+        curr_ratio = ratios[-1]
+        smaller_ratio = sum(1 for r in ratios if r < curr_ratio)
+        ratio_percentile = (smaller_ratio / len(ratios)) * 100
+
+        if curr_ratio > 0.95 or ratio_percentile > 85:
+            curve_state = (
+                f"BACKWARDATION / MARKET STRESS (Ratio: {curr_ratio:.3f}, Percentile: {ratio_percentile:.1f}%)"
+            )
+        elif curr_ratio < 0.78 or ratio_percentile < 15:
+            curve_state = (
+                f"STRONG CONTANGO / COMPLACENCY (Ratio: {curr_ratio:.3f}, Percentile: {ratio_percentile:.1f}%)"
+            )
+        else:
+            curve_state = f"NORMAL CONTANGO (Ratio: {curr_ratio:.3f}, Percentile: {ratio_percentile:.1f}%)"
+
+        # 7. Pearson Correlation with SPY
+        sub_returns_spy = spy_returns[-30:]
+        spy_correlation_30d = pearson_correlation(sub_returns_vixy, sub_returns_spy)
+
+        # 8. Overall Volatility Regime
+        if vixy_price_percentile >= 85:
+            regime = "⚠️ PANIC ZONE / EXTREME FEAR (VIXY price at upper 15% range)"
+        elif vixy_price_percentile <= 15:
+            regime = "🟢 COMPLACENCY ZONE / LOW VOLATILITY (VIXY price at lower 15% range)"
+        else:
+            regime = "NORMAL VOLATILITY / REGULAR REGIME"
+
+        return (
+            f"=== Volatility Index (VIX) Proxy Details ===\n"
+            f"- VIXY (Short-Term Volatility ETF): ${curr_vixy:.2f} [{vixy_1d_return:+.2f}% today]\n"
+            f"- VIXM (Mid-Term Volatility ETF):   ${curr_vixm:.2f} [{vixm_1d_return:+.2f}% today]\n"
+            f"- VIXY 30d Realized Volatility:     {vixy_realized_vol:.2f}%\n"
+            f"- Volatility of Volatility (VVIX Proxy): {vix_vol_of_vol:.2f}%\n"
+            f"- VIXY Price Percentile ({len(vixy_prices)} trading days): {vixy_price_percentile:.1f}%\n"
+            f"- Volatility Regime:                {regime}\n"
+            f"- Moving Average Trend:             {trend_state}\n"
+            f"- Volatility Curve Structure:       {curve_state}\n"
+            f"- Correlation with SPY (30d):       {spy_correlation_30d:+.3f}"
+        )
+    except Exception as e:
+        logger.exception(f"Error in execute_get_volatility_index_details_tool: {e}")
+        return f"Error retrieving volatility index details: {str(e)}"

@@ -100,4 +100,8 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_get_todays_news_menu_tool()
     elif name == "get_market_feeling":
         return await tools.execute_get_market_feeling_tool()
+    elif name == "get_global_macro_context":
+        return await tools.execute_get_global_macro_context_tool()
+    elif name == "get_volatility_index_details":
+        return await tools.execute_get_volatility_index_details_tool(args.get("lookback_days", 90))
     return "Unknown tool"

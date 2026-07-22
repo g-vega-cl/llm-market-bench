@@ -138,9 +138,4 @@ async def get_global_macro_context(market_data_manager) -> str:
             else:
                 context_lines.append(f"{name} ({ticker}): {price:.2f} [{today_pct_change:+.2f}% today]")
 
-    context_lines.append(
-        "\n**Instruction:** Use this snapshot to understand if markets are risk-on, risk-off, or experiencing "
-        "abnormal volatility. Do not bet against severe macro trends without an extraordinary catalyst."
-    )
-
     return "\n".join(context_lines)

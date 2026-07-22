@@ -117,7 +117,7 @@ class TestGetGlobalMacroContext:
         assert isinstance(result, str)
         assert "GLOBAL MACRO ENVIRONMENT" in result
         assert "S&P 500" in result
-        assert "Instruction" in result
+        assert "Instruction" not in result
 
     @pytest.mark.asyncio
     async def test_skips_missing_quotes(self):
@@ -180,7 +180,7 @@ class TestGetGlobalMacroContext:
 
     @pytest.mark.asyncio
     async def test_instruction_appears_at_end(self):
-        """Test that the instruction text appears at the end of the output."""
+        """Test that the instruction text is not present in the output."""
         mock_mdm = MagicMock()
         mock_execute = MagicMock(return_value=MagicMock(data=[]))
         mock_in = MagicMock(return_value=MagicMock(execute=mock_execute))
@@ -190,7 +190,7 @@ class TestGetGlobalMacroContext:
 
         result = await get_global_macro_context(mock_mdm)
 
-        assert result.endswith("catalyst.")
+        assert "Instruction" not in result
 
     @pytest.mark.asyncio
     async def test_positive_percentage_change_format(self):

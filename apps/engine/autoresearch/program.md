@@ -70,6 +70,8 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 18. **get_prediction_market_odds**: Fetches event contract odds.
 19. **audit_financial_valuation**: Runs valuation/DCF model calculations.
 20. **web_search**: General search for breaking news/prices.
+21. **get_global_macro_context**: Fetch a broad, clean snapshot of the global macroeconomic environment (indices, yields, commodities, DXY, volatility regime classifications).
+22. **get_volatility_index_details**: Fetch historical stats, percentiles, trends, and curve structure (contango/backwardation) for the VIX index ETFs (VIXY and VIXM) to detect volatility expansion/contraction.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
 

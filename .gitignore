@@ -29,3 +29,6 @@ htmlcov/
 
 # Git History Cache
 git-history/
+
+# Database caches
+*.db

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/backtest-arena]] — Web UI for browsing backtest prompt experiments and mutation history
 - [[entities/git-history]] — Automated Git history export to structured Markdown with QMD indexing
 - [[entities/commit-msg-lint]] — Conventional Commits enforcement via pre-commit hook
 - [[entities/ai-feeling-card]] — AI market sentiment card on the Today dashboard with buy/sell split, confidence bar, and stale detection
@@ -70,6 +71,7 @@
 - [[concepts/mcp-setup]] — Setup, configuration, plugin management, and caching details for Model Context Protocol (MCP) servers
 - [[concepts/fundamental-analysis]] — Standardized fundamental metrics, company earnings tools, and S&P 500 Market Health Barometer
 - [[concepts/market-feeling]] — LLM-driven daily and weekend market sentiment analysis grounded in newsletters, S&P 500 barometer, prediction markets, and ticker price swings
+- [[concepts/temporal-sandboxing]] — Point-in-time database client wrapping, local cache redirection, and Alpaca order simulation
 
 
 

@@ -4,14 +4,28 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DailyScoreDisplay } from './DailyScoreDisplay';
 
+let lastTable = '';
 const mockSupabaseClient = {
-    from: vi.fn().mockReturnThis(),
+    from: vi.fn().mockImplementation((table) => {
+        lastTable = table;
+        return mockSupabaseClient;
+    }),
     select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
     gte: vi.fn().mockReturnThis(),
     lte: vi.fn().mockReturnThis(),
-    order: vi.fn().mockImplementation(() =>
-        Promise.resolve({
+    order: vi.fn().mockImplementation(() => {
+        if (lastTable === 'price_history') {
+            return Promise.resolve({
+                data: [
+                    { fetched_at: '2026-06-01T00:00:00Z', price: 100.0 },
+                    { fetched_at: '2026-06-05T00:00:00Z', price: 105.0 },
+                ],
+                error: null,
+            });
+        }
+        return Promise.resolve({
             data: [
                 {
                     portfolio_id: 'gemini-portfolio-id',
@@ -39,8 +53,8 @@ const mockSupabaseClient = {
                 },
             ],
             error: null,
-        }),
-    ),
+        });
+    }),
 };
 
 vi.mock('~/lib/supabase-client', () => ({
@@ -294,5 +308,54 @@ describe('DailyScoreDisplay', () => {
         // Wait for async actual returns query to resolve
         const actualReturnsTexts = await screen.findAllByText(/1.1000%/); // 2.0% * 0.55 = 1.1000%
         expect(actualReturnsTexts.length).toBeGreaterThan(0);
+    });
+
+    it('dynamically computes SPY and portfolio returns from DB for active experiments', async () => {
+        const mockExperiment = {
+            variant_tag: 'V1.0-active',
+            week_start: '2026-06-01',
+            week_end: '2026-06-05',
+            metrics: {
+                portfolio_return_pct: null,
+                spy_return_pct: null,
+                do_nothing_return_pct: null,
+                excess_return: null,
+                opportunity_cost_penalty: 0.1,
+                max_drawdown: 1.0,
+                drawdown_penalty: 0.3,
+                score: null,
+                portfolio_details: {
+                    'gemini-portfolio-id': {
+                        owner_id: 'gemini-3.1-flash-lite',
+                        do_nothing_return_pct: 1.0,
+                    },
+                    'deepseek-portfolio-id': {
+                        owner_id: 'deepseek-v4-pro',
+                        do_nothing_return_pct: 2.0,
+                    },
+                },
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Click Wednesday card (June 3rd)
+        const wedCard = screen.getByText('6/3').closest('button');
+        expect(wedCard).toBeInTheDocument();
+        if (wedCard) {
+            fireEvent.click(wedCard);
+        }
+
+        // 1. Portfolio Return: average of gemini (2.0%) and deepseek (-2.0%) is 0.0%
+        // Under Wednesday (multiplier 0.55), scaled portfolio return should be 0.0000%
+        // Base portfolio return should be 0.0000%
+        const basePortfolioText = await screen.findByText(/Base: 0.0000%/);
+        expect(basePortfolioText).toBeInTheDocument();
+
+        // 2. SPY return: from 100 to 105 is 5.0%
+        // Scaled SPY return for Wednesday (multiplier 0.55): 5.0% * 0.55 = 2.7500%
+        // Base SPY return: 5.0000%
+        const spyReturnText = await screen.findByText(/5.0000%/);
+        expect(spyReturnText).toBeInTheDocument();
     });
 });

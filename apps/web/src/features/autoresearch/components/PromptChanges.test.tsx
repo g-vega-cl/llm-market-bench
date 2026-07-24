@@ -23,7 +23,7 @@ describe('PromptChanges', () => {
         const baselineExp = {
             ...mockCurrentExperiment,
             experiment_type: 'baseline',
-        } as PromptExperiment;
+        } as unknown as PromptExperiment;
         render(<PromptChanges experiment={baselineExp} parentExperiment={null} />);
 
         expect(screen.getByText(/Initial baseline prompt/i)).toBeInTheDocument();

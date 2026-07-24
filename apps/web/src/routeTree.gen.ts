@@ -28,6 +28,7 @@ import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/ind
 import { Route as AuditsIndexRouteImport } from './routes/audits/index'
 import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
+import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch/backtest'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
@@ -126,6 +127,11 @@ const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
   path: '/portfolios/$portfolioId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
+  id: '/autoresearch/backtest',
+  path: '/autoresearch/backtest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/autoresearch/backtest': typeof AutoresearchBacktestRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/autoresearch/backtest': typeof AutoresearchBacktestRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions': typeof AiPredictionsIndexRoute
   '/audits': typeof AuditsIndexRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/today': typeof TodayRoute
   '/_authed/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/autoresearch/backtest': typeof AutoresearchBacktestRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/profile'
     | '/auth/callback'
+    | '/autoresearch/backtest'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
     | '/audits/'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/profile'
     | '/auth/callback'
+    | '/autoresearch/backtest'
     | '/portfolios/$portfolioId'
     | '/ai-predictions'
     | '/audits'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/_authed/profile'
     | '/auth/callback'
+    | '/autoresearch/backtest'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
     | '/audits/'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TodayRoute: typeof TodayRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   AiPredictionsIndexRoute: typeof AiPredictionsIndexRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
@@ -445,6 +458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/autoresearch/backtest': {
+      id: '/autoresearch/backtest'
+      path: '/autoresearch/backtest'
+      fullPath: '/autoresearch/backtest'
+      preLoaderRoute: typeof AutoresearchBacktestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -490,6 +510,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TodayRoute: TodayRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   AiPredictionsIndexRoute: AiPredictionsIndexRoute,
   AuditsIndexRoute: AuditsIndexRoute,

@@ -11,4 +11,10 @@ export const autoresearchQueries = {
             queryFn: opts?.fetchFn,
             staleTime: 1000 * 60 * 10, // 10 minutes - experiments change once a week
         }),
+    backtest: <T>(opts?: { fetchFn?: () => Promise<T> }) =>
+        queryOptions({
+            queryKey: autoresearchQueryKeys.backtest(),
+            queryFn: opts?.fetchFn,
+            staleTime: 1000 * 60 * 10,
+        }),
 };

@@ -1,6 +1,8 @@
 """Financial Modeling Prep (FMP) implementation of FinancialProvider."""
 
 import asyncio
+import os
+import sqlite3
 import time
 from datetime import datetime, timedelta
 
@@ -8,7 +10,7 @@ import httpx
 
 from core.config import FMP_API_KEY, MARKET_DATA_RETRIES, logger
 
-from .base import FinancialProvider, HistoryData, TickerData
+from .base import FinancialProvider, HistoryData, HourlyBar, TickerData
 
 FMP_TIMEOUT = httpx.Timeout(10.0)
 
@@ -18,11 +20,35 @@ class FMPProvider(FinancialProvider):
 
     BASE_URL = "https://financialmodelingprep.com/stable"
     _last_call_time = 0.0  # Shared across all instances to throttle globally
+    _db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".hourly_price_cache.db")
 
     def __init__(self):
         if not FMP_API_KEY:
             logger.warning("FMP_API_KEY not found in environment. FMP validation will be disabled.")
         self.api_key = FMP_API_KEY
+        self._init_db()
+
+    def _init_db(self):
+        """Initialize the local SQLite cache for hourly bars."""
+        try:
+            conn = sqlite3.connect(self._db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hourly_bars (
+                    ticker TEXT,
+                    bar_date TEXT,
+                    open REAL,
+                    high REAL,
+                    low REAL,
+                    close REAL,
+                    volume INTEGER,
+                    PRIMARY KEY (ticker, bar_date)
+                )
+            """)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error(f"Failed to initialize SQLite hourly price cache database: {e}")
 
     async def get_ticker_data(self, ticker: str) -> TickerData | None:
         if not self.api_key:
@@ -510,3 +536,134 @@ class FMPProvider(FinancialProvider):
         except Exception as e:
             logger.warning(f"Failed to fetch S&P 500 constituents dynamically (expected if free key): {e}")
             return []
+
+    def _get_cached_hourly_bars(self, ticker: str, from_date: str, to_date: str) -> list[HourlyBar]:
+        """Retrieve hourly bars from the local SQLite cache."""
+        try:
+            conn = sqlite3.connect(self._db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Sub-string date comparison is safe for YYYY-MM-DD HH:MM:SS format
+            cursor.execute(
+                "SELECT bar_date, open, high, low, close, volume FROM hourly_bars "
+                "WHERE ticker = ? AND bar_date >= ? AND bar_date <= ? "
+                "ORDER BY bar_date ASC",
+                (ticker.upper(), f"{from_date} 00:00:00", f"{to_date} 23:59:59")
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            
+            return [
+                {
+                    "date": row["bar_date"],
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": int(row["volume"]),
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            logger.error(f"Failed to query hourly cache for {ticker}: {e}")
+            return []
+
+    def _cache_hourly_bars(self, ticker: str, bars: list[HourlyBar]):
+        """Save a list of hourly bars to the SQLite cache."""
+        try:
+            conn = sqlite3.connect(self._db_path)
+            cursor = conn.cursor()
+            
+            # Bulk insert using executemany for high performance
+            cursor.executemany(
+                "INSERT OR IGNORE INTO hourly_bars (ticker, bar_date, open, high, low, close, volume) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [
+                    (ticker.upper(), bar["date"], bar["open"], bar["high"], bar["low"], bar["close"], bar["volume"])
+                    for bar in bars
+                ]
+            )
+            conn.commit()
+            conn.close()
+            logger.debug(f"Cached {len(bars)} hourly bars for {ticker}")
+        except Exception as e:
+            logger.error(f"Failed to cache hourly bars for {ticker}: {e}")
+
+    async def get_hourly_history(self, ticker: str, from_date: str, to_date: str) -> list[HourlyBar]:
+        """Fetch hourly historical chart/bars for a ticker, using local SQLite cache."""
+        # 1. Check local SQLite cache first
+        cached = self._get_cached_hourly_bars(ticker, from_date, to_date)
+        if cached:
+            logger.debug(f"Hourly cache hit for {ticker} from {from_date} to {to_date} ({len(cached)} bars)")
+            return cached
+
+        # 2. Fetch from FMP API if not cached
+        if not self.api_key:
+            logger.warning("FMP_API_KEY not set. Cannot fetch hourly history.")
+            return []
+
+        logger.info(f"Hourly cache miss for {ticker} from {from_date} to {to_date}. Fetching from FMP API...")
+        
+        # Throttling logic
+        from core.config import FINANCIAL_API_THROTTLE_SECONDS
+        if FINANCIAL_API_THROTTLE_SECONDS > 0:
+            await asyncio.sleep(FINANCIAL_API_THROTTLE_SECONDS)
+
+        for attempt in range(1, MARKET_DATA_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
+                    resp = await client.get(
+                        f"{self.BASE_URL}/historical-chart/1hour",
+                        params={
+                            "symbol": ticker.upper(),
+                            "from": from_date,
+                            "to": to_date,
+                            "apikey": self.api_key
+                        }
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    
+                    if not data or not isinstance(data, list):
+                        logger.warning(f"No hourly history returned for {ticker} from FMP.")
+                        return []
+
+                    # Map to HourlyBar structures
+                    bars = []
+                    for entry in data:
+                        # Skip entries missing critical fields
+                        if not all(k in entry for k in ("date", "open", "high", "low", "close")):
+                            continue
+                        bars.append({
+                            "date": entry["date"],
+                            "open": float(entry["open"]),
+                            "high": float(entry["high"]),
+                            "low": float(entry["low"]),
+                            "close": float(entry["close"]),
+                            "volume": int(entry.get("volume", 0))
+                        })
+
+                    # FMP historical-chart returns reverse chronological order (newest first).
+                    # Sort ascending by date for logical time progression.
+                    bars.sort(key=lambda x: x["date"])
+
+                    # Save to cache
+                    if bars:
+                        self._cache_hourly_bars(ticker, bars)
+                    
+                    return bars
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 402:
+                    logger.error(f"FMP API Quota Exceeded (402 Payment Required) for {ticker} hourly history")
+                    return []
+                logger.error(f"HTTP error fetching hourly history for {ticker}: {e}")
+            except Exception as e:
+                logger.warning(f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed fetching hourly history for {ticker}: {e}")
+
+            if attempt < MARKET_DATA_RETRIES:
+                await asyncio.sleep(2 ** (attempt - 1))
+
+        logger.error(f"All attempts failed fetching hourly history for {ticker} via FMP.")
+        return []

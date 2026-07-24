@@ -89,6 +89,7 @@ describe('AIPredictionsPage', () => {
             created_at: '2026-07-10T00:00:00Z',
             parent_tag: null,
             research_output: null,
+            is_backtest: false,
         },
     ];
 

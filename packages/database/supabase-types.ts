@@ -350,8 +350,8 @@ export type Database = {
                     forward_pe: number | null;
                     pb_ratio: number | null;
                     pe_ratio: number | null;
-                    ps_ratio: number | null;
                     pfcf_ratio: number | null;
+                    ps_ratio: number | null;
                     updated_at: string | null;
                 };
                 Insert: {
@@ -361,8 +361,8 @@ export type Database = {
                     forward_pe?: number | null;
                     pb_ratio?: number | null;
                     pe_ratio?: number | null;
-                    ps_ratio?: number | null;
                     pfcf_ratio?: number | null;
+                    ps_ratio?: number | null;
                     updated_at?: string | null;
                 };
                 Update: {
@@ -372,8 +372,8 @@ export type Database = {
                     forward_pe?: number | null;
                     pb_ratio?: number | null;
                     pe_ratio?: number | null;
-                    ps_ratio?: number | null;
                     pfcf_ratio?: number | null;
+                    ps_ratio?: number | null;
                     updated_at?: string | null;
                 };
                 Relationships: [];
@@ -768,6 +768,7 @@ export type Database = {
                     created_at: string;
                     experiment_type: string;
                     id: string;
+                    is_backtest: boolean;
                     metrics: Json | null;
                     parent_tag: string | null;
                     prompt_content: string;
@@ -783,6 +784,7 @@ export type Database = {
                     created_at?: string;
                     experiment_type?: string;
                     id?: string;
+                    is_backtest?: boolean;
                     metrics?: Json | null;
                     parent_tag?: string | null;
                     prompt_content: string;
@@ -798,6 +800,7 @@ export type Database = {
                     created_at?: string;
                     experiment_type?: string;
                     id?: string;
+                    is_backtest?: boolean;
                     metrics?: Json | null;
                     parent_tag?: string | null;
                     prompt_content?: string;
@@ -820,12 +823,16 @@ export type Database = {
             };
             sector_predictions: {
                 Row: {
+                    benchmark_spy_return: number | null;
                     created_at: string;
+                    evaluation_audit_data: Json | null;
                     id: string;
                     model_name: string;
                     pair_percentile_score: number | null;
                     predicted_pair: Json;
+                    predicted_pair_return: number | null;
                     predicted_sector: string;
+                    predicted_sector_return: number | null;
                     prediction_date: string;
                     prompt_tag: string | null;
                     reasoning: string | null;
@@ -835,12 +842,16 @@ export type Database = {
                     timeframe: string;
                 };
                 Insert: {
+                    benchmark_spy_return?: number | null;
                     created_at?: string;
+                    evaluation_audit_data?: Json | null;
                     id?: string;
                     model_name: string;
                     pair_percentile_score?: number | null;
                     predicted_pair: Json;
+                    predicted_pair_return?: number | null;
                     predicted_sector: string;
+                    predicted_sector_return?: number | null;
                     prediction_date: string;
                     prompt_tag?: string | null;
                     reasoning?: string | null;
@@ -850,12 +861,16 @@ export type Database = {
                     timeframe: string;
                 };
                 Update: {
+                    benchmark_spy_return?: number | null;
                     created_at?: string;
+                    evaluation_audit_data?: Json | null;
                     id?: string;
                     model_name?: string;
                     pair_percentile_score?: number | null;
                     predicted_pair?: Json;
+                    predicted_pair_return?: number | null;
                     predicted_sector?: string;
+                    predicted_sector_return?: number | null;
                     prediction_date?: string;
                     prompt_tag?: string | null;
                     reasoning?: string | null;
@@ -1064,6 +1079,16 @@ export type Database = {
                     isOneToOne: false;
                     isSetofReturn: true;
                 };
+            };
+            get_referenced_newsletter_snapshots: {
+                Args: { target_source_ids: string[] };
+                Returns: {
+                    content: string;
+                    date: string;
+                    sender: string;
+                    source_id: string;
+                    subject: string;
+                }[];
             };
             match_concepts: {
                 Args: {

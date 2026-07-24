@@ -34,6 +34,7 @@ export function PerformanceChart({
     showPercentage = false,
 }: PerformanceChartProps) {
     const svgRef = React.useRef<SVGSVGElement>(null);
+    const yScaleRef = React.useRef<d3.ScaleLinear<number, number> | null>(null);
     const [tooltipData, setTooltipData] = React.useState<{
         date: string;
         equity: number;
@@ -105,6 +106,8 @@ export function PerformanceChart({
             ])
             .nice()
             .range([height, 0]);
+
+        yScaleRef.current = y;
 
         const line = d3
             .line<ChartLine>()
@@ -353,9 +356,10 @@ export function PerformanceChart({
     }, [data, benchmarkData, selectedBenchmark, showPercentage, tooltipData?.x]);
 
     React.useEffect(() => {
-        if (!svgRef.current || !tooltipData) return;
+        if (!svgRef.current || !tooltipData || !yScaleRef.current) return;
 
         const svg = d3.select(svgRef.current);
+        const y = yScaleRef.current;
 
         svg.select('.crosshair')
             .attr('opacity', 1)
@@ -365,32 +369,12 @@ export function PerformanceChart({
 
         const benchmarkDot = svg.select('.benchmark-dot');
         if (tooltipData.benchmarkValue !== undefined && selectedBenchmark) {
-            const benchmarkPrices = benchmarkData?.[selectedBenchmark] || [];
-            const baseValue = Number(data[0]?.total_equity) || 1;
-            const benchmarkBase = benchmarkPrices[0]?.price || 1;
-
-            const portfolioPct = ((tooltipData.equity - baseValue) / baseValue) * 100;
-            const benchmarkPct =
-                ((tooltipData.benchmarkValue - benchmarkBase) / benchmarkBase) * 100;
-            const outperformance = portfolioPct - benchmarkPct;
-
-            const yPos = yScale(outperformance);
-
+            const yPos = y(tooltipData.benchmarkValue);
             benchmarkDot.attr('opacity', 1).attr('cx', tooltipData.x).attr('cy', yPos);
         } else {
             benchmarkDot.attr('opacity', 0);
         }
-
-        function yScale(val: number): number {
-            const margin = { top: 20, right: 120, bottom: 30, left: 60 };
-            const height = 400 - margin.top - margin.bottom;
-            const allValues = data.map((d) => Number(d.total_equity));
-            const minVal = Math.min(...allValues, 0);
-            const maxVal = Math.max(...allValues, 10000);
-            const y = d3.scaleLinear().domain([minVal, maxVal]).range([height, 0]);
-            return y(val);
-        }
-    }, [tooltipData, selectedBenchmark, benchmarkData, data]);
+    }, [tooltipData, selectedBenchmark]);
 
     const hasBenchmark = selectedBenchmark && benchmarkData?.[selectedBenchmark];
 

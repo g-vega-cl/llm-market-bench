@@ -28,10 +28,11 @@ def clear_active_prompt_cache() -> None:
     _active_cache.clear()
 
 
-async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> str | None:
-    cached = _active_cache.get(prompt_name)
+async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> str | None:
+    cache_key = f"{prompt_name}:{is_backtest}"
+    cached = _active_cache.get(cache_key)
     now = time.monotonic()
-    if cached is not None and (now - cached[0]) < _CACHE_TTL_SECONDS:
+    if not is_backtest and cached is not None and (now - cached[0]) < _CACHE_TTL_SECONDS:
         return cached[1]
 
     sb_client = await get_async_supabase_client()
@@ -40,6 +41,7 @@ async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") ->
         .select("prompt_content")
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .maybe_single()
         .execute()
     )
@@ -52,11 +54,12 @@ async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") ->
         return None
 
     content = res.data["prompt_content"] if res.data else None
-    _active_cache[prompt_name] = (now, content)
+    if not is_backtest:
+        _active_cache[cache_key] = (now, content)
     return content
 
 
-async def get_active_variant(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+async def get_active_variant(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> dict | None:
     """Retrieve the full database row/dictionary of the currently active variant."""
     sb_client = await get_async_supabase_client()
     res = await (
@@ -64,6 +67,7 @@ async def get_active_variant(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         .select("*")
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .maybe_single()
         .execute()
     )
@@ -87,11 +91,14 @@ async def save_variant(
     experiment_type: str,
     research_output: dict | None = None,
     parent_tag: str | None = None,
+    is_backtest: bool = False,
 ) -> str:
     sb_client = await get_async_supabase_client()
 
     now = datetime.now(UTC)
     tag = f"v{now.strftime('%Y%m%d-%H%M%S')}"
+    if is_backtest:
+        tag = f"backtest-{tag}"
 
     insert_data: dict[str, Any] = {
         "variant_tag": tag,
@@ -105,6 +112,7 @@ async def save_variant(
         "parent_tag": parent_tag,
         "change_description": change_description,
         "research_output": research_output,
+        "is_backtest": is_backtest,
     }
 
     # INSERT first — if this fails, nothing is lost.
@@ -113,7 +121,11 @@ async def save_variant(
     # NOW update parent variant to baseline (if it exists), and demote other active/baseline variants to saved
     if parent_tag:
         await (
-            sb_client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+            sb_client.table("prompt_experiments")
+            .update({"status": "baseline"})
+            .eq("variant_tag", parent_tag)
+            .eq("is_backtest", is_backtest)
+            .execute()
         )
     # Demote all other active/baseline variants to saved
     await (
@@ -121,22 +133,24 @@ async def save_variant(
         .update({"status": "saved"})
         .in_("status", ["active", "baseline"])
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .neq("variant_tag", tag)
         .neq("variant_tag", parent_tag or "")
         .execute()
     )
 
     clear_active_prompt_cache()
-    logger.info("Saved prompt variant %s (type=%s)", tag, experiment_type)
+    logger.info("Saved prompt variant %s (type=%s, is_backtest=%s)", tag, experiment_type, is_backtest)
     return tag
 
 
-async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> list[dict]:
+async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> list[dict]:
     sb_client = await get_async_supabase_client()
     res = await (
         sb_client.table("prompt_experiments")
         .select("*")
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .order("created_at", desc=True)
         .limit(limit)
         .execute()
@@ -146,12 +160,12 @@ async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSI
     return res.data or []
 
 
-async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> dict | None:
     """Return the prompt variant with the highest score achieved so far among pull-based variants."""
     sb_client = await get_async_supabase_client()
     # Fetch all variants for this prompt name. Since it's a weekly loop,
     # the number of rows will remain small (e.g., 52 per year).
-    res = await sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).execute()
+    res = await sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest).execute()
 
     if not res or not res.data:
         return None
@@ -189,19 +203,20 @@ async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT"
     return best_variant
 
 
-async def get_baseline_metrics(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> dict | None:
+async def get_baseline_metrics(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> dict | None:
     """Legacy helper: now returns metrics of the all-time baseline."""
-    baseline = await get_all_time_baseline(prompt_name)
+    baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest)
     return baseline["metrics"] if baseline else None
 
 
-async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> str | None:
+async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> str | None:
     sb_client = await get_async_supabase_client()
     await (
         sb_client.table("prompt_experiments")
         .update({"status": "crashed"})
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .execute()
     )
 
@@ -209,6 +224,7 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         sb_client.table("prompt_experiments")
         .select("variant_tag")
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .in_("status", ["baseline", "saved"])
         .order("created_at", desc=True)
         .limit(1)
@@ -223,6 +239,7 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
             .update({"status": "active"})
             .eq("prompt_name", prompt_name)
             .eq("variant_tag", tag)
+            .eq("is_backtest", is_backtest)
             .execute()
         )
         clear_active_prompt_cache()
@@ -233,7 +250,7 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
     return None
 
 
-async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -> str | None:
+async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> str | None:
     """Revert the active prompt to the all-time baseline (best score ever).
 
     Used when the current experiment underperforms vs the baseline.
@@ -243,7 +260,7 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
 
     Returns the baseline variant_tag, or None if no baseline exists.
     """
-    baseline = await get_all_time_baseline(prompt_name)
+    baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest)
     if baseline is None:
         logger.warning("No baseline to revert to (prompt_name=%s)", prompt_name)
         return None
@@ -257,6 +274,7 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         .select("variant_tag")
         .eq("prompt_name", prompt_name)
         .eq("status", "active")
+        .eq("is_backtest", is_backtest)
         .maybe_single()
         .execute()
     )
@@ -271,6 +289,7 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         .update({"status": "discarded"})
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
         .execute()
     )
 
@@ -280,6 +299,7 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT") -
         .update({"status": "active"})
         .eq("prompt_name", prompt_name)
         .eq("variant_tag", baseline_tag)
+        .eq("is_backtest", is_backtest)
         .execute()
     )
 

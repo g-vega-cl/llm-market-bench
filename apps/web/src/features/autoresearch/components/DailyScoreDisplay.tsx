@@ -33,13 +33,61 @@ interface DailyMetrics {
     dailyScore: number;
 }
 
+function getPortfolioReturn(
+    metrics: Record<string, number | null | undefined>,
+    isActive: boolean,
+    actualReturns: ActualReturns | null,
+): number {
+    const portfolioReturn = metrics.portfolio_return_pct;
+    if (portfolioReturn !== null && portfolioReturn !== undefined) {
+        return portfolioReturn;
+    }
+    if (isActive && actualReturns && Object.keys(actualReturns).length > 0) {
+        const rets = Object.values(actualReturns).map((r) => r.actualReturn);
+        return rets.reduce((sum, val) => sum + val, 0) / rets.length;
+    }
+    return isActive ? 1.45 : 0;
+}
+
+function getSpyReturn(
+    metrics: Record<string, number | null | undefined>,
+    isActive: boolean,
+    actualSpyReturn: number | null,
+): number {
+    const spyReturn = metrics.spy_return_pct;
+    if (spyReturn !== null && spyReturn !== undefined) {
+        return spyReturn;
+    }
+    return isActive && actualSpyReturn !== null ? actualSpyReturn : isActive ? 0.85 : 0;
+}
+
+function getDoNothingReturn(
+    metrics: Record<string, number | null | undefined>,
+    isActive: boolean,
+): number {
+    const doNothingReturn = metrics.do_nothing_return_pct;
+    if (doNothingReturn !== null && doNothingReturn !== undefined) {
+        return doNothingReturn;
+    }
+    const details = (metrics.portfolio_details || {}) as Record<string, PortfolioDetail>;
+    const detailEntries = Object.values(details);
+    if (detailEntries.length > 0) {
+        const dnReturns = detailEntries.map((d) => d.do_nothing_return_pct ?? 0);
+        return dnReturns.reduce((sum, val) => sum + val, 0) / dnReturns.length;
+    }
+    return isActive ? 1.1 : 0;
+}
+
 function calculateDailyMetrics(
     metrics: Record<string, number | null | undefined>,
     isActive: boolean,
+    actualSpyReturn: number | null,
+    actualReturns: ActualReturns | null,
 ): DailyMetrics {
-    const portfolioReturn = metrics.portfolio_return_pct ?? (isActive ? 1.45 : 0);
-    const spyReturn = metrics.spy_return_pct ?? (isActive ? 0.85 : 0);
-    const doNothingReturn = metrics.do_nothing_return_pct ?? (isActive ? 1.1 : 0);
+    const portfolioReturn = getPortfolioReturn(metrics, isActive, actualReturns);
+    const spyReturn = getSpyReturn(metrics, isActive, actualSpyReturn);
+    const doNothingReturn = getDoNothingReturn(metrics, isActive);
+
     const opportunityCost = metrics.opportunity_cost_penalty ?? (isActive ? 0.05 : 0);
     const maxDrawdown = metrics.max_drawdown ?? (isActive ? 1.25 : 0);
 
@@ -269,12 +317,77 @@ async function fetchPortfolioPerformanceData(
     return data;
 }
 
+function calculateSpyReturn(prices: { price: number | string }[]): number {
+    let cumulative = 1.0;
+    for (let i = 1; i < prices.length; i++) {
+        const prev = Number(prices[i - 1].price || 0);
+        const curr = Number(prices[i].price || 0);
+        if (prev > 0) {
+            cumulative *= 1 + (curr - prev) / prev;
+        }
+    }
+    return (cumulative - 1) * 100;
+}
+
+async function fetchActiveWeekData(
+    portfolioIds: string[],
+    weekStart: string,
+    weekEnd: string,
+    spyReturnPct: number | null | undefined,
+) {
+    const supabase = getSupabaseBrowserClient();
+    return Promise.all([
+        fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd),
+        spyReturnPct === null || spyReturnPct === undefined
+            ? supabase
+                  .from('price_history')
+                  .select('fetched_at, price')
+                  .eq('ticker', 'SPY')
+                  .gte('fetched_at', weekStart)
+                  .lte('fetched_at', `${weekEnd}T23:59:59`)
+                  .order('fetched_at', { ascending: true })
+            : Promise.resolve({ data: null, error: null }),
+    ]);
+}
+
+function getProcessedActualReturns(data: unknown[]): ActualReturns {
+    const { grouped, ownerIdMap } = groupPerformanceData(data as PerformanceRow[]);
+    return calculateActualReturns(grouped, ownerIdMap);
+}
+
+function processSpyResponse(
+    spyRes: { data: unknown[] | null },
+    isMounted: boolean,
+    setActualSpyReturn: (r: number) => void,
+) {
+    if (spyRes.data && spyRes.data.length >= 2) {
+        const computedReturn = calculateSpyReturn(spyRes.data as { price: number | string }[]);
+        if (isMounted) {
+            setActualSpyReturn(computedReturn);
+        }
+    }
+}
+
+function processPortfolioData(
+    data: unknown[] | null,
+    isMounted: boolean,
+    setActualReturns: (r: ActualReturns) => void,
+) {
+    if (data && data.length > 0) {
+        const results = getProcessedActualReturns(data);
+        if (isMounted) {
+            setActualReturns(results);
+        }
+    }
+}
+
 export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
     const metrics = experiment.metrics || {};
     const isActive = metrics.score === null || metrics.score === undefined;
 
     const [selectedDayName, setSelectedDayName] = useState<string | null>(null);
     const [actualReturns, setActualReturns] = useState<ActualReturns | null>(null);
+    const [actualSpyReturn, setActualSpyReturn] = useState<number | null>(null);
     const [isLoadingActuals, setIsLoadingActuals] = useState(false);
 
     useEffect(() => {
@@ -291,22 +404,17 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
 
         const loadActuals = async () => {
             try {
-                const data = await fetchPortfolioPerformanceData(
+                const weekStart = experiment.week_start || '';
+                const weekEnd = experiment.week_end || '';
+                const [data, spyRes] = await fetchActiveWeekData(
                     portfolioIds,
-                    experiment.week_start,
-                    experiment.week_end,
+                    weekStart,
+                    weekEnd,
+                    metrics.spy_return_pct,
                 );
 
-                if (!data) return;
-
-                const { grouped, ownerIdMap } = groupPerformanceData(
-                    data as unknown as PerformanceRow[],
-                );
-                const results = calculateActualReturns(grouped, ownerIdMap);
-
-                if (isMounted) {
-                    setActualReturns(results);
-                }
+                processSpyResponse(spyRes, isMounted, setActualSpyReturn);
+                processPortfolioData(data, isMounted, setActualReturns);
             } catch (e) {
                 console.error('Failed to load actual returns:', e);
             } finally {
@@ -320,7 +428,12 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         return () => {
             isMounted = false;
         };
-    }, [experiment.week_start, experiment.week_end, metrics.portfolio_details]);
+    }, [
+        experiment.week_start,
+        experiment.week_end,
+        metrics.portfolio_details,
+        metrics.spy_return_pct,
+    ]);
 
     const {
         portfolioReturn,
@@ -331,7 +444,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         dailyExcessReturn,
         dailyDrawdownPenalty,
         dailyScore,
-    } = calculateDailyMetrics(metrics, isActive);
+    } = calculateDailyMetrics(metrics, isActive, actualSpyReturn, actualReturns);
 
     const checkpoints = getCheckpoints(
         dailyScore,

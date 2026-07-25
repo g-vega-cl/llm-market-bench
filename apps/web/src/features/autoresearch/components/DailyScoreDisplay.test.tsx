@@ -358,4 +358,43 @@ describe('DailyScoreDisplay', () => {
         const spyReturnText = await screen.findByText(/5.0000%/);
         expect(spyReturnText).toBeInTheDocument();
     });
+
+    it('uses actual SPY return from DB over initial spy_return_pct for active experiments', async () => {
+        const mockExperiment = {
+            variant_tag: 'v20260719-223956',
+            week_start: '2026-07-20',
+            week_end: '2026-07-24',
+            metrics: {
+                portfolio_return_pct: null,
+                spy_return_pct: 0.85,
+                do_nothing_return_pct: null,
+                excess_return: null,
+                opportunity_cost_penalty: 0.05,
+                max_drawdown: 1.25,
+                drawdown_penalty: 0.375,
+                score: null,
+                portfolio_details: {
+                    'gemini-portfolio-id': {
+                        owner_id: 'gemini-3.1-flash-lite',
+                        do_nothing_return_pct: 1.0,
+                    },
+                },
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Click Monday card (July 20th -> 7/20)
+        const monCard = screen.getByText('7/20').closest('button');
+        expect(monCard).toBeInTheDocument();
+        if (monCard) {
+            fireEvent.click(monCard);
+        }
+
+        // Verify that the actual SPY return (5.0000% from mock price_history 100 -> 105)
+        // is displayed instead of falling back to 0.85%
+        const actualSpyText = await screen.findByText(/5.0000%/);
+        expect(actualSpyText).toBeInTheDocument();
+        expect(screen.queryByText(/0.8500%/)).not.toBeInTheDocument();
+    });
 });

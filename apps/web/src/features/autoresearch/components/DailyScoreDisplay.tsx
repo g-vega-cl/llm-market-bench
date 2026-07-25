@@ -54,11 +54,14 @@ function getSpyReturn(
     isActive: boolean,
     actualSpyReturn: number | null,
 ): number {
+    if (isActive && actualSpyReturn !== null) {
+        return actualSpyReturn;
+    }
     const spyReturn = metrics.spy_return_pct;
     if (spyReturn !== null && spyReturn !== undefined) {
         return spyReturn;
     }
-    return isActive && actualSpyReturn !== null ? actualSpyReturn : isActive ? 0.85 : 0;
+    return isActive ? 0.85 : 0;
 }
 
 function getDoNothingReturn(
@@ -333,12 +336,12 @@ async function fetchActiveWeekData(
     portfolioIds: string[],
     weekStart: string,
     weekEnd: string,
-    spyReturnPct: number | null | undefined,
+    isActive: boolean,
 ) {
     const supabase = getSupabaseBrowserClient();
     return Promise.all([
         fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd),
-        spyReturnPct === null || spyReturnPct === undefined
+        isActive
             ? supabase
                   .from('price_history')
                   .select('fetched_at, price')
@@ -410,7 +413,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                     portfolioIds,
                     weekStart,
                     weekEnd,
-                    metrics.spy_return_pct,
+                    isActive,
                 );
 
                 processSpyResponse(spyRes, isMounted, setActualSpyReturn);
@@ -428,12 +431,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
         return () => {
             isMounted = false;
         };
-    }, [
-        experiment.week_start,
-        experiment.week_end,
-        metrics.portfolio_details,
-        metrics.spy_return_pct,
-    ]);
+    }, [experiment.week_start, experiment.week_end, metrics.portfolio_details, isActive]);
 
     const {
         portfolioReturn,

@@ -305,6 +305,7 @@ async function fetchPortfolioPerformanceData(
     weekStart: string,
     weekEnd: string,
 ) {
+    if (portfolioIds.length === 0) return null;
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase
         .from('portfolio_performance')
@@ -400,7 +401,6 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
             PortfolioDetail
         >;
         const portfolioIds = Object.keys(portfolioDetails);
-        if (portfolioIds.length === 0) return;
 
         let isMounted = true;
         setIsLoadingActuals(true);

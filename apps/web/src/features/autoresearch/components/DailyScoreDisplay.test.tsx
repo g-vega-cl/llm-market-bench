@@ -397,4 +397,37 @@ describe('DailyScoreDisplay', () => {
         expect(actualSpyText).toBeInTheDocument();
         expect(screen.queryByText(/0.8500%/)).not.toBeInTheDocument();
     });
+
+    it('fetches actual SPY return even when portfolio_details is empty', async () => {
+        const mockExperiment = {
+            variant_tag: 'v20260719-223956',
+            week_start: '2026-07-20',
+            week_end: '2026-07-24',
+            metrics: {
+                portfolio_return_pct: null,
+                spy_return_pct: null,
+                do_nothing_return_pct: null,
+                excess_return: null,
+                opportunity_cost_penalty: null,
+                max_drawdown: null,
+                drawdown_penalty: null,
+                score: null,
+                portfolio_details: {},
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        // Click Monday card (July 20th -> 7/20)
+        const monCard = screen.getByText('7/20').closest('button');
+        expect(monCard).toBeInTheDocument();
+        if (monCard) {
+            fireEvent.click(monCard);
+        }
+
+        // Should fetch SPY prices (100 -> 105 = 5.0000%) even though portfolio_details is {}
+        const actualSpyText = await screen.findByText(/5.0000%/);
+        expect(actualSpyText).toBeInTheDocument();
+        expect(screen.queryByText(/0.8500%/)).not.toBeInTheDocument();
+    });
 });

@@ -96,8 +96,23 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
 - [ ] - Think about how tools are defined and used.
 - [ ] - Benchify: you don't have to trade ultra-high caps, feel free to dabble on mediumer caps. But still liquid
-- [ ] - Benchify:
+- [ ] - Benchify: LLMs existed for a while before they exploded, same with crypto, what other techs are like this? Quantum?
+- [ ] - Benchify: fed watch api like but free?: https://share.gemini.google/iul3v5Q9C3AE
+- [ ] - Benchify: add institutional buying and Congress buying?
+- [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
+- [ ] - Benchify: make sure El Niño is saved in memory
+- [ ] - Benchify: predict S&P for the day
+- [ ] - Benchify: check if this is in lessons learned
+    The AI rotation
+    Alphabet and Tesla’s results offer an early read on how investors may react to the rest of Magnificent Seven earnings, and by extension, the broader AI trade.
 
+So far, money has been rotating away from AI’s biggest consumer-facing winners, like Alphabet, and into the companies building the industry’s backbone—think utilities, power, or cooling. That’s not necessarily a bad thing. It suggests investors are still bullish on AI, just through a different part of the ecosystem.
+
+The concern, according to JPMorgan strategist Jason Hunter, is what happens if that rotation loses steam. He points to the late 1990s, when infrastructure stocks kept climbing even as actual internet companies’ stocks stalled out. JPMorgan Asset Management’s Michael Cembalest called that divergence a market “head fake.”
+
+There are similar dynamics at play today: Chip and infrastructure stocks have rallied more than the AI companies they’re supposed to be supplying.
+
+So if Big Tech keeps stumbling and infrastructure names stop carrying the baton, investors could start exiting the AI trade altogether, turning into a broader selloff
 This is such an obvious adjacent trade, why didn't we think about this before, how can we find these trades earlier?
 
 Once upon a time, it was super trendy for poorly performing companies to declare they were going to buy bitcoin (or solana, or dogecoin, or whatever) and transform themselves into digital asset treasuries.

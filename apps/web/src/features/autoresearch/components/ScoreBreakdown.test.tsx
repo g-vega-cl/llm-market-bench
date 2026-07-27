@@ -28,8 +28,9 @@ describe('ScoreBreakdown', () => {
         // Check if values are correctly rendered
         expect(screen.getByText('5.5000% - 2.0000%')).toBeInTheDocument();
         expect(screen.getByText('5.5000% - 4.0000%')).toBeInTheDocument();
+        expect(screen.getByText('5.5000% - 0.0800%')).toBeInTheDocument();
         expect(screen.getByText('+5.0000%')).toBeInTheDocument();
-        expect(screen.getByText('-0.1234%')).toBeInTheDocument();
+        expect(screen.getByText('+0.1234%')).toBeInTheDocument();
         expect(screen.getByText('10.0000%')).toBeInTheDocument();
         expect(screen.getByText('-3.0000%')).toBeInTheDocument();
         expect(screen.getByText('10.0000% × 0.3 = 3.0000%')).toBeInTheDocument();
@@ -42,7 +43,7 @@ describe('ScoreBreakdown', () => {
                 spy_return_pct: 2.0,
                 do_nothing_return_pct: -0.5,
                 excess_return: -3.5,
-                opportunity_cost_penalty: 5.5,
+                opportunity_cost_penalty: -5.5,
                 max_drawdown: 5,
                 drawdown_penalty: 1.5,
                 score: -10.5,
@@ -56,8 +57,9 @@ describe('ScoreBreakdown', () => {
         // Check if values are correctly rendered for negatives
         expect(screen.getByText('-1.0000% - 2.0000%')).toBeInTheDocument();
         expect(screen.getByText('-1.0000% - -0.5000%')).toBeInTheDocument();
-        expect(screen.getByText('-3.5000%')).toBeInTheDocument();
-        expect(screen.getByText('-5.5000%')).toBeInTheDocument();
+        expect(screen.getByText('-1.0000% - 0.0800%')).toBeInTheDocument();
+        expect(screen.getAllByText('-3.5000%').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('-5.5000%').length).toBeGreaterThan(0);
         expect(screen.getByText('5.0000%')).toBeInTheDocument();
         expect(screen.getByText('-1.5000%')).toBeInTheDocument();
         expect(screen.getByText('5.0000% × 0.3 = 1.5000%')).toBeInTheDocument();

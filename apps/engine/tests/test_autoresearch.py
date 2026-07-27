@@ -1588,15 +1588,17 @@ class TestComputeScore:
     returns a dict with score, excess_return, max_drawdown."""
 
     def test_basic_formula(self):
-        """score = (portfolio_return - spy) + (portfolio_return - do_nothing) - (max_drawdown * 0.3)"""
+        """score = 0.4*(portfolio - spy) + 0.4*(portfolio - do_nothing) + 0.2*(portfolio - bond) - (max_drawdown * 0.3)"""
         from autoresearch.metrics import compute_score
 
         result = compute_score(
-            portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=5.0, do_nothing_return_pct=0.0
+            portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=5.0, do_nothing_return_pct=0.0, bond_return_pct=0.0
         )
-        # excess = (3.0 - 1.0) + (3.0 - 0.0) = 5.0
-        assert result["excess_return"] == pytest.approx(5.0)
-        assert result["score"] == pytest.approx(3.5)  # 5.0 - 1.5 = 3.5
+        # excess_vs_spy = 2.0, excess_vs_do_nothing = 3.0, excess_vs_bond = 3.0
+        # excess_return = 0.4(2.0) + 0.4(3.0) + 0.2(3.0) = 0.8 + 1.2 + 0.6 = 2.6
+        # score = 2.6 - (5.0 * 0.3) = 2.6 - 1.5 = 1.1
+        assert result["excess_return"] == pytest.approx(2.6)
+        assert result["score"] == pytest.approx(1.1)
 
     def test_drawdown_penalty_reduces_score(self):
         """Higher drawdown must produce lower score for same excess return."""
@@ -1611,11 +1613,12 @@ class TestComputeScore:
         from autoresearch.metrics import compute_score
 
         result = compute_score(
-            portfolio_return_pct=-2.0, spy_return_pct=1.0, max_drawdown_pct=2.0, do_nothing_return_pct=-1.0
+            portfolio_return_pct=-2.0, spy_return_pct=1.0, max_drawdown_pct=2.0, do_nothing_return_pct=-1.0, bond_return_pct=0.0
         )
         assert result["score"] < 0
-        # excess = (-2.0 - 1.0) + (-2.0 - (-1.0)) = -3.0 - 1.0 = -4.0
-        assert result["excess_return"] == pytest.approx(-4.0)
+        # excess_vs_spy = -3.0, excess_vs_do_nothing = -1.0, excess_vs_bond = -2.0
+        # excess_return = 0.4(-3.0) + 0.4(-1.0) + 0.2(-2.0) = -1.2 - 0.4 - 0.4 = -2.0
+        assert result["excess_return"] == pytest.approx(-2.0)
 
     def test_beat_spy_but_high_drawdown_can_be_negative(self):
         """Beating SPY is not enough — drawdown penalty can flip score negative."""
@@ -1624,8 +1627,6 @@ class TestComputeScore:
         result = compute_score(
             portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=25.0, do_nothing_return_pct=2.0
         )
-        # excess = (3.0 - 1.0) + (3.0 - 2.0) = 3.0
-        # score = 3.0 - (25*0.3) = 3.0 - 7.5 = -4.5
         assert result["score"] < 0
 
     def test_zero_drawdown_positive_excess(self):
@@ -1633,10 +1634,11 @@ class TestComputeScore:
         from autoresearch.metrics import compute_score
 
         result = compute_score(
-            portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, do_nothing_return_pct=2.0
+            portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, do_nothing_return_pct=2.0, bond_return_pct=0.0
         )
-        # excess = (5.0 - 1.0) + (5.0 - 2.0) = 4.0 + 3.0 = 7.0
-        assert result["score"] == pytest.approx(7.0)
+        # excess_vs_spy = 4.0, excess_vs_do_nothing = 3.0, excess_vs_bond = 5.0
+        # excess_return = 0.4(4.0) + 0.4(3.0) + 0.2(5.0) = 1.6 + 1.2 + 1.0 = 3.8
+        assert result["score"] == pytest.approx(3.8)
         assert result["max_drawdown"] == 0.0
 
     def test_excess_return_in_output(self):
@@ -1661,59 +1663,52 @@ class TestComputeScore:
         result = compute_score(portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, volatility_pct=12.5)
         assert result["volatility"] == pytest.approx(12.5)
 
-    def test_opportunity_cost_penalty_applied_when_underperforming(self):
-        """Verify that underperforming the bond hurdle applies the penalty."""
+    def test_benchmark_triad_weighted_score_calculation(self):
+        """Verify that score is computed using the Approach 3 Benchmark-Triad Weighted Model (40% SPY, 40% Do-Nothing, 20% Bond)."""
         from autoresearch.metrics import compute_score
 
+        # Scenario: R_p = 1.5%, SPY = 0.5%, Do-Nothing = 0.3%, Bond = 0.1%, Drawdown = 2.0%
+        # excess_vs_spy = 1.0%
+        # excess_vs_do_nothing = 1.2%
+        # excess_vs_bond = 1.4%
+        # excess_return = 0.4(1.0) + 0.4(1.2) + 0.2(1.4) = 0.4 + 0.48 + 0.28 = 1.16
+        # drawdown_penalty = 2.0 * 0.3 = 0.6
+        # score = 1.16 - 0.6 = 0.56
         result = compute_score(
-            portfolio_return_pct=1.0,
+            portfolio_return_pct=1.5,
             spy_return_pct=0.5,
             max_drawdown_pct=2.0,
-            bond_return_pct=1.5,
+            bond_return_pct=0.1,
             dollar_return_pct=0.8,
-            do_nothing_return_pct=1.0,
+            do_nothing_return_pct=0.3,
         )
-        assert result["excess_return"] == pytest.approx(0.5)
-        assert result["bond_return_pct"] == pytest.approx(1.5)
+        assert result["excess_return"] == pytest.approx(1.16)
+        assert result["bond_return_pct"] == pytest.approx(0.1)
         assert result["dollar_return_pct"] == pytest.approx(0.8)
-        assert result["opportunity_cost_penalty"] == pytest.approx(0.5)  # 1.5 - 1.0 = 0.5 (ignores dollar)
-        # score = excess_return - opportunity_cost_penalty - drawdown_penalty
-        # score = 0.5 - 0.5 - (2.0 * 0.3) = -0.6
-        assert result["score"] == pytest.approx(-0.6)
+        assert result["opportunity_cost_penalty"] == pytest.approx(1.4)  # 1.5 - 0.1 = 1.4
+        assert result["drawdown_penalty"] == pytest.approx(0.6)
+        assert result["score"] == pytest.approx(0.56)
 
-    def test_opportunity_cost_penalty_zero_when_outperforming(self):
-        """Verify that outperforming the bond hurdle results in zero penalty."""
+    def test_opportunity_cost_negative_when_underperforming_bond_hurdle(self):
+        """Verify that underperforming the bond hurdle results in a negative risk-free excess value (0.0% vs 0.1% = -0.1%)."""
         from autoresearch.metrics import compute_score
 
+        # Scenario: R_p = 0.0% (cash), SPY = 0.5%, Do-Nothing = 0.3%, Bond = 0.1%, Drawdown = 0.0%
+        # excess_vs_spy = -0.5%
+        # excess_vs_do_nothing = -0.3%
+        # excess_vs_bond = -0.1%
+        # excess_return = 0.4(-0.5) + 0.4(-0.3) + 0.2(-0.1) = -0.2 - 0.12 - 0.02 = -0.34
         result = compute_score(
-            portfolio_return_pct=3.0,
-            spy_return_pct=1.0,
-            max_drawdown_pct=2.0,
-            bond_return_pct=1.5,
-            dollar_return_pct=2.0,
-            do_nothing_return_pct=2.0,
-        )
-        assert result["excess_return"] == pytest.approx(3.0)
-        assert result["opportunity_cost_penalty"] == pytest.approx(0.0)  # 3.0 >= 1.5 (ignores dollar)
-        # score = 3.0 - 0.0 - (2.0 * 0.3) = 2.4
-        assert result["score"] == pytest.approx(2.4)
-
-    def test_opportunity_cost_penalty_strong_dollar(self):
-        """Verify that a strong dollar does not apply a penalty (context-only)."""
-        from autoresearch.metrics import compute_score
-
-        result = compute_score(
-            portfolio_return_pct=1.2,
+            portfolio_return_pct=0.0,
             spy_return_pct=0.5,
-            max_drawdown_pct=1.0,
-            bond_return_pct=1.0,
-            dollar_return_pct=2.5,
-            do_nothing_return_pct=1.0,
+            max_drawdown_pct=0.0,
+            bond_return_pct=0.1,
+            dollar_return_pct=2.0,
+            do_nothing_return_pct=0.3,
         )
-        assert result["excess_return"] == pytest.approx(0.9)
-        assert result["opportunity_cost_penalty"] == pytest.approx(0.0)  # 1.2 >= 1.0 (ignores dollar 2.5)
-        # score = 0.9 - 0.0 - (1.0 * 0.3) = 0.6
-        assert result["score"] == pytest.approx(0.6)
+        assert result["excess_return"] == pytest.approx(-0.34)
+        assert result["opportunity_cost_penalty"] == pytest.approx(-0.1)
+        assert result["score"] == pytest.approx(-0.34)
 
 
 # ==============================================================================

@@ -86,6 +86,7 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
     // Intermediate calculations
     const excessVsSpy = portfolioReturn - spyReturn;
     const excessVsDoNothing = portfolioReturn - doNothingReturn;
+    const excessVsBond = portfolioReturn - bondReturn;
 
     // Portfolio details
     const portfolioDetails = (metrics.portfolio_details || {}) as Record<string, PortfolioDetail>;
@@ -110,7 +111,7 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                             <span className="flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-black">
                                 1
                             </span>
-                            <span>Excess Return vs Benchmarks</span>
+                            <span>Benchmark-Triad Composite Return (40/40/20)</span>
                         </h4>
                         <SignValue value={excessReturn} suffix="%" showSign={true} />
                     </div>
@@ -120,15 +121,15 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                         <div className="flex items-center justify-between">
                             <span className="flex flex-col">
                                 <span className="font-sans font-medium text-zinc-800 dark:text-zinc-200">
-                                    Excess vs S&P 500 (SPY)
+                                    Excess vs S&P 500 (SPY) — 40% Weight
                                 </span>
-                                <span>Formula: Portfolio - SPY</span>
+                                <span>Formula: 0.4 × (Portfolio - SPY)</span>
                             </span>
                             <span className="flex flex-col items-end">
                                 <span className="font-bold text-zinc-850 dark:text-zinc-200">
                                     {portfolioReturn.toFixed(4)}% - {spyReturn.toFixed(4)}%
                                 </span>
-                                <SignValue value={excessVsSpy} suffix="%" showSign={true} />
+                                <SignValue value={0.4 * excessVsSpy} suffix="%" showSign={true} />
                             </span>
                         </div>
 
@@ -136,43 +137,60 @@ export function ScoreBreakdown({ experiment }: ScoreBreakdownProps) {
                         <div className="flex items-center justify-between pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800">
                             <span className="flex flex-col">
                                 <span className="font-sans font-medium text-zinc-800 dark:text-zinc-200">
-                                    Excess vs Do-Nothing Portfolio
+                                    Excess vs Do-Nothing Portfolio — 40% Weight
                                 </span>
-                                <span>Formula: Portfolio - Do-Nothing</span>
+                                <span>Formula: 0.4 × (Portfolio - Do-Nothing)</span>
                             </span>
                             <span className="flex flex-col items-end">
                                 <span className="font-bold text-zinc-850 dark:text-zinc-200">
                                     {portfolioReturn.toFixed(4)}% - {doNothingReturn.toFixed(4)}%
                                 </span>
-                                <SignValue value={excessVsDoNothing} suffix="%" showSign={true} />
+                                <SignValue
+                                    value={0.4 * excessVsDoNothing}
+                                    suffix="%"
+                                    showSign={true}
+                                />
+                            </span>
+                        </div>
+
+                        {/* Excess vs 10Y Bond */}
+                        <div className="flex items-center justify-between pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800">
+                            <span className="flex flex-col">
+                                <span className="font-sans font-medium text-zinc-800 dark:text-zinc-200">
+                                    Risk-Free Excess (vs 10Y Bond) — 20% Weight
+                                </span>
+                                <span>Formula: 0.2 × (Portfolio - 10Y Bond)</span>
+                            </span>
+                            <span className="flex flex-col items-end">
+                                <span className="font-bold text-zinc-850 dark:text-zinc-200">
+                                    {portfolioReturn.toFixed(4)}% - {bondReturn.toFixed(4)}%
+                                </span>
+                                <SignValue value={0.2 * excessVsBond} suffix="%" showSign={true} />
                             </span>
                         </div>
 
                         {/* Combined Excess */}
                         <div className="flex items-center justify-between pt-2 border-t border-zinc-200 dark:border-zinc-800">
                             <span className="font-sans font-bold text-zinc-800 dark:text-zinc-200">
-                                Total Benchmark Excess Return
+                                Composite Triad Excess Return
                             </span>
                             <span className="font-bold text-zinc-850 dark:text-zinc-200">
-                                {excessVsSpy.toFixed(4)}% + {excessVsDoNothing.toFixed(4)}% ={' '}
                                 {excessReturn.toFixed(4)}%
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Step 2: Opportunity Cost Hurdle */}
+                {/* Step 2: Risk-Free Bond Component */}
                 <div className="p-5 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
                     <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-805 pb-2">
                         <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center space-x-2">
-                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-rose-500/10 text-rose-500 text-xs font-black">
+                            <span className="flex items-center justify-center h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-black">
                                 2
                             </span>
-                            <span>Opportunity Cost Penalty</span>
+                            <span>Risk-Free Bond Component (10Y Yield)</span>
                         </h4>
-                        <span className="text-sm font-mono font-bold text-rose-500">
-                            -{opportunityCost.toFixed(4)}%
-                        </span>
+                        <SignValue value={opportunityCost} suffix="%" showSign={true} />
                     </div>
 
                     <div className="space-y-3 font-mono text-xs text-zinc-650 dark:text-zinc-400">

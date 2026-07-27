@@ -211,7 +211,7 @@ describe('DailyScoreDisplay', () => {
         // Wednesday is selected. It should render details panel showing constituents.
         expect(screen.getByText(/Score Constituents — Wednesday/)).toBeInTheDocument();
         expect(screen.getByText(/Excess Return \(Scaled\)/)).toBeInTheDocument();
-        expect(screen.getByText(/Opportunity Cost \(Scaled\)/)).toBeInTheDocument();
+        expect(screen.getByText(/Risk-Free Excess \(Scaled\)/)).toBeInTheDocument();
         expect(screen.getByText(/Risk Penalty \(Scaled\)/)).toBeInTheDocument();
 
         // Click again to toggle/close
@@ -296,8 +296,8 @@ describe('DailyScoreDisplay', () => {
 
         // Check that the detailed breakdown and formulas are visible
         expect(screen.getByText(/^1. Excess Return Calculation:$/)).toBeInTheDocument();
-        expect(screen.getByText(/Formula: Portfolio - S&P 500/)).toBeInTheDocument();
-        expect(screen.getByText(/^Base Excess Return Calculation:$/)).toBeInTheDocument();
+        expect(screen.getByText(/Formula: 0.4 ×/)).toBeInTheDocument();
+        expect(screen.getByText(/^Base Composite Excess Return Calculation:$/)).toBeInTheDocument();
         expect(screen.getByText(/^Base Calculation:$/)).toBeInTheDocument();
 
         // Check constituent display for Do-Nothing Return

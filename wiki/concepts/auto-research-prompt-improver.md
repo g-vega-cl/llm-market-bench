@@ -20,20 +20,21 @@ The auto-research loop runs weekly:
 ## Score
 
 ```
-hurdle_pct     = bond_return_pct  (compounded 10-year Treasury yield)
-opp_cost       = max(0.0, hurdle_pct - portfolio_return%)
-excess_return  = (portfolio_return% - SPY_return%) + (portfolio_return% - do_nothing_return%)
-score          = excess_return - opp_cost - (max_drawdown% × 0.3)
+excess_vs_spy        = portfolio_return% - SPY_return%
+excess_vs_donothing  = portfolio_return% - do_nothing_return%
+excess_vs_bond       = portfolio_return% - bond_return%
+composite_excess     = 0.4 * excess_vs_spy + 0.4 * excess_vs_donothing + 0.2 * excess_vs_bond
+score                = composite_excess - (max_drawdown% × 0.3)
 ```
 
-A single transparent number. The meta-researcher sees all components (portfolio return, SPY return, bond hurdle, opportunity cost penalty, drawdown) plus the baseline and Δ.
+A single transparent number based on a **Benchmark-Triad Weighted Model**. The meta-researcher evaluates performance against a 100% composite benchmark (40% SPY market, 40% Do-Nothing strategy inertia, 20% 10-year Treasury bond yield), eliminating double penalties while providing a clean 1:1 return optimization signal.
 
 The **Do-Nothing Return** represents the theoretical return of holding the initial portfolio positions throughout the week without making any trades. To ensure pricing accuracy and prevent calculation drift from stale values:
 1. **On-Demand Synchronization**: The evaluation engine dynamically pre-populates/updates `price_history` for all held assets at evaluation time via `MarketDataManager.get_history()`. This pulls fresh close prices from the financial provider (FMP), ensuring both active portfolio-specific tickers and legacy positions are correctly valued at the end of the week (`week_end`).
 2. **Freshness Guardrail**: The pricing query retrieves the last known price up to `week_end` individually for each asset. It actively validates the age of the retrieved price and logs a `CRITICAL METRIC ERROR` if the price timestamp (`fetched_at`) is older than 4 days before `week_end`, preventing any silent database omissions or stale valuation errors.
 3. **Factual Audit Ledger**: The engine compiles a granular ledger of positions (`portfolio_details`) including quantity (`qty`), starting price (`start_price`), starting value (`start_value`), ending price (`end_price`), and ending value (`end_value`). Additionally, it parses the exact fetched dates and hours (`YYYY-MM-DD HH:MM`) of when each start and end price was recorded in the database, allowing users to verify price factualness and account for weekends or market holidays.
 
-The 10-year Treasury yield is the sole active risk-free hurdle — the portfolio must clear it to avoid an opportunity cost penalty. The US Dollar Index (DXY/UUP) return is fetched and shown in the weekly report for macroeconomic context but does **not** affect the score.
+The 10-year Treasury yield forms the 20% risk-free component of the triad composite benchmark. The US Dollar Index (DXY/UUP) return is fetched and shown in the weekly report for macroeconomic context but does **not** affect the score.
 
 
 ## Baseline

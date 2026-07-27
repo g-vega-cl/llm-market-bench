@@ -8,10 +8,10 @@ You modify the strategy and analysis rules section within the CORE_ANALYSIS_SYST
 ## How Evaluation Works
 - 1 week of live trading = 1 experiment
 - A single score is computed BEFORE you see it
-- **Score = (portfolio_return% - SPY_return%) + (portfolio_return% - do_nothing_return%) - Opportunity Cost% - (max_drawdown% × 0.3)**
-- **Do-Nothing Comparison**: Measures active trading value-add by comparing our weekly performance against simply holding the inherited positions from the previous week, eliminating the drag of those positions.
-- **Opportunity Cost Penalty**: An asymmetric penalty applied if the portfolio returns fail to clear the active Treasury Bond yield hurdle compounded for the week: `max(0, Bond Yield% - Portfolio%)`.
-- Positive = beating SPY and Do-Nothing benchmarks after risk and opportunity cost penalties. Negative = losing or too volatile.
+- **Score = 0.4 × (portfolio_return% - SPY_return%) + 0.4 × (portfolio_return% - do_nothing_return%) + 0.2 × (portfolio_return% - bond_return%) - (max_drawdown% × 0.3)**
+- **Do-Nothing Comparison**: Measures active trading value-add by comparing our weekly performance against simply holding the inherited positions from the previous week.
+- **Benchmark-Triad Model**: Evaluates performance against a 100% composite benchmark (40% SPY equity market, 40% strategy inertia/do-nothing, and 20% risk-free 10-year Treasury bond yield), eliminating double penalties and providing a clean 1:1 return signal.
+- Positive = beating the composite benchmark after drawdown risk penalty. Negative = losing to the composite benchmark or too volatile.
 - **Your goal: beat the baseline (the best score achieved so far).** The report shows a "Baseline" line with the Δ.
 - Every week a new prompt is deployed. There is no skip gate — you always get to iterate.
 

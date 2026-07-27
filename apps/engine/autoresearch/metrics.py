@@ -358,23 +358,28 @@ def compute_score(
 ) -> dict:
     """Compute the single auto-research score.
 
-    Formula:
-      hurdle = bond_return_pct
-      penalty_opp = max(0.0, hurdle - portfolio_return_pct)
-      score = (portfolio_return - do_nothing_return) + (portfolio_return - SPY_return) - penalty_opp - (max_drawdown × penalty_weight)
+    Formula (Benchmark-Triad Weighted Model):
+      excess_vs_spy        = portfolio_return_pct - spy_return_pct
+      excess_vs_do_nothing = portfolio_return_pct - do_nothing_return_pct
+      excess_vs_bond       = portfolio_return_pct - bond_return_pct
+      excess_return        = 0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond
+      drawdown_penalty     = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT (0.3)
+      score                = excess_return - drawdown_penalty
 
-    Positive score = beating benchmarks and hurdles after risk penalty.
-    Zero = treading water.
-    Negative = losing to SPY, Do-Nothing, hurdles, or too volatile.
+    Positive score = beating the weighted composite benchmark (40% SPY + 40% Do-Nothing + 20% Treasury Bond) after risk penalty.
+    Zero = matching composite benchmark.
+    Negative = losing to composite benchmark or too volatile.
     """
     excess_vs_spy = portfolio_return_pct - spy_return_pct
     excess_vs_do_nothing = portfolio_return_pct - do_nothing_return_pct
-    excess_return = excess_vs_spy + excess_vs_do_nothing
+    excess_vs_bond = portfolio_return_pct - bond_return_pct
 
-    hurdle = bond_return_pct
-    opportunity_cost = max(0.0, hurdle - portfolio_return_pct)
+    excess_return = round(
+        0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond, 4
+    )
+    opportunity_cost = round(excess_vs_bond, 4)
     penalty = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT
-    score = round(excess_return - opportunity_cost - penalty, 4)
+    score = round(excess_return - penalty, 4)
 
     return {
         "score": score,
@@ -386,6 +391,6 @@ def compute_score(
         "volatility": volatility_pct,
         "bond_return_pct": round(bond_return_pct, 4),
         "dollar_return_pct": round(dollar_return_pct, 4),
-        "opportunity_cost_penalty": round(opportunity_cost, 4),
+        "opportunity_cost_penalty": opportunity_cost,
         "drawdown_penalty": round(penalty, 4),
     }

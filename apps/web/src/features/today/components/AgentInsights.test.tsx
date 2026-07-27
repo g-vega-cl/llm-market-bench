@@ -211,4 +211,83 @@ describe('AgentInsights', () => {
         expect(cardsBtn).toHaveAttribute('data-active', 'true');
         expect(listBtn).toHaveAttribute('data-active', 'false');
     });
+
+    // --------------- Pagination tests ---------------
+
+    const make6Memories = () => [
+        createConsensusMemory('c1'),
+        createConsensusMemory('c2'),
+        createConsensusMemory('c3'),
+        createIncentiveMemory('i1'),
+        createIncentiveMemory('i2'),
+        createLessonMemory(undefined, 'l1'),
+    ];
+
+    it('renders at most 5 items on the first page when more than 5 memories exist', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        // Each card renders exactly one "View event chain →" link — use that as a
+        // reliable per-item sentinel that is present in both list and cards view.
+        const links = screen.getAllByText(/View event chain/i);
+        expect(links).toHaveLength(5);
+    });
+
+    it('shows a "Next" button when there are more than 5 memories', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        expect(screen.getByRole('button', { name: /Next/i })).toBeInTheDocument();
+    });
+
+    it('hides the "Prev" button on the first page', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        expect(screen.queryByRole('button', { name: /Prev/i })).not.toBeInTheDocument();
+    });
+
+    it('shows a page indicator (e.g. "Page 1 of 2") when pagination is active', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
+    });
+
+    it('navigating to page 2 shows the remaining item and hides "Next"', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+        const links = screen.getAllByText(/View event chain/i);
+        expect(links).toHaveLength(1);
+        expect(screen.queryByRole('button', { name: /Next/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/Page 2 of 2/i)).toBeInTheDocument();
+    });
+
+    it('navigating back to page 1 via "Prev" restores 5 items', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Prev/i }));
+        const links = screen.getAllByText(/View event chain/i);
+        expect(links).toHaveLength(5);
+        expect(screen.queryByRole('button', { name: /Prev/i })).not.toBeInTheDocument();
+    });
+
+    it('does not render pagination controls when 5 or fewer memories exist', () => {
+        render(
+            <AgentInsights
+                memories={[
+                    createConsensusMemory('c1'),
+                    createConsensusMemory('c2'),
+                    createIncentiveMemory('i1'),
+                    createLessonMemory(undefined, 'l1'),
+                    createLessonMemory(undefined, 'l2'),
+                ]}
+            />,
+        );
+        expect(screen.queryByRole('button', { name: /Next/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Prev/i })).not.toBeInTheDocument();
+        expect(screen.queryByText(/Page \d of \d/i)).not.toBeInTheDocument();
+    });
+
+    it('resets to page 1 when view mode is toggled', () => {
+        render(<AgentInsights memories={make6Memories()} />);
+        // Advance to page 2
+        fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+        expect(screen.getByText(/Page 2 of 2/i)).toBeInTheDocument();
+        // Switch view mode → should reset page
+        fireEvent.click(screen.getByRole('button', { name: /Cards/i }));
+        expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
+    });
 });

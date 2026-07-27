@@ -12,7 +12,7 @@ TypeScript, and TanStack Query.
 ## Key Pages
 
 - **Home** — Placeholder for the upcoming redesign
-- **Today** — Dense dashboard with a slim sticky status bar (market open/closed, sentiment, confidence, trade counts) replacing the old gradient hero. Content is arranged in four rows: (1) Global Macro & Index Volatility Statistics (full-width), (2) 3-column grid — Agent Insights (`AgentInsights`, with dual-mode List/Cards switcher where items link directly to `/memories/chain/$memoryId`) | Newsletter Feed | AI Feeling card (`AIFeelingCard`), (3) Market Execution & Guardrails / Trade Activity (full-width), (4) Future Catalysts (full-width). The dotted GlobalBackground shows through (no opaque page wrapper).
+- **Today** — Dense dashboard with a slim sticky status bar (market open/closed, sentiment, confidence, trade counts) replacing the old gradient hero. Content is arranged in four rows: (1) Global Macro & Index Volatility Statistics (full-width), (2) 3-column grid — Agent Insights (`AgentInsights`, with dual-mode List/Cards switcher where items link directly to `/memories/chain/$memoryId`; **paginated at 5 items per page** with ← Prev / Page X of Y / Next → controls; page resets when the view mode is toggled) | Newsletter Feed | AI Feeling card (`AIFeelingCard`), (3) Market Execution & Guardrails / Trade Activity (full-width), (4) Future Catalysts (full-width). The dotted GlobalBackground shows through (no opaque page wrapper).
 - **Portfolios** — Per-agent performance, positions, P&L
 - **Market Overview** — Correlation heatmap, uncorrelated pairs, sector grid
 - **Reasoning Trace** — Full LLM conversation history with tabbed JSON inspection

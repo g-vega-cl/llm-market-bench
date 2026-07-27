@@ -8,8 +8,11 @@ interface AgentInsightsProps {
     memories: (Memory & { formattedDateTime?: string; formattedShortDate?: string })[];
 }
 
+const PAGE_SIZE = 5;
+
 export function AgentInsights({ memories }: AgentInsightsProps) {
     const [viewMode, setViewMode] = React.useState<'list' | 'cards'>('list');
+    const [currentPage, setCurrentPage] = React.useState(1);
 
     const consensus = memories.filter((m) => m.memory_type === 'MARKET_EVENT');
     const lessons = memories.filter((m) =>
@@ -17,7 +20,28 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
     );
     const incentives = memories.filter((m) => m.memory_type === 'GOVERNMENT_INCENTIVE');
 
-    const totalInsights = consensus.length + lessons.length + incentives.length;
+    // Flat ordered array used for pagination (consensus → incentives → lessons)
+    const allItems = [
+        ...consensus.map((m) => ({ ...m, _kind: 'consensus' as const })),
+        ...incentives.map((m) => ({ ...m, _kind: 'incentive' as const })),
+        ...lessons.map((m) => ({ ...m, _kind: 'lesson' as const })),
+    ];
+
+    const totalInsights = allItems.length;
+    const totalPages = Math.ceil(totalInsights / PAGE_SIZE);
+    const isPaginated = totalPages > 1;
+
+    const paginatedItems = allItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    // Reconstruct per-type arrays from the current page slice
+    const pageConsensus = paginatedItems.filter((m) => m._kind === 'consensus');
+    const pageIncentives = paginatedItems.filter((m) => m._kind === 'incentive');
+    const pageLessons = paginatedItems.filter((m) => m._kind === 'lesson');
+
+    function handleSetViewMode(mode: 'list' | 'cards') {
+        setViewMode(mode);
+        setCurrentPage(1);
+    }
 
     if (!totalInsights) {
         return (
@@ -50,7 +74,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                         <button
                             type="button"
                             data-active={viewMode === 'list'}
-                            onClick={() => setViewMode('list')}
+                            onClick={() => handleSetViewMode('list')}
                             className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                                 viewMode === 'list'
                                     ? 'bg-white dark:bg-zinc-900 text-deep-purple-600 dark:text-deep-purple-400 shadow-xs'
@@ -62,7 +86,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                         <button
                             type="button"
                             data-active={viewMode === 'cards'}
-                            onClick={() => setViewMode('cards')}
+                            onClick={() => handleSetViewMode('cards')}
                             className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                                 viewMode === 'cards'
                                     ? 'bg-white dark:bg-zinc-900 text-deep-purple-600 dark:text-deep-purple-400 shadow-xs'
@@ -79,7 +103,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 /* High-Density Header List View */
                 <div className="space-y-3">
                     {/* Market Consensus */}
-                    {consensus.map((m, idx) => {
+                    {pageConsensus.map((m, idx) => {
                         const agents = extractAgents(m);
                         return (
                             <Link
@@ -162,7 +186,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     })}
 
                     {/* Government Incentives */}
-                    {incentives.map((m, idx) => (
+                    {pageIncentives.map((m, idx) => (
                         <Link
                             key={m.id}
                             to="/memories/chain/$memoryId"
@@ -173,7 +197,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 isHoverable
                                 padding="sm"
                                 className="bg-gradient-to-r from-emerald-50/40 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 hover:shadow-emerald-500/10 animate-slide-up p-4"
-                                style={{ animationDelay: `${(consensus.length + idx) * 50}ms` }}
+                                style={{ animationDelay: `${(pageConsensus.length + idx) * 50}ms` }}
                             >
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -219,7 +243,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     ))}
 
                     {/* Lessons Learned */}
-                    {lessons.map((m, idx) => (
+                    {pageLessons.map((m, idx) => (
                         <Link
                             key={m.id}
                             to="/memories/chain/$memoryId"
@@ -231,7 +255,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 padding="sm"
                                 className="bg-gradient-to-r from-amber-50/40 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 hover:shadow-amber-500/10 animate-slide-up p-4"
                                 style={{
-                                    animationDelay: `${(consensus.length + incentives.length + idx) * 50}ms`,
+                                    animationDelay: `${(pageConsensus.length + pageIncentives.length + idx) * 50}ms`,
                                 }}
                             >
                                 {(() => {
@@ -292,7 +316,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                 /* Compact Cards Grid View (like Daily Intelligence Briefing) */
                 <div className="grid grid-cols-1 gap-4">
                     {/* Market Consensus */}
-                    {consensus.map((m, idx) => {
+                    {pageConsensus.map((m, idx) => {
                         const agents = extractAgents(m);
                         return (
                             <Link
@@ -372,7 +396,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     })}
 
                     {/* Government Incentives */}
-                    {incentives.map((m, idx) => (
+                    {pageIncentives.map((m, idx) => (
                         <Link
                             key={m.id}
                             to="/memories/chain/$memoryId"
@@ -383,7 +407,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 isHoverable
                                 padding="md"
                                 className="bg-gradient-to-br from-emerald-50/50 via-cyber-yellow-50/20 to-transparent dark:from-emerald-950/20 dark:via-cyber-yellow-950/10 border-l-4 border-l-emerald-500 hover:shadow-emerald-500/10 animate-slide-up p-5"
-                                style={{ animationDelay: `${(consensus.length + idx) * 80}ms` }}
+                                style={{ animationDelay: `${(pageConsensus.length + idx) * 80}ms` }}
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -424,7 +448,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                     ))}
 
                     {/* Lessons Learned */}
-                    {lessons.map((m, idx) => (
+                    {pageLessons.map((m, idx) => (
                         <Link
                             key={m.id}
                             to="/memories/chain/$memoryId"
@@ -436,7 +460,7 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                                 padding="md"
                                 className="bg-gradient-to-br from-amber-50/50 via-alert-red-50/20 to-transparent dark:from-amber-950/20 dark:via-alert-red-950/10 border-l-4 border-l-amber-500 hover:shadow-amber-500/10 animate-slide-up p-5"
                                 style={{
-                                    animationDelay: `${(consensus.length + incentives.length + idx) * 80}ms`,
+                                    animationDelay: `${(pageConsensus.length + pageIncentives.length + idx) * 80}ms`,
                                 }}
                             >
                                 {(() => {
@@ -488,6 +512,39 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
                             </Card>
                         </Link>
                     ))}
+                </div>
+            )}
+
+            {/* Pagination controls */}
+            {isPaginated && (
+                <div className="flex items-center justify-between pt-2 mt-1">
+                    {currentPage > 1 ? (
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((p) => p - 1)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-xl hover:bg-deep-purple-100 dark:hover:bg-deep-purple-950/40 transition-colors"
+                        >
+                            ← Prev
+                        </button>
+                    ) : (
+                        <span />
+                    )}
+
+                    <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest tabular-nums">
+                        Page {currentPage} of {totalPages}
+                    </span>
+
+                    {currentPage < totalPages ? (
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((p) => p + 1)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-deep-purple-600 dark:text-deep-purple-400 bg-deep-purple-50 dark:bg-deep-purple-950/20 border border-deep-purple-200 dark:border-deep-purple-900/30 rounded-xl hover:bg-deep-purple-100 dark:hover:bg-deep-purple-950/40 transition-colors"
+                        >
+                            Next →
+                        </button>
+                    ) : (
+                        <span />
+                    )}
                 </div>
             )}
         </section>

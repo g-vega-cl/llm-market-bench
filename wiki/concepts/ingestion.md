@@ -30,8 +30,8 @@ Deterministic `source_id = news_{sender_clean}_{MD5[:8]}` (where `sender_clean` 
 
 The ingestion analysis phase utilizes a **sequential two-pass decoupling** model to maximize LLM performance by providing single-objective tasks:
 
-1. **Pass 1: Macro Extraction & Synthesis**: LLMs receive newsletter chunks and extract macro-economic events (`MacroEventsResponse`). These events are then clustered and promoted via the Event Consensus Protocol.
-2. **Pass 2: Trading Decisions**: LLMs receive the newsletter summaries/menus along with the synthesized consensus events context (`TradingDecisionsResponse`). The models analyze the consensus events and generate trading decisions.
+1. **Pass 1: Macro Extraction & Synthesis**: LLMs receive newsletter chunks and extract macro-economic events (`MacroEventsResponse`). These events are then clustered and promoted via the Event Consensus Protocol. In the LLM audit trace (`llm_reasoning_logs`), these steps are explicitly tagged with `task_type="MACRO_EXTRACTION"`.
+2. **Pass 2: Trading Decisions**: LLMs receive the newsletter summaries/menus along with the synthesized consensus events context (`TradingDecisionsResponse`). The models analyze the consensus events and generate trading decisions. In the LLM audit trace (`llm_reasoning_logs`), these steps are tagged with `task_type="INGESTION"`.
 
 This separates the broad consensus reasoning from specific asset trading logic, ensuring higher focus and better adherence to trading rules.
 

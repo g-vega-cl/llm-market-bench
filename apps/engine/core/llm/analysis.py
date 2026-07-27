@@ -988,7 +988,7 @@ async def analyze_with_provider(
 
         # Log completion
         await log_reasoning_trace(
-            task_type="INGESTION",
+            task_type="MACRO_EXTRACTION" if prompt_type == "macro" else "INGESTION",
             model_provider=provider,
             model_name=model_name,
             prompt=messages,

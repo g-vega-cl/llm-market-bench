@@ -32,6 +32,8 @@ executing trades, and running feedback loops.
 - **Attribution** (`attribution/`) — decision persistence and trade linking
 - **Auto-Research** (`autoresearch/`) — weekly autonomous prompt improvement via meta-researcher LLM
 
+- **Prompt Factory & Model Calibration** (`core/llm/prompt_factory.py`) — Centralized prompt assembly handling provider adaptations, web search instruction stripping, and model-specific prompt calibration (e.g., `gpt-5.4-nano` pre-signal valuation self-audit instructions to reduce verifier rejection rates and encourage valid `HOLD` signals).
+
 ## Design Principles
 
 - **Provider-agnostic**: Each LLM provider has a dedicated handler that normalizes tool-calling idiosyncrasies

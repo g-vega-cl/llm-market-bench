@@ -134,6 +134,10 @@ class PromptFactory:
                 "This is mandatory for compliance verification.\n\n" + system_prompt
             )
 
+        # Inject pre-signal self-audit calibration specifically for gpt-5.4-nano
+        if owner_id == "gpt-5.4-nano":
+            system_prompt = system_prompt + "\n\n" + prompts.GPT54_NANO_PRE_AUDIT_PROMPT
+
         # Inject portfolio ledger if applicable (only for NON-experiment group agents)
         is_experiment = owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS
         if owner_id and not is_experiment:

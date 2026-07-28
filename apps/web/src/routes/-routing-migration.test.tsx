@@ -11,4 +11,12 @@ describe('Routing Migration TDD Verification', () => {
         expect(todayItem).toBeDefined();
         expect(todayItem?.to).toBe('/today');
     });
+
+    it('should map Backtests navigation item to /autoresearch-backtest', () => {
+        const backtestItem = navItems.find(
+            (item) => item.label === 'Backtests' || item.label === 'Backtest',
+        );
+        expect(backtestItem).toBeDefined();
+        expect(backtestItem?.to).toBe('/autoresearch-backtest');
+    });
 });

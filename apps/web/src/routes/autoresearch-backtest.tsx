@@ -7,7 +7,7 @@ const getBacktestExperiments = createServerFn({ method: 'GET' }).handler(async (
     return fetchBacktestExperiments();
 });
 
-export const Route = createFileRoute('/autoresearch/backtest')({
+export const Route = createFileRoute('/autoresearch-backtest')({
     loader: async () => await getBacktestExperiments(),
     component: RouteComponent,
 });

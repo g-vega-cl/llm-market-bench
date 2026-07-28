@@ -15,6 +15,7 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
+import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
@@ -28,7 +29,6 @@ import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/ind
 import { Route as AuditsIndexRouteImport } from './routes/audits/index'
 import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
-import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch/backtest'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
@@ -61,6 +61,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const BarometerAuditRoute = BarometerAuditRouteImport.update({
   id: '/barometer-audit',
   path: '/barometer-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
+  id: '/autoresearch-backtest',
+  path: '/autoresearch-backtest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedRoute = AuthedRouteImport.update({
@@ -127,11 +132,6 @@ const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
   path: '/portfolios/$portfolioId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AutoresearchBacktestRoute = AutoresearchBacktestRouteImport.update({
-  id: '/autoresearch/backtest',
-  path: '/autoresearch/backtest',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -150,6 +150,7 @@ const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
@@ -158,7 +159,6 @@ export interface FileRoutesByFullPath {
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/autoresearch/backtest': typeof AutoresearchBacktestRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
@@ -174,6 +174,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
@@ -182,7 +183,6 @@ export interface FileRoutesByTo {
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/autoresearch/backtest': typeof AutoresearchBacktestRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions': typeof AiPredictionsIndexRoute
   '/audits': typeof AuditsIndexRoute
@@ -200,6 +200,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
@@ -208,7 +209,6 @@ export interface FileRoutesById {
   '/today': typeof TodayRoute
   '/_authed/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/autoresearch/backtest': typeof AutoresearchBacktestRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
   '/audits/': typeof AuditsIndexRoute
@@ -226,6 +226,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/how-it-works'
     | '/login'
@@ -234,7 +235,6 @@ export interface FileRouteTypes {
     | '/today'
     | '/profile'
     | '/auth/callback'
-    | '/autoresearch/backtest'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
     | '/audits/'
@@ -250,6 +250,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/how-it-works'
     | '/login'
@@ -258,7 +259,6 @@ export interface FileRouteTypes {
     | '/today'
     | '/profile'
     | '/auth/callback'
-    | '/autoresearch/backtest'
     | '/portfolios/$portfolioId'
     | '/ai-predictions'
     | '/audits'
@@ -275,6 +275,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/how-it-works'
     | '/login'
@@ -283,7 +284,6 @@ export interface FileRouteTypes {
     | '/today'
     | '/_authed/profile'
     | '/auth/callback'
-    | '/autoresearch/backtest'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
     | '/audits/'
@@ -301,6 +301,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LoginRoute: typeof LoginRoute
@@ -308,7 +309,6 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TodayRoute: typeof TodayRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
-  AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   AiPredictionsIndexRoute: typeof AiPredictionsIndexRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
@@ -365,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/barometer-audit'
       fullPath: '/barometer-audit'
       preLoaderRoute: typeof BarometerAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/autoresearch-backtest': {
+      id: '/autoresearch-backtest'
+      path: '/autoresearch-backtest'
+      fullPath: '/autoresearch-backtest'
+      preLoaderRoute: typeof AutoresearchBacktestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed': {
@@ -458,13 +465,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/autoresearch/backtest': {
-      id: '/autoresearch/backtest'
-      path: '/autoresearch/backtest'
-      fullPath: '/autoresearch/backtest'
-      preLoaderRoute: typeof AutoresearchBacktestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -503,6 +503,7 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
   HowItWorksRoute: HowItWorksRoute,
   LoginRoute: LoginRoute,
@@ -510,7 +511,6 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TodayRoute: TodayRoute,
   AuthCallbackRoute: AuthCallbackRoute,
-  AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   AiPredictionsIndexRoute: AiPredictionsIndexRoute,
   AuditsIndexRoute: AuditsIndexRoute,

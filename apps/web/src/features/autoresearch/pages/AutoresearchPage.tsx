@@ -33,7 +33,7 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                                 Auto-Research <span className="text-emerald-500">Arena</span>
                             </h1>
                             <Link
-                                to="/autoresearch/backtest"
+                                to="/autoresearch-backtest"
                                 className="inline-flex items-center justify-center text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-xl transition-all"
                             >
                                 Switch to Backtest Arena →

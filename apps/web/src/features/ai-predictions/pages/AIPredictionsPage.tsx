@@ -94,6 +94,306 @@ function getModelMetrics(items: SectorPrediction[]) {
     };
 }
 
+function filterFeedPredictions(
+    data: SectorPrediction[],
+    statusFilter: 'all' | 'active' | 'past',
+    timeframeFilter: '7d' | '30d' | '60d' | '90d' | 'all',
+): SectorPrediction[] {
+    return data.filter((d) => {
+        const matchesStatus =
+            statusFilter === 'all' ||
+            (statusFilter === 'active' && d.status === 'pending') ||
+            (statusFilter === 'past' && d.status === 'evaluated');
+        const matchesTimeframe = timeframeFilter === 'all' || d.timeframe === timeframeFilter;
+        return matchesStatus && matchesTimeframe;
+    });
+}
+
+function calculateBaselineScore(experimentsList: PromptExperiment[]): string {
+    const scores = experimentsList
+        .map((exp) => exp.metrics?.score)
+        .filter((s): s is number => s !== undefined && s !== null);
+    if (scores.length === 0) return 'N/A';
+    return Math.max(...scores).toFixed(4);
+}
+
+function findActiveVariant(experimentsList: PromptExperiment[]): string {
+    return experimentsList.find((exp) => exp.status === 'active')?.variant_tag || 'N/A';
+}
+
+function findSelectedExperiment(
+    experimentsList: PromptExperiment[],
+    selectedExpId: string | null,
+): PromptExperiment | null {
+    if (selectedExpId) {
+        return experimentsList.find((e) => e.id === selectedExpId) || null;
+    }
+    return experimentsList.length > 0 ? experimentsList[0] : null;
+}
+
+function findParentExperiment(
+    experimentsList: PromptExperiment[],
+    selectedExperiment: PromptExperiment | null,
+): PromptExperiment | null {
+    if (!selectedExperiment?.parent_tag) return null;
+    return experimentsList.find((e) => e.variant_tag === selectedExperiment.parent_tag) || null;
+}
+
+function filterChartData(
+    evaluatedPredictions: SectorPrediction[],
+    timeframeFilter: '7d' | '30d' | '60d' | '90d' | 'all',
+): SectorPrediction[] {
+    return timeframeFilter === 'all'
+        ? evaluatedPredictions
+        : evaluatedPredictions.filter((d) => d.timeframe === timeframeFilter);
+}
+
+interface ArenaTabContentProps {
+    deepSeekMetrics: ReturnType<typeof getModelMetrics>;
+    miniMaxMetrics: ReturnType<typeof getModelMetrics>;
+    data: SectorPrediction[];
+    pendingPredictions: SectorPrediction[];
+    evaluatedPredictions: SectorPrediction[];
+    chartFilteredData: SectorPrediction[];
+    feedFilteredData: SectorPrediction[];
+    statusFilter: 'all' | 'active' | 'past';
+    setStatusFilter: (status: 'all' | 'active' | 'past') => void;
+    timeframeFilter: '7d' | '30d' | '60d' | '90d' | 'all';
+    setTimeframeFilter: (tf: '7d' | '30d' | '60d' | '90d' | 'all') => void;
+    feedViewMode: 'table' | 'cards';
+    setFeedViewMode: (mode: 'table' | 'cards') => void;
+}
+
+function ArenaTabContent({
+    deepSeekMetrics,
+    miniMaxMetrics,
+    data,
+    pendingPredictions,
+    evaluatedPredictions,
+    chartFilteredData,
+    feedFilteredData,
+    statusFilter,
+    setStatusFilter,
+    timeframeFilter,
+    setTimeframeFilter,
+    feedViewMode,
+    setFeedViewMode,
+}: ArenaTabContentProps) {
+    return (
+        <div className="space-y-8 animate-in fade-in duration-300">
+            {/* SECTION 1: Head-to-Head Scoreboard */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <h2 className="text-xl font-bold text-blue-400">DeepSeek Models</h2>
+                        <Badge colorScheme="accent" variant="soft">
+                            {deepSeekMetrics.evaluatedCount} Evaluated
+                        </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <div className="text-3xl font-light text-white mb-1">
+                                {deepSeekMetrics.avgScore}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Avg Percentile Score
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                                {deepSeekMetrics.topQuartileRate}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Top-Quartile Call Rate
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <h2 className="text-xl font-bold text-emerald-400">MiniMax-M3</h2>
+                        <Badge colorScheme="neutral" variant="soft">
+                            {miniMaxMetrics.evaluatedCount} Evaluated
+                        </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <div className="text-3xl font-light text-white mb-1">
+                                {miniMaxMetrics.avgScore}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Avg Percentile Score
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                                {miniMaxMetrics.topQuartileRate}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Top-Quartile Call Rate
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* SECTION 2: Historical Accuracy Trend Chart (Placed on Top) */}
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-white">Historical Accuracy Trend</h3>
+                        <p className="text-xs text-slate-400 mt-1">
+                            Model percentile scores evaluated against benchmark market ETF returns
+                            over time.
+                        </p>
+                    </div>
+                    <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700">
+                        {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
+                            <button
+                                key={tf}
+                                type="button"
+                                onClick={() => setTimeframeFilter(tf)}
+                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                    timeframeFilter === tf
+                                        ? 'bg-slate-800 text-white shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                            >
+                                {tf.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                {chartFilteredData.length > 0 ? (
+                    <AIPredictionChart data={chartFilteredData} />
+                ) : (
+                    <div className="h-[300px] flex items-center justify-center text-slate-400 text-sm">
+                        No evaluated predictions available for this timeframe.
+                    </div>
+                )}
+            </div>
+
+            {/* SECTION 3: Unified Predictions Table & Feed */}
+            <div className="space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <div>
+                        <h3 className="text-xl font-bold text-white">All Sector Predictions</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                            Interactive view for tracking prediction performance, Alpha vs S&P 500,
+                            and target dates across all models.
+                        </p>
+                    </div>
+
+                    {/* View Switcher: Table vs Detailed Cards */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setFeedViewMode('table')}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                                    feedViewMode === 'table'
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                            >
+                                <span>📊 Data Table</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFeedViewMode('cards')}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                                    feedViewMode === 'cards'
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                            >
+                                <span>🎴 Feed Cards</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {feedViewMode === 'table' ? (
+                    <AIPredictionsTable predictions={data} />
+                ) : (
+                    <div className="space-y-6">
+                        <div className="flex flex-wrap items-center gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+                            {/* Status Segmented Filter */}
+                            <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('all')}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                        statusFilter === 'all'
+                                            ? 'bg-slate-800 text-white shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                    All Forecasts ({data.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('active')}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                        statusFilter === 'active'
+                                            ? 'bg-blue-600/80 text-white shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                    🔮 Active ({pendingPredictions.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('past')}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                        statusFilter === 'past'
+                                            ? 'bg-emerald-600/80 text-white shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-200'
+                                    }`}
+                                >
+                                    🎯 Past Outcomes ({evaluatedPredictions.length})
+                                </button>
+                            </div>
+
+                            {/* Timeframe Segmented Filter */}
+                            <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                                {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
+                                    <button
+                                        key={tf}
+                                        type="button"
+                                        onClick={() => setTimeframeFilter(tf)}
+                                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                            timeframeFilter === tf
+                                                ? 'bg-slate-800 text-white shadow-sm'
+                                                : 'text-slate-400 hover:text-slate-200'
+                                        }`}
+                                    >
+                                        {tf.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Predictions Grid */}
+                        <div className="grid grid-cols-1 gap-4">
+                            {feedFilteredData.length > 0 ? (
+                                feedFilteredData.map((pred) => (
+                                    <PredictionFeedCard key={pred.id} pred={pred} />
+                                ))
+                            ) : (
+                                <div className="p-8 bg-slate-800/30 border border-dashed border-slate-700/60 rounded-xl text-center text-slate-400 text-sm">
+                                    No predictions match the selected status and timeframe filters.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPredictionsPageProps) {
     const [data, setData] = useState<SectorPrediction[]>(initialData);
     const [experimentsList, setExperimentsList] = useState<PromptExperiment[]>(experiments);
@@ -130,47 +430,30 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
     const deepSeekMetrics = useMemo(() => getModelMetrics(deepSeekData), [deepSeekData]);
     const miniMaxMetrics = useMemo(() => getModelMetrics(miniMaxData), [miniMaxData]);
 
-    const chartFilteredData = useMemo(() => {
-        return timeframeFilter === 'all'
-            ? evaluatedPredictions
-            : evaluatedPredictions.filter((d) => d.timeframe === timeframeFilter);
-    }, [evaluatedPredictions, timeframeFilter]);
+    const chartFilteredData = useMemo(
+        () => filterChartData(evaluatedPredictions, timeframeFilter),
+        [evaluatedPredictions, timeframeFilter],
+    );
 
-    const feedFilteredData = useMemo(() => {
-        return data.filter((d) => {
-            const matchesStatus =
-                statusFilter === 'all' ||
-                (statusFilter === 'active' && d.status === 'pending') ||
-                (statusFilter === 'past' && d.status === 'evaluated');
-            const matchesTimeframe = timeframeFilter === 'all' || d.timeframe === timeframeFilter;
-            return matchesStatus && matchesTimeframe;
-        });
-    }, [data, statusFilter, timeframeFilter]);
+    const feedFilteredData = useMemo(
+        () => filterFeedPredictions(data, statusFilter, timeframeFilter),
+        [data, statusFilter, timeframeFilter],
+    );
 
     // Auto-Research computations
-    const baselineScore = useMemo(() => {
-        const scores = experimentsList
-            .map((exp) => exp.metrics?.score)
-            .filter((s): s is number => s !== undefined && s !== null);
-        if (scores.length === 0) return 'N/A';
-        return Math.max(...scores).toFixed(4);
-    }, [experimentsList]);
+    const baselineScore = useMemo(() => calculateBaselineScore(experimentsList), [experimentsList]);
 
-    const activeVariant = useMemo(() => {
-        return experimentsList.find((exp) => exp.status === 'active')?.variant_tag || 'N/A';
-    }, [experimentsList]);
+    const activeVariant = useMemo(() => findActiveVariant(experimentsList), [experimentsList]);
 
-    const selectedExperiment = useMemo(() => {
-        if (selectedExpId) {
-            return experimentsList.find((e) => e.id === selectedExpId) || null;
-        }
-        return experimentsList.length > 0 ? experimentsList[0] : null;
-    }, [experimentsList, selectedExpId]);
+    const selectedExperiment = useMemo(
+        () => findSelectedExperiment(experimentsList, selectedExpId),
+        [experimentsList, selectedExpId],
+    );
 
-    const parentExperiment = useMemo(() => {
-        if (!selectedExperiment?.parent_tag) return null;
-        return experimentsList.find((e) => e.variant_tag === selectedExperiment.parent_tag) || null;
-    }, [selectedExperiment, experimentsList]);
+    const parentExperiment = useMemo(
+        () => findParentExperiment(experimentsList, selectedExperiment),
+        [selectedExperiment, experimentsList],
+    );
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -221,222 +504,21 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
             </div>
 
             {activeTab === 'arena' ? (
-                <div className="space-y-8 animate-in fade-in duration-300">
-                    {/* SECTION 1: Head-to-Head Scoreboard */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                            <div className="flex justify-between items-start mb-2">
-                                <h2 className="text-xl font-bold text-blue-400">DeepSeek Models</h2>
-                                <Badge colorScheme="accent" variant="soft">
-                                    {deepSeekMetrics.evaluatedCount} Evaluated
-                                </Badge>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                <div>
-                                    <div className="text-3xl font-light text-white mb-1">
-                                        {deepSeekMetrics.avgScore}
-                                    </div>
-                                    <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                        Avg Percentile Score
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="text-3xl font-light text-emerald-400 mb-1">
-                                        {deepSeekMetrics.topQuartileRate}
-                                    </div>
-                                    <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                        Top-Quartile Call Rate
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                            <div className="flex justify-between items-start mb-2">
-                                <h2 className="text-xl font-bold text-emerald-400">MiniMax-M3</h2>
-                                <Badge colorScheme="neutral" variant="soft">
-                                    {miniMaxMetrics.evaluatedCount} Evaluated
-                                </Badge>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                <div>
-                                    <div className="text-3xl font-light text-white mb-1">
-                                        {miniMaxMetrics.avgScore}
-                                    </div>
-                                    <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                        Avg Percentile Score
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="text-3xl font-light text-emerald-400 mb-1">
-                                        {miniMaxMetrics.topQuartileRate}
-                                    </div>
-                                    <div className="text-xs text-slate-400 uppercase tracking-wider">
-                                        Top-Quartile Call Rate
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SECTION 2: Historical Accuracy Trend Chart (Placed on Top) */}
-                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                            <div>
-                                <h3 className="text-xl font-bold text-white">
-                                    Historical Accuracy Trend
-                                </h3>
-                                <p className="text-xs text-slate-400 mt-1">
-                                    Model percentile scores evaluated against benchmark market ETF
-                                    returns over time.
-                                </p>
-                            </div>
-                            <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-700">
-                                {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
-                                    <button
-                                        key={tf}
-                                        type="button"
-                                        onClick={() => setTimeframeFilter(tf)}
-                                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                                            timeframeFilter === tf
-                                                ? 'bg-slate-800 text-white shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-200'
-                                        }`}
-                                    >
-                                        {tf.toUpperCase()}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        {chartFilteredData.length > 0 ? (
-                            <AIPredictionChart data={chartFilteredData} />
-                        ) : (
-                            <div className="h-[300px] flex items-center justify-center text-slate-400 text-sm">
-                                No evaluated predictions available for this timeframe.
-                            </div>
-                        )}
-                    </div>
-
-                    {/* SECTION 3: Unified Predictions Table & Feed */}
-                    <div className="space-y-6">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
-                            <div>
-                                <h3 className="text-xl font-bold text-white">
-                                    All Sector Predictions
-                                </h3>
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                    Interactive view for tracking prediction performance, Alpha vs
-                                    S&P 500, and target dates across all models.
-                                </p>
-                            </div>
-
-                            {/* View Switcher: Table vs Detailed Cards */}
-                            <div className="flex items-center gap-3">
-                                <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFeedViewMode('table')}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
-                                            feedViewMode === 'table'
-                                                ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-200'
-                                        }`}
-                                    >
-                                        <span>📊 Data Table</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFeedViewMode('cards')}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
-                                            feedViewMode === 'cards'
-                                                ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-200'
-                                        }`}
-                                    >
-                                        <span>🎴 Feed Cards</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {feedViewMode === 'table' ? (
-                            <AIPredictionsTable predictions={data} />
-                        ) : (
-                            <div className="space-y-6">
-                                <div className="flex flex-wrap items-center gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
-                                    {/* Status Segmented Filter */}
-                                    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-                                        <button
-                                            type="button"
-                                            onClick={() => setStatusFilter('all')}
-                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                                                statusFilter === 'all'
-                                                    ? 'bg-slate-800 text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-200'
-                                            }`}
-                                        >
-                                            All Forecasts ({data.length})
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setStatusFilter('active')}
-                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                                                statusFilter === 'active'
-                                                    ? 'bg-blue-600/80 text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-200'
-                                            }`}
-                                        >
-                                            🔮 Active ({pendingPredictions.length})
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setStatusFilter('past')}
-                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                                                statusFilter === 'past'
-                                                    ? 'bg-emerald-600/80 text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-200'
-                                            }`}
-                                        >
-                                            🎯 Past Outcomes ({evaluatedPredictions.length})
-                                        </button>
-                                    </div>
-
-                                    {/* Timeframe Segmented Filter */}
-                                    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-                                        {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
-                                            <button
-                                                key={tf}
-                                                type="button"
-                                                onClick={() => setTimeframeFilter(tf)}
-                                                className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                                                    timeframeFilter === tf
-                                                        ? 'bg-slate-800 text-white shadow-sm'
-                                                        : 'text-slate-400 hover:text-slate-200'
-                                                }`}
-                                            >
-                                                {tf.toUpperCase()}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Predictions Grid */}
-                                <div className="grid grid-cols-1 gap-4">
-                                    {feedFilteredData.length > 0 ? (
-                                        feedFilteredData.map((pred) => (
-                                            <PredictionFeedCard key={pred.id} pred={pred} />
-                                        ))
-                                    ) : (
-                                        <div className="p-8 bg-slate-800/30 border border-dashed border-slate-700/60 rounded-xl text-center text-slate-400 text-sm">
-                                            No predictions match the selected status and timeframe
-                                            filters.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <ArenaTabContent
+                    deepSeekMetrics={deepSeekMetrics}
+                    miniMaxMetrics={miniMaxMetrics}
+                    data={data}
+                    pendingPredictions={pendingPredictions}
+                    evaluatedPredictions={evaluatedPredictions}
+                    chartFilteredData={chartFilteredData}
+                    feedFilteredData={feedFilteredData}
+                    statusFilter={statusFilter}
+                    setStatusFilter={setStatusFilter}
+                    timeframeFilter={timeframeFilter}
+                    setTimeframeFilter={setTimeframeFilter}
+                    feedViewMode={feedViewMode}
+                    setFeedViewMode={setFeedViewMode}
+                />
             ) : (
                 <PredictorAutoresearchTab
                     experimentsList={experimentsList}

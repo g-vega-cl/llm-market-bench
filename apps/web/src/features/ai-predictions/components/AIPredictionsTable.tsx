@@ -52,6 +52,292 @@ function formatDateShort(dateStr: string): string {
     return dateStr;
 }
 
+function getSectorAlpha(p: SectorPrediction): number | null {
+    return p.predicted_sector_return != null && p.benchmark_spy_return != null
+        ? p.predicted_sector_return - p.benchmark_spy_return
+        : null;
+}
+
+function getPairAlpha(p: SectorPrediction): number | null {
+    return p.predicted_pair_return != null && p.benchmark_spy_return != null
+        ? p.predicted_pair_return - p.benchmark_spy_return
+        : null;
+}
+
+function getPredictionSortValue(a: SectorPrediction, sortField: SortField): number | string {
+    switch (sortField) {
+        case 'prediction_date':
+            return a.prediction_date;
+        case 'target_date':
+            return a.target_date;
+        case 'model_name':
+            return a.model_name;
+        case 'sector_return':
+            return a.predicted_sector_return ?? -999;
+        case 'pair_return':
+            return a.predicted_pair_return ?? -999;
+        case 'sector_alpha':
+            return getSectorAlpha(a) ?? -999;
+        case 'pair_alpha':
+            return getPairAlpha(a) ?? -999;
+        case 'score':
+            return a.sector_percentile_score ?? -1;
+    }
+}
+
+interface AIPredictionTableRowProps {
+    pred: SectorPrediction;
+    isExpanded: boolean;
+    onToggleExpand: () => void;
+    viewMode: ViewMode;
+}
+
+function PredictionValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
+    if (viewMode === 'sector') {
+        return <span className="text-xs font-bold text-white">{pred.predicted_sector}</span>;
+    }
+    if (viewMode === 'pair') {
+        return (
+            <span className="text-xs font-medium text-emerald-400">
+                {pred.predicted_pair.join(' + ')}
+            </span>
+        );
+    }
+    return (
+        <div className="space-y-0.5">
+            <div className="text-xs font-bold text-white flex items-center gap-1">
+                <span className="text-blue-400 text-[10px] uppercase">Sec:</span>
+                {pred.predicted_sector}
+            </div>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                <span className="text-emerald-400 text-[10px] uppercase">Pair:</span>
+                {pred.predicted_pair.join(' + ')}
+            </div>
+        </div>
+    );
+}
+
+function PerformanceValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
+    if (pred.status === 'pending') {
+        return <span className="text-xs text-slate-500 italic">Pending...</span>;
+    }
+
+    const secRet = pred.predicted_sector_return;
+    const pairRet = pred.predicted_pair_return;
+
+    return (
+        <div className="space-y-0.5">
+            {(viewMode === 'dual' || viewMode === 'sector') && (
+                <div
+                    className={`text-xs font-semibold ${
+                        (secRet ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                >
+                    {secRet != null ? `${secRet >= 0 ? '+' : ''}${secRet.toFixed(2)}%` : 'N/A'}
+                </div>
+            )}
+            {(viewMode === 'dual' || viewMode === 'pair') && (
+                <div
+                    className={`text-[11px] ${
+                        (pairRet ?? 0) >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'
+                    }`}
+                >
+                    {pairRet != null
+                        ? `${pairRet >= 0 ? '+' : ''}${pairRet.toFixed(2)}% (Pair)`
+                        : ''}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AlphaValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
+    if (pred.status === 'pending') {
+        return <span className="text-xs text-slate-500 italic">--</span>;
+    }
+
+    const secAlpha = getSectorAlpha(pred);
+    const pairAlpha = getPairAlpha(pred);
+
+    return (
+        <div className="space-y-0.5">
+            {(viewMode === 'dual' || viewMode === 'sector') && (
+                <div
+                    className={`text-xs font-bold ${
+                        (secAlpha ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                >
+                    {secAlpha != null
+                        ? `${secAlpha >= 0 ? '+' : ''}${secAlpha.toFixed(2)}%`
+                        : 'N/A'}
+                </div>
+            )}
+            {(viewMode === 'dual' || viewMode === 'pair') && (
+                <div
+                    className={`text-[11px] ${
+                        (pairAlpha ?? 0) >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'
+                    }`}
+                >
+                    {pairAlpha != null
+                        ? `${pairAlpha >= 0 ? '+' : ''}${pairAlpha.toFixed(2)}% (Pair)`
+                        : ''}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function EvaluationAuditDrawer({
+    auditData,
+    reasoning,
+}: {
+    auditData: SectorPrediction['evaluation_audit_data'];
+    reasoning: string;
+}) {
+    return (
+        <TableRow className="bg-slate-950/90 border-b border-slate-800">
+            <TableCell colSpan={7} className="p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="space-y-1 max-w-3xl">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                            Reasoning & Market Audit
+                        </h4>
+                        <p className="text-xs text-slate-300 leading-relaxed italic">
+                            "{reasoning}"
+                        </p>
+                    </div>
+
+                    {auditData && (
+                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs space-y-1.5 min-w-[240px]">
+                            <div className="font-semibold text-slate-200 border-b border-slate-800 pb-1 flex justify-between">
+                                <span>Price Audit Window</span>
+                                <span className="text-slate-400 font-mono text-[10px]">
+                                    {auditData.start_date} ➔ {auditData.end_date}
+                                </span>
+                            </div>
+
+                            {auditData.sector && (
+                                <div className="flex justify-between text-slate-300">
+                                    <span>Sector ({auditData.sector.ticker}):</span>
+                                    <span className="font-mono text-slate-200">
+                                        Start: ${auditData.sector.start_price.toFixed(2)} ➔ End: $
+                                        {auditData.sector.end_price.toFixed(2)}
+                                    </span>
+                                </div>
+                            )}
+
+                            {auditData.spy && (
+                                <div className="flex justify-between text-slate-400">
+                                    <span>S&P 500 (SPY):</span>
+                                    <span className="font-mono">
+                                        Start: ${auditData.spy.start_price.toFixed(2)} ➔ End: $
+                                        {auditData.spy.end_price.toFixed(2)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </TableCell>
+        </TableRow>
+    );
+}
+
+function AIPredictionTableRow({
+    pred,
+    isExpanded,
+    onToggleExpand,
+    viewMode,
+}: AIPredictionTableRowProps) {
+    const isDeepSeek = pred.model_name.toLowerCase().includes('deepseek');
+
+    return (
+        <Fragment>
+            <TableRow
+                onClick={onToggleExpand}
+                className="border-slate-800/60 hover:bg-slate-800/40 cursor-pointer transition-colors"
+            >
+                {/* Model */}
+                <TableCell className="py-3">
+                    <div className="flex items-center gap-2">
+                        <Badge
+                            colorScheme={isDeepSeek ? 'accent' : 'neutral'}
+                            variant="soft"
+                            className="text-[11px] font-semibold px-2 py-0.5"
+                        >
+                            {isDeepSeek ? 'DeepSeek' : 'MiniMax-M3'}
+                        </Badge>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                            {pred.prompt_tag}
+                        </span>
+                    </div>
+                </TableCell>
+
+                {/* Prediction Date */}
+                <TableCell className="text-xs text-slate-300 py-3 whitespace-nowrap">
+                    {formatDateShort(pred.prediction_date)}
+                </TableCell>
+
+                {/* Target Date & Status */}
+                <TableCell className="text-xs py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-slate-300 font-medium">
+                            {formatDateShort(pred.target_date)}
+                        </span>
+                        {pred.status === 'pending' ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                                Active ({pred.timeframe})
+                            </span>
+                        ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                                Evaluated
+                            </span>
+                        )}
+                    </div>
+                </TableCell>
+
+                {/* Predictions */}
+                <TableCell className="py-3">
+                    <PredictionValuesCell pred={pred} viewMode={viewMode} />
+                </TableCell>
+
+                {/* Performance */}
+                <TableCell className="py-3 text-right whitespace-nowrap">
+                    <PerformanceValuesCell pred={pred} viewMode={viewMode} />
+                </TableCell>
+
+                {/* Alpha vs S&P 500 */}
+                <TableCell className="py-3 text-right whitespace-nowrap">
+                    <AlphaValuesCell pred={pred} viewMode={viewMode} />
+                </TableCell>
+
+                {/* Score */}
+                <TableCell className="py-3 text-center">
+                    {pred.sector_percentile_score != null ? (
+                        <Badge
+                            colorScheme={pred.sector_percentile_score >= 75 ? 'accent' : 'neutral'}
+                            variant="soft"
+                            className="text-xs font-bold"
+                        >
+                            {pred.sector_percentile_score.toFixed(1)}
+                        </Badge>
+                    ) : (
+                        <span className="text-xs text-slate-500">--</span>
+                    )}
+                </TableCell>
+            </TableRow>
+
+            {/* Expanded Row Drawer */}
+            {isExpanded && (
+                <EvaluationAuditDrawer
+                    auditData={pred.evaluation_audit_data}
+                    reasoning={pred.reasoning}
+                />
+            )}
+        </Fragment>
+    );
+}
+
 export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [modelFilter, setModelFilter] = useState<'all' | 'deepseek' | 'minimax'>('all');
@@ -100,56 +386,8 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                 return matchesSearch && matchesModel && matchesStatus && matchesTimeframe;
             })
             .sort((a, b) => {
-                let valA: number | string = 0;
-                let valB: number | string = 0;
-
-                switch (sortField) {
-                    case 'prediction_date':
-                        valA = a.prediction_date;
-                        valB = b.prediction_date;
-                        break;
-                    case 'target_date':
-                        valA = a.target_date;
-                        valB = b.target_date;
-                        break;
-                    case 'model_name':
-                        valA = a.model_name;
-                        valB = b.model_name;
-                        break;
-                    case 'sector_return':
-                        valA = a.predicted_sector_return ?? -999;
-                        valB = b.predicted_sector_return ?? -999;
-                        break;
-                    case 'pair_return':
-                        valA = a.predicted_pair_return ?? -999;
-                        valB = b.predicted_pair_return ?? -999;
-                        break;
-                    case 'sector_alpha':
-                        valA =
-                            a.predicted_sector_return != null && a.benchmark_spy_return != null
-                                ? a.predicted_sector_return - a.benchmark_spy_return
-                                : -999;
-                        valB =
-                            b.predicted_sector_return != null && b.benchmark_spy_return != null
-                                ? b.predicted_sector_return - b.benchmark_spy_return
-                                : -999;
-                        break;
-                    case 'pair_alpha':
-                        valA =
-                            a.predicted_pair_return != null && a.benchmark_spy_return != null
-                                ? a.predicted_pair_return - a.benchmark_spy_return
-                                : -999;
-                        valB =
-                            b.predicted_pair_return != null && b.benchmark_spy_return != null
-                                ? b.predicted_pair_return - b.benchmark_spy_return
-                                : -999;
-                        break;
-                    case 'score':
-                        valA = a.sector_percentile_score ?? -1;
-                        valB = b.sector_percentile_score ?? -1;
-                        break;
-                }
-
+                const valA = getPredictionSortValue(a, sortField);
+                const valB = getPredictionSortValue(b, sortField);
                 if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
                 if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
                 return 0;
@@ -340,285 +578,17 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                     </TableHeader>
                     <TableBody>
                         {filteredAndSorted.length > 0 ? (
-                            filteredAndSorted.map((pred) => {
-                                const isExpanded = expandedRowId === pred.id;
-                                const isDeepSeek = pred.model_name
-                                    .toLowerCase()
-                                    .includes('deepseek');
-
-                                const secRet = pred.predicted_sector_return;
-                                const pairRet = pred.predicted_pair_return;
-                                const spyRet = pred.benchmark_spy_return;
-
-                                const secAlpha =
-                                    secRet != null && spyRet != null ? secRet - spyRet : null;
-                                const pairAlpha =
-                                    pairRet != null && spyRet != null ? pairRet - spyRet : null;
-
-                                return (
-                                    <Fragment key={pred.id}>
-                                        <TableRow
-                                            onClick={() =>
-                                                setExpandedRowId(isExpanded ? null : pred.id)
-                                            }
-                                            className="border-slate-800/60 hover:bg-slate-800/40 cursor-pointer transition-colors"
-                                        >
-                                            {/* Model */}
-                                            <TableCell className="py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge
-                                                        colorScheme={
-                                                            isDeepSeek ? 'accent' : 'neutral'
-                                                        }
-                                                        variant="soft"
-                                                        className="text-[11px] font-semibold px-2 py-0.5"
-                                                    >
-                                                        {isDeepSeek ? 'DeepSeek' : 'MiniMax-M3'}
-                                                    </Badge>
-                                                    <span className="text-[10px] text-slate-400 font-mono">
-                                                        {pred.prompt_tag}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* Prediction Date */}
-                                            <TableCell className="text-xs text-slate-300 py-3 whitespace-nowrap">
-                                                {formatDateShort(pred.prediction_date)}
-                                            </TableCell>
-
-                                            {/* Target Date & Status */}
-                                            <TableCell className="text-xs py-3 whitespace-nowrap">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-slate-300 font-medium">
-                                                        {formatDateShort(pred.target_date)}
-                                                    </span>
-                                                    {pred.status === 'pending' ? (
-                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700/50">
-                                                            Active ({pred.timeframe})
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                                                            Evaluated
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-
-                                            {/* Predictions */}
-                                            <TableCell className="py-3">
-                                                {viewMode === 'dual' && (
-                                                    <div className="space-y-0.5">
-                                                        <div className="text-xs font-bold text-white flex items-center gap-1">
-                                                            <span className="text-blue-400 text-[10px] uppercase">
-                                                                Sec:
-                                                            </span>
-                                                            {pred.predicted_sector}
-                                                        </div>
-                                                        <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                                                            <span className="text-emerald-400 text-[10px] uppercase">
-                                                                Pair:
-                                                            </span>
-                                                            {pred.predicted_pair.join(' + ')}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {viewMode === 'sector' && (
-                                                    <span className="text-xs font-bold text-white">
-                                                        {pred.predicted_sector}
-                                                    </span>
-                                                )}
-                                                {viewMode === 'pair' && (
-                                                    <span className="text-xs font-medium text-emerald-400">
-                                                        {pred.predicted_pair.join(' + ')}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-
-                                            {/* Performance */}
-                                            <TableCell className="py-3 text-right whitespace-nowrap">
-                                                {pred.status === 'pending' ? (
-                                                    <span className="text-xs text-slate-500 italic">
-                                                        Pending...
-                                                    </span>
-                                                ) : (
-                                                    <div className="space-y-0.5">
-                                                        {(viewMode === 'dual' ||
-                                                            viewMode === 'sector') && (
-                                                            <div
-                                                                className={`text-xs font-semibold ${
-                                                                    (secRet ?? 0) >= 0
-                                                                        ? 'text-emerald-400'
-                                                                        : 'text-rose-400'
-                                                                }`}
-                                                            >
-                                                                {secRet != null
-                                                                    ? `${secRet >= 0 ? '+' : ''}${secRet.toFixed(2)}%`
-                                                                    : 'N/A'}
-                                                            </div>
-                                                        )}
-                                                        {(viewMode === 'dual' ||
-                                                            viewMode === 'pair') && (
-                                                            <div
-                                                                className={`text-[11px] ${
-                                                                    (pairRet ?? 0) >= 0
-                                                                        ? 'text-emerald-400/80'
-                                                                        : 'text-rose-400/80'
-                                                                }`}
-                                                            >
-                                                                {pairRet != null
-                                                                    ? `${pairRet >= 0 ? '+' : ''}${pairRet.toFixed(2)}% (Pair)`
-                                                                    : ''}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-
-                                            {/* Alpha vs S&P 500 */}
-                                            <TableCell className="py-3 text-right whitespace-nowrap">
-                                                {pred.status === 'pending' ? (
-                                                    <span className="text-xs text-slate-500 italic">
-                                                        --
-                                                    </span>
-                                                ) : (
-                                                    <div className="space-y-0.5">
-                                                        {(viewMode === 'dual' ||
-                                                            viewMode === 'sector') && (
-                                                            <div
-                                                                className={`text-xs font-bold ${
-                                                                    (secAlpha ?? 0) >= 0
-                                                                        ? 'text-emerald-400'
-                                                                        : 'text-rose-400'
-                                                                }`}
-                                                            >
-                                                                {secAlpha != null
-                                                                    ? `${secAlpha >= 0 ? '+' : ''}${secAlpha.toFixed(2)}%`
-                                                                    : 'N/A'}
-                                                            </div>
-                                                        )}
-                                                        {(viewMode === 'dual' ||
-                                                            viewMode === 'pair') && (
-                                                            <div
-                                                                className={`text-[11px] ${
-                                                                    (pairAlpha ?? 0) >= 0
-                                                                        ? 'text-emerald-400/80'
-                                                                        : 'text-rose-400/80'
-                                                                }`}
-                                                            >
-                                                                {pairAlpha != null
-                                                                    ? `${pairAlpha >= 0 ? '+' : ''}${pairAlpha.toFixed(2)}% (Pair)`
-                                                                    : ''}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-
-                                            {/* Score */}
-                                            <TableCell className="py-3 text-center">
-                                                {pred.sector_percentile_score != null ? (
-                                                    <Badge
-                                                        colorScheme={
-                                                            pred.sector_percentile_score >= 75
-                                                                ? 'accent'
-                                                                : 'neutral'
-                                                        }
-                                                        variant="soft"
-                                                        className="text-xs font-bold"
-                                                    >
-                                                        {pred.sector_percentile_score.toFixed(1)}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-xs text-slate-500">
-                                                        --
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-
-                                        {/* Expanded Row Drawer */}
-                                        {isExpanded && (
-                                            <TableRow className="bg-slate-950/90 border-b border-slate-800">
-                                                <TableCell colSpan={7} className="p-4 space-y-3">
-                                                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                                                        <div className="space-y-1 max-w-3xl">
-                                                            <h4 className="text-xs font-bold uppercase tracking-wider text-blue-400">
-                                                                Reasoning & Market Audit
-                                                            </h4>
-                                                            <p className="text-xs text-slate-300 leading-relaxed italic">
-                                                                "{pred.reasoning}"
-                                                            </p>
-                                                        </div>
-
-                                                        {/* Audit Prices */}
-                                                        {pred.evaluation_audit_data && (
-                                                            <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs space-y-1.5 min-w-[240px]">
-                                                                <div className="font-semibold text-slate-200 border-b border-slate-800 pb-1 flex justify-between">
-                                                                    <span>Price Audit Window</span>
-                                                                    <span className="text-slate-400 font-mono text-[10px]">
-                                                                        {
-                                                                            pred
-                                                                                .evaluation_audit_data
-                                                                                .start_date
-                                                                        }{' '}
-                                                                        ➔{' '}
-                                                                        {
-                                                                            pred
-                                                                                .evaluation_audit_data
-                                                                                .end_date
-                                                                        }
-                                                                    </span>
-                                                                </div>
-
-                                                                {pred.evaluation_audit_data
-                                                                    .sector && (
-                                                                    <div className="flex justify-between text-slate-300">
-                                                                        <span>
-                                                                            Sector (
-                                                                            {
-                                                                                pred
-                                                                                    .evaluation_audit_data
-                                                                                    .sector.ticker
-                                                                            }
-                                                                            ):
-                                                                        </span>
-                                                                        <span className="font-mono text-slate-200">
-                                                                            Start: $
-                                                                            {pred.evaluation_audit_data.sector.start_price.toFixed(
-                                                                                2,
-                                                                            )}{' '}
-                                                                            ➔ End: $
-                                                                            {pred.evaluation_audit_data.sector.end_price.toFixed(
-                                                                                2,
-                                                                            )}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-
-                                                                {pred.evaluation_audit_data.spy && (
-                                                                    <div className="flex justify-between text-slate-400">
-                                                                        <span>S&P 500 (SPY):</span>
-                                                                        <span className="font-mono">
-                                                                            Start: $
-                                                                            {pred.evaluation_audit_data.spy.start_price.toFixed(
-                                                                                2,
-                                                                            )}{' '}
-                                                                            ➔ End: $
-                                                                            {pred.evaluation_audit_data.spy.end_price.toFixed(
-                                                                                2,
-                                                                            )}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </Fragment>
-                                );
-                            })
+                            filteredAndSorted.map((pred) => (
+                                <AIPredictionTableRow
+                                    key={pred.id}
+                                    pred={pred}
+                                    isExpanded={expandedRowId === pred.id}
+                                    onToggleExpand={() =>
+                                        setExpandedRowId(expandedRowId === pred.id ? null : pred.id)
+                                    }
+                                    viewMode={viewMode}
+                                />
+                            ))
                         ) : (
                             <TableRow>
                                 <TableCell

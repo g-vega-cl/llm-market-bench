@@ -20,7 +20,7 @@ While the live [[entities/autoresearch-arena]] tracks weekly prompt evolution fr
 
 ## Technical Implementation
 
-- **Route**: `/autoresearch/backtest` (defined in `apps/web/src/routes/autoresearch/backtest.tsx`)
+- **Route**: `/autoresearch-backtest` (defined in `apps/web/src/routes/autoresearch-backtest.tsx`)
 - **Page Component**: `BacktestAutoresearchPage` (in `apps/web/src/features/autoresearch/pages/BacktestAutoresearchPage.tsx`)
 - **Data Fetching**: Uses `fetchBacktestExperiments()` server function, which queries Supabase with `.eq('is_backtest', true)`.
 - **Query Management**: TanStack Query keys and options are defined in `autoresearchQueries.backtest()`.

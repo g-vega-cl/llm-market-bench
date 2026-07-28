@@ -1592,7 +1592,11 @@ class TestComputeScore:
         from autoresearch.metrics import compute_score
 
         result = compute_score(
-            portfolio_return_pct=3.0, spy_return_pct=1.0, max_drawdown_pct=5.0, do_nothing_return_pct=0.0, bond_return_pct=0.0
+            portfolio_return_pct=3.0,
+            spy_return_pct=1.0,
+            max_drawdown_pct=5.0,
+            do_nothing_return_pct=0.0,
+            bond_return_pct=0.0,
         )
         # excess_vs_spy = 2.0, excess_vs_do_nothing = 3.0, excess_vs_bond = 3.0
         # excess_return = 0.4(2.0) + 0.4(3.0) + 0.2(3.0) = 0.8 + 1.2 + 0.6 = 2.6
@@ -1613,7 +1617,11 @@ class TestComputeScore:
         from autoresearch.metrics import compute_score
 
         result = compute_score(
-            portfolio_return_pct=-2.0, spy_return_pct=1.0, max_drawdown_pct=2.0, do_nothing_return_pct=-1.0, bond_return_pct=0.0
+            portfolio_return_pct=-2.0,
+            spy_return_pct=1.0,
+            max_drawdown_pct=2.0,
+            do_nothing_return_pct=-1.0,
+            bond_return_pct=0.0,
         )
         assert result["score"] < 0
         # excess_vs_spy = -3.0, excess_vs_do_nothing = -1.0, excess_vs_bond = -2.0
@@ -1634,7 +1642,11 @@ class TestComputeScore:
         from autoresearch.metrics import compute_score
 
         result = compute_score(
-            portfolio_return_pct=5.0, spy_return_pct=1.0, max_drawdown_pct=0.0, do_nothing_return_pct=2.0, bond_return_pct=0.0
+            portfolio_return_pct=5.0,
+            spy_return_pct=1.0,
+            max_drawdown_pct=0.0,
+            do_nothing_return_pct=2.0,
+            bond_return_pct=0.0,
         )
         # excess_vs_spy = 4.0, excess_vs_do_nothing = 3.0, excess_vs_bond = 5.0
         # excess_return = 0.4(4.0) + 0.4(3.0) + 0.2(5.0) = 1.6 + 1.2 + 1.0 = 3.8

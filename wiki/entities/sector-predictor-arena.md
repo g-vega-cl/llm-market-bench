@@ -32,7 +32,11 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
    * The baseline score is calculated as the maximum score of any evaluated `SECTOR_PREDICTOR_PROMPT` variant in the database.
    * If the current week's score beats the baseline, a new baseline is established.
    * If it underperforms, the active prompt variant is reverted to the baseline variant (`revert_to_baseline()`) before mutating.
-5. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active prompt to deploy the next week's variant.
+5. **Prompt Sandwich Architecture & Mutation Isolation**:
+   * The sector predictor prompt is split into three sections: `SECTOR_PREDICTOR_CONSTRAINTS_HEADER` (role/context), `SECTOR_PREDICTOR_MUTABLE_STRATEGIES` (analytical instructions), and `SECTOR_PREDICTOR_CONSTRAINTS_FOOTER` (required JSON schema).
+   * The meta-researcher mutates **only** the middle `MUTABLE_STRATEGIES` section. System header constraints and output format JSON schemas are automatically wrapped around the mutated strategy, preventing schema drift or format hallucinations.
+   * Backward-compatible fallback (`split_predictor_prompt`) ensures historical monolithic variants are safely parsed without breaking baseline score comparisons.
+6. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active strategy instructions to deploy the next week's prompt variant.
 
 ### 4. Robust Frontend Visuals & Audit Transparency
 * **Top Accuracy Chart & Status Filtering**: Historical accuracy trends are placed at the top of the dashboard, supporting instant filtering across `All Forecasts`, `🔮 Active Forecasts`, and `🎯 Past Outcomes`.

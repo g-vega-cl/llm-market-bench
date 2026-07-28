@@ -345,6 +345,7 @@ class SQLiteInsertBuilder:
         self.is_upsert = is_upsert
 
         import uuid
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
@@ -392,7 +393,6 @@ class SQLiteInsertBuilder:
 
     def execute(self):
         return self
-
 
 
 class SQLiteTable:

@@ -391,11 +391,12 @@ async def test_predictor_autoresearch_ratchet_success(mock_get_gemini):
     assert any(up[0] == "prompt_experiments" and up[1].get("status") == "baseline" for up in db_updates)
     # Assert other variants demoted to saved
     assert any(up[0] == "prompt_experiments" and up[1].get("status") == "saved" for up in db_updates)
-    # Assert insert contains parent_tag = 'active-tag' and mutated content
+    # Assert insert contains parent_tag = 'active-tag' and mutated content wrapped in sandwich
     assert len(db_inserts) == 1
     assert db_inserts[0][0] == "prompt_experiments"
     assert db_inserts[0][1]["parent_tag"] == "active-tag"
-    assert db_inserts[0][1]["prompt_content"] == "MUTATED_PROMPT_CONTENT"
+    assert "MUTATED_PROMPT_CONTENT" in db_inserts[0][1]["prompt_content"]
+    assert db_inserts[0][1]["prompt_content"].startswith("You are a highly sophisticated macro-quantitative AI")
 
 
 @pytest.mark.asyncio
@@ -497,11 +498,12 @@ async def test_predictor_autoresearch_ratchet_revert(mock_get_gemini):
     assert any(up[0] == "prompt_experiments" and up[1].get("metrics") == {"score": 70.0} for up in db_updates)
     # Assert active-tag status updated to discarded (underperformed baseline 80)
     assert any(up[0] == "prompt_experiments" and up[1].get("status") == "discarded" for up in db_updates)
-    # Assert insert contains parent_tag = 'baseline-tag' (reverted) and mutated content
+    # Assert insert contains parent_tag = 'baseline-tag' (reverted) and mutated content wrapped in sandwich
     assert len(db_inserts) == 1
     assert db_inserts[0][0] == "prompt_experiments"
     assert db_inserts[0][1]["parent_tag"] == "baseline-tag"
-    assert db_inserts[0][1]["prompt_content"] == "MUTATED_PROMPT_CONTENT"
+    assert "MUTATED_PROMPT_CONTENT" in db_inserts[0][1]["prompt_content"]
+    assert db_inserts[0][1]["prompt_content"].startswith("You are a highly sophisticated macro-quantitative AI")
 
 
 @pytest.mark.asyncio
@@ -602,5 +604,5 @@ async def test_predictor_autoresearch_always_inserts_active(mock_get_gemini):
     # Assert that even though the content is identical, the new active variant is still inserted
     assert len(db_inserts) == 1
     assert db_inserts[0][0] == "prompt_experiments"
-    assert db_inserts[0][1]["prompt_content"] == "IDENTICAL_CONTENT"
+    assert "IDENTICAL_CONTENT" in db_inserts[0][1]["prompt_content"]
     assert db_inserts[0][1]["status"] == "active"

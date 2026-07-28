@@ -374,9 +374,7 @@ def compute_score(
     excess_vs_do_nothing = portfolio_return_pct - do_nothing_return_pct
     excess_vs_bond = portfolio_return_pct - bond_return_pct
 
-    excess_return = round(
-        0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond, 4
-    )
+    excess_return = round(0.4 * excess_vs_spy + 0.4 * excess_vs_do_nothing + 0.2 * excess_vs_bond, 4)
     opportunity_cost = round(excess_vs_bond, 4)
     penalty = max_drawdown_pct * DRAWDOWN_PENALTY_WEIGHT
     score = round(excess_return - penalty, 4)

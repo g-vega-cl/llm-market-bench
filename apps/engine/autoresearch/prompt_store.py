@@ -59,7 +59,9 @@ async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is
     return content
 
 
-async def get_active_variant(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> dict | None:
+async def get_active_variant(
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+) -> dict | None:
     """Retrieve the full database row/dictionary of the currently active variant."""
     sb_client = await get_async_supabase_client()
     res = await (
@@ -144,7 +146,9 @@ async def save_variant(
     return tag
 
 
-async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> list[dict]:
+async def get_previous_variants(
+    limit: int = 5, prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+) -> list[dict]:
     sb_client = await get_async_supabase_client()
     res = await (
         sb_client.table("prompt_experiments")
@@ -160,12 +164,20 @@ async def get_previous_variants(limit: int = 5, prompt_name: str = "CORE_ANALYSI
     return res.data or []
 
 
-async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> dict | None:
+async def get_all_time_baseline(
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+) -> dict | None:
     """Return the prompt variant with the highest score achieved so far among pull-based variants."""
     sb_client = await get_async_supabase_client()
     # Fetch all variants for this prompt name. Since it's a weekly loop,
     # the number of rows will remain small (e.g., 52 per year).
-    res = await sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest).execute()
+    res = (
+        await sb_client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
+        .execute()
+    )
 
     if not res or not res.data:
         return None
@@ -203,7 +215,9 @@ async def get_all_time_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT"
     return best_variant
 
 
-async def get_baseline_metrics(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> dict | None:
+async def get_baseline_metrics(
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+) -> dict | None:
     """Legacy helper: now returns metrics of the all-time baseline."""
     baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest)
     return baseline["metrics"] if baseline else None

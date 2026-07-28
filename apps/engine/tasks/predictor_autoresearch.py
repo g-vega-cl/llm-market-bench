@@ -11,6 +11,11 @@ from pydantic import BaseModel
 from core.config import logger
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_gemini_client
+from core.llm.predictor_prompts import (
+    SECTOR_PREDICTOR_CONSTRAINTS_FOOTER,
+    SECTOR_PREDICTOR_CONSTRAINTS_HEADER,
+    split_predictor_prompt,
+)
 
 
 class MetaPromptResponse(BaseModel):
@@ -36,16 +41,19 @@ def calculate_baseline_score(predictions: list[dict]) -> float:
 
 async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_researcher) -> str:
     """Generate a new prompt variant."""
+    _, mutable_strategies, _ = split_predictor_prompt(old_prompt)
 
     meta_prompt = (
         "You are a Meta-Researcher AI tasked with improving an LLM's system prompt "
         "for predicting the best performing market sectors and uncorrelated pairs.\n\n"
-        f"The current prompt achieved a percentile score of {baseline_score:.1f}/100.0.\n"
-        "Your goal is to rewrite the prompt to be more effective, focusing on deeper logic "
-        "and better data extraction. Keep the REQUIRED OUTPUT FORMAT exactly the same.\n\n"
-        "CURRENT PROMPT:\n"
-        f"```text\n{old_prompt}\n```\n\n"
-        "Output ONLY the new raw prompt text."
+        f"The current prompt strategy achieved a percentile score of {baseline_score:.1f}/100.0.\n"
+        "Your goal is to rewrite ONLY the strategy / analytical reasoning section of the prompt "
+        "to be more effective, focusing on deeper logic, macro quantitative signals, and better data extraction. "
+        "Do NOT include any output formatting instructions or JSON schemas in your output; "
+        "the required output format is enforced automatically by the system.\n\n"
+        "CURRENT STRATEGY INSTRUCTIONS:\n"
+        f"```text\n{mutable_strategies}\n```\n\n"
+        "Output ONLY the new raw strategy instructions text."
     )
 
     try:
@@ -58,16 +66,16 @@ async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_resea
             resp = await resp_awaitable
         else:
             resp = resp_awaitable
-        new_prompt = resp.new_prompt
+        new_strategies = resp.new_prompt
         # Clean up any markdown blocks if the LLM wrapped the output
-        if new_prompt.startswith("```"):
-            lines = new_prompt.split("\n")
+        if new_strategies.startswith("```"):
+            lines = new_strategies.split("\n")
             if lines[0].startswith("```"):
                 lines = lines[1:]
             if lines and lines[-1].startswith("```"):
                 lines = lines[:-1]
-            new_prompt = "\n".join(lines).strip()
-        return new_prompt
+            new_strategies = "\n".join(lines).strip()
+        return SECTOR_PREDICTOR_CONSTRAINTS_HEADER + new_strategies + SECTOR_PREDICTOR_CONSTRAINTS_FOOTER
     except Exception as e:
         logger.error(f"Error generating new prompt: {e}")
         return old_prompt

@@ -20,7 +20,9 @@ class FMPProvider(FinancialProvider):
 
     BASE_URL = "https://financialmodelingprep.com/stable"
     _last_call_time = 0.0  # Shared across all instances to throttle globally
-    _db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".hourly_price_cache.db")
+    _db_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".hourly_price_cache.db"
+    )
 
     def __init__(self):
         if not FMP_API_KEY:
@@ -543,17 +545,17 @@ class FMPProvider(FinancialProvider):
             conn = sqlite3.connect(self._db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
+
             # Sub-string date comparison is safe for YYYY-MM-DD HH:MM:SS format
             cursor.execute(
                 "SELECT bar_date, open, high, low, close, volume FROM hourly_bars "
                 "WHERE ticker = ? AND bar_date >= ? AND bar_date <= ? "
                 "ORDER BY bar_date ASC",
-                (ticker.upper(), f"{from_date} 00:00:00", f"{to_date} 23:59:59")
+                (ticker.upper(), f"{from_date} 00:00:00", f"{to_date} 23:59:59"),
             )
             rows = cursor.fetchall()
             conn.close()
-            
+
             return [
                 {
                     "date": row["bar_date"],
@@ -574,7 +576,7 @@ class FMPProvider(FinancialProvider):
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            
+
             # Bulk insert using executemany for high performance
             cursor.executemany(
                 "INSERT OR IGNORE INTO hourly_bars (ticker, bar_date, open, high, low, close, volume) "
@@ -582,7 +584,7 @@ class FMPProvider(FinancialProvider):
                 [
                     (ticker.upper(), bar["date"], bar["open"], bar["high"], bar["low"], bar["close"], bar["volume"])
                     for bar in bars
-                ]
+                ],
             )
             conn.commit()
             conn.close()
@@ -604,9 +606,10 @@ class FMPProvider(FinancialProvider):
             return []
 
         logger.info(f"Hourly cache miss for {ticker} from {from_date} to {to_date}. Fetching from FMP API...")
-        
+
         # Throttling logic
         from core.config import FINANCIAL_API_THROTTLE_SECONDS
+
         if FINANCIAL_API_THROTTLE_SECONDS > 0:
             await asyncio.sleep(FINANCIAL_API_THROTTLE_SECONDS)
 
@@ -615,16 +618,11 @@ class FMPProvider(FinancialProvider):
                 async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
                     resp = await client.get(
                         f"{self.BASE_URL}/historical-chart/1hour",
-                        params={
-                            "symbol": ticker.upper(),
-                            "from": from_date,
-                            "to": to_date,
-                            "apikey": self.api_key
-                        }
+                        params={"symbol": ticker.upper(), "from": from_date, "to": to_date, "apikey": self.api_key},
                     )
                     resp.raise_for_status()
                     data = resp.json()
-                    
+
                     if not data or not isinstance(data, list):
                         logger.warning(f"No hourly history returned for {ticker} from FMP.")
                         return []
@@ -635,14 +633,16 @@ class FMPProvider(FinancialProvider):
                         # Skip entries missing critical fields
                         if not all(k in entry for k in ("date", "open", "high", "low", "close")):
                             continue
-                        bars.append({
-                            "date": entry["date"],
-                            "open": float(entry["open"]),
-                            "high": float(entry["high"]),
-                            "low": float(entry["low"]),
-                            "close": float(entry["close"]),
-                            "volume": int(entry.get("volume", 0))
-                        })
+                        bars.append(
+                            {
+                                "date": entry["date"],
+                                "open": float(entry["open"]),
+                                "high": float(entry["high"]),
+                                "low": float(entry["low"]),
+                                "close": float(entry["close"]),
+                                "volume": int(entry.get("volume", 0)),
+                            }
+                        )
 
                     # FMP historical-chart returns reverse chronological order (newest first).
                     # Sort ascending by date for logical time progression.
@@ -651,7 +651,7 @@ class FMPProvider(FinancialProvider):
                     # Save to cache
                     if bars:
                         self._cache_hourly_bars(ticker, bars)
-                    
+
                     return bars
 
             except httpx.HTTPStatusError as e:
@@ -660,7 +660,9 @@ class FMPProvider(FinancialProvider):
                     return []
                 logger.error(f"HTTP error fetching hourly history for {ticker}: {e}")
             except Exception as e:
-                logger.warning(f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed fetching hourly history for {ticker}: {e}")
+                logger.warning(
+                    f"Attempt {attempt}/{MARKET_DATA_RETRIES} failed fetching hourly history for {ticker}: {e}"
+                )
 
             if attempt < MARKET_DATA_RETRIES:
                 await asyncio.sleep(2 ** (attempt - 1))

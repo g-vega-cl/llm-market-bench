@@ -19,6 +19,7 @@ import type {
     SectorPrediction,
 } from '../api/fetch-predictions';
 import { AIPredictionChart } from '../components/AIPredictionChart';
+import { AIPredictionsTable } from '../components/AIPredictionsTable';
 
 function formatStableDate(dateStr: string): string {
     if (!dateStr) return 'N/A';
@@ -102,6 +103,7 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
         '7d',
     );
     const [activeTab, setActiveTab] = useState<'arena' | 'autoresearch'>('arena');
+    const [feedViewMode, setFeedViewMode] = useState<'table' | 'cards'>('table');
     const [selectedExpId, setSelectedExpId] = useState<string | null>(null);
 
     const handleRefresh = async () => {
@@ -315,88 +317,124 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                         )}
                     </div>
 
-                    {/* SECTION 3: Unified Predictions Feed with Status & Timeframe Filters */}
+                    {/* SECTION 3: Unified Predictions Table & Feed */}
                     <div className="space-y-6">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
                             <div>
-                                <h3 className="text-xl font-bold text-white">Predictions Feed</h3>
+                                <h3 className="text-xl font-bold text-white">
+                                    All Sector Predictions
+                                </h3>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                    Filter predictions by status (Active vs Past) and forecast
-                                    horizon.
+                                    Interactive view for tracking prediction performance, Alpha vs
+                                    S&P 500, and target dates across all models.
                                 </p>
                             </div>
 
-                            {/* Control Bar */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                {/* Status Segmented Filter */}
+                            {/* View Switcher: Table vs Detailed Cards */}
+                            <div className="flex items-center gap-3">
                                 <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
                                     <button
                                         type="button"
-                                        onClick={() => setStatusFilter('all')}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                                            statusFilter === 'all'
-                                                ? 'bg-slate-800 text-white shadow-sm'
+                                        onClick={() => setFeedViewMode('table')}
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                                            feedViewMode === 'table'
+                                                ? 'bg-blue-600 text-white shadow-sm'
                                                 : 'text-slate-400 hover:text-slate-200'
                                         }`}
                                     >
-                                        All Forecasts ({data.length})
+                                        <span>📊 Data Table</span>
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setStatusFilter('active')}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                                            statusFilter === 'active'
-                                                ? 'bg-blue-600/80 text-white shadow-sm'
+                                        onClick={() => setFeedViewMode('cards')}
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+                                            feedViewMode === 'cards'
+                                                ? 'bg-blue-600 text-white shadow-sm'
                                                 : 'text-slate-400 hover:text-slate-200'
                                         }`}
                                     >
-                                        🔮 Active ({pendingPredictions.length})
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setStatusFilter('past')}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                                            statusFilter === 'past'
-                                                ? 'bg-emerald-600/80 text-white shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-200'
-                                        }`}
-                                    >
-                                        🎯 Past Outcomes ({evaluatedPredictions.length})
+                                        <span>🎴 Feed Cards</span>
                                     </button>
                                 </div>
+                            </div>
+                        </div>
 
-                                {/* Timeframe Segmented Filter */}
-                                <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-                                    {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
+                        {feedViewMode === 'table' ? (
+                            <AIPredictionsTable predictions={data} />
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="flex flex-wrap items-center gap-3 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+                                    {/* Status Segmented Filter */}
+                                    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
                                         <button
-                                            key={tf}
                                             type="button"
-                                            onClick={() => setTimeframeFilter(tf)}
-                                            className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                                                timeframeFilter === tf
+                                            onClick={() => setStatusFilter('all')}
+                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                                statusFilter === 'all'
                                                     ? 'bg-slate-800 text-white shadow-sm'
                                                     : 'text-slate-400 hover:text-slate-200'
                                             }`}
                                         >
-                                            {tf.toUpperCase()}
+                                            All Forecasts ({data.length})
                                         </button>
-                                    ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setStatusFilter('active')}
+                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                                statusFilter === 'active'
+                                                    ? 'bg-blue-600/80 text-white shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-200'
+                                            }`}
+                                        >
+                                            🔮 Active ({pendingPredictions.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setStatusFilter('past')}
+                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                                statusFilter === 'past'
+                                                    ? 'bg-emerald-600/80 text-white shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-200'
+                                            }`}
+                                        >
+                                            🎯 Past Outcomes ({evaluatedPredictions.length})
+                                        </button>
+                                    </div>
+
+                                    {/* Timeframe Segmented Filter */}
+                                    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                                        {(['7d', '30d', '60d', '90d', 'all'] as const).map((tf) => (
+                                            <button
+                                                key={tf}
+                                                type="button"
+                                                onClick={() => setTimeframeFilter(tf)}
+                                                className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                                    timeframeFilter === tf
+                                                        ? 'bg-slate-800 text-white shadow-sm'
+                                                        : 'text-slate-400 hover:text-slate-200'
+                                                }`}
+                                            >
+                                                {tf.toUpperCase()}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Predictions Grid */}
+                                <div className="grid grid-cols-1 gap-4">
+                                    {feedFilteredData.length > 0 ? (
+                                        feedFilteredData.map((pred) => (
+                                            <PredictionFeedCard key={pred.id} pred={pred} />
+                                        ))
+                                    ) : (
+                                        <div className="p-8 bg-slate-800/30 border border-dashed border-slate-700/60 rounded-xl text-center text-slate-400 text-sm">
+                                            No predictions match the selected status and timeframe
+                                            filters.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Predictions Grid */}
-                        <div className="grid grid-cols-1 gap-4">
-                            {feedFilteredData.length > 0 ? (
-                                feedFilteredData.map((pred) => (
-                                    <PredictionFeedCard key={pred.id} pred={pred} />
-                                ))
-                            ) : (
-                                <div className="p-8 bg-slate-800/30 border border-dashed border-slate-700/60 rounded-xl text-center text-slate-400 text-sm">
-                                    No predictions match the selected status and timeframe filters.
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
             ) : (

@@ -120,6 +120,9 @@ describe('AIPredictionsPage', () => {
             />,
         );
 
+        // Switch to Feed Cards view
+        fireEvent.click(screen.getByRole('button', { name: /Feed Cards/i }));
+
         expect(
             screen.getByText('Strong tech momentum expected ahead of earnings.'),
         ).toBeInTheDocument();
@@ -151,6 +154,9 @@ describe('AIPredictionsPage', () => {
             />,
         );
 
+        // Switch to Feed Cards view
+        fireEvent.click(screen.getByRole('button', { name: /Feed Cards/i }));
+
         expect(screen.getAllByText(/Prediction vs S&P 500 Benchmark/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/S&P 500 \(SPY\): \+1.8%/i).length).toBeGreaterThan(0);
         expect(screen.getByText(/\+2.4% vs S&P 500/i)).toBeInTheDocument();
@@ -164,6 +170,9 @@ describe('AIPredictionsPage', () => {
                 refreshFn={refreshFn}
             />,
         );
+
+        // Switch to Feed Cards view
+        fireEvent.click(screen.getByRole('button', { name: /Feed Cards/i }));
 
         expect(screen.getByText(/Data Audit & Price Verification/i)).toBeInTheDocument();
         expect(screen.getByText(/\$542\.10 ➔ \$551\.86/i)).toBeInTheDocument();
@@ -179,7 +188,7 @@ describe('AIPredictionsPage', () => {
             />,
         );
 
-        expect(screen.getByText('DeepSeek Models')).toBeInTheDocument();
+        expect(screen.getAllByText('DeepSeek Models').length).toBeGreaterThan(0);
         expect(screen.getAllByText('MiniMax-M3').length).toBeGreaterThan(0);
     });
 });

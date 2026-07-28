@@ -39,9 +39,10 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 6. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active strategy instructions to deploy the next week's prompt variant.
 
 ### 4. Robust Frontend Visuals & Audit Transparency
+* **Interactive Predictions Data Table**: Includes a dedicated data table (`AIPredictionsTable.tsx`) for high-density tracking across all forecast horizons. Features sortable headers (Prediction Date, Target Date, Return, Alpha, Model, Percentile Score), search, filters (Model, Status, Horizon), dual-target display (Single Sector + Pair Combination), Alpha vs S&P 500 calculation, and expandable audit drawers.
 * **Top Accuracy Chart & Status Filtering**: Historical accuracy trends are placed at the top of the dashboard, supporting instant filtering across `All Forecasts`, `🔮 Active Forecasts`, and `🎯 Past Outcomes`.
 * **S&P 500 Benchmark Window Returns**: Evaluated predictions display actual window returns (`predicted_sector_return`, `predicted_pair_return`, `benchmark_spy_return`) alongside outperformance vs the S&P 500 (SPY) benchmark (e.g. `+2.4% vs S&P 500`).
-* **🔍 Data Audit & Price Verification**: Each evaluated outcome card renders an explicit price audit block (`evaluation_audit_data` JSONB) displaying starting prices, ending prices, percentage returns, and date windows for SPY, Sector ETF, and Pair ETFs so users can independently verify data accuracy.
+* **🔍 Data Audit & Price Verification**: Each evaluated outcome card/row renders an explicit price audit block (`evaluation_audit_data` JSONB) displaying starting prices, ending prices, percentage returns, and date windows for SPY, Sector ETF, and Pair ETFs so users can independently verify data accuracy.
 * **Score Constituents Breakdown**: Each card explicitly exposes its 50/50 constituents (50% Sector Score, 50% Pair Score) and the composite formula $( \text{Sector Score} + \text{Pair Score} ) \div 2$ inline.
 * **Timeframe Filters**: The dashboard allows filtering/splitting the chart by prediction horizon (e.g., viewing 7d, 30d, 60d, 90d individually) to prevent target date collisions and ensure statistical meaning.
 * **Single Data Point Resilience**: The time scale domain adds a $\pm 1$-day margin when only a single data point is evaluated, preventing D3 coordinate scaling crashes.
@@ -61,6 +62,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 ### Web Front-End
 * **Route**: `apps/web/src/routes/ai-predictions/index.tsx` using `createServerFn` and TanStack Start to load both predictions and predictor experiments.
 * **API Fetcher**: `apps/web/src/features/ai-predictions/api/fetch-predictions.ts` reading from `sector_predictions` (predictions) and `prompt_experiments` (scoped to `SECTOR_PREDICTOR_PROMPT` for experiments).
+* **Data Table**: `apps/web/src/features/ai-predictions/components/AIPredictionsTable.tsx` providing interactive column sorting, search, filtering, view switching, and expandable audit drawers.
 * **Visuals**: `apps/web/src/features/ai-predictions/components/AIPredictionChart.tsx` leveraging `d3` rendering pipeline.
 * **Pages**: `apps/web/src/features/ai-predictions/pages/AIPredictionsPage.tsx` showing unified metrics, target track records, baseline stats, interactive prompt changes, and a detailed experiment history displaying active periods, mutation types, and parent references.
 

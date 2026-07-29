@@ -5,6 +5,7 @@ A living document of features and improvements in progress or planned for the pl
 ## Active Development
 
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
+- [ ] **Reliable Market-Open Ingestion Scheduler** - Migrate or supplement GitHub Actions' native schedule cron (`.github/workflows/ingest.yml`) with an external scheduler/webhook (e.g. AWS EventBridge, Modal, or external HTTP trigger via `repository_dispatch`) to eliminate GitHub Actions public runner queue delays and silent skips of 9:35 AM and 10:35 AM ET runs.
 - [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models

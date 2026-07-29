@@ -35,9 +35,16 @@ The ingestion analysis phase utilizes a **sequential two-pass decoupling** model
 
 This separates the broad consensus reasoning from specific asset trading logic, ensuring higher focus and better adherence to trading rules.
 
+## Scheduling & Execution Delays
+
+*   **Workflow Schedule**: Defined in `.github/workflows/ingest.yml` (`cron: "35 13,14,15,16 * * 1-5"` and `"0 18,19 * * 1-5"`).
+*   **Market Failsafe**: Runs prior to US market open (e.g. 8:35 AM EST / 13:35 UTC in winter) are skipped via `is_market_open_with_logging()` in `apps/engine/core/utils.py`.
+*   **GitHub Runner Queueing Bottleneck**: On GitHub Actions public runners, high-traffic morning crons (9:35 AM and 10:35 AM ET) are frequently delayed or dropped by GitHub's scheduler queue, causing the first successful execution of the day to fall around ~11:30 AM ET. Migrating to an external scheduler (e.g., AWS EventBridge or Modal calling `repository_dispatch`) is planned in [ROADMAP.md](../../ROADMAP.md).
+
 ## Related
 
 - [[entities/pipeline]]
 - [[concepts/reasoning]]
 - [[concepts/consensus]]
+
 

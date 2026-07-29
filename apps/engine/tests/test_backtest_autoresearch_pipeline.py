@@ -113,3 +113,38 @@ async def test_evaluate_backtest_week_return_calculation():
     # model-2 equity = 10500 (+5.0% return)
     # Average model return should be 0.0%
     assert metrics["portfolio_return"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_evaluate_backtest_week_includes_trades():
+    """Verify that evaluate_backtest_week fetches and includes executed trades in metrics['trades']."""
+    from tasks.backtest_autoresearch import evaluate_backtest_week
+
+    init_backtest_db()
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM portfolios")
+    cursor.execute("DELETE FROM trades")
+
+    cursor.execute(
+        "INSERT INTO portfolios (id, owner_id, cash_balance, total_equity, sma, buying_power, excess_liquidity, maintenance_margin, realized, last_updated_at) "
+        "VALUES ('port-1', 'gemini-3.1-flash-lite', 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 0.0, 10000.0, datetime('now'))"
+    )
+
+    cursor.execute(
+        "INSERT INTO trades (id, portfolio_id, ticker, signal, quantity, price, total_cost, executed_at, reasoning) "
+        "VALUES ('trade-1', 'port-1', 'AAPL', 'BUY', 10, 150.0, 1500.0, '2026-04-27 11:00:00', 'Strong earnings growth')"
+    )
+    conn.commit()
+    conn.close()
+
+    report, metrics = await evaluate_backtest_week(datetime(2026, 4, 27, tzinfo=UTC), datetime(2026, 5, 2, tzinfo=UTC))
+
+    assert "trades" in metrics
+    assert len(metrics["trades"]) == 1
+    assert metrics["trades"][0]["ticker"] == "AAPL"
+    assert metrics["trades"][0]["quantity"] == 10
+    assert metrics["trades"][0]["price"] == 150.0
+    assert metrics["trades"][0]["signal"] == "BUY"
+    assert metrics["trades"][0]["reasoning"] == "Strong earnings growth"

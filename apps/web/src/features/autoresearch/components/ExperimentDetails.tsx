@@ -6,6 +6,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
+import { BacktestTradesAudit } from './BacktestTradesAudit';
 import { DailyScoreDisplay } from './DailyScoreDisplay';
 import { PromptChanges } from './PromptChanges';
 import { ScoreBreakdown } from './ScoreBreakdown';
@@ -46,6 +47,8 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
             <ScoreBreakdown experiment={experiment} />
 
             <VolatilityCalculation experiment={experiment} />
+
+            <BacktestTradesAudit experiment={experiment} />
 
             {/* Weekly Toolbox Configuration & Pivot Delta */}
             {(() => {

@@ -824,12 +824,40 @@ async def evaluate_backtest_week(week_start: datetime, week_end: datetime) -> tu
 
     score = (avg_return_pct - spy_return_pct) - opportunity_cost_pct - (max_drawdown_pct * 0.3)
 
+    cursor.execute("""
+        SELECT t.id, t.portfolio_id, p.owner_id AS model_name, t.ticker, t.signal, t.quantity, 
+               t.price, t.total_cost, t.executed_at, t.reasoning, t.realized_pnl, t.realized_pnl_pct
+        FROM trades t
+        LEFT JOIN portfolios p ON t.portfolio_id = p.id
+        ORDER BY t.executed_at ASC
+    """)
+    trade_rows = cursor.fetchall()
+    executed_trades = []
+    for tr in trade_rows:
+        executed_trades.append(
+            {
+                "id": tr["id"],
+                "portfolio_id": tr["portfolio_id"],
+                "model_name": tr["model_name"] or "Trading Agent",
+                "ticker": tr["ticker"],
+                "signal": tr["signal"],
+                "quantity": tr["quantity"],
+                "price": float(tr["price"]) if tr["price"] is not None else 0.0,
+                "total_cost": float(tr["total_cost"]) if tr["total_cost"] is not None else 0.0,
+                "executed_at": tr["executed_at"],
+                "reasoning": tr["reasoning"] or "",
+                "realized_pnl": float(tr["realized_pnl"]) if tr["realized_pnl"] is not None else None,
+                "realized_pnl_pct": float(tr["realized_pnl_pct"]) if tr["realized_pnl_pct"] is not None else None,
+            }
+        )
+
     metrics = {
         "score": score,
         "portfolio_return": avg_return_pct,
         "spy_return": spy_return_pct,
         "opportunity_cost": opportunity_cost_pct,
         "max_drawdown": max_drawdown_pct,
+        "trades": executed_trades,
     }
 
     report = (

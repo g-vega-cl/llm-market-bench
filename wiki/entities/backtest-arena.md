@@ -16,6 +16,7 @@ While the live [[entities/autoresearch-arena]] tracks weekly prompt evolution fr
 - **Experiment List**: Displays all backtest runs (filtered by `is_backtest = true` in the `prompt_experiments` table), sorted by creation date.
 - **Run Details**: Selecting a run shows its variant tag, prompt content, change description, experiment type, and parent lineage.
 - **Score Calculation**: Shows the risk-adjusted score formula and daily breakdown, with dynamic SPY and portfolio return computation from the local backtest database.
+- **Backtest Executed Trades Audit**: Interactive trade ledger displaying point-in-time executed trades per backtest run (filter by ALL/BUY/SELL, ticker, model agent, price, cost, PnL, and expandable reasoning thesis).
 - **Navigation**: Accessible via the "Backtests" link in the main navigation bar, or from the live Auto-Research Arena via a "Switch to Backtest Arena" button.
 
 ## Technical Implementation

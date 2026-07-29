@@ -146,6 +146,11 @@ We’ll give you the same advice we give ourselves after devouring a party-size 
 
 - [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money
 
-Erica said that in Canada you could have clear insider trading because there is a gradual buying leading to news, so we could tap into this. An LLM that focuses only on government opportunities.
-
-Like deals in pipeline, new reforms, under the radar things
+- [ ] - Erica said that in Canada you could have clear insider trading because there is a gradual buying leading to news, so we could tap into this.
+- [ ] - An LLM that focuses only on government opportunities. - Like deals in pipeline, new reforms, under the radar things
+- [ ] - Benchify: add institutional buying and Congress buying?
+- [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
+- [ ] - Benchify: free APIs?
+- [ ] - Benchify: What about making a benchmark for day trading/investing for users?
+- [ ] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
+- [ ] - Benchify: fed watch api like but free? - https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html - https://share.gemini.google/iul3v5Q9C3AE

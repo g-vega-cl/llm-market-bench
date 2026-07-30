@@ -7,7 +7,7 @@ category: concept
 
 Three parallel ingestion streams that feed the pipeline:
 
-- **Newsletters**: Gmail API (parallel fetches via `asyncio.gather`) → HTML parsing (BeautifulSoup) → ad removal
+- **Newsletters**: Gmail API (parallel fetches via `asyncio.gather` for senders in `NEWSLETTER_SENDERS`, including Morning Brew, Bloomberg, Axios, and Substack) → HTML parsing (BeautifulSoup) → ad removal
   (Gemini Flash, parallel via `asyncio.gather` running asynchronously via non-blocking `asyncio.to_thread` client calls) → deterministic hashing → single-transaction bulk `UPSERT` into `newsletter_snapshots` (with automated sequential fallback on failure).
   Source IDs use the `news_{sender_clean}_{MD5[:8]}` pattern for idempotency; chunk hashes are SHA-256.
 - **Economic Calendar**: Periodic cron fetches global macro catalysts →

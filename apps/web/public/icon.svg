@@ -1,0 +1,193 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06091a"/>
+      <stop offset="100%" stop-color="#0d1530"/>
+    </linearGradient>
+
+    <!-- Trend line gradient: green → cyan → purple -->
+    <linearGradient id="trend" x1="90" y1="400" x2="420" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#10b981"/>
+      <stop offset="45%"  stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+
+    <!-- Node aura gradients -->
+    <radialGradient id="aura1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura3" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura4" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aura5" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glow filter for trend line -->
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft glow for nodes -->
+    <filter id="nodeGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Strong glow for winner node -->
+    <filter id="winnerGlow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Clip to rounded square -->
+    <clipPath id="roundedClip">
+      <rect width="512" height="512" rx="96"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- Inner border -->
+  <rect width="512" height="512" rx="96" fill="none"
+        stroke="#1e2d5a" stroke-width="2" opacity="0.6"/>
+
+  <g clip-path="url(#roundedClip)">
+
+    <!-- Grid lines -->
+    <g stroke="#3b5998" stroke-width="1" opacity="0.07">
+      <line x1="56" y1="152" x2="456" y2="152"/>
+      <line x1="56" y1="232" x2="456" y2="232"/>
+      <line x1="56" y1="312" x2="456" y2="312"/>
+      <line x1="56" y1="392" x2="456" y2="392"/>
+      <line x1="152" y1="56" x2="152" y2="456"/>
+      <line x1="232" y1="56" x2="232" y2="456"/>
+      <line x1="312" y1="56" x2="312" y2="456"/>
+      <line x1="392" y1="56" x2="392" y2="456"/>
+    </g>
+
+    <!-- Candlestick bars (decorative) -->
+    <line x1="98"  y1="406" x2="98"  y2="378" stroke="#10b981" stroke-width="1.5" opacity="0.25"/>
+    <rect x="91"  y="388" width="14" height="18" rx="2.5" fill="#10b981" opacity="0.22"/>
+
+    <line x1="124" y1="395" x2="124" y2="360" stroke="#10b981" stroke-width="1.5" opacity="0.25"/>
+    <rect x="117" y="372" width="14" height="23" rx="2.5" fill="#10b981" opacity="0.22"/>
+
+    <line x1="150" y1="382" x2="150" y2="350" stroke="#ef4444" stroke-width="1.5" opacity="0.2"/>
+    <rect x="143" y="358" width="14" height="20" rx="2.5" fill="#ef4444" opacity="0.18"/>
+
+    <line x1="176" y1="368" x2="176" y2="330" stroke="#10b981" stroke-width="1.5" opacity="0.25"/>
+    <rect x="169" y="338" width="14" height="26" rx="2.5" fill="#10b981" opacity="0.22"/>
+
+    <!-- Debate web: cross-connections between nodes (dashed) -->
+    <g stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,5" opacity="0.18">
+      <line x1="112" y1="390" x2="270" y2="248"/>
+      <line x1="112" y1="390" x2="338" y2="188"/>
+      <line x1="200" y1="318" x2="338" y2="188"/>
+      <line x1="200" y1="318" x2="420" y2="130"/>
+      <line x1="270" y1="248" x2="420" y2="130"/>
+      <line x1="112" y1="390" x2="420" y2="130"/>
+    </g>
+
+    <!-- Main trend line -->
+    <path
+      d="M112,390 C140,360 168,334 200,318 C228,304 248,272 270,248 C294,222 318,198 338,188 C364,176 392,150 420,130"
+      fill="none"
+      stroke="url(#trend)"
+      stroke-width="4.5"
+      stroke-linecap="round"
+      filter="url(#glow)"
+    />
+
+    <!-- Node auras -->
+    <circle cx="112" cy="390" r="36" fill="url(#aura1)"/>
+    <circle cx="200" cy="318" r="36" fill="url(#aura2)"/>
+    <circle cx="270" cy="248" r="36" fill="url(#aura3)"/>
+    <circle cx="338" cy="188" r="36" fill="url(#aura4)"/>
+    <circle cx="420" cy="130" r="48" fill="url(#aura5)"/>
+
+    <!-- Node 1: teal-green -->
+    <circle cx="112" cy="390" r="13" fill="#10b981" opacity="0.9" filter="url(#nodeGlow)"/>
+    <circle cx="112" cy="390" r="13" fill="none" stroke="#10b981" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="112" cy="390" r="5"  fill="#e0fff4"/>
+
+    <!-- Node 2: cyan -->
+    <circle cx="200" cy="318" r="13" fill="#06b6d4" opacity="0.9" filter="url(#nodeGlow)"/>
+    <circle cx="200" cy="318" r="13" fill="none" stroke="#06b6d4" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="200" cy="318" r="5"  fill="#e0faff"/>
+
+    <!-- Node 3: indigo -->
+    <circle cx="270" cy="248" r="13" fill="#6366f1" opacity="0.9" filter="url(#nodeGlow)"/>
+    <circle cx="270" cy="248" r="13" fill="none" stroke="#6366f1" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="270" cy="248" r="5"  fill="#ede9fe"/>
+
+    <!-- Node 4: violet -->
+    <circle cx="338" cy="188" r="13" fill="#8b5cf6" opacity="0.9" filter="url(#nodeGlow)"/>
+    <circle cx="338" cy="188" r="13" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="338" cy="188" r="5"  fill="#ede9fe"/>
+
+    <!-- Node 5: winner (purple, larger) -->
+    <circle cx="420" cy="130" r="20" fill="#a855f7" opacity="0.95" filter="url(#winnerGlow)"/>
+    <circle cx="420" cy="130" r="20" fill="none" stroke="#d8b4fe" stroke-width="2" opacity="0.6"/>
+    <circle cx="420" cy="130" r="8"  fill="white"/>
+
+    <!-- Crown chevron above winner -->
+    <polyline
+      points="410,102 420,88 430,102"
+      fill="none"
+      stroke="#d8b4fe"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      opacity="0.85"
+    />
+    <line x1="420" y1="88" x2="420" y2="78"
+          stroke="#d8b4fe" stroke-width="2.5"
+          stroke-linecap="round" opacity="0.85"/>
+
+    <!-- Rank labels -->
+    <text x="128" y="396" font-family="ui-monospace, monospace" font-size="11"
+          fill="#10b981" opacity="0.7" font-weight="600">#5</text>
+    <text x="216" y="324" font-family="ui-monospace, monospace" font-size="11"
+          fill="#06b6d4" opacity="0.7" font-weight="600">#4</text>
+    <text x="286" y="254" font-family="ui-monospace, monospace" font-size="11"
+          fill="#8b8cf8" opacity="0.7" font-weight="600">#3</text>
+    <text x="354" y="194" font-family="ui-monospace, monospace" font-size="11"
+          fill="#a78bfa" opacity="0.7" font-weight="600">#2</text>
+    <text x="436" y="136" font-family="ui-monospace, monospace" font-size="11"
+          fill="#d8b4fe" opacity="0.8" font-weight="700">#1</text>
+
+    <!-- Wordmark -->
+    <text x="56" y="472"
+          font-family="ui-monospace, 'SF Mono', monospace"
+          font-size="26"
+          font-weight="700"
+          letter-spacing="3"
+          fill="white"
+          opacity="0.88">benchify</text>
+
+  </g>
+</svg>

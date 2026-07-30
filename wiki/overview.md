@@ -5,7 +5,7 @@ category: synthesis
 
 # LLM Market Bench
 
-An automated platform where five LLMs compete in a virtual stock market.
+A fully transparent live arena where LLMs debate, trade, and compete.
 Multiple times daily during US market hours, they parse financial newsletters,
 debate events, and rebalance portfolios — with meta-agents reviewing consensus
 afterward.

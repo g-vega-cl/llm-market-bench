@@ -36,6 +36,7 @@
 
 ## Concepts
 
+- [[concepts/prompt-section-splitting]] — Visual decomposition of the trading prompt into frozen and mutable sections for the autoresearch arena
 - [[concepts/git-history-tracking]] — Git history as the authoritative chronological record, replacing wiki log.md
 - [[concepts/output-normalization]] — LLM output sanitization via Pydantic validators for signal/catalyst/impact/status resilience
 - [[concepts/auditability]] — Philosophy and mechanisms of full calculation and data traceability

@@ -6,6 +6,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
+import { splitPromptSections } from '../utils/promptSections';
 import { BacktestTradesAudit } from './BacktestTradesAudit';
 import { DailyScoreDisplay } from './DailyScoreDisplay';
 import { PromptChanges } from './PromptChanges';
@@ -252,19 +253,129 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
 
             <PromptChanges experiment={experiment} parentExperiment={parentExperiment} />
 
-            <Card className="p-8 space-y-4">
-                <SectionHeading>The Trading Prompt</SectionHeading>
-                <div className="relative group">
-                    <pre className="p-6 bg-zinc-950 text-zinc-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-zinc-800 max-h-[600px] overflow-y-auto">
-                        {experiment.prompt_content}
-                    </pre>
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="px-2 py-1 bg-zinc-800 text-zinc-400 text-[10px] uppercase rounded border border-zinc-700">
-                            v{experiment.variant_tag}
+            {(() => {
+                const { header, mutable, footer, isSplit } = splitPromptSections(
+                    experiment.prompt_content,
+                );
+
+                if (!isSplit) {
+                    return (
+                        <Card className="p-8 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <SectionHeading>The Trading Prompt</SectionHeading>
+                                <Badge variant="outline">v{experiment.variant_tag}</Badge>
+                            </div>
+                            <div className="relative group">
+                                <pre className="p-6 bg-zinc-950 text-zinc-300 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-zinc-800 max-h-[600px] overflow-y-auto">
+                                    {experiment.prompt_content}
+                                </pre>
+                            </div>
+                        </Card>
+                    );
+                }
+
+                return (
+                    <Card className="p-8 space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <SectionHeading>The Trading Prompt</SectionHeading>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    System breakdown of engine constraints vs. prompt strategies
+                                    mutated by autoresearch.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline">v{experiment.variant_tag}</Badge>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </Card>
+
+                        <div className="space-y-6">
+                            {/* Section 1: Engine Constraints & Tool Protocols (FROZEN) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                            🔒 1. Engine Constraints & Tool Protocols
+                                        </span>
+                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                            (Header)
+                                        </span>
+                                    </div>
+                                    <Badge
+                                        variant="solid"
+                                        className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] uppercase"
+                                    >
+                                        Frozen / System Managed
+                                    </Badge>
+                                </div>
+                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    Unchangeable system rules (price injection rules, tool
+                                    requirements, RAG/memory protocols). Autoresearch cannot edit
+                                    this.
+                                </p>
+                                <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                    {header}
+                                </pre>
+                            </div>
+
+                            {/* Section 2: Trading Strategy & Analysis Rules (MUTABLE) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                            ⚡ 2. Trading Strategy & Analysis Rules
+                                        </span>
+                                        <span className="text-[10px] text-emerald-500 font-mono font-semibold">
+                                            (Evolved Target)
+                                        </span>
+                                    </div>
+                                    <Badge
+                                        variant="solid"
+                                        className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] uppercase font-bold"
+                                    >
+                                        Mutable / Evolved by Autoresearch
+                                    </Badge>
+                                </div>
+                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    Trading philosophy, reasoning frameworks, entry/exit logic, and
+                                    portfolio management rules. This section is iteratively tested
+                                    and optimized by autoresearch.
+                                </p>
+                                <pre className="p-4 bg-zinc-950 text-zinc-200 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-emerald-500/30 ring-1 ring-emerald-500/20 max-h-[400px] overflow-y-auto">
+                                    {mutable}
+                                </pre>
+                            </div>
+
+                            {/* Section 3: Risk Rules & Output JSON Format (FROZEN) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                                            🔒 3. Risk Rules & Output JSON Schema
+                                        </span>
+                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                            (Footer)
+                                        </span>
+                                    </div>
+                                    <Badge
+                                        variant="solid"
+                                        className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] uppercase"
+                                    >
+                                        Frozen / System Managed
+                                    </Badge>
+                                </div>
+                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    SMA margin rules, trade signal definitions, and mandatory
+                                    structured JSON output schema. Autoresearch cannot edit this.
+                                </p>
+                                <pre className="p-4 bg-zinc-950/80 text-zinc-400 rounded-xl overflow-x-auto text-xs font-mono leading-relaxed border border-amber-500/20 max-h-[250px] overflow-y-auto">
+                                    {footer}
+                                </pre>
+                            </div>
+                        </div>
+                    </Card>
+                );
+            })()}
         </div>
     );
 }

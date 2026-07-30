@@ -25,8 +25,14 @@ logger = logging.getLogger("engine.execution.fmp")
 The pipeline must log its progress using success/total ratios. This allows monitoring systems to detect partial failures that don't crash the entire process.
 - **Example**: `Successfully saved 18/20 snapshots to Supabase.`
 
-### 4. Audit-Ready Logs
-Logs captured during the pipeline run (e.g., in `main.py`) are saved to the `ingestion_logs` table in Supabase. These logs are then analyzed by the `audit` command, which uses an LLM to identify anomalies.
+### 4. Audit-Ready Logs & System Audits
+Logs captured during the pipeline run (e.g., in `main.py`) are saved to the `ingestion_logs` table in Supabase. These logs are then analyzed by the `audit` command (`apps/engine/core/audit/runner.py`), which uses an LLM to identify anomalies and runs standard SQL integrity checks defined in `apps/engine/core/audit/checks.py`.
+
+#### System Audit Valid Decision Statuses
+Decision status checks (`invalid_decision_status`) enforce a strict set of valid decision statuses to flag data corruption:
+- `CREATED`, `EXECUTED`, `VALIDATED`
+- Rejection statuses: `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_TOOL_USAGE`, `REJECTED_VERIFICATION`, `REJECTED_HALLUCINATION`, `REJECTED_PRICE_DEVIATION`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`, `REJECTED_STALE_QUOTE`
+- Provider error: `ERROR_PROVIDER`
 
 ### 5. Enriched Diagnostic Context on Rejection
 When the engine rejects a model's trading recommendation due to a safety guardrail (e.g., failing Hard Tool Enforcement checks), the log warning must include immediate diagnostic context to enable root-cause analysis:

@@ -164,3 +164,19 @@ class TestConfigure:
 
         assert runner.SUPABASE_URL == "https://example.supabase.co"
         assert runner.SUPABASE_SERVICE_ROLE_KEY == "test-key-123"
+
+
+class TestAuditChecks:
+    """Tests for AUDIT_CHECKS configuration."""
+
+    def test_invalid_decision_status_includes_rejected_stale_quote(self):
+        """Verify invalid_decision_status check allows REJECTED_STALE_QUOTE."""
+        from core.audit.checks import AUDIT_CHECKS
+
+        invalid_status_check = next(
+            check for check in AUDIT_CHECKS if check["id"] == "invalid_decision_status"
+        )
+        query = invalid_status_check["query"]
+
+        assert "'REJECTED_STALE_QUOTE'" in query
+

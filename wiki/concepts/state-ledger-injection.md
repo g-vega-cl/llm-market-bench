@@ -15,7 +15,7 @@ Agents operate statelessly. When an agent inherits a portfolio from a prior sess
 
 State Ledger Injection reconstructs the historical narrative for every active holding and injects it directly into the agent's system prompt before inference.
 
-1. **Attribution Aggregation**: Using `get_active_ledger_xml` in the `attribution/service.py` module, the system queries the `portfolio_positions` table for all currently held tickers.
+1. **Attribution Aggregation**: Using `get_active_ledger_xml` in the `attribution/service.py` module, the system queries the `portfolio_positions` table for all currently held tickers. It dynamically inspects and awaits table queries to support both synchronous `Client` and asynchronous `AsyncClient` Supabase connection objects.
 2. **Historical Construction**: It then fetches the historical chronological sequence of `decisions` that led to the current position (including `BUY`, `SELL`, `HOLD` actions, their associated `reasoning`, and `advance_planning` notes).
 3. **XML Formatting**: This data is aggregated into a structured `<CURRENT_PORTFOLIO_LEDGER>` XML block.
 4. **Prompt Injection**: The `prompt_factory.py` automatically fetches this XML block and appends it to the active system prompt.

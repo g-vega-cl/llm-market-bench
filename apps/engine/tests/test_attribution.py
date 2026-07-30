@@ -191,3 +191,55 @@ async def test_get_active_ledger_xml_success():
     assert "<CURRENT_PORTFOLIO_LEDGER>" in xml
     assert '<POSITION ticker="AAPL"' in xml
     assert "<REASONING>Strong quarterly report</REASONING>" in xml
+
+
+@pytest.mark.asyncio
+async def test_get_active_ledger_xml_async_client():
+    """Test get_active_ledger_xml supports AsyncClient where execute() returns an awaitable coroutine."""
+    mock_client = MagicMock()
+
+    async def async_exec_portfolios():
+        res = MagicMock()
+        res.data = [{"id": "p-123"}]
+        return res
+
+    async def async_exec_positions():
+        res = MagicMock()
+        res.data = [{"ticker": "AAPL", "quantity": 10}]
+        return res
+
+    async def async_exec_decisions():
+        res = MagicMock()
+        res.data = [
+            {
+                "ticker": "AAPL",
+                "signal": "BUY",
+                "reasoning": "Strong quarterly report",
+                "metadata": None,
+                "created_at": "2026-07-20T10:00:00Z",
+            }
+        ]
+        return res
+
+    portfolios_mock = MagicMock()
+    portfolios_mock.select.return_value.eq.return_value.execute.side_effect = async_exec_portfolios
+
+    positions_mock = MagicMock()
+    positions_mock.select.return_value.eq.return_value.gt.return_value.execute.side_effect = async_exec_positions
+
+    decisions_mock = MagicMock()
+    decisions_mock.select.return_value.eq.return_value.eq.return_value.in_.return_value.order.return_value.limit.return_value.execute.side_effect = async_exec_decisions
+
+    tables = {
+        "portfolios": portfolios_mock,
+        "portfolio_positions": positions_mock,
+        "decisions": decisions_mock,
+    }
+
+    mock_client.table.side_effect = lambda t: tables.get(t, MagicMock())
+
+    xml = await get_active_ledger_xml(mock_client, "owner_1")
+    assert "<CURRENT_PORTFOLIO_LEDGER>" in xml
+    assert '<POSITION ticker="AAPL"' in xml
+    assert "<REASONING>Strong quarterly report</REASONING>" in xml
+

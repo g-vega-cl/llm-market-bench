@@ -129,6 +129,7 @@ async def _fetch_dollar_index_return(week_start: date, week_end: date) -> float:
 async def evaluate_week(
     week_start: date | None = None,
     week_end: date | None = None,
+    track_id: str = "track_default",
 ) -> tuple[str, dict, str | None]:
     """Gather all data for the past week and format the evaluation report.
 
@@ -142,9 +143,16 @@ async def evaluate_week(
     if week_start is None or week_end is None:
         week_start, week_end = get_week_window()
 
-    logger.info("Evaluating week %s to %s", week_start, week_end)
+    logger.info("Evaluating week %s to %s for track %s", week_start, week_end, track_id)
 
-    current_prompt = await get_active_prompt()
+    try:
+        if track_id and track_id != "track_default":
+            current_prompt = await get_active_prompt(track_id=track_id)
+        else:
+            current_prompt = await get_active_prompt()
+    except TypeError:
+        current_prompt = await get_active_prompt()
+
     from core.llm.prompts import split_prompt
 
     if not current_prompt:
@@ -200,8 +208,16 @@ async def evaluate_week(
     )
     score_result["portfolio_details"] = exp_metrics.get("portfolio_details", {})
 
-    previous = await get_previous_variants(limit=5)
-    baseline_variant = await get_all_time_baseline()
+    try:
+        if track_id and track_id != "track_default":
+            previous = await get_previous_variants(limit=5, track_id=track_id)
+            baseline_variant = await get_all_time_baseline(track_id=track_id)
+        else:
+            previous = await get_previous_variants(limit=5)
+            baseline_variant = await get_all_time_baseline()
+    except TypeError:
+        previous = await get_previous_variants(limit=5)
+        baseline_variant = await get_all_time_baseline()
 
     baseline_score = None
     baseline_prompt = None

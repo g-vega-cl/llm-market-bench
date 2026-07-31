@@ -10,8 +10,8 @@ The `apps/engine/autoresearch/` module implements the Karpathy-style autonomous 
 ## Configuration
 
 The auto-research system is configured via:
-- `packages/config/models.json`: Defines `AUTORESEARCH_EXPERIMENT_OWNER_IDS` (the agents in the experiment group).
-- `apps/engine/core/config.py`: Loads the model names and experiment group from `models.json`.
+- `packages/config/models.json`: Defines `AUTORESEARCH_EXPERIMENT_OWNER_IDS` and `AUTORESEARCH_TRACKS` (mapping track IDs to portfolio/model owner groups) and `SKIP_VERIFIER_OWNER_IDS` (models bypassing skeptical verification).
+- `apps/engine/core/config.py`: Loads model names, tracks, and verifier bypass settings from `models.json`.
 - `AUTORESEARCH_MODEL`: Environment variable (defaults to DeepSeek) used for the meta-researcher.
 
 ## Architecture
@@ -88,6 +88,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-07-31**: **Multi-Track Isolation, Stochastic Cold-Start Reset & Verifier Bypass** — Added `track_id` parameter to `prompt_store.py` and `prompt_experiments` DB table, enabling multiple isolated AutoResearcher tracks (e.g. `track_default`, `track_claude`, `track_openai`) to optimize distinct portfolio groups without prompt overwrite collisions. Implemented `SKIP_VERIFIER_OWNER_IDS` in `main.py` allowing fast models (e.g. DeepSeek Flash, MiniMax) to bypass skeptical verification. Added stochastic cold-start reset helper (`get_next_cold_start_interval`, random 2–5 weeks) and `run_research(cold_start=True)` to break out of local optima by constructing fresh prompt strategies from scratch.
 - **2026-07-28**: **Backtest Trade Telemetry & Audit Ledger UI** — Updated `evaluate_backtest_week` in `backtest_autoresearch.py` to query local SQLite simulation trade ledgers and persist executed trades directly inside `metrics["trades"]` on `prompt_experiments`. Built `BacktestTradesAudit` React component in `apps/web/src/features/autoresearch/components/` and integrated it into `ExperimentDetails.tsx`, allowing full point-in-time auditing of ticker, signal, quantity, execution price, cost, PnL, and agent decision thesis for every backtest run.
 - **2026-07-25**: **Active Week SPY Return Priority & Ungated Fetching in UI** — Fixed `DailyScoreDisplay` to query and prioritize actual `SPY` price history from `price_history` for active experiment tracking, overriding preset/default `spy_return_pct` values (e.g. `0.85%`). Removed the `portfolioIds.length === 0` early-return gate in `useEffect` so that `SPY` price history is fetched even when `metrics.portfolio_details` is `{}` for a newly active experiment.
 - **2026-07-24**: **Backtest Sandbox Isolation & Evaluator Math Fix** — Added `portfolio_performance` table sandboxing to prevent simulated backtest snapshots from leaking into the production database (preventing frontend chart contamination). Updated the backtest weekly return calculation logic in `evaluate_backtest_week` to compute returns using `total_equity` (including held stock value) rather than `cash_balance` (which was negative due to margin loans), fixing the artificial `-143.12%` return report. Added direct "Backtests" navigation link to the layout header.

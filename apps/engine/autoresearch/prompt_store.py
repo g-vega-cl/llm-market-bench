@@ -28,52 +28,94 @@ def clear_active_prompt_cache() -> None:
     _active_cache.clear()
 
 
-async def get_active_prompt(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> str | None:
-    cache_key = f"{prompt_name}:{is_backtest}"
+async def get_active_prompt(
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT",
+    is_backtest: bool = False,
+    track_id: str = "track_default",
+) -> str | None:
+    cache_key = f"{prompt_name}:{track_id}:{is_backtest}"
     cached = _active_cache.get(cache_key)
     now = time.monotonic()
     if not is_backtest and cached is not None and (now - cached[0]) < _CACHE_TTL_SECONDS:
         return cached[1]
 
     sb_client = await get_async_supabase_client()
-    res = await (
+    query = (
         sb_client.table("prompt_experiments")
         .select("prompt_content")
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
-        .maybe_single()
-        .execute()
     )
+    res = None
+    if track_id:
+        try:
+            res = await query.eq("track_id", track_id).maybe_single().execute()
+            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+                res = None
+        except Exception:
+            res = None
+
+    if res is None:
+        logger.warning("Supabase table query with track_id failed or missing column. Falling back to base query.")
+        fallback_query = (
+            sb_client.table("prompt_experiments")
+            .select("prompt_content")
+            .eq("status", "active")
+            .eq("prompt_name", prompt_name)
+            .eq("is_backtest", is_backtest)
+        )
+        res = await fallback_query.maybe_single().execute()
+
     if res is None:
         logger.warning(
-            "Supabase returned None for active prompt query (prompt_name=%s). "
+            "Supabase returned None for active prompt query (prompt_name=%s, track_id=%s). "
             "This usually means the table is empty or the row was deleted.",
             prompt_name,
+            track_id,
         )
         return None
 
-    content = res.data["prompt_content"] if res.data else None
+    content = res.data["prompt_content"] if res and res.data else None
     if not is_backtest:
         _active_cache[cache_key] = (now, content)
     return content
 
 
 async def get_active_variant(
-    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT",
+    is_backtest: bool = False,
+    track_id: str = "track_default",
 ) -> dict | None:
     """Retrieve the full database row/dictionary of the currently active variant."""
     sb_client = await get_async_supabase_client()
-    res = await (
+    query = (
         sb_client.table("prompt_experiments")
         .select("*")
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
-        .maybe_single()
-        .execute()
     )
-    return res.data if res else None
+    res = None
+    if track_id:
+        try:
+            res = await query.eq("track_id", track_id).maybe_single().execute()
+            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+                res = None
+        except Exception:
+            res = None
+
+    if res is None:
+        fallback_query = (
+            sb_client.table("prompt_experiments")
+            .select("*")
+            .eq("status", "active")
+            .eq("prompt_name", prompt_name)
+            .eq("is_backtest", is_backtest)
+        )
+        res = await fallback_query.maybe_single().execute()
+
+    return res.data if res and isinstance(res.data, dict) else None
 
 
 async def update_variant_metrics(variant_tag: str, metrics: dict) -> None:
@@ -94,6 +136,7 @@ async def save_variant(
     research_output: dict | None = None,
     parent_tag: str | None = None,
     is_backtest: bool = False,
+    track_id: str = "track_default",
 ) -> str:
     sb_client = await get_async_supabase_client()
 
@@ -115,6 +158,7 @@ async def save_variant(
         "change_description": change_description,
         "research_output": research_output,
         "is_backtest": is_backtest,
+        "track_id": track_id,
     }
 
     # INSERT first — if this fails, nothing is lost.
@@ -147,39 +191,67 @@ async def save_variant(
 
 
 async def get_previous_variants(
-    limit: int = 5, prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+    limit: int = 5,
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT",
+    is_backtest: bool = False,
+    track_id: str = "track_default",
 ) -> list[dict]:
     sb_client = await get_async_supabase_client()
-    res = await (
-        sb_client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", prompt_name)
-        .eq("is_backtest", is_backtest)
-        .order("created_at", desc=True)
-        .limit(limit)
-        .execute()
+    query = (
+        sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest)
     )
+    res = None
+    if track_id:
+        try:
+            res = await query.eq("track_id", track_id).order("created_at", desc=True).limit(limit).execute()
+            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+                res = None
+        except Exception:
+            res = None
+
     if res is None:
+        fallback_query = (
+            sb_client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", prompt_name)
+            .eq("is_backtest", is_backtest)
+        )
+        res = await fallback_query.order("created_at", desc=True).limit(limit).execute()
+
+    if res is None or not hasattr(res, "data") or isinstance(res.data, dict):
         return []
     return res.data or []
 
 
 async def get_all_time_baseline(
-    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT",
+    is_backtest: bool = False,
+    track_id: str = "track_default",
 ) -> dict | None:
     """Return the prompt variant with the highest score achieved so far among pull-based variants."""
     sb_client = await get_async_supabase_client()
-    # Fetch all variants for this prompt name. Since it's a weekly loop,
-    # the number of rows will remain small (e.g., 52 per year).
-    res = (
-        await sb_client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", prompt_name)
-        .eq("is_backtest", is_backtest)
-        .execute()
+    query = (
+        sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest)
     )
+    res = None
+    if track_id:
+        try:
+            res = await query.eq("track_id", track_id).execute()
+            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+                res = None
+        except Exception:
+            res = None
 
-    if not res or not res.data:
+    if res is None:
+        fallback_query = (
+            sb_client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", prompt_name)
+            .eq("is_backtest", is_backtest)
+        )
+        res = await fallback_query.execute()
+
+    if not res or not hasattr(res, "data") or not res.data or isinstance(res.data, dict):
         return None
 
     best_variant = None

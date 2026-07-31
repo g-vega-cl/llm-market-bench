@@ -36,6 +36,9 @@
 
 ## Concepts
 
+- [[concepts/verifier-bypass]] — Configurable model-level bypass of the skeptical verification agent stage
+- [[concepts/stochastic-cold-start]] — Randomized cold-start resets (2–5 week intervals) to escape local optima in prompt optimization
+- [[concepts/multi-track-autoresearch]] — Parallel isolated prompt optimization tracks for distinct portfolio groups
 - [[concepts/prompt-section-splitting]] — Visual decomposition of the trading prompt into frozen and mutable sections for the autoresearch arena
 - [[concepts/git-history-tracking]] — Git history as the authoritative chronological record, replacing wiki log.md
 - [[concepts/output-normalization]] — LLM output sanitization via Pydantic validators for signal/catalyst/impact/status resilience

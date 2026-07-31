@@ -11,5 +11,17 @@
     "gemini-3.1-flash-lite",
     "deepseek-v4-pro",
     "MiniMax-M3"
+  ],
+  "AUTORESEARCH_TRACKS": {
+    "track_default": [
+      "gemini-3.1-flash-lite",
+      "deepseek-v4-pro",
+      "MiniMax-M3"
+    ]
+  },
+  "SKIP_VERIFIER_OWNER_IDS": [
+    "MiniMax-M3",
+    "deepseek-v4-flash"
   ]
 }
+

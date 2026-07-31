@@ -151,6 +151,13 @@ AUTORESEARCH_MODEL = os.getenv("AUTORESEARCH_MODEL", DEEPSEEK_MODEL)
 # The remaining agents use the hardcoded baseline prompt (control group).
 AUTORESEARCH_EXPERIMENT_OWNER_IDS = frozenset(_models.get("AUTORESEARCH_EXPERIMENT_OWNER_IDS", []))
 
+# Auto-research multi-track mappings (track_id -> list of owner_ids)
+AUTORESEARCH_TRACKS = dict(_models.get("AUTORESEARCH_TRACKS", {}))
+
+# Model owner IDs that bypass the skeptical verification agent stage
+SKIP_VERIFIER_OWNER_IDS = set(_models.get("SKIP_VERIFIER_OWNER_IDS", ["MiniMax-M3", "deepseek-v4-flash"]))
+
+
 # --- Alpaca Paper Trading Configuration ---
 # Hardcoded constant — single source of truth for the audit layer.
 ALPACA_ENABLED = True

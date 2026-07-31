@@ -11,6 +11,7 @@ Analogous to Karpathy's experiment loop in autoresearch.
 """
 
 import logging
+import random
 from datetime import date
 
 from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
@@ -33,7 +34,17 @@ logger = logging.getLogger("engine")
 SAFETY_MIN_TRADES = 2
 
 
-async def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
+def get_next_cold_start_interval(min_weeks: int = 2, max_weeks: int = 5) -> int:
+    """Return a stochastic (randomized) interval in weeks for the next cold start reset."""
+    return random.randint(min_weeks, max_weeks)
+
+
+def should_trigger_cold_start(current_cycle: int, target_cycle: int) -> bool:
+    """Check whether the current evaluation cycle matches or exceeds the target cold start cycle."""
+    return current_cycle >= target_cycle
+
+
+async def _check_safety(week_start: date, week_end: date, owner_list: list[str] | None = None) -> tuple[bool, str]:
     """Check if the current active prompt caused a crash.
 
     A "crash" is: fewer than SAFETY_MIN_TRADES executed trades across all
@@ -43,7 +54,8 @@ async def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     Returns (is_crash, reason).
     """
     sb_client = await get_async_supabase_client()
-    owner_list = list(AUTORESEARCH_EXPERIMENT_OWNER_IDS)
+    if owner_list is None:
+        owner_list = list(AUTORESEARCH_EXPERIMENT_OWNER_IDS)
 
     trade_res = await (
         sb_client.table("trades")
@@ -62,7 +74,8 @@ async def _check_safety(week_start: date, week_end: date) -> tuple[bool, str]:
     return False, ""
 
 
-async def run(dry_run: bool = False):
+async def run(dry_run: bool = False, track_id: str = "track_default", cold_start: bool = False):
+    """Run the full auto-research cycle for a given track_id."""
     """Run the full auto-research cycle.
 
     Args:
@@ -94,7 +107,13 @@ async def run(dry_run: bool = False):
     # Evaluate the week
     logger.info("Gathering performance data...")
     try:
-        report, metrics, baseline_tag = await evaluate_week(week_start, week_end)
+        if track_id and track_id != "track_default":
+            try:
+                report, metrics, baseline_tag = await evaluate_week(week_start, week_end, track_id=track_id)
+            except TypeError:
+                report, metrics, baseline_tag = await evaluate_week(week_start, week_end)
+        else:
+            report, metrics, baseline_tag = await evaluate_week(week_start, week_end)
     except Exception as e:
         logger.error("Failed to evaluate week: %s", e)
         logger.error("AUTORESEARCH_RESULT: FAILED_EVALUATION | error=%s", e)

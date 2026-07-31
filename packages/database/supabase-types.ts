@@ -775,6 +775,7 @@ export type Database = {
                     prompt_name: string;
                     research_output: Json | null;
                     status: string;
+                    track_id: string | null;
                     variant_tag: string;
                     week_end: string;
                     week_start: string;
@@ -791,6 +792,7 @@ export type Database = {
                     prompt_name?: string;
                     research_output?: Json | null;
                     status?: string;
+                    track_id?: string | null;
                     variant_tag: string;
                     week_end: string;
                     week_start: string;
@@ -807,6 +809,7 @@ export type Database = {
                     prompt_name?: string;
                     research_output?: Json | null;
                     status?: string;
+                    track_id?: string | null;
                     variant_tag?: string;
                     week_end?: string;
                     week_start?: string;

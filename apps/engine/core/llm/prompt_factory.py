@@ -95,13 +95,22 @@ class PromptFactory:
         variant from the database. Otherwise, uses the hardcoded baseline
         prompt from prompts.py.
         """
-        from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS
+        from core.config import AUTORESEARCH_EXPERIMENT_OWNER_IDS, AUTORESEARCH_TRACKS
 
-        if owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS:
+        track_id = None
+        if owner_id and AUTORESEARCH_TRACKS:
+            for t_id, owners in AUTORESEARCH_TRACKS.items():
+                if owner_id in owners:
+                    track_id = t_id
+                    break
+
+        is_experiment = bool(track_id or (owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS))
+
+        if is_experiment:
             from autoresearch.prompt_store import get_active_prompt
 
             try:
-                active = await get_active_prompt()
+                active = await get_active_prompt(track_id=track_id or "track_default")
                 if active:
                     from core.llm.prompts import (
                         SYSTEM_PROMPT_CONSTRAINTS_FOOTER,
@@ -139,7 +148,6 @@ class PromptFactory:
             system_prompt = system_prompt + "\n\n" + prompts.GPT54_NANO_PRE_AUDIT_PROMPT
 
         # Inject portfolio ledger if applicable (only for NON-experiment group agents)
-        is_experiment = owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS
         if owner_id and not is_experiment:
             from attribution.service import get_active_ledger_xml
             from core.db import get_async_supabase_client

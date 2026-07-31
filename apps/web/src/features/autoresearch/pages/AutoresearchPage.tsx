@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ExperimentDetails } from '../components/ExperimentDetails';
 import { ExperimentList } from '../components/ExperimentList';
 import { ScoreCalculation } from '../components/ScoreCalculation';
+import { TrackTabs } from '../components/TrackTabs';
 import { autoresearchQueries } from '../queries/options';
 
 interface AutoresearchPageProps {
@@ -19,9 +20,23 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
         initialData,
     });
 
-    const [selectedExperiment, setSelectedExperiment] = useState<PromptExperiment | null>(
-        experiments.length > 0 ? experiments[0] : null,
+    const [activeTrack, setActiveTrack] = useState<string>('track_default');
+
+    const filteredExperiments = experiments.filter(
+        (exp) => (exp.track_id || 'track_default') === activeTrack,
     );
+
+    const [selectedExperiment, setSelectedExperiment] = useState<PromptExperiment | null>(
+        filteredExperiments.length > 0 ? filteredExperiments[0] : null,
+    );
+
+    const handleSelectTrack = (trackId: string) => {
+        setActiveTrack(trackId);
+        const trackExps = experiments.filter(
+            (exp) => (exp.track_id || 'track_default') === trackId,
+        );
+        setSelectedExperiment(trackExps.length > 0 ? trackExps[0] : null);
+    };
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -51,17 +66,23 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
             <PageLayout className="py-12 space-y-12">
                 <ScoreCalculation />
 
+                <TrackTabs
+                    experiments={experiments}
+                    activeTrack={activeTrack}
+                    onSelectTrack={handleSelectTrack}
+                />
+
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                     {/* Sidebar: List of Experiments */}
                     <div className="xl:col-span-4 space-y-6">
                         <div className="flex items-center justify-between px-2">
                             <SectionHeading>History</SectionHeading>
                             <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">
-                                {experiments.length} Experiments
+                                {filteredExperiments.length} Experiments
                             </span>
                         </div>
                         <ExperimentList
-                            experiments={experiments}
+                            experiments={filteredExperiments}
                             onSelect={setSelectedExperiment}
                             selectedId={selectedExperiment?.id}
                         />

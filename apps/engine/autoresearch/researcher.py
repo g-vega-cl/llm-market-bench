@@ -47,11 +47,17 @@ class PromptResearchResult(BaseModel):
     confidence: int = Field(ge=0, le=100, description="Confidence in this change (0-100)")
 
 
-async def run_research(report: str) -> PromptResearchResult | None:
+async def run_research(
+    report: str,
+    current_prompt: str | None = None,
+    cold_start: bool = False,
+) -> PromptResearchResult | None:
     """Run the auto-research evaluation and return proposed prompt changes.
 
     Args:
         report: The formatted report with all metrics, samples, and context.
+        current_prompt: Optional current system prompt text.
+        cold_start: If True, instructs the meta-researcher to ignore prior prompt history and build from scratch.
 
     Returns:
         A PromptResearchResult with the new prompt and reasoning, or None on failure.
@@ -59,10 +65,21 @@ async def run_research(report: str) -> PromptResearchResult | None:
     client = get_deepseek_client()
     provider = "deepseek"
 
+    system_program = _load_research_program()
+    user_content = report
+
+    if cold_start:
+        system_program += (
+            "\n\n=== COLD START RESET ===\n"
+            "This cycle is a COLD START RESET to avoid local optima. "
+            "Ignore the previous system prompt strategy. "
+            "Generate a novel, high-conviction trading strategy prompt from scratch."
+        )
+
     try:
         messages = [
-            {"role": "system", "content": _load_research_program()},
-            {"role": "user", "content": report},
+            {"role": "system", "content": system_program},
+            {"role": "user", "content": user_content},
         ]
 
         create_args = {

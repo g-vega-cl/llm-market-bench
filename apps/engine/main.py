@@ -402,24 +402,36 @@ async def _process_single_decision(
                             if not portfolio.metrics:
                                 portfolio.calculate_reg_t_metrics(p_map)
 
-                            # --- Skeptical Verification ---
-                            logger.info(f"[{d.ticker}] Verifying...")
-                            # Search for contrarian thoughts on this ticker
-                            contrarian_text = "\n".join(
-                                [
-                                    f"- {c.model_name}: {c.reasoning}"
-                                    for c in contrarian_decisions
-                                    if c.ticker == d.ticker
-                                ]
-                            )
+                            from core.config import SKIP_VERIFIER_OWNER_IDS
 
-                            verification = await verify_trading_decision(
-                                decision=d,
-                                portfolio_context=await portfolio.get_portfolio_summary(p_map),
-                                aggregated_context=aggregated_context,
-                                contrarian_context=contrarian_text,
-                                uncrowded_context=uncrowded_context,
-                            )
+                            if d.model_name in SKIP_VERIFIER_OWNER_IDS:
+                                logger.info(
+                                    f"[{d.ticker}] Skipping verification for model {d.model_name} per SKIP_VERIFIER_OWNER_IDS configuration."
+                                )
+                                verification = type(
+                                    "VerificationResult",
+                                    (),
+                                    {"status": "APPROVED", "verification_reasoning": "Skipped per model config"},
+                                )()
+                            else:
+                                # --- Skeptical Verification ---
+                                logger.info(f"[{d.ticker}] Verifying...")
+                                # Search for contrarian thoughts on this ticker
+                                contrarian_text = "\n".join(
+                                    [
+                                        f"- {c.model_name}: {c.reasoning}"
+                                        for c in contrarian_decisions
+                                        if c.ticker == d.ticker
+                                    ]
+                                )
+
+                                verification = await verify_trading_decision(
+                                    decision=d,
+                                    portfolio_context=await portfolio.get_portfolio_summary(p_map),
+                                    aggregated_context=aggregated_context,
+                                    contrarian_context=contrarian_text,
+                                    uncrowded_context=uncrowded_context,
+                                )
 
                             if verification.status == "REJECTED_VERIFICATION":
                                 logger.warning(

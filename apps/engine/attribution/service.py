@@ -93,6 +93,7 @@ async def get_active_ledger_xml(sb_client: Client, owner_id: str) -> str:
     This provides the agent with context on why positions were originally bought
     and any advance planning notes, preventing the "context black hole" problem.
     """
+
     async def _exec(builder):
         res = builder.execute()
         if inspect.isawaitable(res):

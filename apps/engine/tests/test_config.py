@@ -12,6 +12,8 @@ def test_constants():
         "calculatedrisk@substack.com",
         "macro@axios.com",
         "techbrew@morningbrew.com",
+        "closer@axios.com",
+        "ftav@substack.com",
     ]
     for sender in new_senders:
         assert sender in core.config.NEWSLETTER_SENDERS

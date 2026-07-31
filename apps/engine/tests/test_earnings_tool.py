@@ -1,5 +1,6 @@
 """Unit tests for individual company earnings tools."""
 
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,12 +15,14 @@ async def test_fmp_provider_get_earnings_history():
     provider = FMPProvider()
     provider.api_key = "test_api_key"
 
+    upcoming_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
         {
             "symbol": "AAPL",
-            "date": "2026-07-30",
+            "date": upcoming_date,
             "epsActual": None,
             "epsEstimated": 1.88,
             "revenueActual": None,
@@ -47,7 +50,7 @@ async def test_fmp_provider_get_earnings_history():
         # Check upcoming
         h0 = history[0]
         assert h0["symbol"] == "AAPL"
-        assert h0["date"] == "2026-07-30"
+        assert h0["date"] == upcoming_date
         assert h0["epsActual"] is None
         assert h0["epsEstimated"] == 1.88
         assert h0["isUpcoming"] is True

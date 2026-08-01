@@ -155,3 +155,20 @@ We’ll give you the same advice we give ourselves after devouring a party-size 
 - [ ] - Benchify: What about making a benchmark for day trading/investing for users?
 - [ ] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
 - [ ] - Benchify: fed watch api like but free? - https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html - https://share.gemini.google/iul3v5Q9C3AE
+- [ ] - Benchify: free APIs to the LLMs chat?
+- [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
+- [ ] - Benchify: What about making a benchmark for day trading/investing?
+- [ ] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
+- [ ] - Benchify: let winners run? cut losers concept?
+- [ ] - Statistically, in X regime, indicated by X indicator. What percentage of X timeframe candles are X% up vs X% down vs not reaching that %? And can that be made a strategy?
+
+Feels like I have done that before to no avail
+
+- [ ] - Benchify; make an statistic if any of our buys were ever profitable. Like what if I followed my agent's buys and decide on the sells myself?
+- [ ] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
+- [ ] - benchify: memory consensus events check if the predictions came true, if the scenarios worked as expected
+- [ ] - When a card says "resolved" show which scenario "won" or show more details on why it was resolved, and what resolved
+- [ ] - Benchify: I really need to set the read LLM helper
+- [ ] - Chart based on candle volatility not time
+- [ ] - Single company focused llm
+- [ ] - Look for statistical analysis for markets

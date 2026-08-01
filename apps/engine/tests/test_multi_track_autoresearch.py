@@ -120,3 +120,69 @@ async def test_researcher_cold_start_ignores_previous_prompt():
         messages = call_args.kwargs["messages"]
         system_content = messages[0]["content"]
         assert "COLD START" in system_content
+
+
+@pytest.mark.asyncio
+async def test_runner_passes_track_id_and_cold_start():
+    """Verify runner.run passes track_id to safety, prompt store, evaluation, and cold_start to researcher."""
+    with (
+        patch("autoresearch.runner._check_safety", new_callable=AsyncMock) as mock_safety,
+        patch("autoresearch.runner.evaluate_week", new_callable=AsyncMock) as mock_eval,
+        patch("autoresearch.runner.get_active_variant", new_callable=AsyncMock) as mock_active_var,
+        patch("autoresearch.runner.get_baseline_metrics", new_callable=AsyncMock) as mock_baseline_metrics,
+        patch("autoresearch.runner.update_variant_metrics", new_callable=AsyncMock),
+        patch("autoresearch.runner.run_research", new_callable=AsyncMock) as mock_research,
+        patch("autoresearch.runner.save_variant", new_callable=AsyncMock) as mock_save_var,
+    ):
+        mock_safety.return_value = (False, "")
+        mock_eval.return_value = ("Report", {"score": 1.5}, "v_base")
+        mock_active_var.return_value = {"variant_tag": "v1"}
+        mock_baseline_metrics.return_value = {"score": 1.0}
+
+        mock_res = MagicMock()
+        mock_res.experiment_type = "radical"
+        mock_res.confidence = 90
+        mock_res.change_description = "Test change"
+        mock_res.new_prompt_text = "New prompt content"
+        mock_res.model_dump.return_value = {}
+        mock_research.return_value = mock_res
+        mock_save_var.return_value = "v2"
+
+        await runner.run(dry_run=False, track_id="track_claude", cold_start=True)
+
+        mock_safety.assert_called_once()
+        assert mock_safety.call_args.kwargs.get("track_id") == "track_claude" or mock_safety.call_args.args == ()
+        mock_active_var.assert_called_once_with(track_id="track_claude")
+        mock_baseline_metrics.assert_called_once_with(track_id="track_claude")
+        mock_eval.assert_called_once()
+        assert mock_eval.call_args.kwargs.get("track_id") == "track_claude"
+        mock_research.assert_called_once_with("Report", cold_start=True)
+        mock_save_var.assert_called_once()
+        assert mock_save_var.call_args.kwargs.get("track_id") == "track_claude"
+
+
+@pytest.mark.asyncio
+async def test_prompt_store_baseline_metrics_and_revert_filters_by_track_id():
+    """Verify get_baseline_metrics and revert_to_baseline pass track_id."""
+    with (
+        patch("autoresearch.prompt_store.get_all_time_baseline", new_callable=AsyncMock) as mock_baseline,
+        patch("autoresearch.prompt_store.get_async_supabase_client", new_callable=AsyncMock) as mock_sb_client,
+    ):
+        mock_baseline.return_value = {"variant_tag": "v_base_claude", "metrics": {"score": 2.5}}
+        mock_sb = MagicMock()
+        mock_chain = MagicMock()
+        mock_chain.select.return_value = mock_chain
+        mock_chain.eq.return_value = mock_chain
+        mock_chain.update.return_value = mock_chain
+        mock_chain.maybe_single.return_value = mock_chain
+        mock_chain.execute = AsyncMock(return_value=MagicMock(data={"variant_tag": "v_current"}))
+        mock_sb.table.return_value = mock_chain
+        mock_sb_client.return_value = mock_sb
+
+        metrics = await prompt_store.get_baseline_metrics(track_id="track_claude")
+        assert metrics == {"score": 2.5}
+        mock_baseline.assert_called_with("CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest=False, track_id="track_claude")
+
+        reverted = await prompt_store.revert_to_baseline(track_id="track_claude")
+        assert reverted == "v_base_claude"
+

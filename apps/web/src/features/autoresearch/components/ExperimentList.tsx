@@ -8,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from '@llm-market-bench/ui-design-system';
+import { formatTrackLabel } from './TrackTabs';
 
 interface ExperimentListProps {
     experiments: PromptExperiment[];
@@ -57,6 +58,7 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
             <TableHeader>
                 <TableRow isHoverable={false}>
                     <TableHead>Variant</TableHead>
+                    <TableHead>Track</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Period</TableHead>
@@ -90,6 +92,15 @@ export function ExperimentList({ experiments, onSelect, selectedId }: Experiment
                                         </Badge>
                                     )}
                                 </div>
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    colorScheme="accent"
+                                    variant="soft"
+                                    className="text-[10px] whitespace-nowrap"
+                                >
+                                    {formatTrackLabel(exp.track_id)}
+                                </Badge>
                             </TableCell>
                             <TableCell>
                                 <Badge

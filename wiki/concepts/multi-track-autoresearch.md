@@ -15,24 +15,35 @@ Each track is identified by a `track_id` string stored in the `prompt_experiment
 {
   "AUTORESEARCH_TRACKS": {
     "track_default": ["gemini-3.1-flash-lite", "deepseek-v4-pro", "MiniMax-M3"],
-    "track_claude": ["claude-haiku-4-5"]
+    "track_claude": ["claude-haiku-4-5", "deepseek-v4-flash"],
+    "track_openai": ["gpt-5.4-nano"]
   }
 }
 ```
 
-When `PromptFactory` builds analysis messages, it resolves an agent's `owner_id` to its track, then fetches the active prompt for that track via `get_active_prompt(track_id=...)`. This ensures Claude agents receive Claude-optimized prompts while the default track agents receive their own independently evolved prompts.
+When `PromptFactory` builds analysis messages, it resolves an agent's `owner_id` to its track, then fetches the active prompt for that track via `get_active_prompt(track_id=...)`. This ensures Claude agents receive Claude-optimized prompts while OpenAI and default track agents receive their own independently evolved prompts.
 
-## Database Schema
+## Database Schema & Strict Track Isolation
 
-The `prompt_experiments` table includes a `track_id` column (default `'track_default'`) with an index for fast lookups. All prompt store functions (`get_active_prompt`, `get_active_variant`, `save_variant`, `get_previous_variants`, `get_all_time_baseline`) accept a `track_id` parameter and scope queries accordingly.
+The `prompt_experiments` table includes a `track_id` column (default `'track_default'`) with an index for fast lookups (applied to remote Supabase via `supabase db push`). All prompt store functions (`get_active_prompt`, `get_active_variant`, `save_variant`, `get_previous_variants`, `get_all_time_baseline`) accept a `track_id` parameter and scope queries strictly to that track:
+- **Baseline Independence**: Querying `get_all_time_baseline(track_id='track_claude')` returns only variants created for `track_claude`. If no variants exist yet, it returns `None`, allowing the track to establish its own independent baseline without cross-track score leakage.
+- **Demotion Isolation**: `save_variant()` demotes active/baseline variants to `saved` strictly within `WHERE track_id = <track_id>`.
 
-## UI Track Tabs
+## CLI Support
 
-The `TrackTabs` component on the AutoResearch Arena page derives unique track IDs from experiment data and renders a tab bar. Users can toggle between tracks to view isolated experiment histories, baseline metrics, and prompt diffs. Track labels are human-readable (e.g., `track_claude` → "Claude").
+The CLI entrypoint (`main.py`) supports multi-track execution and stochastic cold-start resets:
+```sh
+# Run auto-research dry-run for specific track
+./apps/engine/.venv/bin/python3 apps/engine/main.py autoresearch --dry-run --track track_claude
 
-## Fallback Behavior
+# Force a cold-start reset to generate a new prompt from scratch
+./apps/engine/.venv/bin/python3 apps/engine/main.py autoresearch --dry-run --track track_openai --cold-start
+```
 
-If a `track_id` query fails (e.g., column missing in older DB instances), all prompt store functions fall back to a base query without the `track_id` filter, ensuring backward compatibility.
+## UI Track Badges & Tabs
+
+- **Auto-Research Arena (`/autoresearch`)**: The `TrackTabs` component renders a tab bar (`track_default`, `track_claude`, `track_openai`). Experiment history tables and detail views render explicit track badges.
+- **Portfolios Dashboard (`/portfolios`)**: Portfolio cards detect multi-track agent owner IDs (`getAutoresearchOwnerIds`) and display a dedicated `Track: <Label>` badge.
 
 ## Related
 

@@ -7,7 +7,7 @@ interface TrackTabsProps {
     onSelectTrack: (trackId: string) => void;
 }
 
-export function formatTrackLabel(trackId: string): string {
+export function formatTrackLabel(trackId?: string | null): string {
     if (!trackId || trackId === 'track_default') return 'Default Track (Combined)';
     const clean = trackId.replace(/^track_/, '').replace(/_/g, ' ');
     return clean.charAt(0).toUpperCase() + clean.slice(1);

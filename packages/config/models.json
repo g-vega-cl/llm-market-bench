@@ -10,13 +10,22 @@
   "AUTORESEARCH_EXPERIMENT_OWNER_IDS": [
     "gemini-3.1-flash-lite",
     "deepseek-v4-pro",
-    "MiniMax-M3"
+    "MiniMax-M3",
+    "claude-haiku-4-5",
+    "deepseek-v4-flash"
   ],
   "AUTORESEARCH_TRACKS": {
     "track_default": [
       "gemini-3.1-flash-lite",
       "deepseek-v4-pro",
       "MiniMax-M3"
+    ],
+    "track_claude": [
+      "claude-haiku-4-5",
+      "deepseek-v4-flash"
+    ],
+    "track_openai": [
+      "gpt-5.4-nano"
     ]
   },
   "SKIP_VERIFIER_OWNER_IDS": [

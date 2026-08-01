@@ -114,6 +114,31 @@ describe('Portfolio Config Utils', () => {
         });
     });
 
+    describe('getPortfolioTrack', () => {
+        it('resolves track for portfolios in AUTORESEARCH_TRACKS', async () => {
+            vi.resetModules();
+            vi.doMock('@repo/config/models.json', () => ({
+                default: {
+                    AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.1-flash-lite'],
+                    AUTORESEARCH_TRACKS: {
+                        track_default: ['gemini-3.1-flash-lite'],
+                        track_claude: ['claude-haiku-4-5'],
+                    },
+                },
+            }));
+            const freshModule = await import('./config');
+            expect(freshModule.getPortfolioTrack('gemini-3.1-flash-lite')).toEqual({
+                trackId: 'track_default',
+                trackLabel: 'Default Track',
+            });
+            expect(freshModule.getPortfolioTrack('claude-haiku-4-5')).toEqual({
+                trackId: 'track_claude',
+                trackLabel: 'Claude',
+            });
+            expect(freshModule.getPortfolioTrack('gpt-5.4-nano')).toBeNull();
+        });
+    });
+
     describe('hasVerifier', () => {
         it('identifies if a portfolio uses a verifier correctly', () => {
             expect(configModule.hasVerifier('gemini-3.1-flash-lite')).toBe(true);

@@ -11,6 +11,7 @@ import { BacktestTradesAudit } from './BacktestTradesAudit';
 import { DailyScoreDisplay } from './DailyScoreDisplay';
 import { PromptChanges } from './PromptChanges';
 import { ScoreBreakdown } from './ScoreBreakdown';
+import { formatTrackLabel } from './TrackTabs';
 import { VolatilityCalculation } from './VolatilityCalculation';
 
 interface ExperimentDetailsProps {
@@ -21,6 +22,8 @@ interface ExperimentDetailsProps {
 export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDetailsProps) {
     const metrics = experiment.metrics || {};
     const researchOutput = experiment.research_output || {};
+
+    const trackLabel = formatTrackLabel(experiment.track_id);
 
     const excessReturnVal =
         metrics.excess_return !== undefined && metrics.excess_return !== null
@@ -37,6 +40,25 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
 
     return (
         <div className="space-y-8 animate-slide-up">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                        Optimization Track:
+                    </span>
+                    <Badge colorScheme="accent" variant="soft" className="text-xs font-bold">
+                        {trackLabel}
+                    </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                        Experiment Type:
+                    </span>
+                    <Badge variant="soft" size="sm">
+                        {experiment.experiment_type}
+                    </Badge>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricTile label="Excess Return" value={excessReturnVal} />
                 <MetricTile icon="📊" label="Volatility" value={volatilityVal} />

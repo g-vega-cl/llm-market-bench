@@ -47,36 +47,16 @@ async def get_active_prompt(
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
     )
-    res = None
     if track_id:
-        try:
-            res = await query.eq("track_id", track_id).maybe_single().execute()
-            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
-                res = None
-        except Exception:
-            res = None
+        query = query.eq("track_id", track_id)
 
-    if res is None:
-        logger.warning("Supabase table query with track_id failed or missing column. Falling back to base query.")
-        fallback_query = (
-            sb_client.table("prompt_experiments")
-            .select("prompt_content")
-            .eq("status", "active")
-            .eq("prompt_name", prompt_name)
-            .eq("is_backtest", is_backtest)
-        )
-        res = await fallback_query.maybe_single().execute()
+    res = await query.maybe_single().execute()
 
-    if res is None:
-        logger.warning(
-            "Supabase returned None for active prompt query (prompt_name=%s, track_id=%s). "
-            "This usually means the table is empty or the row was deleted.",
-            prompt_name,
-            track_id,
-        )
+    if not res or not hasattr(res, "data") or not res.data or isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+        logger.info("No active prompt found for track_id=%s, prompt_name=%s", track_id, prompt_name)
         return None
 
-    content = res.data["prompt_content"] if res and res.data else None
+    content = res.data.get("prompt_content") if isinstance(res.data, dict) else None
     if not is_backtest:
         _active_cache[cache_key] = (now, content)
     return content
@@ -87,7 +67,7 @@ async def get_active_variant(
     is_backtest: bool = False,
     track_id: str = "track_default",
 ) -> dict | None:
-    """Retrieve the full database row/dictionary of the currently active variant."""
+    """Retrieve the full database row/dictionary of the currently active variant for a track."""
     sb_client = await get_async_supabase_client()
     query = (
         sb_client.table("prompt_experiments")
@@ -96,26 +76,15 @@ async def get_active_variant(
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
     )
-    res = None
     if track_id:
-        try:
-            res = await query.eq("track_id", track_id).maybe_single().execute()
-            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
-                res = None
-        except Exception:
-            res = None
+        query = query.eq("track_id", track_id)
 
-    if res is None:
-        fallback_query = (
-            sb_client.table("prompt_experiments")
-            .select("*")
-            .eq("status", "active")
-            .eq("prompt_name", prompt_name)
-            .eq("is_backtest", is_backtest)
-        )
-        res = await fallback_query.maybe_single().execute()
+    res = await query.maybe_single().execute()
 
-    return res.data if res and isinstance(res.data, dict) else None
+    if not res or not hasattr(res, "data") or not res.data or isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+        return None
+
+    return res.data if isinstance(res.data, dict) else None
 
 
 async def update_variant_metrics(variant_tag: str, metrics: dict) -> None:
@@ -164,17 +133,20 @@ async def save_variant(
     # INSERT first — if this fails, nothing is lost.
     await sb_client.table("prompt_experiments").insert(insert_data).execute()
 
-    # NOW update parent variant to baseline (if it exists), and demote other active/baseline variants to saved
+    # NOW update parent variant to baseline (if it exists) scoped to track_id
     if parent_tag:
-        await (
+        parent_query = (
             sb_client.table("prompt_experiments")
             .update({"status": "baseline"})
             .eq("variant_tag", parent_tag)
             .eq("is_backtest", is_backtest)
-            .execute()
         )
-    # Demote all other active/baseline variants to saved
-    await (
+        if track_id:
+            parent_query = parent_query.eq("track_id", track_id)
+        await parent_query.execute()
+
+    # Demote all other active/baseline variants for this track to saved
+    demote_query = (
         sb_client.table("prompt_experiments")
         .update({"status": "saved"})
         .in_("status", ["active", "baseline"])
@@ -182,11 +154,13 @@ async def save_variant(
         .eq("is_backtest", is_backtest)
         .neq("variant_tag", tag)
         .neq("variant_tag", parent_tag or "")
-        .execute()
     )
+    if track_id:
+        demote_query = demote_query.eq("track_id", track_id)
+    await demote_query.execute()
 
     clear_active_prompt_cache()
-    logger.info("Saved prompt variant %s (type=%s, is_backtest=%s)", tag, experiment_type, is_backtest)
+    logger.info("Saved prompt variant %s for track %s (type=%s, is_backtest=%s)", tag, track_id, experiment_type, is_backtest)
     return tag
 
 
@@ -198,27 +172,17 @@ async def get_previous_variants(
 ) -> list[dict]:
     sb_client = await get_async_supabase_client()
     query = (
-        sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest)
+        sb_client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
     )
-    res = None
     if track_id:
-        try:
-            res = await query.eq("track_id", track_id).order("created_at", desc=True).limit(limit).execute()
-            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
-                res = None
-        except Exception:
-            res = None
+        query = query.eq("track_id", track_id)
 
-    if res is None:
-        fallback_query = (
-            sb_client.table("prompt_experiments")
-            .select("*")
-            .eq("prompt_name", prompt_name)
-            .eq("is_backtest", is_backtest)
-        )
-        res = await fallback_query.order("created_at", desc=True).limit(limit).execute()
+    res = await query.order("created_at", desc=True).limit(limit).execute()
 
-    if res is None or not hasattr(res, "data") or isinstance(res.data, dict):
+    if not res or not hasattr(res, "data") or isinstance(res.data, dict):
         return []
     return res.data or []
 
@@ -228,28 +192,18 @@ async def get_all_time_baseline(
     is_backtest: bool = False,
     track_id: str = "track_default",
 ) -> dict | None:
-    """Return the prompt variant with the highest score achieved so far among pull-based variants."""
+    """Return the prompt variant with the highest score achieved so far among pull-based variants for a track."""
     sb_client = await get_async_supabase_client()
     query = (
-        sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest)
+        sb_client.table("prompt_experiments")
+        .select("*")
+        .eq("prompt_name", prompt_name)
+        .eq("is_backtest", is_backtest)
     )
-    res = None
     if track_id:
-        try:
-            res = await query.eq("track_id", track_id).execute()
-            if res and isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
-                res = None
-        except Exception:
-            res = None
+        query = query.eq("track_id", track_id)
 
-    if res is None:
-        fallback_query = (
-            sb_client.table("prompt_experiments")
-            .select("*")
-            .eq("prompt_name", prompt_name)
-            .eq("is_backtest", is_backtest)
-        )
-        res = await fallback_query.execute()
+    res = await query.execute()
 
     if not res or not hasattr(res, "data") or not res.data or isinstance(res.data, dict):
         return None
@@ -288,35 +242,40 @@ async def get_all_time_baseline(
 
 
 async def get_baseline_metrics(
-    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False, track_id: str = "track_default"
 ) -> dict | None:
-    """Legacy helper: now returns metrics of the all-time baseline."""
-    baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest)
+    """Legacy helper: now returns metrics of the all-time baseline for a given track."""
+    baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest, track_id=track_id)
     return baseline["metrics"] if baseline else None
 
 
-async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> str | None:
+async def revert_to_previous(
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False, track_id: str = "track_default"
+) -> str | None:
     sb_client = await get_async_supabase_client()
-    await (
+    query = (
         sb_client.table("prompt_experiments")
         .update({"status": "crashed"})
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
-        .execute()
     )
+    if track_id:
+        await query.eq("track_id", track_id).execute()
+    else:
+        await query.execute()
 
-    kept = await (
+    select_query = (
         sb_client.table("prompt_experiments")
         .select("variant_tag")
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
         .in_("status", ["baseline", "saved"])
-        .order("created_at", desc=True)
-        .limit(1)
-        .maybe_single()
-        .execute()
     )
+    if track_id:
+        select_query = select_query.eq("track_id", track_id)
+
+    kept = await select_query.order("created_at", desc=True).limit(1).maybe_single().execute()
 
     if kept and kept.data:
         tag = kept.data["variant_tag"]
@@ -336,7 +295,9 @@ async def revert_to_previous(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", i
     return None
 
 
-async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False) -> str | None:
+async def revert_to_baseline(
+    prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", is_backtest: bool = False, track_id: str = "track_default"
+) -> str | None:
     """Revert the active prompt to the all-time baseline (best score ever).
 
     Used when the current experiment underperforms vs the baseline.
@@ -346,49 +307,59 @@ async def revert_to_baseline(prompt_name: str = "CORE_ANALYSIS_SYSTEM_PROMPT", i
 
     Returns the baseline variant_tag, or None if no baseline exists.
     """
-    baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest)
+    baseline = await get_all_time_baseline(prompt_name, is_backtest=is_backtest, track_id=track_id)
     if baseline is None:
-        logger.warning("No baseline to revert to (prompt_name=%s)", prompt_name)
+        logger.warning("No baseline to revert to (prompt_name=%s, track_id=%s)", prompt_name, track_id)
         return None
 
     baseline_tag = baseline["variant_tag"]
     sb_client = await get_async_supabase_client()
 
     # Check if baseline is already active — nothing to do.
-    active = await (
+    active_query = (
         sb_client.table("prompt_experiments")
         .select("variant_tag")
         .eq("prompt_name", prompt_name)
         .eq("status", "active")
         .eq("is_backtest", is_backtest)
-        .maybe_single()
-        .execute()
     )
+    if track_id:
+        active = await active_query.eq("track_id", track_id).maybe_single().execute()
+    else:
+        active = await active_query.maybe_single().execute()
+
     if active and active.data and active.data["variant_tag"] == baseline_tag:
         logger.info("Baseline %s is already active. No revert needed.", baseline_tag)
         return baseline_tag
 
     # Demote current active (if any) to 'discarded' — it wasn't a crash, just
     # an experiment that failed to beat the baseline.
-    await (
+    demote_query = (
         sb_client.table("prompt_experiments")
         .update({"status": "discarded"})
         .eq("status", "active")
         .eq("prompt_name", prompt_name)
         .eq("is_backtest", is_backtest)
-        .execute()
     )
+    if track_id:
+        await demote_query.eq("track_id", track_id).execute()
+    else:
+        await demote_query.execute()
 
     # Promote the baseline to active.
-    await (
+    promote_query = (
         sb_client.table("prompt_experiments")
         .update({"status": "active"})
         .eq("prompt_name", prompt_name)
         .eq("variant_tag", baseline_tag)
         .eq("is_backtest", is_backtest)
-        .execute()
     )
+    if track_id:
+        await promote_query.eq("track_id", track_id).execute()
+    else:
+        await promote_query.execute()
 
     clear_active_prompt_cache()
     logger.info("Reverted to baseline prompt variant: %s", baseline_tag)
     return baseline_tag
+

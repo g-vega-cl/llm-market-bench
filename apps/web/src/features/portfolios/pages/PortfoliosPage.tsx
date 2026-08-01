@@ -14,7 +14,7 @@ import * as React from 'react';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
-import { hasVerifier } from '../lib/config';
+import { getPortfolioTrack, hasVerifier } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
 
 type PortfolioWithActive = Portfolio & { is_active: boolean; is_autoresearch: boolean };
@@ -37,6 +37,8 @@ function PortfolioCard({
     portfolio: PortfolioWithActive;
     deprecated?: boolean;
 }) {
+    const track = getPortfolioTrack(portfolio.owner_id);
+
     return (
         <Link
             key={portfolio.id}
@@ -72,6 +74,11 @@ function PortfolioCard({
                     {portfolio.is_autoresearch && !deprecated && (
                         <Badge variant="glass" size="xs" colorScheme="info" showDot>
                             Auto-Research
+                        </Badge>
+                    )}
+                    {track && !deprecated && (
+                        <Badge variant="soft" size="xs" colorScheme="accent">
+                            Track: {track.trackLabel}
                         </Badge>
                     )}
                     {!hasVerifier(portfolio.owner_id) && !deprecated && (

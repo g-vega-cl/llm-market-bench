@@ -175,8 +175,11 @@ async def evaluate_week(
         spy_return_pct = (cumulative - 1) * 100
 
     # Experiment group metrics.
+    from core.config import AUTORESEARCH_TRACKS
+
+    target_owner_ids = list(AUTORESEARCH_TRACKS.get(track_id, AUTORESEARCH_EXPERIMENT_OWNER_IDS))
     exp_metrics = await compute_wall_street_metrics(
-        AUTORESEARCH_EXPERIMENT_OWNER_IDS,
+        target_owner_ids,
         week_start,
         week_end,
     )

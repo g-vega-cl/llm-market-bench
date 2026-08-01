@@ -947,6 +947,14 @@ class TestRunnerWindowDuplication:
             return (False, "")
 
         monkeypatch.setattr(runner, "_check_safety", _fake_check_safety)
+        async def _fake_active_var(**kw):
+            return None
+
+        async def _fake_baseline_metrics(**kw):
+            return None
+
+        monkeypatch.setattr(runner, "get_active_variant", _fake_active_var)
+        monkeypatch.setattr(runner, "get_baseline_metrics", _fake_baseline_metrics)
         monkeypatch.setattr(runner, "save_variant", lambda **kw: "v-test")
         monkeypatch.setattr(runner, "revert_to_previous", lambda **kw: "v-prev")
 

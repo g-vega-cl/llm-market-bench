@@ -49,6 +49,8 @@ DEEPSEEK_MODEL: str = _models["DEEPSEEK_MODEL"]
 DEEPSEEK_FLASH_MODEL: str = _models["DEEPSEEK_FLASH_MODEL"]
 MINIMAX_MODEL: str = _models["MINIMAX_MODEL"]
 CONTRARIAN_AGENT_ID: str = _models["CONTRARIAN_AGENT_ID"]
+AUTORESEARCH_EXPERIMENT_OWNER_IDS: list[str] = _models.get("AUTORESEARCH_EXPERIMENT_OWNER_IDS", [])
+AUTORESEARCH_TRACKS: dict[str, list[str]] = _models.get("AUTORESEARCH_TRACKS", {})
 ACTIVE_OWNER_IDS: list[str] = list(_models.values())
 
 # Weights for consensus protocol (higher = more influence)

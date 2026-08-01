@@ -979,6 +979,10 @@ def main():
 
     parser.add_argument("--force", action="store_true", help="Force ingestion even outside market hours")
     parser.add_argument("--dry-run", action="store_true", help="Run auto-research without writing to database")
+    parser.add_argument(
+        "--track-id", "--track", type=str, default="all", help="Track ID for multi-track autoresearch ('all' to run all tracks)"
+    )
+    parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
 
     args = parser.parse_args()
 
@@ -1004,8 +1008,15 @@ def main():
         asyncio.run(run_audit())
     elif args.command == COMMAND_AUTORESEARCH:
         from autoresearch.runner import run
+        from core.config import AUTORESEARCH_TRACKS
 
-        asyncio.run(run(dry_run=args.dry_run))
+        if args.track_id == "all":
+            track_ids = list(AUTORESEARCH_TRACKS.keys()) if AUTORESEARCH_TRACKS else ["track_default"]
+            for t_id in track_ids:
+                logger.info("Executing Auto-Research cycle for track: %s", t_id)
+                asyncio.run(run(dry_run=args.dry_run, track_id=t_id, cold_start=args.cold_start))
+        else:
+            asyncio.run(run(dry_run=args.dry_run, track_id=args.track_id, cold_start=args.cold_start))
     elif args.command == COMMAND_BOOTSTRAP_AUTORESEARCH:
         from autoresearch.bootstrap import bootstrap
 

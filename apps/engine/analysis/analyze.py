@@ -13,7 +13,7 @@ from core.db import get_supabase_client
 from core.models import DecisionObject, MacroEvent
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
-from memory.store import get_top_trending_concepts, retrieve_top_memories
+from memory.store import get_top_trending_concepts, retrieve_top_memories, retrieve_uncrowded_trades
 
 # Configuration for models to use
 MODELS = [
@@ -158,7 +158,7 @@ async def analyze_trading_decisions(
             aggregated_context += f"\n\n{trending_concepts}"
         else:
             aggregated_context = trending_concepts
-    uncrowded_context = ""
+    uncrowded_context = retrieve_uncrowded_trades(limit=5)
 
     # Pre-filter newsletter summaries menu
     from .pre_filter import summarize_newsletters

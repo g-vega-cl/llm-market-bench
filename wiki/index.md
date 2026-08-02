@@ -36,6 +36,7 @@
 
 ## Concepts
 
+- [[concepts/thematic-rotation]] — Adjacent trade pattern, stranded-asset pivot, and AI intra-cycle rotation sequence (infra → hyperscalers)
 - [[concepts/verifier-bypass]] — Configurable model-level bypass of the skeptical verification agent stage
 - [[concepts/stochastic-cold-start]] — Randomized cold-start resets (2–5 week intervals) to escape local optima in prompt optimization
 - [[concepts/multi-track-autoresearch]] — Parallel isolated prompt optimization tracks for distinct portfolio groups

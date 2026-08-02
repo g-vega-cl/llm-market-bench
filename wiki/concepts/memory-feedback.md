@@ -97,7 +97,8 @@ When a new memory is ingested with `check_similarity=True`, the system performs 
 To prevent context window pollution and reasoning degradation while retaining key long-term lessons, the system applies adaptive tiered decay rates during weekly cleanups:
 - **Market Events (`MARKET_EVENT`)**: Decays standardly (relevance reduced by 50% after half-life threshold).
 - **Government Incentives (`GOVERNMENT_INCENTIVE`)**: Decays mildly (relevance reduced by 25% after half-life threshold).
-- **Lessons Learned (`LESSON_LEARNED`) & Uncrowded Trades (`UNCROWDED_TRADE`)**: Never decay (relevance score remains permanently at `1.0` to preserve core trading insights).
+- **Lessons Learned (`LESSON_LEARNED`) & Post-Mortems (`POST_MORTEM`) & Academic Papers (`ACADEMIC_PAPER`)**: Never decay (relevance score remains permanently at `1.0` to preserve core trading insights and immutable trade outcomes).
+- **Uncrowded Trades (`UNCROWDED_TRADE`)**: Slow decay at **0.72× per 30-day half-life** (~28%/month). Stays meaningful for ~2 months, falls below the 0.05 retrieval threshold by month 12. This models cycle-specific theses (e.g. "AI infrastructure is the adjacent play") that are valid for one market cycle but become noise once the cycle turns.
 - **Superseded Pruning**: To prevent pgvector storage bloat, `SUPERSEDED` memories older than **180 days** are hard-deleted during weekly cleanups, ensuring that historical trace records are kept lean.
 
 ### The "Sleep Cycle" (Weekly Memory Consolidation)

@@ -545,6 +545,50 @@ SEARCH_PAST_MEMORIES_TOOL = {
     },
 }
 
+GET_THEMATIC_FLOWS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_thematic_flows",
+        "description": "Fetch active macro thematic capital flows and sector rotation theses (e.g. AI Winners -> Power/Cooling, Crypto Miners -> AI Datacenters).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of thematic flows to return (default 5).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+ADD_THEMATIC_FLOW_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "add_thematic_flow",
+        "description": "Register a new macro capital flow or thematic rotation thesis into long-term memory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "Detailed description of the macro rotation thesis or capital flow pattern.",
+                },
+                "importance_score": {
+                    "type": "integer",
+                    "description": "Importance rating from 1 to 10 (default 8).",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Optional category tag (e.g. AI_CAPEX_ROTATION, MACRO_REGIME).",
+                },
+            },
+            "required": ["content"],
+        },
+    },
+}
+
 
 active_news_summaries = contextvars.ContextVar("active_news_summaries", default=None)
 active_news_chunks = contextvars.ContextVar("active_news_chunks", default=None)
@@ -659,6 +703,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_prediction_market_odds": GET_PREDICTION_MARKET_ODDS_TOOL,
     "fetch_newsletter_content": FETCH_NEWSLETTER_CONTENT_TOOL,
     "search_past_memories": SEARCH_PAST_MEMORIES_TOOL,
+    "get_thematic_flows": GET_THEMATIC_FLOWS_TOOL,
+    "add_thematic_flow": ADD_THEMATIC_FLOW_TOOL,
     "get_portfolio_ledger": GET_PORTFOLIO_LEDGER_TOOL,
     "get_todays_news_menu": GET_TODAYS_NEWS_MENU_TOOL,
     "get_market_feeling": GET_MARKET_FEELING_TOOL,
@@ -1891,6 +1937,43 @@ async def execute_search_past_memories_tool(query: str, limit: int = 5, model_na
     except Exception as e:
         logger.exception(f"Error executing search_past_memories tool: {e}")
         return f"Error performing historical RAG search: {str(e)}"
+
+
+async def execute_get_thematic_flows_tool(limit: int = 5) -> str:
+    """Fetch active THEMATIC_FLOW memories for LLM reasoning."""
+    try:
+        from memory.store import retrieve_thematic_flows
+
+        context = retrieve_thematic_flows(limit=limit)
+        if not context:
+            return "No active thematic capital flows found."
+        return context
+    except Exception as e:
+        logger.exception(f"Error executing get_thematic_flows tool: {e}")
+        return f"Error retrieving thematic flows: {str(e)}"
+
+
+async def execute_add_thematic_flow_tool(content: str, importance_score: int = 8, category: str | None = None) -> str:
+    """Add a new THEMATIC_FLOW memory to Supabase."""
+    if not content:
+        return "Content cannot be empty."
+    try:
+        from memory.store import add_memory
+
+        metadata = {"category": category} if category else {}
+        memory_id = add_memory(
+            content=content,
+            memory_type="THEMATIC_FLOW",
+            importance_score=importance_score,
+            metadata=metadata,
+            check_similarity=True,
+        )
+        if memory_id:
+            return f"Successfully added thematic flow memory [ID: {memory_id}]."
+        return "Thematic flow memory already exists (deduplicated)."
+    except Exception as e:
+        logger.exception(f"Error executing add_thematic_flow tool: {e}")
+        return f"Error adding thematic flow memory: {str(e)}"
 
 
 async def execute_get_portfolio_ledger_tool(owner_id: str) -> str:

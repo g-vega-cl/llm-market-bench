@@ -121,6 +121,45 @@ def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
         return ""
 
 
+def retrieve_thematic_flows(limit: int = 5) -> str:
+    """Fetches active THEMATIC_FLOW and UNCROWDED_TRADE memories for analysis.
+
+    Returns:
+        A formatted string of active thematic flows & macro capital rotations.
+    """
+    try:
+        client = get_supabase_client()
+        response = (
+            client.table("memories")
+            .select("content, importance_score, memory_type")
+            .eq("status", "ACTIVE")
+            .in_("memory_type", ["THEMATIC_FLOW", "UNCROWDED_TRADE"])
+            .order("importance_score", desc=True)
+            .limit(limit)
+            .execute()
+        )
+
+        if not response.data:
+            return ""
+
+        lines = []
+        for row in response.data:
+            importance = row.get("importance_score", 5)
+            content = strip_html(row.get("content", ""))
+            if content:
+                lines.append(f"- [THEMATIC FLOW] (Importance: {importance}/10) {content}")
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.error(f"Error in retrieve_thematic_flows: {e}")
+        return ""
+
+
+def retrieve_uncrowded_trades(limit: int = 5) -> str:
+    """Alias for retrieve_thematic_flows for backward compatibility."""
+    return retrieve_thematic_flows(limit=limit)
+
+
 def retrieve_for_decision(
     ticker: str,
     reasoning: str,
@@ -593,10 +632,18 @@ def decay_memories(sb_client: Client, decay_days: int = None):
         decay_count = 0
         for memory in response.data:
             mt = memory.get("memory_type", "MARKET_EVENT")
-            if mt in ("LESSON_LEARNED", "UNCROWDED_TRADE", "POST_MORTEM", "ACADEMIC_PAPER"):
-                continue  # Never decay lessons and uncrowded trades
+            if mt in ("LESSON_LEARNED", "POST_MORTEM", "ACADEMIC_PAPER"):
+                continue  # Never decay: behavioral patterns and immutable trade outcomes
 
-            decay_factor = 0.5 if mt == "MARKET_EVENT" else 0.75  # 25% decay for other types like GOVERNMENT_INCENTIVE
+            # THEMATIC_FLOW / UNCROWDED_TRADE: cycle-specific theses decay slowly.
+            # 0.72/month → relevant for ~2 months, below 0.05 threshold by month 12.
+            # This lets AI-rotation style theses fade naturally as the cycle turns.
+            if mt in ("THEMATIC_FLOW", "UNCROWDED_TRADE"):
+                decay_factor = 0.72
+            elif mt == "MARKET_EVENT":
+                decay_factor = 0.5   # 50% per 30 days
+            else:
+                decay_factor = 0.75  # 25% decay for GOVERNMENT_INCENTIVE and others
             new_relevance = memory["relevance_score"] * decay_factor
             sb_client.table("memories").update({"relevance_score": new_relevance}).eq("id", memory["id"]).execute()
             decay_count += 1

@@ -288,10 +288,29 @@ async def _synthesize_and_promote_group(
     # Promote to long-term memory
     parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
     ongoing_str = " [ONGOING]" if is_ongoing else ""
-    memory_content = f"MARKET EVENT: {consensus_data['event_name']}{ongoing_str} | IMPACT: {consensus_data['impact']} | SUMMARY: {consensus_data['reasoning']}{parallel_str}"
+
+    summary_text = (consensus_data["event_name"] + " " + consensus_data["reasoning"]).lower()
+    is_thematic_flow = any(
+        kw in summary_text
+        for kw in [
+            "rotation",
+            "capital flow",
+            "picks and shovels",
+            "picks-and-shovels",
+            "adjacent trade",
+            "flow shift",
+            "sector shift",
+            "capex rotation",
+            "head fake",
+        ]
+    )
+    mem_type = "THEMATIC_FLOW" if is_thematic_flow else "MARKET_EVENT"
+    prefix = "THEMATIC FLOW" if is_thematic_flow else "MARKET EVENT"
+    memory_content = f"{prefix}: {consensus_data['event_name']}{ongoing_str} | IMPACT: {consensus_data['impact']} | SUMMARY: {consensus_data['reasoning']}{parallel_str}"
 
     new_memory_id = add_memory(
         content=memory_content,
+        memory_type=mem_type,
         metadata={
             "type": "consensus_event",
             "event_name": consensus_data["event_name"],

@@ -2,6 +2,7 @@ import type { PromptExperiment } from '@llm-market-bench/database';
 import { Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useMemo, useState } from 'react';
 import { diffLines } from '../utils/diff';
+import { splitPromptSections } from '../utils/promptSections';
 
 interface PromptChangesProps {
     experiment: PromptExperiment;
@@ -34,10 +35,15 @@ function getLineStyle(added?: boolean, removed?: boolean) {
 export function PromptChanges({ experiment, parentExperiment }: PromptChangesProps) {
     const [showChangesOnly, setShowChangesOnly] = useState(true);
 
-    // Compute diff
+    // Compute diff on mutable sections only (header+footer are identical across all variants)
     const diffResult = useMemo(() => {
         if (!parentExperiment) return [];
-        return diffLines(parentExperiment.prompt_content, experiment.prompt_content);
+        const parentMutable = splitPromptSections(parentExperiment.prompt_content || '').mutable;
+        const currentMutable = splitPromptSections(experiment.prompt_content || '').mutable;
+        // Fall back to full content if splitting didn't detect the mutable boundary
+        const parentText = parentMutable || parentExperiment.prompt_content || '';
+        const currentText = currentMutable || experiment.prompt_content || '';
+        return diffLines(parentText, currentText);
     }, [parentExperiment, experiment.prompt_content]);
 
     // Check if there are actual additions/deletions
@@ -85,7 +91,8 @@ export function PromptChanges({ experiment, parentExperiment }: PromptChangesPro
                         <span className="font-mono text-emerald-500">
                             v{experiment.variant_tag}
                         </span>{' '}
-                        (new)
+                        (new) &mdash;{' '}
+                        <span className="italic">mutable strategies section only</span>
                     </p>
                 </div>
 

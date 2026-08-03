@@ -1,7 +1,7 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { formatTrackLabel, TrackTabs } from './TrackTabs';
+import { formatTrackLabel, KNOWN_TRACKS, TrackTabs } from './TrackTabs';
 
 const mockExperiments: PromptExperiment[] = [
     {
@@ -63,5 +63,32 @@ describe('TrackTabs', () => {
 
         fireEvent.click(screen.getByText('Claude'));
         expect(onSelect).toHaveBeenCalledWith('track_claude');
+    });
+
+    it('always renders all KNOWN_TRACKS tabs even if no experiments exist for some tracks', () => {
+        const onSelect = vi.fn();
+
+        // Only track_default has experiments — track_claude and track_openai have none
+        render(
+            <TrackTabs
+                experiments={[mockExperiments[0]]}
+                activeTrack="track_default"
+                onSelectTrack={onSelect}
+            />,
+        );
+
+        // All 3 canonical tracks must appear
+        for (const trackId of KNOWN_TRACKS) {
+            expect(
+                screen.getByText(formatTrackLabel(trackId)),
+                `Expected tab for ${trackId} to be visible`,
+            ).toBeInTheDocument();
+        }
+    });
+
+    it('KNOWN_TRACKS contains the 3 canonical tracks', () => {
+        expect(KNOWN_TRACKS).toContain('track_default');
+        expect(KNOWN_TRACKS).toContain('track_claude');
+        expect(KNOWN_TRACKS).toContain('track_openai');
     });
 });

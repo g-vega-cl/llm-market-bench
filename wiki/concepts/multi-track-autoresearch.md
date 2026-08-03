@@ -42,7 +42,8 @@ The CLI entrypoint (`main.py`) supports multi-track execution and stochastic col
 
 ## UI Track Badges & Tabs
 
-- **Auto-Research Arena (`/autoresearch`)**: The `TrackTabs` component renders a tab bar (`track_default`, `track_claude`, `track_openai`). Experiment history tables and detail views render explicit track badges.
+- **Auto-Research Arena (`/autoresearch`)**: The `TrackTabs` component renders a tab bar from the static `KNOWN_TRACKS` constant (`track_default`, `track_claude`, `track_openai`). All three tabs are always visible — tracks with no experiments yet show a `0` badge rather than being hidden. Experiment history tables and detail views render explicit track badges.
+
 - **Portfolios Dashboard (`/portfolios`)**: Portfolio cards detect multi-track agent owner IDs (`getAutoresearchOwnerIds`) and display a dedicated `Track: <Label>` badge.
 
 ## Related

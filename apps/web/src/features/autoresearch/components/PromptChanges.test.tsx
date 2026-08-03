@@ -54,6 +54,8 @@ describe('PromptChanges', () => {
         // Header and elements
         expect(screen.getByText('Prompt Changes')).toBeInTheDocument();
         expect(screen.getByText('Show Full Prompt Diff')).toBeInTheDocument();
+        // Label clarifying only mutable section is diffed
+        expect(screen.getByText(/mutable strategies section only/i)).toBeInTheDocument();
 
         // Unchanged lines should NOT be visible by default
         expect(screen.queryByText('line 1')).not.toBeInTheDocument();
@@ -89,5 +91,32 @@ describe('PromptChanges', () => {
 
         // Added lines should still be visible
         expect(screen.getByText('+ line 2')).toBeInTheDocument();
+    });
+
+    it('diffs only the mutable section when header/footer are identical', () => {
+        const sharedHeader =
+            'You are a hedge fund.\n\n=== CRITICAL REQUIREMENTS ===\nThis is a HARD REQUIREMENT. No exceptions.\n\n';
+        const sharedFooter = '\n=== SMA MANAGEMENT RULES ===\nDo not lose money.\n';
+
+        const parentExp = {
+            id: '2',
+            variant_tag: 'v-parent',
+            prompt_content: `${sharedHeader}=== REASONING RIGOR ===\nOld strategy.\n${sharedFooter}`,
+            experiment_type: 'baseline',
+        } as unknown as PromptExperiment;
+
+        const currentExp = {
+            id: '1',
+            variant_tag: 'v-current',
+            parent_tag: 'v-parent',
+            prompt_content: `${sharedHeader}=== REASONING RIGOR ===\nNew improved strategy.\n${sharedFooter}`,
+            experiment_type: 'incremental',
+        } as unknown as PromptExperiment;
+
+        render(<PromptChanges experiment={currentExp} parentExperiment={parentExp} />);
+
+        // Should show a diff (not "No prompt text changes")
+        expect(screen.queryByText(/No prompt text changes detected/i)).not.toBeInTheDocument();
+        expect(screen.getByText('Show Full Prompt Diff')).toBeInTheDocument();
     });
 });

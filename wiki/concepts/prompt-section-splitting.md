@@ -37,6 +37,11 @@ The `ExperimentDetails` component in the autoresearch arena uses this utility to
 2.  **Trading Strategy & Analysis Rules** — Emerald "Mutable / Evolved by Autoresearch" badge with a highlighted border.
 3.  **Risk Rules & Output JSON Schema** — Amber "Frozen / System Managed" badge.
 
+### Prompt Diff Isolation
+
+`splitPromptSections` is also used by `PromptChanges.tsx` to scope the inline diff to the **mutable strategies section only**. Without this, the massive identical header and footer would dominate the diff view and mask real changes — or produce a spurious "no changes detected" result when only the strategies changed. If the markers are not found (e.g. for old legacy rows), the component falls back to diffing the full `prompt_content`.
+
+
 ## Related
 
 - [[entities/autoresearch-arena]]

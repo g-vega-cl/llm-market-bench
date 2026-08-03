@@ -1,6 +1,12 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
 import { Badge } from '@llm-market-bench/ui-design-system';
 
+/**
+ * Canonical list of autoresearch tracks mirroring packages/config/models.json AUTORESEARCH_TRACKS.
+ * Always shown in the UI even when a track has no experiments yet.
+ */
+export const KNOWN_TRACKS = ['track_default', 'track_claude', 'track_openai'] as const;
+
 interface TrackTabsProps {
     experiments: PromptExperiment[];
     activeTrack: string;
@@ -14,13 +20,11 @@ export function formatTrackLabel(trackId?: string | null): string {
 }
 
 export function TrackTabs({ experiments, activeTrack, onSelectTrack }: TrackTabsProps) {
-    // Derive unique track IDs from experiments, defaulting missing track_id to 'track_default'
-    const tracksSet = new Set<string>();
-    tracksSet.add('track_default');
-
+    // Start from the known static track list so all tracks show even with 0 experiments.
+    // Merge in any additional track IDs found in experiment data for forward-compatibility.
+    const tracksSet = new Set<string>(KNOWN_TRACKS);
     for (const exp of experiments) {
-        const tid = exp.track_id || 'track_default';
-        tracksSet.add(tid);
+        tracksSet.add(exp.track_id || 'track_default');
     }
 
     const availableTracks = Array.from(tracksSet);

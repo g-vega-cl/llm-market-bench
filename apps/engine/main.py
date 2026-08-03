@@ -1011,14 +1011,10 @@ def main():
         configure_analyzer(DEEPSEEK_API_KEY)
         asyncio.run(run_audit())
     elif args.command == COMMAND_AUTORESEARCH:
-        from autoresearch.runner import run
-        from core.config import AUTORESEARCH_TRACKS
+        from autoresearch.runner import run, run_all
 
         if args.track_id == "all":
-            track_ids = list(AUTORESEARCH_TRACKS.keys()) if AUTORESEARCH_TRACKS else ["track_default"]
-            for t_id in track_ids:
-                logger.info("Executing Auto-Research cycle for track: %s", t_id)
-                asyncio.run(run(dry_run=args.dry_run, track_id=t_id, cold_start=args.cold_start))
+            asyncio.run(run_all(dry_run=args.dry_run, cold_start=args.cold_start))
         else:
             asyncio.run(run(dry_run=args.dry_run, track_id=args.track_id, cold_start=args.cold_start))
     elif args.command == COMMAND_BOOTSTRAP_AUTORESEARCH:

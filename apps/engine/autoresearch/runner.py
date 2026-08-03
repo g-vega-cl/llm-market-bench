@@ -289,3 +289,13 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
     logger.info("=== Auto-Research Cycle Complete ===")
     logger.info("Next week's prompt: %s (%s)", tag, result.experiment_type)
     logger.info("AUTORESEARCH_RESULT: SUCCESS | variant=%s | type=%s | score=%.4f", tag, result.experiment_type, score)
+
+
+async def run_all(dry_run: bool = False, cold_start: bool = False):
+    """Run the auto-research cycle across all configured tracks sequentially within the same event loop."""
+    from core.config import AUTORESEARCH_TRACKS
+
+    track_ids = list(AUTORESEARCH_TRACKS.keys()) if AUTORESEARCH_TRACKS else ["track_default"]
+    for t_id in track_ids:
+        logger.info("Executing Auto-Research cycle for track: %s", t_id)
+        await run(dry_run=dry_run, track_id=t_id, cold_start=cold_start)

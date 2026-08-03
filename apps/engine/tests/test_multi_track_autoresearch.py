@@ -186,3 +186,19 @@ async def test_prompt_store_baseline_metrics_and_revert_filters_by_track_id():
 
         reverted = await prompt_store.revert_to_baseline(track_id="track_claude")
         assert reverted == "v_base_claude"
+
+
+@pytest.mark.asyncio
+async def test_runner_run_all_executes_all_tracks():
+    """Verify runner.run_all executes run() sequentially for all configured tracks."""
+    tracks = {"track_default": ["m1"], "track_claude": ["m2"], "track_openai": ["m3"]}
+    with (
+        patch.object(config, "AUTORESEARCH_TRACKS", tracks),
+        patch("autoresearch.runner.run", new_callable=AsyncMock) as mock_run,
+    ):
+        await runner.run_all(dry_run=True, cold_start=False)
+
+        assert mock_run.call_count == 3
+        mock_run.assert_any_call(dry_run=True, track_id="track_default", cold_start=False)
+        mock_run.assert_any_call(dry_run=True, track_id="track_claude", cold_start=False)
+        mock_run.assert_any_call(dry_run=True, track_id="track_openai", cold_start=False)

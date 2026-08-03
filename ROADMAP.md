@@ -103,50 +103,7 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
 - [ ] - Benchify: make sure El Niño is saved in memory
 - [ ] - Benchify: predict S&P for the day
-- [ ] - Benchify: check if this is in lessons learned
-    The AI rotation
-    Alphabet and Tesla’s results offer an early read on how investors may react to the rest of Magnificent Seven earnings, and by extension, the broader AI trade.
-
-So far, money has been rotating away from AI’s biggest consumer-facing winners, like Alphabet, and into the companies building the industry’s backbone—think utilities, power, or cooling. That’s not necessarily a bad thing. It suggests investors are still bullish on AI, just through a different part of the ecosystem.
-
-The concern, according to JPMorgan strategist Jason Hunter, is what happens if that rotation loses steam. He points to the late 1990s, when infrastructure stocks kept climbing even as actual internet companies’ stocks stalled out. JPMorgan Asset Management’s Michael Cembalest called that divergence a market “head fake.”
-
-There are similar dynamics at play today: Chip and infrastructure stocks have rallied more than the AI companies they’re supposed to be supplying.
-
-So if Big Tech keeps stumbling and infrastructure names stop carrying the baton, investors could start exiting the AI trade altogether, turning into a broader selloff
-This is such an obvious adjacent trade, why didn't we think about this before, how can we find these trades earlier?
-
-Once upon a time, it was super trendy for poorly performing companies to declare they were going to buy bitcoin (or solana, or dogecoin, or whatever) and transform themselves into digital asset treasuries.
-
-Now crypto is crashing, and everyone wants out—even Strategy, which accrued a hoard of bitcoin at one point worth over $52 billion to cement itself as the leading crypto treasury. But last week it sold $216 million of bitcoin—its largest sale ever, and only its third since 2020—as it tries to claw back recent losses.
-
-Strategy’s not the only company pivoting away from crypto. Bitcoin miners spent years minting new crypto coins using high-powered digital infrastructure—the exact sort of infrastructure that AI companies are gobbling up these days. That’s helped companies like Galaxy Digital, Applied Digital, and Cipher Digital (noticing a pattern?) become “AI landlords”, leasing their datacenters and the electricity powering them to hyperscalers.
-
-That’s why TeraWulf popped 4.86% today: The former crypto miner just inked a 20-year lease with Anthropic, letting the AI startup use one of its datacenters in Kentucky in exchange for an estimated $19 billion in revenue. It’s a great deal for TeraWulf, whose shares have soared 93.3% in 2026, as its pivot away from crypto and toward AI takes shape. Too bad Strategy can’t do the same thing—its shares have tumbled 33.68% this year.—
-
-Wall Street agrees that the AI trade is far from over—but the pros just can’t decide which corner of the market is the next big thing.
-
-The semiconductor rally has been taking a breather on the heels of a mind-boggling run in the first half of the year: The popular Philadelphia Semiconductor Index soared 99% between the beginning of 2026 and its all-time high on June 22, but is now down roughly 12% from that peak.
-
-According to a note from Morgan Stanley chief US equity strategist Mike Wilson, the carnage in semis (and especially in memory stocks) won’t end anytime soon: After all, earnings revisions for the sector are at a historical high, and investors are understandably wondering just how much juice is left, given sky-high valuations.
-
-But Wilson argues that a downturn in semis isn’t evidence that the AI boom as a whole is overblown. In fact, he thinks that this is a healthy correction, and the fourth normal dip since ChatGPT’s launch back in 2022.
-
-“We’ve seen relative performance oscillate between the various types of AI beneficiaries over the past couple of years and we expect those rotations to continue as the cycle evolves,” Wilson wrote today. “This is simply the next rotation, in our view—Semis to the Hyperscalers and other broadening trades.” It’s time for a reshuffling: Now, Wilson says it’s time for investors to shift focus from semiconductors to hyperscalers (think Microsoft, Amazon, and Alphabet). For one, they’ve underperformed relative to chipmakers over the past few months, which means that the chief concern facing these companies—gargantuan capex spending—has already been priced into their shares. News that Meta is selling excess computing power could be bullish for the sector, too, according to Wilson.
-
-Wilson also argues that a bigger market shift is coming: Instead of mega-caps carrying the market, gains will come from a wider array of sectors and companies. He points to consumer discretionary stocks, which he says should get a boost from falling oil prices and easing inflation. He also recommends biotech, given that the sector usually performs well when interest rates fall; M&A in the sector is already increasing.
-
-Plenty of ways to skin the AI cat
-But other Wall Street analysts are taking a different approach: A group of JPMorgan strategists argue that right now is the best time to buy the dip in semiconductors, given that the imbalance in supply and demand won’t even out until 2028.
-
-And unlike Wilson, these analysts are less excited about the rest of the AI trade, including the Magnificent Seven. They also argue that investors should be aware of the industries most susceptible to AI “cannibalization,” including media, software, and business services.
-
-Others on the Street believe that chips are still king, but that it’s time to look elsewhere in the supply chain. For example, UBS global head of equities Ulrike Hoffmann-Burchardi thinks that the hardware downturn is an opportunity to double down on the “picks and shovels” of the AI boom. “Supply bottlenecks in the AI value chain have continued to move upstream—from GPU systems in 2023-25, server components over the past year, to potentially semiconductor equipment over the next six months,” Hoffmann-Burchardi wrote. “We favor semiconductor equipment, foundries, CPU-related compute infrastructure, and memory within the “picks and shovels” of the AI build-out, but we also see value in defensive areas such as payment networks and data center REITs.”
-
-We’ll give you the same advice we give ourselves after devouring a party-size bag of Doritos: Chips are good—but you need some variety.
-
 - [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money
-
 - [ ] - Erica said that in Canada you could have clear insider trading because there is a gradual buying leading to news, so we could tap into this.
 - [ ] - An LLM that focuses only on government opportunities. - Like deals in pipeline, new reforms, under the radar things
 - [ ] - Benchify: add institutional buying and Congress buying?
@@ -172,3 +129,7 @@ Feels like I have done that before to no avail
 - [ ] - Chart based on candle volatility not time
 - [ ] - Single company focused llm
 - [ ] - Look for statistical analysis for markets
+- [ ] - Predict daily S&P or whichever move, either up or down.
+- [ ] - Update autoresearcher LLM? Use different LLMs for autoreserarhcer.
+- [ ] - Add more LLMs to sector researcher.
+- [ ] - backtest sector researcher.

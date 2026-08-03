@@ -45,7 +45,7 @@ def test_tiered_decay_applies_correct_rates(mock_supabase):
     )
 
     payloads = [call[0][0] for call in update_calls]
-    assert {"relevance_score": 0.5} in payloads   # MARKET_EVENT: 50% per month
+    assert {"relevance_score": 0.5} in payloads  # MARKET_EVENT: 50% per month
     assert {"relevance_score": 0.75} in payloads  # GOVERNMENT_INCENTIVE: 25% per month
     assert {"relevance_score": 0.72} in payloads  # UNCROWDED_TRADE: 28% per month
 
@@ -73,6 +73,4 @@ def test_uncrowded_trade_decay_timeline():
 
     # Verify 2-month relevance directly
     two_month_relevance = 1.0 * (DECAY_FACTOR**2)
-    assert two_month_relevance > 0.3, (
-        f"2-month relevance {two_month_relevance:.3f} is too low — thesis fades too fast"
-    )
+    assert two_month_relevance > 0.3, f"2-month relevance {two_month_relevance:.3f} is too low — thesis fades too fast"

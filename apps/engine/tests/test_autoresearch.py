@@ -947,6 +947,7 @@ class TestRunnerWindowDuplication:
             return (False, "")
 
         monkeypatch.setattr(runner, "_check_safety", _fake_check_safety)
+
         async def _fake_active_var(**kw):
             return None
 
@@ -1333,6 +1334,34 @@ class TestResearcherRetry:
         result = await researcher.run_research("# Test Report")
         assert result is None, "Must return None after all retries fail"
         assert call_count["n"] == 3, f"Expected 3 attempts, got {call_count['n']}"
+
+    @pytest.mark.asyncio
+    async def test_retries_when_proposed_prompt_is_identical_to_baseline(self, monkeypatch):
+        from autoresearch import researcher
+
+        baseline_text = "=== REASONING RIGOR ===\nBase strategy."
+        new_modified_text = "=== REASONING RIGOR ===\nNew modified strategy."
+
+        call_count = {"n": 0}
+
+        async def fake_create(**kwargs):
+            call_count["n"] += 1
+            res = MagicMock()
+            if call_count["n"] == 1:
+                res.new_prompt_text = baseline_text
+            else:
+                res.new_prompt_text = new_modified_text
+            return res
+
+        fake_client = MagicMock()
+        fake_client.chat.completions.create = fake_create
+
+        monkeypatch.setattr(researcher, "get_deepseek_client", lambda: fake_client)
+
+        result = await researcher.run_research("# Test Report", baseline_prompt=baseline_text)
+        assert result is not None
+        assert result.new_prompt_text == new_modified_text
+        assert call_count["n"] == 2, f"Expected 2 attempts (retry after identical baseline), got {call_count['n']}"
 
 
 # ---------------------------------------------------------------------------

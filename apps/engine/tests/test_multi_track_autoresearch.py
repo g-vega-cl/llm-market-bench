@@ -156,7 +156,8 @@ async def test_runner_passes_track_id_and_cold_start():
         mock_baseline_metrics.assert_called_once_with(track_id="track_claude")
         mock_eval.assert_called_once()
         assert mock_eval.call_args.kwargs.get("track_id") == "track_claude"
-        mock_research.assert_called_once_with("Report", cold_start=True)
+        mock_research.assert_called_once()
+        assert mock_research.call_args.kwargs.get("cold_start") is True
         mock_save_var.assert_called_once()
         assert mock_save_var.call_args.kwargs.get("track_id") == "track_claude"
 
@@ -185,4 +186,3 @@ async def test_prompt_store_baseline_metrics_and_revert_filters_by_track_id():
 
         reverted = await prompt_store.revert_to_baseline(track_id="track_claude")
         assert reverted == "v_base_claude"
-

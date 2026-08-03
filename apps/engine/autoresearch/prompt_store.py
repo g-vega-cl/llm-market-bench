@@ -52,7 +52,13 @@ async def get_active_prompt(
 
     res = await query.maybe_single().execute()
 
-    if not res or not hasattr(res, "data") or not res.data or isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+    if (
+        not res
+        or not hasattr(res, "data")
+        or not res.data
+        or isinstance(res.data, dict)
+        and ("message" in res.data or "code" in res.data)
+    ):
         logger.info("No active prompt found for track_id=%s, prompt_name=%s", track_id, prompt_name)
         return None
 
@@ -81,7 +87,13 @@ async def get_active_variant(
 
     res = await query.maybe_single().execute()
 
-    if not res or not hasattr(res, "data") or not res.data or isinstance(res.data, dict) and ("message" in res.data or "code" in res.data):
+    if (
+        not res
+        or not hasattr(res, "data")
+        or not res.data
+        or isinstance(res.data, dict)
+        and ("message" in res.data or "code" in res.data)
+    ):
         return None
 
     return res.data if isinstance(res.data, dict) else None
@@ -160,7 +172,9 @@ async def save_variant(
     await demote_query.execute()
 
     clear_active_prompt_cache()
-    logger.info("Saved prompt variant %s for track %s (type=%s, is_backtest=%s)", tag, track_id, experiment_type, is_backtest)
+    logger.info(
+        "Saved prompt variant %s for track %s (type=%s, is_backtest=%s)", tag, track_id, experiment_type, is_backtest
+    )
     return tag
 
 
@@ -172,10 +186,7 @@ async def get_previous_variants(
 ) -> list[dict]:
     sb_client = await get_async_supabase_client()
     query = (
-        sb_client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", prompt_name)
-        .eq("is_backtest", is_backtest)
+        sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest)
     )
     if track_id:
         query = query.eq("track_id", track_id)
@@ -195,10 +206,7 @@ async def get_all_time_baseline(
     """Return the prompt variant with the highest score achieved so far among pull-based variants for a track."""
     sb_client = await get_async_supabase_client()
     query = (
-        sb_client.table("prompt_experiments")
-        .select("*")
-        .eq("prompt_name", prompt_name)
-        .eq("is_backtest", is_backtest)
+        sb_client.table("prompt_experiments").select("*").eq("prompt_name", prompt_name).eq("is_backtest", is_backtest)
     )
     if track_id:
         query = query.eq("track_id", track_id)
@@ -362,4 +370,3 @@ async def revert_to_baseline(
     clear_active_prompt_cache()
     logger.info("Reverted to baseline prompt variant: %s", baseline_tag)
     return baseline_tag
-

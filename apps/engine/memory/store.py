@@ -641,7 +641,7 @@ def decay_memories(sb_client: Client, decay_days: int = None):
             if mt in ("THEMATIC_FLOW", "UNCROWDED_TRADE"):
                 decay_factor = 0.72
             elif mt == "MARKET_EVENT":
-                decay_factor = 0.5   # 50% per 30 days
+                decay_factor = 0.5  # 50% per 30 days
             else:
                 decay_factor = 0.75  # 25% decay for GOVERNMENT_INCENTIVE and others
             new_relevance = memory["relevance_score"] * decay_factor

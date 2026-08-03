@@ -184,13 +184,41 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
         logger.info("RATCHET: No baseline found. Establishing first baseline with score %.4f", score)
         parent_tag = active_variant["variant_tag"] if active_variant else baseline_tag
 
+    # Extract baseline mutable text to ensure run_research does not return duplicate text
+    from core.llm.prompts import split_prompt
+
+    baseline_prompt_mutable = None
+    try:
+        from .prompt_store import get_all_time_baseline
+
+        try:
+            b_var = await get_all_time_baseline(track_id=track_id)
+        except TypeError:
+            b_var = await get_all_time_baseline()
+        if b_var and b_var.get("prompt_content"):
+            _, baseline_prompt_mutable, _ = split_prompt(b_var["prompt_content"])
+    except Exception as e:
+        logger.warning("Could not resolve baseline mutable prompt: %s", e)
+
+    current_prompt_mutable = None
+    if active_variant and active_variant.get("prompt_content"):
+        _, current_prompt_mutable, _ = split_prompt(active_variant["prompt_content"])
+
     # Run the auto-research LLM
     logger.info("Calling auto-research LLM...")
     try:
         try:
-            result = await run_research(report, cold_start=cold_start)
+            result = await run_research(
+                report,
+                current_prompt=current_prompt_mutable,
+                cold_start=cold_start,
+                baseline_prompt=baseline_prompt_mutable,
+            )
         except TypeError:
-            result = await run_research(report)
+            try:
+                result = await run_research(report, cold_start=cold_start)
+            except TypeError:
+                result = await run_research(report)
     except Exception as e:
         logger.error("Auto-research LLM call failed: %s", e)
         return

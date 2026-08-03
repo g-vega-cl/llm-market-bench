@@ -52,6 +52,7 @@ async def run_research(
     report: str,
     current_prompt: str | None = None,
     cold_start: bool = False,
+    baseline_prompt: str | None = None,
 ) -> PromptResearchResult | None:
     """Run the auto-research evaluation and return proposed prompt changes.
 
@@ -59,6 +60,7 @@ async def run_research(
         report: The formatted report with all metrics, samples, and context.
         current_prompt: Optional current system prompt text.
         cold_start: If True, instructs the meta-researcher to ignore prior prompt history and build from scratch.
+        baseline_prompt: Optional baseline mutable strategy text to ensure new_prompt_text is not a duplicate.
 
     Returns:
         A PromptResearchResult with the new prompt and reasoning, or None on failure.
@@ -103,6 +105,29 @@ async def run_research(
                     wrapper = resp_awaitable
 
                 if wrapper is not None:
+                    # Check if proposed prompt is identical to baseline
+                    if baseline_prompt and wrapper.new_prompt_text.strip() == baseline_prompt.strip():
+                        attempt_num = attempt + 1
+                        logger.warning(
+                            "[%s/%s] Auto-research proposed prompt identical to baseline (attempt %d/3). Retrying...",
+                            provider,
+                            AUTORESEARCH_MODEL,
+                            attempt_num,
+                        )
+                        instructor_messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Your proposed new_prompt_text is 100% identical to the Baseline Prompt. "
+                                    "You MUST propose a NEW modification or refined strategy built on top of the baseline, "
+                                    "or a RADICAL alternative. Do NOT return identical text to the baseline."
+                                ),
+                            }
+                        )
+                        create_args["messages"] = copy.deepcopy(instructor_messages)
+                        wrapper = None
+                        continue
+
                     break
 
                 attempt_num = attempt + 1
@@ -160,7 +185,7 @@ async def run_research(
                 "[%s/%s] All auto-research attempts failed. Last error: %s",
                 provider,
                 AUTORESEARCH_MODEL,
-                last_error or "empty response",
+                last_error or "empty response or duplicate baseline",
             )
             return None
 

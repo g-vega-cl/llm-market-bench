@@ -980,7 +980,11 @@ def main():
     parser.add_argument("--force", action="store_true", help="Force ingestion even outside market hours")
     parser.add_argument("--dry-run", action="store_true", help="Run auto-research without writing to database")
     parser.add_argument(
-        "--track-id", "--track", type=str, default="all", help="Track ID for multi-track autoresearch ('all' to run all tracks)"
+        "--track-id",
+        "--track",
+        type=str,
+        default="all",
+        help="Track ID for multi-track autoresearch ('all' to run all tracks)",
     )
     parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
 

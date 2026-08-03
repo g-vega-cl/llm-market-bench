@@ -13,7 +13,7 @@ The auto-research loop runs weekly:
 1. **Safety check** — < 2 trades? Revert to previous prompt.
 2. **Evaluate** — Compute single score from weekly trading data. Record this score directly on the prompt variant (`P_active`) that actually ran during the week. Find the baseline (best score so far).
 3. **Revert on failure** — If score < baseline, revert the active prompt to the baseline. This enforces the Karpathy ratchet: the meta-researcher always builds from the known-good foundation, never from a failed experiment. **Note:** This revert happens chronologically **before** generating the new prompt in Step 4.
-4. **Hypothesize** — Meta-researcher LLM proposes prompt changes, building *on top of the post-revert baseline*.
+4. **Hypothesize** — Meta-researcher LLM proposes prompt changes, building *on top of the post-revert baseline*. **Non-Duplicate Validation**: `run_research()` enforces that `new_prompt_text` MUST NOT be 100% identical to the baseline text. If the LLM proposes an unmutated copy of the baseline (e.g. misinterpreting a revert as outputting duplicate text), the engine retries with feedback demanding a novel mutation or radical alternative so a new hypothesis is always tested on every turn.
 5. **Deploy** — Always activate the new variant generated in step 4. Save it as a new database row with empty metrics (`{}`), status `active`, and scheduled for the upcoming week (advanced by 7 days from the prior week). No gate. Every week iterates.
 6. **Track** — If score > baseline, this prompt becomes the new baseline.
 

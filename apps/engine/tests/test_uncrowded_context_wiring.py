@@ -47,9 +47,7 @@ def test_retrieve_uncrowded_trades_formats_results():
     mock_response.data = mock_rows
 
     mock_client = MagicMock()
-    mock_client.table.return_value.select.return_value.eq.return_value.in_.return_value.order.return_value.limit.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_client.table.return_value.select.return_value.eq.return_value.in_.return_value.order.return_value.limit.return_value.execute.return_value = mock_response
 
     with patch("memory.store.get_supabase_client", return_value=mock_client):
         from memory.store import retrieve_uncrowded_trades
@@ -67,9 +65,7 @@ def test_retrieve_uncrowded_trades_returns_empty_on_no_data():
     mock_response.data = []
 
     mock_client = MagicMock()
-    mock_client.table.return_value.select.return_value.eq.return_value.in_.return_value.order.return_value.limit.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_client.table.return_value.select.return_value.eq.return_value.in_.return_value.order.return_value.limit.return_value.execute.return_value = mock_response
 
     with patch("memory.store.get_supabase_client", return_value=mock_client):
         from memory.store import retrieve_uncrowded_trades

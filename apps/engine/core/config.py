@@ -100,6 +100,9 @@ COMMAND_AUDIT = "audit"
 COMMAND_AUTORESEARCH = "autoresearch"
 COMMAND_BOOTSTRAP_AUTORESEARCH = "bootstrap-autoresearch"
 COMMAND_CLEANUP = "cleanup"
+COMMAND_DAILY_PREDICTOR = "daily-predictor"
+COMMAND_EVALUATE_DAILY_PREDICTIONS = "evaluate-daily-predictions"
+COMMAND_DAILY_AUTORESEARCH = "daily-autoresearch"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

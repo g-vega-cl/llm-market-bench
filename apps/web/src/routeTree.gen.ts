@@ -23,6 +23,7 @@ import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
 import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
 import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard/index'
+import { Route as DailyPredictionsIndexRouteImport } from './routes/daily-predictions/index'
 import { Route as ConceptsIndexRouteImport } from './routes/concepts/index'
 import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
 import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
@@ -102,6 +103,11 @@ const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
   path: '/leaderboard/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DailyPredictionsIndexRoute = DailyPredictionsIndexRouteImport.update({
+  id: '/daily-predictions/',
+  path: '/daily-predictions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConceptsIndexRoute = ConceptsIndexRouteImport.update({
   id: '/concepts/',
   path: '/concepts/',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/autoresearch/': typeof AutoresearchIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
+  '/daily-predictions/': typeof DailyPredictionsIndexRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/market-overview/': typeof MarketOverviewIndexRoute
   '/memories/': typeof MemoriesIndexRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/autoresearch': typeof AutoresearchIndexRoute
   '/cause-and-effect': typeof CauseAndEffectIndexRoute
   '/concepts': typeof ConceptsIndexRoute
+  '/daily-predictions': typeof DailyPredictionsIndexRoute
   '/leaderboard': typeof LeaderboardIndexRoute
   '/market-overview': typeof MarketOverviewIndexRoute
   '/memories': typeof MemoriesIndexRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/autoresearch/': typeof AutoresearchIndexRoute
   '/cause-and-effect/': typeof CauseAndEffectIndexRoute
   '/concepts/': typeof ConceptsIndexRoute
+  '/daily-predictions/': typeof DailyPredictionsIndexRoute
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/market-overview/': typeof MarketOverviewIndexRoute
   '/memories/': typeof MemoriesIndexRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/autoresearch/'
     | '/cause-and-effect/'
     | '/concepts/'
+    | '/daily-predictions/'
     | '/leaderboard/'
     | '/market-overview/'
     | '/memories/'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/autoresearch'
     | '/cause-and-effect'
     | '/concepts'
+    | '/daily-predictions'
     | '/leaderboard'
     | '/market-overview'
     | '/memories'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/autoresearch/'
     | '/cause-and-effect/'
     | '/concepts/'
+    | '/daily-predictions/'
     | '/leaderboard/'
     | '/market-overview/'
     | '/memories/'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   AutoresearchIndexRoute: typeof AutoresearchIndexRoute
   CauseAndEffectIndexRoute: typeof CauseAndEffectIndexRoute
   ConceptsIndexRoute: typeof ConceptsIndexRoute
+  DailyPredictionsIndexRoute: typeof DailyPredictionsIndexRoute
   LeaderboardIndexRoute: typeof LeaderboardIndexRoute
   MarketOverviewIndexRoute: typeof MarketOverviewIndexRoute
   MemoriesIndexRoute: typeof MemoriesIndexRoute
@@ -423,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/daily-predictions/': {
+      id: '/daily-predictions/'
+      path: '/daily-predictions'
+      fullPath: '/daily-predictions/'
+      preLoaderRoute: typeof DailyPredictionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/concepts/': {
       id: '/concepts/'
       path: '/concepts'
@@ -517,6 +537,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutoresearchIndexRoute: AutoresearchIndexRoute,
   CauseAndEffectIndexRoute: CauseAndEffectIndexRoute,
   ConceptsIndexRoute: ConceptsIndexRoute,
+  DailyPredictionsIndexRoute: DailyPredictionsIndexRoute,
   LeaderboardIndexRoute: LeaderboardIndexRoute,
   MarketOverviewIndexRoute: MarketOverviewIndexRoute,
   MemoriesIndexRoute: MemoriesIndexRoute,

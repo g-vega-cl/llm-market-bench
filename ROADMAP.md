@@ -23,7 +23,6 @@ A living document of features and improvements in progress or planned for the pl
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
 - [ ] **An "AI" debate or consensus on different ways to invest in different events?**
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
-- [ ] **Add "learning from failures" to what I'm feeling right now.**
 - [ ] **Recheck calendar events**
 - [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
   - Decided it was a bit inconvenient and not worth it.
@@ -56,7 +55,7 @@ A living document of features and improvements in progress or planned for the pl
 - [x] Benchify: audit the verifier.
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [x] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
-- [ ] - Benchify alllw people yo use their own models/keys/prompts and compete.
+- [ ] - Benchify allow people yo use their own models/keys/prompts and compete.
 - [ ] - Benchify : add opportunity costs to sells? Like, oh, if you held you would have made more/less? Maybe not worth because lookback bias?
 - [ ] - Benchify : audit that memories are still being correlated to each other
 - [ ] - Events/Consensus events : tend to be a bit ambiguous, maybe click and show the source of the event? The news that prompted it?
@@ -69,7 +68,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] - add money printing/creation/fiscal deficits of governments to the sytem. Track government spending and deficits closely. Same with corporate spending.
 - [ ] - add memories sorting by importance or filter by date too.
 - [x] - Benchify: lighthouse CLI/performance audit.
-- [ ] - Benchify: Today page market events has a consensus bar with percentage, what is it for? - Keep small text below/next to stuff so we know what it represents.
 - [ ] - Benchify: update autoresearch scoring display in FE. How to keep them synced?
 - [ ] - Benchify: add which ticker corresponds to each scenario in memories possible scenarios
 - [ ] - Benchify: historical parallel more details - goes well with LLM chat.

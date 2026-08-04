@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/daily-market-predictor]] — Auto-indexed page
 - [[entities/backtest-arena]] — Web UI for browsing backtest prompt experiments and mutation history
 - [[entities/git-history]] — Automated Git history export to structured Markdown with QMD indexing
 - [[entities/commit-msg-lint]] — Conventional Commits enforcement via pre-commit hook

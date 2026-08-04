@@ -26,6 +26,9 @@ from core.config import (
     COMMAND_CALENDAR,
     COMMAND_CAUSE_AND_EFFECT,
     COMMAND_CLEANUP,
+    COMMAND_DAILY_AUTORESEARCH,
+    COMMAND_DAILY_PREDICTOR,
+    COMMAND_EVALUATE_DAILY_PREDICTIONS,
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
     COMMAND_POST_ANALYSIS,
@@ -973,6 +976,9 @@ def main():
             COMMAND_AUTORESEARCH,
             COMMAND_BOOTSTRAP_AUTORESEARCH,
             COMMAND_CLEANUP,
+            COMMAND_DAILY_PREDICTOR,
+            COMMAND_EVALUATE_DAILY_PREDICTIONS,
+            COMMAND_DAILY_AUTORESEARCH,
         ],
         help="Action to perform",
     )
@@ -987,6 +993,7 @@ def main():
         help="Track ID for multi-track autoresearch ('all' to run all tracks)",
     )
     parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
+    parser.add_argument("--ticker", type=str, default="SPY", help="Ticker for daily predictor (default: SPY)")
 
     args = parser.parse_args()
 
@@ -1025,6 +1032,18 @@ def main():
         from core.cleanup import run_cleanup
 
         asyncio.run(run_cleanup())
+    elif args.command == COMMAND_DAILY_PREDICTOR:
+        from tasks.daily_predictor import run_daily_prediction
+
+        asyncio.run(run_daily_prediction(ticker=args.ticker))
+    elif args.command == COMMAND_EVALUATE_DAILY_PREDICTIONS:
+        from tasks.evaluate_daily_predictions import evaluate_daily_predictions
+
+        asyncio.run(evaluate_daily_predictions())
+    elif args.command == COMMAND_DAILY_AUTORESEARCH:
+        from tasks.daily_autoresearch import run_daily_autoresearch
+
+        asyncio.run(run_daily_autoresearch())
 
 
 if __name__ == "__main__":

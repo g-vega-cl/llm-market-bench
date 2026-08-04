@@ -410,7 +410,7 @@ async def test_gemini_sell_tool_missing_triggers_retry(mock_clients):
 
         resp = await analyze_with_provider(
             provider="gemini",
-            model_name="gemini-3.1-flash-lite",
+            model_name="gemini-3.5-flash-lite",
             chunks=[{"source_id": "s_gemini", "content": "..."}],
             portfolio_context="- SPOT: 100 shares",  # To satisfy ownership validation
         )

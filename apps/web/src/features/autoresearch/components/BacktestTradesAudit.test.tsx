@@ -37,7 +37,7 @@ describe('BacktestTradesAudit', () => {
                     {
                         id: 't-1',
                         portfolio_id: 'p-1',
-                        model_name: 'gemini-3.1-flash-lite',
+                        model_name: 'gemini-3.5-flash-lite',
                         ticker: 'AAPL',
                         signal: 'BUY',
                         quantity: 50,
@@ -63,6 +63,6 @@ describe('BacktestTradesAudit', () => {
         expect(screen.getByText(/Backtest Executed Trades Audit/i)).toBeInTheDocument();
         expect(screen.getByText('AAPL')).toBeInTheDocument();
         expect(screen.getAllByText('BUY').length).toBeGreaterThan(0);
-        expect(screen.getByText('gemini-3.1-flash-lite')).toBeInTheDocument();
+        expect(screen.getByText('gemini-3.5-flash-lite')).toBeInTheDocument();
     });
 });

@@ -12,6 +12,7 @@ import { getSupabaseBrowserClient } from '~/lib/supabase-client';
 function getAgentDisplayName(ownerId: string | null | undefined): string {
     if (!ownerId) return 'Unknown Agent';
     const normalized = ownerId.toLowerCase().replace(/[\s_-]+/g, '-');
+    if (normalized.includes('gemini-3.5-flash-lite')) return 'Gemini 3.5 Flash Lite';
     if (normalized.includes('gemini-3.1-flash-lite')) return 'Gemini 3.1 Flash Lite';
     if (normalized.includes('deepseek-v4-pro')) return 'DeepSeek V4 Pro';
     if (normalized.includes('minimax-m3') || normalized.includes('minimax')) return 'MiniMax-M3';

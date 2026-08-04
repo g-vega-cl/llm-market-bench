@@ -14,7 +14,7 @@ Each track is identified by a `track_id` string stored in the `prompt_experiment
 ```json
 {
   "AUTORESEARCH_TRACKS": {
-    "track_default": ["gemini-3.1-flash-lite", "deepseek-v4-pro", "MiniMax-M3"],
+    "track_default": ["gemini-3.5-flash-lite", "deepseek-v4-pro", "MiniMax-M3"],
     "track_claude": ["claude-haiku-4-5", "deepseek-v4-flash"],
     "track_openai": ["gpt-5.4-nano"]
   }

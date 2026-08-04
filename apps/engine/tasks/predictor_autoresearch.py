@@ -58,7 +58,7 @@ async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_resea
 
     try:
         resp_awaitable = meta_researcher.chat.completions.create(
-            model="gemini-3.1-flash-lite",
+            model="gemini-3.5-flash-lite",
             response_model=MetaPromptResponse,
             messages=[{"role": "user", "content": meta_prompt}],
         )

@@ -174,7 +174,7 @@ describe('AgentInsights', () => {
         const consensusMemory = {
             ...createConsensusMemory('consensus-123'),
             metadata: {
-                participating_agents: ['gpt-5.4-nano', 'gemini-3.1-flash-lite'],
+                participating_agents: ['gpt-5.4-nano', 'gemini-3.5-flash-lite'],
                 tickers: ['NVDA'],
             },
         };

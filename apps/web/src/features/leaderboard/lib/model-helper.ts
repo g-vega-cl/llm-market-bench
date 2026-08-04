@@ -25,7 +25,7 @@ export const modelDisplayConfig: Record<
         gradient: 'catalyst',
     },
     [MODELS.GEMINI]: {
-        name: 'Gemini (3.1-flash-lite)',
+        name: 'Gemini (3.5-flash-lite)',
         color: 'text-blue-400',
         bgColor: 'bg-blue-500',
         emoji: '🔵',

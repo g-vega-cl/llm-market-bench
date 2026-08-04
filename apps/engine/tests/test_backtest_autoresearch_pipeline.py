@@ -129,7 +129,7 @@ async def test_evaluate_backtest_week_includes_trades():
 
     cursor.execute(
         "INSERT INTO portfolios (id, owner_id, cash_balance, total_equity, sma, buying_power, excess_liquidity, maintenance_margin, realized, last_updated_at) "
-        "VALUES ('port-1', 'gemini-3.1-flash-lite', 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 0.0, 10000.0, datetime('now'))"
+        "VALUES ('port-1', 'gemini-3.5-flash-lite', 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 0.0, 10000.0, datetime('now'))"
     )
 
     cursor.execute(

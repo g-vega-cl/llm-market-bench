@@ -23,9 +23,9 @@ import {
 } from './fetch-portfolios';
 
 vi.mock('../lib/config', () => ({
-    getActiveOwnerIds: vi.fn(() => ['gemini-3.1-flash-lite', 'deepseek-v4-pro']),
+    getActiveOwnerIds: vi.fn(() => ['gemini-3.5-flash-lite', 'deepseek-v4-pro']),
     isAutoresearchPortfolio: vi.fn((id) =>
-        ['gemini-3.1-flash-lite', 'deepseek-v4-pro'].includes(id),
+        ['gemini-3.5-flash-lite', 'deepseek-v4-pro'].includes(id),
     ),
     normalizeOwnerId: vi.fn((id) => id.toLowerCase().replace(/\s+/g, '-')),
 }));
@@ -96,7 +96,7 @@ test('fetchBenchmarkHistory keeps only last price per day for multiple tickers',
 
 test('fetchPortfolios tags portfolios with is_autoresearch correctly', async () => {
     const mockData = [
-        { id: '1', owner_id: 'gemini-3.1-flash-lite', total_equity: 10000, cash_balance: 5000 },
+        { id: '1', owner_id: 'gemini-3.5-flash-lite', total_equity: 10000, cash_balance: 5000 },
         { id: '2', owner_id: 'deepseek-v4-pro', total_equity: 12000, cash_balance: 6000 },
         { id: '3', owner_id: 'gpt-5.4-nano', total_equity: 8000, cash_balance: 4000 },
     ];
@@ -111,14 +111,14 @@ test('fetchPortfolios tags portfolios with is_autoresearch correctly', async () 
     const result = await fetchPortfolios();
 
     expect(result).toHaveLength(3);
-    expect(result.find((p) => p.owner_id === 'gemini-3.1-flash-lite')?.is_autoresearch).toBe(true);
+    expect(result.find((p) => p.owner_id === 'gemini-3.5-flash-lite')?.is_autoresearch).toBe(true);
     expect(result.find((p) => p.owner_id === 'deepseek-v4-pro')?.is_autoresearch).toBe(true);
     expect(result.find((p) => p.owner_id === 'gpt-5.4-nano')?.is_autoresearch).toBe(false);
 });
 
 test('fetchAllActivePortfolioPerformance does not restrict older portfolios when a new portfolio starts today', async () => {
     const mockPortfolios = [
-        { id: 'old-id', owner_id: 'gemini-3.1-flash-lite', total_equity: 10000 },
+        { id: 'old-id', owner_id: 'gemini-3.5-flash-lite', total_equity: 10000 },
         { id: 'new-id', owner_id: 'deepseek-v4-pro', total_equity: 12000 },
     ];
     const mockPerformance = [

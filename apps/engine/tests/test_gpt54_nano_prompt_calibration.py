@@ -37,7 +37,7 @@ async def test_gpt54_nano_prompt_calibration_injected():
 @pytest.mark.asyncio
 async def test_other_models_prompt_unaffected():
     """Verify that other models do not receive the gpt-5.4-nano specific pre-audit prompt."""
-    other_owners = ["claude-haiku-4-5", "deepseek-v4-pro", "gemini-3.1-flash-lite", "MiniMax-M3"]
+    other_owners = ["claude-haiku-4-5", "deepseek-v4-pro", "gemini-3.5-flash-lite", "MiniMax-M3"]
 
     for owner in other_owners:
         with patch("core.db.get_async_supabase_client", side_effect=Exception("Mocked DB")):

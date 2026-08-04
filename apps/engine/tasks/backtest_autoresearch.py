@@ -692,7 +692,7 @@ async def run_simulated_tick(t_sim: datetime, active_prompt: str):
 
         logger.info(f"Loaded {len(newsletters)} newsletters up to simulated timestamp.")
 
-        allowed_models = ["gemini-3.1-flash-lite", "deepseek-v4-pro", "MiniMax-M3"]
+        allowed_models = ["gemini-3.5-flash-lite", "deepseek-v4-pro", "MiniMax-M3"]
         backtest_models = [m for m in MODELS if m["model"] in allowed_models]
 
         with patch("analysis.analyze.MODELS", backtest_models):

@@ -5,9 +5,9 @@ vi.mock('@repo/config/models.json', () => ({
     default: {
         OPENAI_MODEL: 'gpt-5.4-nano',
         ANTHROPIC_MODEL: 'claude-haiku-4-5',
-        GEMINI_MODEL: 'gemini-3.1-flash-lite',
+        GEMINI_MODEL: 'gemini-3.5-flash-lite',
         DEEPSEEK_MODEL: 'deepseek-v4-pro',
-        AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.1-flash-lite', 'deepseek-v4-pro'],
+        AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.5-flash-lite', 'deepseek-v4-pro'],
     },
 }));
 
@@ -20,9 +20,9 @@ describe('Portfolio Config Utils', () => {
             default: {
                 OPENAI_MODEL: 'gpt-5.4-nano',
                 ANTHROPIC_MODEL: 'claude-haiku-4-5',
-                GEMINI_MODEL: 'gemini-3.1-flash-lite',
+                GEMINI_MODEL: 'gemini-3.5-flash-lite',
                 DEEPSEEK_MODEL: 'deepseek-v4-pro',
-                AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.1-flash-lite', 'deepseek-v4-pro'],
+                AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.5-flash-lite', 'deepseek-v4-pro'],
             },
         }));
         // Dynamic import to get fresh module state for caching tests
@@ -31,8 +31,8 @@ describe('Portfolio Config Utils', () => {
 
     describe('normalizeOwnerId', () => {
         it('normalizes various formats', () => {
-            expect(configModule.normalizeOwnerId('Gemini 3.1 Flash-Lite')).toBe(
-                'gemini-3.1-flash-lite',
+            expect(configModule.normalizeOwnerId('Gemini 3.5 Flash-Lite')).toBe(
+                'gemini-3.5-flash-lite',
             );
             expect(configModule.normalizeOwnerId('DeepSeek_V4_Pro')).toBe('deepseek-v4-pro');
             expect(configModule.normalizeOwnerId('  GPT-5.4 Nano  ')).toBe('gpt-5.4-nano');
@@ -53,14 +53,14 @@ describe('Portfolio Config Utils', () => {
 
     describe('isAutoresearchPortfolio', () => {
         it('identifies autoresearch portfolios correctly', () => {
-            expect(configModule.isAutoresearchPortfolio('gemini-3.1-flash-lite')).toBe(true);
+            expect(configModule.isAutoresearchPortfolio('gemini-3.5-flash-lite')).toBe(true);
             expect(configModule.isAutoresearchPortfolio('deepseek-v4-pro')).toBe(true);
             expect(configModule.isAutoresearchPortfolio('GPT-5.4-nano')).toBe(false);
             expect(configModule.isAutoresearchPortfolio('claude-haiku-4-5')).toBe(false);
         });
 
         it('handles normalization during check', () => {
-            expect(configModule.isAutoresearchPortfolio('Gemini 3.1 Flash-Lite')).toBe(true);
+            expect(configModule.isAutoresearchPortfolio('Gemini 3.5 Flash-Lite')).toBe(true);
             expect(configModule.isAutoresearchPortfolio('DeepSeek V4 Pro')).toBe(true);
         });
 
@@ -75,7 +75,7 @@ describe('Portfolio Config Utils', () => {
             const activeIds = configModule.getActiveOwnerIds();
             expect(activeIds).toContain('gpt-5.4-nano');
             expect(activeIds).toContain('claude-haiku-4-5');
-            expect(activeIds).toContain('gemini-3.1-flash-lite');
+            expect(activeIds).toContain('gemini-3.5-flash-lite');
             expect(activeIds).toContain('deepseek-v4-pro');
             expect(activeIds.length).toBe(4);
         });
@@ -90,7 +90,7 @@ describe('Portfolio Config Utils', () => {
     describe('getAutoresearchOwnerIds', () => {
         it('returns array of normalized autoresearch ids', () => {
             const ids = configModule.getAutoresearchOwnerIds();
-            expect(ids).toContain('gemini-3.1-flash-lite');
+            expect(ids).toContain('gemini-3.5-flash-lite');
             expect(ids).toContain('deepseek-v4-pro');
             expect(ids.length).toBe(2);
         });
@@ -119,15 +119,15 @@ describe('Portfolio Config Utils', () => {
             vi.resetModules();
             vi.doMock('@repo/config/models.json', () => ({
                 default: {
-                    AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.1-flash-lite'],
+                    AUTORESEARCH_EXPERIMENT_OWNER_IDS: ['gemini-3.5-flash-lite'],
                     AUTORESEARCH_TRACKS: {
-                        track_default: ['gemini-3.1-flash-lite'],
+                        track_default: ['gemini-3.5-flash-lite'],
                         track_claude: ['claude-haiku-4-5'],
                     },
                 },
             }));
             const freshModule = await import('./config');
-            expect(freshModule.getPortfolioTrack('gemini-3.1-flash-lite')).toEqual({
+            expect(freshModule.getPortfolioTrack('gemini-3.5-flash-lite')).toEqual({
                 trackId: 'track_default',
                 trackLabel: 'Default Track',
             });
@@ -141,7 +141,7 @@ describe('Portfolio Config Utils', () => {
 
     describe('hasVerifier', () => {
         it('identifies if a portfolio uses a verifier correctly', () => {
-            expect(configModule.hasVerifier('gemini-3.1-flash-lite')).toBe(true);
+            expect(configModule.hasVerifier('gemini-3.5-flash-lite')).toBe(true);
             expect(configModule.hasVerifier('deepseek-v4-pro')).toBe(true);
             expect(configModule.hasVerifier('MiniMax-M3')).toBe(false);
             expect(configModule.hasVerifier('minimax-m3')).toBe(false);

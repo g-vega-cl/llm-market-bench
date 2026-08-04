@@ -47,7 +47,7 @@ async def test_gemini_tool_loop_sets_include_server_side_tool_invocations():
     ):
         await gemini.run_tool_loop(
             raw_client=raw_client,
-            model_name="gemini-3.1-flash-lite",
+            model_name="gemini-3.5-flash-lite",
             messages=messages,
             override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
             enable_google_search=True,
@@ -85,7 +85,7 @@ async def test_gemini_config_pydantic_validation():
     with patch.object(gemini, "_generate_content_config_supports", return_value=True):
         await gemini.run_tool_loop(
             raw_client=raw_client,
-            model_name="gemini-3.1-flash-lite",
+            model_name="gemini-3.5-flash-lite",
             messages=messages,
             override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
             enable_google_search=True,
@@ -116,7 +116,7 @@ async def test_gemini_tool_loop_afc_fallback_when_sdk_lacks_flag():
     with patch.object(gemini, "_generate_content_config_supports", return_value=False):
         await gemini.run_tool_loop(
             raw_client=raw_client,
-            model_name="gemini-3.1-flash-lite",
+            model_name="gemini-3.5-flash-lite",
             messages=messages,
             override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
             enable_google_search=True,
@@ -155,7 +155,7 @@ async def test_gemini_tool_loop_always_disables_afc_when_search_enabled():
     ):
         await gemini.run_tool_loop(
             raw_client=raw_client,
-            model_name="gemini-3.1-flash-lite",
+            model_name="gemini-3.5-flash-lite",
             messages=messages,
             override_tools=[{"type": "function", "function": {"name": "foo", "description": "stub", "parameters": {}}}],
             enable_google_search=True,
@@ -228,7 +228,7 @@ async def test_gemini_tool_loop_echoes_function_call_id():
     with patch("core.llm.handlers.base.execute_tool", AsyncMock(return_value="result")):
         await gemini.run_tool_loop(
             raw_client=raw_client,
-            model_name="gemini-3.1-flash-lite",
+            model_name="gemini-3.5-flash-lite",
             messages=messages,
         )
 

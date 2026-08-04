@@ -31,13 +31,13 @@ const mockSupabaseClient = {
                     portfolio_id: 'gemini-portfolio-id',
                     total_equity: 10000,
                     date: '2026-06-01',
-                    portfolios: { owner_id: 'gemini-3.1-flash-lite' },
+                    portfolios: { owner_id: 'gemini-3.5-flash-lite' },
                 },
                 {
                     portfolio_id: 'gemini-portfolio-id',
                     total_equity: 10200,
                     date: '2026-06-05',
-                    portfolios: { owner_id: 'gemini-3.1-flash-lite' },
+                    portfolios: { owner_id: 'gemini-3.5-flash-lite' },
                 },
                 {
                     portfolio_id: 'deepseek-portfolio-id',
@@ -274,7 +274,7 @@ describe('DailyScoreDisplay', () => {
                 score: 0.6,
                 portfolio_details: {
                     'gemini-portfolio-id': {
-                        owner_id: 'gemini-3.1-flash-lite',
+                        owner_id: 'gemini-3.5-flash-lite',
                         do_nothing_return_pct: 1.2,
                     },
                     'deepseek-portfolio-id': {
@@ -301,7 +301,7 @@ describe('DailyScoreDisplay', () => {
         expect(screen.getByText(/^Base Calculation:$/)).toBeInTheDocument();
 
         // Check constituent display for Do-Nothing Return
-        expect(screen.getByText(/Gemini 3.1 Flash Lite/)).toBeInTheDocument();
+        expect(screen.getByText(/Gemini 3.5 Flash Lite/)).toBeInTheDocument();
         expect(screen.getByText(/DeepSeek V4 Pro/)).toBeInTheDocument();
 
         // Check constituent display for Portfolio Return
@@ -326,7 +326,7 @@ describe('DailyScoreDisplay', () => {
                 score: null,
                 portfolio_details: {
                     'gemini-portfolio-id': {
-                        owner_id: 'gemini-3.1-flash-lite',
+                        owner_id: 'gemini-3.5-flash-lite',
                         do_nothing_return_pct: 1.0,
                     },
                     'deepseek-portfolio-id': {
@@ -375,7 +375,7 @@ describe('DailyScoreDisplay', () => {
                 score: null,
                 portfolio_details: {
                     'gemini-portfolio-id': {
-                        owner_id: 'gemini-3.1-flash-lite',
+                        owner_id: 'gemini-3.5-flash-lite',
                         do_nothing_return_pct: 1.0,
                     },
                 },

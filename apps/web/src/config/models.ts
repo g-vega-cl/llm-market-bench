@@ -1,7 +1,7 @@
 export const MODELS = {
     OPENAI: 'gpt-5.4-nano',
     ANTHROPIC: 'claude-haiku-4-5',
-    GEMINI: 'gemini-3.1-flash-lite',
+    GEMINI: 'gemini-3.5-flash-lite',
     DEEPSEEK: 'deepseek-v4-pro',
     MINIMAX: 'MiniMax-M3',
     CONTRARIAN: 'contrarian_agent',

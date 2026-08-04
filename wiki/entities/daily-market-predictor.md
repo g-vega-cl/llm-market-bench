@@ -1,21 +1,40 @@
 ---
-tags: [daily, prediction, engine]
+tags: [predictor, daily, intraday, sp500, autoresearch, deepseek]
 category: entity
 ---
 
-# Daily Market Predictor
+# Daily S&P Market Predictor and Autoresearch Loop
 
-A pipeline task that predicts the daily directional move (up/down) for a given ticker (default SPY) using market context—most notably the latest macro regime signals and the most recent market sentiment from the `market_feeling` table.
+The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions for intraday S&P 500 (SPY) price action, determining whether the 4:00 PM ET Close price will be higher (`UP`) or lower (`DOWN`) than the 9:30 AM ET Open price ($\text{Direction} = \text{UP if } \text{Close} \ge \text{Open} \text{ else DOWN}$).
 
-## Implementation
+## Key Features
 
-The task `get_daily_market_context()` gathers two primary data points:
-- **Macro regime**: current state for equities pulled from `global_macro_state`.
-- **Market sentiment**: the newest row from `market_feeling`, reading the `sentiment_label` column (formerly `feeling`) and `news_summary`. This gives the LLM a concise emotional/sentimental backdrop for its prediction.
+1. **Pre-Market Inference (9:00 AM ET)**:
+   - Command: `python main.py daily-predictor [--ticker SPY]`
+   - Model: **DeepSeek Flash** (`deepseek-v4-flash`) with Instructor structured output (`DailyPredictionOutput`).
+   - Context: Synthesizes technical indicators, overnight futures (ES/NQ), macro news summaries, and market barometer data.
 
-The assembled context is injected into the LLM prompt to produce a binary (up/down) forecast.
+2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:
+   - Command: `python main.py evaluate-daily-predictions`
+   - Scopes today's 9:30 AM Open and 4:00 PM Close prices from market data feeds safely after market close.
+   - Calculates **Directional Accuracy** (`is_correct`) and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
+
+3. **Twice-Weekly Prompt Evolution (Wed/Sun 6:00 PM ET)**:
+   - Command: `python main.py daily-autoresearch`
+   - Evaluates predictions over recent 3–4 trading days against all-time baseline in `prompt_experiments` (`prompt_name: "DAILY_PREDICTOR_PROMPT"`).
+   - Applies ratchet logic: if recent performance beats baseline, establishes new baseline; if lower, reverts to baseline prompt.
+   - Mutates mutable strategy section using DeepSeek Flash meta-researcher.
+
+4. **Web Frontend (`/daily-predictions`)**:
+   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Brier Calibration stats, Historical Predictions Log table, and Autoresearch Prompt Arena.
+
+## Database Schema
+
+- `public.daily_predictions`: Stores predictions, actual Open/Close prices, correctness, and Brier scores.
+- `public.prompt_experiments`: Tracks `DAILY_PREDICTOR_PROMPT` variants, statuses, and performance metrics.
 
 ## Related
-- [[concepts/market-feeling]]
-- [[entities/macro-tracker]]
-- [[entities/engine]]
+
+- [[entities/sector-predictor-arena]] — Sector predictor arena comparison
+- [[entities/autoresearch]] — Portfolio auto-research subsystem
+- [[entities/database]] — Core database schema and prompt tracking tables

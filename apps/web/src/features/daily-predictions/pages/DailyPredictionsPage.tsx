@@ -561,7 +561,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments, refreshF
                         Daily S&P Market Predictor
                     </h1>
                     <p style={{ margin: 0, color: '#64748b', fontSize: '15px' }}>
-                        8:00 AM ET Intraday (Open to Close) Directional AI Predictions powered by
+                        9:00 AM ET Intraday (Open to Close) Directional AI Predictions powered by
                         DeepSeek Flash & Autoresearch.
                     </p>
                 </div>

@@ -2,10 +2,10 @@ name: Daily S&P Predictor and Autoresearch
 
 on:
   schedule:
-    # 8:00 AM ET Mon-Fri (12:00 UTC) -> Run daily 8 AM prediction
-    - cron: '0 12 * * 1-5'
-    # 4:15 PM ET Mon-Fri (20:15 UTC) -> Evaluate Open vs Close price accuracy
-    - cron: '15 20 * * 1-5'
+    # 9:00 AM ET Mon-Fri (13:00 UTC) -> Run daily 9 AM prediction before market open
+    - cron: '0 13 * * 1-5'
+    # 5:15 PM EDT / 4:15 PM EST Mon-Fri (21:15 UTC) -> Evaluate Open vs Close price accuracy safely post-market
+    - cron: '15 21 * * 1-5'
     # 6:00 PM ET Wed & Sun (22:00 UTC) -> Run twice-weekly prompt autoresearch
     - cron: '0 22 * * 3,0'
   workflow_dispatch:
@@ -47,10 +47,9 @@ jobs:
           else
             # Derive command from cron schedule
             HOUR=$(date -u +%H)
-            DOW=$(date -u +%u)
-            if [ "$HOUR" = "12" ]; then
+            if [ "$HOUR" = "13" ]; then
               echo "command=daily-predictor" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" = "20" ]; then
+            elif [ "$HOUR" = "21" ]; then
               echo "command=evaluate-daily-predictions" >> $GITHUB_OUTPUT
             elif [ "$HOUR" = "22" ]; then
               echo "command=daily-autoresearch" >> $GITHUB_OUTPUT

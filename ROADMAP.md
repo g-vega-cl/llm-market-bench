@@ -127,7 +127,8 @@ Feels like I have done that before to no avail
 - [ ] - Chart based on candle volatility not time
 - [ ] - Single company focused llm
 - [ ] - Look for statistical analysis for markets
-- [ ] - Predict daily S&P or whichever move, either up or down.
+- [x] - Predict daily S&P or whichever move, either up or down.
 - [ ] - Update autoresearcher LLM? Use different LLMs for autoreserarhcer.
 - [ ] - Add more LLMs to sector researcher.
 - [ ] - backtest sector researcher.
+- [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?

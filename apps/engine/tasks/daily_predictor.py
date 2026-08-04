@@ -64,13 +64,13 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
         # Fetch latest market feeling if available
         mf_res = (
             client.table("market_feeling")
-            .select("feeling, news_summary, created_at")
+            .select("sentiment_label, news_summary, created_at")
             .order("created_at", desc=True)
             .limit(1)
             .execute()
         )
         if mf_res.data:
-            feeling = mf_res.data[0].get("feeling")
+            feeling = mf_res.data[0].get("sentiment_label")
             summary = mf_res.data[0].get("news_summary")
             if feeling:
                 context_lines.append(f"Recent Market Sentiment / Feeling: {feeling}")

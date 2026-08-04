@@ -1,0 +1,72 @@
+name: Daily S&P Predictor and Autoresearch
+
+on:
+  schedule:
+    # 8:00 AM ET Mon-Fri (12:00 UTC) -> Run daily 8 AM prediction
+    - cron: '0 12 * * 1-5'
+    # 4:15 PM ET Mon-Fri (20:15 UTC) -> Evaluate Open vs Close price accuracy
+    - cron: '15 20 * * 1-5'
+    # 6:00 PM ET Wed & Sun (22:00 UTC) -> Run twice-weekly prompt autoresearch
+    - cron: '0 22 * * 3,0'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Task to execute'
+        required: true
+        default: 'daily-predictor'
+        type: choice
+        options:
+          - 'daily-predictor'
+          - 'evaluate-daily-predictions'
+          - 'daily-autoresearch'
+
+jobs:
+  run-daily-predictor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd apps/engine
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Determine command to run
+        id: cmd
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "command=${{ inputs.action }}" >> $GITHUB_OUTPUT
+          else
+            # Derive command from cron schedule
+            HOUR=$(date -u +%H)
+            DOW=$(date -u +%u)
+            if [ "$HOUR" = "12" ]; then
+              echo "command=daily-predictor" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "20" ]; then
+              echo "command=evaluate-daily-predictions" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" = "22" ]; then
+              echo "command=daily-autoresearch" >> $GITHUB_OUTPUT
+            else
+              echo "command=daily-predictor" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Run Daily Predictor Command
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py ${{ steps.cmd.outputs.command }}

@@ -12,8 +12,14 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from core.config import AUTORESEARCH_MODEL
-from core.llm import get_deepseek_client
+from core.config import AUTORESEARCH_MODEL, AUTORESEARCH_TRACK_MODELS
+from core.llm.clients import (
+    get_anthropic_client,
+    get_deepseek_client,
+    get_gemini_client,
+    get_minimax_client,
+    get_openai_client,
+)
 
 logger = logging.getLogger("engine")
 
@@ -23,6 +29,23 @@ _PROGRAM_PATH = Path(__file__).parent / "program.md"
 def _load_research_program() -> str:
     """Read program.md lazily so import doesn't fail if the file is missing."""
     return _PROGRAM_PATH.read_text()
+
+
+def _get_client_and_provider_for_model(model_name: str):
+    """Resolve instructor client factory and provider name for a given model."""
+    name_lower = model_name.lower()
+    if "minimax" in name_lower:
+        return get_minimax_client(), "minimax"
+    elif "deepseek" in name_lower:
+        return get_deepseek_client(), "deepseek"
+    elif "gpt" in name_lower or "openai" in name_lower:
+        return get_openai_client(), "openai"
+    elif "claude" in name_lower or "anthropic" in name_lower:
+        return get_anthropic_client(), "anthropic"
+    elif "gemini" in name_lower:
+        return get_gemini_client(), "gemini"
+    else:
+        return get_deepseek_client(), "deepseek"
 
 
 class PromptResearchResult(BaseModel):
@@ -53,6 +76,8 @@ async def run_research(
     current_prompt: str | None = None,
     cold_start: bool = False,
     baseline_prompt: str | None = None,
+    track_id: str = "track_default",
+    model_name: str | None = None,
 ) -> PromptResearchResult | None:
     """Run the auto-research evaluation and return proposed prompt changes.
 
@@ -61,12 +86,16 @@ async def run_research(
         current_prompt: Optional current system prompt text.
         cold_start: If True, instructs the meta-researcher to ignore prior prompt history and build from scratch.
         baseline_prompt: Optional baseline mutable strategy text to ensure new_prompt_text is not a duplicate.
+        track_id: The research track ID being evaluated.
+        model_name: Optional explicit model override for the meta-researcher.
 
     Returns:
         A PromptResearchResult with the new prompt and reasoning, or None on failure.
     """
-    client = get_deepseek_client()
-    provider = "deepseek"
+    if model_name is None:
+        model_name = AUTORESEARCH_TRACK_MODELS.get(track_id, AUTORESEARCH_MODEL)
+
+    client, provider = _get_client_and_provider_for_model(model_name)
 
     system_program = _load_research_program()
     user_content = report
@@ -86,7 +115,7 @@ async def run_research(
         ]
 
         create_args = {
-            "model": AUTORESEARCH_MODEL,
+            "model": model_name,
             "response_model": PromptResearchResult,
             "messages": messages,
             "max_retries": 2,
@@ -111,7 +140,7 @@ async def run_research(
                         logger.warning(
                             "[%s/%s] Auto-research proposed prompt identical to baseline (attempt %d/3). Retrying...",
                             provider,
-                            AUTORESEARCH_MODEL,
+                            model_name,
                             attempt_num,
                         )
                         instructor_messages.append(
@@ -134,7 +163,7 @@ async def run_research(
                 logger.warning(
                     "[%s/%s] Auto-research empty response (attempt %d/3). Retrying...",
                     provider,
-                    AUTORESEARCH_MODEL,
+                    model_name,
                     attempt_num,
                 )
                 instructor_messages.append(
@@ -156,7 +185,7 @@ async def run_research(
                     logger.warning(
                         "[%s/%s] Auto-research validation error (attempt %d/3): %s",
                         provider,
-                        AUTORESEARCH_MODEL,
+                        model_name,
                         attempt_num,
                         str(e)[:200],
                     )
@@ -175,7 +204,7 @@ async def run_research(
                     logger.error(
                         "[%s/%s] Auto-research non-retryable error: %s",
                         provider,
-                        AUTORESEARCH_MODEL,
+                        model_name,
                         str(e),
                     )
                     raise
@@ -184,7 +213,7 @@ async def run_research(
             logger.error(
                 "[%s/%s] All auto-research attempts failed. Last error: %s",
                 provider,
-                AUTORESEARCH_MODEL,
+                model_name,
                 last_error or "empty response or duplicate baseline",
             )
             return None

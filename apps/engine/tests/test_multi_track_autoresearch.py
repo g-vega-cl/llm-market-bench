@@ -202,3 +202,55 @@ async def test_runner_run_all_executes_all_tracks():
         mock_run.assert_any_call(dry_run=True, track_id="track_default", cold_start=False)
         mock_run.assert_any_call(dry_run=True, track_id="track_claude", cold_start=False)
         mock_run.assert_any_call(dry_run=True, track_id="track_openai", cold_start=False)
+
+
+@pytest.mark.asyncio
+async def test_track_models_config():
+    """Verify AUTORESEARCH_TRACK_MODELS maps tracks to their respective meta-researcher models."""
+    assert hasattr(config, "AUTORESEARCH_TRACK_MODELS")
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_default") == "deepseek-v4-pro"
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_claude") == "deepseek-v4-flash"
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_openai") == "MiniMax-M3"
+
+
+@pytest.mark.asyncio
+async def test_run_research_uses_track_specific_model():
+    """Verify run_research resolves and invokes the correct model per track."""
+    mock_result = MagicMock()
+    mock_result.new_prompt_text = "Mutated strategy"
+    mock_result.change_description = "Track test change"
+    mock_result.experiment_type = "incremental"
+    mock_result.research_reasoning = "Track test reasoning"
+    mock_result.confidence = 85
+    mock_result.selected_tools = ["get_stock_quote"]
+
+    # Mock DeepSeek client
+    mock_ds_client = MagicMock()
+    mock_ds_completion = AsyncMock(return_value=mock_result)
+    mock_ds_client.chat.completions.create = mock_ds_completion
+
+    # Mock MiniMax client
+    mock_mm_client = MagicMock()
+    mock_mm_completion = AsyncMock(return_value=mock_result)
+    mock_mm_client.chat.completions.create = mock_mm_completion
+
+    def mock_get_client_and_provider(model_name: str):
+        if model_name == "MiniMax-M3":
+            return mock_mm_client, "minimax"
+        return mock_ds_client, "deepseek"
+
+    with patch("autoresearch.researcher._get_client_and_provider_for_model", side_effect=mock_get_client_and_provider):
+        # 1. Test track_claude (should resolve to deepseek-v4-flash)
+        res_claude = await researcher.run_research(report="Report", track_id="track_claude")
+        assert res_claude is not None
+        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-flash"
+
+        # 2. Test track_openai (should resolve to MiniMax-M3)
+        res_openai = await researcher.run_research(report="Report", track_id="track_openai")
+        assert res_openai is not None
+        assert mock_mm_completion.call_args.kwargs.get("model") == "MiniMax-M3"
+
+        # 3. Test track_default (should resolve to deepseek-v4-pro)
+        res_default = await researcher.run_research(report="Report", track_id="track_default")
+        assert res_default is not None
+        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-pro"

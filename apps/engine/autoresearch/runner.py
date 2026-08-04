@@ -213,12 +213,21 @@ async def run(dry_run: bool = False, track_id: str = "track_default", cold_start
                 current_prompt=current_prompt_mutable,
                 cold_start=cold_start,
                 baseline_prompt=baseline_prompt_mutable,
+                track_id=track_id,
             )
         except TypeError:
             try:
-                result = await run_research(report, cold_start=cold_start)
+                result = await run_research(
+                    report,
+                    current_prompt=current_prompt_mutable,
+                    cold_start=cold_start,
+                    baseline_prompt=baseline_prompt_mutable,
+                )
             except TypeError:
-                result = await run_research(report)
+                try:
+                    result = await run_research(report, cold_start=cold_start)
+                except TypeError:
+                    result = await run_research(report)
     except Exception as e:
         logger.error("Auto-research LLM call failed: %s", e)
         return

@@ -10,9 +10,9 @@ The `apps/engine/autoresearch/` module implements the Karpathy-style autonomous 
 ## Configuration
 
 The auto-research system is configured via:
-- `packages/config/models.json`: Defines `AUTORESEARCH_EXPERIMENT_OWNER_IDS` and `AUTORESEARCH_TRACKS` (mapping track IDs to portfolio/model owner groups) and `SKIP_VERIFIER_OWNER_IDS` (models bypassing skeptical verification).
-- `apps/engine/core/config.py`: Loads model names, tracks, and verifier bypass settings from `models.json`.
-- `AUTORESEARCH_MODEL`: Environment variable (defaults to DeepSeek) used for the meta-researcher.
+- `packages/config/models.json`: Defines `AUTORESEARCH_EXPERIMENT_OWNER_IDS`, `AUTORESEARCH_TRACKS` (mapping track IDs to portfolio/model owner groups), `AUTORESEARCH_TRACK_MODELS` (mapping track IDs to track-specific meta-researcher LLM models), and `SKIP_VERIFIER_OWNER_IDS` (models bypassing skeptical verification).
+- `apps/engine/core/config.py`: Loads model names, tracks, track-specific meta-researcher models (`AUTORESEARCH_TRACK_MODELS`), and verifier bypass settings from `models.json`.
+- `AUTORESEARCH_MODEL`: Environment variable (defaults to DeepSeek v4 Pro) used as default fallback for the meta-researcher.
 
 ## Architecture
 
@@ -88,6 +88,7 @@ The meta-researcher's report shows: "Baseline: X (best so far)  (Δ: +/-Y vs bas
 
 ## Recent Changes
 
+- **2026-08-04**: **Track-Specific Meta-Researcher LLM Routing** — Configured isolated meta-evaluator LLM models per AutoResearcher track (`AUTORESEARCH_TRACK_MODELS` in `models.json`). `track_default` uses DeepSeek v4 Pro (`deepseek-v4-pro`), `track_claude` uses DeepSeek v4 Flash (`deepseek-v4-flash`), and `track_openai` uses MiniMax M3 (`MiniMax-M3`). Added `_get_client_and_provider_for_model` in `researcher.py` to route model names dynamically to their respective instructor client factories.
 - **2026-07-31**: **Multi-Track Isolation, Stochastic Cold-Start Reset & Verifier Bypass** — Added `track_id` parameter to `prompt_store.py` and `prompt_experiments` DB table, enabling multiple isolated AutoResearcher tracks (e.g. `track_default`, `track_claude`, `track_openai`) to optimize distinct portfolio groups without prompt overwrite collisions. Implemented `SKIP_VERIFIER_OWNER_IDS` in `main.py` allowing fast models (e.g. DeepSeek Flash, MiniMax) to bypass skeptical verification. Added stochastic cold-start reset helper (`get_next_cold_start_interval`, random 2–5 weeks) and `run_research(cold_start=True)` to break out of local optima by constructing fresh prompt strategies from scratch.
 - **2026-07-28**: **Backtest Trade Telemetry & Audit Ledger UI** — Updated `evaluate_backtest_week` in `backtest_autoresearch.py` to query local SQLite simulation trade ledgers and persist executed trades directly inside `metrics["trades"]` on `prompt_experiments`. Built `BacktestTradesAudit` React component in `apps/web/src/features/autoresearch/components/` and integrated it into `ExperimentDetails.tsx`, allowing full point-in-time auditing of ticker, signal, quantity, execution price, cost, PnL, and agent decision thesis for every backtest run.
 - **2026-07-25**: **Active Week SPY Return Priority & Ungated Fetching in UI** — Fixed `DailyScoreDisplay` to query and prioritize actual `SPY` price history from `price_history` for active experiment tracking, overriding preset/default `spy_return_pct` values (e.g. `0.85%`). Removed the `portfolioIds.length === 0` early-return gate in `useEffect` so that `SPY` price history is fetched even when `metrics.portfolio_details` is `{}` for a newly active experiment.

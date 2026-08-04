@@ -159,6 +159,18 @@ AUTORESEARCH_EXPERIMENT_OWNER_IDS = frozenset(_models.get("AUTORESEARCH_EXPERIME
 # Auto-research multi-track mappings (track_id -> list of owner_ids)
 AUTORESEARCH_TRACKS = dict(_models.get("AUTORESEARCH_TRACKS", {}))
 
+# Auto-research track meta-evaluator LLM models (track_id -> model_name)
+AUTORESEARCH_TRACK_MODELS = dict(
+    _models.get(
+        "AUTORESEARCH_TRACK_MODELS",
+        {
+            "track_default": DEEPSEEK_MODEL,
+            "track_claude": DEEPSEEK_FLASH_MODEL,
+            "track_openai": MINIMAX_MODEL,
+        },
+    )
+)
+
 # Model owner IDs that bypass the skeptical verification agent stage
 SKIP_VERIFIER_OWNER_IDS = set(_models.get("SKIP_VERIFIER_OWNER_IDS", ["MiniMax-M3", "deepseek-v4-flash"]))
 

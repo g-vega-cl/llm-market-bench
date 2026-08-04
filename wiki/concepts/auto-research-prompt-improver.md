@@ -66,10 +66,14 @@ To optimize agent prompt length and keep reasoning context concise, the auto-res
 - **Default Baseline & Fallbacks**: The initial bootstrapped baseline prompt in `bootstrap.py` is configured with default pull tools (`["get_portfolio_ledger", "get_todays_news_menu", "web_search"]`). If an active prompt variant in the database fails to specify a tools list, the engine automatically defaults tool routing to these baseline pull tools to guarantee operational safety.
 - **Pull Baseline Isolation**: `get_all_time_baseline()` in `prompt_store.py` explicitly filters candidate variants to require a non-empty `selected_tools` list in `research_output`. This isolates the pull-based evolution cycle from pre-pull legacy push variants (such as `v20260705-221937`), ensuring the meta-researcher always builds on top of pull-native prompt text and tool configurations.
 
-## Isolated Research Loops
+## Isolated Research Loops & Track-Specific Meta-Evaluators
 
 While the primary loop targets the `CORE_ANALYSIS_SYSTEM_PROMPT` to refine full-portfolio strategies, the auto-research runner supports fully isolated prompt evaluation cycles. 
-Specifically, the **AI Sector Predictor and Model Arena** uses the prompt name `SECTOR_PREDICTOR_PROMPT`. The predictor-specific evaluation and meta-evolution loops only retrieve, mutate, and store variants belonging to this tag, preventing strategy leaks or baseline dilution between different autonomous engines.
+- **Isolated Prompt Tags**: The **AI Sector Predictor and Model Arena** uses the prompt name `SECTOR_PREDICTOR_PROMPT`. The predictor-specific evaluation and meta-evolution loops only retrieve, mutate, and store variants belonging to this tag, preventing strategy leaks or baseline dilution between different autonomous engines.
+- **Track-Specific Meta-Evaluator LLMs**: Each isolated AutoResearcher track (`track_id`) uses its own designated meta-researcher LLM (`AUTORESEARCH_TRACK_MODELS` in `models.json`):
+  - `track_default`: Uses DeepSeek v4 Pro (`deepseek-v4-pro`)
+  - `track_claude`: Uses DeepSeek v4 Flash (`deepseek-v4-flash`)
+  - `track_openai`: Uses MiniMax M3 (`MiniMax-M3`)
 
 ## Design Philosophy
 

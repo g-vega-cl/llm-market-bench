@@ -31,7 +31,8 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 ## Execution & Dispatch Architecture
 
 1. **High-Precision Edge Cron Dispatcher (`apps/cron-dispatcher`)**:
-   - Cloudflare Worker running on edge cron triggers (`0 13 * * MON-FRI`, `15 21 * * MON-FRI`, `0 22 * * SUN/WED`).
+   - Cloudflare Worker running 5 consolidated edge cron triggers (`0 13,18 * * MON-FRI`, `35 13-15 * * MON-FRI`, `15 21 * * MON-FRI`, `0 22 * * SUN/WED`).
+   - Unified dispatcher routing to both `daily-predictor.yml` (Predictions, Evaluations, Autoresearch) and `ingest.yml` (Ingestion & Consensus).
    - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials.
    - Bypasses GitHub Actions scheduled queue delays, launching workflows in < 5 seconds.
 

@@ -28,6 +28,17 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 4. **Web Frontend (`/daily-predictions`)**:
    - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Brier Calibration stats, Historical Predictions Log table, and Autoresearch Prompt Arena.
 
+## Execution & Dispatch Architecture
+
+1. **High-Precision Edge Cron Dispatcher (`apps/cron-dispatcher`)**:
+   - Cloudflare Worker running on edge cron triggers (`0 13 * * MON-FRI`, `15 21 * * MON-FRI`, `0 22 * * SUN/WED`).
+   - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials.
+   - Bypasses GitHub Actions scheduled queue delays, launching workflows in < 5 seconds.
+
+2. **Market-Open Safety Guardrail**:
+   - Implemented in `.github/workflows/daily-predictor.yml`.
+   - If a pre-market `daily-predictor` run is triggered or delayed after **9:30 AM EDT (13:30 UTC)**, the step automatically logs a warning and exits cleanly without recording stale intraday predictions.
+
 ## Database Schema
 
 - `public.daily_predictions`: Stores predictions, actual Open/Close prices, correctness, and Brier scores.

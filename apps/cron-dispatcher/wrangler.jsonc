@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "market-bench-cron-dispatcher",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "triggers": {
+    "crons": [
+      "0 13 * * MON-FRI",
+      "15 21 * * MON-FRI",
+      "0 22 * * SUN",
+      "0 22 * * WED"
+    ]
+  }
+}

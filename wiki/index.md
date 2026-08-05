@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/cron-dispatcher]] — Cloudflare Worker edge cron dispatcher for GitHub Actions workflows
 - [[entities/daily-predictor-backtest-arena]] — Web UI and engine backtest system for S&P 500 daily open-to-close predictions with prompt mutation
 - [[entities/daily-market-predictor]] — Auto-indexed page
 - [[entities/backtest-arena]] — Web UI for browsing backtest prompt experiments and mutation history

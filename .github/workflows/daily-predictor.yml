@@ -39,26 +39,38 @@ jobs:
           python3 -m venv venv
           ./venv/bin/pip install -r requirements.txt
 
-      - name: Determine command to run
+      - name: Determine command to run & verify safety window
         id: cmd
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "command=${{ inputs.action }}" >> $GITHUB_OUTPUT
+            COMMAND="${{ inputs.action }}"
           else
-            # Derive command from cron schedule
             HOUR=$(date -u +%H)
             if [ "$HOUR" = "13" ]; then
-              echo "command=daily-predictor" >> $GITHUB_OUTPUT
+              COMMAND="daily-predictor"
             elif [ "$HOUR" = "21" ]; then
-              echo "command=evaluate-daily-predictions" >> $GITHUB_OUTPUT
+              COMMAND="evaluate-daily-predictions"
             elif [ "$HOUR" = "22" ]; then
-              echo "command=daily-autoresearch" >> $GITHUB_OUTPUT
+              COMMAND="daily-autoresearch"
             else
-              echo "command=daily-predictor" >> $GITHUB_OUTPUT
+              COMMAND="daily-predictor"
+            fi
+          fi
+
+          echo "command=$COMMAND" >> $GITHUB_OUTPUT
+
+          # Pre-market prediction safety check: skip if running after 13:30 UTC (9:30 AM EDT market open)
+          if [ "$COMMAND" = "daily-predictor" ]; then
+            NOW_MINUTES=$(( $(date -u +%H) * 60 + $(date -u +%M) ))
+            # 13:30 UTC = 810 minutes; 20:00 UTC = 1200 minutes (intraday window)
+            if [ "$NOW_MINUTES" -ge 810 ] && [ "$NOW_MINUTES" -lt 1200 ]; then
+              echo "WARNING: Pre-market prediction triggered after 9:30 AM ET market open ($NOW_MINUTES mins UTC). Skipping to avoid stale prediction."
+              echo "skip=true" >> $GITHUB_OUTPUT
             fi
           fi
 
       - name: Run Daily Predictor Command
+        if: steps.cmd.outputs.skip != 'true'
         env:
           SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -69,3 +81,4 @@ jobs:
         run: |
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py ${{ steps.cmd.outputs.command }}
+

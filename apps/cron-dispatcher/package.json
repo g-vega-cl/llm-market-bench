@@ -1,0 +1,15 @@
+{
+  "name": "cron-dispatcher",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker Cron Dispatcher for LLM Market Bench workflows",
+  "main": "src/index.ts",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241112.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.90.0"
+  }
+}

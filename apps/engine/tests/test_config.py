@@ -7,15 +7,17 @@ def test_constants():
     """Verify that constants are defined correctly."""
     assert isinstance(core.config.NEWSLETTER_SENDERS, list)
     assert len(core.config.NEWSLETTER_SENDERS) > 0
-    new_senders = [
-        "markets@axios.com",
+    required_senders = [
+        "thebearcave@substack.com",
+        "ideabrunch@substack.com",
+        "william@puck.new",
+        "hello@snacks.robinhood.com",
+        "netinterest@substack.com",
         "calculatedrisk@substack.com",
-        "macro@axios.com",
-        "techbrew@morningbrew.com",
         "closer@axios.com",
-        "ftav@substack.com",
+        "macro@axios.com",
     ]
-    for sender in new_senders:
+    for sender in required_senders:
         assert sender in core.config.NEWSLETTER_SENDERS
     assert core.config.GMAIL_SCOPES == ["https://www.googleapis.com/auth/gmail.readonly"]
     assert core.config.COMMAND_INGEST == "ingest"

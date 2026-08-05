@@ -84,6 +84,11 @@ NEWSLETTER_SENDERS = [
     "techbrew@morningbrew.com",
     "closer@axios.com",
     "ftav@substack.com",
+    "thebearcave@substack.com",
+    "ideabrunch@substack.com",
+    "william@puck.new",
+    "hello@snacks.robinhood.com",
+    "netinterest@substack.com",
 ]
 # --- Memory Retention & Decay (Step 15+) ---
 MEMORIES_RELEVANCE_DECAY_HALF_LIFE_DAYS = 30  # Memories lose 50% relevance every 30 days

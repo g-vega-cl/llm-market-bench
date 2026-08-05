@@ -87,6 +87,7 @@ export const navItems = [
     { to: '/market-overview', label: 'Market Overview' },
     { to: '/ai-predictions', label: 'AI Sector Predictions' },
     { to: '/daily-predictions', label: 'Daily Predictor' },
+    { to: '/daily-predictions-backtest', label: 'Daily Backtest' },
     { to: '/barometer-audit', label: 'Barometer Audit' },
 ];
 

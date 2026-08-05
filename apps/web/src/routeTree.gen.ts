@@ -14,6 +14,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
 import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
 import { Route as AuthedRouteImport } from './routes/_authed'
@@ -59,6 +60,12 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
   path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DailyPredictionsBacktestRoute =
+  DailyPredictionsBacktestRouteImport.update({
+    id: '/daily-predictions-backtest',
+    path: '/daily-predictions-backtest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BarometerAuditRoute = BarometerAuditRouteImport.update({
   id: '/barometer-audit',
   path: '/barometer-audit',
@@ -158,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -183,6 +191,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -210,6 +219,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/daily-predictions-backtest'
     | '/how-it-works'
     | '/login'
     | '/logout'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/daily-predictions-backtest'
     | '/how-it-works'
     | '/login'
     | '/logout'
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/daily-predictions-backtest'
     | '/how-it-works'
     | '/login'
     | '/logout'
@@ -315,6 +328,7 @@ export interface RootRouteChildren {
   AuthedRoute: typeof AuthedRouteWithChildren
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
+  DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
@@ -371,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/how-it-works'
       fullPath: '/how-it-works'
       preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daily-predictions-backtest': {
+      id: '/daily-predictions-backtest'
+      path: '/daily-predictions-backtest'
+      fullPath: '/daily-predictions-backtest'
+      preLoaderRoute: typeof DailyPredictionsBacktestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/barometer-audit': {
@@ -525,6 +546,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthedRoute: AuthedRouteWithChildren,
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
+  DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
   HowItWorksRoute: HowItWorksRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,

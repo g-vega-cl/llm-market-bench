@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/daily-predictor-backtest-arena]] — Web UI and engine backtest system for S&P 500 daily open-to-close predictions with prompt mutation
 - [[entities/daily-market-predictor]] — Auto-indexed page
 - [[entities/backtest-arena]] — Web UI for browsing backtest prompt experiments and mutation history
 - [[entities/git-history]] — Automated Git history export to structured Markdown with QMD indexing

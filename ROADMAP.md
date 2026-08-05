@@ -128,7 +128,6 @@ Feels like I have done that before to no avail
 - [ ] - Single company focused llm
 - [ ] - Look for statistical analysis for markets
 - [x] - Predict daily S&P or whichever move, either up or down.
-- [ ] - Update autoresearcher LLM? Use different LLMs for autoreserarhcer.
 - [ ] - Add more LLMs to sector researcher.
 - [ ] - backtest sector researcher.
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?

@@ -16,7 +16,7 @@ def test_split_daily_predictor_prompt():
     header, mutable, footer = split_daily_predictor_prompt(DAILY_PREDICTOR_PROMPT)
     assert header == DAILY_PREDICTOR_CONSTRAINTS_HEADER
     assert footer == DAILY_PREDICTOR_CONSTRAINTS_FOOTER
-    assert "Evaluate overnight news" in mutable
+    assert "MACRO CATALYST EXTRACTION" in mutable
 
     # Test fallback
     custom_prompt = "Custom instructions text"

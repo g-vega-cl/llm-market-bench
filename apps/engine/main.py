@@ -22,6 +22,7 @@ from core.audit import run_audit
 from core.config import (
     COMMAND_AUDIT,
     COMMAND_AUTORESEARCH,
+    COMMAND_BACKTEST_DAILY_AUTORESEARCH,
     COMMAND_BOOTSTRAP_AUTORESEARCH,
     COMMAND_CALENDAR,
     COMMAND_CAUSE_AND_EFFECT,
@@ -32,6 +33,7 @@ from core.config import (
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
     COMMAND_POST_ANALYSIS,
+    COMMAND_SEED_DAILY_PREDICTOR,
     COMMAND_WEEKEND_INGEST,
     logger,
 )
@@ -979,6 +981,8 @@ def main():
             COMMAND_DAILY_PREDICTOR,
             COMMAND_EVALUATE_DAILY_PREDICTIONS,
             COMMAND_DAILY_AUTORESEARCH,
+            COMMAND_BACKTEST_DAILY_AUTORESEARCH,
+            COMMAND_SEED_DAILY_PREDICTOR,
         ],
         help="Action to perform",
     )
@@ -994,6 +998,8 @@ def main():
     )
     parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
     parser.add_argument("--ticker", type=str, default="SPY", help="Ticker for daily predictor (default: SPY)")
+    parser.add_argument("--start-date", type=str, default="2026-04-27", help="Backtest start date (YYYY-MM-DD)")
+    parser.add_argument("--weeks", type=int, default=1, help="Number of backtest weeks")
 
     args = parser.parse_args()
 
@@ -1044,6 +1050,14 @@ def main():
         from tasks.daily_autoresearch import run_daily_autoresearch
 
         asyncio.run(run_daily_autoresearch())
+    elif args.command == COMMAND_BACKTEST_DAILY_AUTORESEARCH:
+        from tasks.backtest_daily_autoresearch import run_backtest_daily_autoresearch
+
+        asyncio.run(run_backtest_daily_autoresearch(start_date_str=args.start_date, weeks=args.weeks))
+    elif args.command == COMMAND_SEED_DAILY_PREDICTOR:
+        from tasks.daily_predictor import seed_daily_predictor_prompt
+
+        asyncio.run(seed_daily_predictor_prompt())
 
 
 if __name__ == "__main__":

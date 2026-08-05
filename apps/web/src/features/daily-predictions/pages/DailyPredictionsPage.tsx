@@ -1,4 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 
@@ -565,25 +566,42 @@ export function DailyPredictionsPage({ initialPredictions, experiments, refreshF
                         DeepSeek Flash & Autoresearch.
                     </p>
                 </div>
-                {refreshFn && (
-                    <button
-                        type="button"
-                        onClick={handleRefresh}
-                        disabled={isRefreshing}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <Link
+                        to="/daily-predictions-backtest"
                         style={{
                             padding: '8px 16px',
                             borderRadius: '8px',
-                            background: '#2563eb',
-                            color: '#ffffff',
-                            border: 'none',
+                            background: '#f1f5f9',
+                            color: '#334155',
+                            textDecoration: 'none',
                             fontWeight: '600',
-                            cursor: isRefreshing ? 'not-allowed' : 'pointer',
-                            opacity: isRefreshing ? 0.7 : 1,
+                            fontSize: '14px',
+                            border: '1px solid #cbd5e1',
                         }}
                     >
-                        {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-                    </button>
-                )}
+                        Backtest Arena →
+                    </Link>
+                    {refreshFn && (
+                        <button
+                            type="button"
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontWeight: '600',
+                                cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                                opacity: isRefreshing ? 0.7 : 1,
+                            }}
+                        >
+                            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+                        </button>
+                    )}
+                </div>
             </div>
 
             <DailyMetricsOverview

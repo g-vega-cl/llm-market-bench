@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { DailyPredictionsPage } from './DailyPredictionsPage';
 
+vi.mock('@tanstack/react-router', () => ({
+    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+        <a href={to}>{children}</a>
+    ),
+}));
+
 describe('DailyPredictionsPage', () => {
     const mockPredictions: DailyPrediction[] = [
         {

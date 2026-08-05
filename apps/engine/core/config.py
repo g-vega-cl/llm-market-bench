@@ -103,6 +103,8 @@ COMMAND_CLEANUP = "cleanup"
 COMMAND_DAILY_PREDICTOR = "daily-predictor"
 COMMAND_EVALUATE_DAILY_PREDICTIONS = "evaluate-daily-predictions"
 COMMAND_DAILY_AUTORESEARCH = "daily-autoresearch"
+COMMAND_BACKTEST_DAILY_AUTORESEARCH = "backtest-daily-autoresearch"
+COMMAND_SEED_DAILY_PREDICTOR = "seed-daily-predictor"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

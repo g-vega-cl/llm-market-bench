@@ -231,7 +231,9 @@ async def _fetch_raw_message(service: Any, msg_ref: dict[str, str]) -> tuple[New
     """
     sender = None
     try:
-        msg = service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute()
+        msg = await asyncio.to_thread(
+            service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute
+        )
         headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
 
         subject = headers.get("Subject", "No Subject")

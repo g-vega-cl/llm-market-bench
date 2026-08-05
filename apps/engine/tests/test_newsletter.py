@@ -211,3 +211,66 @@ async def test_ingest_newsletters_parallel_cleaning(caplog):
 
         # Verify all 5 were cleaned
         assert len(call_times) == 5, f"Expected 5 cleaning calls, got {len(call_times)}"
+
+
+@pytest.mark.asyncio
+async def test_ingest_newsletters_parallel_batch_fetching(caplog):
+    """Test that Gmail API message fetching calls for multiple emails run concurrently in parallel threads.
+
+    When 5 newsletters are listed from Gmail, fetching raw messages should occur
+    concurrently (total elapsed time ~ max single fetch delay < 0.3s) rather than sequentially (> 0.5s).
+    """
+    import time
+
+    call_times = []
+
+    def slow_execute_with_timing():
+        call_times.append(time.monotonic())
+        time.sleep(0.1)
+        return {
+            "id": "msg-123",
+            "payload": {
+                "headers": [
+                    {"name": "From", "value": "Sender <sender@example.com>"},
+                    {"name": "Subject", "value": "Daily Test Report"},
+                    {"name": "Date", "value": "Wed, 05 Aug 2026 10:00:00 -0400"},
+                ],
+                "mimeType": "text/plain",
+                "body": {"data": "SGVsbG8gV29ybGQ"},
+            },
+        }
+
+    with (
+        patch("ingest.newsletter.get_gmail_service") as mock_get_service,
+        patch("ingest.newsletter.clean_newsletter_content", side_effect=lambda c: c),
+    ):
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+
+        mock_get_req = MagicMock()
+        mock_get_req.execute.side_effect = slow_execute_with_timing
+        mock_service.users().messages().get.return_value = mock_get_req
+
+        # 5 messages to fetch
+        mock_service.users().messages().list().execute.return_value = {
+            "messages": [{"id": f"msg-{i}"} for i in range(1, 6)]
+        }
+
+        caplog.set_level(logging.INFO)
+
+        start = time.monotonic()
+        snapshots = await ingest_newsletters(newer_than_days=1)
+        elapsed = time.monotonic() - start
+
+        # If parallel: ~0.1s (max single fetch delay). If sequential: > 0.5s (5 × 0.1s).
+        assert elapsed < 0.35, (
+            f"Batch fetching took {elapsed:.2f}s — appears to be sequential (expected < 0.35s for parallel)"
+        )
+
+        # All 5 fetch calls should have started within 50ms of each other (concurrent)
+        if len(call_times) >= 2:
+            spread = max(call_times) - min(call_times)
+            assert spread < 0.05, f"Batch fetch call start spread was {spread:.3f}s — not concurrent (expected < 0.05s)"
+
+        # Verify all 5 messages resulted in snapshots
+        assert len(snapshots) == 5, f"Expected 5 snapshots, got {len(snapshots)}"

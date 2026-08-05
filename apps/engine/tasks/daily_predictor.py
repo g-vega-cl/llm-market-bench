@@ -14,6 +14,40 @@ from core.llm.daily_predictor_prompts import (
 )
 
 
+async def seed_daily_predictor_prompt() -> tuple[str, str]:
+    """Seed the Auto-Researcher optimized prompt as the active live baseline in Supabase."""
+    client = get_supabase_client()
+    today = datetime.now(UTC).date()
+    tag = "daily-pred-seeded-v1"
+
+    try:
+        # Demote previous active/baseline live predictor prompts to saved
+        client.table("prompt_experiments").update({"status": "saved"}).eq("prompt_name", "DAILY_PREDICTOR_PROMPT").eq(
+            "status", "active"
+        ).execute()
+
+        # Insert new seeded prompt as active baseline
+        client.table("prompt_experiments").insert(
+            {
+                "variant_tag": tag,
+                "prompt_name": "DAILY_PREDICTOR_PROMPT",
+                "prompt_content": DAILY_PREDICTOR_PROMPT,
+                "week_start": today.isoformat(),
+                "week_end": (today + timedelta(days=7)).isoformat(),
+                "status": "active",
+                "experiment_type": "baseline",
+                "change_description": "Seeded from 12-week backtest Auto-Researcher optimization.",
+            }
+        ).execute()
+
+        logger.info(f"Successfully seeded and deployed live active prompt variant: {tag}")
+        return tag, DAILY_PREDICTOR_PROMPT
+    except Exception as e:
+        logger.error(f"Error seeding daily predictor prompt: {e}")
+
+    return tag, DAILY_PREDICTOR_PROMPT
+
+
 async def fetch_active_daily_prompt() -> tuple[str, str]:
     """Fetch active DAILY_PREDICTOR_PROMPT from database, or bootstrap baseline."""
     client = get_supabase_client()
@@ -31,23 +65,8 @@ async def fetch_active_daily_prompt() -> tuple[str, str]:
         if response.data:
             return response.data[0]["variant_tag"], response.data[0]["prompt_content"]
 
-        logger.info("No active DAILY_PREDICTOR_PROMPT found. Bootstrapping baseline...")
-        today = datetime.now(UTC).date()
-        tag = "daily-pred-baseline"
-
-        client.table("prompt_experiments").insert(
-            {
-                "variant_tag": tag,
-                "prompt_name": "DAILY_PREDICTOR_PROMPT",
-                "prompt_content": DAILY_PREDICTOR_PROMPT,
-                "week_start": today.isoformat(),
-                "week_end": (today + timedelta(days=7)).isoformat(),
-                "status": "active",
-                "experiment_type": "baseline",
-                "change_description": "Initial baseline daily predictor prompt.",
-            }
-        ).execute()
-        return tag, DAILY_PREDICTOR_PROMPT
+        logger.info("No active DAILY_PREDICTOR_PROMPT found. Seeding baseline...")
+        return await seed_daily_predictor_prompt()
     except Exception as e:
         logger.error(f"Error fetching active daily predictor prompt: {e}")
 

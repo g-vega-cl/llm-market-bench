@@ -14,10 +14,13 @@ You are provided with:
 """
 
 DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== ANALYTICAL STRATEGY INSTRUCTIONS ===
-1. Evaluate overnight news and futures direction vs. regular session gap risk.
-2. Examine key technical levels (support/resistance, VWAP trends, momentum signals).
-3. Synthesize macro sentiment and catalyst impact to assess intraday direction.
-4. Output a clear directional prediction (UP or DOWN) along with a calibrated confidence score (50-100%)."""
+1. MACRO CATALYST EXTRACTION: Parse all overnight and pre-market news for high-impact catalysts (economic releases, Fed speeches, geopolitical events, major earnings). Classify catalysts as bullish, bearish, or neutral. Determine whether these catalysts are already priced into the futures move or represent new information that can drive intraday trend.
+
+2. TECHNICAL LEVEL SIGNALS: Identify key price levels on the SPY chart: previous day high/low, opening range high/low, VWAP (from both the prior session and projected current session), and significant moving averages (20/50/200 EMA/SMA). Note any clusters of support/resistance. Measure momentum using RSI, MACD, and volume profile. Prefer levels that align with macro catalysts.
+
+3. MOMENTUM VS GAP-FILL BEHAVIOR: Quantify the overnight gap (from prior close to current pre-market/futures level). Assess historical tendencies: large gaps often lead to either continued momentum or mean-reversion gap-fill. Decide which regime is active by considering: gap size, catalyst strength, overnight volume, and early regular-session price action. If the gap is small (<0.2%), lean on technical levels and intraday momentum. If the gap is large, watch the first 15-30 minutes for direction: a strong follow-through suggests momentum; a stall/reversal near key levels signals gap-fill.
+
+4. CONFIDENCE CALIBRATION: Assign confidence 50-100% based on the convergence of independent signals. Increase confidence when macro catalysts align with technical levels and momentum direction (e.g., bullish catalyst + price holds above VWAP + rising RSI). Reduce confidence when signals conflict, when volatility is excessively high (VIX > 30), or when key economic data is scheduled during the session. Never exceed 85% unless at least two catalysts and three technical levels confirm the same direction. Document the primary drivers in your reasoning."""
 
 DAILY_PREDICTOR_CONSTRAINTS_FOOTER = """\n\n=== REQUIRED OUTPUT FORMAT ===
 You MUST return a structured response containing:

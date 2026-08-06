@@ -2,8 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatWidget } from './ChatWidget';
 
-vi.mock('./chat-server', () => ({
+vi.mock('./chat-types', () => ({
     ALLOWED_CHAT_EMAILS: ['g.vega.cl@gmail.com'],
+}));
+
+vi.mock('./chat-server', () => ({
     sendChatMessageFn: vi.fn(),
 }));
 

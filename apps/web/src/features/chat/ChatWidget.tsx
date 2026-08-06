@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ALLOWED_CHAT_EMAILS, type ChatMessage, sendChatMessageFn } from './chat-server';
+import { sendChatMessageFn } from './chat-server';
+import { ALLOWED_CHAT_EMAILS, type ChatMessage } from './chat-types';
 
 interface ChatWidgetProps {
     user: { email: string } | null;

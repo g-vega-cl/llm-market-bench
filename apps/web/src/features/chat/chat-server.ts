@@ -1,12 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getSupabaseServerClient } from '~/lib/supabase';
+import { ALLOWED_CHAT_EMAILS, type ChatMessage } from './chat-types';
 
-export interface ChatMessage {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-}
-
-export const ALLOWED_CHAT_EMAILS = ['g.vega.cl@gmail.com'];
+export { ALLOWED_CHAT_EMAILS, type ChatMessage };
 
 const SYSTEM_PROMPT = `You are Benchify AI, an intelligent financial & market analysis assistant embedded in the LLM Market Bench platform.
 You assist authorized users by answering questions, reviewing market predictions, and discussing investment strategies.
@@ -15,6 +10,7 @@ Be concise, analytical, professional, and clear.`;
 export async function handleChatMessage(payload: {
     messages: ChatMessage[];
 }): Promise<ChatMessage> {
+    const { getSupabaseServerClient } = await import('~/lib/supabase');
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
 

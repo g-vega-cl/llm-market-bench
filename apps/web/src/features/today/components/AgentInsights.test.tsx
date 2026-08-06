@@ -82,7 +82,7 @@ describe('AgentInsights', () => {
     });
 
     it('renders agent name text for known OpenAI model', () => {
-        render(<AgentInsights memories={[createLessonMemory('gpt-5.4-nano')]} />);
+        render(<AgentInsights memories={[createLessonMemory(MODELS.OPENAI)]} />);
         expect(screen.getByText('OpenAI')).toBeInTheDocument();
     });
 
@@ -116,17 +116,17 @@ describe('AgentInsights', () => {
     });
 
     it('still renders Lesson Learned badge', () => {
-        render(<AgentInsights memories={[createLessonMemory('gpt-5.4-nano')]} />);
+        render(<AgentInsights memories={[createLessonMemory(MODELS.OPENAI)]} />);
         expect(screen.getByText('Lesson Learned')).toBeInTheDocument();
     });
 
     it('still renders Post-Analysis label', () => {
-        render(<AgentInsights memories={[createLessonMemory('gpt-5.4-nano')]} />);
+        render(<AgentInsights memories={[createLessonMemory(MODELS.OPENAI)]} />);
         expect(screen.getByText(/Post-Analysis/i)).toBeInTheDocument();
     });
 
     it('renders lesson content', () => {
-        render(<AgentInsights memories={[createLessonMemory('gpt-5.4-nano')]} />);
+        render(<AgentInsights memories={[createLessonMemory(MODELS.OPENAI)]} />);
         expect(screen.getByText(/Test lesson learned/i)).toBeInTheDocument();
     });
 
@@ -174,7 +174,7 @@ describe('AgentInsights', () => {
         const consensusMemory = {
             ...createConsensusMemory('consensus-123'),
             metadata: {
-                participating_agents: ['gpt-5.4-nano', 'gemini-3.5-flash-lite'],
+                participating_agents: [MODELS.OPENAI, 'gemini-3.5-flash-lite'],
                 tickers: ['NVDA'],
             },
         };

@@ -60,7 +60,7 @@ const mockLeaderboardData: LLMLeaderboardRow[] = [
         composite_score: 85.0,
     },
     {
-        model_name: 'gpt-5.4-nano',
+        model_name: 'gpt-5.6-luna',
         total_equity: 10480,
         return_pct: 4.8,
         realized_pnl: 480,
@@ -92,7 +92,7 @@ describe('LeaderboardPage', () => {
         // Should render model display names from config or fallback
         expect(screen.getAllByText('DeepSeek (v4-pro)').length).toBeGreaterThan(0);
         expect(screen.getAllByText('MiniMax (M3)').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('OpenAI (gpt-5.4-nano)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('OpenAI (gpt-5.6-luna)').length).toBeGreaterThan(0);
 
         // Should render score percentages
         expect(screen.getAllByText('89.5%').length).toBeGreaterThan(0);

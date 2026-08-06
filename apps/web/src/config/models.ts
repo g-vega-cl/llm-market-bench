@@ -1,5 +1,5 @@
 export const MODELS = {
-    OPENAI: 'gpt-5.4-nano',
+    OPENAI: 'gpt-5.6-luna',
     ANTHROPIC: 'claude-haiku-4-5',
     GEMINI: 'gemini-3.5-flash-lite',
     DEEPSEEK: 'deepseek-v4-pro',

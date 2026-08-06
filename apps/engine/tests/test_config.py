@@ -27,7 +27,7 @@ def test_constants():
 
 def test_model_defaults():
     """Verify default model names are set."""
-    assert core.config.OPENAI_MODEL is not None
+    assert core.config.OPENAI_MODEL == "gpt-5.6-luna"
     assert core.config.ANTHROPIC_MODEL is not None
     assert core.config.GEMINI_MODEL is not None
     assert core.config.DEEPSEEK_MODEL is not None

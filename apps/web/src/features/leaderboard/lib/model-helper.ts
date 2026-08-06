@@ -11,7 +11,7 @@ export const modelDisplayConfig: Record<
     }
 > = {
     [MODELS.OPENAI]: {
-        name: 'OpenAI (gpt-5.4-nano)',
+        name: 'OpenAI (gpt-5.6-luna)',
         color: 'text-emerald-400',
         bgColor: 'bg-emerald-500',
         emoji: '🟢',

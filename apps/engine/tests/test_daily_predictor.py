@@ -61,3 +61,32 @@ async def test_run_daily_prediction_success():
         assert result["predicted_direction"] == "UP"
         assert result["confidence"] == 75.0
         assert result["ticker"] == "SPY"
+
+
+@pytest.mark.asyncio
+async def test_get_daily_market_context_technicals():
+    from tasks.daily_predictor import get_daily_market_context
+
+    mock_history = [{"price": 700.0 + i, "fetched_at": f"2026-07-{i + 1:02d}T00:00:00Z"} for i in range(25)]
+    mock_mdm = MagicMock()
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch(
+            "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool", new_callable=AsyncMock, return_value="VIX test"
+        ),
+        patch("core.llm.tools.execute_market_health_barometer_tool", new_callable=AsyncMock, return_value="Baro test"),
+        patch("core.llm.tools.execute_get_market_feeling_tool", new_callable=AsyncMock, return_value="Feeling test"),
+    ):
+        ctx = await get_daily_market_context(ticker="SPY")
+        assert "Previous Trading Session" in ctx
+        assert "5-Day Return" in ctx
+        assert "20-Day Simple Moving Average" in ctx
+        assert "Global Macro Baseline" in ctx
+        assert "Volatility Index Details" in ctx
+        assert "Market Health Barometer" in ctx
+        assert "Recent Market Feeling" in ctx

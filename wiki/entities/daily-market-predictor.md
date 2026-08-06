@@ -12,16 +12,16 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 1. **Pre-Market Inference (9:00 AM ET)**:
    - Command: `python main.py daily-predictor [--ticker SPY]`
    - Model: **DeepSeek Flash** (`deepseek-v4-flash`) with Instructor structured output (`DailyPredictionOutput`).
-   - Context: Synthesizes technical indicators, overnight futures (ES/NQ), macro news summaries, and market barometer data.
+   - Context: Synthesizes technical indicators (SMA20, 5-day return via FMP `MarketDataManager`) and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
 
 2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:
    - Command: `python main.py evaluate-daily-predictions`
-   - Scopes today's 9:30 AM Open and 4:00 PM Close prices from market data feeds safely after market close.
+   - Scopes today's 9:30 AM Open and 4:00 PM Close prices safely after market close via FMP `MarketDataManager` (skips evaluation if target date hasn't closed yet).
    - Calculates **Directional Accuracy** (`is_correct`) and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
 
-3. **Twice-Weekly Prompt Evolution (Wed/Sun 6:00 PM ET)**:
+3. **Daily Prompt Evolution (Mon-Fri 6:00 PM ET)**:
    - Command: `python main.py daily-autoresearch`
-   - Evaluates predictions over recent 3–4 trading days against all-time baseline in `prompt_experiments` (`prompt_name: "DAILY_PREDICTOR_PROMPT"`).
+   - Evaluates predictions over recent trading days against baseline in `prompt_experiments` (`prompt_name: "DAILY_PREDICTOR_PROMPT"`).
    - Applies ratchet logic: if recent performance beats baseline, establishes new baseline; if lower, reverts to baseline prompt.
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher.
 
@@ -31,7 +31,7 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 ## Execution & Dispatch Architecture
 
 1. **High-Precision Edge Cron Dispatcher (`apps/cron-dispatcher`)**:
-   - Cloudflare Worker running 5 consolidated edge cron triggers (`0 13,18 * * MON-FRI`, `35 13-15 * * MON-FRI`, `15 21 * * MON-FRI`, `0 22 * * SUN/WED`).
+   - Cloudflare Worker running 5 consolidated edge cron triggers (`0 13,18 * * MON-FRI`, `35 13-15 * * MON-FRI`, `15 21 * * MON-FRI`, `0 22 * * MON-FRI`).
    - Unified dispatcher routing to both `daily-predictor.yml` (Predictions, Evaluations, Autoresearch) and `ingest.yml` (Ingestion & Consensus).
    - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials.
    - Bypasses GitHub Actions scheduled queue delays, launching workflows in < 5 seconds.

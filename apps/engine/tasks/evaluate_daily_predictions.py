@@ -24,25 +24,24 @@ def calculate_brier_score(predicted_direction: str, confidence: float, actual_di
 
 
 async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[float | None, float | None]:
-    """Fetch 9:30 AM Open and 4:00 PM Close prices for ticker on target_date."""
+    """Fetch Open and Close prices for ticker on target_date via canonical MarketDataManager (FMP)."""
     try:
-        import yfinance as yf
+        from execution.market_data import MarketDataManager
 
-        t = yf.Ticker(ticker)
-        hist = t.history(period="5d")
+        mdm = MarketDataManager()
+        history = await mdm.get_history(ticker, days=10)
 
-        if not hist.empty:
-            for idx, row in hist.iterrows():
-                row_date = idx.strftime("%Y-%m-%d")
-                if row_date == target_date_str:
-                    open_price = float(row["Open"])
-                    close_price = float(row["Close"])
+        if history:
+            for entry in history:
+                fetched_at = entry.get("fetched_at", "")
+                date_part = fetched_at[:10]
+                if date_part == target_date_str:
+                    open_price = float(entry.get("open", entry["price"]))
+                    close_price = float(entry["price"])
                     return open_price, close_price
 
-            latest = hist.iloc[-1]
-            return float(latest["Open"]), float(latest["Close"])
     except Exception as e:
-        logger.warning(f"Error fetching intraday prices via yfinance for {ticker} on {target_date_str}: {e}")
+        logger.warning(f"Error fetching intraday prices via MarketDataManager for {ticker} on {target_date_str}: {e}")
 
     return None, None
 

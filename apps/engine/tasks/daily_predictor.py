@@ -74,42 +74,71 @@ async def fetch_active_daily_prompt() -> tuple[str, str]:
 
 
 async def get_daily_market_context(ticker: str = "SPY") -> str:
-    """Fetch recent market data context (market feeling, barometer, technicals)."""
-    client = get_supabase_client()
+    """Fetch recent market data context using canonical MarketDataManager (FMP) and pre-made tools."""
+    from core.llm.tools import (
+        execute_get_global_macro_context_tool,
+        execute_get_market_feeling_tool,
+        execute_get_volatility_index_details_tool,
+        execute_market_health_barometer_tool,
+    )
+    from execution.market_data import MarketDataManager
+
     context_lines = [f"Asset: {ticker} (S&P 500 ETF)"]
     today_str = datetime.now(UTC).date().isoformat()
 
+    # 1. Macro & Market Feeling Context via Canonical Tools
     try:
-        # Fetch latest market feeling if available
-        mf_res = (
-            client.table("market_feeling")
-            .select("sentiment_label, news_summary, created_at")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        if mf_res.data:
-            feeling = mf_res.data[0].get("sentiment_label")
-            summary = mf_res.data[0].get("news_summary")
-            if feeling:
-                context_lines.append(f"Recent Market Sentiment / Feeling: {feeling}")
-            if summary:
-                context_lines.append(f"Latest News Summary: {summary[:500]}...")
+        macro_str = await execute_get_global_macro_context_tool()
+        if macro_str and not macro_str.startswith("Error"):
+            context_lines.append(f"Global Macro Baseline:\n{macro_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching global macro context: {e}")
 
-        # Fetch recent market barometer
-        mb_res = (
-            client.table("market_barometer")
-            .select("score, macro_trend, created_at")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        if mb_res.data:
-            baro = mb_res.data[0]
-            context_lines.append(f"Market Barometer Score: {baro.get('score')} ({baro.get('macro_trend')})")
+    try:
+        vol_str = await execute_get_volatility_index_details_tool()
+        if vol_str and not vol_str.startswith("Error"):
+            context_lines.append(f"Volatility Index Details:\n{vol_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching volatility index details: {e}")
+
+    try:
+        baro_str = await execute_market_health_barometer_tool()
+        if baro_str and not baro_str.startswith("Error"):
+            context_lines.append(f"Market Health Barometer:\n{baro_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching market health barometer: {e}")
+
+    try:
+        feeling_str = await execute_get_market_feeling_tool()
+        if feeling_str and not feeling_str.startswith("Error"):
+            context_lines.append(f"Recent Market Feeling:\n{feeling_str[:500]}")
+    except Exception as e:
+        logger.warning(f"Error fetching market feeling: {e}")
+
+    # 2. Price Action & Technicals via MarketDataManager (FMP)
+    try:
+        mdm = MarketDataManager()
+        history = await mdm.get_history(ticker, days=30)
+        if history and len(history) >= 2:
+            sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
+            prev_row = sorted_hist[-1]
+            prev_close = float(prev_row["price"])
+            prev_date = str(prev_row.get("fetched_at", ""))[:10]
+
+            context_lines.append(f"Previous Trading Session ({prev_date}) Close: ${prev_close:.2f}")
+
+            if len(sorted_hist) >= 5:
+                five_day_first = float(sorted_hist[-5]["price"])
+                five_day_change_pct = ((prev_close - five_day_first) / five_day_first) * 100.0
+                context_lines.append(f"5-Day Return: {five_day_change_pct:+.2f}%")
+
+            if len(sorted_hist) >= 20:
+                recent_prices = [float(r["price"]) for r in sorted_hist[-20:]]
+                sma_20 = sum(recent_prices) / len(recent_prices)
+                context_lines.append(f"20-Day Simple Moving Average (SMA20): ${sma_20:.2f}")
 
     except Exception as e:
-        logger.warning(f"Error fetching daily context: {e}")
+        logger.warning(f"Error fetching technical indicators via MarketDataManager for {ticker}: {e}")
 
     context_lines.append(f"Prediction Target Date: {today_str}")
     return "\n".join(context_lines)

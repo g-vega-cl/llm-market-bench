@@ -45,3 +45,19 @@ async def test_evaluate_daily_predictions_success():
         evaluated_count = await evaluate_daily_predictions()
         assert evaluated_count == 1
         mock_supabase.table.return_value.update.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_fetch_intraday_open_close_missing_date():
+    from unittest.mock import AsyncMock
+
+    from tasks.evaluate_daily_predictions import fetch_intraday_open_close
+
+    mock_history = [{"price": 105.0, "fetched_at": "2026-08-04T00:00:00Z"}]
+    mock_mdm = MagicMock()
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+
+    with patch("execution.market_data.MarketDataManager", return_value=mock_mdm):
+        open_p, close_p = await fetch_intraday_open_close("SPY", "2026-08-05")
+        assert open_p is None
+        assert close_p is None

@@ -243,13 +243,30 @@ function EvaluationAuditDrawer({
     );
 }
 
+function getModelDisplayName(modelName: string): string {
+    const lower = modelName.toLowerCase();
+    if (lower.includes('deepseek')) return 'DeepSeek';
+    if (lower.includes('minimax')) return 'MiniMax-M3';
+    if (lower.includes('gemini')) return 'Gemini 3.5';
+    if (lower.includes('gpt') || lower.includes('openai')) return 'GPT-5.6';
+    return modelName;
+}
+
+function getModelColorScheme(modelName: string): 'accent' | 'neutral' {
+    const lower = modelName.toLowerCase();
+    return lower.includes('deepseek') || lower.includes('gpt') || lower.includes('openai')
+        ? 'accent'
+        : 'neutral';
+}
+
 function AIPredictionTableRow({
     pred,
     isExpanded,
     onToggleExpand,
     viewMode,
 }: AIPredictionTableRowProps) {
-    const isDeepSeek = pred.model_name.toLowerCase().includes('deepseek');
+    const displayName = getModelDisplayName(pred.model_name);
+    const colorScheme = getModelColorScheme(pred.model_name);
 
     return (
         <Fragment>
@@ -261,11 +278,11 @@ function AIPredictionTableRow({
                 <TableCell className="py-3">
                     <div className="flex items-center gap-2">
                         <Badge
-                            colorScheme={isDeepSeek ? 'accent' : 'neutral'}
+                            colorScheme={colorScheme}
                             variant="soft"
                             className="text-[11px] font-semibold px-2 py-0.5"
                         >
-                            {isDeepSeek ? 'DeepSeek' : 'MiniMax-M3'}
+                            {displayName}
                         </Badge>
                         <span className="text-[10px] text-slate-400 font-mono">
                             {pred.prompt_tag}
@@ -340,7 +357,9 @@ function AIPredictionTableRow({
 
 export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [modelFilter, setModelFilter] = useState<'all' | 'deepseek' | 'minimax'>('all');
+    const [modelFilter, setModelFilter] = useState<
+        'all' | 'deepseek' | 'minimax' | 'gemini' | 'openai'
+    >('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'past'>('all');
     const [timeframeFilter, setTimeframeFilter] = useState<'all' | '7d' | '30d' | '60d' | '90d'>(
         'all',
@@ -373,7 +392,11 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                     modelFilter === 'all' ||
                     (modelFilter === 'deepseek' &&
                         p.model_name.toLowerCase().includes('deepseek')) ||
-                    (modelFilter === 'minimax' && p.model_name.toLowerCase().includes('minimax'));
+                    (modelFilter === 'minimax' && p.model_name.toLowerCase().includes('minimax')) ||
+                    (modelFilter === 'gemini' && p.model_name.toLowerCase().includes('gemini')) ||
+                    (modelFilter === 'openai' &&
+                        (p.model_name.toLowerCase().includes('gpt') ||
+                            p.model_name.toLowerCase().includes('openai')));
 
                 const matchesStatus =
                     statusFilter === 'all' ||
@@ -438,13 +461,22 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                     <select
                         value={modelFilter}
                         onChange={(e) =>
-                            setModelFilter(e.target.value as 'all' | 'deepseek' | 'minimax')
+                            setModelFilter(
+                                e.target.value as
+                                    | 'all'
+                                    | 'deepseek'
+                                    | 'minimax'
+                                    | 'gemini'
+                                    | 'openai',
+                            )
                         }
                         className="px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:border-blue-500"
                     >
                         <option value="all">All Models</option>
                         <option value="deepseek">DeepSeek Models</option>
                         <option value="minimax">MiniMax-M3</option>
+                        <option value="gemini">Gemini Models</option>
+                        <option value="openai">OpenAI Models</option>
                     </select>
 
                     {/* Status Filter */}

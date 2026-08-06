@@ -7,9 +7,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pydantic import BaseModel
 
-from core.config import logger
+from core.config import DEEPSEEK_FLASH_MODEL, GEMINI_MODEL, MINIMAX_MODEL, OPENAI_MODEL, logger
 from core.db import get_supabase_client
-from core.llm.clients import close_client, get_deepseek_client
+from core.llm.clients import (
+    close_client,
+    get_deepseek_client,
+    get_gemini_client,
+    get_openai_client,
+)
 from core.llm.minimax import MiniMaxClient
 from core.llm.predictor_prompts import SECTOR_PREDICTOR_PROMPT
 
@@ -130,8 +135,10 @@ async def run_sector_predictions():
     today = datetime.now(UTC).date()
 
     models = [
-        {"name": "deepseek-v4-flash", "client": get_deepseek_client(), "type": "instructor"},
-        {"name": "MiniMax-M3", "client": MiniMaxClient(), "type": "minimax"},
+        {"name": DEEPSEEK_FLASH_MODEL, "client": get_deepseek_client(), "type": "instructor", "provider": "deepseek"},
+        {"name": MINIMAX_MODEL, "client": MiniMaxClient(), "type": "minimax", "provider": "minimax"},
+        {"name": GEMINI_MODEL, "client": get_gemini_client(), "type": "instructor", "provider": "gemini"},
+        {"name": OPENAI_MODEL, "client": get_openai_client(), "type": "instructor", "provider": "openai"},
     ]
 
     timeframes = ["7d", "30d", "60d", "90d"]
@@ -150,9 +157,8 @@ async def run_sector_predictions():
                         user_msg += "\nNote: Keep your internal reasoning/thinking process concise to avoid token limit truncation."
 
                     if model["type"] == "instructor":
-                        # DeepSeek with instructor
                         client_inst = model["client"]
-                        resp = await client_inst.chat.completions.create(
+                        resp_awaitable = client_inst.chat.completions.create(
                             model=model["name"],
                             response_model=SectorPredictionResponse,
                             messages=[
@@ -160,6 +166,10 @@ async def run_sector_predictions():
                                 {"role": "user", "content": user_msg},
                             ],
                         )
+                        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                            resp = await resp_awaitable
+                        else:
+                            resp = resp_awaitable
                         result = {
                             "predicted_sector": resp.predicted_sector,
                             "predicted_pair": resp.predicted_pair,
@@ -201,7 +211,7 @@ async def run_sector_predictions():
         if model["type"] == "minimax":
             await model["client"].close()
         elif model["type"] == "instructor":
-            await close_client(model["client"], "deepseek")
+            await close_client(model["client"], model.get("provider", "instructor"))
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ category: entity
 
 # AI Sector Predictor and Model Arena
 
-The **AI Sector Predictor and Model Arena** is a forecasting and benchmarking system designed to predict weekly top-performing sectors and uncorrelated asset pairs for 7d, 30d, 60d, and 90d timeframes, while comparing the predictive accuracy of **DeepSeek Flash** vs. **MiniMax-M3**.
+The **AI Sector Predictor and Model Arena** is a forecasting and benchmarking system designed to predict weekly top-performing sectors and uncorrelated asset pairs for 7d, 30d, 60d, and 90d timeframes, while comparing the predictive accuracy across **DeepSeek Flash**, **MiniMax-M3**, **Gemini 3.5 Flash Lite**, and **GPT-5.6 Luna**.
 
 ---
 
@@ -55,7 +55,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 ## 📁 Implementation Components
 
 ### Engine Tasks
-* **Prediction Generation (`apps/engine/tasks/sector_predictor.py`)**: Runs prediction inference for DeepSeek (via instructor proxy) and MiniMax (via direct HTTP payload). Inserts predictions into `sector_predictions` table.
+* **Prediction Generation (`apps/engine/tasks/sector_predictor.py`)**: Runs prediction inference across DeepSeek Flash, Gemini 3.5 Flash Lite, and GPT-5.6 Luna (via instructor proxy) and MiniMax-M3 (via direct HTTP payload). Inserts predictions into `sector_predictions` table.
 * **Auto-Research Evolution (`apps/engine/tasks/predictor_autoresearch.py`)**: Orchestrates the weekly prompt evolution, updates database metrics, applies the ratchet revert step, and mutates the system prompt using a hybrid async/sync completions handler to prevent runtime await crashes.
 * **Inference Evaluation (`apps/engine/tasks/evaluate_predictions.py`)**: Computes percentile performance metrics against the corresponding weekly correlation run assets.
 

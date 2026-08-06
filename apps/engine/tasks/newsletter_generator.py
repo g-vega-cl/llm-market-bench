@@ -28,9 +28,7 @@ class GeneratedNewsletterOutput(BaseModel):
     read_time_minutes: int = Field(default=2, description="Estimated read time in minutes (typically 1 or 2).")
 
 
-async def _call_deepseek_flash(
-    chunks: list[dict], session: str, formatted_time: str
-) -> GeneratedNewsletterOutput:
+async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time: str) -> GeneratedNewsletterOutput:
     """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters into a proper newsletter."""
     session_label = "Morning Market Open Briefing" if session == "open" else "Evening Market Close Briefing"
     now_date_str = datetime.now(ZoneInfo("America/New_York")).strftime("%B %d, %Y")
@@ -132,12 +130,7 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
 
     snapshots = []
     try:
-        res = (
-            sb.table("newsletter_snapshots")
-            .select("*")
-            .gte("ingested_at", start_of_day_iso)
-            .execute()
-        )
+        res = sb.table("newsletter_snapshots").select("*").gte("ingested_at", start_of_day_iso).execute()
         snapshots = res.data or []
     except Exception as e:
         logger.warning(f"Could not fetch newsletter snapshots: {e}")

@@ -1002,7 +1002,13 @@ def main():
     )
     parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
     parser.add_argument("--ticker", type=str, default="SPY", help="Ticker for daily predictor (default: SPY)")
-    parser.add_argument("--session", type=str, choices=["open", "close"], default="open", help="Session window for generated newsletter (open or close)")
+    parser.add_argument(
+        "--session",
+        type=str,
+        choices=["open", "close"],
+        default="open",
+        help="Session window for generated newsletter (open or close)",
+    )
     parser.add_argument("--start-date", type=str, default="2026-04-27", help="Backtest start date (YYYY-MM-DD)")
     parser.add_argument("--weeks", type=int, default=1, help="Number of backtest weeks")
 

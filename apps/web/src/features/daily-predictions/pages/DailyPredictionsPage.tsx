@@ -9,28 +9,32 @@ interface Props {
     refreshFn?: () => Promise<{ predictions: DailyPrediction[]; experiments: PromptExperiment[] }>;
 }
 
-function DailyMetricsOverview({
-    accuracyPct,
-    correctCount,
-    totalEvaluated,
-    avgBrier,
-    totalPredictions,
-    activePromptTag,
-}: {
+interface DailyMetricsOverviewProps {
     accuracyPct: string;
+    intradayHitPct: string;
     correctCount: number;
     totalEvaluated: number;
     avgBrier: string;
     totalPredictions: number;
     activePromptTag: string;
-}) {
+}
+
+function DailyMetricsOverview({
+    accuracyPct,
+    intradayHitPct,
+    correctCount,
+    totalEvaluated,
+    avgBrier,
+    totalPredictions,
+    activePromptTag,
+}: DailyMetricsOverviewProps) {
     return (
         <div
             style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '16px',
-                marginBottom: '32px',
+                marginBottom: '24px',
             }}
         >
             <div
@@ -56,6 +60,32 @@ function DailyMetricsOverview({
                 </div>
                 <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
                     {correctCount} / {totalEvaluated} correct
+                </div>
+            </div>
+
+            <div
+                style={{
+                    padding: '20px',
+                    background: '#f8fafc',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                }}
+            >
+                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>
+                    Intraday Target Hit (30%)
+                </div>
+                <div
+                    style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        color: '#0f172a',
+                        marginTop: '4px',
+                    }}
+                >
+                    {intradayHitPct}%
+                </div>
+                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                    Target reached intraday
                 </div>
             </div>
 
@@ -276,6 +306,7 @@ function PredictionsTable({ predictions }: { predictions: DailyPrediction[] }) {
                         <th style={{ padding: '12px 16px' }}>Open Price</th>
                         <th style={{ padding: '12px 16px' }}>Close Price</th>
                         <th style={{ padding: '12px 16px' }}>Actual Dir</th>
+                        <th style={{ padding: '12px 16px' }}>Intraday Hit</th>
                         <th style={{ padding: '12px 16px' }}>Outcome</th>
                         <th style={{ padding: '12px 16px' }}>Brier Score</th>
                     </tr>
@@ -305,6 +336,39 @@ function PredictionsTable({ predictions }: { predictions: DailyPrediction[] }) {
                             </td>
                             <td style={{ padding: '12px 16px', fontWeight: '600' }}>
                                 {p.actual_direction || '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                                {p.intraday_hit === true && (
+                                    <span
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            background: '#e0f2fe',
+                                            color: '#0369a1',
+                                            fontWeight: '600',
+                                            fontSize: '12px',
+                                        }}
+                                    >
+                                        HIT
+                                    </span>
+                                )}
+                                {p.intraday_hit === false && (
+                                    <span
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            background: '#fef3c7',
+                                            color: '#b45309',
+                                            fontWeight: '600',
+                                            fontSize: '12px',
+                                        }}
+                                    >
+                                        MISSED
+                                    </span>
+                                )}
+                                {p.intraday_hit === null && (
+                                    <span style={{ color: '#94a3b8', fontSize: '12px' }}>-</span>
+                                )}
                             </td>
                             <td style={{ padding: '12px 16px' }}>
                                 {p.is_correct === true && (
@@ -358,7 +422,7 @@ function PredictionsTable({ predictions }: { predictions: DailyPrediction[] }) {
                     {predictions.length === 0 && (
                         <tr>
                             <td
-                                colSpan={9}
+                                colSpan={10}
                                 style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}
                             >
                                 No daily predictions logged yet. Run `python main.py
@@ -495,6 +559,30 @@ function AutoresearchTab({ experiments }: { experiments: PromptExperiment[] }) {
     );
 }
 
+function computeDailyPredictionStats(predictions: DailyPrediction[]) {
+    const evaluatedPredictions = predictions.filter((p) => p.status === 'evaluated');
+    const totalEvaluated = evaluatedPredictions.length;
+    const correctCount = evaluatedPredictions.filter((p) => p.is_correct === true).length;
+    const accuracyPct =
+        totalEvaluated > 0 ? ((correctCount / totalEvaluated) * 100).toFixed(1) : 'N/A';
+
+    const intradayHitCount = evaluatedPredictions.filter(
+        (p) => p.intraday_hit === true || (p.intraday_hit === null && p.is_correct === true),
+    ).length;
+    const intradayHitPct =
+        totalEvaluated > 0 ? ((intradayHitCount / totalEvaluated) * 100).toFixed(1) : 'N/A';
+
+    const brierScores = evaluatedPredictions
+        .map((p) => p.brier_score)
+        .filter((s): s is number => s !== null && s !== undefined);
+    const avgBrier =
+        brierScores.length > 0
+            ? (brierScores.reduce((a, b) => a + b, 0) / brierScores.length).toFixed(4)
+            : 'N/A';
+
+    return { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier };
+}
+
 export function DailyPredictionsPage({ initialPredictions, experiments, refreshFn }: Props) {
     const [predictions, setPredictions] = useState<DailyPrediction[]>(initialPredictions);
     const [promptExperiments, setPromptExperiments] = useState<PromptExperiment[]>(experiments);
@@ -516,19 +604,8 @@ export function DailyPredictionsPage({ initialPredictions, experiments, refreshF
     };
 
     const latestPrediction = predictions.length > 0 ? predictions[0] : null;
-    const evaluatedPredictions = predictions.filter((p) => p.status === 'evaluated');
-    const correctCount = evaluatedPredictions.filter((p) => p.is_correct === true).length;
-    const totalEvaluated = evaluatedPredictions.length;
-    const accuracyPct =
-        totalEvaluated > 0 ? ((correctCount / totalEvaluated) * 100).toFixed(1) : 'N/A';
-
-    const brierScores = evaluatedPredictions
-        .map((p) => p.brier_score)
-        .filter((s): s is number => s !== null && s !== undefined);
-    const avgBrier =
-        brierScores.length > 0
-            ? (brierScores.reduce((a, b) => a + b, 0) / brierScores.length).toFixed(4)
-            : 'N/A';
+    const { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier } =
+        computeDailyPredictionStats(predictions);
 
     const activePrompt =
         promptExperiments.find((e) => e.status === 'active') || promptExperiments[0] || null;
@@ -606,6 +683,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments, refreshF
 
             <DailyMetricsOverview
                 accuracyPct={accuracyPct}
+                intradayHitPct={intradayHitPct}
                 correctCount={correctCount}
                 totalEvaluated={totalEvaluated}
                 avgBrier={avgBrier}

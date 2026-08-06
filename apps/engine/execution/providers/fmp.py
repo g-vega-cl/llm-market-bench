@@ -185,9 +185,15 @@ class FMPProvider(FinancialProvider):
 
                     results = []
                     for entry in historical_data:
+                        close_val = float(entry["close"])
                         results.append(
                             HistoryData(
-                                price=float(entry["close"]), volume=entry.get("volume"), fetched_at=entry["date"]
+                                price=close_val,
+                                open=float(entry.get("open", close_val)),
+                                high=float(entry.get("high", close_val)),
+                                low=float(entry.get("low", close_val)),
+                                volume=entry.get("volume"),
+                                fetched_at=entry["date"],
                             )
                         )
 

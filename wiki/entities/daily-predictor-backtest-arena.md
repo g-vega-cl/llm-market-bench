@@ -1,40 +1,45 @@
 ---
-tags: [daily-predictor, backtest, arena, prompt-mutation, temporal-sandbox]
+tags: [backtest, daily-predictions, arena, evaluation]
 category: entity
 ---
 
 # Daily Predictor Backtest Arena
 
-A temporal sandbox for auditing and improving the S&P 500 (SPY) daily open-to-close prediction pipeline. It runs simulated prediction/evaluation cycles over historical dates using a local SQLite database, then applies a meta-researcher (DeepSeek Flash) to mutate the mutable strategy instructions of the daily predictor prompt. The results are displayed in a dedicated web UI that mirrors the live Daily Predictor page but scoped to backtest data.
+Web UI and engine backtest system for S&P 500 daily open-to-close predictions with prompt mutation. The arena provides a full simulation environment where prompt variants are tested against historical data and scored using a composite ratchet metric.
 
-## Engine Backtest Pipeline
+## Architecture
 
-- **Command**: `python apps/engine/main.py backtest-daily-autoresearch --start-date YYYY-MM-DD --weeks N`
-- **Database**: Local SQLite file `.backtest_daily.db` with tables `daily_predictions` and `prompt_experiments` (mirroring Supabase schema, with `is_backtest = 1`).
-- **Price Source**: Attempts `yfinance` for real historical open/close; falls back to deterministic synthetic prices for offline testing.
-- **Daily Cycle**:
-  1. **09:00 AM ET** – Simulated prediction using the active prompt variant (DeepSeek Flash).
-  2. **05:15 PM ET** – Evaluation against actual open/close, computing correctness and Brier calibration score.
-- **Weekly Ratchet**: At the end of each simulated week, a meta-researcher LLM (DeepSeek Flash) generates a new mutable strategy section based on the current ratchet score, and the new prompt variant is stored as an active experiment.
+The backtest system lives in `apps/engine/tasks/backtest_daily_autoresearch.py` and uses a local SQLite database (`data/backtest_daily.db`) for storing predictions and prompt experiments, completely decoupled from the Supabase production database.
+
+### Key Components
+
+- **`init_backtest_daily_db()`** — Creates SQLite tables (`daily_predictions`, `prompt_experiments`). Includes **auto-migration**: if columns are missing from previous runs (e.g., `actual_high_price`, `actual_low_price`, `intraday_hit`, `intraday_direction_hit`), they are added via `ALTER TABLE`.
+- **`reset_backtest_daily_db()`** — Drops and recreates tables for a clean slate.
+- **`fetch_historical_spy_prices(target_date)`** — Fetches Open, High, Low, and Close prices via yfinance, with a deterministic fallback when data is unavailable.
+- **`evaluate_backtest_prediction()`** (formerly `evaluate_simulated_daily_prediction`) — Evaluates a single prediction against actual OHLC prices, computing `is_correct`, `intraday_hit`, `intraday_direction_hit`, and `brier_score`. The old name is preserved as an alias for backward compatibility.
+- **`run_backtest_daily_autoresearch()`** — Runs the full backtest cycle: generates predictions via simulated trading day, evaluates them, computes aggregate scores, and triggers prompt mutation if performance beats baseline.
+
+## Intraday Hit Metrics
+
+Two new evaluation dimensions were added alongside the existing EOD directional accuracy:
+
+- **`intraday_hit`** — `True` if the market price reached or surpassed the predicted `expected_return_pct` at any point during the trading session (e.g., price hit +0.35% high even if it closed at -0.20%).
+- **`intraday_direction_hit`** — `True` if the market price moved in the predicted direction intraday (high > open for UP, low < open for DOWN).
+
+These metrics are computed via `compute_intraday_hit_metrics()` in `tasks/evaluate_daily_predictions.py`, which is shared between live evaluation and backtest.
+
+## Scoring Formula
+
+The composite ratchet score used for prompt mutation is:
+
+$$
+\text{Ratchet Score} = (0.70 \times \text{close\_accuracy\_pct}) + (0.30 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)
+$$
+
+- **Close Accuracy %** (70% weight): Percentage of predictions where the EOD close direction matched the prediction.
+- **Intraday Hit %** (30% weight): Percentage of predictions where the intraday target was hit (falls back to `is_correct` when `intraday_hit` is null).
+- **Brier penalty**: Mean Brier score multiplied by 50, subtracted from the weighted sum.
 
 ## Web UI
 
-- **Route**: `/daily-predictions-backtest`
-- **Page**: `DailyPredictionsBacktestPage` – displays:
-  - Metrics overview (directional accuracy, Brier score, total runs, experiment count)
-  - Historical predictions log table (date, ticker, predicted direction, confidence, actual prices, outcome, Brier score, prompt variant tag)
-  - Prompt Experiments Arena with variant lineage sidebar and full prompt content viewer
-- **Data Fetching**: Uses `fetchDailyPredictorBacktestPredictions` and `fetchDailyPredictorBacktestExperiments` which filter Supabase by `is_backtest = true` or `prompt_variant_tag` containing `backtest`.
-
-## Seeding the Live Prompt
-
-- **Command**: `python apps/engine/main.py seed-daily-predictor`
-- **Function**: `seed_daily_predictor_prompt()` inserts the current `DAILY_PREDICTOR_PROMPT` (optimized via backtest) as the active live baseline in Supabase, demoting any previous active prompt to `saved`.
-
-## Related
-
-- [[entities/daily-market-predictor]] – Live daily prediction pipeline
-- [[entities/autoresearch-arena]] – Portfolio-level prompt experiment history
-- [[concepts/temporal-sandboxing]] – Local DB and simulated execution pattern
-- [[concepts/prompt-section-splitting]] – Splitting prompt into header, mutable strategies, and footer
-- [[concepts/auto-research-prompt-improver]] – Meta-researcher mutation concept
+The `/daily-predictions` page displays a metrics dashboard including the new Intraday Target Hit card (30% weight), and a predictions table with an 

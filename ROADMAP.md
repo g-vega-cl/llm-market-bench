@@ -126,10 +126,10 @@ Feels like I have done that before to no avail
 - [ ] - Single company focused llm
 - [ ] - Look for statistical analysis for markets
 - [x] - Predict daily S&P or whichever move, either up or down.
-- [ ] - Add more LLMs to sector researcher.
+- [x] - Add more LLMs to sector researcher.
 - [ ] - backtest sector researcher.
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
 - [ ] - Benchify: move all newsletters to dedicated email
-- [ ] - Benchify : check if intraday hits on the daily predictor too
+- [ ] - Benchify: check if intraday hits on the daily predictor too
 - [ ] - Benchify: "hyperfocus on a mid size company?
 - [ ] - https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/honcho.md

@@ -17,12 +17,16 @@ class TickerData(BaseModel):
     exchange: str | None = None
 
 
-class HistoryData(TypedDict):
+class HistoryData(TypedDict, total=False):
     """Historical price entry with volume data."""
 
     price: float
+    open: float
+    high: float
+    low: float
     volume: int | None
     fetched_at: str
+
 
 
 class HourlyBar(TypedDict):

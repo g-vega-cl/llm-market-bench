@@ -140,3 +140,11 @@ def test_main_calls_apply_page_deletions(tmp_path, monkeypatch, result):
     aw.apply_changes(result)
 
     assert "entities/old-module.md" in called_with, "apply_changes must forward deleted_pages to apply_page_deletions"
+
+
+def test_auto_wiki_default_model():
+    """auto_wiki default model must be deepseek/deepseek-v4-flash."""
+    import apps.engine.auto_wiki as aw
+
+    assert aw.DEFAULT_MODEL == "deepseek/deepseek-v4-flash"
+

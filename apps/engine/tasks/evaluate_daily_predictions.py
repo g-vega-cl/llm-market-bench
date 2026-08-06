@@ -23,8 +23,38 @@ def calculate_brier_score(predicted_direction: str, confidence: float, actual_di
     return float((p - y) ** 2)
 
 
-async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[float | None, float | None]:
-    """Fetch Open and Close prices for ticker on target_date via canonical MarketDataManager (FMP)."""
+def compute_intraday_hit_metrics(
+    predicted_direction: str,
+    expected_return_pct: float | None,
+    open_price: float,
+    high_price: float,
+    low_price: float,
+) -> tuple[bool, bool]:
+    """Compute (intraday_hit, intraday_direction_hit).
+
+    - intraday_direction_hit: True if market price moved in predicted direction at any point during session.
+    - intraday_hit: True if market price reached/surpassed predicted expected_return_pct target intraday.
+    """
+    predicted_dir = predicted_direction.upper()
+
+    if predicted_dir == "UP":
+        intraday_direction_hit = high_price > open_price
+        target_pct = abs(expected_return_pct) if (expected_return_pct is not None and expected_return_pct != 0) else 0.0
+        max_return_pct = ((high_price - open_price) / open_price) * 100.0
+        intraday_hit = max_return_pct >= target_pct
+    else:  # DOWN
+        intraday_direction_hit = low_price < open_price
+        target_pct = -abs(expected_return_pct) if (expected_return_pct is not None and expected_return_pct != 0) else 0.0
+        min_return_pct = ((low_price - open_price) / open_price) * 100.0
+        intraday_hit = min_return_pct <= target_pct
+
+    return intraday_hit, intraday_direction_hit
+
+
+async def fetch_intraday_prices(
+    ticker: str, target_date_str: str
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """Fetch Open, High, Low, and Close prices for ticker on target_date via MarketDataManager."""
     try:
         from execution.market_data import MarketDataManager
 
@@ -36,18 +66,26 @@ async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[
                 fetched_at = entry.get("fetched_at", "")
                 date_part = fetched_at[:10]
                 if date_part == target_date_str:
-                    open_price = float(entry.get("open", entry["price"]))
                     close_price = float(entry["price"])
-                    return open_price, close_price
+                    open_price = float(entry.get("open", close_price))
+                    high_price = float(entry.get("high", max(open_price, close_price)))
+                    low_price = float(entry.get("low", min(open_price, close_price)))
+                    return open_price, high_price, low_price, close_price
 
     except Exception as e:
         logger.warning(f"Error fetching intraday prices via MarketDataManager for {ticker} on {target_date_str}: {e}")
 
-    return None, None
+    return None, None, None, None
+
+
+async def fetch_intraday_open_close(ticker: str, target_date_str: str) -> tuple[float | None, float | None]:
+    """Backward compatible helper fetching Open and Close prices."""
+    open_p, _high_p, _low_p, close_p = await fetch_intraday_prices(ticker, target_date_str)
+    return open_p, close_p
 
 
 async def evaluate_daily_predictions() -> int:
-    """Evaluate all pending daily predictions against actual market Open vs Close prices."""
+    """Evaluate all pending daily predictions against actual market Open, High, Low, and Close prices."""
     client = get_supabase_client()
 
     response = client.table("daily_predictions").select("*").eq("status", "pending").execute()
@@ -65,24 +103,36 @@ async def evaluate_daily_predictions() -> int:
         target_date_str = pred["target_date"]
         predicted_dir = pred["predicted_direction"]
         confidence = pred.get("confidence", 50.0)
+        expected_return_pct = pred.get("expected_return_pct")
 
-        open_p, close_p = await fetch_intraday_open_close(ticker, target_date_str)
-        if open_p is None or close_p is None:
+        open_p, high_p, low_p, close_p = await fetch_intraday_prices(ticker, target_date_str)
+        if open_p is None or close_p is None or high_p is None or low_p is None:
             logger.warning(
-                f"Could not retrieve Open/Close price for {ticker} on {target_date_str}. Skipping evaluation."
+                f"Could not retrieve Open/High/Low/Close price for {ticker} on {target_date_str}. Skipping evaluation."
             )
             continue
 
         actual_dir = "UP" if close_p >= open_p else "DOWN"
         is_correct = predicted_dir.upper() == actual_dir
         brier_score = calculate_brier_score(predicted_dir, confidence, actual_dir)
+        intraday_hit, intraday_dir_hit = compute_intraday_hit_metrics(
+            predicted_direction=predicted_dir,
+            expected_return_pct=expected_return_pct,
+            open_price=open_p,
+            high_price=high_p,
+            low_price=low_p,
+        )
 
         client.table("daily_predictions").update(
             {
                 "open_price": open_p,
+                "high_price": high_p,
+                "low_price": low_p,
                 "close_price": close_p,
                 "actual_direction": actual_dir,
                 "is_correct": is_correct,
+                "intraday_hit": intraday_hit,
+                "intraday_direction_hit": intraday_dir_hit,
                 "brier_score": brier_score,
                 "status": "evaluated",
                 "updated_at": datetime.now(UTC).isoformat(),
@@ -92,8 +142,8 @@ async def evaluate_daily_predictions() -> int:
         evaluated_count += 1
         logger.info(
             f"Evaluated daily prediction {pred_id} ({ticker} on {target_date_str}): "
-            f"Predicted {predicted_dir}, Actual {actual_dir} (Open: {open_p:.2f}, Close: {close_p:.2f}). "
-            f"Correct: {is_correct}, Brier: {brier_score:.4f}"
+            f"Predicted {predicted_dir}, Actual {actual_dir} (Open: {open_p:.2f}, High: {high_p:.2f}, Low: {low_p:.2f}, Close: {close_p:.2f}). "
+            f"Correct: {is_correct}, IntradayHit: {intraday_hit}, Brier: {brier_score:.4f}"
         )
 
     return evaluated_count

@@ -14,9 +14,13 @@ export interface DailyPrediction {
     rationale: string | null;
     catalysts: string[] | null;
     open_price: number | null;
+    high_price?: number | null;
+    low_price?: number | null;
     close_price: number | null;
     actual_direction: 'UP' | 'DOWN' | null;
     is_correct: boolean | null;
+    intraday_hit?: boolean | null;
+    intraday_direction_hit?: boolean | null;
     brier_score: number | null;
     status: 'pending' | 'evaluated';
     created_at: string;

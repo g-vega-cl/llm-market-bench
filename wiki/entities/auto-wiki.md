@@ -18,7 +18,7 @@ The auto-wiki system consists of two components:
 
 The script supports two LLM backends:
 
-1. **OpenRouter** (primary) — uses `deepseek/deepseek-v4-pro` by default, configurable via `WIKI_DOC_MODEL` env var
+1. **OpenRouter** (primary) — uses `deepseek/deepseek-v4-flash` by default, configurable via `WIKI_DOC_MODEL` env var
 2. **Ollama** (fallback) — uses `gemma4:31b` by default, configurable via `OLLAMA_MODEL` env var. It includes an **automatic dynamic fallback resolver**: if the requested model is not installed locally, it queries Ollama and falls back in order of preference (`gemma4:31b`, `qwen3.6:35b`, `llama3.1:8b`, etc.) or uses the first available local model instead of failing.
 
 The OpenRouter API key is resolved from the `OPENROUTER_API_KEY` environment variable or the macOS keychain item `openrouter-api-key`.

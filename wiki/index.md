@@ -40,6 +40,7 @@
 
 ## Concepts
 
+- [[concepts/intraday-hit-metrics]] — Two-dimensional evaluation for daily predictions measuring intraday price target achievement
 - [[concepts/thematic-rotation]] — Adjacent trade pattern, stranded-asset pivot, and AI intra-cycle rotation sequence (infra → hyperscalers)
 - [[concepts/verifier-bypass]] — Configurable model-level bypass of the skeptical verification agent stage
 - [[concepts/stochastic-cold-start]] — Randomized cold-start resets (2–5 week intervals) to escape local optima in prompt optimization

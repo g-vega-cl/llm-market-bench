@@ -25,9 +25,13 @@ describe('DailyPredictionsPage', () => {
             rationale: 'Overnight futures momentum and strong earnings catalysts.',
             catalysts: ['Tech Earnings', 'Fed Stance'],
             open_price: 450.0,
+            high_price: 456.0,
+            low_price: 449.0,
             close_price: 455.0,
             actual_direction: 'UP',
             is_correct: true,
+            intraday_hit: true,
+            intraday_direction_hit: true,
             brier_score: 0.04,
             status: 'evaluated',
             created_at: '2026-08-03T08:00:00Z',
@@ -71,7 +75,8 @@ describe('DailyPredictionsPage', () => {
 
         expect(screen.getByText('Daily S&P Market Predictor')).toBeInTheDocument();
         expect(screen.getByText('Directional Accuracy')).toBeInTheDocument();
-        expect(screen.getByText('100.0%')).toBeInTheDocument();
+        expect(screen.getByText('Intraday Target Hit (30%)')).toBeInTheDocument();
+        expect(screen.getAllByText('100.0%').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('▲ UP')).toBeInTheDocument();
         expect(screen.getByText('80% Confidence')).toBeInTheDocument();
     });

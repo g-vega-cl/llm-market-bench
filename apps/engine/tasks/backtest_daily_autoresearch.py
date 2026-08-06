@@ -59,15 +59,31 @@ def init_backtest_daily_db():
             rationale TEXT,
             catalysts TEXT,
             actual_open_price REAL,
+            actual_high_price REAL,
+            actual_low_price REAL,
             actual_close_price REAL,
             actual_direction TEXT,
             is_correct INTEGER,
+            intraday_hit INTEGER,
+            intraday_direction_hit INTEGER,
             brier_score REAL,
             status TEXT,
             created_at TEXT,
             UNIQUE(target_date, ticker, model_name)
         )
     """)
+
+    # Auto-migrate existing SQLite table if columns missing from previous runs
+    cursor.execute("PRAGMA table_info(daily_predictions)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+    for col_name, col_type in [
+        ("actual_high_price", "REAL"),
+        ("actual_low_price", "REAL"),
+        ("intraday_hit", "INTEGER"),
+        ("intraday_direction_hit", "INTEGER"),
+    ]:
+        if col_name not in existing_cols:
+            cursor.execute(f"ALTER TABLE daily_predictions ADD COLUMN {col_name} {col_type}")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS prompt_experiments (
@@ -101,8 +117,8 @@ def reset_backtest_daily_db():
     conn.close()
 
 
-async def fetch_historical_spy_prices(target_date_str: str) -> tuple[float, float]:
-    """Fetch or simulate historical Open and Close prices for SPY on target_date."""
+async def fetch_historical_spy_prices(target_date_str: str) -> tuple[float, float, float, float]:
+    """Fetch or simulate historical Open, High, Low, and Close prices for SPY on target_date."""
     try:
         import yfinance as yf
 
@@ -111,9 +127,11 @@ async def fetch_historical_spy_prices(target_date_str: str) -> tuple[float, floa
         data = yf.download("SPY", start=dt.strftime("%Y-%m-%d"), end=next_day.strftime("%Y-%m-%d"), progress=False)
 
         if not data.empty and "Open" in data.columns and "Close" in data.columns:
-            open_val = data["Open"].values.flat[0]
-            close_val = data["Close"].values.flat[0]
-            return float(open_val), float(close_val)
+            open_val = float(data["Open"].values.flat[0])
+            close_val = float(data["Close"].values.flat[0])
+            high_val = float(data["High"].values.flat[0]) if "High" in data.columns else max(open_val, close_val)
+            low_val = float(data["Low"].values.flat[0]) if "Low" in data.columns else min(open_val, close_val)
+            return open_val, high_val, low_val, close_val
     except Exception as e:
         logger.warning(f"Could not fetch yfinance price for {target_date_str}: {e}. Using simulated prices.")
 
@@ -122,7 +140,9 @@ async def fetch_historical_spy_prices(target_date_str: str) -> tuple[float, floa
     # Day-based deterministic fluctuation
     day_num = int(target_date_str.replace("-", "")) % 7
     close_price = open_price + (1.5 if day_num % 2 == 0 else -1.2)
-    return open_price, close_price
+    high_price = max(open_price, close_price) + 1.0
+    low_price = min(open_price, close_price) - 1.0
+    return open_price, high_price, low_price, close_price
 
 
 async def get_active_backtest_daily_prompt() -> tuple[str, str]:
@@ -292,16 +312,29 @@ async def run_simulated_daily_prediction(
         await close_client(deepseek_client, "deepseek")
 
 
-async def evaluate_simulated_daily_prediction(
-    t_sim: datetime,
+async def evaluate_backtest_prediction(
+    t_sim: str,
     target_date: str,
     ticker: str = "SPY",
     open_price: float | None = None,
+    high_price: float | None = None,
+    low_price: float | None = None,
     close_price: float | None = None,
 ) -> dict | None:
-    """Evaluate 05:15 PM ET daily prediction against actual market open/close prices."""
-    if open_price is None or close_price is None:
-        open_price, close_price = await fetch_historical_spy_prices(target_date)
+    """Evaluate daily prediction against actual market open, high, low, close prices."""
+    if open_price is None or close_price is None or high_price is None or low_price is None:
+        fetched = await fetch_historical_spy_prices(target_date)
+        if len(fetched) == 2:
+            f_open, f_close = fetched
+            f_high = max(f_open, f_close)
+            f_low = min(f_open, f_close)
+        else:
+            f_open, f_high, f_low, f_close = fetched
+
+        open_price = open_price if open_price is not None else f_open
+        close_price = close_price if close_price is not None else f_close
+        high_price = high_price if high_price is not None else f_high
+        low_price = low_price if low_price is not None else f_low
 
     actual_direction = "UP" if close_price >= open_price else "DOWN"
 
@@ -322,11 +355,23 @@ async def evaluate_simulated_daily_prediction(
 
     predicted_direction = row["predicted_direction"]
     confidence = row["confidence"] if row["confidence"] is not None else 50.0
+    expected_return_pct = row["expected_return_pct"]
 
     is_correct = 1 if predicted_direction == actual_direction else 0
 
-    # Calculate Brier calibration score: (p - y)^2 where p = confidence/100.0, y = 1 if actual_direction == UP else 0
-    # Or relative to predicted direction outcome:
+    from tasks.evaluate_daily_predictions import compute_intraday_hit_metrics
+
+    intraday_hit_bool, intraday_dir_hit_bool = compute_intraday_hit_metrics(
+        predicted_direction=predicted_direction,
+        expected_return_pct=expected_return_pct,
+        open_price=open_price,
+        high_price=high_price,
+        low_price=low_price,
+    )
+    intraday_hit = 1 if intraday_hit_bool else 0
+    intraday_direction_hit = 1 if intraday_dir_hit_bool else 0
+
+    # Calculate Brier calibration score: (p - y)^2
     y_outcome = 1.0 if actual_direction == predicted_direction else 0.0
     p_prob = confidence / 100.0
     brier_score = float((p_prob - y_outcome) ** 2)
@@ -335,14 +380,29 @@ async def evaluate_simulated_daily_prediction(
         """
         UPDATE daily_predictions SET
             actual_open_price = ?,
+            actual_high_price = ?,
+            actual_low_price = ?,
             actual_close_price = ?,
             actual_direction = ?,
             is_correct = ?,
+            intraday_hit = ?,
+            intraday_direction_hit = ?,
             brier_score = ?,
             status = 'evaluated'
         WHERE id = ?
         """,
-        (open_price, close_price, actual_direction, is_correct, brier_score, row["id"]),
+        (
+            open_price,
+            high_price,
+            low_price,
+            close_price,
+            actual_direction,
+            is_correct,
+            intraday_hit,
+            intraday_direction_hit,
+            brier_score,
+            row["id"],
+        ),
     )
     conn.commit()
     conn.close()
@@ -359,9 +419,13 @@ async def evaluate_simulated_daily_prediction(
         "expected_return_pct": row["expected_return_pct"],
         "rationale": row["rationale"],
         "open_price": open_price,
+        "high_price": high_price,
+        "low_price": low_price,
         "close_price": close_price,
         "actual_direction": actual_direction,
         "is_correct": is_correct == 1,
+        "intraday_hit": intraday_hit == 1,
+        "intraday_direction_hit": intraday_direction_hit == 1,
         "brier_score": brier_score,
         "status": "evaluated",
     }
@@ -369,16 +433,20 @@ async def evaluate_simulated_daily_prediction(
 
     logger.info(
         f"[{target_date}] Evaluated Prediction: Predicted={predicted_direction}, Actual={actual_direction}, "
-        f"Correct={is_correct == 1}, Brier={brier_score:.4f}"
+        f"Correct={is_correct == 1}, IntradayHit={intraday_hit == 1}, Brier={brier_score:.4f}"
     )
 
     return {
         "id": row["id"],
         "target_date": target_date,
         "is_correct": is_correct == 1,
+        "intraday_hit": intraday_hit == 1,
         "actual_direction": actual_direction,
         "brier_score": brier_score,
     }
+
+
+evaluate_simulated_daily_prediction = evaluate_backtest_prediction
 
 
 async def generate_new_daily_prompt_backtest(old_prompt: str, baseline_score: float) -> str:
@@ -478,7 +546,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT is_correct, brier_score FROM daily_predictions WHERE status = 'evaluated'")
+        cursor.execute("SELECT is_correct, intraday_hit, brier_score FROM daily_predictions WHERE status = 'evaluated'")
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
 

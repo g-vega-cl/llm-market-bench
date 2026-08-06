@@ -11,16 +11,17 @@ from tasks.daily_autoresearch import (
 
 def test_calculate_daily_ratchet_score():
     predictions = [
-        {"is_correct": True, "brier_score": 0.04},
-        {"is_correct": True, "brier_score": 0.09},
-        {"is_correct": False, "brier_score": 0.64},
-        {"is_correct": True, "brier_score": 0.04},
+        {"is_correct": True, "intraday_hit": True, "brier_score": 0.04},
+        {"is_correct": True, "intraday_hit": True, "brier_score": 0.09},
+        {"is_correct": False, "intraday_hit": True, "brier_score": 0.64},
+        {"is_correct": True, "intraday_hit": True, "brier_score": 0.04},
     ]
-    # Accuracy = 3/4 = 0.75 (75 points)
-    # Mean Brier = (0.04 + 0.09 + 0.64 + 0.04)/4 = 0.2025
-    # Score = 75 - (0.2025 * 50) = 75 - 10.125 = 64.875
+    # EOD Accuracy = 3/4 = 75.0% -> 0.70 * 75.0 = 52.5
+    # Intraday Hit = 4/4 = 100.0% -> 0.30 * 100.0 = 30.0
+    # Mean Brier = 0.2025 -> 0.2025 * 50 = 10.125
+    # Combined Score = 52.5 + 30.0 - 10.125 = 72.375
     score = calculate_daily_ratchet_score(predictions)
-    assert pytest.approx(score, 0.01) == 64.875
+    assert pytest.approx(score, 0.01) == 72.375
 
 
 @pytest.mark.asyncio

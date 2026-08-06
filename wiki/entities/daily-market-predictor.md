@@ -16,17 +16,20 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 
 2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:
    - Command: `python main.py evaluate-daily-predictions`
-   - Scopes today's 9:30 AM Open and 4:00 PM Close prices safely after market close via FMP `MarketDataManager` (skips evaluation if target date hasn't closed yet).
-   - Calculates **Directional Accuracy** (`is_correct`) and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
+   - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close via FMP `MarketDataManager` (skips evaluation if target date hasn't closed yet).
+   - Calculates **Directional Accuracy** (`is_correct`), **Intraday Target Hit Rate** (`intraday_hit`), **Intraday Direction Hit Rate** (`intraday_direction_hit`), and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
+   - `intraday_hit` evaluates whether the stock reached or surpassed the predicted target return percentage (`expected_return_pct`) at any point between Open and Close (e.g. hitting +0.35% intraday high even if it closed at -0.20%).
 
-3. **Daily Prompt Evolution (Mon-Fri 6:00 PM ET)**:
+3. **Daily Prompt Evolution & Performance Ratchet (Mon-Fri 6:00 PM ET)**:
    - Command: `python main.py daily-autoresearch`
    - Evaluates predictions over recent trading days against baseline in `prompt_experiments` (`prompt_name: "DAILY_PREDICTOR_PROMPT"`).
+   - Combined Ratchet Score formula:
+     $$\text{Ratchet Score} = (0.70 \times \text{close\_accuracy\_pct}) + (0.30 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)$$
    - Applies ratchet logic: if recent performance beats baseline, establishes new baseline; if lower, reverts to baseline prompt.
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher.
 
 4. **Web Frontend (`/daily-predictions`)**:
-   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Brier Calibration stats, Historical Predictions Log table, and Autoresearch Prompt Arena.
+   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Intraday Target Hit Rate (30%), Brier Calibration stats, Historical Predictions Log table (with Intraday Hit badge), and Autoresearch Prompt Arena.
 
 ## Execution & Dispatch Architecture
 
@@ -42,7 +45,7 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 
 ## Database Schema
 
-- `public.daily_predictions`: Stores predictions, actual Open/Close prices, correctness, and Brier scores.
+- `public.daily_predictions`: Stores predictions, actual Open/High/Low/Close prices, EOD correctness (`is_correct`), intraday target hit (`intraday_hit`), intraday direction hit (`intraday_direction_hit`), and Brier scores.
 - `public.prompt_experiments`: Tracks `DAILY_PREDICTOR_PROMPT` variants, statuses, and performance metrics.
 
 ## Related

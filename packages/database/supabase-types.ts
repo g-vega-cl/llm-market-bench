@@ -408,6 +408,45 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            generated_newsletters: {
+                Row: {
+                    id: string;
+                    title: string;
+                    summary: string;
+                    content: string;
+                    bullet_points: Json | null;
+                    session: string;
+                    read_time_minutes: number | null;
+                    source_count: number | null;
+                    formatted_time: string | null;
+                    created_at: string | null;
+                };
+                Insert: {
+                    id?: string;
+                    title: string;
+                    summary: string;
+                    content: string;
+                    bullet_points?: Json | null;
+                    session: string;
+                    read_time_minutes?: number | null;
+                    source_count?: number | null;
+                    formatted_time?: string | null;
+                    created_at?: string | null;
+                };
+                Update: {
+                    id?: string;
+                    title?: string;
+                    summary?: string;
+                    content?: string;
+                    bullet_points?: Json | null;
+                    session?: string;
+                    read_time_minutes?: number | null;
+                    source_count?: number | null;
+                    formatted_time?: string | null;
+                    created_at?: string | null;
+                };
+                Relationships: [];
+            };
             market_feeling: {
                 Row: {
                     attempts_summary: Json | null;

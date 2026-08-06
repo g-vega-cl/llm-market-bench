@@ -15,9 +15,10 @@ The dispatcher now supports multiple workflows beyond `daily-predictor.yml`. It 
 
 | UTC Time | ET Time | Minute | Workflow File | Inputs |
 |----------|---------|--------|---------------|--------|
-| 13:00 | 9:00 AM | 0 | `daily-predictor.yml` | `{"action": "daily-predictor"}` |
+| 13:00 | 9:00 AM | 0 | `daily-predictor.yml` & `generate-newsletter.yml` | `{"action": "daily-predictor"}` / `{"session": "open"}` |
 | 13:35, 14:35, 15:35 | 9:35, 10:35, 11:35 AM | 35 | `ingest.yml` | none |
 | 18:00 | 2:00 PM | 0 | `ingest.yml` | none |
+| 21:00 | 5:00 PM | 0 | `generate-newsletter.yml` | `{"session": "close"}` |
 | 21:15 | 5:15 PM | 15 | `daily-predictor.yml` | `{"action": "evaluate-daily-predictions"}` |
 | 22:00 | 6:00 PM | 0 | `daily-predictor.yml` | `{"action": "daily-autoresearch"}` |
 
@@ -25,7 +26,7 @@ The dispatcher now supports multiple workflows beyond `daily-predictor.yml`. It 
 
 The Worker exposes these cron expressions:
 
-- `0 13,18 * * MON-FRI` — 9:00 AM & 2:00 PM ET (daily-predictor & ingest)
+- `0 13,18,21 * * MON-FRI` — 9:00 AM, 2:00 PM, 5:00 PM ET (daily-predictor, ingest, generate-newsletter)
 - `35 13-15 * * MON-FRI` — 9:35, 10:35, 11:35 AM ET (ingest)
 - `15 21 * * MON-FRI` — 5:15 PM ET (evaluate daily predictions)
 - `0 22 * * SUN,WED` — 6:00 PM ET (daily-autoresearch on Sundays and Wednesdays)

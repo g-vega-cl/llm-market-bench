@@ -1,0 +1,61 @@
+name: Daily Newsletter Generator
+
+on:
+  schedule:
+    # 9:00 AM ET Mon-Fri (13:00 UTC) -> Market Open Newsletter
+    - cron: '0 13 * * 1-5'
+    # 5:00 PM ET Mon-Fri (21:00 UTC) -> Market Close Newsletter
+    - cron: '0 21 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      session:
+        description: 'Session window for newsletter (open or close)'
+        required: true
+        default: 'open'
+        type: choice
+        options:
+          - 'open'
+          - 'close'
+
+jobs:
+  generate-newsletter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd apps/engine
+          python3 -m venv venv
+          ./venv/bin/pip install -r requirements.txt
+
+      - name: Determine session window
+        id: sess
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SESSION="${{ inputs.session }}"
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" = "13" ]; then
+              SESSION="open"
+            else
+              SESSION="close"
+            fi
+          fi
+          echo "session=$SESSION" >> $GITHUB_OUTPUT
+
+      - name: Run Newsletter Generator
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          cd apps/engine
+          PYTHONPATH=. ./venv/bin/python3 main.py generate-newsletter --session ${{ steps.sess.outputs.session }}

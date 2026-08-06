@@ -30,6 +30,7 @@ from core.config import (
     COMMAND_DAILY_AUTORESEARCH,
     COMMAND_DAILY_PREDICTOR,
     COMMAND_EVALUATE_DAILY_PREDICTIONS,
+    COMMAND_GENERATE_NEWSLETTER,
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
     COMMAND_POST_ANALYSIS,
@@ -985,6 +986,7 @@ def main():
             COMMAND_DAILY_AUTORESEARCH,
             COMMAND_BACKTEST_DAILY_AUTORESEARCH,
             COMMAND_SEED_DAILY_PREDICTOR,
+            COMMAND_GENERATE_NEWSLETTER,
         ],
         help="Action to perform",
     )
@@ -1000,6 +1002,7 @@ def main():
     )
     parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
     parser.add_argument("--ticker", type=str, default="SPY", help="Ticker for daily predictor (default: SPY)")
+    parser.add_argument("--session", type=str, choices=["open", "close"], default="open", help="Session window for generated newsletter (open or close)")
     parser.add_argument("--start-date", type=str, default="2026-04-27", help="Backtest start date (YYYY-MM-DD)")
     parser.add_argument("--weeks", type=int, default=1, help="Number of backtest weeks")
 
@@ -1060,6 +1063,10 @@ def main():
         from tasks.daily_predictor import seed_daily_predictor_prompt
 
         asyncio.run(seed_daily_predictor_prompt())
+    elif args.command == COMMAND_GENERATE_NEWSLETTER:
+        from tasks.newsletter_generator import generate_daily_newsletter
+
+        asyncio.run(generate_daily_newsletter(session=args.session))
 
 
 if __name__ == "__main__":

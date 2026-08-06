@@ -99,8 +99,6 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: fed watch api like but free?: https://share.gemini.google/iul3v5Q9C3AE
 - [ ] - Benchify: add institutional buying and Congress buying?
 - [ ] - Duolingo but with crypto? Take an app that already exists but "crypto"
-- [ ] - Benchify: make sure El Niño is saved in memory
-- [ ] - Benchify: predict S&P for the day
 - [ ] - Benchify: track specific governments with liquid enough stock markets like Canada and trade based on government deals and pipelines and government money
 - [ ] - Erica said that in Canada you could have clear insider trading because there is a gradual buying leading to news, so we could tap into this.
 - [ ] - An LLM that focuses only on government opportunities. - Like deals in pipeline, new reforms, under the radar things
@@ -134,3 +132,4 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify : check if intraday hits on the daily predictor too
 - [ ] - Benchify: "hyperfocus on a mid size company?
+- [ ] - https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/honcho.md

@@ -1,5 +1,6 @@
 import type { NewsletterSnapshot } from '@llm-market-bench/database';
 import { Badge, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Link } from '@tanstack/react-router';
 
 interface NewsletterFeedProps {
     newsletters: (NewsletterSnapshot & { formattedTime?: string })[];
@@ -64,6 +65,18 @@ export function NewsletterFeed({
                         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-light italic">
                             "{newsSummary}"
                         </p>
+
+                        <div className="mt-3 pt-3 border-t border-electric-blue-100/50 dark:border-electric-blue-900/20 flex items-center justify-between">
+                            <Link
+                                to="/generated-newsletters"
+                                className="text-xs font-bold text-electric-blue-600 dark:text-electric-blue-400 hover:text-electric-blue-500 transition-colors inline-flex items-center gap-1.5 group/link"
+                            >
+                                <span>📰 Read Full Daily Newsletter (1-2 min read)</span>
+                                <span className="group-hover/link:translate-x-1 transition-transform">
+                                    →
+                                </span>
+                            </Link>
+                        </div>
                     </div>
                 </Card>
             )}

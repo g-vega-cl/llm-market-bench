@@ -14,6 +14,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
 import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
 import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
@@ -58,6 +59,11 @@ const LoginRoute = LoginRouteImport.update({
 const HowItWorksRoute = HowItWorksRouteImport.update({
   id: '/how-it-works',
   path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GeneratedNewslettersRoute = GeneratedNewslettersRouteImport.update({
+  id: '/generated-newsletters',
+  path: '/generated-newsletters',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyPredictionsBacktestRoute =
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/daily-predictions-backtest'
+    | '/generated-newsletters'
     | '/how-it-works'
     | '/login'
     | '/logout'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/daily-predictions-backtest'
+    | '/generated-newsletters'
     | '/how-it-works'
     | '/login'
     | '/logout'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/autoresearch-backtest'
     | '/barometer-audit'
     | '/daily-predictions-backtest'
+    | '/generated-newsletters'
     | '/how-it-works'
     | '/login'
     | '/logout'
@@ -329,6 +341,7 @@ export interface RootRouteChildren {
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
   DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
+  GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
@@ -385,6 +398,13 @@ declare module '@tanstack/react-router' {
       path: '/how-it-works'
       fullPath: '/how-it-works'
       preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/generated-newsletters': {
+      id: '/generated-newsletters'
+      path: '/generated-newsletters'
+      fullPath: '/generated-newsletters'
+      preLoaderRoute: typeof GeneratedNewslettersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily-predictions-backtest': {
@@ -547,6 +567,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
   DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
+  GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,

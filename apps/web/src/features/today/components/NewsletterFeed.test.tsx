@@ -1,7 +1,12 @@
 import type { NewsletterSnapshot } from '@llm-market-bench/database';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NewsletterFeed } from './NewsletterFeed';
+
+vi.mock('@tanstack/react-router', () => ({
+    // biome-ignore lint/suspicious/noExplicitAny: test mock
+    Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+}));
 
 type NewsletterWithTime = NewsletterSnapshot & { formattedTime?: string };
 

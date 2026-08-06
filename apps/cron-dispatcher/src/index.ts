@@ -41,68 +41,85 @@ async function dispatchWorkflow(
   };
 }
 
-function resolveScheduledTarget(scheduledTime: Date): DispatchTarget {
+function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
   const hour = scheduledTime.getUTCHours();
   const minute = scheduledTime.getUTCMinutes();
 
   if (minute === 35) {
     // 9:35 AM ET (13:35 UTC), 10:35 AM ET (14:35 UTC), 11:35 AM ET (15:35 UTC)
-    return { workflowFile: 'ingest.yml' };
+    return [{ workflowFile: 'ingest.yml' }];
   }
 
   if (hour === 18 && minute === 0) {
     // 2:00 PM ET (18:00 UTC)
-    return { workflowFile: 'ingest.yml' };
+    return [{ workflowFile: 'ingest.yml' }];
   }
 
   if (hour === 13 && minute === 0) {
-    // 9:00 AM ET (13:00 UTC)
-    return { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } };
+    // 9:00 AM ET (13:00 UTC) -> Market open prediction & Market open newsletter
+    return [
+      { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } },
+      { workflowFile: 'generate-newsletter.yml', inputs: { session: 'open' } },
+    ];
+  }
+
+  if (hour === 21 && minute === 0) {
+    // 5:00 PM ET (21:00 UTC) -> Market close newsletter
+    return [{ workflowFile: 'generate-newsletter.yml', inputs: { session: 'close' } }];
   }
 
   if (hour === 21 && minute === 15) {
     // 5:15 PM ET (21:15 UTC)
-    return { workflowFile: 'daily-predictor.yml', inputs: { action: 'evaluate-daily-predictions' } };
+    return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'evaluate-daily-predictions' } }];
   }
 
   if (hour === 22 && minute === 0) {
     // 6:00 PM ET (22:00 UTC)
-    return { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-autoresearch' } };
+    return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-autoresearch' } }];
   }
 
   // Default fallback
-  return { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } };
+  return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } }];
 }
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     const scheduledTime = new Date(event.scheduledTime);
-    const target = resolveScheduledTarget(scheduledTime);
+    const targets = resolveScheduledTargets(scheduledTime);
 
-    console.log(
-      `[Cron Dispatcher] Triggering '${target.workflowFile}' (${JSON.stringify(
-        target.inputs || {}
-      )}) at scheduled time: ${scheduledTime.toISOString()}`
-    );
+    for (const target of targets) {
+      console.log(
+        `[Cron Dispatcher] Triggering '${target.workflowFile}' (${JSON.stringify(
+          target.inputs || {}
+        )}) at scheduled time: ${scheduledTime.toISOString()}`
+      );
 
-    const result = await dispatchWorkflow(target, env);
+      const result = await dispatchWorkflow(target, env);
 
-    if (!result.success) {
-      console.error(`[Cron Dispatcher] Error: ${result.message}`);
-      throw new Error(`GitHub Workflow dispatch failed (${result.status}): ${result.message}`);
+      if (!result.success) {
+        console.error(`[Cron Dispatcher] Error: ${result.message}`);
+        throw new Error(`GitHub Workflow dispatch failed (${result.status}): ${result.message}`);
+      }
+
+      console.log(`[Cron Dispatcher] Successfully dispatched '${target.workflowFile}' (HTTP ${result.status})`);
     }
-
-    console.log(`[Cron Dispatcher] Successfully dispatched '${target.workflowFile}' (HTTP ${result.status})`);
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const action = url.searchParams.get('action');
+    const session = url.searchParams.get('session') || 'open';
     const targetParam = url.searchParams.get('target') || url.searchParams.get('workflow');
 
     let target: DispatchTarget;
     if (targetParam === 'ingest' || targetParam === 'ingest.yml' || action === 'ingest') {
       target = { workflowFile: 'ingest.yml' };
+    } else if (
+      targetParam === 'generate-newsletter' ||
+      targetParam === 'generate-newsletter.yml' ||
+      action === 'generate-newsletter'
+    ) {
+      target = { workflowFile: 'generate-newsletter.yml', inputs: { session } };
     } else {
       target = {
         workflowFile: 'daily-predictor.yml',

@@ -113,6 +113,9 @@ export function MemoriesPage({
     const filteredMemories = React.useMemo(() => {
         const sourceList = searchResults !== null ? searchResults : memories;
         if (filter === 'all') return sourceList;
+        if (filter === 'RESOLVED') {
+            return sourceList.filter((m) => m.status === 'RESOLVED');
+        }
         return sourceList.filter((m) => getMemoryCategory(m) === filter);
     }, [memories, searchResults, filter]);
 

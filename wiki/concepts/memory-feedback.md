@@ -81,6 +81,7 @@ To maintain consistency, the database `memory_type` values and Frontend UI selec
 - **Calendar Events (`CALENDAR_EVENT`)**: (displayed as "Calendar Events").
 - **Principles (`ACADEMIC_PAPER`)**: (displayed as "Principles").
 - **Post-Mortems (`POST_MORTEM`)**: (displayed as "Post-Mortems").
+- **Resolved Events (`status === 'RESOLVED'`)**: (displayed as "Resolved", filtering memories by resolved status).
 - **Lessons (`LESSON_LEARNED`)**: (retained for generic legacy lessons).
 
 *Note: The empty Decisions (`decision_reasoning`) and redundant, permanently empty Lessons (`lesson_learned`) filters are completely removed. Decisions are managed under the specialized **Reasoning** page rather than the memories table. Post-mortem lessons and academic principles fully cover all lessons learned, so a dedicated empty general lessons tab is unnecessary.*

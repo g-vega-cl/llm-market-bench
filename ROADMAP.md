@@ -111,16 +111,16 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
-- [ ] - Benchify: is AI better working with many small files for separation of concerns and avoid side effects? Islands?
 - [ ] - Benchify: let winners run? cut losers concept?
 - [ ] - Statistically, in X regime, indicated by X indicator. What percentage of X timeframe candles are X% up vs X% down vs not reaching that %? And can that be made a strategy?
 
 Feels like I have done that before to no avail
 
-- [ ] - Benchify; make an statistic if any of our buys were ever profitable. Like what if I followed my agent's buys and decide on the sells myself?
+- [x] - Benchify; make an statistic if any of our buys were ever profitable. Like what if I followed my agent's buys and decide on the sells myself?
+    - Did this, I think it was basically a 50/50 bet. Even I checked if it ever touched something like .5% or .1% and it didn't change it much.
 - [ ] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
-- [ ] - benchify: memory consensus events check if the predictions came true, if the scenarios worked as expected
-- [ ] - When a card says "resolved" show which scenario "won" or show more details on why it was resolved, and what resolved
+- [x] - benchify: memory consensus events check if the predictions came true, if the scenarios worked as expected
+- [x] - When a card says "resolved" show which scenario "won" or show more details on why it was resolved, and what resolved
 - [ ] - Benchify: I really need to set the read LLM helper
 - [ ] - Chart based on candle volatility not time
 - [ ] - Single company focused llm

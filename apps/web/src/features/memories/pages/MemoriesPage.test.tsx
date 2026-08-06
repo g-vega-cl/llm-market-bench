@@ -127,6 +127,14 @@ describe('MemoriesPage (SSR-First)', () => {
         // Active filter should hide "Events"
         expect(screen.queryByText('Market event consensus description')).not.toBeInTheDocument();
         expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
+
+        // Click "Resolved" filter tab
+        const resolvedBtn = screen.getByText('Resolved');
+        fireEvent.click(resolvedBtn);
+
+        // Active filter should show resolved memories and hide active memories
+        expect(screen.getByText('Post mortem audit details')).toBeInTheDocument();
+        expect(screen.queryByText('Market event consensus description')).not.toBeInTheDocument();
     });
 
     it('fetches subsequent pages dynamically via fetchFn when clicking load more', async () => {

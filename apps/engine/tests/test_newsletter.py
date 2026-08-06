@@ -1,7 +1,7 @@
 """Tests for ingest.newsletter module."""
 
 import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -274,3 +274,37 @@ async def test_ingest_newsletters_parallel_batch_fetching(caplog):
 
         # Verify all 5 messages resulted in snapshots
         assert len(snapshots) == 5, f"Expected 5 snapshots, got {len(snapshots)}"
+
+
+@pytest.mark.asyncio
+async def test_fetch_raw_message_retry_success():
+    """Test that _fetch_raw_message retries on transient exceptions and succeeds."""
+    from ingest.newsletter import _fetch_raw_message
+
+    mock_service = MagicMock()
+    mock_get = mock_service.users().messages().get()
+
+    # Fail twice with SSL / socket errors, succeed on 3rd attempt
+    mock_get.execute.side_effect = [
+        Exception("IncompleteRead(0 bytes read)"),
+        Exception("EOF occurred in violation of protocol"),
+        {
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Test Subject"},
+                    {"name": "From", "value": "Test <test@example.com>"},
+                    {"name": "Date", "value": "Thu, 06 Aug 2026 12:00:00 +0000"},
+                ],
+                "parts": [{"mimeType": "text/plain", "body": {"data": "SGVsbG8="}}],
+            }
+        },
+    ]
+
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        snapshot, sender = await _fetch_raw_message(mock_service, {"id": "msg-123"})
+
+    assert snapshot is not None
+    assert snapshot.subject == "Test Subject"
+    assert sender == "Test <test@example.com>"
+    assert mock_get.execute.call_count == 3
+

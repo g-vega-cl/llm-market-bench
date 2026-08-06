@@ -18,7 +18,7 @@ Three parallel ingestion streams that feed the pipeline:
 
 ## Performance Optimizations
 
-*   **Parallel Gmail API Fetching**: Payloads for all matching emails are retrieved in parallel via `asyncio.gather` rather than sequentially, reducing Gmail API roundtrip overhead.
+*   **Parallel Gmail API Fetching**: Payloads for all matching emails are retrieved concurrently via `asyncio.gather` with bounded concurrency (`asyncio.Semaphore(5)`) and 3-attempt exponential backoff retries. Bounded concurrency prevents socket collisions and SSL protocol errors on the underlying `httplib2` transport while maintaining high throughput.
 *   **Batched Cache Lookups**: When checking the local ticker price cache in `MarketDataManager.get_quotes`, a single batched query is sent to Supabase using `.in_("ticker", tickers)` instead of executing sequential, individual cache check queries for each symbol.
 
 ## Key Design

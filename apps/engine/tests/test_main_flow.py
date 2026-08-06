@@ -315,3 +315,36 @@ async def test_run_weekend_ingest_skips_analysis_and_trading():
         mock_dust.assert_not_called()
         # Verify analyze_chunks was NOT called (weekend mode skips analysis)
         mock_analyze.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_handles_empty_data_log_saving():
+    """Verify run_ingest handles empty ingestion data and saves log without NoneType error."""
+    mock_sb = MagicMock()
+    with (
+        patch("core.utils.is_market_open_with_logging", new_callable=AsyncMock, return_value=True),
+        patch("main.get_supabase_client", return_value=mock_sb),
+        patch("main.ingest_newsletters", new_callable=AsyncMock, return_value=[]),
+        patch("main._stage_dust_cleanup", new_callable=AsyncMock),
+    ):
+        await run_ingest(force=True)
+
+        # Ensure table("ingestion_logs").insert(...) was executed
+        mock_sb.table.assert_called_with("ingestion_logs")
+        mock_sb.table().insert.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_run_weekend_ingest_handles_empty_data_log_saving():
+    """Verify run_weekend_ingest handles empty ingestion data and saves log without NoneType error."""
+    mock_sb = MagicMock()
+    with (
+        patch("main.get_supabase_client", return_value=mock_sb),
+        patch("main.ingest_newsletters", new_callable=AsyncMock, return_value=[]),
+    ):
+        await run_weekend_ingest()
+
+        # Ensure table("ingestion_logs").insert(...) was executed
+        mock_sb.table.assert_called_with("ingestion_logs")
+        mock_sb.table().insert.assert_called()
+

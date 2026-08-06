@@ -51,14 +51,14 @@ async def _stage_ingest_and_snapshot():
     logger.info("Starting Newsletter Ingestion...")
     data = await ingest_newsletters()
 
+    sb_client = get_supabase_client()
     if not data:
         logger.warning("No new newsletters found to ingest. Skipping snapshotting and analysis.")
-        return None, None
+        return None, sb_client
 
     logger.info(f"Successfully ingested {len(data)} newsletters.")
     logger.info("Starting Database Snapshotting...")
 
-    sb_client = get_supabase_client()
     saved_count = 0
 
     try:
@@ -830,6 +830,7 @@ async def run_ingest(force: bool = False):
         await _stage_dust_cleanup(sb_client)
 
         data, sb_client = await _stage_ingest_and_snapshot()
+        sb_client = sb_client or get_supabase_client()
         if not data:
             log_blob = log_capture.getvalue()
             if log_blob:
@@ -907,6 +908,7 @@ async def run_weekend_ingest():
         sb_client = get_supabase_client()
 
         data, sb_client = await _stage_ingest_and_snapshot()
+        sb_client = sb_client or get_supabase_client()
         if not data:
             log_blob = log_capture.getvalue()
             if log_blob:

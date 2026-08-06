@@ -160,7 +160,7 @@ class TestStageIngestFallback:
 
             data, client = await _stage_ingest_and_snapshot()
             assert data is None
-            assert client is None
+            assert client is not None
 
     async def test_stage_ingest_bulk_upsert_happy_path(self):
         """Test that stage successfully uses bulk upsert and does not trigger fallback."""

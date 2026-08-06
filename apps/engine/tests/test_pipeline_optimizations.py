@@ -65,7 +65,7 @@ async def test_ingest_newsletters_parallel_fetch():
     mock_list = mock_service.users().messages().list.return_value
     mock_list.execute.return_value = {"messages": [{"id": "msg1"}, {"id": "msg2"}, {"id": "msg3"}]}
 
-    async def slow_fetch(service, msg_ref):
+    async def slow_fetch(service, msg_ref, *args, **kwargs):
         await asyncio.sleep(0.1)
         return NewsletterSnapshot(
             source_id=f"id_{msg_ref['id']}",

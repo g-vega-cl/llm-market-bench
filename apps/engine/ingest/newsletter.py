@@ -219,47 +219,66 @@ def generate_chunk_hash(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()
 
 
-async def _fetch_raw_message(service: Any, msg_ref: dict[str, str]) -> tuple[NewsletterSnapshot | None, str | None]:
+async def _fetch_raw_message(
+    service: Any, msg_ref: dict[str, str], semaphore: asyncio.Semaphore | None = None
+) -> tuple[NewsletterSnapshot | None, str | None]:
     """Fetch a single message from Gmail and build a raw snapshot without cleaning.
 
     Args:
         service: Gmail API service resource.
         msg_ref: Dictionary containing the message 'id'.
+        semaphore: Optional asyncio.Semaphore to bound concurrent calls on service.
 
     Returns:
         A tuple of (NewsletterSnapshot or None, sender_string or None).
     """
     sender = None
-    try:
-        msg = await asyncio.to_thread(
-            service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute
-        )
-        headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
-
-        subject = headers.get("Subject", "No Subject")
-        sender = headers.get("From", "Unknown")
-        raw_date = headers.get("Date")
-
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
         try:
-            date_dt = parsedate_to_datetime(raw_date)
-            date = date_dt.isoformat()
-        except Exception:
-            date = datetime.now().isoformat()
+            if semaphore:
+                async with semaphore:
+                    msg = await asyncio.to_thread(
+                        service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute
+                    )
+            else:
+                msg = await asyncio.to_thread(
+                    service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute
+                )
 
-        body = extract_email_body(msg["payload"])
+            headers = {h["name"]: h["value"] for h in msg["payload"]["headers"]}
 
-        return NewsletterSnapshot(
-            source_id=generate_source_id(date, sender, subject),
-            chunk_hash=generate_chunk_hash(body),
-            sender=sender,
-            date=date,
-            subject=subject,
-            content=body,
-            ingested_at=datetime.now().isoformat(),
-        ), sender
-    except Exception as e:
-        logger.error(f"Error fetching raw message {msg_ref.get('id')}: {e}")
-        return None, sender
+            subject = headers.get("Subject", "No Subject")
+            sender = headers.get("From", "Unknown")
+            raw_date = headers.get("Date")
+
+            try:
+                date_dt = parsedate_to_datetime(raw_date)
+                date = date_dt.isoformat()
+            except Exception:
+                date = datetime.now().isoformat()
+
+            body = extract_email_body(msg["payload"])
+
+            return NewsletterSnapshot(
+                source_id=generate_source_id(date, sender, subject),
+                chunk_hash=generate_chunk_hash(body),
+                sender=sender,
+                date=date,
+                subject=subject,
+                content=body,
+                ingested_at=datetime.now().isoformat(),
+            ), sender
+        except Exception as e:
+            if attempt < max_attempts:
+                logger.warning(
+                    f"Attempt {attempt}/{max_attempts} failed fetching raw message {msg_ref.get('id')}: {e}. Retrying in {attempt * 0.5}s..."
+                )
+                await asyncio.sleep(attempt * 0.5)
+            else:
+                logger.error(f"Error fetching raw message {msg_ref.get('id')} after {max_attempts} attempts: {e}")
+                return None, sender
+    return None, sender
 
 
 async def _process_message(service: Any, msg_ref: dict[str, str]) -> tuple[NewsletterSnapshot | None, str | None]:
@@ -336,10 +355,11 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
 
         logger.info(f"Found {len(messages)} messages. Starting processing...")
 
-        # Phase 1: Fetch all raw message bodies (fast, Gmail API only, run in parallel)
+        # Phase 1: Fetch all raw message bodies (fast, Gmail API only, bounded concurrency)
         raw_results = []
         attempted_senders = set()
-        fetch_tasks = [_fetch_raw_message(service, msg_ref) for msg_ref in messages]
+        semaphore = asyncio.Semaphore(5)
+        fetch_tasks = [_fetch_raw_message(service, msg_ref, semaphore=semaphore) for msg_ref in messages]
         fetch_results = await asyncio.gather(*fetch_tasks)
 
         for raw_snapshot, sender in fetch_results:

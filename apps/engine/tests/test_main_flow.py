@@ -347,4 +347,3 @@ async def test_run_weekend_ingest_handles_empty_data_log_saving():
         # Ensure table("ingestion_logs").insert(...) was executed
         mock_sb.table.assert_called_with("ingestion_logs")
         mock_sb.table().insert.assert_called()
-

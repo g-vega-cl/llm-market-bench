@@ -307,4 +307,3 @@ async def test_fetch_raw_message_retry_success():
     assert snapshot.subject == "Test Subject"
     assert sender == "Test <test@example.com>"
     assert mock_get.execute.call_count == 3
-

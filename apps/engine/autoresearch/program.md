@@ -74,8 +74,15 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 20. **web_search**: General search for breaking news/prices.
 21. **get_global_macro_context**: Fetch a broad, clean snapshot of the global macroeconomic environment (indices, yields, commodities, DXY, volatility regime classifications).
 22. **get_volatility_index_details**: Fetch historical stats, percentiles, trends, and curve structure (contango/backwardation) for the VIX index ETFs (VIXY and VIXM) to detect volatility expansion/contraction.
+23. **get_verifier_rejections**: Retrieve recent trade rejection logs and verifier feedback reasons for past decisions to understand why proposed trades failed verification or compliance checks.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
+
+## Analyzing Trade Rejections & Verifier Feedback
+The performance report includes a **Trade Rejection & Verifier Analysis** section showing total proposed trades, executed/validated trades, total rejections, rejection rate %, and specific verifier rejection reasons (e.g. position limits, missing risk hedges, ungrounded valuation claims).
+- **Reduce Rejection Rates**: High rejection rates mean the trading agent is proposing trades that fail compliance or verifier checks, wasting analysis steps.
+- **Tune Strategy Instructions**: Use the verifier rejection reasons to modify the prompt strategy text so the trading agent addresses verifier requirements upfront (e.g., proper position sizing, contrarian risk-hedging, robust valuation rationale).
+- **Expose Tool when Helpful**: If agents need to dynamically check past verifier rejections during trade analysis, select `get_verifier_rejections` in `selected_tools`.
 
 ## Output Format
 Return ONLY a valid JSON object with these fields:

@@ -11,13 +11,55 @@ from datetime import date
 from core.config import ANTHROPIC_MODEL, AUTORESEARCH_EXPERIMENT_OWNER_IDS, OPENAI_MODEL
 from core.db import get_async_supabase_client
 
-from .metrics import _spy_returns, compute_score, compute_wall_street_metrics
+from .metrics import _spy_returns, compute_score, compute_wall_street_metrics, fetch_trade_rejections
 from .prompt_store import get_active_prompt, get_all_time_baseline, get_previous_variants
 from .window import get_week_window
 
 logger = logging.getLogger("engine")
 
 CONTROL_OWNER_IDS = frozenset([OPENAI_MODEL, ANTHROPIC_MODEL])
+
+
+def _format_rejection_section(rejection_stats: dict) -> str:
+    total = rejection_stats.get("total_decisions", 0)
+    validated = rejection_stats.get("validated_count", 0)
+    rejected = rejection_stats.get("rejected_count", 0)
+    rate = rejection_stats.get("rejection_rate_pct", 0.0)
+    breakdown = rejection_stats.get("status_breakdown", {})
+    details = rejection_stats.get("rejection_details", [])
+
+    lines = [
+        "# Trade Rejection & Verifier Analysis",
+        f"Total Decisions Proposed: {total} | Executed/Validated: {validated} | Total Rejected: {rejected}",
+        f"Overall Trade Rejection Rate: {rate:.2f}%",
+    ]
+
+    if breakdown:
+        lines.append("Status Breakdown:")
+        for status, count in sorted(breakdown.items(), key=lambda x: x[1], reverse=True):
+            lines.append(f"  - {status}: {count}")
+
+    if details:
+        lines.append("Recent Verifier & Guardrail Rejection Examples:")
+        for idx, item in enumerate(details[:10], start=1):
+            ticker = item.get("ticker", "?")
+            signal = item.get("signal", "?")
+            status = item.get("status", "?")
+            model = item.get("model_name", "N/A")
+            reason = item.get("reason", "No reason recorded")
+            thesis = item.get("agent_reasoning", "")
+            if len(thesis) > 120:
+                thesis = thesis[:120] + "..."
+
+            lines.append(
+                f"  {idx}. [{status}] {signal} {ticker} (model: {model})\n"
+                f"     • Verifier Reason: {reason}\n"
+                f"     • Agent Thesis: {thesis}"
+            )
+    else:
+        lines.append("No trade rejections recorded for this evaluation period.")
+
+    return "\n".join(lines)
 
 
 def _format_variants(variants: list[dict], baseline_score: float | None = None) -> str:
@@ -239,6 +281,15 @@ async def evaluate_week(
                 m = {}
         baseline_score = m.get("score")
 
+    # Fetch trade rejection metrics and verifier feedback
+    rejection_stats = await fetch_trade_rejections(
+        sb_client,
+        week_start,
+        week_end,
+        owner_ids=target_owner_ids,
+    )
+    score_result["rejection_stats"] = rejection_stats
+
     # Build minimal report.
     baseline_line = ""
     if baseline_score is not None:
@@ -272,6 +323,8 @@ async def evaluate_week(
         f"Control agents (OpenAI + Claude on baseline): "
         f"{ctrl_metrics.get('total_return_pct', 0):+.2f}% return, "
         f"-{ctrl_metrics.get('max_drawdown', 0) * 100:.2f}% drawdown",
+        "",
+        _format_rejection_section(rejection_stats),
         "",
         _format_variants(previous, baseline_score=baseline_score),
         "",

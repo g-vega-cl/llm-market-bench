@@ -9,7 +9,7 @@ import contextlib
 import contextvars
 
 from core.config import logger
-from core.db import get_supabase_client
+from core.db import get_async_supabase_client, get_supabase_client
 from execution.market_data import MarketDataManager
 from memory.embeddings import get_embedding
 
@@ -683,6 +683,28 @@ GET_VOLATILITY_INDEX_DETAILS_TOOL = {
     },
 }
 
+GET_VERIFIER_REJECTIONS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_verifier_rejections",
+        "description": "Retrieve recent trade rejection logs and verifier feedback reasons for past decisions to understand why proposed trades failed verification or compliance checks.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "Optional ticker symbol to filter rejections by (e.g. 'AAPL').",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of recent rejection records to retrieve (default: 5).",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
 
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
@@ -710,6 +732,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_market_feeling": GET_MARKET_FEELING_TOOL,
     "get_global_macro_context": GET_GLOBAL_MACRO_CONTEXT_TOOL,
     "get_volatility_index_details": GET_VOLATILITY_INDEX_DETAILS_TOOL,
+    "get_verifier_rejections": GET_VERIFIER_REJECTIONS_TOOL,
     "web_search": WEB_SEARCH_TOOL,
 }
 
@@ -2227,3 +2250,58 @@ async def execute_get_volatility_index_details_tool(lookback_days: int = 90) -> 
     except Exception as e:
         logger.exception(f"Error in execute_get_volatility_index_details_tool: {e}")
         return f"Error retrieving volatility index details: {str(e)}"
+
+
+async def execute_get_verifier_rejections_tool(
+    ticker: str | None = None, limit: int = 5, model_name: str | None = None
+) -> str:
+    """Retrieve recent trade rejection logs and verifier feedback reasons from the database."""
+    import inspect
+    import json
+
+    try:
+        sb_client = await get_async_supabase_client()
+        query = (
+            sb_client.table("decisions")
+            .select("id, ticker, signal, status, reasoning, model_name, metadata, created_at")
+            .order("created_at", desc=True)
+            .limit(limit * 2)
+        )
+        if ticker:
+            query = query.eq("ticker", ticker.upper())
+
+        res = query.execute()
+        if inspect.isawaitable(res):
+            res = await res
+        rows = res.data or []
+
+        rejected_rows = [r for r in rows if str(r.get("status", "")).startswith("REJECTED_")][:limit]
+        if not rejected_rows:
+            return "No trade rejections found matching the criteria."
+
+        lines = [f"=== Recent Trade Rejections & Verifier Feedback (Count: {len(rejected_rows)}) ==="]
+        for r in rejected_rows:
+            meta = r.get("metadata")
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {}
+            elif not isinstance(meta, dict):
+                meta = {}
+
+            reason = meta.get("reason") or meta.get("info") or "No explicit verifier reason recorded"
+            agent_thesis = r.get("reasoning", "") or ""
+            if len(agent_thesis) > 150:
+                agent_thesis = agent_thesis[:150] + "..."
+
+            lines.append(
+                f"- [{r.get('status')}] {r.get('signal')} {r.get('ticker')} (Model: {r.get('model_name') or 'N/A'})\n"
+                f"  • Verifier Reason: {reason}\n"
+                f"  • Agent Thesis: {agent_thesis}"
+            )
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.exception(f"Error in execute_get_verifier_rejections_tool: {e}")
+        return f"Error retrieving verifier rejections: {str(e)}"

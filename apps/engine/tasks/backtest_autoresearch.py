@@ -851,6 +851,54 @@ async def evaluate_backtest_week(week_start: datetime, week_end: datetime) -> tu
             }
         )
 
+    cursor.execute("""
+        SELECT id, ticker, signal, status, reasoning, model_name, metadata, created_at
+        FROM decisions
+        ORDER BY created_at ASC
+    """)
+    decision_rows = cursor.fetchall()
+    total_decisions = len(decision_rows)
+    rejected_decisions = [d for d in decision_rows if str(d["status"] or "").startswith("REJECTED_")]
+    rejected_count = len(rejected_decisions)
+    validated_count = total_decisions - rejected_count
+    rejection_rate = (rejected_count / total_decisions * 100) if total_decisions > 0 else 0.0
+
+    import json
+    from collections import Counter
+
+    status_breakdown = dict(Counter(d["status"] for d in rejected_decisions))
+
+    rejection_details = []
+    for d in rejected_decisions:
+        meta = d["metadata"]
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        elif not isinstance(meta, dict):
+            meta = {}
+        reason = meta.get("reason") or meta.get("info") or "No explicit reason logged"
+        rejection_details.append(
+            {
+                "ticker": d["ticker"],
+                "signal": d["signal"],
+                "status": d["status"],
+                "model_name": d["model_name"],
+                "reason": reason,
+                "agent_reasoning": d["reasoning"] or "",
+            }
+        )
+
+    rejection_stats = {
+        "total_decisions": total_decisions,
+        "validated_count": validated_count,
+        "rejected_count": rejected_count,
+        "rejection_rate_pct": round(rejection_rate, 2),
+        "status_breakdown": status_breakdown,
+        "rejection_details": rejection_details,
+    }
+
     metrics = {
         "score": score,
         "portfolio_return": avg_return_pct,
@@ -858,14 +906,33 @@ async def evaluate_backtest_week(week_start: datetime, week_end: datetime) -> tu
         "opportunity_cost": opportunity_cost_pct,
         "max_drawdown": max_drawdown_pct,
         "trades": executed_trades,
+        "rejection_stats": rejection_stats,
     }
+
+    rejection_lines = [
+        "\n# Trade Rejection & Verifier Analysis",
+        f"Total Decisions Proposed: {total_decisions} | Executed/Validated: {validated_count} | Total Rejected: {rejected_count}",
+        f"Overall Trade Rejection Rate: {rejection_rate:.2f}%",
+    ]
+    if status_breakdown:
+        rejection_lines.append("Status Breakdown:")
+        for st, cnt in sorted(status_breakdown.items(), key=lambda x: x[1], reverse=True):
+            rejection_lines.append(f"  - {st}: {cnt}")
+    if rejection_details:
+        rejection_lines.append("Recent Verifier & Guardrail Rejection Examples:")
+        for idx, item in enumerate(rejection_details[:10], start=1):
+            rejection_lines.append(
+                f"  {idx}. [{item['status']}] {item['signal']} {item['ticker']} (model: {item['model_name'] or 'N/A'})\n"
+                f"     • Verifier Reason: {item['reason']}\n"
+                f"     • Agent Thesis: {item['agent_reasoning'][:120]}"
+            )
 
     report = (
         f"=== Simulated Backtest Performance Weekly Report ===\n"
         f"Period: {week_start.date()} to {week_end.date()}\n"
         f"Average Model Return: {avg_return_pct:.2f}%\n"
         f"SPY Return: {spy_return_pct:.2f}%\n"
-        f"Risk-Adjusted Score: {score:.4f}\n"
+        f"Risk-Adjusted Score: {score:.4f}\n" + "\n".join(rejection_lines) + "\n"
     )
 
     conn.close()

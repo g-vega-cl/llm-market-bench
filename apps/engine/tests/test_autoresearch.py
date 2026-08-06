@@ -2055,3 +2055,180 @@ class TestPullBaselineIsolation:
         assert baseline is not None
         assert baseline["variant_tag"] == "v_pull"
         assert baseline["metrics"]["score"] == -4.5858
+
+
+class TestTradeRejectionAnalysis:
+    @pytest.mark.asyncio
+    async def test_execute_get_verifier_rejections_tool(self):
+        """Test that execute_get_verifier_rejections_tool queries decisions and formats output."""
+        from unittest.mock import patch
+
+        from core.llm import tools
+
+        rows = [
+            {
+                "id": "dec-1",
+                "ticker": "AAPL",
+                "signal": "BUY",
+                "status": "REJECTED_VERIFICATION",
+                "reasoning": "Agent thesis: high momentum",
+                "model_name": "gpt-4o",
+                "metadata": '{"reason": "Verifier rejected: Position size exceeds risk limit"}',
+                "created_at": "2026-08-01T10:00:00",
+            }
+        ]
+
+        client, _ = _make_async_client(data=rows)
+        with patch("core.llm.tools.get_async_supabase_client", return_value=client):
+            output = await tools.execute_get_verifier_rejections_tool(ticker="AAPL", limit=5, model_name="gpt-4o")
+
+        assert "REJECTED_VERIFICATION" in output
+        assert "AAPL" in output
+        assert "Verifier rejected: Position size exceeds risk limit" in output
+
+    @pytest.mark.asyncio
+    async def test_fetch_trade_rejections_computes_stats(self):
+        """Test fetch_trade_rejections computes counts, breakdown, and extracts reasons."""
+        from unittest.mock import patch
+
+        from autoresearch.metrics import fetch_trade_rejections
+
+        rows = [
+            {
+                "id": "d1",
+                "ticker": "NVDA",
+                "signal": "BUY",
+                "status": "VALIDATED",
+                "reasoning": "Good earnings",
+                "model_name": "deepseek_chat",
+                "metadata": {"reason": "Passed verifier"},
+                "created_at": "2026-08-02T10:00:00",
+            },
+            {
+                "id": "d2",
+                "ticker": "TSLA",
+                "signal": "SELL",
+                "status": "REJECTED_VERIFICATION",
+                "reasoning": "Overvalued EV market",
+                "model_name": "deepseek_chat",
+                "metadata": {"reason": "Verifier rejected: Lacks contrarian hedge analysis"},
+                "created_at": "2026-08-03T10:00:00",
+            },
+            {
+                "id": "d3",
+                "ticker": "AMD",
+                "signal": "BUY",
+                "status": "REJECTED_MARGIN",
+                "reasoning": "Buying power check",
+                "model_name": "deepseek_chat",
+                "metadata": '{"reason": "Insufficient buying power"}',
+                "created_at": "2026-08-04T10:00:00",
+            },
+        ]
+
+        client, _ = _make_async_client(data=rows)
+        with patch("autoresearch.metrics.get_async_supabase_client", return_value=client):
+            stats = await fetch_trade_rejections(
+                client,
+                week_start=date(2026, 8, 1),
+                week_end=date(2026, 8, 7),
+            )
+
+        assert stats["total_decisions"] == 3
+        assert stats["validated_count"] == 1
+        assert stats["rejected_count"] == 2
+        assert stats["rejection_rate_pct"] == 66.67
+        assert stats["status_breakdown"]["REJECTED_VERIFICATION"] == 1
+        assert stats["status_breakdown"]["REJECTED_MARGIN"] == 1
+        assert len(stats["rejection_details"]) == 2
+        assert stats["rejection_details"][0]["ticker"] in ("TSLA", "AMD")
+
+    @pytest.mark.asyncio
+    async def test_evaluate_week_includes_trade_rejection_section(self, monkeypatch):
+        """Test evaluate_week includes # Trade Rejection & Verifier Analysis in report and metrics."""
+        from autoresearch import evaluator, metrics
+
+        fake_rejection_stats = {
+            "total_decisions": 10,
+            "validated_count": 6,
+            "rejected_count": 4,
+            "rejection_rate_pct": 40.0,
+            "status_breakdown": {"REJECTED_VERIFICATION": 3, "REJECTED_MARGIN": 1},
+            "rejection_details": [
+                {
+                    "ticker": "MSFT",
+                    "signal": "BUY",
+                    "status": "REJECTED_VERIFICATION",
+                    "model_name": "deepseek_chat",
+                    "reason": "Verifier rejected: Missing stop-loss strategy",
+                    "agent_reasoning": "Strong cloud revenue growth",
+                }
+            ],
+        }
+
+        async def mock_fetch_trade_rejections(*args, **kwargs):
+            return fake_rejection_stats
+
+        async def mock_spy_returns(*args, **kwargs):
+            return [0.01, 0.005]
+
+        async def mock_compute_wall_street_metrics(*args, **kwargs):
+            return {
+                "total_return_pct": 2.5,
+                "max_drawdown": 0.01,
+                "volatility": 0.05,
+                "do_nothing_return_pct": 1.0,
+                "portfolio_details": {},
+            }
+
+        async def mock_active_prompt(*args, **kwargs):
+            return "Test Prompt"
+
+        async def mock_previous_variants(*args, **kwargs):
+            return []
+
+        async def mock_all_time_baseline(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(evaluator, "fetch_trade_rejections", mock_fetch_trade_rejections)
+        monkeypatch.setattr(metrics, "_spy_returns", mock_spy_returns)
+        monkeypatch.setattr(metrics, "compute_wall_street_metrics", mock_compute_wall_street_metrics)
+        monkeypatch.setattr(evaluator, "get_active_prompt", mock_active_prompt)
+        monkeypatch.setattr(evaluator, "get_previous_variants", mock_previous_variants)
+        monkeypatch.setattr(evaluator, "get_all_time_baseline", mock_all_time_baseline)
+
+        async def mock_bond_yield(*args, **kwargs):
+            return 4.5
+
+        async def mock_dollar_return(*args, **kwargs):
+            return 0.0
+
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr(evaluator, "get_async_supabase_client", AsyncMock(return_value=_make_async_client()[0]))
+        monkeypatch.setattr(metrics, "get_async_supabase_client", AsyncMock(return_value=_make_async_client()[0]))
+        monkeypatch.setattr(evaluator, "_fetch_actual_bond_yield", mock_bond_yield)
+        monkeypatch.setattr(evaluator, "_fetch_dollar_index_return", mock_dollar_return)
+
+        report, score_result, baseline_tag = await evaluator.evaluate_week()
+
+        assert "# Trade Rejection & Verifier Analysis" in report
+        assert "Total Decisions Proposed: 10" in report
+        assert "Overall Trade Rejection Rate: 40.00%" in report
+        assert "REJECTED_VERIFICATION: 3" in report
+        assert "Verifier rejected: Missing stop-loss strategy" in report
+        assert score_result["rejection_stats"] == fake_rejection_stats
+
+    def test_selected_tools_allows_get_verifier_rejections(self):
+        """Verify PromptResearchResult accepts get_verifier_rejections as a valid selected tool."""
+        from autoresearch.researcher import PromptResearchResult
+
+        res = PromptResearchResult(
+            new_prompt_text="New Strategy",
+            selected_tools=["get_portfolio_ledger", "get_verifier_rejections"],
+            change_description="Added verifier rejection lookup tool",
+            experiment_type="incremental",
+            research_reasoning="Allow agent to query past verifier rejection reasons",
+            confidence=80,
+        )
+        assert "get_verifier_rejections" in res.selected_tools

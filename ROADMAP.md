@@ -133,4 +133,4 @@ Feels like I have done that before to no avail
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify : check if intraday hits on the daily predictor too
-- [ ] - Benchify: "hyperfocua on a mid size company?
+- [ ] - Benchify: "hyperfocus on a mid size company?

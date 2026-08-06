@@ -104,4 +104,8 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_get_global_macro_context_tool()
     elif name == "get_volatility_index_details":
         return await tools.execute_get_volatility_index_details_tool(args.get("lookback_days", 90))
+    elif name == "get_verifier_rejections":
+        return await tools.execute_get_verifier_rejections_tool(
+            ticker=args.get("ticker"), limit=args.get("limit", 5), model_name=model_name
+        )
     return "Unknown tool"

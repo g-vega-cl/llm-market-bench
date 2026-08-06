@@ -60,7 +60,8 @@ class PromptResearchResult(BaseModel):
             "'get_earnings_history', 'search_prediction_markets', 'get_prediction_market_odds', "
             "'audit_financial_valuation', 'fetch_newsletter_content', 'search_past_memories', "
             "'get_thematic_flows', 'add_thematic_flow', "
-            "'get_portfolio_ledger', 'get_todays_news_menu', 'get_market_feeling'. "
+            "'get_portfolio_ledger', 'get_todays_news_menu', 'get_market_feeling', "
+            "'get_global_macro_context', 'get_volatility_index_details', 'get_verifier_rejections'. "
             "Do NOT include execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') "
             "as they are automatically force-injected by the system."
         ),

@@ -392,3 +392,96 @@ def compute_score(
         "opportunity_cost_penalty": opportunity_cost,
         "drawdown_penalty": round(penalty, 4),
     }
+
+
+async def fetch_trade_rejections(
+    sb_client,
+    week_start: date,
+    week_end: date,
+    owner_ids: set | list | None = None,
+) -> dict:
+    """Fetch decision rejections for the evaluation window and compute summary metrics.
+
+    Returns dict with keys:
+        - total_decisions: int
+        - validated_count: int
+        - rejected_count: int
+        - rejection_rate_pct: float
+        - status_breakdown: dict[str, int]
+        - rejection_details: list[dict]
+    """
+    default_stats = {
+        "total_decisions": 0,
+        "validated_count": 0,
+        "rejected_count": 0,
+        "rejection_rate_pct": 0.0,
+        "status_breakdown": {},
+        "rejection_details": [],
+    }
+    if not sb_client:
+        return default_stats
+
+    try:
+        import inspect
+        import json
+        from collections import Counter
+
+        query = (
+            sb_client.table("decisions")
+            .select("id, ticker, signal, status, reasoning, model_name, metadata, created_at")
+            .gte("created_at", week_start.isoformat())
+            .lte("created_at", f"{week_end.isoformat()}T23:59:59")
+            .order("created_at", desc=True)
+        )
+
+        res = query.execute()
+        if inspect.isawaitable(res):
+            res = await res
+        rows = res.data or []
+
+        total_decisions = len(rows)
+
+        rejected_rows = [r for r in rows if str(r.get("status", "")).startswith("REJECTED_")]
+        rejected_count = len(rejected_rows)
+        validated_count = total_decisions - rejected_count
+        rejection_rate_pct = round((rejected_count / total_decisions * 100), 2) if total_decisions > 0 else 0.0
+
+        status_breakdown = dict(Counter(r.get("status", "UNKNOWN") for r in rejected_rows))
+
+        rejection_details = []
+        for r in rejected_rows[:15]:
+            meta = r.get("metadata")
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {}
+            elif not isinstance(meta, dict):
+                meta = {}
+
+            reason = meta.get("reason") or meta.get("info") or "No explicit reason logged"
+            agent_reasoning = r.get("reasoning", "") or ""
+
+            rejection_details.append(
+                {
+                    "ticker": r.get("ticker"),
+                    "signal": r.get("signal"),
+                    "status": r.get("status"),
+                    "model_name": r.get("model_name"),
+                    "reason": reason,
+                    "agent_reasoning": agent_reasoning,
+                    "created_at": r.get("created_at"),
+                }
+            )
+
+        return {
+            "total_decisions": total_decisions,
+            "validated_count": validated_count,
+            "rejected_count": rejected_count,
+            "rejection_rate_pct": rejection_rate_pct,
+            "status_breakdown": status_breakdown,
+            "rejection_details": rejection_details,
+        }
+    except Exception as e:
+        logger.warning(f"Failed to fetch trade rejections for evaluation report: {e}")
+        return default_stats

@@ -220,4 +220,61 @@ describe('MemoryCard scenario rendering', () => {
 
         expect(screen.getByText('Match: 84%')).toBeInTheDocument();
     });
+
+    it('identifies and highlights winning scenario and resolution details when card is resolved', async () => {
+        const memory = makeMemory();
+        memory.status = 'RESOLVED';
+        memory.metadata = {
+            winning_scenario: 'Scenario A: Rates Cut',
+            scenarios: [
+                {
+                    cleanHeader: 'Scenario A: Rates Cut',
+                    percentage: '70%',
+                    outcome: 'Fed cuts rates by 50bps, markets rally.',
+                    tradingPlan: 'Buy SPY and QQQ.',
+                },
+                {
+                    cleanHeader: 'Scenario B: Rates Hold',
+                    percentage: '30%',
+                    outcome: 'Fed holds rates, market consolidates.',
+                    tradingPlan: 'Hold cash.',
+                },
+            ],
+        };
+
+        const mockCausalOutcome = {
+            id: 'causal-1',
+            event_id: 'test-1',
+            market_outcome: 'Fed executed 50bps cut matching Scenario A',
+            analysis: 'Economic data aligned with dovish projections.',
+            confidence: 90,
+            tags: ['fed', 'interest-rates'],
+            created_at: new Date().toISOString(),
+        };
+
+        vi.mocked(fetchChildResolutionEvent).mockResolvedValue(null);
+        vi.mocked(fetchCauseAndEffectByEventId).mockImplementation(async (eventId) => {
+            if (eventId === 'test-1') {
+                return mockCausalOutcome;
+            }
+            return null;
+        });
+
+        renderWithClient(<MemoryCard memory={memory} />);
+
+        // Should render unexpanded winning scenario badge
+        expect(screen.getByText(/Winning Scenario: Scenario A: Rates Cut/i)).toBeInTheDocument();
+
+        // Expand analysis
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        await waitFor(() => {
+            expect(screen.getAllByText(/WINNING SCENARIO/i).length).toBeGreaterThan(0);
+            expect(
+                screen.getByText(/Fed executed 50bps cut matching Scenario A/i),
+            ).toBeInTheDocument();
+            expect(screen.getByText(/What Resolved:/i)).toBeInTheDocument();
+            expect(screen.getByText(/Why It Resolved/i)).toBeInTheDocument();
+        });
+    });
 });

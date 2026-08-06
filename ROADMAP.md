@@ -36,7 +36,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
 - [x] add metrics add CAPE, PE, forward PE, book-to-market Etc.... ? Do I already have them? P/free cash flow
 - [x] manage prompt size with increasing memory/lessons learned database.
-- [ ] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
+- [x] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
 - [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
@@ -131,3 +131,6 @@ Feels like I have done that before to no avail
 - [ ] - Add more LLMs to sector researcher.
 - [ ] - backtest sector researcher.
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
+- [ ] - Benchify: move all newsletters to dedicated email
+- [ ] - Benchify : check if intraday hits on the daily predictor too
+- [ ] - Benchify: "hyperfocua on a mid size company?

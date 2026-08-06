@@ -20,6 +20,57 @@ export interface StructuredScenario {
     outcome: string;
     tradingPlan: string | null;
     assets?: DiscoveredAsset[];
+    isWinning?: boolean;
+}
+
+export function getWinningScenario(
+    scenarios: StructuredScenario[],
+    memory: Memory,
+    activeCe?: { market_outcome: string; analysis?: string } | null,
+    childResolution?: Memory | null,
+): StructuredScenario | null {
+    if (!scenarios || scenarios.length === 0) return null;
+
+    // 1. Explicit metadata setting: memory.metadata.winning_scenario
+    const winningMeta = memory.metadata?.winning_scenario;
+    if (typeof winningMeta === 'number' && scenarios[winningMeta]) {
+        return scenarios[winningMeta];
+    }
+    if (typeof winningMeta === 'string') {
+        const found = scenarios.find(
+            (s) =>
+                s.cleanHeader.toLowerCase().includes(winningMeta.toLowerCase()) ||
+                winningMeta.toLowerCase().includes(s.cleanHeader.toLowerCase()),
+        );
+        if (found) return found;
+    }
+
+    // 2. Explicit scenario flag on scenario object
+    const explicitWinning = scenarios.find((s) => s.isWinning);
+    if (explicitWinning) return explicitWinning;
+
+    // 3. Fallback matching against cause & effect market outcome or child event content
+    const outcomeText = [activeCe?.market_outcome, activeCe?.analysis, childResolution?.content]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (outcomeText) {
+        for (const s of scenarios) {
+            const headerLower = s.cleanHeader.toLowerCase();
+            const scenarioLabel = headerLower.match(/scenario\s+[a-z0-9]+/i);
+            if (scenarioLabel && outcomeText.includes(scenarioLabel[0].toLowerCase())) {
+                return s;
+            }
+
+            const cleanTitle = s.cleanHeader.replace(/^scenario\s+[a-z0-9]+[:\s-]*/i, '').trim();
+            if (cleanTitle.length > 3 && outcomeText.includes(cleanTitle.toLowerCase())) {
+                return s;
+            }
+        }
+    }
+
+    return null;
 }
 
 interface MemoryCardProps {
@@ -129,6 +180,13 @@ export function MemoryCard({ memory }: MemoryCardProps) {
         enabled: isExpanded && !!childResolution?.id,
     });
 
+    const activeCe = childCauseAndEffect || parentCauseAndEffect;
+
+    const winningScenario = React.useMemo(
+        () => getWinningScenario(scenarios, memory, activeCe, childResolution),
+        [scenarios, memory, activeCe, childResolution],
+    );
+
     const category = getMemoryCategory(memory);
     const badgeConfig = CATEGORY_BADGE_CONFIG[category] || CATEGORY_BADGE_CONFIG.other;
 
@@ -153,6 +211,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             size="sm"
                         >
                             {memory.status}
+                        </Badge>
+                    )}
+
+                    {isResolved && winningScenario && (
+                        <Badge variant="solid" colorScheme="success" size="sm">
+                            🏆 Winning Scenario: {winningScenario.cleanHeader}
                         </Badge>
                     )}
 
@@ -273,8 +337,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                     {isExpanded && (
                         <div className="mt-4 p-4 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800">
                             {/* Resolution & Performance Analysis Section */}
-                            {(childResolution || parentCauseAndEffect || childCauseAndEffect) && (
-                                <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-4">
+                            {(isResolved || childResolution || activeCe || winningScenario) && (
+                                <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-4">
                                     <div className="flex items-center gap-2">
                                         <span className="text-emerald-500 text-lg">⚡</span>
                                         <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
@@ -282,17 +346,22 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                         </h4>
                                     </div>
 
-                                    {childResolution && (
-                                        <div className="space-y-1">
-                                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
-                                                Resolved By Event
-                                            </span>
-                                            <p className="text-sm text-zinc-700 dark:text-zinc-300 font-medium">
+                                    {/* What Resolved Section */}
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+                                            What Resolved:
+                                        </span>
+                                        <p className="text-sm text-zinc-800 dark:text-zinc-200 font-medium">
+                                            {memory.content.split('|')[0].trim()}
+                                        </p>
+
+                                        {childResolution && (
+                                            <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium mt-1">
                                                 Resolved by:{' '}
                                                 <Link
                                                     to="/memories/chain/$memoryId"
                                                     params={{ memoryId: childResolution.id }}
-                                                    className="text-blue-500 hover:underline"
+                                                    className="text-blue-500 hover:underline font-semibold"
                                                 >
                                                     {childResolution.content
                                                         .split('|')[0]
@@ -300,52 +369,68 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                                         .trim()}
                                                 </Link>
                                             </p>
-                                            <p className="text-xs text-zinc-500 italic mt-1 leading-relaxed">
-                                                {childResolution.content}
-                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Winning Scenario Summary Banner */}
+                                    {winningScenario && (
+                                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    colorScheme="success"
+                                                    variant="solid"
+                                                    size="xs"
+                                                >
+                                                    🏆 WINNING SCENARIO
+                                                </Badge>
+                                                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                                    {winningScenario.cleanHeader}
+                                                </span>
+                                            </div>
+                                            {winningScenario.outcome && (
+                                                <p className="text-xs text-zinc-700 dark:text-zinc-300 mt-1 leading-relaxed">
+                                                    {winningScenario.outcome}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
 
-                                    {(() => {
-                                        const activeCe =
-                                            childCauseAndEffect || parentCauseAndEffect;
-                                        if (!activeCe) return null;
-                                        return (
-                                            <div className="space-y-3 pt-3 border-t border-emerald-500/10">
-                                                <div>
-                                                    <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide block mb-1">
-                                                        Actual Market Outcome (Confidence:{' '}
-                                                        {activeCe.confidence}%)
-                                                    </span>
-                                                    <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-lg text-sm text-zinc-200 font-semibold leading-relaxed">
-                                                        {activeCe.market_outcome}
-                                                    </div>
+                                    {/* Why It Resolved Section */}
+                                    {activeCe && (
+                                        <div className="space-y-3 pt-3 border-t border-emerald-500/10">
+                                            <div>
+                                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1">
+                                                    Why It Resolved (Market Outcome & Confidence:{' '}
+                                                    {activeCe.confidence}%)
+                                                </span>
+                                                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded-lg text-sm text-zinc-200 font-semibold leading-relaxed">
+                                                    {activeCe.market_outcome}
                                                 </div>
-
-                                                <div>
-                                                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide block mb-1">
-                                                        Causal Analysis & Learning Playbook
-                                                    </span>
-                                                    <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-900/10 p-3 rounded-lg border border-zinc-800/30">
-                                                        {activeCe.analysis}
-                                                    </p>
-                                                </div>
-
-                                                {activeCe.tags && activeCe.tags.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1.5 pt-1">
-                                                        {activeCe.tags.map((tag) => (
-                                                            <span
-                                                                key={tag}
-                                                                className="px-3 py-1 bg-zinc-800 text-zinc-400 text-[10px] uppercase font-bold rounded-full border border-zinc-700"
-                                                            >
-                                                                {tag}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </div>
-                                        );
-                                    })()}
+
+                                            <div>
+                                                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wide block mb-1">
+                                                    Causal Analysis & Learning Playbook
+                                                </span>
+                                                <p className="text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap font-sans bg-zinc-900/10 p-3 rounded-lg border border-zinc-800/30">
+                                                    {activeCe.analysis}
+                                                </p>
+                                            </div>
+
+                                            {activeCe.tags && activeCe.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                                    {activeCe.tags.map((tag) => (
+                                                        <span
+                                                            key={tag}
+                                                            className="px-3 py-1 bg-zinc-800 text-zinc-400 text-[10px] uppercase font-bold rounded-full border border-zinc-700"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -358,74 +443,126 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                     </div>
 
                                     <div className="flex flex-col space-y-3 text-sm text-zinc-700 dark:text-zinc-300 mb-4">
-                                        {scenarios.map((scenario, i) => (
-                                            <div
-                                                key={i}
-                                                className="p-3 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-                                            >
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    {scenario.cleanHeader && (
-                                                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                                            {scenario.cleanHeader}
-                                                        </span>
-                                                    )}
-                                                    {scenario.percentage && (
-                                                        <Badge
-                                                            size="xs"
-                                                            variant="soft"
-                                                            colorScheme="accent"
-                                                            radius="md"
-                                                            className="tabular-nums"
-                                                        >
-                                                            {scenario.percentage}
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                                {scenario.outcome && (
-                                                    <div className="text-sm leading-relaxed mb-2">
-                                                        {scenario.outcome}
-                                                    </div>
-                                                )}
-                                                {scenario.tradingPlan && (
-                                                    <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                                                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
-                                                            Trading Plan:
-                                                        </span>
-                                                        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                                            {scenario.tradingPlan}
-                                                        </p>
-                                                    </div>
-                                                )}
+                                        {scenarios.map((scenario, i) => {
+                                            const isWinning =
+                                                winningScenario &&
+                                                (scenario === winningScenario ||
+                                                    scenario.cleanHeader ===
+                                                        winningScenario.cleanHeader);
 
-                                                {/* Actionable Assets nested directly inside the scenario card */}
-                                                {scenario.assets && scenario.assets.length > 0 && (
-                                                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-                                                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
-                                                            Actionable Assets:
-                                                        </span>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {scenario.assets.map(
-                                                                (asset, assetIdx) => (
-                                                                    <button
-                                                                        type="button"
-                                                                        key={assetIdx}
-                                                                        onClick={() =>
-                                                                            setSelectedAsset(asset)
-                                                                        }
-                                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:scale-105 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
-                                                                    >
-                                                                        <span>${asset.ticker}</span>
-                                                                        <span className="text-[10px] opacity-75 font-normal">
-                                                                            ({asset.name})
-                                                                        </span>
-                                                                    </button>
-                                                                ),
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className={`p-3.5 rounded-lg transition-all ${
+                                                        isWinning
+                                                            ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-2 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/20'
+                                                            : isResolved
+                                                              ? 'bg-white/60 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 opacity-75 dark:opacity-60'
+                                                              : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                                        <div className="flex items-center gap-2">
+                                                            {scenario.cleanHeader && (
+                                                                <span
+                                                                    className={`text-xs font-bold ${
+                                                                        isWinning
+                                                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                                                            : 'text-blue-600 dark:text-blue-400'
+                                                                    }`}
+                                                                >
+                                                                    {scenario.cleanHeader}
+                                                                </span>
+                                                            )}
+                                                            {scenario.percentage && (
+                                                                <Badge
+                                                                    size="xs"
+                                                                    variant={
+                                                                        isWinning ? 'solid' : 'soft'
+                                                                    }
+                                                                    colorScheme={
+                                                                        isWinning
+                                                                            ? 'success'
+                                                                            : 'accent'
+                                                                    }
+                                                                    radius="md"
+                                                                    className="tabular-nums"
+                                                                >
+                                                                    {scenario.percentage}
+                                                                </Badge>
                                                             )}
                                                         </div>
+
+                                                        {isWinning ? (
+                                                            <Badge
+                                                                colorScheme="success"
+                                                                variant="solid"
+                                                                size="xs"
+                                                            >
+                                                                🏆 WINNING SCENARIO
+                                                            </Badge>
+                                                        ) : isResolved ? (
+                                                            <Badge
+                                                                colorScheme="neutral"
+                                                                variant="soft"
+                                                                size="xs"
+                                                            >
+                                                                Did Not Occur
+                                                            </Badge>
+                                                        ) : null}
                                                     </div>
-                                                )}
-                                            </div>
-                                        ))}
+
+                                                    {scenario.outcome && (
+                                                        <div className="text-sm leading-relaxed mb-2">
+                                                            {scenario.outcome}
+                                                        </div>
+                                                    )}
+                                                    {scenario.tradingPlan && (
+                                                        <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
+                                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
+                                                                Trading Plan:
+                                                            </span>
+                                                            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                                                {scenario.tradingPlan}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Actionable Assets nested directly inside the scenario card */}
+                                                    {scenario.assets &&
+                                                        scenario.assets.length > 0 && (
+                                                            <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
+                                                                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
+                                                                    Actionable Assets:
+                                                                </span>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {scenario.assets.map(
+                                                                        (asset, assetIdx) => (
+                                                                            <button
+                                                                                type="button"
+                                                                                key={assetIdx}
+                                                                                onClick={() =>
+                                                                                    setSelectedAsset(
+                                                                                        asset,
+                                                                                    )
+                                                                                }
+                                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 hover:scale-105 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer shadow-sm"
+                                                                            >
+                                                                                <span>
+                                                                                    ${asset.ticker}
+                                                                                </span>
+                                                                                <span className="text-[10px] opacity-75 font-normal">
+                                                                                    ({asset.name})
+                                                                                </span>
+                                                                            </button>
+                                                                        ),
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </>
                             )}

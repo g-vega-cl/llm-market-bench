@@ -36,9 +36,10 @@ To close the loop on historical predictions and learn from resolved market event
 1. **Resolution Linkage**: When a target event is resolved, its status in the `memories` table is updated to `RESOLVED`. A child memory of type `RESOLUTION` is created, referencing the parent via `parent_id` and setting `relationship_type = 'RESOLUTION'`.
 2. **Causal Data Retrieval (`cause_and_effect` table)**: Causal metrics (actual outcomes, confidence scores, playbooks) are stored in the `cause_and_effect` table. Because mature cause-and-effect results might be saved under the parent event or the child resolution event, the frontend queries both (`fetchCauseAndEffectByEventId`) and merges the outcomes.
 3. **Consolidated UI Panel**: The memories dashboard (`MemoryCard.tsx`) renders a dedicated **Resolution & Market Performance** section for resolved events, featuring:
-   - **Resolved By Event**: A clickable link leading directly to the child resolution event's full geopolitical timeline in the Event Chain view.
-   - **Actual Market Outcome**: The true price impact and outcome (with the LLM's classification confidence).
-   - **Causal Analysis & Playbook**: A synthesized playbook detail detailing why/how the market reacted, aiding future human and agent learning.
+   - **Header Badge**: A prominent `🏆 Winning Scenario: [Header]` badge on the unexpanded card header.
+   - **What Resolved**: Clearly displays the original event summary and a clickable link to the child resolution event in the Event Chain view (`Resolved by:`).
+   - **Winning Scenario Callout & Highlighting**: Identifies and highlights the winning scenario with a `🏆 WINNING SCENARIO` badge and emerald container styling, while non-winning scenarios are dimmed (`opacity-60`) with a `Did Not Occur` badge.
+   - **Why It Resolved**: The actual market price outcome (with classification confidence rating) and full causal analysis playbook.
    - **Performance Tags**: Categorized tags (e.g. `energy-prices`, `geopolitics`) associated with the causal playbook.
 
 ## Structured Scenarios & Ticker Mapping

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(xargs:*)",
+      "Bash(python3 *)",
+      "Bash(grep -nE '09:[0-9]+|12:[0-9]+|15:[0-9]+|gpt-5\\\\.4|gemini-3\\\\.1|claude-haiku-4|deepseek-v4|0\\\\.85| 0\\\\.90| 0\\\\.75| 0\\\\.4 |≥ 8|importance.*≥|5\\\\.0%| 57%| 33%|\\\\$2B|\\\\$1,000|24-hour|24h|5-min|2-second|BATCH_SIZE.*20|5/14/30|5, 14, 30|8 days|7-day' README.md AGENTS.md docs/Overview.md docs/engine/data-flow.md docs/engine/TOOL_ENFORCEMENT.md docs/engine/CORRELATION_MATRIX.md docs/engine/WEB_SEARCH.md docs/engine/PNL-CALCULATIONS.md)",
+      "Bash(grep -nE '09:[0-9]+|12:[0-9]+|15:[0-9]+|gpt-5\\\\.4|gemini-3\\\\.1|claude-haiku-4|deepseek-v4|0\\\\.85| 0\\\\.90| 0\\\\.75| 0\\\\.4|≥ 8|importance.*≥|5\\\\.0%| 57%| 33%|\\\\$2B|\\\\$1,000|24-hour|24h |5-min|2-second|BATCH_SIZE.*20|5/14/30|5, 14, 30|7-day|2σ|16 assets' README.md AGENTS.md docs/Overview.md docs/engine/data-flow.md docs/engine/TOOL_ENFORCEMENT.md docs/engine/CORRELATION_MATRIX.md docs/engine/WEB_SEARCH.md docs/engine/PNL-CALCULATIONS.md docs/engine/agent-specific-semantic-overlap.md)",
+      "Bash(./venv/bin/python3 *)",
+      "Bash(./venv/bin/python -m pytest --version)",
+      "Bash(./venv/bin/python -m pytest tests/test_config.py -x)",
+      "Bash(./venv/bin/python -m pytest tests/test_autoresearch.py --no-header)",
+      "Bash(./venv/bin/python -m pytest tests/ --no-header -q)",
+      "Bash(python -m pytest tests/test_autoresearch.py -x -q)",
+      "Bash(.venv/bin/python -m pytest tests/test_autoresearch.py -x -q)",
+      "Bash(.venv/bin/python apps/engine/wiki_lint.py)",
+      "Bash(.venv/bin/python wiki_lint.py)",
+      "Bash(./apps/engine/.venv/bin/python3 -m pytest apps/engine/tests/test_autoresearch.py -q)",
+      "Bash(./apps/engine/.venv/bin/ruff check *)",
+      "Bash(./apps/engine/.venv/bin/python3 *)"
+    ]
+  }
+}

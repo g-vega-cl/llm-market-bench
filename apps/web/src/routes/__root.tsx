@@ -61,11 +61,16 @@ export const Route = createRootRoute({
     component: RootComponent,
 });
 
+import { ChatWidget } from '~/features/chat/ChatWidget';
+
 function RootComponent() {
+    const { user } = Route.useRouteContext();
+
     return (
         <RootDocument>
             <QueryClientProviderWrapper>
                 <Outlet />
+                <ChatWidget user={user} />
             </QueryClientProviderWrapper>
         </RootDocument>
     );

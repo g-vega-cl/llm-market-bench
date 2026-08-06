@@ -148,6 +148,15 @@ To resolve excessive vertical scrolling on the Today dashboard caused by stacked
 - **Interactive View Switcher**: Integrated an inline toggle (`≡ List` vs `⊞ Cards`) in the section header alongside an insight count pill (`🧠 {n} Insights`). Switches between high-density list rows and compact 2-column cards matching the *Daily Intelligence Briefing* style.
 - **TDD Verification**: Covered by unit tests in `AgentInsights.test.tsx` checking count badge rendering, list items, and view state toggles.
 
+### Gated DeepSeek Chat Assistant MVP (2026-08-06)
+
+To provide instant AI market analysis directly inside the web dashboard:
+- **Server Function Handler**: Implemented `handleChatMessage` and `sendChatMessageFn` in [chat-server.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/chat/chat-server.ts) powered by `@tanstack/react-start` server functions.
+- **Cryptographic Server Gating**: Validates the Supabase auth session token on the server side and restricts execution strictly to authorized accounts (`g.vega.cl@gmail.com`), rejecting unauthorized access with `403 Forbidden`.
+- **DeepSeek Integration**: Uses server-side `DEEPSEEK_API_KEY` to query DeepSeek Direct API (`https://api.deepseek.com/chat/completions` using `deepseek-chat`).
+- **Floating UI Assistant**: [ChatWidget.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/chat/ChatWidget.tsx) renders a sleek floating trigger `[💬 Chat Assistant]` and slide-out chat drawer in [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx).
+- **TDD Verification**: Covered by 100% passing Vitest unit tests in `chat-server.test.ts` and `ChatWidget.test.tsx`.
+
 
 ## Design System
 

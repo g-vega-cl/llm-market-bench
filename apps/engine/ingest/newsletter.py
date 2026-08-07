@@ -220,14 +220,14 @@ def generate_chunk_hash(content: str) -> str:
 
 
 async def _fetch_raw_message(
-    service: Any, msg_ref: dict[str, str], semaphore: asyncio.Semaphore | None = None
+    service: Any, msg_ref: dict[str, str], lock: asyncio.Lock | None = None
 ) -> tuple[NewsletterSnapshot | None, str | None]:
     """Fetch a single message from Gmail and build a raw snapshot without cleaning.
 
     Args:
         service: Gmail API service resource.
         msg_ref: Dictionary containing the message 'id'.
-        semaphore: Optional asyncio.Semaphore to bound concurrent calls on service.
+        lock: Optional asyncio.Lock to serialize calls on thread-unsafe service resource.
 
     Returns:
         A tuple of (NewsletterSnapshot or None, sender_string or None).
@@ -236,8 +236,8 @@ async def _fetch_raw_message(
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
-            if semaphore:
-                async with semaphore:
+            if lock:
+                async with lock:
                     msg = await asyncio.to_thread(
                         service.users().messages().get(userId="me", id=msg_ref["id"], format="full").execute
                     )
@@ -355,11 +355,11 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
 
         logger.info(f"Found {len(messages)} messages. Starting processing...")
 
-        # Phase 1: Fetch all raw message bodies (fast, Gmail API only, bounded concurrency)
+        # Phase 1: Fetch all raw message bodies (Gmail API calls locked to protect thread-unsafe service)
         raw_results = []
         attempted_senders = set()
-        semaphore = asyncio.Semaphore(5)
-        fetch_tasks = [_fetch_raw_message(service, msg_ref, semaphore=semaphore) for msg_ref in messages]
+        lock = asyncio.Lock()
+        fetch_tasks = [_fetch_raw_message(service, msg_ref, lock=lock) for msg_ref in messages]
         fetch_results = await asyncio.gather(*fetch_tasks)
 
         for raw_snapshot, sender in fetch_results:

@@ -10,6 +10,7 @@ Ingestion is the first phase of the daily pipeline. It fetches raw data from mul
 ## Newsletter Scraping
 
 - **Newsletter Snapshots**: Ingested newsletters are stored in the `newsletter_snapshots` table with a `date` field indicating their publication time.
+- **Thread-Safe Gmail API Fetching**: Message retrieval uses `asyncio.to_thread` protected by an `asyncio.Lock` to serialize calls on the shared, non-thread-safe `googleapiclient.discovery.Resource` instance (`service`). This prevents socket/SSL data races and C-level memory corruption (`Segmentation fault`) during batch message fetching, while keeping Phase 2 LLM advertisement cleaning fully concurrent via `asyncio.gather()`.
 - **Daily Newsletter Generation**: A separate step (see [[entities/generated-newsletters]]) generates a digest newsletter using DeepSeek V4 Flash. It queries newsletters published within the last **12 hours** (based on the `date` column), not the `ingested_at` timestamp. This rolling window ensures overnight and early-morning editions are captured for the morning session.
 - **Lookback Window**: The 12-hour window is measured from the current Eastern Time to the `date` field of each snapshot. The switch from `ingested_at` to `date` improved alignment with actual publication times.
 

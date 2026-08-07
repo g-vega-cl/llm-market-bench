@@ -569,6 +569,21 @@ async def analyze_with_provider(
             for msg in final_args["messages"]:
                 if isinstance(msg, dict) and msg.get("role") == "assistant":
                     msg["role"] = "model"
+            if final_args["messages"]:
+                last_msg = final_args["messages"][-1]
+                last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
+                if last_role in ("model", "assistant"):
+                    final_args["messages"].append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Based on the preceding evaluation, extract and structure the final trade decisions "
+                                "matching the schema exactly."
+                            ),
+                        }
+                    )
+
+
 
         # DeepSeek specific: Enable thinking mode during final extraction so the model uses its
         # full reasoning capacity to formulate the final trade decisions.
@@ -821,6 +836,23 @@ async def analyze_with_provider(
                     for msg in final_args_retry["messages"]:
                         if isinstance(msg, dict) and msg.get("role") == "assistant":
                             msg["role"] = "model"
+                    if final_args_retry["messages"]:
+                        last_msg = final_args_retry["messages"][-1]
+                        last_role = (
+                            last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
+                        )
+                        if last_role in ("model", "assistant"):
+                            final_args_retry["messages"].append(
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        "Based on the preceding evaluation, extract and structure the final trade decisions "
+                                        "matching the schema exactly."
+                                    ),
+                                }
+                            )
+
+
 
                 if provider == "deepseek" and "deepseek" in model_name.lower():
                     final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}

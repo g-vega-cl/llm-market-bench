@@ -233,6 +233,21 @@ async def verify_trading_decision(
             for msg in create_args["messages"]:
                 if isinstance(msg, dict) and msg.get("role") == "assistant":
                     msg["role"] = "model"
+            if create_args["messages"]:
+                last_msg = create_args["messages"][-1]
+                last_role = last_msg.get("role") if isinstance(last_msg, dict) else getattr(last_msg, "role", None)
+                if last_role in ("model", "assistant"):
+                    create_args["messages"].append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Based on the preceding evaluation, extract and structure the final verification result "
+                                "matching the schema exactly."
+                            ),
+                        }
+                    )
+
+
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
 

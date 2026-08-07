@@ -721,3 +721,66 @@ async def test_verification_transient_error_retries():
     assert "Rate limit exceeded" in result.verification_reasoning
     assert mock_completions.create.call_count == 3
     assert mock_sleep.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_verify_trading_decision_gemini_trailing_model_turn():
+    """Test that Gemini verification appends a user turn if tool loop ends with a model turn."""
+    decision = DecisionObject(
+        signal="BUY",
+        confidence=85,
+        reasoning="Test Gemini trailing model turn",
+        ticker="GOOGL",
+        source_id="src_gem",
+        price=180.0,
+        model_provider="gemini",
+        model_name="gemini-3.1-flash-lite",
+    )
+
+    mock_result = VerificationResult(
+        status="APPROVED",
+        verification_reasoning="Verified with Gemini.",
+        confidence_score=90,
+    )
+
+    with patch("core.llm.clients.CLIENT_FACTORIES") as mock_factories:
+        mock_factory = MagicMock()
+        mock_client = MagicMock()
+
+        mock_instructor_client = MagicMock()
+        mock_completions = MagicMock()
+        mock_completions.create = AsyncMock(return_value=[mock_result])
+        mock_instructor_client.completions = mock_completions
+        mock_client.chat = mock_instructor_client
+        mock_client.client = MagicMock()
+
+        mock_factory.return_value = mock_client
+        mock_factories.get.return_value = mock_factory
+
+        # Mock gemini run_tool_loop to append a model turn to messages
+        async def mock_gemini_tool_loop(client, model, messages, max_steps, tools):
+            from google.genai import types
+
+            content = types.Content(role="model", parts=[types.Part(text="Analysis complete, approving.")])
+            messages.append(content)
+
+        with (
+            patch("core.llm.handlers.gemini.run_tool_loop", side_effect=mock_gemini_tool_loop),
+            patch("core.llm.clients.close_client", new_callable=AsyncMock),
+        ):
+            result = await verify_trading_decision(
+                decision=decision,
+                portfolio_context="Cash: $10,000",
+                aggregated_context="Historical context",
+            )
+
+    assert result.status == "APPROVED"
+    assert mock_completions.create.call_count == 1
+    call_kwargs = mock_completions.create.call_args.kwargs
+    sent_messages = call_kwargs["messages"]
+    # The last message sent to Gemini must be a user turn to satisfy Gemini API requirements
+    assert sent_messages[-1]["role"] == "user"
+    assert "extract and structure" in sent_messages[-1]["content"]
+
+
+

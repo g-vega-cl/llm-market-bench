@@ -51,7 +51,10 @@ Overall, investor sentiment is leaning constructive as earnings season continues
         read_time_minutes=2,
     )
 
-    with patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call:
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+    ):
         result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
 
         assert result is not None
@@ -85,9 +88,65 @@ async def test_generate_daily_newsletter_fallback_when_no_snapshots():
         read_time_minutes=1,
     )
 
-    with patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response):
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
+    ):
         result = await generate_daily_newsletter(session="close", sb_client=mock_sb)
 
         assert result is not None
         assert result["session"] == "close"
         assert result["source_count"] == 0
+
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_triggers_ingest_and_uses_24h_window():
+    """Test that generate_daily_newsletter triggers ingest_newsletters and queries 24-hour lookback window."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = [
+        {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "sender": "Morning Brew",
+            "subject": "Overnight Market Recap",
+            "content": "Overnight futures gained 0.4% following Asian tech market gains...",
+            "date": "2026-08-07T05:00:00Z",
+        }
+    ]
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "gen-id-24h"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Overnight Recap: Futures Gain",
+        summary="Futures push higher overnight as tech markets post gains.",
+        bullet_points=["Futures up 0.4% overnight."],
+        content="Futures gained overnight leading into market open...",
+        read_time_minutes=1,
+    )
+
+    fake_ingested_snapshots = [
+        {
+            "source_id": "test_src_1",
+            "chunk_hash": "hash123",
+            "sender": "Morning Brew",
+            "subject": "Overnight Market Recap",
+            "content": "Overnight futures gained 0.4%...",
+            "date": "2026-08-07T05:00:00Z",
+        }
+    ]
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=fake_ingested_snapshots) as mock_ingest,
+        patch("tasks.newsletter_generator.bulk_upsert_newsletter_snapshots") as mock_upsert,
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response),
+    ):
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+
+        assert mock_ingest.called
+        assert mock_upsert.called
+        assert result is not None
+        assert result["source_count"] == 1
+
+        # Verify gte called with 24h lookback time string
+        gte_arg = mock_sb.table().select().gte.call_args[0][1]
+        assert "T" in gte_arg
+

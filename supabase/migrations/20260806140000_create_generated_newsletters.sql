@@ -24,4 +24,7 @@ CREATE POLICY "Allow service role full access to generated_newsletters" ON publi
     USING (auth.role() = 'service_role')
     WITH CHECK (auth.role() = 'service_role');
 
+GRANT SELECT ON public.generated_newsletters TO anon, authenticated;
+GRANT ALL ON public.generated_newsletters TO service_role;
+
 COMMENT ON TABLE public.generated_newsletters IS 'Synthesized 1-2 minute daily newsletters generated twice daily (market open and close)';

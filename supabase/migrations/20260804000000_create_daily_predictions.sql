@@ -39,3 +39,6 @@ CREATE POLICY "Service role has full access on daily_predictions" ON public.dail
 
 CREATE POLICY "Allow public read access on daily_predictions" ON public.daily_predictions
     FOR SELECT USING (true);
+
+GRANT SELECT ON public.daily_predictions TO anon, authenticated;
+GRANT ALL ON public.daily_predictions TO service_role;

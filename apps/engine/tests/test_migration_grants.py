@@ -10,7 +10,7 @@ def test_new_tables_have_grants():
     sql_files = [f for f in os.listdir(migration_dir) if f.endswith(".sql")]
     sql_files.sort()
 
-    cutoff_date_str = "20261030"
+    cutoff_date_str = "20260513"
 
     for filename in sql_files:
         date_prefix = filename[:8]

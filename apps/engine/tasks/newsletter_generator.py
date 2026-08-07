@@ -1,16 +1,18 @@
 """Task for generating a daily 1-2 minute synthesized market newsletter using DeepSeek V4 Flash."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
 from core.config import DEEPSEEK_FLASH_MODEL
-from core.db import get_supabase_client
+from core.db import bulk_upsert_newsletter_snapshots, get_supabase_client
 from core.llm import clients
+from ingest.newsletter import ingest_newsletters
 
 logger = logging.getLogger("engine")
+
 
 
 class GeneratedNewsletterOutput(BaseModel):
@@ -122,20 +124,30 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
     now_et = datetime.now(ZoneInfo("America/New_York"))
     formatted_time = now_et.strftime("%H:%M ET")
 
-    # Query today's ingested newsletters (from the beginning of today ET)
-    start_of_day_et = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
-    start_of_day_iso = start_of_day_et.astimezone(UTC).isoformat()
+    # Step 1: Ingest fresh newsletters from Gmail (idempotent upsert into Supabase)
+    logger.info("Running Gmail newsletter ingestion prior to synthesis...")
+    try:
+        new_items = await ingest_newsletters(newer_than_days=1)
+        if new_items:
+            bulk_upsert_newsletter_snapshots(sb, new_items)
+            logger.info(f"Ingested and upserted {len(new_items)} fresh newsletter snapshots.")
+    except Exception as e:
+        logger.warning(f"Newsletter ingestion step encountered an error: {e}")
+
+    # Step 2: Query newsletters from the past 24 hours (rolling window to include overnight/evening editions)
+    since_iso = (now_et - timedelta(hours=24)).astimezone(UTC).isoformat()
 
     logger.info(f"Generating '{session}' newsletter with DeepSeek V4 Flash at {formatted_time}...")
 
     snapshots = []
     try:
-        res = sb.table("newsletter_snapshots").select("*").gte("ingested_at", start_of_day_iso).execute()
+        res = sb.table("newsletter_snapshots").select("*").gte("ingested_at", since_iso).execute()
         snapshots = res.data or []
     except Exception as e:
         logger.warning(f"Could not fetch newsletter snapshots: {e}")
 
-    logger.info(f"Ingested snapshots count for today: {len(snapshots)}")
+    logger.info(f"Ingested snapshots count for 24h window: {len(snapshots)}")
+
 
     # Generate newsletter content via DeepSeek V4 Flash
     output = await _call_deepseek_flash(snapshots, session, formatted_time)

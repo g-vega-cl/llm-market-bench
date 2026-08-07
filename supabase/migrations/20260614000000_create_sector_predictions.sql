@@ -32,3 +32,6 @@ CREATE POLICY "Service role has full access" ON public.sector_predictions
 
 CREATE POLICY "Allow public read access" ON public.sector_predictions
     FOR SELECT USING (true);
+
+GRANT SELECT ON public.sector_predictions TO anon, authenticated;
+GRANT ALL ON public.sector_predictions TO service_role;

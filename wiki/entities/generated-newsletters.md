@@ -15,13 +15,14 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 4. **LLM**: Uses DeepSeek V4 Flash to summarize the most impactful events into a structured newsletter (title, sections, key events, source attribution).
 5. **Storage**: The generated newsletter is inserted into the `newsletter_snapshots` table with a unique ID.
 
-## Configuration
+## UI Presentation
 
-- **Secrets**: Requires `DEEPSEEK_API_KEY`, `GEMINI_API_KEY` (for other workflow steps), `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and Gmail credentials.
-- **Session**: Passes a `session` parameter ("open" or "close") to differentiate morning/evening editions.
+- **Web Route**: `/generated-newsletters` (component: `GeneratedNewslettersPage.tsx`).
+- **Markdown Rendering**: Article body content synthesized in Markdown is rendered via a custom zero-dependency `<MarkdownContent />` component (`apps/web/src/components/ui/MarkdownContent.tsx`), formatting headings, blockquotes, lists, bold/italic inline text, and tables without third-party dependencies.
 
 ## Related
 
 - [[concepts/ingestion]]
 - [[entities/cron-dispatcher]]
 - [[entities/pipeline]]
+

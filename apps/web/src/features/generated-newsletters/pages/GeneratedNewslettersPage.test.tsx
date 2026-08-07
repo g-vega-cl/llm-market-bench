@@ -66,4 +66,24 @@ describe('GeneratedNewslettersPage', () => {
         expect(screen.getByText('NVIDIA & AMD hit fresh highs')).toBeInTheDocument();
         expect(screen.getByText('Fed signals rate stability')).toBeInTheDocument();
     });
+
+    it('formats markdown syntax into HTML elements in the card body', () => {
+        const markdownNewsletter: FormattedGeneratedNewsletter[] = [
+            {
+                ...mockNewsletters[0],
+                content:
+                    '### Section Heading\n\n**Bold Market Focus** text with a - Bullet point list item',
+            },
+        ];
+
+        render(<GeneratedNewslettersPage initialNewsletters={markdownNewsletter} />);
+
+        // Assert header is rendered as an h3 heading element
+        const heading = screen.getByRole('heading', { level: 3, name: 'Section Heading' });
+        expect(heading).toBeInTheDocument();
+
+        // Assert bold text is rendered inside a strong element
+        const boldText = screen.getByText('Bold Market Focus');
+        expect(boldText.tagName).toBe('STRONG');
+    });
 });

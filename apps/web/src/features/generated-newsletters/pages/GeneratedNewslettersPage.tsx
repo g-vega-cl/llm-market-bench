@@ -7,6 +7,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { MarkdownContent } from '~/components/ui/MarkdownContent';
 import type { FormattedGeneratedNewsletter } from '../api/fetch-generated-newsletters';
 
 interface GeneratedNewslettersPageProps {
@@ -268,9 +269,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
 
                                 {/* Main Newsletter Body Content */}
                                 <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                                    <div className="prose dark:prose-invert max-w-none text-zinc-800 dark:text-zinc-200 text-sm leading-relaxed whitespace-pre-line font-light">
-                                        {activeNewsletter.content}
-                                    </div>
+                                    <MarkdownContent content={activeNewsletter.content} />
                                 </div>
 
                                 {/* Footer metadata */}

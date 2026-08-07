@@ -134,14 +134,14 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
     except Exception as e:
         logger.warning(f"Newsletter ingestion step encountered an error: {e}")
 
-    # Step 2: Query newsletters from the past 24 hours (rolling window to include overnight/evening editions)
-    since_iso = (now_et - timedelta(hours=24)).astimezone(UTC).isoformat()
+    # Step 2: Query newsletters published within the past 12 hours based on publication date ('date')
+    since_iso = (now_et - timedelta(hours=12)).astimezone(UTC).isoformat()
 
     logger.info(f"Generating '{session}' newsletter with DeepSeek V4 Flash at {formatted_time}...")
 
     snapshots = []
     try:
-        res = sb.table("newsletter_snapshots").select("*").gte("ingested_at", since_iso).execute()
+        res = sb.table("newsletter_snapshots").select("*").gte("date", since_iso).execute()
         snapshots = res.data or []
     except Exception as e:
         logger.warning(f"Could not fetch newsletter snapshots: {e}")

@@ -101,8 +101,8 @@ async def test_generate_daily_newsletter_fallback_when_no_snapshots():
 
 
 @pytest.mark.asyncio
-async def test_generate_daily_newsletter_triggers_ingest_and_uses_24h_window():
-    """Test that generate_daily_newsletter triggers ingest_newsletters and queries 24-hour lookback window."""
+async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_window():
+    """Test that generate_daily_newsletter triggers ingest_newsletters and queries 12-hour publication date window."""
     mock_sb = MagicMock()
     mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = [
         {
@@ -113,7 +113,7 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_24h_window():
             "date": "2026-08-07T05:00:00Z",
         }
     ]
-    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "gen-id-24h"}]
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "gen-id-12h"}]
 
     mock_llm_response = GeneratedNewsletterOutput(
         title="Overnight Recap: Futures Gain",
@@ -146,7 +146,9 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_24h_window():
         assert result is not None
         assert result["source_count"] == 1
 
-        # Verify gte called with 24h lookback time string
+        # Verify gte called on 'date' column with ISO timestamp
+        col_arg = mock_sb.table().select().gte.call_args[0][0]
         gte_arg = mock_sb.table().select().gte.call_args[0][1]
+        assert col_arg == "date"
         assert "T" in gte_arg
 

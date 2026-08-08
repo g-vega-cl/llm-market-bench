@@ -148,13 +148,14 @@ To resolve excessive vertical scrolling on the Today dashboard caused by stacked
 - **Interactive View Switcher**: Integrated an inline toggle (`≡ List` vs `⊞ Cards`) in the section header alongside an insight count pill (`🧠 {n} Insights`). Switches between high-density list rows and compact 2-column cards matching the *Daily Intelligence Briefing* style.
 - **TDD Verification**: Covered by unit tests in `AgentInsights.test.tsx` checking count badge rendering, list items, and view state toggles.
 
-### Gated DeepSeek Chat Assistant MVP (2026-08-06)
+### Gated DeepSeek Chat Assistant & Database Tooling (2026-08-08)
 
-To provide instant AI market analysis directly inside the web dashboard:
+To provide instant AI market analysis and database exploration directly inside the web dashboard:
 - **Server Function Handler**: Implemented `handleChatMessage` and `sendChatMessageFn` in [chat-server.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/chat/chat-server.ts) powered by `@tanstack/react-start` server functions.
 - **Cryptographic Server Gating**: Validates the Supabase auth session token on the server side and restricts execution strictly to authorized accounts (`g.vega.cl@gmail.com`), rejecting unauthorized access with `403 Forbidden`.
-- **DeepSeek Integration**: Uses server-side `DEEPSEEK_API_KEY` to query DeepSeek Direct API (`https://api.deepseek.com/chat/completions` using `deepseek-chat`).
-- **Floating UI Assistant**: [ChatWidget.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/chat/ChatWidget.tsx) renders a sleek floating trigger `[💬 Chat Assistant]` and slide-out chat drawer in [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx).
+- **Universal Database Read Tool (`query_database_table`)**: Exposes safe, structured SELECT query capabilities (`table_name`, `select_columns`, `filter_column`, `filter_value`, `order_by`, `ascending`, `limit`) via [chat-tools.ts](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/chat/chat-tools.ts) using Supabase JS SDK query builder (`.from(table_name).select(...)`). Strictly read-only (zero write operations permitted).
+- **Dynamic Schema Ingestion**: `getDatabaseSchemaSummary()` automatically inspects public Supabase tables (`portfolios`, `trades`, `sector_predictions`, `prompt_experiments`, `generated_newsletters`, `decisions`, `leaderboard`), caches schema definitions in memory (7-day TTL), and dynamically injects the table context into the DeepSeek system prompt.
+- **Floating UI Assistant**: [ChatWidget.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/chat/ChatWidget.tsx) renders a floating trigger `[💬 Chat Assistant]` and slide-out chat drawer in [__root.tsx](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/routes/__root.tsx).
 - **TDD Verification**: Covered by 100% passing Vitest unit tests in `chat-server.test.ts` and `ChatWidget.test.tsx`.
 
 

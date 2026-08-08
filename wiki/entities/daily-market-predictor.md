@@ -29,7 +29,9 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher.
 
 4. **Web Frontend (`/daily-predictions`)**:
-   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Intraday Target Hit Rate (30%), Brier Calibration stats, Historical Predictions Log table (with Intraday Hit badge), and Autoresearch Prompt Arena.
+   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Intraday Target Hit Rate (30%), Brier Calibration stats, and active prompt variant tag.
+   - **Historical Predictions Log & Prompt Inspector**: Expandable prediction rows with full quantitative rationale, market catalyst tags, Open/High/Low/Close prices, expected return %, confidence, and matched active system prompt text per prediction.
+   - **Autoresearch & Prompt Evolution Arena**: Performance Ratchet Score dashboard with live formula breakdown, twice-weekly DeepSeek Flash Autoresearcher Meta-Prompt inspector, and prompt variant mutation history.
 
 ## Execution & Dispatch Architecture
 

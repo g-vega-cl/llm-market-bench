@@ -81,7 +81,28 @@ describe('DailyPredictionsPage', () => {
         expect(screen.getByText('80% Confidence')).toBeInTheDocument();
     });
 
-    it('switches tabs between predictions log and autoresearch arena', () => {
+    it('expands prediction row to display rationale, catalysts, and prompt variant content', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
+                refreshFn={refreshFn}
+            />,
+        );
+
+        // Click details expand button for historical prediction
+        const expandBtn = screen.getByRole('button', { name: /View Details & Prompt/i });
+        fireEvent.click(expandBtn);
+
+        expect(
+            screen.getAllByText(/Overnight futures momentum and strong earnings catalysts/i).length,
+        ).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Tech Earnings').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Fed Stance').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText(/Analyze intraday S&P price action/i)).toBeInTheDocument();
+    });
+
+    it('switches tabs to autoresearch and displays ratchet score breakdown & meta-prompt card', () => {
         render(
             <DailyPredictionsPage
                 initialPredictions={mockPredictions}
@@ -97,5 +118,15 @@ describe('DailyPredictionsPage', () => {
 
         expect(screen.getAllByText('daily-active-1').length).toBeGreaterThan(0);
         expect(screen.getByText('"Initial daily predictor baseline."')).toBeInTheDocument();
+
+        // Check ratchet score elements
+        expect(screen.getByText('Performance Ratchet Score')).toBeInTheDocument();
+        expect(screen.getByText(/Ratchet Score Formula/i)).toBeInTheDocument();
+
+        // Check autoresearcher meta-prompt card
+        expect(screen.getByText('Autoresearcher Meta-Prompt (DeepSeek Flash)')).toBeInTheDocument();
+        expect(
+            screen.getByText(/Meta-Researcher AI optimizing an LLM prompt/i),
+        ).toBeInTheDocument();
     });
 });

@@ -90,3 +90,49 @@ async def test_fetch_intraday_open_close_missing_date():
         assert open_p is None
         assert close_p is None
 
+
+@pytest.mark.asyncio
+async def test_fetch_intraday_prices_uses_ohlc():
+    """Regression test: get_history() must propagate OHLC fields so that
+    fetch_intraday_prices() returns correct Open/High/Low values.
+
+    Previously, MarketDataManager.get_history() stripped OHLC from HistoryData,
+    causing all four values to collapse to the single close price — making
+    intraday_hit always False when the target was non-zero.
+    """
+    from unittest.mock import AsyncMock
+
+    from tasks.evaluate_daily_predictions import fetch_intraday_prices
+
+    # Simulate get_history() returning full OHLC (the fixed behaviour)
+    mock_history = [
+        {
+            "price": 773.26,
+            "open": 771.02,
+            "high": 773.915,
+            "low": 769.61,
+            "fetched_at": "2026-08-07",
+        }
+    ]
+    mock_mdm = MagicMock()
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+
+    with patch("execution.market_data.MarketDataManager", return_value=mock_mdm):
+        open_p, high_p, low_p, close_p = await fetch_intraday_prices("SPY", "2026-08-07")
+
+    assert open_p == pytest.approx(771.02)
+    assert high_p == pytest.approx(773.915)
+    assert low_p == pytest.approx(769.61)
+    assert close_p == pytest.approx(773.26)
+
+    # Verify the intraday hit that was previously wrong
+    hit, dir_hit = compute_intraday_hit_metrics(
+        predicted_direction="UP",
+        expected_return_pct=0.25,
+        open_price=open_p,
+        high_price=high_p,
+        low_price=low_p,
+    )
+    assert hit is True, "SPY hit +0.375% intraday vs +0.25% target — should be True"
+    assert dir_hit is True
+

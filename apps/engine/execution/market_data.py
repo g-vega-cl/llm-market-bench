@@ -540,7 +540,7 @@ class MarketDataManager:
             try:
                 res = (
                     self.client.table("price_history")
-                    .select("price, fetched_at")
+                    .select("price, open, high, low, close, fetched_at")
                     .eq("ticker", ticker)
                     .order("fetched_at", desc=True)
                     .limit(days)
@@ -551,7 +551,17 @@ class MarketDataManager:
                     is_valid, reason = _validate_date_coverage(res.data, days)
                     if is_valid:
                         logger.debug(f"Using local price history for {ticker} ({len(res.data)} samples, {reason}).")
-                        return [{"price": float(row["price"]), "fetched_at": row["fetched_at"]} for row in res.data]
+                        return [
+                            {
+                                "price": float(row["price"]),
+                                "open": float(row["open"]) if row.get("open") is not None else None,
+                                "high": float(row["high"]) if row.get("high") is not None else None,
+                                "low": float(row["low"]) if row.get("low") is not None else None,
+                                "close": float(row["close"]) if row.get("close") is not None else None,
+                                "fetched_at": row["fetched_at"],
+                            }
+                            for row in res.data
+                        ]
                     else:
                         logger.debug(f"Skipping local cache for {ticker}: {reason}. Fetching from provider.")
             except Exception as e:
@@ -571,13 +581,24 @@ class MarketDataManager:
             try:
                 payloads = []
                 for entry in history:
-                    # Note: We don't have market_cap in history responses usually
-                    # but we can insert what we have.
-                    payload = {"ticker": ticker, "price": float(entry["price"]), "fetched_at": entry["fetched_at"]}
-                    if "market_cap" in entry:
-                        payload["market_cap"] = entry["market_cap"]
-                    else:
-                        payload["market_cap"] = 0  # Fallback for non-null column if migration not applied
+                    payload = {
+                        "ticker": ticker,
+                        "price": float(entry["price"]),
+                        "fetched_at": entry["fetched_at"],
+                        "market_cap": entry.get("market_cap", 0),  # Fallback for non-null column
+                    }
+                    # Persist OHLC when available so fetch_intraday_prices() can
+                    # compute correct intraday hit metrics on subsequent reads.
+                    if entry.get("open") is not None:
+                        payload["open"] = float(entry["open"])
+                    if entry.get("high") is not None:
+                        payload["high"] = float(entry["high"])
+                    if entry.get("low") is not None:
+                        payload["low"] = float(entry["low"])
+                    if entry.get("close") is not None:
+                        payload["close"] = float(entry["close"])
+                    elif entry.get("price") is not None:
+                        payload["close"] = float(entry["price"])  # price == close for EOD bars
                     payloads.append(payload)
 
                 if payloads:

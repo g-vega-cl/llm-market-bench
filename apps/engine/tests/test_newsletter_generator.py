@@ -99,7 +99,6 @@ async def test_generate_daily_newsletter_fallback_when_no_snapshots():
         assert result["source_count"] == 0
 
 
-
 @pytest.mark.asyncio
 async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_window():
     """Test that generate_daily_newsletter triggers ingest_newsletters and queries 12-hour publication date window."""
@@ -151,4 +150,3 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_windo
         gte_arg = mock_sb.table().select().gte.call_args[0][1]
         assert col_arg == "date"
         assert "T" in gte_arg
-

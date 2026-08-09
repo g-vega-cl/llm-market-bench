@@ -781,6 +781,3 @@ async def test_verify_trading_decision_gemini_trailing_model_turn():
     # The last message sent to Gemini must be a user turn to satisfy Gemini API requirements
     assert sent_messages[-1]["role"] == "user"
     assert "extract and structure" in sent_messages[-1]["content"]
-
-
-

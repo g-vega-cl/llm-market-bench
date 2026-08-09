@@ -41,7 +41,6 @@ def test_daily_predictor_prompt_symmetry():
     assert "down" in full_prompt and "up" in full_prompt
 
 
-
 @pytest.mark.asyncio
 async def test_run_daily_prediction_success():
     mock_supabase = MagicMock()

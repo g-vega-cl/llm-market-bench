@@ -82,8 +82,6 @@ A living document of features and improvements in progress or planned for the pl
 
 Make autoresearcher with more variables and more "temperatures?" More portfolios too?
 
-Allow the LLM to decide what to bring to context?
-
 Many of these things should be able to be picked up by autoresearch, I guess the loop is quite slow. How to speed up the loop?
 
 - [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
@@ -121,8 +119,7 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: I might already have something like this, try to predict earnings movement. Maybe just up/down from beginning of trading day?
 - [x] - benchify: memory consensus events check if the predictions came true, if the scenarios worked as expected
 - [x] - When a card says "resolved" show which scenario "won" or show more details on why it was resolved, and what resolved
-- [ ] - Benchify: I really need to set the read LLM helper
-- [ ] - Chart based on candle volatility not time
+- [ ] - Chart based on candle volatility not time - RENKO
 - [ ] - Single company focused llm
 - [ ] - Look for statistical analysis for markets
 - [x] - Predict daily S&P or whichever move, either up or down.

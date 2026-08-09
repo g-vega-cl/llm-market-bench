@@ -147,4 +147,3 @@ def test_auto_wiki_default_model():
     import apps.engine.auto_wiki as aw
 
     assert aw.DEFAULT_MODEL == "deepseek/deepseek-v4-flash"
-

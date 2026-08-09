@@ -28,7 +28,6 @@ class HistoryData(TypedDict, total=False):
     fetched_at: str
 
 
-
 class HourlyBar(TypedDict):
     """Hourly historical price bar."""
 

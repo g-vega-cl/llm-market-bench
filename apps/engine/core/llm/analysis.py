@@ -583,8 +583,6 @@ async def analyze_with_provider(
                         }
                     )
 
-
-
         # DeepSeek specific: Enable thinking mode during final extraction so the model uses its
         # full reasoning capacity to formulate the final trade decisions.
         if provider == "deepseek" and "deepseek" in model_name.lower():
@@ -851,8 +849,6 @@ async def analyze_with_provider(
                                     ),
                                 }
                             )
-
-
 
                 if provider == "deepseek" and "deepseek" in model_name.lower():
                     final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}

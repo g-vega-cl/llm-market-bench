@@ -135,4 +135,3 @@ async def test_fetch_intraday_prices_uses_ohlc():
     )
     assert hit is True, "SPY hit +0.375% intraday vs +0.25% target — should be True"
     assert dir_hit is True
-

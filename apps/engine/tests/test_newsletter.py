@@ -354,5 +354,3 @@ def test_newsletter_senders_config():
     ]
     for sender in required_senders:
         assert sender in NEWSLETTER_SENDERS, f"Expected {sender} in NEWSLETTER_SENDERS"
-
-

@@ -78,11 +78,19 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
 
-## Analyzing Trade Rejections & Verifier Feedback
-The performance report includes a **Trade Rejection & Verifier Analysis** section showing total proposed trades, executed/validated trades, total rejections, rejection rate %, and specific verifier rejection reasons (e.g. position limits, missing risk hedges, ungrounded valuation claims).
-- **Reduce Rejection Rates**: High rejection rates mean the trading agent is proposing trades that fail compliance or verifier checks, wasting analysis steps.
-- **Tune Strategy Instructions**: Use the verifier rejection reasons to modify the prompt strategy text so the trading agent addresses verifier requirements upfront (e.g., proper position sizing, contrarian risk-hedging, robust valuation rationale).
-- **Expose Tool when Helpful**: If agents need to dynamically check past verifier rejections during trade analysis, select `get_verifier_rejections` in `selected_tools`.
+## Toolbox: Modular Trading Discipline & Reasoning Blocks
+You can dynamically toggle structured trading discipline and reasoning blocks in `selected_prompt_blocks`. The system automatically injects these pre-crafted blocks into the trading prompt. You remain 100% free to edit or write custom strategy text in `new_prompt_text` on top of these blocks:
+1. `let_winners_run`: Trailing take-profit ratchet, momentum scale-in rules, and thesis realization exit gates.
+2. `cut_losers_fast`: Immediate exit on thesis invalidation, asymmetric drawdown guardrails, and no sunk-cost averaging.
+3. `catalyst_expiry_timer`: 48h post-catalyst exit rule for short-term news plays to avoid dead capital.
+4. `five_whys_causal`: 5 Whys deep root-cause validation to cut headline noise.
+5. `mece_risk_partition`: Mutually Exclusive, Collectively Exhaustive risk scenario partitioning.
+
+## Self-Auditing & Multi-Step Deliberation Workflow
+Before outputting your final strategy, perform a rigorous self-audit of recent performance:
+1. **Trade Audit**: Identify recent losing trades or high drawdowns. Were positions held past catalyst expiration or thesis invalidation?
+2. **Block Selection**: Enable `let_winners_run` or `cut_losers_fast` in `selected_prompt_blocks` if exit timing or drawdowns dragged down equity.
+3. **Self-Critique Pass**: Verify that your custom `new_prompt_text` does not contradict system rules (e.g. 10% equity floor, tool requirements) or cause overtrading.
 
 ## Output Format
 Return ONLY a valid JSON object with these fields:
@@ -91,6 +99,7 @@ Return ONLY a valid JSON object with these fields:
 {
   "new_prompt_text": "<full modified strategy and analysis section only>",
   "selected_tools": ["get_portfolio_ledger", "get_todays_news_menu", "search_past_memories"],
+  "selected_prompt_blocks": ["let_winners_run", "cut_losers_fast"],
   "change_description": "<1 sentence: what you changed and why>",
   "experiment_type": "incremental",
   "research_reasoning": "<detailed: why this change, what you expect to happen, what risks you considered>",
@@ -102,6 +111,8 @@ Rules:
 - `experiment_type` must be "incremental" or "radical"
 - `confidence` must be 0-100
 - `selected_tools` must contain only valid tool names listed in the toolbox above.
+- `selected_prompt_blocks` must contain valid block keys (`let_winners_run`, `cut_losers_fast`, `catalyst_expiry_timer`, `five_whys_causal`, `mece_risk_partition`).
 - `new_prompt_text` must be the COMPLETE modified strategy and analysis section only (do NOT output header/footer constraints or JSON schemas)
 - NEVER leave placeholder text like "<insert here>" — write the actual prompt
+
 

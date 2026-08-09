@@ -185,7 +185,9 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
     raise last_exception
 
 
-def bulk_upsert_newsletter_snapshots(client: Client, data: list[dict[str, Any]], batch_size: int = 5) -> list[dict[str, Any]]:
+def bulk_upsert_newsletter_snapshots(
+    client: Client, data: list[dict[str, Any]], batch_size: int = 5
+) -> list[dict[str, Any]]:
     """Upsert multiple newsletter snapshots into the database in batched chunks.
 
     Uses the composite unique constraint (date, source_id) for idempotency,

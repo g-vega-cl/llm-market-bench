@@ -44,7 +44,9 @@ def compute_intraday_hit_metrics(
         intraday_hit = max_return_pct >= target_pct
     else:  # DOWN
         intraday_direction_hit = low_price < open_price
-        target_pct = -abs(expected_return_pct) if (expected_return_pct is not None and expected_return_pct != 0) else 0.0
+        target_pct = (
+            -abs(expected_return_pct) if (expected_return_pct is not None and expected_return_pct != 0) else 0.0
+        )
         min_return_pct = ((low_price - open_price) / open_price) * 100.0
         intraday_hit = min_return_pct <= target_pct
 

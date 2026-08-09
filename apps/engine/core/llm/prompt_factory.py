@@ -107,7 +107,8 @@ class PromptFactory:
         is_experiment = bool(track_id or (owner_id and owner_id in AUTORESEARCH_EXPERIMENT_OWNER_IDS))
 
         if is_experiment:
-            from autoresearch.prompt_store import get_active_prompt
+            from autoresearch.prompt_blocks import render_prompt_blocks
+            from autoresearch.prompt_store import get_active_prompt, get_active_variant
 
             try:
                 active = await get_active_prompt(track_id=track_id or "track_default")
@@ -118,9 +119,21 @@ class PromptFactory:
                         split_prompt,
                     )
 
+                    blocks_text = ""
+                    try:
+                        variant = await get_active_variant(track_id=track_id or "track_default")
+                        if variant and isinstance(variant, dict) and isinstance(variant.get("research_output"), dict):
+                            selected_blocks = variant["research_output"].get("selected_prompt_blocks")
+                            blocks_text = render_prompt_blocks(selected_blocks)
+                    except Exception:
+                        pass
+
                     _, mutable_strategies, _ = split_prompt(active)
                     system_prompt = (
-                        SYSTEM_PROMPT_CONSTRAINTS_HEADER + mutable_strategies + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
+                        SYSTEM_PROMPT_CONSTRAINTS_HEADER
+                        + blocks_text
+                        + mutable_strategies
+                        + SYSTEM_PROMPT_CONSTRAINTS_FOOTER
                     )
                 else:
                     system_prompt = prompts.CORE_ANALYSIS_SYSTEM_PROMPT

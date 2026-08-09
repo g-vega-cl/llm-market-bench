@@ -14,7 +14,6 @@ from ingest.newsletter import ingest_newsletters
 logger = logging.getLogger("engine")
 
 
-
 class GeneratedNewsletterOutput(BaseModel):
     """Structured response model for the generated newsletter."""
 
@@ -147,7 +146,6 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
         logger.warning(f"Could not fetch newsletter snapshots: {e}")
 
     logger.info(f"Ingested snapshots count for 24h window: {len(snapshots)}")
-
 
     # Generate newsletter content via DeepSeek V4 Flash
     output = await _call_deepseek_flash(snapshots, session, formatted_time)

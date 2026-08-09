@@ -66,6 +66,13 @@ class PromptResearchResult(BaseModel):
             "as they are automatically force-injected by the system."
         ),
     )
+    selected_prompt_blocks: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of modular prompt block IDs to enable for the trading agent, chosen from: "
+            "'let_winners_run', 'cut_losers_fast', 'catalyst_expiry_timer', 'five_whys_causal', 'mece_risk_partition'."
+        ),
+    )
     change_description: str = Field(..., description="One sentence explaining what was changed and why")
     experiment_type: str = Field(..., description="'incremental' or 'radical'")
     research_reasoning: str = Field(..., description="Detailed reasoning for this change")
@@ -97,6 +104,16 @@ async def run_research(
         model_name = AUTORESEARCH_TRACK_MODELS.get(track_id, AUTORESEARCH_MODEL)
 
     client, provider = _get_client_and_provider_for_model(model_name)
+
+    # Perform DB search pre-query to enrich autoresearcher context with empirical trade postmortems
+    try:
+        from autoresearch.tools import query_trade_postmortems
+
+        db_context = await query_trade_postmortems(track_id=track_id, limit=5)
+        if db_context:
+            report += f"\n\n{db_context}"
+    except Exception as e:
+        logger.warning("Failed to pre-query DB trade postmortems for autoresearcher: %s", e)
 
     system_program = _load_research_program()
     user_content = report

@@ -63,4 +63,3 @@ def test_daily_predictor_workflow_schedule():
     assert "0 13 * * 1-5" in cron_triggers, f"Expected 0 13 * * 1-5 in cron triggers, found: {cron_triggers}"
     assert "15 21 * * 1-5" in cron_triggers, f"Expected 15 21 * * 1-5 in cron triggers, found: {cron_triggers}"
     assert "0 22 * * 0,3" in cron_triggers, f"Expected 0 22 * * 0,3 in cron triggers, found: {cron_triggers}"
-

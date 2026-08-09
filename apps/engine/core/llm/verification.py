@@ -247,7 +247,6 @@ async def verify_trading_decision(
                         }
                     )
 
-
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
 

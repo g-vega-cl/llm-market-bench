@@ -3,21 +3,46 @@ import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { fetchMemories, searchMemories } from '~/features/memories/api/fetch-memories';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
 
+interface MemoriesQueryParams {
+    cursor?: string;
+    category?: string;
+    limit?: number;
+}
+
+interface SearchQueryParams {
+    query?: string;
+    limit?: number;
+}
+
 const getMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: { cursor?: string; category?: string; limit?: number } | undefined) => d)
+    .inputValidator((d: MemoriesQueryParams | { data?: MemoriesQueryParams } | undefined) => d)
     .handler(async ({ data }) => {
-        const cursor = data?.cursor;
-        const category = data?.category;
-        const limit = data?.limit ?? 50;
+        const payload: MemoriesQueryParams | undefined =
+            data && 'data' in data && data.data ? data.data : (data as MemoriesQueryParams);
+        const cursor = payload?.cursor;
+        const category = payload?.category;
+        const limit = payload?.limit ?? 50;
         return fetchMemories(cursor, limit, category);
     });
 
 const queryMemories = createServerFn({ method: 'GET' })
-    .inputValidator((d: { query: string; limit?: number } | undefined) => d)
+    .inputValidator((d: SearchQueryParams | { data?: SearchQueryParams } | string | undefined) => d)
     .handler(async ({ data }) => {
-        if (!data?.query) return [];
-        const limit = data.limit ?? 50;
-        return searchMemories(data.query, limit);
+        let queryStr = '';
+        let limit = 50;
+
+        if (typeof data === 'string') {
+            queryStr = data;
+        } else if (data && 'data' in data && data.data) {
+            queryStr = data.data.query ?? '';
+            limit = data.data.limit ?? 50;
+        } else if (data && 'query' in data) {
+            queryStr = data.query ?? '';
+            limit = data.limit ?? 50;
+        }
+
+        if (!queryStr) return [];
+        return searchMemories(queryStr, limit);
     });
 
 export const Route = createFileRoute('/memories/')({

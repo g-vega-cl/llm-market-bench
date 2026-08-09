@@ -132,32 +132,34 @@ export function ConceptMap({
     };
 
     return (
-        <div className="space-y-6 w-full">
+        <div className="space-y-6 w-full max-w-full overflow-hidden">
             {/* Controls Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                {/* Tabs */}
-                <div className="flex gap-2 bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                    <Button
-                        variant={activeTab === 'trending' ? 'solid' : 'ghost'}
-                        onClick={() => handleTabChange('trending')}
-                        className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
-                    >
-                        Trending 🔥
-                    </Button>
-                    <Button
-                        variant={activeTab === 'volume' ? 'solid' : 'ghost'}
-                        onClick={() => handleTabChange('volume')}
-                        className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
-                    >
-                        Most Mentioned 📊
-                    </Button>
-                    <Button
-                        variant={activeTab === 'newest' ? 'solid' : 'ghost'}
-                        onClick={() => handleTabChange('newest')}
-                        className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
-                    >
-                        Newest ⏱️
-                    </Button>
+                {/* Tabs - Scrollable on mobile */}
+                <div className="w-full sm:w-auto overflow-x-auto max-w-full whitespace-nowrap scrollbar-none pb-1 sm:pb-0">
+                    <div className="inline-flex gap-2 bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <Button
+                            variant={activeTab === 'trending' ? 'solid' : 'ghost'}
+                            onClick={() => handleTabChange('trending')}
+                            className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                        >
+                            Trending 🔥
+                        </Button>
+                        <Button
+                            variant={activeTab === 'volume' ? 'solid' : 'ghost'}
+                            onClick={() => handleTabChange('volume')}
+                            className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                        >
+                            Most Mentioned 📊
+                        </Button>
+                        <Button
+                            variant={activeTab === 'newest' ? 'solid' : 'ghost'}
+                            onClick={() => handleTabChange('newest')}
+                            className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                        >
+                            Newest ⏱️
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Search */}
@@ -186,94 +188,174 @@ export function ConceptMap({
                 </div>
             </div>
 
-            {/* Concepts Table */}
-            <Table>
-                <TableHeader>
-                    <TableRow isHoverable={false}>
-                        <TableHead>Concept Name</TableHead>
-                        <TableHead align="right">Mentions</TableHead>
-                        <TableHead align="right">Momentum Velocity</TableHead>
-                        <TableHead align="center">Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {processedConcepts.map((concept) => {
-                        const isExpanded = expandedId === concept.id;
-                        return (
-                            <React.Fragment key={concept.id}>
-                                <TableRow
-                                    className="cursor-pointer group select-none"
-                                    onClick={() => handleRowClick(concept)}
-                                >
-                                    <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
-                                        <div className="flex items-center gap-2">
-                                            <span
-                                                className={`transition-transform duration-200 ${
-                                                    isExpanded ? 'rotate-90' : ''
-                                                }`}
-                                            >
-                                                <svg
-                                                    className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <title>Arrow</title>
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 5l7 7-7 7"
-                                                    />
-                                                </svg>
-                                            </span>
-                                            {concept.concept_name}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell
-                                        align="right"
-                                        className="text-zinc-700 dark:text-zinc-300 font-mono"
+            {/* Mobile Concepts Card List (< md breakpoint) */}
+            <div className="block md:hidden space-y-3 w-full max-w-full">
+                {processedConcepts.map((concept) => {
+                    const isExpanded = expandedId === concept.id;
+                    return (
+                        <div
+                            key={concept.id}
+                            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm space-y-3 min-w-0 max-w-full"
+                            data-testid={`mobile-concept-card-${concept.id}`}
+                        >
+                            <button
+                                type="button"
+                                className="w-full text-left flex items-center justify-between gap-2 cursor-pointer select-none"
+                                onClick={() => handleRowClick(concept)}
+                            >
+                                <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-zinc-100 min-w-0 flex-1 truncate">
+                                    <span
+                                        className={`transition-transform duration-200 flex-shrink-0 ${
+                                            isExpanded ? 'rotate-90' : ''
+                                        }`}
                                     >
-                                        {concept.mention_count}
-                                    </TableCell>
-                                    <TableCell
-                                        align="right"
-                                        className="text-zinc-700 dark:text-zinc-300 font-mono"
-                                    >
-                                        {concept.velocity_score.toFixed(2)}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        {getVelocityBadge(concept.velocity_score)}
-                                    </TableCell>
-                                </TableRow>
-
-                                {isExpanded && (
-                                    <TableRow
-                                        isHoverable={false}
-                                        className="bg-zinc-50/40 dark:bg-zinc-950/40"
-                                    >
-                                        <TableCell colSpan={4} className="px-6 py-4">
-                                            <ConceptDetails
-                                                concept={concept}
-                                                fetchMemoriesFn={fetchMemoriesFn}
-                                                formatDate={formatDate}
-                                                getDurationDays={getDurationDays}
+                                        <svg
+                                            className="w-4 h-4 text-zinc-400"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <title>Arrow</title>
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 5l7 7-7 7"
                                             />
+                                        </svg>
+                                    </span>
+                                    <span className="truncate">{concept.concept_name}</span>
+                                </div>
+                                <div className="flex-shrink-0">
+                                    {getVelocityBadge(concept.velocity_score)}
+                                </div>
+                            </button>
+
+                            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800 font-mono">
+                                <div>
+                                    <span>Mentions: </span>
+                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                        {concept.mention_count}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span>Velocity: </span>
+                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                        {concept.velocity_score.toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {isExpanded && (
+                                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 min-w-0">
+                                    <ConceptDetails
+                                        concept={concept}
+                                        fetchMemoriesFn={fetchMemoriesFn}
+                                        formatDate={formatDate}
+                                        getDurationDays={getDurationDays}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                {processedConcepts.length === 0 && (
+                    <div className="py-12 text-center text-zinc-500 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                        No concepts found matching your filters.
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop Concepts Table (>= md breakpoint) */}
+            <div className="hidden md:block w-full max-w-full">
+                <Table>
+                    <TableHeader>
+                        <TableRow isHoverable={false}>
+                            <TableHead>Concept Name</TableHead>
+                            <TableHead align="right">Mentions</TableHead>
+                            <TableHead align="right">Momentum Velocity</TableHead>
+                            <TableHead align="center">Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {processedConcepts.map((concept) => {
+                            const isExpanded = expandedId === concept.id;
+                            return (
+                                <React.Fragment key={concept.id}>
+                                    <TableRow
+                                        className="cursor-pointer group select-none"
+                                        onClick={() => handleRowClick(concept)}
+                                    >
+                                        <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`transition-transform duration-200 ${
+                                                        isExpanded ? 'rotate-90' : ''
+                                                    }`}
+                                                >
+                                                    <svg
+                                                        className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <title>Arrow</title>
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M9 5l7 7-7 7"
+                                                        />
+                                                    </svg>
+                                                </span>
+                                                {concept.concept_name}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell
+                                            align="right"
+                                            className="text-zinc-700 dark:text-zinc-300 font-mono"
+                                        >
+                                            {concept.mention_count}
+                                        </TableCell>
+                                        <TableCell
+                                            align="right"
+                                            className="text-zinc-700 dark:text-zinc-300 font-mono"
+                                        >
+                                            {concept.velocity_score.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {getVelocityBadge(concept.velocity_score)}
                                         </TableCell>
                                     </TableRow>
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                    {processedConcepts.length === 0 && (
-                        <TableRow isHoverable={false}>
-                            <TableCell colSpan={4} className="py-12 text-center text-zinc-500">
-                                No concepts found matching your filters.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
+
+                                    {isExpanded && (
+                                        <TableRow
+                                            isHoverable={false}
+                                            className="bg-zinc-50/40 dark:bg-zinc-950/40"
+                                        >
+                                            <TableCell colSpan={4} className="px-3 sm:px-6 py-4">
+                                                <ConceptDetails
+                                                    concept={concept}
+                                                    fetchMemoriesFn={fetchMemoriesFn}
+                                                    formatDate={formatDate}
+                                                    getDurationDays={getDurationDays}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                        {processedConcepts.length === 0 && (
+                            <TableRow isHoverable={false}>
+                                <TableCell colSpan={4} className="py-12 text-center text-zinc-500">
+                                    No concepts found matching your filters.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }
@@ -300,9 +382,9 @@ function ConceptDetails({
     });
 
     return (
-        <div className="space-y-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm animate-fade-in">
+        <div className="space-y-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm animate-fade-in min-w-0 max-w-full overflow-hidden">
             {/* Top row: Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-4 border-b border-zinc-100 dark:border-zinc-900">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pb-4 border-b border-zinc-100 dark:border-zinc-900">
                 <div className="space-y-1">
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
                         Timeline Activity
@@ -371,9 +453,9 @@ function ConceptDetails({
                             return (
                                 <div
                                     key={memory.id}
-                                    className="p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/60 rounded-lg flex flex-col md:flex-row md:items-start justify-between gap-4 transition-all hover:bg-zinc-100/60 dark:hover:bg-zinc-850"
+                                    className="p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/60 rounded-lg flex flex-col md:flex-row md:items-start justify-between gap-4 transition-all hover:bg-zinc-100/60 dark:hover:bg-zinc-850 min-w-0 max-w-full"
                                 >
-                                    <div className="space-y-1.5 flex-1">
+                                    <div className="space-y-1.5 flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             {impact && (
                                                 <Badge
@@ -399,11 +481,11 @@ function ConceptDetails({
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed break-words">
                                             {memory.content}
                                         </p>
                                     </div>
-                                    <div className="flex items-center self-end md:self-start">
+                                    <div className="flex items-center self-end md:self-start flex-shrink-0">
                                         <Link
                                             to="/memories/chain/$memoryId"
                                             params={{ memoryId: memory.id }}

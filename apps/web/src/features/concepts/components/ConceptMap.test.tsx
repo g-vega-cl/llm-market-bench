@@ -91,16 +91,16 @@ describe('ConceptMap (Tabbed Table)', () => {
         renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         // Initially, all 3 are visible
-        expect(screen.getByText('Inflationary Shock')).toBeInTheDocument();
-        expect(screen.getByText('Generative AI')).toBeInTheDocument();
-        expect(screen.getByText('Quantum Computing')).toBeInTheDocument();
+        expect(screen.getAllByText('Inflationary Shock')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('Generative AI')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('Quantum Computing')[0]).toBeInTheDocument();
 
         // Search for 'AI'
         const searchInput = screen.getByPlaceholderText(/search concepts/i);
         fireEvent.change(searchInput, { target: { value: 'AI' } });
 
         expect(screen.queryByText('Inflationary Shock')).not.toBeInTheDocument();
-        expect(screen.getByText('Generative AI')).toBeInTheDocument();
+        expect(screen.getAllByText('Generative AI')[0]).toBeInTheDocument();
         expect(screen.queryByText('Quantum Computing')).not.toBeInTheDocument();
     });
 
@@ -140,34 +140,44 @@ describe('ConceptMap (Tabbed Table)', () => {
         expect(screen.queryByText(/first seen:/i)).not.toBeInTheDocument();
 
         // Click on the Inflationary Shock row
-        const rowHeader = screen.getByText('Inflationary Shock');
+        const rowHeader = screen.getAllByText('Inflationary Shock')[0];
         fireEvent.click(rowHeader);
 
         // Details should expand
-        expect(screen.getByText(/first seen:/i)).toBeInTheDocument();
-        expect(screen.getByText(/last seen:/i)).toBeInTheDocument();
-        expect(screen.getByText(/duration active:/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/first seen:/i)[0]).toBeInTheDocument();
+        expect(screen.getAllByText(/last seen:/i)[0]).toBeInTheDocument();
+        expect(screen.getAllByText(/duration active:/i)[0]).toBeInTheDocument();
     });
 
     it('fetches and renders related memories with date when row is expanded', async () => {
         renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
 
         // Click on the Inflationary Shock row
-        const rowHeader = screen.getByText('Inflationary Shock');
+        const rowHeader = screen.getAllByText('Inflationary Shock')[0];
         fireEvent.click(rowHeader);
 
         // Verify that loading state or resolved state is shown
-        expect(screen.getByText(/loading related memories/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/loading related memories/i)[0]).toBeInTheDocument();
 
         // Wait for memories to load
-        const memoryContent = await screen.findByText(/MARKET EVENT: May 2026 US PPI Surge/);
-        expect(memoryContent).toBeInTheDocument();
-        expect(screen.getByText('85% Match')).toBeInTheDocument();
-        expect(screen.getByText('BEARISH')).toBeInTheDocument();
-        expect(screen.getByText('May 24, 2026')).toBeInTheDocument();
+        const memoryContent = await screen.findAllByText(/MARKET EVENT: May 2026 US PPI Surge/);
+        expect(memoryContent[0]).toBeInTheDocument();
+        expect(screen.getAllByText('85% Match')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('BEARISH')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('May 24, 2026')[0]).toBeInTheDocument();
 
         // Verify the event chain link
-        const link = screen.getByRole('link', { name: /view event chain/i });
+        const link = screen.getAllByRole('link', { name: /view event chain/i })[0];
         expect(link).toHaveAttribute('href', '/memories/chain/memory-101');
+    });
+
+    it('renders mobile cards with concept metrics', () => {
+        renderWithQueryClient(<ConceptMap data={mockData} fetchMemoriesFn={mockFetchMemoriesFn} />);
+
+        const mobileCard = screen.getByTestId('mobile-concept-card-1');
+        expect(mobileCard).toBeInTheDocument();
+        expect(mobileCard).toHaveTextContent('Inflationary Shock');
+        expect(mobileCard).toHaveTextContent('Mentions: 50');
+        expect(mobileCard).toHaveTextContent('Velocity: 2.50');
     });
 });

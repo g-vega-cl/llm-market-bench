@@ -18,7 +18,7 @@ async def seed_daily_predictor_prompt() -> tuple[str, str]:
     """Seed the Auto-Researcher optimized prompt as the active live baseline in Supabase."""
     client = get_supabase_client()
     today = datetime.now(UTC).date()
-    tag = "daily-pred-seeded-v1"
+    tag = "daily-pred-seeded-v2"
 
     try:
         # Demote previous active/baseline live predictor prompts to saved
@@ -36,7 +36,7 @@ async def seed_daily_predictor_prompt() -> tuple[str, str]:
                 "week_end": (today + timedelta(days=7)).isoformat(),
                 "status": "active",
                 "experiment_type": "baseline",
-                "change_description": "Seeded from 12-week backtest Auto-Researcher optimization.",
+                "change_description": "Seeded symmetric zero-mean anti-bias predictor prompt.",
             }
         ).execute()
 

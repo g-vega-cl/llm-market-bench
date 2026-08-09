@@ -26,6 +26,22 @@ def test_split_daily_predictor_prompt():
     assert f == DAILY_PREDICTOR_CONSTRAINTS_FOOTER
 
 
+def test_daily_predictor_prompt_symmetry():
+    """Verify DAILY_PREDICTOR_PROMPT is strictly symmetric and counter-biases against always-UP predictions."""
+    header, mutable, footer = split_daily_predictor_prompt(DAILY_PREDICTOR_PROMPT)
+
+    # Must explicitly direct symmetric zero-mean base-rate evaluation in header or mutable
+    assert "ZERO-MEAN BASE RATE" in header or "ZERO-MEAN BASE RATE" in mutable
+    assert "SYMMETRIC" in mutable
+
+    # Must contain explicit bearish directives alongside bullish directives
+    full_prompt = DAILY_PREDICTOR_PROMPT.lower()
+    assert "bearish catalyst" in full_prompt
+    assert "bullish catalyst" in full_prompt
+    assert "down" in full_prompt and "up" in full_prompt
+
+
+
 @pytest.mark.asyncio
 async def test_run_daily_prediction_success():
     mock_supabase = MagicMock()

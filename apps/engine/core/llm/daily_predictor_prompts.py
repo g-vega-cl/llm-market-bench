@@ -11,16 +11,23 @@ You are provided with:
 2. Overnight futures (ES/NQ) & pre-market indices performance.
 3. Market feeling, sentiment barometers, and latest financial news.
 
+=== ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
+CRITICAL: Do NOT default to UP due to long-term market drift. Intraday Open-to-Close returns follow a zero-mean distribution with near ~50/50 UP vs DOWN probability.
+You MUST evaluate DOWN (bearish) signals with equal weight and rigour as UP (bullish) signals. Avoid positive-framing bias.
+
 """
 
 DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== ANALYTICAL STRATEGY INSTRUCTIONS ===
-1. MACRO CATALYST EXTRACTION: Parse all overnight and pre-market news for high-impact catalysts (economic releases, Fed speeches, geopolitical events, major earnings). Classify catalysts as bullish, bearish, or neutral. Determine whether these catalysts are already priced into the futures move or represent new information that can drive intraday trend.
+1. MACRO CATALYST EXTRACTION: Parse all overnight and pre-market news for high-impact catalysts (economic releases, Fed speeches, geopolitical events, major earnings). Classify catalysts symmetrically as a bullish catalyst, bearish catalyst, or neutral catalyst. Determine whether catalysts are already priced into the futures move or represent new information driving an intraday trend or reversal.
 
-2. TECHNICAL LEVEL SIGNALS: Identify key price levels on the SPY chart: previous day high/low, opening range high/low, VWAP (from both the prior session and projected current session), and significant moving averages (20/50/200 EMA/SMA). Note any clusters of support/resistance. Measure momentum using RSI, MACD, and volume profile. Prefer levels that align with macro catalysts.
+2. TECHNICAL LEVEL SIGNALS: Identify key support and resistance levels on the SPY chart: previous day high/low, opening range high/low, VWAP, and key moving averages (20/50/200 EMA/SMA). Evaluate BOTH bullish hold scenarios (price above VWAP with rising momentum) and bearish breakdown/rejection scenarios (price capped under VWAP with weakening MACD / overbought RSI > 70).
 
-3. MOMENTUM VS GAP-FILL BEHAVIOR: Quantify the overnight gap (from prior close to current pre-market/futures level). Assess historical tendencies: large gaps often lead to either continued momentum or mean-reversion gap-fill. Decide which regime is active by considering: gap size, catalyst strength, overnight volume, and early regular-session price action. If the gap is small (<0.2%), lean on technical levels and intraday momentum. If the gap is large, watch the first 15-30 minutes for direction: a strong follow-through suggests momentum; a stall/reversal near key levels signals gap-fill.
+3. MOMENTUM VS GAP-FILL & REVERSAL BEHAVIOR: Quantify overnight gaps. Large gaps can result in either trend continuation or aggressive mean-reversion gap-fills. For positive overnight gaps, actively evaluate whether exhaustion or profit-taking will push the price DOWN toward gap-fill. For negative overnight gaps, evaluate whether panic selling continues DOWN or dip-buying leads to an UP bounce. If the gap is small (<0.2%), weigh intraday technical breakouts vs breakdown signals equally.
 
-4. CONFIDENCE CALIBRATION: Assign confidence 50-100% based on the convergence of independent signals. Increase confidence when macro catalysts align with technical levels and momentum direction (e.g., bullish catalyst + price holds above VWAP + rising RSI). Reduce confidence when signals conflict, when volatility is excessively high (VIX > 30), or when key economic data is scheduled during the session. Never exceed 85% unless at least two catalysts and three technical levels confirm the same direction. Document the primary drivers in your reasoning."""
+4. SYMMETRIC CONFIDENCE CALIBRATION: Assign confidence 50-100% based on convergence of independent signals for EITHER direction.
+- High UP confidence requires: bullish catalyst + price holding above VWAP + rising RSI/momentum.
+- High DOWN confidence requires: bearish catalyst OR yield/rate surge + price trading below VWAP / resistance rejection + breaking support / falling RSI.
+Reduce confidence when signals conflict, when VIX > 30, or when high-impact economic data is scheduled mid-session. Never exceed 85% confidence without multi-signal confirmation."""
 
 DAILY_PREDICTOR_CONSTRAINTS_FOOTER = """\n\n=== REQUIRED OUTPUT FORMAT ===
 You MUST return a structured response containing:

@@ -74,8 +74,12 @@ function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
   }
 
   if (hour === 22 && minute === 0) {
-    // 6:00 PM ET (22:00 UTC)
-    return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-autoresearch' } }];
+    // 6:00 PM ET (22:00 UTC) on Sun (0) & Wed (3) -> Run prompt autoresearch 2x a week
+    const day = scheduledTime.getUTCDay();
+    if (day === 0 || day === 3) {
+      return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-autoresearch' } }];
+    }
+    return [];
   }
 
   // Default fallback

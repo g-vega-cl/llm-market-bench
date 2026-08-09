@@ -342,3 +342,17 @@ async def test_ingest_newsletters_thread_safety():
         assert len(snapshots) == 5
         assert not service_mock.collision_detected
 
+
+def test_newsletter_senders_config():
+    """Test that mandatory financial senders are included in NEWSLETTER_SENDERS."""
+    from core.config import NEWSLETTER_SENDERS
+
+    required_senders = [
+        "newsletter@investingmail.com",
+        "email@stratechery.com",
+        "puck@puck.news",
+    ]
+    for sender in required_senders:
+        assert sender in NEWSLETTER_SENDERS, f"Expected {sender} in NEWSLETTER_SENDERS"
+
+

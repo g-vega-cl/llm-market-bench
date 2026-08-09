@@ -35,26 +35,26 @@ def _validate_config():
 def _build_client_options():
     """Build ClientOptions with a configured httpx client."""
     http_client = httpx.Client(
-        timeout=httpx.Timeout(10.0, connect=5.0),
+        timeout=httpx.Timeout(30.0, connect=15.0),
         verify=True,
     )
     return ClientOptions(
         httpx_client=http_client,
-        postgrest_client_timeout=10.0,
-        storage_client_timeout=10,
+        postgrest_client_timeout=30.0,
+        storage_client_timeout=30,
     )
 
 
 def _build_async_client_options():
     """Build AsyncClientOptions with a configured httpx async client."""
     http_client = httpx.AsyncClient(
-        timeout=httpx.Timeout(10.0, connect=5.0),
+        timeout=httpx.Timeout(30.0, connect=15.0),
         verify=True,
     )
     return AsyncClientOptions(
         httpx_client=http_client,
-        postgrest_client_timeout=10.0,
-        storage_client_timeout=10,
+        postgrest_client_timeout=30.0,
+        storage_client_timeout=30,
     )
 
 
@@ -185,8 +185,8 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
     raise last_exception
 
 
-def bulk_upsert_newsletter_snapshots(client: Client, data: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Upsert multiple newsletter snapshots into the database in a single request.
+def bulk_upsert_newsletter_snapshots(client: Client, data: list[dict[str, Any]], batch_size: int = 5) -> list[dict[str, Any]]:
+    """Upsert multiple newsletter snapshots into the database in batched chunks.
 
     Uses the composite unique constraint (date, source_id) for idempotency,
     preventing duplicate entries if the job restarts.
@@ -194,12 +194,13 @@ def bulk_upsert_newsletter_snapshots(client: Client, data: list[dict[str, Any]])
     Args:
         client: The Supabase client instance.
         data: List of dictionaries containing newsletter snapshot fields.
+        batch_size: Number of records per HTTP upsert request (default 5).
 
     Returns:
         The upserted rows data as a list of dictionaries.
 
     Raises:
-        Exception: If the bulk upsert operation fails.
+        Exception: If any batch upsert operation fails.
     """
     if not data:
         return []
@@ -216,12 +217,21 @@ def bulk_upsert_newsletter_snapshots(client: Client, data: list[dict[str, Any]])
         for item in data
     ]
 
-    try:
-        response = client.table("newsletter_snapshots").upsert(payloads, on_conflict="date,source_id").execute()
-        return response.data if response.data else []
-    except Exception as e:
-        logger.error(f"Failed to bulk upsert {len(data)} snapshots: {e}")
-        raise
+    all_upserted = []
+    for i in range(0, len(payloads), batch_size):
+        chunk = payloads[i : i + batch_size]
+        try:
+            response = with_retry(
+                lambda c=chunk: client.table("newsletter_snapshots").upsert(c, on_conflict="date,source_id").execute(),
+                f"bulk_upsert_newsletter_snapshots_batch_{i // batch_size + 1}",
+            )
+            if response.data:
+                all_upserted.extend(response.data)
+        except Exception as e:
+            logger.exception(f"Failed to bulk upsert batch starting at index {i}: {e}")
+            raise
+
+    return all_upserted
 
 
 def upsert_newsletter_snapshot(client: Client, data: dict[str, Any]) -> dict[str, Any]:
@@ -256,9 +266,12 @@ def upsert_newsletter_snapshot(client: Client, data: dict[str, Any]) -> dict[str
     }
 
     try:
-        response = client.table("newsletter_snapshots").upsert(payload, on_conflict="date,source_id").execute()
+        response = with_retry(
+            lambda: client.table("newsletter_snapshots").upsert(payload, on_conflict="date,source_id").execute(),
+            "upsert_newsletter_snapshot",
+        )
 
         return response.data[0] if response.data else {}
     except Exception as e:
-        logger.error(f"Failed to upsert snapshot for {data.get('source_id')}: {e}")
+        logger.exception(f"Failed to upsert snapshot for {data.get('source_id')}: {e}")
         raise

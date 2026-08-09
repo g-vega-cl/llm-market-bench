@@ -20,7 +20,7 @@ The dispatcher now supports multiple workflows beyond `daily-predictor.yml`. It 
 | 18:00 | 2:00 PM | 0 | `ingest.yml` | none |
 | 21:00 | 5:00 PM | 0 | `generate-newsletter.yml` | `{"session": "close"}` |
 | 21:15 | 5:15 PM | 15 | `daily-predictor.yml` | `{"action": "evaluate-daily-predictions"}` |
-| 22:00 | 6:00 PM | 0 | `daily-predictor.yml` | `{"action": "daily-autoresearch"}` |
+| 22:00 (Sun & Wed) | 6:00 PM (Sun & Wed) | 0 | `daily-predictor.yml` | `{"action": "daily-autoresearch"}` |
 
 ## Cron Triggers (wrangler.jsonc)
 

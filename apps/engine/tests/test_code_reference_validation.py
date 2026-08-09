@@ -55,3 +55,14 @@ def test_validate_codebase_references_placeholders(tmp_path):
 
     errors = validate_codebase_references(content, repo_root, "some-page.md")
     assert len(errors) == 0
+
+
+def test_validate_codebase_references_runtime_env_paths(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+
+    # Text referencing gitignored runtime env paths (.env, .venv) that do not exist on disk
+    content = "See `apps/engine/.env` and `./apps/engine/.venv/bin/` for runtime configuration."
+
+    errors = validate_codebase_references(content, repo_root, "some-page.md")
+    assert len(errors) == 0

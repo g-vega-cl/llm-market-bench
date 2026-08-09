@@ -39,8 +39,14 @@ def validate_codebase_references(content: str, repo_root: Path, file_rel: str) -
         relative_path = f"{prefix}/{subpath}"
         cleaned_path = relative_path.rstrip(".,;")
 
-        # Skip paths that contain uppercase variables/placeholders or nonexistent/temp-broken tests
-        if "YYYY-MM" in cleaned_path or "nonexistent" in cleaned_path or "temp-broken" in cleaned_path:
+        # Skip paths that contain uppercase variables/placeholders, nonexistent/temp-broken tests, or runtime env files (.env, .venv)
+        if (
+            "YYYY-MM" in cleaned_path
+            or "nonexistent" in cleaned_path
+            or "temp-broken" in cleaned_path
+            or ".env" in cleaned_path
+            or ".venv" in cleaned_path
+        ):
             continue
 
         full_path = repo_root / cleaned_path

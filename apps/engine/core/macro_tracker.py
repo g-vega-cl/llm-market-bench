@@ -12,7 +12,7 @@ logger = logging.getLogger("engine")
 
 # The default list of macro tickers to track
 MACRO_TICKERS = {
-    "Equities": {"SPY": "S&P 500", "QQQ": "Nasdaq 100", "DIA": "Dow Jones", "IWM": "Russell 2000"},
+    "Equities": {"SPY": "S&P 500", "QQQ": "Nasdaq 100", "DIA": "Dow Jones", "IWM": "Russell 2000", "LIN": "Linde plc"},
     "International": {
         "EWJ": "Japan",
         "EWY": "South Korea",

@@ -160,7 +160,6 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
 
     const startOfDay = `${estDateStr}T00:00:00`;
 
-    // Fetch core dashboard data in parallel (reduced from 9 to 7 database queries!)
     const [
         { data: newsletters },
         { data: trades },
@@ -210,7 +209,18 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
             .limit(1),
         // Fetch all macro quotes + pre-calculated volatility in a single query
         supabase.from('market_data_cache').select('*').in('ticker', MACRO_TICKERS_LIST),
-    ]);
+    ]).catch((err) => {
+        console.warn('Network or database timeout in fetchTodayPageData:', err);
+        return [
+            { data: null, error: err },
+            { data: null, error: err },
+            { data: null, error: err },
+            { data: null, error: err },
+            { data: null, error: err },
+            { data: null, error: err },
+            { data: null, error: err },
+        ];
+    });
 
     // Derive priceUpdates in-memory from cacheRows to eliminate an entire extra DB query
     const priceUpdates = (cacheRows || []).filter(
@@ -320,17 +330,22 @@ export async function fetchTodayData(limit: number = 50): Promise<TodayData> {
 }
 
 export async function fetchLatestMarketFeeling(): Promise<MarketFeeling | null> {
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-        .from('market_feeling')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1);
+    try {
+        const supabase = getSupabaseServerClient();
+        const { data, error } = await supabase
+            .from('market_feeling')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-    if (error) {
-        console.error('Error fetching latest market feeling:', error);
+        if (error) {
+            console.error('Error fetching latest market feeling:', error);
+            return null;
+        }
+
+        return (data?.[0] || null) as MarketFeeling | null;
+    } catch (err) {
+        console.warn('Network or database timeout fetching latest market feeling:', err);
         return null;
     }
-
-    return (data?.[0] || null) as MarketFeeling | null;
 }

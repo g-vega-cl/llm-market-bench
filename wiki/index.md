@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/lin-renko-agent]] — Auto-indexed page
 - [[entities/generated-newsletters]] — Auto-indexed page
 - [[entities/cron-dispatcher]] — Cloudflare Worker edge cron dispatcher for GitHub Actions workflows
 - [[entities/daily-predictor-backtest-arena]] — Web UI and engine backtest system for S&P 500 daily open-to-close predictions with prompt mutation
@@ -40,6 +41,7 @@
 
 ## Concepts
 
+- [[concepts/renko-atr-sizing]] — Auto-indexed page
 - [[concepts/modular-prompt-blocks]] — Reusable trading discipline and reasoning blocks dynamically toggled by the Auto-Researcher
 - [[concepts/intraday-hit-metrics]] — Two-dimensional evaluation for daily predictions measuring intraday price target achievement
 - [[concepts/thematic-rotation]] — Adjacent trade pattern, stranded-asset pivot, and AI intra-cycle rotation sequence (infra → hyperscalers)

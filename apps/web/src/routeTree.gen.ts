@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TodayRouteImport } from './routes/today'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as RenkoRouteImport } from './routes/renko'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
@@ -44,6 +45,11 @@ const TodayRoute = TodayRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RenkoRoute = RenkoRouteImport.update({
+  id: '/renko',
+  path: '/renko',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogoutRoute = LogoutRouteImport.update({
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/renko': typeof RenkoRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/renko': typeof RenkoRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/how-it-works': typeof HowItWorksRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/renko': typeof RenkoRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
   '/_authed/profile': typeof AuthedProfileRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/login'
     | '/logout'
+    | '/renko'
     | '/signup'
     | '/today'
     | '/profile'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/login'
     | '/logout'
+    | '/renko'
     | '/signup'
     | '/today'
     | '/profile'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/login'
     | '/logout'
+    | '/renko'
     | '/signup'
     | '/today'
     | '/_authed/profile'
@@ -345,6 +357,7 @@ export interface RootRouteChildren {
   HowItWorksRoute: typeof HowItWorksRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
+  RenkoRoute: typeof RenkoRoute
   SignupRoute: typeof SignupRoute
   TodayRoute: typeof TodayRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/renko': {
+      id: '/renko'
+      path: '/renko'
+      fullPath: '/renko'
+      preLoaderRoute: typeof RenkoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logout': {
@@ -571,6 +591,7 @@ const rootRouteChildren: RootRouteChildren = {
   HowItWorksRoute: HowItWorksRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
+  RenkoRoute: RenkoRoute,
   SignupRoute: SignupRoute,
   TodayRoute: TodayRoute,
   AuthCallbackRoute: AuthCallbackRoute,

@@ -33,6 +33,7 @@ from core.config import (
     COMMAND_GENERATE_NEWSLETTER,
     COMMAND_GOVERNMENT,
     COMMAND_INGEST,
+    COMMAND_LIN_RENKO,
     COMMAND_POST_ANALYSIS,
     COMMAND_SEED_DAILY_PREDICTOR,
     COMMAND_WEEKEND_INGEST,
@@ -987,6 +988,7 @@ def main():
             COMMAND_BACKTEST_DAILY_AUTORESEARCH,
             COMMAND_SEED_DAILY_PREDICTOR,
             COMMAND_GENERATE_NEWSLETTER,
+            COMMAND_LIN_RENKO,
         ],
         help="Action to perform",
     )
@@ -1073,6 +1075,10 @@ def main():
         from tasks.newsletter_generator import generate_daily_newsletter
 
         asyncio.run(generate_daily_newsletter(session=args.session))
+    elif args.command == COMMAND_LIN_RENKO:
+        from tasks.lin_renko_task import run_lin_renko_flow
+
+        asyncio.run(run_lin_renko_flow())
 
 
 if __name__ == "__main__":

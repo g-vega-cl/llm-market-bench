@@ -80,6 +80,7 @@ export const navItems = [
     { to: '/portfolios', label: 'Portfolios' },
     { to: '/memories', label: 'Memories' },
     { to: '/autoresearch', label: 'Auto-Research' },
+    { to: '/renko', label: 'LIN Renko Agent' },
     { to: '/autoresearch-backtest', label: 'Backtests' },
     { to: '/leaderboard', label: 'Leaderboard' },
     { to: '/', label: 'Home', exact: true },

@@ -114,6 +114,7 @@ COMMAND_DAILY_AUTORESEARCH = "daily-autoresearch"
 COMMAND_BACKTEST_DAILY_AUTORESEARCH = "backtest-daily-autoresearch"
 COMMAND_SEED_DAILY_PREDICTOR = "seed-daily-predictor"
 COMMAND_GENERATE_NEWSLETTER = "generate-newsletter"
+COMMAND_LIN_RENKO = "lin-renko"
 
 # --- Content Constants ---
 NO_CONTENT_FOUND = "No content found"

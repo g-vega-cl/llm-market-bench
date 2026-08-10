@@ -76,11 +76,11 @@ class TestMacroTickers:
             assert "-Y." not in ticker, f"Yahoo-style ticker {ticker} found (contains -Y.)"
 
     def test_total_ticker_count(self):
-        """Verify we have exactly 23 macro tickers (4+8+5+3+2+1)."""
+        """Verify we have exactly 24 macro tickers (5+8+5+3+2+1)."""
         all_tickers = []
         for category_dict in MACRO_TICKERS.values():
             all_tickers.extend(category_dict.keys())
-        assert len(all_tickers) == 23
+        assert len(all_tickers) == 24
 
 
 class TestGetGlobalMacroContext:
@@ -172,7 +172,7 @@ class TestGetGlobalMacroContext:
 
         mock_in.assert_called_once()
         tickers_passed = mock_in.call_args[0][1]
-        assert len(tickers_passed) == 23
+        assert len(tickers_passed) == 24
         assert "SPY" in tickers_passed
         assert "IEF" in tickers_passed
         assert "UUP" in tickers_passed

@@ -151,6 +151,8 @@ function filterChartData(
 interface ArenaTabContentProps {
     deepSeekMetrics: ReturnType<typeof getModelMetrics>;
     miniMaxMetrics: ReturnType<typeof getModelMetrics>;
+    geminiMetrics: ReturnType<typeof getModelMetrics>;
+    openAiMetrics: ReturnType<typeof getModelMetrics>;
     data: SectorPrediction[];
     pendingPredictions: SectorPrediction[];
     evaluatedPredictions: SectorPrediction[];
@@ -167,6 +169,8 @@ interface ArenaTabContentProps {
 function ArenaTabContent({
     deepSeekMetrics,
     miniMaxMetrics,
+    geminiMetrics,
+    openAiMetrics,
     data,
     pendingPredictions,
     evaluatedPredictions,
@@ -181,8 +185,9 @@ function ArenaTabContent({
 }: ArenaTabContentProps) {
     return (
         <div className="space-y-8 animate-in fade-in duration-300">
-            {/* SECTION 1: Head-to-Head Scoreboard */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* SECTION 1: Head-to-Head Scoreboard (4 Models) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* DeepSeek */}
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
                     <div className="flex justify-between items-start mb-2">
                         <h2 className="text-xl font-bold text-blue-400">DeepSeek Models</h2>
@@ -210,6 +215,7 @@ function ArenaTabContent({
                     </div>
                 </div>
 
+                {/* MiniMax */}
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
                     <div className="flex justify-between items-start mb-2">
                         <h2 className="text-xl font-bold text-emerald-400">MiniMax-M3</h2>
@@ -229,6 +235,62 @@ function ArenaTabContent({
                         <div>
                             <div className="text-3xl font-light text-emerald-400 mb-1">
                                 {miniMaxMetrics.topQuartileRate}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Top-Quartile Call Rate
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Gemini */}
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <h2 className="text-xl font-bold text-amber-400">Gemini 3.5</h2>
+                        <Badge colorScheme="accent" variant="soft">
+                            {geminiMetrics.evaluatedCount} Evaluated
+                        </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <div className="text-3xl font-light text-white mb-1">
+                                {geminiMetrics.avgScore}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Avg Percentile Score
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                                {geminiMetrics.topQuartileRate}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Top-Quartile Call Rate
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* OpenAI / GPT */}
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <h2 className="text-xl font-bold text-purple-400">OpenAI GPT-5.6</h2>
+                        <Badge colorScheme="neutral" variant="soft">
+                            {openAiMetrics.evaluatedCount} Evaluated
+                        </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <div className="text-3xl font-light text-white mb-1">
+                                {openAiMetrics.avgScore}
+                            </div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider">
+                                Avg Percentile Score
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-3xl font-light text-emerald-400 mb-1">
+                                {openAiMetrics.topQuartileRate}
                             </div>
                             <div className="text-xs text-slate-400 uppercase tracking-wider">
                                 Top-Quartile Call Rate
@@ -418,8 +480,14 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
     };
 
     // Calculate aggregated metrics
-    const deepSeekData = data.filter((d) => d.model_name.startsWith('deepseek'));
-    const miniMaxData = data.filter((d) => d.model_name === 'MiniMax-M3');
+    const deepSeekData = data.filter((d) => d.model_name.toLowerCase().includes('deepseek'));
+    const miniMaxData = data.filter((d) => d.model_name.toLowerCase().includes('minimax'));
+    const geminiData = data.filter((d) => d.model_name.toLowerCase().includes('gemini'));
+    const openAiData = data.filter(
+        (d) =>
+            d.model_name.toLowerCase().includes('gpt') ||
+            d.model_name.toLowerCase().includes('openai'),
+    );
 
     const pendingPredictions = useMemo(() => data.filter((d) => d.status === 'pending'), [data]);
     const evaluatedPredictions = useMemo(
@@ -429,6 +497,8 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
 
     const deepSeekMetrics = useMemo(() => getModelMetrics(deepSeekData), [deepSeekData]);
     const miniMaxMetrics = useMemo(() => getModelMetrics(miniMaxData), [miniMaxData]);
+    const geminiMetrics = useMemo(() => getModelMetrics(geminiData), [geminiData]);
+    const openAiMetrics = useMemo(() => getModelMetrics(openAiData), [openAiData]);
 
     const chartFilteredData = useMemo(
         () => filterChartData(evaluatedPredictions, timeframeFilter),
@@ -463,8 +533,8 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                         AI Sector Predictions Arena
                     </h1>
                     <p className="text-slate-400 mt-2 text-lg">
-                        DeepSeek Flash vs MiniMax-M3: Predicting top-performing sectors and
-                        uncorrelated pairs.
+                        Multi-Model Arena: DeepSeek, MiniMax-M3, Gemini 3.5 & OpenAI GPT-5.6
+                        predicting top-performing sectors and uncorrelated pairs.
                     </p>
                 </div>
                 <button
@@ -507,6 +577,8 @@ export function AIPredictionsPage({ initialData, experiments, refreshFn }: AIPre
                 <ArenaTabContent
                     deepSeekMetrics={deepSeekMetrics}
                     miniMaxMetrics={miniMaxMetrics}
+                    geminiMetrics={geminiMetrics}
+                    openAiMetrics={openAiMetrics}
                     data={data}
                     pendingPredictions={pendingPredictions}
                     evaluatedPredictions={evaluatedPredictions}
@@ -570,6 +642,18 @@ function PredictionOutcomeBadge({ pred }: { pred: SectorPrediction }) {
     );
 }
 
+function getModelBadgeStyle(modelName: string): string {
+    const lower = modelName.toLowerCase();
+    if (lower.includes('deepseek')) return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+    if (lower.includes('minimax'))
+        return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    if (lower.includes('gemini'))
+        return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    if (lower.includes('gpt') || lower.includes('openai'))
+        return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
+    return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+}
+
 function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
     const isPending = pred.status === 'pending';
     const sectorScore = pred.sector_percentile_score ?? 0;
@@ -590,11 +674,9 @@ function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                 <div className="flex items-center gap-3 flex-wrap">
                     <span
-                        className={`px-2.5 py-1 text-xs font-bold rounded-md ${
-                            pred.model_name.startsWith('deepseek')
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        }`}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-md ${getModelBadgeStyle(
+                            pred.model_name,
+                        )}`}
                     >
                         {pred.model_name}
                     </span>

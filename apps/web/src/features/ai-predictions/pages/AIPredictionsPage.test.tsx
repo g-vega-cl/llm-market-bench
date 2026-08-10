@@ -72,6 +72,44 @@ describe('AIPredictionsPage', () => {
             status: 'evaluated',
             created_at: '2026-07-10T00:00:00Z',
         },
+        {
+            id: 'pred-eval-3',
+            prediction_date: '2026-07-10T00:00:00Z',
+            target_date: '2026-07-17T00:00:00Z',
+            timeframe: '7d',
+            model_name: 'gemini-3.5-flash-lite',
+            prompt_tag: 'v1.0',
+            predicted_sector: 'XLF',
+            predicted_pair: ['XLF', 'KRE'],
+            reasoning: 'Banking sector resilience.',
+            sector_percentile_score: 80.0,
+            pair_percentile_score: 70.0,
+            predicted_sector_return: 2.5,
+            predicted_pair_return: 1.5,
+            benchmark_spy_return: 1.8,
+            evaluation_audit_data: null,
+            status: 'evaluated',
+            created_at: '2026-07-10T00:00:00Z',
+        },
+        {
+            id: 'pred-eval-4',
+            prediction_date: '2026-07-10T00:00:00Z',
+            target_date: '2026-07-17T00:00:00Z',
+            timeframe: '7d',
+            model_name: 'gpt-5.6-luna',
+            prompt_tag: 'v1.0',
+            predicted_sector: 'XLV',
+            predicted_pair: ['XLV', 'XBI'],
+            reasoning: 'Healthcare biotech rotation.',
+            sector_percentile_score: 88.0,
+            pair_percentile_score: 82.0,
+            predicted_sector_return: 3.1,
+            predicted_pair_return: 2.8,
+            benchmark_spy_return: 1.8,
+            evaluation_audit_data: null,
+            status: 'evaluated',
+            created_at: '2026-07-10T00:00:00Z',
+        },
     ];
 
     const mockExperiments: PromptExperiment[] = [
@@ -137,7 +175,7 @@ describe('AIPredictionsPage', () => {
         ).toBeInTheDocument();
         expect(screen.queryByText('Semiconductor tailwinds.')).not.toBeInTheDocument();
 
-        const pastFilterBtn = screen.getByRole('button', { name: /Past Outcomes \(2\)/i });
+        const pastFilterBtn = screen.getByRole('button', { name: /Past Outcomes \(4\)/i });
         fireEvent.click(pastFilterBtn);
 
         expect(
@@ -180,7 +218,7 @@ describe('AIPredictionsPage', () => {
         expect(screen.getByText(/\$210\.50 ➔ \$219\.34/i)).toBeInTheDocument();
     });
 
-    it('calculates and displays head-to-head model performance metrics', () => {
+    it('calculates and displays head-to-head model performance metrics for all 4 models', () => {
         render(
             <AIPredictionsPage
                 initialData={mockPredictions}
@@ -191,5 +229,7 @@ describe('AIPredictionsPage', () => {
 
         expect(screen.getAllByText('DeepSeek Models').length).toBeGreaterThan(0);
         expect(screen.getAllByText('MiniMax-M3').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Gemini 3.5').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('OpenAI GPT-5.6').length).toBeGreaterThan(0);
     });
 });

@@ -257,8 +257,8 @@ async def test_run_research_uses_track_specific_model():
 
 
 @pytest.mark.asyncio
-async def test_researcher_passes_max_tokens_32000():
-    """Verify run_research includes max_tokens=32000 in create_args for LLM completion."""
+async def test_researcher_passes_max_tokens_64000():
+    """Verify run_research includes max_tokens=64000 in create_args for LLM completion."""
     mock_result = MagicMock()
     mock_result.new_prompt_text = "New prompt"
     mock_result.change_description = "Desc"
@@ -276,7 +276,7 @@ async def test_researcher_passes_max_tokens_32000():
 
         call_kwargs = mock_completion.call_args.kwargs
         assert "max_tokens" in call_kwargs
-        assert call_kwargs["max_tokens"] == 32000
+        assert call_kwargs["max_tokens"] == 64000
 
 
 @pytest.mark.asyncio

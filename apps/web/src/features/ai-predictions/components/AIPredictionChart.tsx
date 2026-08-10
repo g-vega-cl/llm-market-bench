@@ -7,10 +7,16 @@ interface ChartEntry {
     dateStr: string;
     deepseek?: number;
     minimax?: number;
+    gemini?: number;
+    openai?: number;
     deepseekSum?: number;
     deepseekCount?: number;
     minimaxSum?: number;
     minimaxCount?: number;
+    geminiSum?: number;
+    geminiCount?: number;
+    openaiSum?: number;
+    openaiCount?: number;
 }
 
 export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
@@ -37,35 +43,60 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
                     deepseekCount: 0,
                     minimaxSum: 0,
                     minimaxCount: 0,
+                    geminiSum: 0,
+                    geminiCount: 0,
+                    openaiSum: 0,
+                    openaiCount: 0,
                 };
                 dateMap.set(dateStr, entry);
             }
             return entry;
         };
 
+        function getModelKey(modelName: string): ModelKey | null {
+            const lower = modelName.toLowerCase();
+            if (lower.includes('deepseek')) return 'deepseek';
+            if (lower.includes('minimax')) return 'minimax';
+            if (lower.includes('gemini')) return 'gemini';
+            if (lower.includes('gpt') || lower.includes('openai')) return 'openai';
+            return null;
+        }
+
+        function updateEntryScore(entry: ChartEntry, modelName: string, score: number) {
+            const key = getModelKey(modelName);
+            if (!key) return;
+            const sumKey = `${key}Sum` as keyof ChartEntry;
+            const countKey = `${key}Count` as keyof ChartEntry;
+            (entry as unknown as Record<string, unknown>)[sumKey] =
+                ((entry[sumKey] as number | undefined) ?? 0) + score;
+            (entry as unknown as Record<string, unknown>)[countKey] =
+                ((entry[countKey] as number | undefined) ?? 0) + 1;
+        }
+
         evaluated.forEach((item) => {
             const dateStr = new Date(item.target_date).toLocaleDateString();
             const entry = getOrCreateEntry(dateStr, item.target_date);
             const score =
                 ((item.sector_percentile_score || 0) + (item.pair_percentile_score || 0)) / 2;
-
-            if (item.model_name.startsWith('deepseek')) {
-                entry.deepseekSum = (entry.deepseekSum ?? 0) + score;
-                entry.deepseekCount = (entry.deepseekCount ?? 0) + 1;
-            } else if (item.model_name === 'MiniMax-M3') {
-                entry.minimaxSum = (entry.minimaxSum ?? 0) + score;
-                entry.minimaxCount = (entry.minimaxCount ?? 0) + 1;
-            }
+            updateEntryScore(entry, item.model_name, score);
         });
+
+        const modelKeys: { key: ModelKey; sumKey: keyof ChartEntry; countKey: keyof ChartEntry }[] =
+            [
+                { key: 'deepseek', sumKey: 'deepseekSum', countKey: 'deepseekCount' },
+                { key: 'minimax', sumKey: 'minimaxSum', countKey: 'minimaxCount' },
+                { key: 'gemini', sumKey: 'geminiSum', countKey: 'geminiCount' },
+                { key: 'openai', sumKey: 'openaiSum', countKey: 'openaiCount' },
+            ];
 
         // Compute averages
         dateMap.forEach((entry) => {
-            if (entry.deepseekCount && entry.deepseekCount > 0) {
-                entry.deepseek = (entry.deepseekSum ?? 0) / entry.deepseekCount;
-            }
-            if (entry.minimaxCount && entry.minimaxCount > 0) {
-                entry.minimax = (entry.minimaxSum ?? 0) / entry.minimaxCount;
-            }
+            modelKeys.forEach(({ key, sumKey, countKey }) => {
+                const count = entry[countKey] as number | undefined;
+                if (count && count > 0) {
+                    entry[key] = ((entry[sumKey] as number | undefined) ?? 0) / count;
+                }
+            });
         });
 
         const chartData = Array.from(dateMap.values()).sort(
@@ -128,31 +159,31 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
             .style('font-size', '12px');
 
         // Line generator
-        const lineGenerator = (key: 'deepseek' | 'minimax') =>
+        type ModelKey = 'deepseek' | 'minimax' | 'gemini' | 'openai';
+        const lineGenerator = (key: ModelKey) =>
             d3
                 .line<ChartEntry>()
                 .defined((d) => d[key] !== undefined)
                 .x((d) => x(d.date))
                 .y((d) => y(d[key] ?? 0));
 
-        // DeepSeek Line
-        svg.append('path')
-            .datum(chartData)
-            .attr('fill', 'none')
-            .attr('stroke', '#60a5fa')
-            .attr('stroke-width', 3)
-            .attr('d', lineGenerator('deepseek'));
+        // Model Series Configurations
+        const seriesConfig: { key: ModelKey; label: string; color: string }[] = [
+            { key: 'deepseek', label: 'DeepSeek Flash', color: '#60a5fa' },
+            { key: 'minimax', label: 'MiniMax-M3', color: '#34d399' },
+            { key: 'gemini', label: 'Gemini 3.5', color: '#f59e0b' },
+            { key: 'openai', label: 'OpenAI GPT-5.6', color: '#a855f7' },
+        ];
 
-        // MiniMax Line
-        svg.append('path')
-            .datum(chartData)
-            .attr('fill', 'none')
-            .attr('stroke', '#34d399')
-            .attr('stroke-width', 3)
-            .attr('d', lineGenerator('minimax'));
+        // Render lines and dots for each model series
+        seriesConfig.forEach(({ key, color }) => {
+            svg.append('path')
+                .datum(chartData)
+                .attr('fill', 'none')
+                .attr('stroke', color)
+                .attr('stroke-width', 3)
+                .attr('d', lineGenerator(key));
 
-        // Dots
-        const addDots = (key: 'deepseek' | 'minimax', color: string) => {
             svg.selectAll(`.dot-${key}`)
                 .data(chartData.filter((d) => d[key] !== undefined))
                 .enter()
@@ -164,33 +195,28 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
                 .attr('fill', color)
                 .attr('stroke', '#1e293b')
                 .attr('stroke-width', 2);
-        };
-
-        addDots('deepseek', '#60a5fa');
-        addDots('minimax', '#34d399');
+        });
 
         // Legend
         const legend = svg.append('g').attr('transform', `translate(${width - 150}, 0)`);
 
-        legend.append('circle').attr('cx', 0).attr('cy', 0).attr('r', 5).style('fill', '#60a5fa');
-        legend
-            .append('text')
-            .attr('x', 10)
-            .attr('y', 4)
-            .text('DeepSeek Flash')
-            .style('fill', '#f8fafc')
-            .style('font-size', '12px')
-            .attr('alignment-baseline', 'middle');
-
-        legend.append('circle').attr('cx', 0).attr('cy', 20).attr('r', 5).style('fill', '#34d399');
-        legend
-            .append('text')
-            .attr('x', 10)
-            .attr('y', 24)
-            .text('MiniMax-M3')
-            .style('fill', '#f8fafc')
-            .style('font-size', '12px')
-            .attr('alignment-baseline', 'middle');
+        seriesConfig.forEach(({ label, color }, i) => {
+            const yOffset = i * 20;
+            legend
+                .append('circle')
+                .attr('cx', 0)
+                .attr('cy', yOffset)
+                .attr('r', 5)
+                .style('fill', color);
+            legend
+                .append('text')
+                .attr('x', 10)
+                .attr('y', yOffset + 4)
+                .text(label)
+                .style('fill', '#f8fafc')
+                .style('font-size', '12px')
+                .attr('alignment-baseline', 'middle');
+        });
     }, [data]);
 
     return (

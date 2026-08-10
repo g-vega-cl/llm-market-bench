@@ -76,10 +76,12 @@ test('fetchLeaderboard passes null time window when specified', async () => {
 });
 
 test('fetchLeaderboard propagates database errors', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const dbError = new Error('Database connection failed');
     mockSupabaseClient = {
         rpc: vi.fn().mockResolvedValue({ data: null, error: dbError }),
     };
 
     await expect(fetchLeaderboard(7)).rejects.toThrow('Database connection failed');
+    consoleSpy.mockRestore();
 });

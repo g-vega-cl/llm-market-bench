@@ -58,6 +58,11 @@ pnpm biome check --write
 pnpm biome check --write --unsafe
 ```
 
+### Zero-Warning Test Enforcement
+
+- **Python (`pytest.ini`)**: Configured at repository root and `apps/engine/` to filter third-party deprecation warnings (e.g. `websockets.legacy`).
+- **Web (`apps/web/package.json`)**: Configured with `NODE_OPTIONS="--no-warnings --no-deprecation"` to suppress experimental Node.js runtime warnings during test runs.
+
 ## Pre-commit Hook
 
 `.husky/pre-commit` uses `set -euo pipefail` for fail-fast behavior. Key design decisions:

@@ -36,7 +36,9 @@ describe('Profile Navigation & Route Migration TDD', () => {
         const memoryHistory = createMemoryHistory({ initialEntries: ['/'] });
         const router = createRouter({ routeTree: testRoute, history: memoryHistory });
 
-        render(<RouterProvider router={router} />);
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
 
         const profileLink = await screen.findByText('testuser@example.com');
         expect(profileLink).toBeInTheDocument();

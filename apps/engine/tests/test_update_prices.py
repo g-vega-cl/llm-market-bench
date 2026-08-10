@@ -2,7 +2,7 @@
 Tests for scripts.update_prices.py script, specifically the benchmark history fetching functionality.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -118,7 +118,8 @@ class TestFetchBenchmarkHistory:
             macro_tickers.update(items.keys())
         expected_tickers = sorted(list(set(BENCHMARK_TICKERS).union(macro_tickers)))
 
-        mock_mdm = AsyncMock()
+        mock_mdm = MagicMock()
+        mock_mdm.client = MagicMock()
         mock_mdm.get_history = AsyncMock(
             return_value=[
                 {"price": 450.00, "fetched_at": "2026-04-15"},
@@ -153,7 +154,8 @@ class TestFetchBenchmarkHistory:
                 raise Exception("FMP API error")
             return [{"price": 450.00, "fetched_at": "2026-04-15"}] * 30
 
-        mock_mdm = AsyncMock()
+        mock_mdm = MagicMock()
+        mock_mdm.client = MagicMock()
         mock_mdm.get_history = mock_get_history
 
         await fetch_benchmark_history(mock_mdm)
@@ -163,7 +165,8 @@ class TestFetchBenchmarkHistory:
     @pytest.mark.asyncio
     async def test_fetch_benchmark_history_insufficient_data_warning(self):
         """Should log warning when ticker has insufficient data points."""
-        mock_mdm = AsyncMock()
+        mock_mdm = MagicMock()
+        mock_mdm.client = MagicMock()
         mock_mdm.get_history = AsyncMock(
             return_value=[
                 {"price": 450.00, "fetched_at": "2026-04-15"},
@@ -178,7 +181,8 @@ class TestFetchBenchmarkHistory:
     @pytest.mark.asyncio
     async def test_fetch_benchmark_history_success_log(self):
         """Should log success message when benchmark data is stored."""
-        mock_mdm = AsyncMock()
+        mock_mdm = MagicMock()
+        mock_mdm.client = MagicMock()
         mock_mdm.get_history = AsyncMock(
             return_value=[
                 {"price": 450.00, "fetched_at": "2026-04-15"},

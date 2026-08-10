@@ -20,10 +20,12 @@ vi.mock('@tanstack/react-router', async () => {
 
 describe('DefaultCatchBoundary — uses design system', () => {
     it('renders "Try Again" button using DS Button component', () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         render(<DefaultCatchBoundary error={new Error('test error')} reset={vi.fn()} />);
 
         const button = screen.getByRole('button', { name: /try again/i });
         expect(button.className).toContain('inline-flex');
         expect(button.className).toContain('font-bold');
+        consoleSpy.mockRestore();
     });
 });

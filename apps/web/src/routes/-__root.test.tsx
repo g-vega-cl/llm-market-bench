@@ -14,10 +14,6 @@ vi.mock('@posthog/react', () => ({
     PostHogProvider: (props: Record<string, unknown>) => mockPostHogProvider(props),
 }));
 
-vi.mock('@posthog/react', () => ({
-    PostHogProvider: (props: Record<string, unknown>) => mockPostHogProvider(props),
-}));
-
 describe('Root layout navigation', () => {
     it('navItems should have Portfolios, Memories, and Auto-Research as the first three items', () => {
         expect(navItems[0].label).toBe('Portfolios');
@@ -73,7 +69,9 @@ describe('RootDocument PostHog configuration', () => {
             history: memoryHistory,
         });
 
-        render(<RouterProvider router={router} />);
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
 
         // Wait for router to resolve and render RootDocument
         await screen.findByText('Test Content');
@@ -103,7 +101,9 @@ describe('RootDocument PostHog configuration', () => {
             history: memoryHistory,
         });
 
-        render(<RouterProvider router={router} />);
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
         await screen.findByText('Test Content');
 
         expect(mockPostHogProvider).toHaveBeenCalled();
@@ -135,7 +135,9 @@ describe('RootDocument Performance Optimizations', () => {
             history: memoryHistory,
         });
 
-        render(<RouterProvider router={router} />);
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
         await screen.findByText('Test Content');
 
         // Verify the asynchronous font loading trick (check document since it's rendered in head)

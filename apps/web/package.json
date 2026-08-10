@@ -8,8 +8,8 @@
         "build": "NODE_OPTIONS=\"--no-deprecation\" vite build && tsc --noEmit",
         "preview": "vite preview",
         "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-        "test": "vitest run",
-        "test:watch": "vitest"
+        "test": "NODE_OPTIONS=\"--no-warnings --no-deprecation\" vitest run",
+        "test:watch": "NODE_OPTIONS=\"--no-warnings --no-deprecation\" vitest"
     },
     "keywords": [],
     "author": "",

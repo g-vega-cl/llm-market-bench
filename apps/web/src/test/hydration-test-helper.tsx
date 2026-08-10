@@ -13,6 +13,7 @@ import { vi } from 'vitest';
  */
 export function assertHydrationSymmetry(element: React.ReactElement): string[] {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const hydrationErrors: string[] = [];
 
     // Set up a global error event listener to catch React 19's thrown hydration errors
@@ -95,6 +96,7 @@ export function assertHydrationSymmetry(element: React.ReactElement): string[] {
 
     hydrationErrors.push(...consoleErrors);
     consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
 
     return hydrationErrors;
 }

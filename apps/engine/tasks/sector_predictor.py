@@ -158,14 +158,18 @@ async def run_sector_predictions():
 
                     if model["type"] == "instructor":
                         client_inst = model["client"]
-                        resp_awaitable = client_inst.chat.completions.create(
-                            model=model["name"],
-                            response_model=SectorPredictionResponse,
-                            messages=[
+                        create_kwargs = {
+                            "model": model["name"],
+                            "response_model": SectorPredictionResponse,
+                            "messages": [
                                 {"role": "system", "content": prompt_content},
                                 {"role": "user", "content": user_msg},
                             ],
-                        )
+                        }
+                        if model.get("provider") == "openai":
+                            create_kwargs["reasoning_effort"] = "none"
+
+                        resp_awaitable = client_inst.chat.completions.create(**create_kwargs)
                         if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
                             resp = await resp_awaitable
                         else:

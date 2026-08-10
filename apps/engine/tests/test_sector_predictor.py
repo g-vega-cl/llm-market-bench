@@ -134,3 +134,88 @@ async def test_run_sector_predictions_all_four_models():
     assert expected_models.issubset(upserted_model_names), (
         f"Expected all models {expected_models} to be executed, but got {upserted_model_names}"
     )
+
+
+@pytest.mark.asyncio
+async def test_openai_reasoning_effort_none_passed():
+    """Verify that OpenAI completions call explicitly passes reasoning_effort='none'."""
+    mock_client = MagicMock()
+    mock_chain = MagicMock()
+    mock_client.table.return_value = mock_chain
+    mock_chain.select.return_value = mock_chain
+    mock_chain.eq.return_value = mock_chain
+    mock_chain.order.return_value = mock_chain
+    mock_chain.limit.return_value = mock_chain
+    mock_chain.upsert.return_value = mock_chain
+
+    mock_prompt_res = MagicMock()
+    mock_prompt_res.data = [{"variant_tag": "test-tag", "prompt_content": "TEST_PROMPT"}]
+    mock_runs_res = MagicMock()
+    mock_runs_res.data = [{"id": "run-1", "run_date": "2026-08-01"}]
+    mock_corr_res = MagicMock()
+    mock_corr_res.data = [{"ticker_a": "XLK", "ticker_b": "XLV", "pearson_corr": 0.1}]
+
+    def mock_table_routing(table_name):
+        chain = MagicMock()
+        chain.select.return_value = chain
+        chain.eq.return_value = chain
+        chain.order.return_value = chain
+        chain.limit.return_value = chain
+        chain.upsert.return_value = chain
+
+        def mock_execute():
+            if table_name == "prompt_experiments":
+                return mock_prompt_res
+            if table_name == "correlation_runs":
+                return mock_runs_res
+            if table_name == "correlation_data":
+                return mock_corr_res
+            return MagicMock(data=[])
+
+        chain.execute.side_effect = mock_execute
+        return chain
+
+    mock_client.table.side_effect = mock_table_routing
+
+    mock_instructor_resp = SectorPredictionResponse(
+        predicted_sector="XLK",
+        predicted_pair=["XLK", "XLV"],
+        reasoning="Test instructor reasoning",
+    )
+
+    openai_create_calls = []
+
+    async def mock_openai_create(*args, **kwargs):
+        openai_create_calls.append(kwargs)
+        return mock_instructor_resp
+
+    async def mock_other_create(*args, **kwargs):
+        return mock_instructor_resp
+
+    mock_openai_inst_client = MagicMock()
+    mock_openai_inst_client.chat.completions.create = mock_openai_create
+
+    mock_other_inst_client = MagicMock()
+    mock_other_inst_client.chat.completions.create = mock_other_create
+
+    mock_minimax_client = MagicMock()
+    mock_minimax_client.chat_with_json_response = AsyncMock(
+        return_value={"predicted_sector": "XLK", "predicted_pair": ["XLK", "XLV"], "reasoning": "r"}
+    )
+    mock_minimax_client.close = AsyncMock()
+
+    with (
+        patch("tasks.sector_predictor.get_supabase_client", return_value=mock_client),
+        patch("tasks.sector_predictor.get_deepseek_client", return_value=mock_other_inst_client),
+        patch("tasks.sector_predictor.get_gemini_client", return_value=mock_other_inst_client),
+        patch("tasks.sector_predictor.get_openai_client", return_value=mock_openai_inst_client),
+        patch("tasks.sector_predictor.MiniMaxClient", return_value=mock_minimax_client),
+        patch("tasks.sector_predictor.close_client", new_callable=AsyncMock),
+    ):
+        await run_sector_predictions()
+
+    assert len(openai_create_calls) == 4, f"Expected 4 OpenAI calls across 4 timeframes, got {len(openai_create_calls)}"
+    for call_kwargs in openai_create_calls:
+        assert call_kwargs.get("reasoning_effort") == "none", (
+            f"Expected reasoning_effort='none' in OpenAI call, got {call_kwargs}"
+        )

@@ -131,3 +131,4 @@ Feels like I have done that before to no avail
 - [ ] - https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/honcho.md
 - [ ] - Benchify: FRED api fed api
 - [ ] - Benchify: Toronto stock market
+- [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?

@@ -254,3 +254,84 @@ async def test_run_research_uses_track_specific_model():
         res_default = await researcher.run_research(report="Report", track_id="track_default")
         assert res_default is not None
         assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-pro"
+
+
+@pytest.mark.asyncio
+async def test_researcher_passes_max_tokens_32000():
+    """Verify run_research includes max_tokens=32000 in create_args for LLM completion."""
+    mock_result = MagicMock()
+    mock_result.new_prompt_text = "New prompt"
+    mock_result.change_description = "Desc"
+    mock_result.experiment_type = "incremental"
+    mock_result.research_reasoning = "Reasoning"
+    mock_result.confidence = 90
+    mock_result.selected_tools = ["get_stock_quote"]
+
+    mock_client = MagicMock()
+    mock_completion = AsyncMock(return_value=mock_result)
+    mock_client.chat.completions.create = mock_completion
+
+    with patch("autoresearch.researcher._get_client_and_provider_for_model", return_value=(mock_client, "minimax")):
+        await researcher.run_research(report="Report", track_id="track_openai")
+
+        call_kwargs = mock_completion.call_args.kwargs
+        assert "max_tokens" in call_kwargs
+        assert call_kwargs["max_tokens"] == 32000
+
+
+@pytest.mark.asyncio
+async def test_query_trade_postmortems_uses_decisions_table():
+    """Verify query_trade_postmortems queries the decisions table, not model_trade_decisions."""
+    from autoresearch.tools import query_trade_postmortems
+
+    mock_sb = MagicMock()
+    mock_chain = MagicMock()
+    mock_chain.select.return_value = mock_chain
+    mock_chain.order.return_value = mock_chain
+    mock_chain.limit.return_value = mock_chain
+    mock_chain.execute = AsyncMock(
+        return_value=MagicMock(
+            data=[
+                {
+                    "ticker": "AAPL",
+                    "signal": "BUY",
+                    "reasoning": "Strong momentum",
+                    "status": "EXECUTED",
+                }
+            ]
+        )
+    )
+    mock_sb.table.return_value = mock_chain
+
+    with patch("core.db.get_async_supabase_client", return_value=mock_sb):
+        res = await query_trade_postmortems(track_id="track_openai", limit=5)
+        mock_sb.table.assert_called_once_with("decisions")
+        assert "AAPL" in res
+        assert "BUY" in res
+
+
+@pytest.mark.asyncio
+async def test_revert_to_previous_bootstraps_if_no_prior_variants():
+    """Verify revert_to_previous triggers bootstrap if no baseline or saved variants exist for a track."""
+    mock_sb = MagicMock()
+    mock_chain = MagicMock()
+    mock_chain.update.return_value = mock_chain
+    mock_chain.eq.return_value = mock_chain
+    mock_chain.select.return_value = mock_chain
+    mock_chain.in_.return_value = mock_chain
+    mock_chain.order.return_value = mock_chain
+    mock_chain.limit.return_value = mock_chain
+    mock_chain.maybe_single.return_value = mock_chain
+
+    # DB update for status=crashed returns empty kept
+    mock_chain.execute = AsyncMock(return_value=MagicMock(data=None))
+    mock_sb.table.return_value = mock_chain
+
+    with (
+        patch("autoresearch.prompt_store.get_async_supabase_client", return_value=mock_sb),
+        patch("autoresearch.bootstrap.bootstrap", new_callable=AsyncMock) as mock_bootstrap,
+    ):
+        mock_bootstrap.return_value = "v_bootstrapped"
+        reverted = await prompt_store.revert_to_previous(track_id="track_openai")
+        assert reverted == "v_bootstrapped"
+        mock_bootstrap.assert_called_once_with(track_id="track_openai")

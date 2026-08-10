@@ -20,9 +20,9 @@ async def query_trade_postmortems(track_id: str = "track_default", limit: int = 
 
         sb_client = await get_async_supabase_client()
         res = (
-            await sb_client.table("model_trade_decisions")
-            .select("ticker, decision, reasoning, verification_status, executed_at")
-            .order("executed_at", desc=True)
+            await sb_client.table("decisions")
+            .select("ticker, signal, reasoning, status, created_at")
+            .order("created_at", desc=True)
             .limit(limit)
             .execute()
         )
@@ -33,8 +33,8 @@ async def query_trade_postmortems(track_id: str = "track_default", limit: int = 
         lines = [f"=== RECENT TRADE DECISIONS AUDIT (Track: {track_id}) ==="]
         for row in res.data:
             ticker = row.get("ticker", "UNKNOWN")
-            action = row.get("decision", "HOLD")
-            status = row.get("verification_status", "N/A")
+            action = row.get("signal") or row.get("decision") or "HOLD"
+            status = row.get("status") or row.get("verification_status") or "N/A"
             reasoning = (row.get("reasoning") or "")[:150]
             lines.append(f"- [{status}] {action} {ticker}: {reasoning}")
 

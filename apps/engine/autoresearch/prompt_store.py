@@ -299,8 +299,15 @@ async def revert_to_previous(
         logger.info("Reverted to previous prompt variant: %s", tag)
         return tag
 
-    logger.warning("No previous baseline/saved variant to revert to (prompt_name=%s)", prompt_name)
-    return None
+    logger.warning(
+        "No previous baseline/saved variant to revert to (prompt_name=%s). Bootstrapping initial baseline for track %s...",
+        prompt_name,
+        track_id,
+    )
+    from autoresearch.bootstrap import bootstrap
+
+    bootstrapped_tag = await bootstrap(track_id=track_id)
+    return bootstrapped_tag
 
 
 async def revert_to_baseline(

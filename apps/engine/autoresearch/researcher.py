@@ -136,6 +136,7 @@ async def run_research(
             "model": model_name,
             "response_model": PromptResearchResult,
             "messages": messages,
+            "max_tokens": 32000,
             "max_retries": 2,
         }
 

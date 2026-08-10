@@ -63,3 +63,26 @@ def test_daily_predictor_workflow_schedule():
     assert "0 13 * * 1-5" in cron_triggers, f"Expected 0 13 * * 1-5 in cron triggers, found: {cron_triggers}"
     assert "15 21 * * 1-5" in cron_triggers, f"Expected 15 21 * * 1-5 in cron triggers, found: {cron_triggers}"
     assert "0 22 * * 0,3" in cron_triggers, f"Expected 0 22 * * 0,3 in cron triggers, found: {cron_triggers}"
+
+
+def test_generate_newsletter_workflow_schedule():
+    """Verify generate-newsletter.yml cron schedules cover EDT and EST market open and close."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    newsletter_yml_path = root / ".github" / "workflows" / "generate-newsletter.yml"
+
+    assert newsletter_yml_path.exists(), f"Could not find workflow file at {newsletter_yml_path}"
+
+    with open(newsletter_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    on_key = "on" if "on" in config else True
+    schedule = config.get(on_key, {}).get("schedule", [])
+    cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
+
+    assert "0 13,14 * * 1-5" in cron_triggers, (
+        f"Expected 0 13,14 * * 1-5 in cron triggers, found: {cron_triggers}"
+    )
+    assert "0 21,22 * * 1-5" in cron_triggers, (
+        f"Expected 0 21,22 * * 1-5 in cron triggers, found: {cron_triggers}"
+    )
+

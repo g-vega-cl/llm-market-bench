@@ -2,10 +2,10 @@ name: Daily Newsletter Generator
 
 on:
   schedule:
-    # 9:00 AM ET Mon-Fri (13:00 UTC) -> Market Open Newsletter
-    - cron: '0 13 * * 1-5'
-    # 5:00 PM ET Mon-Fri (21:00 UTC) -> Market Close Newsletter
-    - cron: '0 21 * * 1-5'
+    # 9:00 AM ET Mon-Fri (13:00 UTC EDT / 14:00 UTC EST) -> Market Open Newsletter
+    - cron: '0 13,14 * * 1-5'
+    # 5:00 PM ET Mon-Fri (21:00 UTC EDT / 22:00 UTC EST) -> Market Close Newsletter
+    - cron: '0 21,22 * * 1-5'
   workflow_dispatch:
     inputs:
       session:
@@ -43,7 +43,7 @@ jobs:
             SESSION="${{ inputs.session }}"
           else
             HOUR=$(date -u +%H)
-            if [ "$HOUR" = "13" ]; then
+            if [ "$HOUR" = "13" ] || [ "$HOUR" = "14" ]; then
               SESSION="open"
             else
               SESSION="close"

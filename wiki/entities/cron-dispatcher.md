@@ -9,25 +9,25 @@ The **Cron Dispatcher** is a Cloudflare Worker that provides high-precision, edg
 
 ## Multi-Workflow Routing
 
-The dispatcher now supports multiple workflows beyond `daily-predictor.yml`. It routes based on the scheduled time via a `resolveScheduledTarget()` function, supporting both `ingest.yml` and `daily-predictor.yml` with specific input actions.
+The dispatcher supports multiple workflows beyond `daily-predictor.yml`. It evaluates the scheduled timestamp against the **`America/New_York`** local timezone via `getNewYorkTime()` before routing targets. This prevents duplicate executions when `wrangler.jsonc` exposes dual UTC cron hours to cover both EDT (UTC-4) and EST (UTC-5) seasonal shifts.
 
 ### Scheduled Time to Workflow Mapping
 
-| UTC Time | ET Time | Minute | Workflow File | Inputs |
-|----------|---------|--------|---------------|--------|
-| 13:00 | 9:00 AM | 0 | `daily-predictor.yml` & `generate-newsletter.yml` | `{"action": "daily-predictor"}` / `{"session": "open"}` |
-| 13:35, 14:35, 15:35 | 9:35, 10:35, 11:35 AM | 35 | `ingest.yml` | none |
-| 18:00 | 2:00 PM | 0 | `ingest.yml` | none |
-| 21:00 | 5:00 PM | 0 | `generate-newsletter.yml` | `{"session": "close"}` |
-| 21:15 | 5:15 PM | 15 | `daily-predictor.yml` | `{"action": "evaluate-daily-predictions"}` |
-| 22:00 (Sun & Wed) | 6:00 PM (Sun & Wed) | 0 | `daily-predictor.yml` | `{"action": "daily-autoresearch"}` |
+| UTC Time | ET Time (EDT / EST) | Minute | Workflow File | Inputs |
+|----------|----------------------|--------|---------------|--------|
+| 13:00 / 14:00 | 9:00 AM ET | 0 | `daily-predictor.yml` & `generate-newsletter.yml` | `{"action": "daily-predictor"}` / `{"session": "open"}` |
+| 13:35, 14:35, 15:35, 16:35 | 9:35, 10:35, 11:35 AM ET | 35 | `ingest.yml` | none |
+| 18:00 / 19:00 | 2:00 PM ET | 0 | `ingest.yml` | none |
+| 21:00 / 22:00 | 5:00 PM ET | 0 | `generate-newsletter.yml` | `{"session": "close"}` |
+| 21:15 | 5:15 PM ET | 15 | `daily-predictor.yml` | `{"action": "evaluate-daily-predictions"}` |
+| 22:00 (Sun & Wed) | 6:00 PM ET (Sun & Wed) | 0 | `daily-predictor.yml` | `{"action": "daily-autoresearch"}` |
 
 ## Cron Triggers (wrangler.jsonc)
 
-The Worker exposes these cron expressions:
+The Worker exposes these edge cron expressions:
 
-- `0 13,18,21 * * MON-FRI` — 9:00 AM, 2:00 PM, 5:00 PM ET (daily-predictor, ingest, generate-newsletter)
-- `35 13-15 * * MON-FRI` — 9:35, 10:35, 11:35 AM ET (ingest)
+- `0 13,14,18,19,21,22 * * MON-FRI` — 9:00 AM, 2:00 PM, 5:00 PM ET (EDT & EST offsets for daily-predictor, ingest, generate-newsletter)
+- `35 13-16 * * MON-FRI` — 9:35, 10:35, 11:35 AM ET (ingest)
 - `15 21 * * MON-FRI` — 5:15 PM ET (evaluate daily predictions)
 - `0 22 * * SUN,WED` — 6:00 PM ET (daily-autoresearch on Sundays and Wednesdays)
 
@@ -47,8 +47,26 @@ When accessed via HTTP, the Worker accepts query parameters:
 
 - **Eliminates Queue Bottlenecks**: No wait for GitHub-provided scheduler queuing; workflow is triggered instantly via API.
 - **Edge Reliability**: Cloudflare Workers run globally with minimal cold start.
-- **Precise Timing**: Sub-5-second dispatch latency ensures time-sensitive market hour operations fire on time.
-- **Single Point of Management**: All scheduled workflows (prediction, ingest, evaluation, autoresearch) are controlled by one Worker with clear routing rules.
+## Deployment & Operational Protocol
+
+> [!IMPORTANT]
+> Modifying `apps/cron-dispatcher/` code (e.g., `src/index.ts` or `wrangler.jsonc`) in Git does **NOT** automatically deploy worker changes to Cloudflare. Whenever Cloudflare Worker code or cron schedules are updated, you MUST deploy the changes using `wrangler deploy`.
+
+### Deployment Command
+
+```bash
+cd apps/cron-dispatcher
+npx wrangler deploy
+```
+
+### Inspecting Active Deployments
+
+To list deployment history and verify the active version timestamp on Cloudflare:
+
+```bash
+cd apps/cron-dispatcher
+npx wrangler deployments list
+```
 
 ## Related
 

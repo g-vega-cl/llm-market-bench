@@ -6,8 +6,8 @@
   "workers_dev": true,
   "triggers": {
     "crons": [
-      "0 13,18,21 * * MON-FRI",
-      "35 13-15 * * MON-FRI",
+      "0 13,14,18,19,21,22 * * MON-FRI",
+      "35 13-16 * * MON-FRI",
       "15 21 * * MON-FRI",
       "0 22 * * SUN,WED"
     ]

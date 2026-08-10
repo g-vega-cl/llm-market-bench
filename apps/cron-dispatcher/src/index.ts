@@ -41,49 +41,65 @@ async function dispatchWorkflow(
   };
 }
 
+function getNewYorkTime(date: Date): { hour: number; minute: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(date);
+
+  let hour = 0;
+  let minute = 0;
+  for (const part of parts) {
+    if (part.type === 'hour') hour = parseInt(part.value, 10) % 24;
+    if (part.type === 'minute') minute = parseInt(part.value, 10);
+  }
+
+  return { hour, minute, day: date.getUTCDay() };
+}
+
 function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
-  const hour = scheduledTime.getUTCHours();
-  const minute = scheduledTime.getUTCMinutes();
+  const { hour: nyHour, minute: nyMinute, day } = getNewYorkTime(scheduledTime);
 
-  if (minute === 35) {
-    // 9:35 AM ET (13:35 UTC), 10:35 AM ET (14:35 UTC), 11:35 AM ET (15:35 UTC)
+  if (nyMinute === 35) {
+    // 9:35 AM ET, 10:35 AM ET, 11:35 AM ET -> Ingest
     return [{ workflowFile: 'ingest.yml' }];
   }
 
-  if (hour === 18 && minute === 0) {
-    // 2:00 PM ET (18:00 UTC)
-    return [{ workflowFile: 'ingest.yml' }];
-  }
-
-  if (hour === 13 && minute === 0) {
-    // 9:00 AM ET (13:00 UTC) -> Market open prediction & Market open newsletter
+  if (nyHour === 9 && nyMinute === 0) {
+    // 9:00 AM ET -> Market open prediction & Market open newsletter
     return [
       { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } },
       { workflowFile: 'generate-newsletter.yml', inputs: { session: 'open' } },
     ];
   }
 
-  if (hour === 21 && minute === 0) {
-    // 5:00 PM ET (21:00 UTC) -> Market close newsletter
+  if (nyHour === 14 && nyMinute === 0) {
+    // 2:00 PM ET -> Midday ingest
+    return [{ workflowFile: 'ingest.yml' }];
+  }
+
+  if (nyHour === 17 && nyMinute === 0) {
+    // 5:00 PM ET -> Market close newsletter
     return [{ workflowFile: 'generate-newsletter.yml', inputs: { session: 'close' } }];
   }
 
-  if (hour === 21 && minute === 15) {
-    // 5:15 PM ET (21:15 UTC)
+  if (nyHour === 17 && nyMinute === 15) {
+    // 5:15 PM ET -> Evaluate daily predictions
     return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'evaluate-daily-predictions' } }];
   }
 
-  if (hour === 22 && minute === 0) {
-    // 6:00 PM ET (22:00 UTC) on Sun (0) & Wed (3) -> Run prompt autoresearch 2x a week
-    const day = scheduledTime.getUTCDay();
+  if (nyHour === 18 && nyMinute === 0) {
+    // 6:00 PM ET on Sun (0) & Wed (3) -> Prompt autoresearch 2x a week
     if (day === 0 || day === 3) {
       return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-autoresearch' } }];
     }
     return [];
   }
 
-  // Default fallback
-  return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } }];
+  // Default fallback (no action for non-matching schedule triggers)
+  return [];
 }
 
 export default {

@@ -39,7 +39,8 @@ async def run_lin_renko_autoresearch(
 
     # Generate mutation recommendation
     return LinRenkoResearchResult(
-        new_lin_prompt_text=current_prompt + f"\n\n[ AUTORESEARCH MUTATION ]\nOptimized for win rate: {win_rate:.1f}%. Prioritize fab gas demand backlog validation on 2-brick reversals.",
+        new_lin_prompt_text=current_prompt
+        + f"\n\n[ AUTORESEARCH MUTATION ]\nOptimized for win rate: {win_rate:.1f}%. Prioritize fab gas demand backlog validation on 2-brick reversals.",
         recommended_atr_period=14,
         reversal_brick_sensitivity=2,
         change_description=f"Refined LIN context integration based on {win_rate:.1f}% win rate performance.",

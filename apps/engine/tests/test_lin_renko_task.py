@@ -37,7 +37,7 @@ def test_renko_state_serialization():
 async def test_lin_agent_specialized_fmp_tools():
     """Verify LinAgent can fetch LIN-specific financial metrics via FMP provider."""
     agent = LinAgent(model_name="deepseek-v4-flash")
-    
+
     mock_provider = MagicMock()
     mock_provider.get_analyst_estimates = AsyncMock(return_value=[{"estimatedRevenueAvg": 35000000000}])
     mock_provider.get_key_metrics = AsyncMock(return_value=[{"roic": 0.165, "freeCashFlowYield": 0.042}])
@@ -59,15 +59,18 @@ async def test_lin_renko_flow_execution_mocked():
     mock_portfolio.cash_balance = 10000.0
     mock_portfolio.positions = {}
 
-    with patch("execution.portfolio.get_supabase_client", return_value=mock_sb), \
-         patch("tasks.lin_renko_task.Portfolio", return_value=mock_portfolio), \
-         patch("tasks.lin_renko_task.FMPProvider") as mock_fmp_cls:
-        
+    with (
+        patch("execution.portfolio.get_supabase_client", return_value=mock_sb),
+        patch("tasks.lin_renko_task.Portfolio", return_value=mock_portfolio),
+        patch("tasks.lin_renko_task.FMPProvider") as mock_fmp_cls,
+    ):
         mock_fmp_inst = mock_fmp_cls.return_value
-        mock_fmp_inst.get_history = AsyncMock(return_value=[
-            {"fetched_at": "2026-08-01", "price": 485.0},
-            {"fetched_at": "2026-08-05", "price": 490.61},
-        ])
+        mock_fmp_inst.get_history = AsyncMock(
+            return_value=[
+                {"fetched_at": "2026-08-01", "price": 485.0},
+                {"fetched_at": "2026-08-05", "price": 490.61},
+            ]
+        )
         mock_fmp_inst.get_analyst_estimates = AsyncMock(return_value=[{"estimatedRevenueAvg": 35000000000}])
         mock_fmp_inst.get_key_metrics = AsyncMock(return_value=[{"roic": 0.165, "freeCashFlowYield": 0.042}])
         mock_fmp_inst.get_earnings_history = AsyncMock(return_value=[{"epsSurprisePercent": 2.5}])

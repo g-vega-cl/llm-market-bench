@@ -565,6 +565,9 @@ async def analyze_with_provider(
             "max_retries": 2,
         }
 
+        if provider == "openai":
+            final_args["reasoning_effort"] = "none"
+
         if provider == "gemini":
             for msg in final_args["messages"]:
                 if isinstance(msg, dict) and msg.get("role") == "assistant":

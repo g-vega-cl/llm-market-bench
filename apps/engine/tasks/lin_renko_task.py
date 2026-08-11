@@ -51,11 +51,13 @@ async def run_lin_renko_flow() -> dict[str, Any]:
         fab_gas_demand="HIGH",
         industrial_pmi=51.2,
         take_or_pay_backlog_billions=4.2,
-        recent_news_summary=f"LIN ROIC: {lin_metrics.get('roic', 0.15)*100:.1f}%, FCF Yield: {lin_metrics.get('freeCashFlowYield', 0.04)*100:.1f}%, EPS Surprise: +{lin_metrics.get('earnings_surprise_pct', 2.0)}%.",
+        recent_news_summary=f"LIN ROIC: {lin_metrics.get('roic', 0.15) * 100:.1f}%, FCF Yield: {lin_metrics.get('freeCashFlowYield', 0.04) * 100:.1f}%, EPS Surprise: +{lin_metrics.get('earnings_surprise_pct', 2.0)}%.",
     )
 
     decision_res = await agent.analyze(engine.state, context)
-    logger.info(f"LIN Renko Decision ({agent.model_name}): {decision_res['decision']} (Confidence: {decision_res['confidence']})")
+    logger.info(
+        f"LIN Renko Decision ({agent.model_name}): {decision_res['decision']} (Confidence: {decision_res['confidence']})"
+    )
 
     return {
         "symbol": "LIN",

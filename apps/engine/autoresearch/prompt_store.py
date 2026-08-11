@@ -50,7 +50,11 @@ async def get_active_prompt(
     if track_id:
         query = query.eq("track_id", track_id)
 
-    res = await query.maybe_single().execute()
+    try:
+        res = await query.maybe_single().execute()
+    except Exception as e:
+        logger.info("No active prompt found for track_id=%s, prompt_name=%s (%s)", track_id, prompt_name, e)
+        return None
 
     if (
         not res

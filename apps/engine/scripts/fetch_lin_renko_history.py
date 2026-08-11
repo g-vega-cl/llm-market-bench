@@ -24,10 +24,10 @@ OUTPUT_PATH = Path(__file__).parent.parent / "scratch" / "lin_renko_history.json
 async def fetch_and_generate_lin_renko():
     logger.info("Fetching historical price data for LIN via FMP...")
     provider = FMPProvider()
-    
+
     # Fetch historical daily prices (e.g. 730 days / 2 years)
     history = await provider.get_history("LIN", days=730)
-    
+
     if not history:
         logger.warning("FMP historical query returned no data. Using fallback realistic price history.")
         # Fallback to realistic LIN price series around $440-$460 range over 60 steps
@@ -36,7 +36,7 @@ async def fetch_and_generate_lin_renko():
         for i in range(60):
             step = (i % 7 - 3) * 1.8 + (i * 0.3)
             prices.append(round(base + step, 2))
-        timestamps = [f"2026-06-{(i%30)+1:02d}" for i in range(len(prices))]
+        timestamps = [f"2026-06-{(i % 30) + 1:02d}" for i in range(len(prices))]
     else:
         # FMP history is sorted reverse-chronological; reverse it to chronological order
         bars = sorted(history, key=lambda b: b.get("fetched_at", ""))
@@ -54,13 +54,15 @@ async def fetch_and_generate_lin_renko():
     for p, ts in zip(prices, timestamps, strict=False):
         new_bricks = engine.process_price(p, timestamp=ts)
         for b in new_bricks:
-            all_generated_bricks.append({
-                "id": b.brick_id,
-                "direction": b.direction,
-                "openPrice": b.open_price,
-                "closePrice": b.close_price,
-                "timestamp": b.timestamp,
-            })
+            all_generated_bricks.append(
+                {
+                    "id": b.brick_id,
+                    "direction": b.direction,
+                    "openPrice": b.open_price,
+                    "closePrice": b.close_price,
+                    "timestamp": b.timestamp,
+                }
+            )
 
     output_data = {
         "symbol": "LIN",
@@ -91,7 +93,9 @@ async def fetch_and_generate_lin_renko():
     if all_generated_bricks:
         print("\nLast 5 Renko Bricks:")
         for b in all_generated_bricks[-5:]:
-            print(f"  Brick #{b['id']} ({b['timestamp']}): {b['direction']} [${b['openPrice']:.2f} -> ${b['closePrice']:.2f}]")
+            print(
+                f"  Brick #{b['id']} ({b['timestamp']}): {b['direction']} [${b['openPrice']:.2f} -> ${b['closePrice']:.2f}]"
+            )
 
 
 if __name__ == "__main__":

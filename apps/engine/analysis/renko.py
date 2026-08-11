@@ -46,11 +46,11 @@ class RenkoEngine:
         """Calculates Average True Range (ATR) snapshot from price series."""
         if len(prices) < 2:
             return 2.0
-        
+
         diffs = [abs(prices[i] - prices[i - 1]) for i in range(1, len(prices))]
         if not diffs:
             return 2.0
-        
+
         recent_diffs = diffs[-period:] if len(diffs) >= period else diffs
         atr = sum(recent_diffs) / len(recent_diffs)
         return max(round(atr, 2), 0.10)

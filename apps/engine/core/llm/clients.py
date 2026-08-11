@@ -18,7 +18,8 @@ TIMEOUT = 180
 def get_openai_client(api_key: str | None = None):
     """Creates an async OpenAI client wrapped with Instructor."""
     key = api_key or config.OPENAI_API_KEY
-    return instructor.from_openai(AsyncOpenAI(api_key=key, timeout=TIMEOUT))
+    client = instructor.from_openai(AsyncOpenAI(api_key=key, timeout=TIMEOUT))
+    return client
 
 
 def get_anthropic_client(api_key: str | None = None):

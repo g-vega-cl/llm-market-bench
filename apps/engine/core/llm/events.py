@@ -203,6 +203,7 @@ async def analyze_event_relationship(new_event: str, potential_ancestors: list[d
             model=config.OPENAI_MODEL,
             response_model=RelationshipResponse,
             messages=messages,
+            reasoning_effort="none",
             max_retries=2,
         )
 

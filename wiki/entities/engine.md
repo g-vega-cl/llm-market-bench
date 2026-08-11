@@ -20,7 +20,7 @@ executing trades, and running feedback loops.
 
   | Provider | Model | SDK | Reason |
   |---|---|---|---|
-  | `openai` | GPT-4o etc. | `AsyncOpenAI` | native |
+  | `openai` | GPT-4o / GPT-5.6 Luna | `AsyncOpenAI` | native (requires `reasoning_effort="none"` when using tool schemas on `/v1/chat/completions`) |
   | `anthropic` | Claude | `AsyncAnthropic` | native |
   | `deepseek` | DeepSeek | `AsyncOpenAI` | DeepSeek exposes an OpenAI-compatible API |
   | `gemini` | Gemini | `google.genai.Client` | native |
@@ -30,7 +30,7 @@ executing trades, and running feedback loops.
 - **Execution** (`execution/`) — validation, Reg T checks, portfolio management (and the simplified market-order pipeline for MiniMax)
 - **Memory** (`memory/`) — pgvector embeddings, RAG retrieval, deduplication
 - **Attribution** (`attribution/`) — decision persistence and trade linking
-- **Auto-Research** (`autoresearch/`) — weekly autonomous prompt improvement via meta-researcher LLM
+- **Auto-Research** (`autoresearch/`) — weekly autonomous prompt improvement via meta-researcher LLM (`prompt_store.py` handles PostgREST single-row query exceptions gracefully)
 
 - **Prompt Factory & Model Calibration** (`core/llm/prompt_factory.py`) — Centralized prompt assembly handling provider adaptations, web search instruction stripping, and model-specific prompt calibration (e.g., `gpt-5.4-nano` pre-signal valuation self-audit instructions to reduce verifier rejection rates and encourage valid `HOLD` signals).
 

@@ -20,11 +20,11 @@ def test_renko_engine_initialization():
 def test_renko_brick_generation_uptrend():
     """Verify price increases trigger green (UP) bricks."""
     engine = RenkoEngine(symbol="LIN", brick_size=2.0)
-    
+
     # Initial anchor price
     engine.process_price(100.0)
     assert len(engine.bricks) == 0  # Anchor point set
-    
+
     # Move up by 2.5 (crosses 1 brick threshold of 2.0)
     engine.process_price(102.5)
     assert len(engine.bricks) == 1
@@ -82,7 +82,7 @@ def test_lin_agent_prompt_construction():
         take_or_pay_backlog_billions=4.2,
         recent_news_summary="Semiconductor fab expansion in Arizona announced.",
     )
-    
+
     agent = LinAgent(model_name="deepseek-v4-flash")
     prompt = agent.build_prompt(renko_state, context)
 

@@ -80,6 +80,7 @@ async def run_tool_loop(
             "model": model_name,
             "messages": messages,
             "tools": override_tools if override_tools is not None else _build_tool_list(enable_web_search),
+            "reasoning_effort": "none",
         }
 
         try:

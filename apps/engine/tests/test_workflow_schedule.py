@@ -79,10 +79,5 @@ def test_generate_newsletter_workflow_schedule():
     schedule = config.get(on_key, {}).get("schedule", [])
     cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
 
-    assert "0 13,14 * * 1-5" in cron_triggers, (
-        f"Expected 0 13,14 * * 1-5 in cron triggers, found: {cron_triggers}"
-    )
-    assert "0 21,22 * * 1-5" in cron_triggers, (
-        f"Expected 0 21,22 * * 1-5 in cron triggers, found: {cron_triggers}"
-    )
-
+    assert "0 13,14 * * 1-5" in cron_triggers, f"Expected 0 13,14 * * 1-5 in cron triggers, found: {cron_triggers}"
+    assert "0 21,22 * * 1-5" in cron_triggers, f"Expected 0 21,22 * * 1-5 in cron triggers, found: {cron_triggers}"

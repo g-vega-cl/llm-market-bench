@@ -244,6 +244,33 @@ class MarketDataManager:
         logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
 
+    async def get_premarket_quote(self, ticker: str) -> dict | None:
+        """Fetch fresh pre-market / early session quote and calculate change details vs previous close."""
+        quote = await self.get_quote(ticker, force_refresh=True)
+        if not quote or not quote.price:
+            return None
+
+        # Fetch recent history to find the previous session's close price
+        history = await self.get_history(ticker, days=5)
+        prev_close = None
+        if history:
+            sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
+            prev_close = float(sorted_hist[-1].get("close") or sorted_hist[-1].get("price"))
+
+        if not prev_close or prev_close <= 0:
+            prev_close = quote.price
+
+        change = quote.price - prev_close
+        change_pct = (change / prev_close) * 100.0 if prev_close else 0.0
+
+        return {
+            "price": quote.price,
+            "previous_close": prev_close,
+            "change": change,
+            "change_pct": change_pct,
+        }
+
+
     async def screen_stocks(
         self,
         market_cap_more_than: float | None = None,

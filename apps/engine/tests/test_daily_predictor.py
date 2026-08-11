@@ -85,6 +85,14 @@ async def test_get_daily_market_context_technicals():
     mock_history = [{"price": 700.0 + i, "fetched_at": f"2026-07-{i + 1:02d}T00:00:00Z"} for i in range(25)]
     mock_mdm = MagicMock()
     mock_mdm.get_history = AsyncMock(return_value=mock_history)
+    mock_mdm.get_premarket_quote = AsyncMock(
+        return_value={
+            "price": 725.50,
+            "previous_close": 724.00,
+            "change": 1.50,
+            "change_pct": 0.207,
+        }
+    )
 
     with (
         patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
@@ -101,7 +109,11 @@ async def test_get_daily_market_context_technicals():
         assert "Previous Trading Session" in ctx
         assert "5-Day Return" in ctx
         assert "20-Day Simple Moving Average" in ctx
+        assert "Live Pre-Market / Early Session Quote" in ctx
+        assert "$725.50" in ctx
+        assert "+0.21%" in ctx
         assert "Global Macro Baseline" in ctx
         assert "Volatility Index Details" in ctx
         assert "Market Health Barometer" in ctx
         assert "Recent Market Feeling" in ctx
+

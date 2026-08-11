@@ -115,9 +115,21 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
     except Exception as e:
         logger.warning(f"Error fetching market feeling: {e}")
 
-    # 2. Price Action & Technicals via MarketDataManager (FMP)
+    # 2. Price Action, Technicals & Pre-Market Data via MarketDataManager (FMP)
     try:
         mdm = MarketDataManager()
+
+        # Pre-Market Live Quote
+        pm_quote = await mdm.get_premarket_quote(ticker)
+        if pm_quote:
+            pm_price = pm_quote["price"]
+            pm_change = pm_quote["change"]
+            pm_change_pct = pm_quote["change_pct"]
+            context_lines.append(
+                f"Live Pre-Market / Early Session Quote: ${pm_price:.2f} "
+                f"(Gap / Change: {pm_change:+.2f} / {pm_change_pct:+.2f}% vs Prev Close ${pm_quote['previous_close']:.2f})"
+            )
+
         history = await mdm.get_history(ticker, days=30)
         if history and len(history) >= 2:
             sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
@@ -138,7 +150,7 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
                 context_lines.append(f"20-Day Simple Moving Average (SMA20): ${sma_20:.2f}")
 
     except Exception as e:
-        logger.warning(f"Error fetching technical indicators via MarketDataManager for {ticker}: {e}")
+        logger.warning(f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}")
 
     context_lines.append(f"Prediction Target Date: {today_str}")
     return "\n".join(context_lines)

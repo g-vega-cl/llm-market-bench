@@ -12,7 +12,7 @@ The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions f
 1. **Pre-Market Inference (9:00 AM ET)**:
    - Command: `python main.py daily-predictor [--ticker SPY]`
    - Model: **DeepSeek Flash** (`deepseek-v4-flash`) with Instructor structured output (`DailyPredictionOutput`).
-   - Context: Synthesizes technical indicators (SMA20, 5-day return via FMP `MarketDataManager`) and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
+   - Context: Synthesizes live pre-market price quote & gap change metrics (via FMP `MarketDataManager.get_premarket_quote`), technical indicators (SMA20, 5-day return), and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
    - **Zero-Mean Anti-Bias Mandate**: System prompt enforces a zero-mean distribution baseline (~50/50 UP vs DOWN) to eliminate pre-trained LLM long-term market drift bias. Requires strictly symmetric evaluation of bearish breakdown signals (VWAP resistance, RSI > 70 overbought exhaustion, yield surges) alongside bullish momentum signals.
 
 2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:

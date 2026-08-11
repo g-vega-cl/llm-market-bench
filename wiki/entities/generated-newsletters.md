@@ -12,12 +12,12 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 1. **Trigger**: GitHub Actions workflow `.github/workflows/generate-newsletter.yml`
 2. **Ingestion**: Calls `ingest_newsletters()` to fetch the latest newsletters from email sources.
 3. **Query**: Fetches newsletter snapshots from the **last 12 hours** using the `date` field (previously `ingested_at`). The 12-hour window is a rolling window from the current Eastern Time.
-4. **LLM**: Uses DeepSeek V4 Flash to summarize the most impactful events into a structured newsletter (title, sections, key events, source attribution).
-5. **Storage**: The generated newsletter is inserted into the `newsletter_snapshots` table with a unique ID.
+4. **LLM**: Uses DeepSeek V4 Flash to summarize the most impactful events into a structured newsletter (~500–700 words, ~3 min read) featuring key developments, market/macro impact, `💡 Trade Ideas & Scenarios to Watch`, and what to watch.
+5. **Storage**: The generated newsletter is inserted into the `generated_newsletters` table with a unique ID.
 
 ## UI Presentation
 
-- **Web Route**: `/generated-newsletters` (component: `GeneratedNewslettersPage.tsx`).
+- **Web Route**: `/generated-newsletters` (component: `GeneratedNewslettersPage.tsx`). Synthesized ~3 minute reads.
 - **Markdown Rendering**: Article body content synthesized in Markdown is rendered via a custom zero-dependency `<MarkdownContent />` component (`apps/web/src/components/ui/MarkdownContent.tsx`), formatting headings, blockquotes, lists, bold/italic inline text, and tables without third-party dependencies.
 
 ## Related

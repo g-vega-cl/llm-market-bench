@@ -45,10 +45,14 @@ Markets opened on a bullish footing today, propelled by massive momentum in the 
 
 ### 🚀 Key Market Dynamics
 - **Tech Sector Rally**: Hardware manufacturers continue to see elevated volume.
-- **Fed Outlook**: Rate stability remains the baseline assumption for upcoming meetings.
 
+### 💡 Trade Ideas & Scenarios to Watch
+- **NVDA Breakout**: Watch $135 resistance for upside momentum toward $145.
+- **Bear Scenario**: CPI surprise above expectations could pressure tech valuations.
+
+### What to Watch
 Overall, investor sentiment is leaning constructive as earnings season continues to exceed baseline expectations.""",
-        read_time_minutes=2,
+        read_time_minutes=3,
     )
 
     with (
@@ -60,7 +64,7 @@ Overall, investor sentiment is leaning constructive as earnings season continues
         assert result is not None
         assert result["title"] == "Morning Market Pulse: Tech Surge & Fed Signals"
         assert result["session"] == "open"
-        assert result["read_time_minutes"] == 2
+        assert result["read_time_minutes"] == 3
         assert "formatted_time" in result
         assert "ET" in result["formatted_time"]
         assert mock_llm_call.called
@@ -150,3 +154,14 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_windo
         gte_arg = mock_sb.table().select().gte.call_args[0][1]
         assert col_arg == "date"
         assert "T" in gte_arg
+
+
+def test_generated_newsletter_output_defaults():
+    """Test that GeneratedNewsletterOutput defaults to 3 minutes read time."""
+    output = GeneratedNewsletterOutput(
+        title="Test Briefing",
+        summary="Test Summary",
+        bullet_points=["Point 1"],
+        content="Test content",
+    )
+    assert output.read_time_minutes == 3

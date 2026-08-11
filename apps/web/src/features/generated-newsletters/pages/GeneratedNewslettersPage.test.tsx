@@ -16,7 +16,7 @@ const mockNewsletters: FormattedGeneratedNewsletter[] = [
         content: 'Markets opened on a bullish footing today, propelled by massive momentum.',
         bullet_points: ['NVIDIA & AMD hit fresh highs', 'Fed signals rate stability'],
         session: 'open',
-        read_time_minutes: 2,
+        read_time_minutes: 3,
         source_count: 3,
         formatted_time: '09:00 ET',
         created_at: '2026-08-06T09:00:00Z',
@@ -30,7 +30,7 @@ const mockNewsletters: FormattedGeneratedNewsletter[] = [
         content: 'The afternoon session saw mild consolidation across broad indexes.',
         bullet_points: ['Profit taking in mega-cap tech', 'Yields remain flat'],
         session: 'close',
-        read_time_minutes: 2,
+        read_time_minutes: 3,
         source_count: 4,
         formatted_time: '17:00 ET',
         created_at: '2026-08-06T17:00:00Z',
@@ -58,7 +58,7 @@ describe('GeneratedNewslettersPage', () => {
             )[0],
         ).toBeInTheDocument();
         expect(screen.getByText('🕒 Created at 09:00 ET')).toBeInTheDocument();
-        expect(screen.getAllByText('⏱️ 2 min read')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('⏱️ 3 min read')[0]).toBeInTheDocument();
     });
 
     it('renders bullet point key takeaways', () => {

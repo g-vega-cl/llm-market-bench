@@ -22,11 +22,11 @@ class GeneratedNewsletterOutput(BaseModel):
     bullet_points: list[str] = Field(description="2 to 4 bullet points highlighting critical takeaways.")
     content: str = Field(
         description=(
-            "Full newsletter article formatted in Markdown (250-400 words, ~1-2 min read). "
-            "Includes subheadings, bolded tickers/metrics, macro context, and market impact."
+            "Full newsletter article formatted in Markdown (~500-700 words, ~3 min read). "
+            "Includes subheadings, bolded tickers/metrics, macro context, Trade Ideas & Scenarios to Watch, and market impact."
         )
     )
-    read_time_minutes: int = Field(default=2, description="Estimated read time in minutes (typically 1 or 2).")
+    read_time_minutes: int = Field(default=3, description="Estimated read time in minutes (typically 3).")
 
 
 async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time: str) -> GeneratedNewsletterOutput:
@@ -48,9 +48,12 @@ async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time:
                 f"**Creation Time:** {formatted_time}\n\n"
                 f"No raw financial newsletters were ingested during this session window. "
                 f"Market participants are monitoring upcoming earnings announcements and macroeconomic releases. "
-                f"Full quantitative analysis and portfolio rebalancing continue as scheduled."
+                f"Full quantitative analysis and portfolio rebalancing continue as scheduled.\n\n"
+                f"### 💡 Trade Ideas & Scenarios to Watch\n\n"
+                f"- **Range-Bound Strategy**: Monitor key support/resistance levels during low-volume sessions.\n"
+                f"- **Catalyst Watch**: Macro economic releases expected in upcoming sessions."
             ),
-            read_time_minutes=1,
+            read_time_minutes=3,
         )
 
     # Compile raw newsletter context for prompt
@@ -65,14 +68,18 @@ async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time:
 
     system_prompt = (
         "You are the Lead Editor of LLM Market Bench Daily Newsletter. "
-        "Your task is to write a top-tier, highly engaging, concise 1-2 minute daily market newsletter based on the ingested financial briefings of the day.\n\n"
+        "Your task is to write a top-tier, highly engaging, 3-minute daily market newsletter based on the ingested financial briefings of the day.\n\n"
         "Requirements:\n"
         "1. **Title**: Actionable and punchy headline.\n"
         "2. **Summary**: A crisp 1-2 sentence executive overview.\n"
         "3. **Bullet Points**: 2-4 critical key takeaways with emojis.\n"
-        "4. **Content**: A complete, beautiful Markdown newsletter (~250-400 words, 1-2 min read). "
-        "Use subheadings (`###`), bullet points, bold key tickers/metrics (e.g. **NVDA**, **CPI +0.2%**), "
-        "and clear sections covering Key Developments, Market & Macro Impact, and What to Watch.\n"
+        "4. **Content**: A complete, rich Markdown newsletter (~500-700 words, ~3 min read).\n"
+        "   Must include the following structured section headings:\n"
+        "   - `### Key Developments`\n"
+        "   - `### Market & Macro Impact`\n"
+        "   - `### 💡 Trade Ideas & Scenarios to Watch` (Dedicated section highlighting actionable trade setups, key catalyst levels/triggers, and bull/bear market scenarios).\n"
+        "   - `### What to Watch`\n"
+        "   Use subheadings (`###`), bullet points, bold key tickers/metrics (e.g. **NVDA**, **CPI +0.2%**).\n"
         "5. Tone must be professional, objective, smart, and developer/investor friendly."
     )
 

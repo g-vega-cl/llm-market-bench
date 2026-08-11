@@ -56,7 +56,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                         Daily Market Intelligence Briefings
                     </SectionHeading>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl font-light">
-                        Synthesized 1-2 minute reads based on ingested daily newsletters, generated
+                        Synthesized ~3 minute reads based on ingested daily newsletters, generated
                         twice daily at market open (09:00 ET) and market close (17:00 ET).
                     </p>
                 </div>

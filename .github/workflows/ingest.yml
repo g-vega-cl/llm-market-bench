@@ -1,13 +1,6 @@
 name: Ingestion & Consensus
 
 on:
-  schedule:
-    # 9:35 AM, 10:35 AM, 11:35 AM, 2:00 PM ET
-    # Supports both EDT (UTC-4, summer) and EST (UTC-5, winter).
-    # Pre-market runs (e.g. 13:35 UTC in EST = 8:35 AM EST) are safely skipped
-    # by the is_market_open() failsafe inside main.py.
-    - cron: "35 13,14,15,16 * * 1-5"
-    - cron: "0 18,19 * * 1-5"
   workflow_dispatch:
 
 

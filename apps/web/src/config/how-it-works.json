@@ -2,8 +2,8 @@
     {
         "phase": 1,
         "title": "Ingestion & Normalization",
-        "badge": "Quadrupled Trigger: US Market Hours",
-        "description": "GitHub Actions fires the pipeline during US market hours (4 times daily: 9:35 AM ET, 10:35 AM ET, 11:35 AM ET, and 2:00 PM ET) to parse newsletter inputs.",
+        "badge": "3x Daily Trigger: US Market Hours",
+        "description": "Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 times daily: 9:35 AM ET, 11:35 AM ET, and 3:30 PM ET) to parse newsletter inputs.",
         "bullets": [
             "Newsletter Ingestion: Scrapes newsletters, feeds, and economic data from Gmail and external APIs.",
             "De-Advertisement: Gemini Flash filters out ads, noise, and sponsor blocks from incoming text."

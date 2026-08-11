@@ -9,10 +9,10 @@ Full daily pipeline from ingestion to feedback. The pipeline runs on a cron sche
 
 ## Phase 1: Ingestion & Normalization
 *   **Icon**: 📰
-*   **Badge**: Quadrupled Trigger: US Market Hours
+*   **Badge**: 3x Daily Trigger: US Market Hours
 *   **Tags**: [FMP Cache, Gmail API, Ingestion]
 
-GitHub Actions fires the pipeline during US market hours (4 times daily: 9:35 AM ET, 10:35 AM ET, 11:35 AM ET, and 2:00 PM ET) to parse newsletter inputs.
+Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 times daily: 9:35 AM ET, 11:35 AM ET, and 3:30 PM ET) to parse newsletter inputs.
 
 *   Newsletter Ingestion: Scrapes newsletters, feeds, and economic data from Gmail and external APIs.
 *   De-Advertisement: Gemini Flash filters out ads, noise, and sponsor blocks from incoming text.

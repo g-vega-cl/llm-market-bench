@@ -6,7 +6,7 @@ import yaml
 
 
 def test_workflow_schedule():
-    """Verify that ingest.yml cron schedules are set correctly with the proper buffer."""
+    """Verify that ingest.yml relies on Cloudflare Worker workflow_dispatch and does not have native schedule."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     ingest_yml_path = root / ".github" / "workflows" / "ingest.yml"
 
@@ -18,13 +18,7 @@ def test_workflow_schedule():
     # PyYAML safe_load parses 'on' as boolean True
     on_key = "on" if "on" in config else True
     schedule = config.get(on_key, {}).get("schedule", [])
-    cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
-
-    # Verify ingest.yml covers both EDT (UTC-4) and EST (UTC-5) offset runs
-    assert "35 13,14,15,16 * * 1-5" in cron_triggers, (
-        f"Expected 35 13,14,15,16 * * 1-5 in cron triggers, found: {cron_triggers}"
-    )
-    assert "0 18,19 * * 1-5" in cron_triggers, f"Expected 0 18,19 * * 1-5 in cron triggers, found: {cron_triggers}"
+    assert not schedule, f"Expected no native schedule in ingest.yml, found: {schedule}"
 
 
 def test_update_prices_workflow_schedule():
@@ -47,7 +41,7 @@ def test_update_prices_workflow_schedule():
 
 
 def test_daily_predictor_workflow_schedule():
-    """Verify daily-predictor.yml runs daily predictions Mon-Fri and autoresearch 2x a week (Sun & Wed)."""
+    """Verify daily-predictor.yml relies on Cloudflare Worker workflow_dispatch and does not have native schedule."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
 
@@ -58,15 +52,11 @@ def test_daily_predictor_workflow_schedule():
 
     on_key = "on" if "on" in config else True
     schedule = config.get(on_key, {}).get("schedule", [])
-    cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
-
-    assert "0 13 * * 1-5" in cron_triggers, f"Expected 0 13 * * 1-5 in cron triggers, found: {cron_triggers}"
-    assert "15 21 * * 1-5" in cron_triggers, f"Expected 15 21 * * 1-5 in cron triggers, found: {cron_triggers}"
-    assert "0 22 * * 0,3" in cron_triggers, f"Expected 0 22 * * 0,3 in cron triggers, found: {cron_triggers}"
+    assert not schedule, f"Expected no native schedule in daily-predictor.yml, found: {schedule}"
 
 
 def test_generate_newsletter_workflow_schedule():
-    """Verify generate-newsletter.yml cron schedules cover EDT and EST market open and close."""
+    """Verify generate-newsletter.yml relies on Cloudflare Worker workflow_dispatch and does not have native schedule."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     newsletter_yml_path = root / ".github" / "workflows" / "generate-newsletter.yml"
 
@@ -77,7 +67,5 @@ def test_generate_newsletter_workflow_schedule():
 
     on_key = "on" if "on" in config else True
     schedule = config.get(on_key, {}).get("schedule", [])
-    cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
+    assert not schedule, f"Expected no native schedule in generate-newsletter.yml, found: {schedule}"
 
-    assert "0 13,14 * * 1-5" in cron_triggers, f"Expected 0 13,14 * * 1-5 in cron triggers, found: {cron_triggers}"
-    assert "0 21,22 * * 1-5" in cron_triggers, f"Expected 0 21,22 * * 1-5 in cron triggers, found: {cron_triggers}"

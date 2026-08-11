@@ -62,8 +62,13 @@ function getNewYorkTime(date: Date): { hour: number; minute: number; day: number
 function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
   const { hour: nyHour, minute: nyMinute, day } = getNewYorkTime(scheduledTime);
 
-  if (nyMinute === 35) {
-    // 9:35 AM ET, 10:35 AM ET, 11:35 AM ET -> Ingest
+  if (nyMinute === 35 && (nyHour === 9 || nyHour === 11)) {
+    // 9:35 AM ET & 11:35 AM ET -> Ingestion & Consensus
+    return [{ workflowFile: 'ingest.yml' }];
+  }
+
+  if (nyHour === 15 && nyMinute === 30) {
+    // 3:30 PM ET -> Ingestion & Consensus
     return [{ workflowFile: 'ingest.yml' }];
   }
 
@@ -73,11 +78,6 @@ function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
       { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } },
       { workflowFile: 'generate-newsletter.yml', inputs: { session: 'open' } },
     ];
-  }
-
-  if (nyHour === 14 && nyMinute === 0) {
-    // 2:00 PM ET -> Midday ingest
-    return [{ workflowFile: 'ingest.yml' }];
   }
 
   if (nyHour === 17 && nyMinute === 0) {

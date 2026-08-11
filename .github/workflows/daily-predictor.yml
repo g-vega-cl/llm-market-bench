@@ -1,13 +1,6 @@
 name: Daily S&P Predictor and Autoresearch
 
 on:
-  schedule:
-    # 9:00 AM ET Mon-Fri (13:00 UTC) -> Run daily 9 AM prediction before market open
-    - cron: '0 13 * * 1-5'
-    # 5:15 PM EDT / 4:15 PM EST Mon-Fri (21:15 UTC) -> Evaluate Open vs Close price accuracy safely post-market
-    - cron: '15 21 * * 1-5'
-    # 6:00 PM ET Sun & Wed (22:00 UTC) -> Run prompt autoresearch 2x a week
-    - cron: '0 22 * * 0,3'
   workflow_dispatch:
     inputs:
       action:

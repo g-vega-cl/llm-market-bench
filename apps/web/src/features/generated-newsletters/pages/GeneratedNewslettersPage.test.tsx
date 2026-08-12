@@ -18,10 +18,10 @@ const mockNewsletters: FormattedGeneratedNewsletter[] = [
         session: 'open',
         read_time_minutes: 3,
         source_count: 3,
-        formatted_time: '09:00 ET',
-        created_at: '2026-08-06T09:00:00Z',
+        formatted_time: '09:15 ET',
+        created_at: '2026-08-06T09:15:00Z',
         formattedDate: 'August 6, 2026',
-        displayTime: '09:00 ET',
+        displayTime: '09:15 ET',
     },
     {
         id: 'gn-2',
@@ -57,7 +57,7 @@ describe('GeneratedNewslettersPage', () => {
                 'Tech stocks rally on AI hardware momentum while Fed signals rate stability.',
             )[0],
         ).toBeInTheDocument();
-        expect(screen.getByText('🕒 Created at 09:00 ET')).toBeInTheDocument();
+        expect(screen.getByText('🕒 Created at 09:15 ET')).toBeInTheDocument();
         expect(screen.getAllByText('⏱️ 3 min read')[0]).toBeInTheDocument();
     });
 

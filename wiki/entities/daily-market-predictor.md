@@ -5,11 +5,11 @@ category: entity
 
 # Daily S&P Market Predictor and Autoresearch Loop
 
-The **Daily S&P Market Predictor** generates 9:00 AM ET pre-market predictions for intraday S&P 500 (SPY) price action, determining whether the 4:00 PM ET Close price will be higher (`UP`) or lower (`DOWN`) than the 9:30 AM ET Open price ($\text{Direction} = \text{UP if } \text{Close} \ge \text{Open} \text{ else DOWN}$).
+The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions for intraday S&P 500 (SPY) price action, determining whether the 4:00 PM ET Close price will be higher (`UP`) or lower (`DOWN`) than the 9:30 AM ET Open price ($\text{Direction} = \text{UP if } \text{Close} \ge \text{Open} \text{ else DOWN}$).
 
 ## Key Features
 
-1. **Pre-Market Inference (9:00 AM ET)**:
+1. **Pre-Market Inference (9:15 AM ET)**:
    - Command: `python main.py daily-predictor [--ticker SPY]`
    - Model: **DeepSeek Flash** (`deepseek-v4-flash`) with Instructor structured output (`DailyPredictionOutput`).
    - Context: Synthesizes live pre-market price quote & overnight gap metrics (via FMP `MarketDataManager.get_premarket_quote`) positioned at the very top of context before technical indicators (SMA20, 5-day return) and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).

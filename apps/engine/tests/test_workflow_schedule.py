@@ -68,3 +68,33 @@ def test_generate_newsletter_workflow_schedule():
     on_key = "on" if "on" in config else True
     schedule = config.get(on_key, {}).get("schedule", [])
     assert not schedule, f"Expected no native schedule in generate-newsletter.yml, found: {schedule}"
+
+
+def test_cron_dispatcher_915_schedule():
+    """Verify apps/cron-dispatcher/src/index.ts targets 9:15 AM ET for daily-predictor & newsletter."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    index_ts_path = root / "apps" / "cron-dispatcher" / "src" / "index.ts"
+
+    assert index_ts_path.exists(), f"Could not find index.ts file at {index_ts_path}"
+
+    content = index_ts_path.read_text()
+    assert "nyHour === 9 && nyMinute === 15" in content, (
+        "Expected index.ts to check for nyHour === 9 && nyMinute === 15"
+    )
+    assert "nyHour === 9 && nyMinute === 0" not in content, (
+        "Did not expect index.ts to check for 9:00 AM (nyMinute === 0)"
+    )
+
+
+def test_cron_dispatcher_wrangler_triggers():
+    """Verify apps/cron-dispatcher/wrangler.jsonc includes minute 15 cron trigger for 9:15 AM ET (13:15 / 14:15 UTC)."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    wrangler_path = root / "apps" / "cron-dispatcher" / "wrangler.jsonc"
+
+    assert wrangler_path.exists(), f"Could not find wrangler.jsonc at {wrangler_path}"
+
+    content = wrangler_path.read_text()
+    assert "15 13,14,21 * * MON-FRI" in content or ("15 13,14" in content and "15 21" in content), (
+        "Expected wrangler.jsonc to include 15 minute cron triggers for 13:00/14:00 UTC hours"
+    )
+

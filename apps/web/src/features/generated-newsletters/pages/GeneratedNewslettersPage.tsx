@@ -57,7 +57,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                     </SectionHeading>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl font-light">
                         Synthesized ~3 minute reads based on ingested daily newsletters, generated
-                        twice daily at market open (09:00 ET) and market close (17:00 ET).
+                        twice daily at market open (09:15 ET) and market close (17:00 ET).
                     </p>
                 </div>
 
@@ -90,7 +90,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                 : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
                         }`}
                     >
-                        🌅 Open (09:00 ET)
+                        🌅 Open (09:15 ET)
                     </button>
                     <button
                         type="button"
@@ -117,7 +117,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                 <EmptyState
                     emoji="🗞️"
                     title="No generated newsletters available yet"
-                    subtitle="Daily briefings are automatically synthesized at 09:00 ET (Market Open) and 17:00 ET (Market Close)."
+                    subtitle="Daily briefings are automatically synthesized at 09:15 ET (Market Open) and 17:00 ET (Market Close)."
                     actions={[
                         {
                             label: 'Back to Today',

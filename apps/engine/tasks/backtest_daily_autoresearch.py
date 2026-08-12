@@ -213,7 +213,7 @@ async def run_simulated_daily_prediction(
     model_name: str = "deepseek-v4-flash",
     ticker: str = "SPY",
 ) -> dict | None:
-    """Run daily prediction step at 09:00 AM ET for target_date using DeepSeek Flash."""
+    """Run daily prediction step at 09:15 AM ET for target_date using DeepSeek Flash."""
     target_date_str = t_sim.date().isoformat()
     deepseek_client = get_deepseek_client()
 
@@ -522,8 +522,8 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
 
             target_date_str = current_day.date().isoformat()
 
-            # 1. Pre-Market Inference at 09:00 AM ET
-            t_sim_am = current_day.replace(hour=9, minute=0, second=0)
+            # 1. Pre-Market Inference at 09:15 AM ET
+            t_sim_am = current_day.replace(hour=9, minute=15, second=0)
             await run_simulated_daily_prediction(
                 t_sim=t_sim_am,
                 active_prompt=active_prompt,

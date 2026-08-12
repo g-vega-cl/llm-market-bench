@@ -690,13 +690,26 @@ function AutoresearchTab({
     const liveRatchetScore =
         totalEvaluated > 0 ? 0.7 * closeAccPct + 0.3 * intradayHitPct - meanBrier * 50.0 : 0.0;
 
-    const evaluatedDates = evaluated
-        .map((p) => p.prediction_date || p.target_date)
-        .filter((d): d is string => Boolean(d));
-    const lastCalculatedDate =
-        evaluatedDates.length > 0
-            ? evaluatedDates.reduce((max, cur) => (cur > max ? cur : max))
-            : 'N/A';
+    const lastCalculatedPrediction =
+        evaluated.length > 0
+            ? evaluated.reduce((best, cur) => {
+                  const bestDate = best.prediction_date || best.target_date || '';
+                  const curDate = cur.prediction_date || cur.target_date || '';
+                  return curDate > bestDate ? cur : best;
+              })
+            : null;
+    const lastCalculatedDate = (() => {
+        if (!lastCalculatedPrediction) return 'N/A';
+        const date =
+            lastCalculatedPrediction.prediction_date || lastCalculatedPrediction.target_date || '';
+        const time = lastCalculatedPrediction.created_at
+            ? new Date(lastCalculatedPrediction.created_at).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+              })
+            : '';
+        return time ? `${date} ${time}` : date;
+    })();
 
     const activeExp =
         experiments.find((e) => e.status === 'active' || e.status === 'baseline') || experiments[0];

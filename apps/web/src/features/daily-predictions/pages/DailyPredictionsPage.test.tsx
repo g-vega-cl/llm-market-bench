@@ -123,7 +123,7 @@ describe('DailyPredictionsPage', () => {
         expect(screen.getByText('Performance Ratchet Score')).toBeInTheDocument();
         expect(screen.getByText(/Ratchet Score Formula/i)).toBeInTheDocument();
         expect(screen.getByText(/Last Day Calculated:/i)).toBeInTheDocument();
-        expect(screen.getByText('2026-08-03')).toBeInTheDocument();
+        expect(screen.getAllByText(/2026-08-03/).length).toBeGreaterThan(0);
         expect(screen.getByText(/Active Prompt Variant:/i)).toBeInTheDocument();
 
         // Check autoresearcher meta-prompt card

@@ -16,12 +16,12 @@ def test_calculate_daily_ratchet_score():
         {"is_correct": False, "intraday_hit": True, "brier_score": 0.64},
         {"is_correct": True, "intraday_hit": True, "brier_score": 0.04},
     ]
-    # EOD Accuracy = 3/4 = 75.0% -> 0.70 * 75.0 = 52.5
-    # Intraday Hit = 4/4 = 100.0% -> 0.30 * 100.0 = 30.0
+    # EOD Accuracy = 3/4 = 75.0% -> 0.60 * 75.0 = 45.0
+    # Intraday Hit = 4/4 = 100.0% -> 0.40 * 100.0 = 40.0
     # Mean Brier = 0.2025 -> 0.2025 * 50 = 10.125
-    # Combined Score = 52.5 + 30.0 - 10.125 = 72.375
+    # Combined Score = 45.0 + 40.0 - 10.125 = 74.875
     score = calculate_daily_ratchet_score(predictions)
-    assert pytest.approx(score, 0.01) == 72.375
+    assert pytest.approx(score, 0.01) == 74.875
 
 
 @pytest.mark.asyncio

@@ -25,12 +25,12 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - Command: `python main.py daily-autoresearch`
    - Evaluates predictions over recent trading days against baseline in `prompt_experiments` (`prompt_name: "DAILY_PREDICTOR_PROMPT"`).
    - Combined Ratchet Score formula:
-     $$\text{Ratchet Score} = (0.70 \times \text{close\_accuracy\_pct}) + (0.30 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)$$
+     $$\text{Ratchet Score} = (0.60 \times \text{close\_accuracy\_pct}) + (0.40 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)$$
    - Applies ratchet logic: if recent performance beats baseline, establishes new baseline; if lower, reverts to baseline prompt.
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher.
 
 4. **Web Frontend (`/daily-predictions`)**:
-   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Intraday Target Hit Rate (30%), Brier Calibration stats, and active prompt variant tag.
+   - Live dashboard featuring Hero Prediction Card, Directional Accuracy %, Intraday Target Hit Rate (40%), Brier Calibration stats, and active prompt variant tag.
    - **Historical Predictions Log & Prompt Inspector**: Expandable prediction rows with full quantitative rationale, market catalyst tags, Open/High/Low/Close prices, expected return %, confidence, and matched active system prompt text per prediction.
    - **Autoresearch & Prompt Evolution Arena**: Performance Ratchet Score dashboard with live formula breakdown, last day calculated indicator (date + hour/minute derived from `created_at`), active prompt variant badge, toggleable active prompt strategy inspector, twice-weekly DeepSeek Flash Autoresearcher Meta-Prompt inspector, and prompt variant mutation history.
 

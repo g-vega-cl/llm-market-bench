@@ -26,10 +26,10 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     """Calculate the ratchet performance score for daily predictions.
 
     Score is based on:
-    - EOD Close Directional Accuracy % (weight: 0.70)
-    - Intraday Target Hit Rate % (weight: 0.30)
+    - EOD Close Directional Accuracy % (weight: 0.60)
+    - Intraday Target Hit Rate % (weight: 0.40)
     - Mean Brier Score penalty (penalty multiplier: 50.0)
-    Combined Score = (0.70 * close_accuracy_pct) + (0.30 * intraday_hit_pct) - (mean_brier * 50.0).
+    Combined Score = (0.60 * close_accuracy_pct) + (0.40 * intraday_hit_pct) - (mean_brier * 50.0).
     """
     if not predictions:
         return 0.0
@@ -47,7 +47,7 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     brier_scores = [p.get("brier_score") for p in predictions if p.get("brier_score") is not None]
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.25
 
-    final_score = (0.70 * close_accuracy_pct) + (0.30 * intraday_hit_pct) - (mean_brier * 50.0)
+    final_score = (0.60 * close_accuracy_pct) + (0.40 * intraday_hit_pct) - (mean_brier * 50.0)
     return float(final_score)
 
 

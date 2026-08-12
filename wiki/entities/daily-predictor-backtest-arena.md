@@ -33,13 +33,13 @@ These metrics are computed via `compute_intraday_hit_metrics()` in `tasks/evalua
 The composite ratchet score used for prompt mutation is:
 
 $$
-\text{Ratchet Score} = (0.70 \times \text{close\_accuracy\_pct}) + (0.30 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)
+\text{Ratchet Score} = (0.60 \times \text{close\_accuracy\_pct}) + (0.40 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)
 $$
 
-- **Close Accuracy %** (70% weight): Percentage of predictions where the EOD close direction matched the prediction.
-- **Intraday Hit %** (30% weight): Percentage of predictions where the intraday target was hit (falls back to `is_correct` when `intraday_hit` is null).
+- **Close Accuracy %** (60% weight): Percentage of predictions where the EOD close direction matched the prediction.
+- **Intraday Hit %** (40% weight): Percentage of predictions where the intraday target was hit (falls back to `is_correct` when `intraday_hit` is null).
 - **Brier penalty**: Mean Brier score multiplied by 50, subtracted from the weighted sum.
 
 ## Web UI
 
-The `/daily-predictions` page displays a metrics dashboard including the new Intraday Target Hit card (30% weight), and a predictions table with an 
+The `/daily-predictions` page displays a metrics dashboard including the new Intraday Target Hit card (40% weight), and a predictions table with an 

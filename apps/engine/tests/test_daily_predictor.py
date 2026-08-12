@@ -110,10 +110,15 @@ async def test_get_daily_market_context_technicals():
         assert "5-Day Return" in ctx
         assert "20-Day Simple Moving Average" in ctx
         assert "Live Pre-Market / Early Session Quote" in ctx
+        assert "Overnight Gap: +1.50 (+0.21%)" in ctx
         assert "$725.50" in ctx
-        assert "+0.21%" in ctx
         assert "Global Macro Baseline" in ctx
         assert "Volatility Index Details" in ctx
         assert "Market Health Barometer" in ctx
         assert "Recent Market Feeling" in ctx
 
+        # TDD Assertion: Pre-market quote section must appear BEFORE macro context blocks
+        pm_idx = ctx.find("Live Pre-Market / Early Session Quote")
+        macro_idx = ctx.find("Global Macro Baseline")
+        assert pm_idx != -1 and macro_idx != -1
+        assert pm_idx < macro_idx, "Pre-market quote block must appear before Global Macro Baseline context"

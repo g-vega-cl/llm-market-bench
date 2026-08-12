@@ -270,7 +270,6 @@ class MarketDataManager:
             "change_pct": change_pct,
         }
 
-
     async def screen_stocks(
         self,
         market_cap_more_than: float | None = None,

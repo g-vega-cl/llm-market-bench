@@ -68,4 +68,3 @@ def test_generate_newsletter_workflow_schedule():
     on_key = "on" if "on" in config else True
     schedule = config.get(on_key, {}).get("schedule", [])
     assert not schedule, f"Expected no native schedule in generate-newsletter.yml, found: {schedule}"
-

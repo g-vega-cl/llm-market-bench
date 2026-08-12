@@ -86,7 +86,46 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
     context_lines = [f"Asset: {ticker} (S&P 500 ETF)"]
     today_str = datetime.now(UTC).date().isoformat()
 
-    # 1. Macro & Market Feeling Context via Canonical Tools
+    # 1. Price Action, Technicals & Pre-Market Live Quote via MarketDataManager (FMP)
+    try:
+        mdm = MarketDataManager()
+
+        # Pre-Market Live Quote
+        pm_quote = await mdm.get_premarket_quote(ticker)
+        if pm_quote:
+            pm_price = pm_quote["price"]
+            pm_change = pm_quote["change"]
+            pm_change_pct = pm_quote["change_pct"]
+            context_lines.append(
+                f"Live Pre-Market / Early Session Quote: ${pm_price:.2f} | "
+                f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
+            )
+
+        history = await mdm.get_history(ticker, days=30)
+        if history and len(history) >= 2:
+            sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
+            prev_row = sorted_hist[-1]
+            prev_close = float(prev_row["price"])
+            prev_date = str(prev_row.get("fetched_at", ""))[:10]
+
+            context_lines.append(f"Previous Trading Session ({prev_date}) Close: ${prev_close:.2f}")
+
+            if len(sorted_hist) >= 5:
+                five_day_first = float(sorted_hist[-5]["price"])
+                five_day_change_pct = ((prev_close - five_day_first) / five_day_first) * 100.0
+                context_lines.append(f"5-Day Return: {five_day_change_pct:+.2f}%")
+
+            if len(sorted_hist) >= 20:
+                recent_prices = [float(r["price"]) for r in sorted_hist[-20:]]
+                sma_20 = sum(recent_prices) / len(recent_prices)
+                context_lines.append(f"20-Day Simple Moving Average (SMA20): ${sma_20:.2f}")
+
+    except Exception as e:
+        logger.warning(
+            f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}"
+        )
+
+    # 2. Macro & Market Feeling Context via Canonical Tools
     try:
         macro_str = await execute_get_global_macro_context_tool()
         if macro_str and not macro_str.startswith("Error"):
@@ -114,43 +153,6 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
             context_lines.append(f"Recent Market Feeling:\n{feeling_str[:500]}")
     except Exception as e:
         logger.warning(f"Error fetching market feeling: {e}")
-
-    # 2. Price Action, Technicals & Pre-Market Data via MarketDataManager (FMP)
-    try:
-        mdm = MarketDataManager()
-
-        # Pre-Market Live Quote
-        pm_quote = await mdm.get_premarket_quote(ticker)
-        if pm_quote:
-            pm_price = pm_quote["price"]
-            pm_change = pm_quote["change"]
-            pm_change_pct = pm_quote["change_pct"]
-            context_lines.append(
-                f"Live Pre-Market / Early Session Quote: ${pm_price:.2f} "
-                f"(Gap / Change: {pm_change:+.2f} / {pm_change_pct:+.2f}% vs Prev Close ${pm_quote['previous_close']:.2f})"
-            )
-
-        history = await mdm.get_history(ticker, days=30)
-        if history and len(history) >= 2:
-            sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
-            prev_row = sorted_hist[-1]
-            prev_close = float(prev_row["price"])
-            prev_date = str(prev_row.get("fetched_at", ""))[:10]
-
-            context_lines.append(f"Previous Trading Session ({prev_date}) Close: ${prev_close:.2f}")
-
-            if len(sorted_hist) >= 5:
-                five_day_first = float(sorted_hist[-5]["price"])
-                five_day_change_pct = ((prev_close - five_day_first) / five_day_first) * 100.0
-                context_lines.append(f"5-Day Return: {five_day_change_pct:+.2f}%")
-
-            if len(sorted_hist) >= 20:
-                recent_prices = [float(r["price"]) for r in sorted_hist[-20:]]
-                sma_20 = sum(recent_prices) / len(recent_prices)
-                context_lines.append(f"20-Day Simple Moving Average (SMA20): ${sma_20:.2f}")
-
-    except Exception as e:
-        logger.warning(f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}")
 
     context_lines.append(f"Prediction Target Date: {today_str}")
     return "\n".join(context_lines)

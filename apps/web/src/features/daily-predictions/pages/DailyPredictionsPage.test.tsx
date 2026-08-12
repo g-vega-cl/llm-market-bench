@@ -122,6 +122,9 @@ describe('DailyPredictionsPage', () => {
         // Check ratchet score elements
         expect(screen.getByText('Performance Ratchet Score')).toBeInTheDocument();
         expect(screen.getByText(/Ratchet Score Formula/i)).toBeInTheDocument();
+        expect(screen.getByText(/Last Day Calculated:/i)).toBeInTheDocument();
+        expect(screen.getByText('2026-08-03')).toBeInTheDocument();
+        expect(screen.getByText(/Active Prompt Variant:/i)).toBeInTheDocument();
 
         // Check autoresearcher meta-prompt card
         expect(screen.getByText('Autoresearcher Meta-Prompt (DeepSeek Flash)')).toBeInTheDocument();

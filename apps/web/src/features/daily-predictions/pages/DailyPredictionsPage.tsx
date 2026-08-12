@@ -670,6 +670,7 @@ function AutoresearchTab({
     experiments: PromptExperiment[];
     predictions: DailyPrediction[];
 }) {
+    const [showPrompt, setShowPrompt] = useState(false);
     const evaluated = predictions.filter((p) => p.status === 'evaluated');
     const totalEvaluated = evaluated.length;
     const correctCount = evaluated.filter((p) => p.is_correct === true).length;
@@ -688,6 +689,20 @@ function AutoresearchTab({
 
     const liveRatchetScore =
         totalEvaluated > 0 ? 0.7 * closeAccPct + 0.3 * intradayHitPct - meanBrier * 50.0 : 0.0;
+
+    const evaluatedDates = evaluated
+        .map((p) => p.prediction_date || p.target_date)
+        .filter((d): d is string => Boolean(d));
+    const lastCalculatedDate =
+        evaluatedDates.length > 0
+            ? evaluatedDates.reduce((max, cur) => (cur > max ? cur : max))
+            : 'N/A';
+
+    const activeExp =
+        experiments.find((e) => e.status === 'active' || e.status === 'baseline') || experiments[0];
+    const activePromptTag =
+        activeExp?.variant_tag || predictions[0]?.prompt_variant_tag || 'daily-active-1';
+    const activePromptContent = activeExp?.prompt_content || 'N/A';
 
     const autoresearcherMetaPrompt = `You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.
 
@@ -755,6 +770,100 @@ Output ONLY the raw new strategy instructions text.`;
                         </div>
                     </div>
                 </div>
+
+                {/* Calculation Metadata Bar */}
+                <div
+                    style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '16px',
+                        alignItems: 'center',
+                        padding: '12px 16px',
+                        background: '#f8fafc',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        marginBottom: '16px',
+                        fontSize: '13px',
+                    }}
+                >
+                    <div>
+                        <span style={{ color: '#64748b', fontWeight: '600' }}>
+                            Last Day Calculated:{' '}
+                        </span>
+                        <span style={{ fontWeight: '700', color: '#0f172a' }}>
+                            {lastCalculatedDate}
+                        </span>
+                    </div>
+                    <div style={{ color: '#cbd5e1' }}>|</div>
+                    <div>
+                        <span style={{ color: '#64748b', fontWeight: '600' }}>
+                            Active Prompt Variant:{' '}
+                        </span>
+                        <span
+                            style={{
+                                fontFamily: 'monospace',
+                                fontWeight: '700',
+                                color: '#2563eb',
+                                background: '#eff6ff',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid #bfdbfe',
+                            }}
+                        >
+                            {activePromptTag}
+                        </span>
+                    </div>
+                    {activeExp?.prompt_content && (
+                        <button
+                            type="button"
+                            onClick={() => setShowPrompt((prev) => !prev)}
+                            style={{
+                                marginLeft: 'auto',
+                                fontSize: '12px',
+                                color: '#2563eb',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                textDecoration: 'underline',
+                            }}
+                        >
+                            {showPrompt
+                                ? 'Hide Active Prompt Strategy'
+                                : 'View Active Prompt Strategy'}
+                        </button>
+                    )}
+                </div>
+
+                {showPrompt && activeExp?.prompt_content && (
+                    <div
+                        style={{
+                            marginBottom: '16px',
+                            padding: '16px',
+                            background: '#0f172a',
+                            color: '#f8fafc',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            maxHeight: '300px',
+                            overflowY: 'auto',
+                        }}
+                    >
+                        <div
+                            style={{
+                                color: '#94a3b8',
+                                fontSize: '11px',
+                                marginBottom: '8px',
+                                fontWeight: '700',
+                            }}
+                        >
+                            ACTIVE PROMPT STRATEGY INSTRUCTIONS ({activePromptTag}):
+                        </div>
+                        {activePromptContent}
+                    </div>
+                )}
 
                 <div
                     style={{

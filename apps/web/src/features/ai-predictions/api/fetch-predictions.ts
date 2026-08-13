@@ -25,6 +25,8 @@ export interface SectorPrediction {
     prompt_tag: string;
     predicted_sector: string;
     predicted_pair: string[];
+    confidence?: number | null;
+    brier_score?: number | null;
     reasoning: string;
     sector_percentile_score: number | null;
     pair_percentile_score: number | null;

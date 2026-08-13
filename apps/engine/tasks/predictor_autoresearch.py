@@ -23,20 +23,33 @@ class MetaPromptResponse(BaseModel):
 
 
 def calculate_baseline_score(predictions: list[dict]) -> float:
-    """Calculate the baseline score from a set of model predictions."""
+    """Calculate the baseline ratchet score from a set of model predictions.
+
+    Formula: Avg Percentile Score - (Mean Brier Score * 50.0).
+    """
     if not predictions:
         return 0.0
 
-    best_score = 0.0
+    percentile_scores = []
+    brier_scores = []
+
     for p in predictions:
-        s_score = p.get("sector_percentile_score") or 0.0
-        p_score = p.get("pair_percentile_score") or 0.0
+        s_score = p.get("sector_percentile_score")
+        p_score = p.get("pair_percentile_score")
+        if s_score is not None and p_score is not None:
+            percentile_scores.append((s_score + p_score) / 2.0)
 
-        avg_score = (s_score + p_score) / 2.0
-        if avg_score > best_score:
-            best_score = avg_score
+        brier = p.get("brier_score")
+        if brier is not None:
+            brier_scores.append(float(brier))
 
-    return float(best_score)
+    if not percentile_scores:
+        return 0.0
+
+    avg_percentile = sum(percentile_scores) / len(percentile_scores)
+    mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.0
+    final_score = avg_percentile - (mean_brier * 50.0)
+    return float(final_score)
 
 
 async def generate_new_prompt(old_prompt: str, baseline_score: float, meta_researcher) -> str:
@@ -102,19 +115,9 @@ async def run_predictor_autoresearch():
         logger.info("No evaluated predictions found in the last week. Skipping autoresearch.")
         return
 
-    # Calculate weekly score as average of all prediction scores
-    scores = []
-    for p in predictions:
-        s_score = p.get("sector_percentile_score")
-        p_score = p.get("pair_percentile_score")
-        if s_score is not None and p_score is not None:
-            scores.append((s_score + p_score) / 2.0)
+    # Calculate weekly score using baseline ratchet formula (including Brier penalty)
+    weekly_score = calculate_baseline_score(predictions)
 
-    if not scores:
-        logger.info("No evaluated prediction scores found for this week. Skipping autoresearch.")
-        return
-
-    weekly_score = sum(scores) / len(scores)
 
     # 2. Fetch current active prompt
     prompt_response = (

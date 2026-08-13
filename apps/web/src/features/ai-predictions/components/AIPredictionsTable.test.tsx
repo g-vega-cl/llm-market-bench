@@ -80,8 +80,10 @@ describe('AIPredictionsTable', () => {
         expect(screen.getByText('Prediction Date')).toBeInTheDocument();
         expect(screen.getByText('Target Date')).toBeInTheDocument();
         expect(screen.getByText('Predictions (Sector / Pair)')).toBeInTheDocument();
+        expect(screen.getByText('Confidence')).toBeInTheDocument();
         expect(screen.getByText('Performance')).toBeInTheDocument();
         expect(screen.getByText('vs S&P 500 (Alpha)')).toBeInTheDocument();
+        expect(screen.getByText('Brier Score')).toBeInTheDocument();
 
         // Check predictions presence
         expect(screen.getAllByText('XLK').length).toBeGreaterThan(0);

@@ -105,5 +105,8 @@ async def test_run_evaluation_runner():
     # XLK + XLU had average return of 7.5%, others 0%. Percentile should be 100.0
     assert update_args["pair_percentile_score"] == 100.0
 
+    # Brier score should be present (default 0.25 when confidence is None and percentile >= 50)
+    assert update_args["brier_score"] == pytest.approx(0.25)
+
     # Check that it updated the correct ID
     mock_chain.eq.assert_any_call("id", "mock-uuid-123456")

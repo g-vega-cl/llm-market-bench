@@ -41,6 +41,7 @@
 
 ## Concepts
 
+- [[concepts/brier-score]] — Brier score calibration metric and autoresearch penalty
 - [[concepts/renko-atr-sizing]] — Auto-indexed page
 - [[concepts/modular-prompt-blocks]] — Reusable trading discipline and reasoning blocks dynamically toggled by the Auto-Researcher
 - [[concepts/intraday-hit-metrics]] — Two-dimensional evaluation for daily predictions measuring intraday price target achievement

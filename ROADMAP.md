@@ -132,3 +132,7 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: FRED api fed api
 - [ ] - Benchify: Toronto stock market
 - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
+- [ ] - get more models on the daily predictor and increase the weight of the "hit" threshold part of the autoresearcher score
+- [ ] - another step in my LLM after newsletter read to look for related info and news online?
+- [x] - add Brier score to autoresearcher and sector researcher
+- [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?

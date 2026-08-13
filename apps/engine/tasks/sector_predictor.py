@@ -22,6 +22,7 @@ from core.llm.predictor_prompts import SECTOR_PREDICTOR_PROMPT
 class SectorPredictionResponse(BaseModel):
     predicted_sector: str
     predicted_pair: list[str]
+    confidence: float = 75.0
     reasoning: str
 
 
@@ -177,6 +178,7 @@ async def run_sector_predictions():
                         result = {
                             "predicted_sector": resp.predicted_sector,
                             "predicted_pair": resp.predicted_pair,
+                            "confidence": resp.confidence,
                             "reasoning": resp.reasoning,
                         }
                     elif model["type"] == "minimax":
@@ -197,6 +199,7 @@ async def run_sector_predictions():
                             "prompt_tag": prompt_tag,
                             "predicted_sector": result.get("predicted_sector", "UNKNOWN"),
                             "predicted_pair": result.get("predicted_pair", []),
+                            "confidence": float(result.get("confidence", 75.0)),
                             "reasoning": result.get("reasoning", ""),
                         },
                         on_conflict="prediction_date,model_name,timeframe",

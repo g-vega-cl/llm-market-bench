@@ -318,6 +318,17 @@ function AIPredictionTableRow({
                     <PredictionValuesCell pred={pred} viewMode={viewMode} />
                 </TableCell>
 
+                {/* Confidence */}
+                <TableCell className="py-3 text-center whitespace-nowrap">
+                    {pred.confidence != null ? (
+                        <span className="text-xs font-semibold text-slate-200">
+                            {pred.confidence.toFixed(0)}%
+                        </span>
+                    ) : (
+                        <span className="text-xs text-slate-500">--</span>
+                    )}
+                </TableCell>
+
                 {/* Performance */}
                 <TableCell className="py-3 text-right whitespace-nowrap">
                     <PerformanceValuesCell pred={pred} viewMode={viewMode} />
@@ -338,6 +349,17 @@ function AIPredictionTableRow({
                         >
                             {pred.sector_percentile_score.toFixed(1)}
                         </Badge>
+                    ) : (
+                        <span className="text-xs text-slate-500">--</span>
+                    )}
+                </TableCell>
+
+                {/* Brier Score */}
+                <TableCell className="py-3 text-center whitespace-nowrap">
+                    {pred.brier_score != null ? (
+                        <span className="text-xs font-mono text-slate-300">
+                            {pred.brier_score.toFixed(4)}
+                        </span>
                     ) : (
                         <span className="text-xs text-slate-500">--</span>
                     )}
@@ -576,6 +598,9 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                                 {viewMode === 'sector' && 'Sector Pick'}
                                 {viewMode === 'pair' && 'Pair Combination'}
                             </TableHead>
+                            <TableHead className="text-slate-300 font-semibold text-xs py-3 text-center">
+                                Confidence
+                            </TableHead>
                             <TableHead
                                 className="text-slate-300 font-semibold text-xs cursor-pointer select-none py-3 text-right"
                                 onClick={() =>
@@ -605,6 +630,9 @@ export function AIPredictionsTable({ predictions }: AIPredictionsTableProps) {
                                 onClick={() => handleSort('score')}
                             >
                                 Percentile {renderSortArrow('score')}
+                            </TableHead>
+                            <TableHead className="text-slate-300 font-semibold text-xs py-3 text-center">
+                                Brier Score
                             </TableHead>
                         </TableRow>
                     </TableHeader>

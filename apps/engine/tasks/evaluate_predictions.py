@@ -71,6 +71,19 @@ def calculate_pair_percentile_score(target_pair: list[str], sector_returns: dict
     return float(percentile)
 
 
+def calculate_sector_brier_score(confidence: float | None, sector_percentile_score: float) -> float:
+    """Calculate Brier Score for sector prediction calibration.
+
+    Brier Score = (p - y)^2. Lower score is better (0.0 is perfect calibration).
+    - p: Model confidence as probability (0.0 to 1.0). Fallback to 0.5 if missing/None.
+    - y: 1.0 if sector_percentile_score >= 50.0 (outperformed median sector), else 0.0.
+    """
+    p = (float(confidence) / 100.0) if confidence is not None else 0.5
+    p = max(0.0, min(1.0, p))
+    y = 1.0 if sector_percentile_score >= 50.0 else 0.0
+    return float((p - y) ** 2)
+
+
 def get_price_for_date(history: list[dict], target_date) -> float | None:
     """Find price closest to or on target_date. Returns None if history is empty."""
     if not history:
@@ -246,9 +259,12 @@ async def run_evaluation():
             logger.warning(f"Predicted pair {predicted_pair} contains tickers without return data. Skipping.")
             continue
 
-        # Compute percentile scores and actual returns
+        # Compute percentile scores, brier score, and actual returns
         sec_score = calculate_percentile_score(predicted_sec, sector_returns)
         pair_score = calculate_pair_percentile_score(predicted_pair, sector_returns)
+
+        confidence_val = p.get("confidence")
+        brier_score = calculate_sector_brier_score(confidence_val, sec_score)
 
         predicted_sec_ret = sector_returns.get(predicted_sec)
         pair_rets = [sector_returns.get(t) for t in predicted_pair if t in sector_returns]
@@ -270,6 +286,7 @@ async def run_evaluation():
                 {
                     "sector_percentile_score": sec_score,
                     "pair_percentile_score": pair_score,
+                    "brier_score": brier_score,
                     "predicted_sector_return": predicted_sec_ret,
                     "predicted_pair_return": predicted_pair_ret,
                     "benchmark_spy_return": spy_ret,
@@ -278,7 +295,7 @@ async def run_evaluation():
                 }
             ).eq("id", pred_id).execute()
             logger.info(
-                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Pair {predicted_pair}: {pair_score:.1f}%, SPY: {spy_ret})"
+                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Pair {predicted_pair}: {pair_score:.1f}%, Brier: {brier_score:.4f}, SPY: {spy_ret})"
             )
         except Exception as e:
             logger.exception(f"Failed to update prediction {pred_id} in database: {e}")

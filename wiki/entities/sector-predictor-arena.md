@@ -21,12 +21,12 @@ Rather than hardcoding a comparison universe of 14 sector ETFs, the evaluation e
 * Both predictions and reference tickers are parsed and coerced to uppercase (via `.upper()`) before comparison.
 * Lowercase model outputs (e.g. `["xlk", "xlv"]`) are parsed and correctly scored without causing silent evaluation skips.
 
-### 3. Feedback-Driven Karpathy Ratchet
+### 3. Feedback-Driven Karpathy Ratchet & Calibration Scoring
 The Arena prompt evolution follows a strict feedback loop identical to the main investment engine:
-1. **Weekly Evaluation**: The runner compiles all predictions with `target_date <= today` and marks them `evaluated`.
-2. **Weekly Scoring**: A single `weekly_score` is computed as the average of the evaluated predictions' average scores:
+1. **Weekly Evaluation**: The runner compiles all predictions with `target_date <= today`, calculates binary outcome $y$ (outperformed median sector), computes Brier Score $BS = (p_{\text{confidence}} - y)^2$, and marks them `evaluated`.
+2. **Weekly Scoring & Brier Calibration Penalty**: A single `weekly_score` is computed as the average percentile score minus a Mean Brier calibration penalty:
    $$\text{Score}_{\text{prediction}} = \frac{\text{sector\_percentile} + \text{pair\_percentile}}{2}$$
-   $$\text{Score}_{\text{weekly}} = \text{Average}(\text{Score}_{\text{prediction}})$$
+   $$\text{Score}_{\text{weekly}} = \text{Average}(\text{Score}_{\text{prediction}}) - (\text{Mean Brier} \times 50.0)$$
 3. **Database Metrics Tracking**: The `metrics` JSON column of the prompt variant that was active during that week is updated in `prompt_experiments` with `{"score": weekly_score}`.
 4. **Ratchet Decision**:
    * The baseline score is calculated as the maximum score of any evaluated `SECTOR_PREDICTOR_PROMPT` variant in the database.
@@ -34,6 +34,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
    * If it underperforms, the active prompt variant is reverted to the baseline variant (`revert_to_baseline()`) before mutating.
 5. **Prompt Sandwich Architecture & Mutation Isolation**:
    * The sector predictor prompt is split into three sections: `SECTOR_PREDICTOR_CONSTRAINTS_HEADER` (role/context), `SECTOR_PREDICTOR_MUTABLE_STRATEGIES` (analytical instructions), and `SECTOR_PREDICTOR_CONSTRAINTS_FOOTER` (required JSON schema).
+   * The footer schema requests explicit self-assessed probability % (`confidence`).
    * The meta-researcher mutates **only** the middle `MUTABLE_STRATEGIES` section. System header constraints and output format JSON schemas are automatically wrapped around the mutated strategy, preventing schema drift or format hallucinations.
    * Backward-compatible fallback (`split_predictor_prompt`) ensures historical monolithic variants are safely parsed without breaking baseline score comparisons.
 6. **Mutation & Deployment**: The meta-researcher (Gemini) mutates the active strategy instructions to deploy the next week's prompt variant.

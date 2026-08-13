@@ -58,7 +58,6 @@ async def _stage_ingest_and_snapshot():
         logger.warning("No new newsletters found to ingest. Skipping snapshotting and analysis.")
         return None, sb_client
 
-    logger.info(f"Successfully ingested {len(data)} newsletters.")
     logger.info("Starting Database Snapshotting...")
 
     saved_count = 0

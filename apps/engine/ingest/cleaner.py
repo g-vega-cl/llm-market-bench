@@ -23,7 +23,7 @@ async def clean_newsletter_content(content: str) -> str:
     if not content or content == config.NO_CONTENT_FOUND:
         return content
 
-    logger.info("Starting advertisement removal pass...")
+    logger.debug("Starting advertisement removal pass...")
 
     # We use Gemini Flash for this pass as it's fast and cost-effective for
     # large batches of text processing like de-advertisement.

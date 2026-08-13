@@ -21,6 +21,8 @@ load_dotenv(dotenv_path=ENV_PATH)
 # --- Logging Configuration ---
 LOG_FORMAT = "[%(asctime)s] [%(name)s] %(levelname)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("engine")
 
 # --- Supabase Configuration ---

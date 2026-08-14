@@ -270,8 +270,8 @@ class TestRetrieveContextModelFilter:
 
         from memory.store import retrieve_context_batch
 
-        retrieve_context_batch(queries=["Test query"], model_name="contrarian_agent")
+        retrieve_context_batch(queries=["Test query"], model_name="gpt-4o")
 
         dec_call = mock_rpc.call_args_list[1]
         assert dec_call[0][0] == "match_decisions"
-        assert dec_call[0][1]["filter_model_name"] == "contrarian_agent"
+        assert dec_call[0][1]["filter_model_name"] == "gpt-4o"

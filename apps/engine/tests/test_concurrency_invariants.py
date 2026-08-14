@@ -18,7 +18,6 @@ def mock_deps():
         patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus,
         patch("main.analyze_momentum", new_callable=AsyncMock),
         patch("main.decay_stale_concepts", new_callable=AsyncMock),
-        patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian,
         patch("main.validate_decision", new_callable=AsyncMock) as mock_validate,
         patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap,
         patch("main.Portfolio") as MockPortfolio,
@@ -29,7 +28,6 @@ def mock_deps():
         # Setup defaults
         mock_ingest.return_value = []
         mock_consensus.return_value = []
-        mock_contrarian.return_value = ([], [])
         mock_overlap.return_value = None
         mock_validate.side_effect = lambda t: ValidationResult(
             status=ValidationStatus.PASSED, market_price=100.0, ticker=t
@@ -332,9 +330,6 @@ async def test_stage_decision_processing_awaits_consensus(mock_deps):
         await asyncio.sleep(0.1)
         consensus_completed = True
         return []
-
-    # Mock contrarian
-    md["analyze"].return_value = ([], [])
 
     with patch("main.process_consensus", new_callable=AsyncMock, side_effect=slow_consensus):
         portfolio = MagicMock()

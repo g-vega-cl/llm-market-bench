@@ -117,7 +117,6 @@ const BOLD_BULLET_HEADINGS = [
     'Immediate Consistency',
     'Alpaca Broker Mirroring',
     'Manager Agent',
-    'Contrarian Agent',
     'Government Tracking',
     'Cause & Effect Analysis',
     'Dynamic Ticker Discovery',
@@ -155,7 +154,7 @@ function HowItWorks() {
                         Benchify is an automated arena where leading AI models compete in the stock
                         market. Four primary LLMs (OpenAI, Claude, Gemini, DeepSeek) analyze
                         newsletters, debate global events, and execute trades — with specialized
-                        agents for verification, contrarian positioning, and post-analysis.
+                        agents for verification and post-analysis.
                     </p>
                     <div className="flex gap-2 justify-center mt-4 flex-wrap">
                         <span className="px-3 py-1 text-sm rounded-full bg-green-500/20 text-green-300 border border-green-500/30">

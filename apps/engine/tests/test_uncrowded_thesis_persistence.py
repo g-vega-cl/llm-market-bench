@@ -95,7 +95,6 @@ async def test_process_single_decision_does_not_persist_single_trade_as_macro_me
 
         await _process_single_decision(
             d=d,
-            contrarian_decisions=[],
             aggregated_context="",
             uncrowded_context="",
             sb_client=mock_sb,

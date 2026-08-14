@@ -12,7 +12,6 @@ from datetime import UTC
 from analysis.analyze import analyze_chunks
 from analysis.cause_and_effect_analysis import perform_cause_and_effect_analysis
 from analysis.consensus import process_consensus
-from analysis.contrarian import run_contrarian_analysis
 from analysis.market_feeling import analyze_market_feeling
 from analysis.momentum import analyze_momentum, decay_stale_concepts
 from analysis.pca_utils import update_pca_coordinates
@@ -157,7 +156,7 @@ async def _stage_analysis_and_consensus(data, sb_client):
 
 
 async def _process_single_decision(
-    d, contrarian_decisions, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+    d, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
 ):
     """Processes a single trading decision with concurrency controls."""
     async with semaphore:
@@ -422,20 +421,10 @@ async def _process_single_decision(
                             else:
                                 # --- Skeptical Verification ---
                                 logger.info(f"[{d.ticker}] Verifying...")
-                                # Search for contrarian thoughts on this ticker
-                                contrarian_text = "\n".join(
-                                    [
-                                        f"- {c.model_name}: {c.reasoning}"
-                                        for c in contrarian_decisions
-                                        if c.ticker == d.ticker
-                                    ]
-                                )
-
                                 verification = await verify_trading_decision(
                                     decision=d,
                                     portfolio_context=await portfolio.get_portfolio_summary(p_map),
                                     aggregated_context=aggregated_context,
-                                    contrarian_context=contrarian_text,
                                     uncrowded_context=uncrowded_context,
                                 )
 
@@ -681,20 +670,6 @@ async def _stage_decision_processing(
 
     consensus_bg_task = asyncio.create_task(run_consensus_background())
 
-    # --- Contrarian Analysis starts IMMEDIATELY (not after consensus) ---
-    logger.info("Starting Contrarian Agent Analysis (in parallel with primary decisions)...")
-    contrarian_task = asyncio.create_task(
-        run_contrarian_analysis(
-            data,
-            decisions,
-            context=aggregated_context,
-            portfolio=None,
-            market_data=None,
-            llm_client=None,
-            retrieve_context_fn=None,
-        )
-    )
-
     # --- DETERMINISTIC SORTING ---
     decisions.sort(key=lambda d: (d.model_name or "", getattr(d, "original_index", 0)))
 
@@ -703,38 +678,16 @@ async def _stage_decision_processing(
 
     counters = {"saved": 0, "rejected": 0, "lock": asyncio.Lock()}
 
-    # --- Execute primary decisions while contrarian is running ---
-    logger.info(f"Executing {len(decisions)} primary decisions in parallel with contrarian...")
+    # --- Execute primary decisions ---
+    logger.info(f"Executing {len(decisions)} primary decisions...")
     primary_tasks = [
         _process_single_decision(
-            d, [], aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
+            d, aggregated_context, uncrowded_context, sb_client, semaphore, portfolio_locks, counters
         )
         for d in decisions
     ]
 
     await asyncio.gather(*primary_tasks)
-
-    # --- Wait for contrarian and execute its decisions ---
-    contrarian_decisions, contrarian_events = await contrarian_task
-    logger.info(f"Contrarian analysis complete. Generated {len(contrarian_decisions)} decisions.")
-
-    if contrarian_decisions:
-        # Give contrarian its own semaphore to avoid overwhelming the system
-        contrarian_semaphore = asyncio.Semaphore(3)
-        contrarian_tasks = [
-            _process_single_decision(
-                d,
-                contrarian_decisions,
-                aggregated_context,
-                uncrowded_context,
-                sb_client,
-                contrarian_semaphore,
-                portfolio_locks,
-                counters,
-            )
-            for d in contrarian_decisions
-        ]
-        await asyncio.gather(*contrarian_tasks)
 
     # Await consensus_bg_task at the end of decision processing to ensure it completes before exit
     logger.info("Awaiting background consensus and momentum tasks to complete...")

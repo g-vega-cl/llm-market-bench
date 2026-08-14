@@ -121,17 +121,6 @@ class TestPromptsNoLLMPriceInstructions:
 
         assert "{market_data_block}" in ANALYSIS_USER_PROMPT_TEMPLATE
 
-    def test_contrarian_user_prompt_does_not_require_limit_price(self):
-        from core.llm.prompts import CONTRARIAN_USER_PROMPT_TEMPLATE
-
-        assert "MUST also set a 'limit_price'" not in CONTRARIAN_USER_PROMPT_TEMPLATE
-        assert "MUST actively execute the `get_stock_quote`" not in CONTRARIAN_USER_PROMPT_TEMPLATE
-
-    def test_contrarian_user_prompt_has_market_data_block_placeholder(self):
-        from core.llm.prompts import CONTRARIAN_USER_PROMPT_TEMPLATE
-
-        assert "{market_data_block}" in CONTRARIAN_USER_PROMPT_TEMPLATE
-
     def test_verifier_user_prompt_has_no_limit_price_reference(self):
         from core.llm.prompts import VERIFIER_USER_PROMPT_TEMPLATE
 

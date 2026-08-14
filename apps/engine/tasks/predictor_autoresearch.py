@@ -118,7 +118,6 @@ async def run_predictor_autoresearch():
     # Calculate weekly score using baseline ratchet formula (including Brier penalty)
     weekly_score = calculate_baseline_score(predictions)
 
-
     # 2. Fetch current active prompt
     prompt_response = (
         client.table("prompt_experiments")

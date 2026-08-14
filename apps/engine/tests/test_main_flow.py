@@ -23,7 +23,6 @@ def mock_dependencies():
         patch("main.analyze_momentum", new_callable=AsyncMock),
         patch("main.decay_stale_concepts", new_callable=AsyncMock),
         patch("main.analyze_market_feeling", new_callable=AsyncMock) as mock_market_feeling,
-        patch("main.run_contrarian_analysis", new_callable=AsyncMock) as mock_contrarian,
         patch("main.validate_decision", new_callable=AsyncMock) as mock_validate,
         patch("main.validate_semantic_overlap", new_callable=AsyncMock) as mock_overlap,
         patch("main.Portfolio") as MockPortfolio,
@@ -35,8 +34,6 @@ def mock_dependencies():
         # Setup defaults
         mock_ingest.return_value = [{"source_id": "test", "content": "test"}]
         mock_consensus.return_value = []
-        mock_consensus.return_value = []
-        mock_contrarian.return_value = ([], [])
         mock_market_feeling.return_value = None
         mock_overlap.return_value = None
         mock_validate.return_value = ValidationResult(

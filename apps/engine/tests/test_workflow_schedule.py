@@ -97,4 +97,3 @@ def test_cron_dispatcher_wrangler_triggers():
     assert "15 13,14,21 * * MON-FRI" in content or ("15 13,14" in content and "15 21" in content), (
         "Expected wrangler.jsonc to include 15 minute cron triggers for 13:00/14:00 UTC hours"
     )
-

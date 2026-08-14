@@ -27,7 +27,7 @@ llm-market-bench/
 │   └── engine/              # Python Data Engine
 │       ├── core/            # LLM clients, tools, and config
 │       ├── ingest/          # Newsletter & Government data
-│       ├── analysis/        # Momentum, Post-Mortems, Contrarian
+│       ├── analysis/        # Momentum, Post-Mortems
 │       ├── execution/       # Validation (Reg T) & Trade Settlement
 │       ├── attribution/     # Decision mapping
 │       ├── memory/          # pgvector store & embeddings
@@ -157,7 +157,7 @@ cd apps/web && pnpm test -- --coverage
 2. **Consensus & Attribution**: Parallel LLM analysis with RAG context retrieval, decision attribution
 3. **Execution & Guardrails**: Second-step verification, hard tool enforcement, Reg T margin validation
 4. **Frontend & Feedback**: Interactive dashboard, memory embedding, post-analysis
-5. **Specialized Agents**: Contrarian trades, government tracking, cause & effect analysis
+5. **Specialized Agents**: Government tracking, cause & effect analysis
 6. **Discovery Agent**: Converts market themes into a high-conviction "Investable Assets" list using `run_stock_screener` and web search in a tool-calling reasoning loop
 
 For a detailed step-by-step walkthrough, see **[Pipeline & Data Flow](./wiki/entities/pipeline.md)**.
@@ -201,7 +201,7 @@ See [ROADMAP.md](./ROADMAP.md) for planned features and improvements.
 - [Execution & Guardrails](./wiki/concepts/execution.md) — Pre-market validation, Reg T
 - [Tool Enforcement](./wiki/concepts/tool-enforcement.md) — 4-layer hallucination prevention
 - [RAG Strategy](./wiki/concepts/rag-strategy.md) — Tiered context injection
-- [Memory & Feedback](./wiki/concepts/memory-feedback.md) — Post-mortem, contrarian analysis
+- [Memory & Feedback](./wiki/concepts/memory-feedback.md) — Post-mortem analysis
 - [Observability Standard](./wiki/concepts/observability-standard.md) — Traceback hardening and pipeline audits
 - [Ingestion Pipeline](./wiki/concepts/ingestion.md) — Newsletters, calendar, government data
 

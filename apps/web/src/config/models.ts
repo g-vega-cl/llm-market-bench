@@ -4,5 +4,4 @@ export const MODELS = {
     GEMINI: 'gemini-3.5-flash-lite',
     DEEPSEEK: 'deepseek-v4-pro',
     MINIMAX: 'MiniMax-M3',
-    CONTRARIAN: 'contrarian_agent',
 } as const;

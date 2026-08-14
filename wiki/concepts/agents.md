@@ -5,13 +5,13 @@ category: concept
 
 # Multi-Agent System Overview
 
-The "LLM Market Bench" platform relies on an orchestrated network of **8 specialized agents** to perform news ingestion, investment analysis, risk verification, consensus building, execution, post-mortem learning, and retrospective audits.
+The "LLM Market Bench" platform relies on an orchestrated network of **7 specialized agents** to perform news ingestion, investment analysis, risk verification, consensus building, execution, post-mortem learning, and retrospective audits.
 
 All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decoupling instruction rules (System message) from dynamic data injection (User message).
 
 ---
 
-## The 8 Specialized Agents
+## The 7 Specialized Agents
 
 ### 1. Analysis Agent
 - **Role**: The core driver of trading decisions. It evaluates newsletter snaps, global macro indicators, and portfolio status to identify investable ideas. It runs 5 parallel instances (OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax).
@@ -19,13 +19,7 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decou
 - **Evolvable**: **Yes** (for OpenAI/Anthropic/Gemini/DeepSeek). This is the only system prompt managed by the [[entities/autoresearch]] engine, which iteratively mutates it to optimize risk-adjusted returns (the Karpathy Ratchet). Note: MiniMax is run under a fixed system prompt variant and is bypass-routed around direct prompt-evolution.
 - **Primary Tools**: `get_stock_quote`, `get_price_history`, `calculate_buy_quantity`, `calculate_sell_quantity`, `web_search`, `stock_screener`, `get_uncorrelated_assets`, `search_prediction_markets`, `get_prediction_market_odds`, `fetch_newsletter_content`, `search_past_memories`. (Note: MiniMax-M3 executes through the Anthropic SDK tool loop via `handlers/anthropic.run_tool_loop`, pointed at MiniMax's Anthropic-compatible endpoint).
 
-### 2. Contrarian Agent
-- **Role**: Conducts a crowded-trade analysis. It identifies structural blindspots, potential tail risks, and over-crowded consensus in the primary decisions, executing counter-trades in a dedicated portfolio to harvest contrarian alpha.
-- **Prompt Pair**: `CONTRARIAN_SYSTEM_PROMPT` / `CONTRARIAN_USER_PROMPT_TEMPLATE`
-- **Evolvable**: No.
-- **Primary Context**: Fresh live market quotes (`force_refresh=True`) to spot immediate narrative divergence.
-
-### 3. Verifier Agent
+### 2. Verifier Agent
 - **Role**: Operates as a double-check guardrail. It cross-examines proposed trade actions against past agent decisions, historical lessons learned, and empirical financial science.
 - **Prompt Pair**: `VERIFIER_SYSTEM_PROMPT` / `VERIFIER_USER_PROMPT_TEMPLATE`
 - **Evolvable**: No.
@@ -86,4 +80,4 @@ graph TD
 - [[entities/pipeline]] — the daily running lifecycle
 - [[concepts/reasoning]] — reasoning loops, the 5 Whys, and the Reasoning Toolbox
 - [[concepts/minimax-portfolio]] — simplified portfolio execution model
-- [[concepts/memory-feedback]] — manager and contrarian feedback
+- [[concepts/memory-feedback]] — post-mortem feedback loops

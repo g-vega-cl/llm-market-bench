@@ -30,10 +30,8 @@ The daily pipeline runs on a cron schedule during US market hours in six phases:
 3. **Analysis** — parallel LLM analysis with tool-calling loops (and raw JSON parsing for MiniMax)
 4. **Consensus** — semantic grouping, event promotion, trend tracking
 5. **Execution** — validation, Reg T checks, trade settlement, attribution (including standard limit orders and a simplified market order pipeline for MiniMax with ±0.5% buffer)
-6. **Feedback** — post-mortem, contrarian analysis, cause & effect, and
+6. **Feedback** — post-mortem, cause & effect, and
    weekly auto-research prompt improvement
-
-See [[entities/pipeline]] for the full walkthrough.
 
 ## Core Tenets
 

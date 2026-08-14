@@ -255,11 +255,11 @@ class TestSellGuardrails:
                 quantity=5,
                 signal="SELL",
                 limit_price=200.00,
-                agent_id="contrarian_agent",
+                agent_id="gpt-4o",
             )
 
             mock_pos.assert_called_once_with("JPM")
-            mock_sup.assert_called_once_with("JPM", "contrarian_agent")
+            mock_sup.assert_called_once_with("JPM", "gpt-4o")
             request = mock_trading_client.submit_order.call_args[0][0]
             assert request.qty == 5
             assert request.side == OrderSide.SELL
@@ -418,7 +418,7 @@ class TestGetSupabasePosition:
         mock_client.table.side_effect = table_side_effect
 
         with patch("execution.alpaca_broker.get_supabase_client", return_value=mock_client):
-            qty = broker._get_supabase_position("JPM", "contrarian_agent")
+            qty = broker._get_supabase_position("JPM", "gpt-4o")
             assert qty == 15
 
     def test_returns_zero_when_no_portfolio_found(self):

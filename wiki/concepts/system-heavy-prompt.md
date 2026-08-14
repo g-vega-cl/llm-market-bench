@@ -38,7 +38,6 @@ As of **2026-05-20**, this pattern is enforced across every agent in the system:
 | Agent | System Prompt | User Prompt (data only) |
 |---|---|---|
 | [[concepts/agents]] (Analysis) | `CORE_ANALYSIS_SYSTEM_PROMPT` | `ANALYSIS_USER_PROMPT_TEMPLATE` |
-| [[concepts/agents]] (Contrarian) | `CONTRARIAN_SYSTEM_PROMPT` | `CONTRARIAN_USER_PROMPT_TEMPLATE` |
 | [[concepts/agents]] (Verifier) | `VERIFIER_SYSTEM_PROMPT` | `VERIFIER_USER_PROMPT_TEMPLATE` |
 | [[concepts/agents]] (Synthesis) | `SYNTHESIS_SYSTEM_PROMPT` | `SYNTHESIS_USER_PROMPT_TEMPLATE` |
 | [[concepts/agents]] (Manager) | `MANAGER_SYSTEM_PROMPT` | `MANAGER_USER_PROMPT_TEMPLATE` |

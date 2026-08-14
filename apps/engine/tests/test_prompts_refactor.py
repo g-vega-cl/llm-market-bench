@@ -80,57 +80,6 @@ class TestPureDataInjectionUserPrompts:
             )
 
     # ------------------------------------------------------------------ #
-    # CONTRARIAN                                                           #
-    # ------------------------------------------------------------------ #
-
-    def test_contrarian_user_no_persona(self):
-        assert "You are a contrarian hedge fund manager" not in prompts.CONTRARIAN_USER_PROMPT_TEMPLATE, (
-            "Persona belongs in CONTRARIAN_SYSTEM_PROMPT."
-        )
-
-    def test_contrarian_user_no_sophisticated_logic_block(self):
-        assert "SOPHISTICATED CONTRARIAN LOGIC" not in prompts.CONTRARIAN_USER_PROMPT_TEMPLATE, (
-            "Strategy instructions belong in CONTRARIAN_SYSTEM_PROMPT."
-        )
-
-    def test_contrarian_user_no_how_prices_work(self):
-        assert "HOW PRICES WORK" not in prompts.CONTRARIAN_USER_PROMPT_TEMPLATE, (
-            "HOW PRICES WORK is a standing instruction — belongs in system prompt."
-        )
-
-    def test_contrarian_user_no_hard_enforcement(self):
-        assert "HARD ENFORCEMENT" not in prompts.CONTRARIAN_USER_PROMPT_TEMPLATE, (
-            "Tool-enforcement rule belongs in CONTRARIAN_SYSTEM_PROMPT."
-        )
-
-    def test_contrarian_user_has_required_placeholders(self):
-        for placeholder in [
-            "{market_data_block}",
-            "{news_content}",
-            "{decisions_context}",
-            "{context}",
-            "{portfolio_context}",
-        ]:
-            assert placeholder in prompts.CONTRARIAN_USER_PROMPT_TEMPLATE, (
-                f"Missing placeholder {placeholder} in CONTRARIAN_USER_PROMPT_TEMPLATE"
-            )
-
-    def test_contrarian_system_owns_sophisticated_logic(self):
-        assert "SOPHISTICATED CONTRARIAN LOGIC" in prompts.CONTRARIAN_SYSTEM_PROMPT, (
-            "CONTRARIAN_SYSTEM_PROMPT must own SOPHISTICATED CONTRARIAN LOGIC."
-        )
-
-    def test_contrarian_system_owns_how_prices_work(self):
-        assert "HOW PRICES WORK" in prompts.CONTRARIAN_SYSTEM_PROMPT, (
-            "CONTRARIAN_SYSTEM_PROMPT must own HOW PRICES WORK block."
-        )
-
-    def test_contrarian_system_owns_hard_enforcement(self):
-        assert "HARD ENFORCEMENT" in prompts.CONTRARIAN_SYSTEM_PROMPT, (
-            "CONTRARIAN_SYSTEM_PROMPT must own hard tool-enforcement rules."
-        )
-
-    # ------------------------------------------------------------------ #
     # VERIFIER                                                             #
     # ------------------------------------------------------------------ #
 
@@ -152,7 +101,6 @@ class TestPureDataInjectionUserPrompts:
             "{portfolio_context}",
             "{context}",
             "{uncrowded_context}",
-            "{contrarian_context}",
         ]:
             assert placeholder in prompts.VERIFIER_USER_PROMPT_TEMPLATE, (
                 f"Missing placeholder {placeholder} in VERIFIER_USER_PROMPT_TEMPLATE"

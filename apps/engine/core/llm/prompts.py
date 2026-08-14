@@ -357,53 +357,6 @@ POTENTIAL ANCESTORS:
 Return ONLY a JSON object with parent_index, relationship_type, and should_resolve.
 """
 
-CONTRARIAN_SYSTEM_PROMPT = (
-    "You are a contrarian hedge fund manager. Your job is to analyze the consensus "
-    "decisions of other trading agents and identify where they might be wrong, "
-    "over-exuberant, or missing key risks. "
-    "Before making any trades, ask yourself: Would a stupid person do this?\n\n"
-    "=== SOPHISTICATED CONTRARIAN LOGIC ===\n"
-    "- **Strategy Formation:** Can you form a contrarian strategy based on the consensus gaps? Document in `strategy_reasoning`.\n"
-    "- **Country ETFs:** If agents are ignoring a country mentioned in the news, look for its primary ETF (e.g., EWJ, EWY, EWW, EWZ).\n"
-    "- **Advance Planning:** Should we exit a common consensus position to fund a better contrarian opportunity? Document in `advance_planning_notes`.\n"
-    "- **Scenario Analysis:** If consensus assumes outcome X, what happens if outcome Y occurs? Document in `scenario_analysis`.\n\n"
-    "=== REASONING TOOLBOX: CHOOSE YOUR METHOD ===\n"
-    "To ensure high-fidelity contrarian logic, select the best framework(s) from your toolbox to pressure-test the consensus:\n"
-    "1. **5 Whys**: Drill down recursively to root drivers to see if consensus missed the real bottleneck.\n"
-    "2. **MECE (Structuring)**: Partition alternative contrarian scenarios and risk factors so there are no overlaps or gaps.\n"
-    "3. **IS / IS NOT Analysis (Kepner-Tregoe)**: Isolate variables by comparing where/when consensus holds (IS) vs where it completely breaks down (IS NOT).\n"
-    "4. **Ishikawa (Fishbone) / 6 Ms**: Analyze potential failures across Machine, Method, Material, Manpower, Measurement, and Milieu.\n\n"
-    "=== HOW PRICES WORK ===\n"
-    "The system pre-fetches and injects current market prices as VERIFIED MARKET DATA in the user prompt. "
-    "Use these prices in your reasoning. "
-    "Your trades execute at the current market price at settlement time. "
-    "Do NOT produce price, limit_price, or price_source fields. "
-    "Your job is: ticker + signal + allocation% + reasoning.\n\n"
-    "=== HARD ENFORCEMENT: MANDATORY TOOL USAGE ===\n"
-    "For SELL decisions, you MUST actively execute the `calculate_sell_quantity(ticker, percentage)` tool "
-    "via function calling to determine the exact share quantity. "
-    "Do not just guess the quantity or output text. "
-    "If you do not formally accomplish these tool calls, your trade will be REJECTED.\n\n"
-    "Return a structured JSON object with a list of 'decisions' (same format as standard analysis) and a list of 'macro_events'."
-)
-
-CONTRARIAN_USER_PROMPT_TEMPLATE = """### Agent Consensus & Decisions:
-{decisions_context}
-
-### News Batch:
-{news_content}
-
-### Historical Context (Relevant Past Events & Lessons):
-{context}
-
-### Current Portfolio Status:
-{portfolio_context}
-
-{market_data_block}
-
-Return a structured JSON object with a list of 'decisions' and a list of 'macro_events'."""
-
-
 MANAGER_SYSTEM_PROMPT = (
     "You are a senior investment manager responsible for evaluating the performance "
     "of trading agents and extracting long-term lessons.\n\n"
@@ -511,9 +464,6 @@ VERIFIER_USER_PROMPT_TEMPLATE = """### PROPOSED TRADE:
 
 #### Uncrowded Context (Secondary Effects & Bottlenecks):
 {uncrowded_context}
-
-#### Contrarian Insights (What others are thinking or missing):
-{contrarian_context}
 
 Return ONLY the JSON object."""
 

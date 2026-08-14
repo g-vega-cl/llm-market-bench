@@ -48,14 +48,12 @@ def test_reasoning_toolbox_integration():
     """Verify that advanced reasoning frameworks from the toolbox are mentioned in relevant prompts."""
     from apps.engine.core.llm.prompts import (
         CAUSE_AND_EFFECT_SYSTEM_PROMPT,
-        CONTRARIAN_SYSTEM_PROMPT,
         CORE_ANALYSIS_SYSTEM_PROMPT,
         MANAGER_SYSTEM_PROMPT,
     )
 
     for prompt in [
         CORE_ANALYSIS_SYSTEM_PROMPT,
-        CONTRARIAN_SYSTEM_PROMPT,
         MANAGER_SYSTEM_PROMPT,
         CAUSE_AND_EFFECT_SYSTEM_PROMPT,
     ]:

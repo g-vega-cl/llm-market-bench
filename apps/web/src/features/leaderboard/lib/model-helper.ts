@@ -45,13 +45,6 @@ export const modelDisplayConfig: Record<
         emoji: '🟡',
         gradient: 'catalyst',
     },
-    [MODELS.CONTRARIAN]: {
-        name: 'Contrarian Agent',
-        color: 'text-rose-500',
-        bgColor: 'bg-rose-500',
-        emoji: '🔴',
-        gradient: 'alert',
-    },
 };
 
 export function getModelDisplayInfo(ownerId: string | null | undefined) {

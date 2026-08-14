@@ -179,7 +179,6 @@ async def test_scenario_parallel_discovery():
 async def test_consensus_double_invocation_bypass():
     with (
         patch("main.process_consensus", new_callable=AsyncMock) as mock_consensus,
-        patch("main.run_contrarian_analysis", new_callable=AsyncMock, return_value=([], [])),
         patch("main.analyze_momentum", new_callable=AsyncMock),
         patch("main.decay_stale_concepts", new_callable=AsyncMock),
         patch("memory.store.decay_memories"),

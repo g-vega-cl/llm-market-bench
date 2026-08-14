@@ -20,7 +20,6 @@ async def verify_trading_decision(
     decision: DecisionObject,
     portfolio_context: str,
     aggregated_context: str,
-    contrarian_context: str = "",
     uncrowded_context: str = "",
     max_tool_steps: int = 5,
 ) -> VerificationResult:
@@ -30,7 +29,6 @@ async def verify_trading_decision(
         decision: The proposed decision object.
         portfolio_context: Current portfolio summary.
         aggregated_context: Historical context and lessons.
-        contrarian_context: Contrarian agent insights.
         uncrowded_context: Isolated secondary effect / uncrowded trade notes.
         max_tool_steps: Maximum iterations for the verifier's tool loop.
 
@@ -49,16 +47,14 @@ async def verify_trading_decision(
     model_name = decision.model_name or "gpt-4o"
 
     # --- Specialized Agent Model Mapping ---
-    from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL, GEMINI_MODEL
+    from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL
 
     AGENT_MODEL_MAPPING = {
-        "contrarian_agent": GEMINI_MODEL,
         "post_mortem_agent": ANTHROPIC_MODEL,
         "deepseek_reasoner": DEEPSEEK_MODEL,
     }
 
     AGENT_PROVIDER_MAPPING = {
-        "contrarian_agent": "gemini",
         "post_mortem_agent": "anthropic",
         "deepseek_reasoner": "deepseek",
     }
@@ -108,9 +104,6 @@ async def verify_trading_decision(
             market_price=market_price,
             portfolio_context=portfolio_context,
             context=full_context,
-            contrarian_context=contrarian_context
-            if contrarian_context
-            else "No specific contrarian context available.",
             uncrowded_context="No specific secondary effects noted.",
         )
 

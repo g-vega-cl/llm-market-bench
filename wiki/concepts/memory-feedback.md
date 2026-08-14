@@ -5,7 +5,7 @@ category: concept
 
 # Memory & Feedback Loops
 
-Three feedback mechanisms that make the system improve over time.
+Two primary feedback mechanisms make the system improve over time.
 
 ## Manager Agent (Post-Mortem)
 
@@ -14,12 +14,6 @@ At configured intervals after trade execution (short, medium, long horizon):
 2. Send original reasoning + actual outcome to LLM
 3. Generate `LESSON_LEARNED` memories in pgvector
 4. Future RAG retrievals include these lessons, preventing repeated mistakes
-
-## Contrarian Agent
-
-Runs after primary agents. Identifies crowded trades and missed risks. Executes
-counter-trades in a dedicated portfolio. Uses fresh market prices
-(`force_refresh=True`), not cached data.
 
 ## Cause & Effect Analysis
 

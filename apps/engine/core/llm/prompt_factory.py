@@ -195,14 +195,6 @@ class PromptFactory:
         )
 
     @classmethod
-    def build_contrarian_messages(cls, provider: str, market_data_block: str = "", **kwargs) -> list[dict[str, Any]]:
-        """Builds messages for the contrarian agent."""
-        kwargs["market_data_block"] = market_data_block
-        return cls._build_messages(
-            provider, prompts.CONTRARIAN_SYSTEM_PROMPT, prompts.CONTRARIAN_USER_PROMPT_TEMPLATE, **kwargs
-        )
-
-    @classmethod
     def build_manager_messages(cls, provider: str, **kwargs) -> list[dict[str, Any]]:
         """Builds messages for the manager/post-analysis agent."""
         return cls._build_messages(

@@ -41,12 +41,6 @@ export const agentConfig: Record<
         bgColor: 'bg-pink-500',
         emoji: '🟡',
     },
-    [MODELS.CONTRARIAN]: {
-        name: 'Contrarian',
-        color: 'text-rose-500',
-        bgColor: 'bg-rose-500',
-        emoji: '🔴',
-    },
 };
 
 export function getAgentInfo(ownerId: string | null | undefined) {

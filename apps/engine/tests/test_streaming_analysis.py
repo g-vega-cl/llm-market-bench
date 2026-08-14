@@ -156,61 +156,6 @@ class TestAnalyzeChunksStreaming:
             assert call_count == len(MODELS), f"Expected {len(MODELS)} model calls, got {call_count}"
 
 
-class TestEarlyContrarianStart:
-    """Tests for early contrarian start behavior."""
-
-    @pytest.mark.asyncio
-    async def test_contrarian_starts_with_partial_decisions(self):
-        """Contrarian can start analysis with partial decisions from first model.
-
-        This test verifies that:
-        1. run_contrarian_analysis accepts dependencies via DI
-        2. It works with partial decisions (not all models needed)
-        3. It returns valid list types for decisions and events
-        """
-        mock_portfolio = MagicMock()
-        mock_portfolio.positions = {}
-        mock_portfolio.initialize = AsyncMock(return_value=None)
-        mock_portfolio.calculate_reg_t_metrics = MagicMock()
-        mock_portfolio.save_metrics = AsyncMock(return_value=None)
-        mock_portfolio.get_portfolio_summary = AsyncMock(return_value="Portfolio: $10,000")
-
-        mock_market_data = MagicMock()
-        mock_market_data.get_quote = AsyncMock(return_value=None)
-        mock_market_data.get_quotes = AsyncMock(return_value={})
-        mock_market_data.is_market_open = AsyncMock(return_value=True)
-
-        mock_gemini_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.decisions = []
-        mock_response.macro_events = []
-        mock_gemini_client.chat.completions.create = AsyncMock(return_value=[mock_response])
-
-        mock_retrieve_context = MagicMock(return_value=[])
-
-        from analysis.contrarian import run_contrarian_analysis
-
-        result_decisions, result_events = await run_contrarian_analysis(
-            [{"source_id": "src_1", "content": "test"}],
-            [
-                DecisionObject(
-                    signal="BUY", confidence=80, reasoning="First model done", ticker="AAPL", source_id="src_1"
-                )
-            ],
-            context="test context",
-            portfolio=mock_portfolio,
-            market_data=mock_market_data,
-            llm_client=mock_gemini_client,
-            retrieve_context_fn=mock_retrieve_context,
-        )
-
-        assert isinstance(result_decisions, list)
-        assert isinstance(result_events, list)
-        # Verify force_refresh is passed to market data fetches
-        for call in mock_market_data.get_quotes.await_args_list:
-            assert call.kwargs.get("force_refresh") is True
-
-
 class TestDecisionCallback:
     """Tests for decision callback mechanism."""
 

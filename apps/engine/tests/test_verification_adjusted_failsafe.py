@@ -154,7 +154,6 @@ async def test_adjusted_allocation_failsafe_rejection():
         # Run process single decision
         result = await _process_single_decision(
             d=decision,
-            contrarian_decisions=[],
             aggregated_context="Context",
             uncrowded_context="",
             sb_client=mock_sb_client,

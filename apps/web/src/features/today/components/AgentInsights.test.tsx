@@ -96,11 +96,6 @@ describe('AgentInsights', () => {
         expect(screen.getByText('DeepSeek')).toBeInTheDocument();
     });
 
-    it('renders agent name text for Contrarian agent', () => {
-        render(<AgentInsights memories={[createLessonMemory('contrarian_agent')]} />);
-        expect(screen.getByText('Contrarian')).toBeInTheDocument();
-    });
-
     it('does not render agent indicator when model_name is missing', () => {
         render(<AgentInsights memories={[createLessonMemory()]} />);
         expect(screen.queryByText('OpenAI')).not.toBeInTheDocument();

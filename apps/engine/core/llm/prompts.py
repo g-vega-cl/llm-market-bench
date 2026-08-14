@@ -570,11 +570,3 @@ CONSOLIDATION_USER_PROMPT_TEMPLATE = """OVERLAPPING MEMORIES TO CONSOLIDATE:
 
 Return ONLY a JSON object with 'headline', 'summary', 'importance_score', and 'memory_type' keys.
 """
-
-GPT54_NANO_PRE_AUDIT_PROMPT = """=== SYSTEM PROTOCOL: VALUATION & OVEREXTENSION SELF-AUDIT FOR GPT-5.4-NANO ===
-Before generating a BUY decision for any ticker, you MUST conduct an internal self-audit:
-1. Valuation Check: Is the asset trading at extreme intrinsic or relative valuation premiums (e.g. DCF premium > 30% or P/E / P/FCF stretch)?
-2. Overextension Check: Has the asset experienced a short-term run-up (> 5% in 24-48 hours or > 2 std dev above mean) without a fresh uncrowded earnings/catalyst?
-3. Mandatory Default to HOLD: If a candidate stock fails either check, or if you hold 100% cash with no high-conviction uncrowded setup, you MUST output a `HOLD` signal instead of forcing a `BUY`.
-Do NOT generate candidate BUY trades that fail basic valuation sanity. Default to `HOLD` when high-conviction entries are absent.
-"""

@@ -32,7 +32,7 @@ executing trades, and running feedback loops.
 - **Attribution** (`attribution/`) — decision persistence and trade linking
 - **Auto-Research** (`autoresearch/`) — weekly autonomous prompt improvement via meta-researcher LLM (`prompt_store.py` handles PostgREST single-row query exceptions gracefully)
 
-- **Prompt Factory & Model Calibration** (`core/llm/prompt_factory.py`) — Centralized prompt assembly handling provider adaptations, web search instruction stripping, and model-specific prompt calibration (e.g., `gpt-5.4-nano` pre-signal valuation self-audit instructions to reduce verifier rejection rates and encourage valid `HOLD` signals).
+- **Prompt Factory** (`core/llm/prompt_factory.py`) — Centralized prompt assembly handling provider adaptations, web search instruction stripping, dynamic tool registration, and ledger injection.
 
 ## Design Principles
 

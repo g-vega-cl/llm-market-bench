@@ -1,4 +1,4 @@
-"""Tests for gpt-5.4-nano prompt calibration self-audit instructions."""
+"""Tests verifying that OpenAI models receive clean baseline prompts without hardcoded pre-audit rules."""
 
 from unittest.mock import patch
 
@@ -20,26 +20,28 @@ def get_sample_kwargs():
 
 
 @pytest.mark.asyncio
-async def test_gpt54_nano_prompt_calibration_injected():
-    """Verify that gpt-5.4-nano receives the pre-signal valuation self-audit instructions."""
-    with patch("core.db.get_async_supabase_client", side_effect=Exception("Mocked DB")):
-        messages = await PromptFactory.build_analysis_messages(
-            provider="openai",
-            owner_id="gpt-5.4-nano",
-            **get_sample_kwargs(),
-        )
+async def test_openai_models_receive_clean_baseline_prompt():
+    """Verify that OpenAI models (gpt-5.6-luna, gpt-5.4-nano) do NOT receive hardcoded pre-audit rules."""
+    openai_models = ["gpt-5.6-luna", "gpt-5.4-nano"]
 
-    system_and_user_text = " ".join(m.get("content", "") for m in messages if isinstance(m.get("content"), str))
-    assert "VALUATION & OVEREXTENSION SELF-AUDIT" in system_and_user_text
-    assert "HOLD" in system_and_user_text
+    for model in openai_models:
+        with patch("core.db.get_async_supabase_client", side_effect=Exception("Mocked DB")):
+            messages = await PromptFactory.build_analysis_messages(
+                provider="openai",
+                owner_id=model,
+                **get_sample_kwargs(),
+            )
+
+        system_and_user_text = " ".join(m.get("content", "") for m in messages if isinstance(m.get("content"), str))
+        assert "VALUATION & OVEREXTENSION SELF-AUDIT" not in system_and_user_text
 
 
 @pytest.mark.asyncio
-async def test_other_models_prompt_unaffected():
-    """Verify that other models do not receive the gpt-5.4-nano specific pre-audit prompt."""
-    other_owners = ["claude-haiku-4-5", "deepseek-v4-pro", "gemini-3.5-flash-lite", "MiniMax-M3"]
+async def test_all_models_prompt_clean_from_hardcoded_audit():
+    """Verify that all other evolvable models also do not receive hardcoded pre-audit prompts."""
+    owners = ["claude-haiku-4-5", "deepseek-v4-pro", "gemini-3.5-flash-lite", "MiniMax-M3"]
 
-    for owner in other_owners:
+    for owner in owners:
         with patch("core.db.get_async_supabase_client", side_effect=Exception("Mocked DB")):
             messages = await PromptFactory.build_analysis_messages(
                 provider="anthropic",

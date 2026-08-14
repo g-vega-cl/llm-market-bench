@@ -155,11 +155,6 @@ class PromptFactory:
                 "Ensure that the tool execution blocks are present in your output BEFORE generating the final response schema. "
                 "This is mandatory for compliance verification.\n\n" + system_prompt
             )
-
-        # Inject pre-signal self-audit calibration for OpenAI model variants
-        if owner_id in ("gpt-5.4-nano", "gpt-5.6-luna"):
-            system_prompt = system_prompt + "\n\n" + prompts.GPT54_NANO_PRE_AUDIT_PROMPT
-
         # Inject portfolio ledger if applicable (only for NON-experiment group agents)
         if owner_id and not is_experiment:
             from attribution.service import get_active_ledger_xml

@@ -5,13 +5,14 @@ from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.config import logger
+from core.config import DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL, logger
 from core.db import get_supabase_client
 from core.llm.clients import close_client, get_deepseek_client
 from core.llm.daily_predictor_prompts import (
     DAILY_PREDICTOR_PROMPT,
     DailyPredictionOutput,
 )
+from core.llm.minimax import MiniMaxClient
 
 
 async def seed_daily_predictor_prompt() -> tuple[str, str]:
@@ -158,67 +159,108 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
     return "\n".join(context_lines)
 
 
-async def run_daily_prediction(ticker: str = "SPY") -> dict | None:
-    """Run daily prediction at 8:00 AM ET for the target ticker (default SPY)."""
+async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
+    """Run daily predictions at 8:00 AM ET for target ticker across model arena (DeepSeek & MiniMax)."""
     client = get_supabase_client()
     prompt_tag, prompt_content = await fetch_active_daily_prompt()
     context = await get_daily_market_context(ticker=ticker)
 
     today = datetime.now(UTC).date()
-    model_name = "deepseek-v4-flash"
-    deepseek_client = get_deepseek_client()
+    user_msg = (
+        f"Market Context:\n{context}\n\n"
+        f"Analyze the market context and predict whether {ticker} will close HIGHER (UP) or LOWER (DOWN) "
+        f"at 4:00 PM ET today compared to the 9:30 AM ET Open price."
+    )
 
-    try:
-        user_msg = (
-            f"Market Context:\n{context}\n\n"
-            f"Analyze the market context and predict whether {ticker} will close HIGHER (UP) or LOWER (DOWN) "
-            f"at 4:00 PM ET today compared to the 9:30 AM ET Open price."
-        )
+    models = [
+        {"name": DEEPSEEK_FLASH_MODEL, "type": "instructor", "provider": "deepseek"},
+        {"name": MINIMAX_MODEL, "type": "minimax", "provider": "minimax"},
+    ]
 
-        resp_awaitable = deepseek_client.chat.completions.create(
-            model=model_name,
-            response_model=DailyPredictionOutput,
-            messages=[
-                {"role": "system", "content": prompt_content},
-                {"role": "user", "content": user_msg},
-            ],
-        )
+    results = []
 
-        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            resp = await resp_awaitable
-        else:
-            resp = resp_awaitable
+    for model_cfg in models:
+        model_name = model_cfg["name"]
+        m_type = model_cfg["type"]
+        provider = model_cfg["provider"]
 
-        prediction_row = {
-            "prediction_date": today.isoformat(),
-            "target_date": today.isoformat(),
-            "ticker": ticker.upper(),
-            "model_name": model_name,
-            "prompt_variant_tag": prompt_tag,
-            "predicted_direction": resp.predicted_direction.upper(),
-            "confidence": float(resp.confidence),
-            "expected_return_pct": float(resp.expected_return_pct),
-            "rationale": resp.rationale,
-            "catalysts": resp.catalysts,
-            "status": "pending",
-        }
+        success = False
+        for attempt in range(3):
+            try:
+                if m_type == "instructor":
+                    deepseek_client = get_deepseek_client()
+                    try:
+                        resp_awaitable = deepseek_client.chat.completions.create(
+                            model=model_name,
+                            response_model=DailyPredictionOutput,
+                            messages=[
+                                {"role": "system", "content": prompt_content},
+                                {"role": "user", "content": user_msg},
+                            ],
+                        )
+                        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
+                            resp = await resp_awaitable
+                        else:
+                            resp = resp_awaitable
 
-        # Upsert prediction row in Supabase
-        client.table("daily_predictions").upsert(
-            prediction_row,
-            on_conflict="target_date,ticker,model_name",
-        ).execute()
+                        pred_dir = resp.predicted_direction.upper()
+                        confidence = float(resp.confidence)
+                        expected_return_pct = float(resp.expected_return_pct)
+                        rationale = resp.rationale
+                        catalysts = resp.catalysts
+                    finally:
+                        await close_client(deepseek_client, provider)
 
-        logger.info(
-            f"Successfully logged daily prediction for {ticker} on {today}: "
-            f"{resp.predicted_direction} with {resp.confidence}% confidence."
-        )
-        return prediction_row
-    except Exception as e:
-        logger.error(f"Error running daily prediction for {ticker}: {e}")
-        return None
-    finally:
-        await close_client(deepseek_client, "deepseek")
+                elif m_type == "minimax":
+                    minimax_client = MiniMaxClient()
+                    try:
+                        messages = [
+                            {"role": "system", "content": prompt_content},
+                            {"role": "user", "content": user_msg},
+                        ]
+                        parsed_json = await minimax_client.chat_with_json_response(messages, model=model_name)
+                        pred_dir = str(parsed_json.get("predicted_direction", "UP")).upper()
+                        confidence = float(parsed_json.get("confidence", 50.0))
+                        expected_return_pct = float(parsed_json.get("expected_return_pct", 0.0))
+                        rationale = str(parsed_json.get("rationale", ""))
+                        catalysts = parsed_json.get("catalysts", [])
+                    finally:
+                        await minimax_client.close()
+
+                prediction_row = {
+                    "prediction_date": today.isoformat(),
+                    "target_date": today.isoformat(),
+                    "ticker": ticker.upper(),
+                    "model_name": model_name,
+                    "prompt_variant_tag": prompt_tag,
+                    "predicted_direction": pred_dir,
+                    "confidence": confidence,
+                    "expected_return_pct": expected_return_pct,
+                    "rationale": rationale,
+                    "catalysts": catalysts,
+                    "status": "pending",
+                }
+
+                client.table("daily_predictions").upsert(
+                    prediction_row,
+                    on_conflict="target_date,ticker,model_name",
+                ).execute()
+
+                logger.info(
+                    f"Successfully logged daily prediction for {ticker} ({model_name}) on {today}: "
+                    f"{pred_dir} with {confidence}% confidence."
+                )
+                results.append(prediction_row)
+                success = True
+                break
+            except Exception as e:
+                logger.warning(f"Prediction attempt {attempt + 1} failed for {model_name} on {ticker}: {e}")
+                if attempt < 2:
+                    await asyncio.sleep(2)
+        if not success:
+            logger.error(f"Daily prediction failed for {model_name} on {ticker} after 3 attempts.")
+
+    return results
 
 
 if __name__ == "__main__":

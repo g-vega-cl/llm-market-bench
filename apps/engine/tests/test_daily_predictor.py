@@ -42,7 +42,7 @@ def test_daily_predictor_prompt_symmetry():
 
 
 @pytest.mark.asyncio
-async def test_run_daily_prediction_success():
+async def test_run_daily_prediction_arena_success():
     mock_supabase = MagicMock()
 
     # Mock active prompt DB query
@@ -53,10 +53,10 @@ async def test_run_daily_prediction_success():
         }
     ]
 
-    # Mock insert
-    mock_supabase.table.return_value.insert.return_value.execute.return_value.data = [{"id": "test-uuid"}]
+    # Mock upsert
+    mock_supabase.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "test-uuid"}]
 
-    mock_llm = MagicMock()
+    mock_deepseek = MagicMock()
     mock_prediction = DailyPredictionOutput(
         predicted_direction="UP",
         confidence=75.0,
@@ -64,18 +64,80 @@ async def test_run_daily_prediction_success():
         rationale="Overnight futures up and strong tech momentum.",
         catalysts=["Tech earnings", "Fed stance"],
     )
-    mock_llm.chat.completions.create.return_value = mock_prediction
+    mock_deepseek.chat.completions.create.return_value = mock_prediction
+
+    mock_minimax = AsyncMock()
+    mock_minimax.chat_with_json_response = AsyncMock(
+        return_value={
+            "predicted_direction": "DOWN",
+            "confidence": 60.0,
+            "expected_return_pct": -0.30,
+            "rationale": "Overextended RSI and pending macro risk.",
+            "catalysts": ["CPI release"],
+        }
+    )
+    mock_minimax.close = AsyncMock()
 
     with (
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
-        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_llm),
+        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
+        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
         patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
     ):
-        result = await run_daily_prediction(ticker="SPY")
-        assert result is not None
-        assert result["predicted_direction"] == "UP"
-        assert result["confidence"] == 75.0
-        assert result["ticker"] == "SPY"
+        results = await run_daily_prediction(ticker="SPY")
+        assert isinstance(results, list)
+        assert len(results) == 2
+
+        deepseek_res = next((r for r in results if r["model_name"] == "deepseek-v4-flash"), None)
+        assert deepseek_res is not None
+        assert deepseek_res["predicted_direction"] == "UP"
+        assert deepseek_res["confidence"] == 75.0
+
+        minimax_res = next((r for r in results if r["model_name"] == "MiniMax-M3"), None)
+        assert minimax_res is not None
+        assert minimax_res["predicted_direction"] == "DOWN"
+        assert minimax_res["confidence"] == 60.0
+
+
+@pytest.mark.asyncio
+async def test_run_daily_prediction_partial_failure():
+    mock_supabase = MagicMock()
+
+    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
+        {
+            "variant_tag": "daily-pred-tag1",
+            "prompt_content": DAILY_PREDICTOR_PROMPT,
+        }
+    ]
+    mock_supabase.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "test-uuid"}]
+
+    mock_deepseek = MagicMock()
+    mock_prediction = DailyPredictionOutput(
+        predicted_direction="UP",
+        confidence=80.0,
+        expected_return_pct=0.50,
+        rationale="Strong pre-market breakout.",
+        catalysts=["Earnings beat"],
+    )
+    mock_deepseek.chat.completions.create.return_value = mock_prediction
+
+    # MiniMax fails on all attempts
+    mock_minimax = AsyncMock()
+    mock_minimax.chat_with_json_response = AsyncMock(side_effect=Exception("MiniMax API Timeout"))
+    mock_minimax.close = AsyncMock()
+
+    with (
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
+        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
+        patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        results = await run_daily_prediction(ticker="SPY")
+        assert isinstance(results, list)
+        assert len(results) == 1
+        assert results[0]["model_name"] == "deepseek-v4-flash"
+        assert results[0]["predicted_direction"] == "UP"
 
 
 @pytest.mark.asyncio

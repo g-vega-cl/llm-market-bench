@@ -1,5 +1,5 @@
 ---
-tags: [predictor, daily, intraday, sp500, autoresearch, deepseek]
+tags: [predictor, daily, intraday, sp500, autoresearch, deepseek, minimax]
 category: entity
 ---
 
@@ -39,10 +39,13 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 1. **High-Precision Edge Cron Dispatcher (`apps/cron-dispatcher`)**:
    - Cloudflare Worker running 5 consolidated edge cron triggers (`0 13,18 * * MON-FRI`, `35 13-15 * * MON-FRI`, `15 21 * * MON-FRI`, `0 22 * * SUN,WED`).
    - Unified dispatcher routing to both `daily-predictor.yml` (Predictions, Evaluations, Autoresearch) and `ingest.yml` (Ingestion & Consensus).
-   - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials.
+   - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials without executing LLM code directly on the edge worker.
    - Bypasses GitHub Actions scheduled queue delays, launching workflows in < 5 seconds.
 
-2. **Market-Open Safety Guardrail**:
+2. **Runner Environment & API Key Injection**:
+   - `.github/workflows/daily-predictor.yml` provisions secrets for all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) and database credentials (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+
+3. **Market-Open Safety Guardrail**:
    - Implemented in `.github/workflows/daily-predictor.yml`.
    - If a pre-market `daily-predictor` run is triggered or delayed after **9:30 AM EDT (13:30 UTC)**, the step automatically logs a warning and exits cleanly without recording stale intraday predictions.
 

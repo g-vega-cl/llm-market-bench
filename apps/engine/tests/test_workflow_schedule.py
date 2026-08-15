@@ -55,6 +55,28 @@ def test_daily_predictor_workflow_schedule():
     assert not schedule, f"Expected no native schedule in daily-predictor.yml, found: {schedule}"
 
 
+def test_daily_predictor_workflow_env_keys():
+    """Verify daily-predictor.yml includes MINIMAX_API_KEY for the MiniMax model arena runner."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
+
+    assert predictor_yml_path.exists(), f"Could not find workflow file at {predictor_yml_path}"
+
+    with open(predictor_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", {})
+    predictor_job = jobs.get("run-daily-predictor", {})
+    steps = predictor_job.get("steps", [])
+
+    run_step = next((s for s in steps if s.get("name") == "Run Daily Predictor Command"), None)
+    assert run_step is not None, "Could not find 'Run Daily Predictor Command' step in daily-predictor.yml"
+
+    step_env = run_step.get("env", {})
+    assert "MINIMAX_API_KEY" in step_env, f"Expected MINIMAX_API_KEY in step env, found: {list(step_env.keys())}"
+    assert step_env["MINIMAX_API_KEY"] == "${{ secrets.MINIMAX_API_KEY }}"
+
+
 def test_generate_newsletter_workflow_schedule():
     """Verify generate-newsletter.yml relies on Cloudflare Worker workflow_dispatch and does not have native schedule."""
     root = Path(__file__).resolve().parent.parent.parent.parent

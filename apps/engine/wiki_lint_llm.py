@@ -107,7 +107,11 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
             },
         ],
         "temperature": 0.1,  # Lower temperature for more stable JSON
-        "max_tokens": 4096,  # 4k is usually plenty for 10 findings and more stable than 8k on many providers
+        "max_tokens": 16384,  # Provide sufficient headroom for reasoning + JSON output
+        "reasoning": {
+            "effort": "low",
+            "max_tokens": 4096,
+        },
     }
 
     headers = {
@@ -132,10 +136,20 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
         raise requests.RequestException("OpenRouter returned no choices")
 
     choice = data["choices"][0]
-    raw = choice.get("message", {}).get("content")
+    msg = choice.get("message", {})
+    raw = msg.get("content")
+    reasoning = msg.get("reasoning") or msg.get("reasoning_content")
     finish_reason = choice.get("finish_reason")
 
-    if raw is None:
+    if raw is None or not raw.strip():
+        if finish_reason == "length":
+            error_detail = (
+                "OpenRouter returned empty content because token limit was exhausted during reasoning "
+                f"(finish_reason: length, reasoning_len: {len(reasoning) if reasoning else 0}). "
+                "Consider increasing max_tokens or adjusting reasoning effort."
+            )
+            logger.error(error_detail)
+            raise requests.RequestException(error_detail)
         logger.error(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
         raise requests.RequestException(f"OpenRouter returned empty content. Finish reason: {finish_reason}")
 
@@ -180,7 +194,7 @@ def main():
     parser.add_argument("--model", help="OpenRouter model name (e.g., anthropic/claude-haiku-4-5)")
     args = parser.parse_args()
 
-    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-pro"
+    model = args.model or os.getenv("WIKI_LINT_MODEL") or "deepseek/deepseek-v4-flash"
     api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:

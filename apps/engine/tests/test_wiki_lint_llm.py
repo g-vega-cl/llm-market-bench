@@ -83,3 +83,44 @@ def test_call_openrouter_truncated_json():
     with patch("requests.post", return_value=mock_response):
         with pytest.raises(json.JSONDecodeError):
             call_openrouter("fake content", "fake-model", "fake-key")
+
+
+def test_call_openrouter_reasoning_exhausted_handled():
+    """
+    Verify that empty content due to reasoning token exhaustion has a descriptive error.
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": None,
+                    "reasoning": "Thinking about all 100 wiki files in depth...",
+                },
+                "finish_reason": "length",
+            }
+        ]
+    }
+    mock_response.raise_for_status.return_value = None
+
+    with patch("requests.post", return_value=mock_response):
+        with pytest.raises(requests.RequestException) as excinfo:
+            call_openrouter("fake content", "fake-model", "fake-key")
+
+        assert "token limit was exhausted during reasoning" in str(excinfo.value)
+
+
+def test_call_openrouter_payload_settings():
+    """
+    Verify that payload includes increased max_tokens and reasoning controls.
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"choices": [{"message": {"content": '{"findings": [], "summary": "OK"}'}}]}
+    mock_response.raise_for_status.return_value = None
+
+    with patch("requests.post", return_value=mock_response) as mock_post:
+        call_openrouter("fake content", "fake-model", "fake-key")
+        assert mock_post.called
+        payload = mock_post.call_args[1]["json"]
+        assert payload["max_tokens"] >= 8192
+        assert "reasoning" in payload

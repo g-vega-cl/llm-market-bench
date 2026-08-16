@@ -27,6 +27,7 @@ Runs weekly via GitHub Actions (Saturday 10:00 ET) or manually. Sends all wiki p
 - Data gaps and thin pages
 
 Recent improvements:
+- **Reasoning Token Headroom & Flash Model Default** (2026-08-16): Switched default deep lint model to DeepSeek v4 Flash (`deepseek/deepseek-v4-flash`), increased response token budget (`max_tokens: 16384`), and capped reasoning tokens (`effort: low`, `max_tokens: 4096`) to prevent chain-of-thought token exhaustion on large prompt payloads.
 - **File manifest injection** (2026-07-10): the prompt now includes a JSON manifest of all wiki files, preventing false-positive "missing page" errors caused by text truncation.
 - **Increased input size**: max input raised from 75k to 120k chars to accommodate more files.
 

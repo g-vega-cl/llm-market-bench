@@ -108,4 +108,6 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_get_verifier_rejections_tool(
             ticker=args.get("ticker"), limit=args.get("limit", 5), model_name=model_name
         )
+    elif name == "web_search":
+        return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

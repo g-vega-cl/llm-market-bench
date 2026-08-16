@@ -93,7 +93,8 @@
             "Manager Agent: Runs post-mortems at 5, 14, and 30 days to store lessons learned.",
             "Contrarian Agent: Checks crowded trades and issues counter-positioning.",
             "Cause & Effect Analysis: Audits retrospective price impact of AI trading signals.",
-            "Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe."
+            "Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe.",
+            "Isolated Single-Stock Execution: Executes the [[entities/lin-renko-agent]] pipeline on its dedicated `$10,000` isolated ledger."
         ],
         "tags": ["Manager Agent", "Contrarian Agent", "Cause & Effect"],
         "icon": "🧠"

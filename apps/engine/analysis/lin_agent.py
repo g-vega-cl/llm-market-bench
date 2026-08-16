@@ -4,11 +4,14 @@ Uses DeepSeek Flash (deepseek-v4-flash) to evaluate LIN price action via Renko s
 and specialized Chemical Engineering / Industrial Gas sector context.
 """
 
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any
 
 from analysis.renko import RenkoState
+from core.llm.clients import get_deepseek_client
+from core.llm.handlers import deepseek
 
 logger = logging.getLogger("engine")
 
@@ -87,15 +90,58 @@ Respond in valid JSON:
 """
 
     async def query_llm(self, prompt: str) -> dict[str, Any]:
-        """Queries the LLM provider (e.g. DeepSeek Flash) with fallback parsing."""
-        # Simulated/production call to DeepSeek Flash handler
+        """Queries the DeepSeek LLM provider with web search tool loop and JSON parsing."""
         logger.info(f"Querying {self.model_name} for LIN analysis...")
-        return {
+        fallback_result = {
             "decision": "HOLD_LONG",
-            "confidence": 0.85,
-            "target_position_pct": 0.15,
-            "reasoning": "Renko state and industrial backlog support trend continuity.",
+            "confidence": 0.50,
+            "target_position_pct": 0.10,
+            "reasoning": "Fallback response due to LLM parsing or connectivity issue.",
         }
+
+        try:
+            client = get_deepseek_client()
+            raw_client = client.client
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a quantitative single-stock analyst for Linde plc (LIN). "
+                        "You have access to the web_search tool to check breaking news, earnings catalysts, "
+                        "or industrial gas demand before issuing your trade decision."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ]
+
+            # Run DeepSeek tool loop with web search enabled
+            await deepseek.run_tool_loop(
+                raw_client=raw_client,
+                model_name=self.model_name,
+                messages=messages,
+                enable_web_search=True,
+            )
+
+            # Final extraction call
+            clean_msgs = deepseek.prepare_messages_for_instructor(messages)
+            completion = await raw_client.chat.completions.create(
+                model=self.model_name,
+                messages=clean_msgs,
+                response_format={"type": "json_object"},
+            )
+
+            content = completion.choices[0].message.content or ""
+            parsed = json.loads(content)
+            return {
+                "decision": parsed.get("decision", "HOLD_LONG"),
+                "confidence": float(parsed.get("confidence", 0.85)),
+                "target_position_pct": float(parsed.get("target_position_pct", 0.15)),
+                "reasoning": str(parsed.get("reasoning", "Renko and fundamentals support position.")),
+            }
+        except Exception as e:
+            logger.warning(f"Error querying DeepSeek for LIN agent: {e}")
+            return fallback_result
 
     async def analyze(self, renko_state: RenkoState, context: LinAgentContext) -> dict[str, Any]:
         """Executes full LIN analysis loop."""

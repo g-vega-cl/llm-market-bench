@@ -412,6 +412,10 @@ async def analyze_with_provider(
                 from core.config import ENABLE_OPENAI_WEB_SEARCH
 
                 enable_web_search = ENABLE_OPENAI_WEB_SEARCH
+            elif provider == "deepseek":
+                from core.config import ENABLE_DEEPSEEK_WEB_SEARCH
+
+                enable_web_search = ENABLE_DEEPSEEK_WEB_SEARCH
 
         if prompt_type == "macro":
             messages = PromptFactory.build_macro_analysis_messages(

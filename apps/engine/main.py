@@ -820,6 +820,19 @@ async def run_ingest(force: bool = False):
                 )
             else:
                 logger.warning("Market feeling analysis did not produce a result.")
+
+            # Isolated LIN Single-Stock Flow (Post-Consensus Pipeline Hook)
+            try:
+                logger.info("Starting Isolated LIN Renko Flow...")
+                from tasks.lin_renko_task import run_lin_renko_flow
+
+                lin_result = await run_lin_renko_flow()
+                logger.info(
+                    f"Isolated LIN Renko Flow completed (Decision: {lin_result.get('decision', {}).get('decision')}, "
+                    f"Trade Executed: {lin_result.get('trade_executed')})."
+                )
+            except Exception:
+                logger.exception("Isolated LIN Renko Flow execution failed")
         finally:
             from execution.providers.factory import get_active_provider_class
 

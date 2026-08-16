@@ -136,47 +136,61 @@ function PredictionValuesCell({ pred, viewMode }: { pred: SectorPrediction; view
     );
 }
 
+function ReturnMetricRow({
+    value,
+    label,
+    invertColor = false,
+    opacityClass,
+}: {
+    value: number | null | undefined;
+    label: string;
+    invertColor?: boolean;
+    opacityClass?: string;
+}) {
+    if (value == null) return null;
+    const isPositive = value >= 0;
+    const isGood = invertColor ? !isPositive : isPositive;
+    const textColor = isGood ? 'text-emerald-400' : 'text-rose-400';
+    const colorClass = opacityClass ? `${textColor}/${opacityClass}` : textColor;
+    const sign = isPositive ? '+' : '';
+
+    return (
+        <div className={`text-[11px] font-semibold ${colorClass}`}>
+            {`${sign}${value.toFixed(2)}% (${label})`}
+        </div>
+    );
+}
+
 function PerformanceValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
     if (pred.status === 'pending') {
         return <span className="text-xs text-slate-500 italic">Pending...</span>;
     }
 
-    const secRet = pred.predicted_sector_return;
-    const worstRet = pred.predicted_worst_sector_return;
-    const pairRet = pred.predicted_pair_return;
+    const showSector = viewMode === 'dual' || viewMode === 'sector';
+    const showPair = viewMode === 'dual' || viewMode === 'pair';
 
     return (
         <div className="space-y-0.5">
-            {(viewMode === 'dual' || viewMode === 'sector') && (
-                <div
-                    className={`text-xs font-semibold ${
-                        (secRet ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                >
-                    {secRet != null
-                        ? `${secRet >= 0 ? '+' : ''}${secRet.toFixed(2)}% (Best)`
-                        : 'N/A'}
-                </div>
+            {showSector &&
+                (pred.predicted_sector_return != null ? (
+                    <ReturnMetricRow value={pred.predicted_sector_return} label="Best" />
+                ) : (
+                    <div className="text-xs font-semibold text-slate-500">N/A</div>
+                ))}
+            {showSector && (
+                <ReturnMetricRow
+                    value={pred.predicted_worst_sector_return}
+                    label="Worst"
+                    invertColor
+                    opacityClass="90"
+                />
             )}
-            {(viewMode === 'dual' || viewMode === 'sector') && worstRet != null && (
-                <div
-                    className={`text-[11px] ${
-                        worstRet <= 0 ? 'text-emerald-400/90' : 'text-rose-400/90'
-                    }`}
-                >
-                    {`${worstRet >= 0 ? '+' : ''}${worstRet.toFixed(2)}% (Worst)`}
-                </div>
-            )}
-            {(viewMode === 'dual' || viewMode === 'pair') && (
-                <div
-                    className={`text-[11px] ${
-                        (pairRet ?? 0) >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'
-                    }`}
-                >
-                    {pairRet != null
-                        ? `${pairRet >= 0 ? '+' : ''}${pairRet.toFixed(2)}% (Pair)`
-                        : ''}
-                </div>
+            {showPair && (
+                <ReturnMetricRow
+                    value={pred.predicted_pair_return}
+                    label="Pair"
+                    opacityClass="80"
+                />
             )}
         </div>
     );

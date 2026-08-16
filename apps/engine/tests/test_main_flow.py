@@ -344,3 +344,30 @@ async def test_run_weekend_ingest_handles_empty_data_log_saving():
         # Ensure table("ingestion_logs").insert(...) was executed
         mock_sb.table.assert_called_with("ingestion_logs")
         mock_sb.table().insert.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_run_ingest_executes_isolated_lin_flow(mock_dependencies):
+    """Verify run_ingest executes isolated LIN Renko flow and tolerates errors."""
+    mock_sb = MagicMock()
+    with (
+        patch("core.utils.is_market_open_with_logging", new_callable=AsyncMock, return_value=True),
+        patch("main.get_supabase_client", return_value=mock_sb),
+        patch("main.ingest_newsletters", new_callable=AsyncMock, return_value=[{"source_id": "test-1"}]),
+        patch("main._stage_dust_cleanup", new_callable=AsyncMock),
+        patch("main.bulk_upsert_newsletter_snapshots"),
+        patch("main._stage_analysis_and_consensus", new_callable=AsyncMock, return_value=([], [], "", "")),
+        patch("main._stage_decision_processing", new_callable=AsyncMock),
+        patch("main._stage_snapshots_and_pca", new_callable=AsyncMock),
+        patch("main.analyze_market_feeling", new_callable=AsyncMock, return_value=None),
+        patch("tasks.lin_renko_task.run_lin_renko_flow", new_callable=AsyncMock) as mock_lin,
+    ):
+        mock_lin.return_value = {"trade_executed": True, "decision": {"decision": "BUY_LONG"}}
+        await run_ingest(force=True)
+        mock_lin.assert_awaited_once()
+
+        # Also test error resilience
+        mock_lin.reset_mock()
+        mock_lin.side_effect = RuntimeError("LIN FMP network error")
+        await run_ingest(force=True)
+        mock_lin.assert_awaited_once()

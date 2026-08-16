@@ -41,6 +41,7 @@
 
 ## Concepts
 
+- [[concepts/deepseek-web-search]] — Live web search tool integration for DeepSeek agents with DuckDuckGo/FMP hybrid backend
 - [[concepts/worst-sector-scoring]] — Two-sided sector prediction, worst sector percentile scoring, and S&P 500 alpha bonus
 - [[concepts/brier-score]] — Brier score calibration metric and autoresearch penalty
 - [[concepts/renko-atr-sizing]] — Auto-indexed page

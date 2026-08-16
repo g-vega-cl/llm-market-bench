@@ -85,9 +85,11 @@ The pipeline closes the loop by auditing historical results and updating system 
 *   Contrarian Agent: Checks crowded trades and issues counter-positioning.
 *   Cause & Effect Analysis: Audits retrospective price impact of AI trading signals.
 *   Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe.
+*   Isolated Single-Stock Execution: Executes the [[entities/lin-renko-agent]] pipeline on its dedicated `$10,000` isolated ledger.
 
 ## Related
 
 - [[concepts/consensus]]
 - [[concepts/ingestion]]
 - [[entities/engine]]
+- [[entities/lin-renko-agent]]

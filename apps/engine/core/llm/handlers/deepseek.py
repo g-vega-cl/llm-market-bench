@@ -3,10 +3,25 @@
 import json
 import logging
 
+from core.llm import tools
 from core.llm.handlers import base
-from core.llm.handlers.openai import _build_tool_list
+from core.llm.handlers.openai import DEFAULT_OPENAI_TOOLS
 
 logger = logging.getLogger("engine")
+
+
+def _build_deepseek_tool_list(enable_web_search: bool = False, override_tools: list | None = None) -> list:
+    """Builds the tool list for DeepSeek API using OpenAI-compatible function calling schemas."""
+    if override_tools is not None:
+        tool_list = list(override_tools)
+        if enable_web_search and tools.WEB_SEARCH_TOOL not in tool_list:
+            tool_list.append(tools.WEB_SEARCH_TOOL)
+        return tool_list
+
+    base_tools = list(DEFAULT_OPENAI_TOOLS)
+    if enable_web_search and tools.WEB_SEARCH_TOOL not in base_tools:
+        base_tools.append(tools.WEB_SEARCH_TOOL)
+    return base_tools
 
 
 async def run_tool_loop(
@@ -31,11 +46,13 @@ async def run_tool_loop(
     """
     import typing
 
+    tool_list = _build_deepseek_tool_list(enable_web_search=enable_web_search, override_tools=override_tools)
+
     for _ in range(max_tool_steps):
         args: dict[str, typing.Any] = {
             "model": model_name,
             "messages": messages,
-            "tools": override_tools if override_tools is not None else _build_tool_list(enable_web_search),
+            "tools": tool_list,
         }
 
         # DeepSeek specific: Enable thinking mode (all v4 models support it).

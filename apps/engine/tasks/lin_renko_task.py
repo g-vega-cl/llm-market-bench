@@ -6,6 +6,7 @@ Standalone single-stock execution pipeline for LIN, running post-consensus or on
 import asyncio
 import logging
 from typing import Any
+from uuid import UUID
 
 from analysis.lin_agent import LinAgent, LinAgentContext
 from analysis.renko import RenkoEngine
@@ -15,6 +16,74 @@ from execution.providers.fmp import FMPProvider
 logger = logging.getLogger("engine")
 
 PORTFOLIO_OWNER_ID = "lin-renko-agent-deepseek-flash"
+
+
+async def execute_lin_trade_decision(
+    portfolio: Portfolio,
+    decision: dict[str, Any],
+    current_price: float,
+    symbol: str = "LIN",
+) -> UUID | None:
+    """Executes trade on the isolated LIN portfolio based on LLM decision.
+
+    Guarantees strict single-ticker isolation by rejecting any ticker other than 'LIN'.
+    """
+    if symbol.upper() != "LIN":
+        raise ValueError(f"Strict single-stock isolation violation: {symbol} attempted on LIN portfolio (LIN only).")
+
+    action = decision.get("decision", "HOLD_LONG").upper()
+    confidence = float(decision.get("confidence", 0.0))
+    target_pos_pct = float(decision.get("target_position_pct", 0.15))
+
+    logger.info(
+        f"Processing LIN trade decision: {action} (confidence: {confidence:.2f}, target_pct: {target_pos_pct:.1%}) @ ${current_price:.2f}"
+    )
+
+    if current_price <= 0:
+        logger.warning(f"Invalid current price for LIN trade execution: ${current_price:.2f}")
+        return None
+
+    if action in ("BUY_LONG", "BUY"):
+        # Position sizing: up to target_position_pct (capped at 25% max) based on total cash
+        alloc_pct = min(target_pos_pct, 0.25)
+        usd_to_spend = portfolio.cash_balance * alloc_pct
+        quantity = int(usd_to_spend / current_price)
+
+        if quantity >= 1 and portfolio.cash_balance >= (quantity * current_price):
+            logger.info(f"Executing BUY for {quantity} LIN shares (${quantity * current_price:,.2f})...")
+            return await portfolio.execute_trade(
+                ticker="LIN",
+                quantity=quantity,
+                price=current_price,
+                signal="BUY",
+                skip_alpaca_mirror=True,
+            )
+        else:
+            logger.info(f"Insufficient cash or fractional size for BUY {quantity} LIN shares @ ${current_price:.2f}.")
+            return None
+
+    elif action in ("EXIT_LONG", "SELL", "SHORT"):
+        # Sell entire held position of LIN
+        held_pos = portfolio.positions.get("LIN")
+        if held_pos and held_pos.quantity > 0:
+            qty_to_sell = held_pos.quantity
+            logger.info(f"Executing SELL for {qty_to_sell} LIN shares @ ${current_price:.2f}...")
+            return await portfolio.execute_trade(
+                ticker="LIN",
+                quantity=qty_to_sell,
+                price=current_price,
+                signal="SELL",
+                skip_alpaca_mirror=True,
+            )
+        else:
+            logger.info("No LIN position currently held to exit.")
+            return None
+
+    elif action in ("HOLD_LONG", "HOLD"):
+        logger.info(f"Holding LIN position. Current held: {portfolio.positions.get('LIN', 'None')}")
+        return None
+
+    return None
 
 
 async def run_lin_renko_flow() -> dict[str, Any]:
@@ -59,6 +128,18 @@ async def run_lin_renko_flow() -> dict[str, Any]:
         f"LIN Renko Decision ({agent.model_name}): {decision_res['decision']} (Confidence: {decision_res['confidence']})"
     )
 
+    # 5. Execute trade on isolated portfolio
+    current_price = prices[-1] if prices else engine.state.last_brick_price
+    if current_price <= 0:
+        current_price = 490.61
+
+    trade_id = await execute_lin_trade_decision(
+        portfolio=portfolio,
+        decision=decision_res,
+        current_price=current_price,
+        symbol="LIN",
+    )
+
     return {
         "symbol": "LIN",
         "portfolio_owner": PORTFOLIO_OWNER_ID,
@@ -71,6 +152,8 @@ async def run_lin_renko_flow() -> dict[str, Any]:
         },
         "lin_metrics": lin_metrics,
         "decision": decision_res,
+        "executed_trade_id": str(trade_id) if trade_id else None,
+        "trade_executed": trade_id is not None,
     }
 
 

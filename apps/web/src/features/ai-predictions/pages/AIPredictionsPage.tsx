@@ -665,12 +665,7 @@ function getModelBadgeStyle(modelName: string): string {
     return 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
 }
 
-function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
-    const isPending = pred.status === 'pending';
-    const sectorScore = pred.sector_percentile_score ?? 0;
-    const worstSectorScore = pred.worst_sector_percentile_score;
-    const pairScore = pred.pair_percentile_score ?? 0;
-
+function computeCompositeScore(pred: SectorPrediction) {
     const components = [
         pred.sector_percentile_score,
         pred.worst_sector_percentile_score,
@@ -687,6 +682,131 @@ function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
     const alphaBonus = Math.max(0, spDiff);
     const compositeScore = (baseScore + alphaBonus).toFixed(1);
 
+    return { components, alphaBonus, compositeScore };
+}
+
+function CompositeScoreBanner({ pred }: { pred: SectorPrediction }) {
+    const { components, alphaBonus, compositeScore } = computeCompositeScore(pred);
+
+    return (
+        <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs space-y-1">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                <span className="text-slate-200 font-semibold flex items-center gap-1.5">
+                    <span>🏆</span> Composite Predictor Score:{' '}
+                    <strong className="text-emerald-400 font-mono text-sm">
+                        {compositeScore} / 100
+                    </strong>
+                </span>
+                <span className="text-slate-400 font-mono text-[11px]">
+                    Formula: ({components.map((c) => c.toFixed(1)).join(' + ')}) ÷{' '}
+                    {components.length}
+                    {alphaBonus > 0 ? ` + ${alphaBonus.toFixed(1)} S&P Alpha` : ''}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function ScoreConstituentsGrid({
+    pred,
+    isPending,
+}: {
+    pred: SectorPrediction;
+    isPending: boolean;
+}) {
+    const hasWorst = Boolean(
+        pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN',
+    );
+    const sectorScore = pred.sector_percentile_score ?? 0;
+    const worstSectorScore = pred.worst_sector_percentile_score;
+    const pairScore = pred.pair_percentile_score ?? 0;
+
+    return (
+        <div className="space-y-2">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Score Constituents Breakdown
+            </div>
+            <div
+                className={`grid grid-cols-1 ${
+                    hasWorst ? 'md:grid-cols-3' : 'md:grid-cols-2'
+                } gap-4`}
+            >
+                <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-300">1️⃣ Best Sector Call</span>
+                        <span className="text-slate-500 font-mono text-[10px]">
+                            Best Sector Score
+                        </span>
+                    </div>
+                    <div className="text-lg font-bold text-white flex items-center gap-2">
+                        {pred.predicted_sector}
+                        {!isPending && (
+                            <span className="text-xs font-semibold text-emerald-400">
+                                ({sectorScore.toFixed(1)} score)
+                            </span>
+                        )}
+                    </div>
+                    {!isPending && (
+                        <div className="text-[11px] text-slate-400">
+                            vs S&P Sector ETF Median (50th %ile)
+                        </div>
+                    )}
+                </div>
+
+                {hasWorst && (
+                    <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="font-semibold text-slate-300">
+                                2️⃣ Worst Sector Call
+                            </span>
+                            <span className="text-slate-500 font-mono text-[10px]">
+                                Worst Sector Score
+                            </span>
+                        </div>
+                        <div className="text-lg font-bold text-rose-400 flex items-center gap-2">
+                            {pred.predicted_worst_sector}
+                            {!isPending && worstSectorScore != null && (
+                                <span className="text-xs font-semibold text-rose-300">
+                                    ({worstSectorScore.toFixed(1)} score)
+                                </span>
+                            )}
+                        </div>
+                        {!isPending && (
+                            <div className="text-[11px] text-slate-400">
+                                Bottom sector performance rank
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-300">
+                            {hasWorst ? '3️⃣ Uncorrelated Pair' : '2️⃣ Uncorrelated Pair'}
+                        </span>
+                        <span className="text-slate-500 font-mono text-[10px]">Pair Score</span>
+                    </div>
+                    <div className="text-lg font-bold text-white flex items-center gap-2">
+                        {pred.predicted_pair.join(' + ')}
+                        {!isPending && (
+                            <span className="text-xs font-semibold text-emerald-400">
+                                ({pairScore.toFixed(1)} score)
+                            </span>
+                        )}
+                    </div>
+                    {!isPending && (
+                        <div className="text-[11px] text-slate-400">
+                            Multi-asset uncorrelation basket rank
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
+    const isPending = pred.status === 'pending';
     const hasBenchmarkData =
         pred.benchmark_spy_return != null && pred.predicted_sector_return != null;
 
@@ -726,110 +846,10 @@ function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
             )}
 
             {/* Evaluated Composite Score Formula Banner */}
-            {!isPending && (
-                <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs space-y-1">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
-                        <span className="text-slate-200 font-semibold flex items-center gap-1.5">
-                            <span>🏆</span> Composite Predictor Score:{' '}
-                            <strong className="text-emerald-400 font-mono text-sm">
-                                {compositeScore} / 100
-                            </strong>
-                        </span>
-                        <span className="text-slate-400 font-mono text-[11px]">
-                            Formula: ({components.map((c) => c.toFixed(1)).join(' + ')}) ÷{' '}
-                            {components.length}
-                            {alphaBonus > 0 ? ` + ${alphaBonus.toFixed(1)} S&P Alpha` : ''}
-                        </span>
-                    </div>
-                </div>
-            )}
+            {!isPending && <CompositeScoreBanner pred={pred} />}
 
             {/* Score Constituents Breakdown */}
-            <div className="space-y-2">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Score Constituents Breakdown
-                </div>
-                <div
-                    className={`grid grid-cols-1 ${
-                        pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN'
-                            ? 'md:grid-cols-3'
-                            : 'md:grid-cols-2'
-                    } gap-4`}
-                >
-                    <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-slate-300">1️⃣ Best Sector Call</span>
-                            <span className="text-slate-500 font-mono text-[10px]">
-                                Best Sector Score
-                            </span>
-                        </div>
-                        <div className="text-lg font-bold text-white flex items-center gap-2">
-                            {pred.predicted_sector}
-                            {!isPending && (
-                                <span className="text-xs font-semibold text-emerald-400">
-                                    ({sectorScore.toFixed(1)} score)
-                                </span>
-                            )}
-                        </div>
-                        {!isPending && (
-                            <div className="text-[11px] text-slate-400">
-                                vs S&P Sector ETF Median (50th %ile)
-                            </div>
-                        )}
-                    </div>
-
-                    {pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN' && (
-                        <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="font-semibold text-slate-300">
-                                    2️⃣ Worst Sector Call
-                                </span>
-                                <span className="text-slate-500 font-mono text-[10px]">
-                                    Worst Sector Score
-                                </span>
-                            </div>
-                            <div className="text-lg font-bold text-rose-400 flex items-center gap-2">
-                                {pred.predicted_worst_sector}
-                                {!isPending && worstSectorScore != null && (
-                                    <span className="text-xs font-semibold text-rose-300">
-                                        ({worstSectorScore.toFixed(1)} score)
-                                    </span>
-                                )}
-                            </div>
-                            {!isPending && (
-                                <div className="text-[11px] text-slate-400">
-                                    Bottom sector performance rank
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-slate-300">
-                                {pred.predicted_worst_sector &&
-                                pred.predicted_worst_sector !== 'UNKNOWN'
-                                    ? '3️⃣ Uncorrelated Pair'
-                                    : '2️⃣ Uncorrelated Pair'}
-                            </span>
-                            <span className="text-slate-500 font-mono text-[10px]">Pair Score</span>
-                        </div>
-                        <div className="text-lg font-bold text-white flex items-center gap-2">
-                            {pred.predicted_pair.join(' + ')}
-                            {!isPending && (
-                                <span className="text-xs font-semibold text-emerald-400">
-                                    ({pairScore.toFixed(1)} score)
-                                </span>
-                            )}
-                        </div>
-                        {!isPending && (
-                            <div className="text-[11px] text-slate-400">
-                                Multi-asset uncorrelation basket rank
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+            <ScoreConstituentsGrid pred={pred} isPending={isPending} />
 
             <div>
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">

@@ -148,6 +148,7 @@ ENABLE_GEMINI_WEB_SEARCH = os.getenv("ENABLE_GEMINI_WEB_SEARCH", "true").lower()
 ENABLE_OPENAI_WEB_SEARCH = (
     os.getenv("ENABLE_OPENAI_WEB_SEARCH", "false").lower() == "true"
 )  # Limited support in Chat API
+ENABLE_DEEPSEEK_WEB_SEARCH = os.getenv("ENABLE_DEEPSEEK_WEB_SEARCH", "true").lower() == "true"
 
 # Anthropic web search tool version
 # Use 'web_search_20250305' for ZDR compliance, 'web_search_20260209' for dynamic filtering

@@ -2305,3 +2305,112 @@ async def execute_get_verifier_rejections_tool(
     except Exception as e:
         logger.exception(f"Error in execute_get_verifier_rejections_tool: {e}")
         return f"Error retrieving verifier rejections: {str(e)}"
+
+
+async def execute_web_search_tool(query: str, max_results: int = 5) -> str:
+    """Performs a live web search for financial news, market reports, and catalysts.
+
+    Args:
+        query: The search query string.
+        max_results: Max number of search snippets to return.
+
+    Returns:
+        Formatted markdown string containing search results.
+    """
+    if not query or not query.strip():
+        return "Error: Empty search query provided."
+
+    query_str = query.strip()
+    logger.info(f"Executing web_search tool for query: '{query_str}'")
+
+    results = []
+
+    # 1. Primary: DuckDuckGo HTML search
+    try:
+        import httpx
+        from bs4 import BeautifulSoup
+
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(
+                "https://html.duckduckgo.com/html/",
+                params={"q": query_str},
+                headers=headers,
+            )
+
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                result_blocks = soup.find_all("div", class_=lambda c: c and "result" in c)
+                for block in result_blocks:
+                    title_elem = block.find("a", class_=lambda c: c and "title" in c) or block.find(
+                        "a", class_="result__url"
+                    )
+                    snippet_elem = block.find("div", class_=lambda c: c and "snippet" in c) or block.find(
+                        "a", class_="result__snippet"
+                    )
+                    url_elem = block.find("a", class_=lambda c: c and "url" in c) or title_elem
+
+                    if title_elem and snippet_elem:
+                        title = title_elem.get_text(strip=True)
+                        snippet = snippet_elem.get_text(strip=True)
+                        href = url_elem.get("href", "") if url_elem else ""
+                        if title and snippet:
+                            results.append({"title": title, "snippet": snippet, "url": href})
+                            if len(results) >= max_results:
+                                break
+
+    except Exception as e:
+        logger.warning(f"DuckDuckGo web search encountered error: {e}")
+
+    # 2. Fallback: FMP Stock News Search if ticker is present in query or general search had no hits
+    if not results:
+        try:
+            import httpx
+
+            from execution.providers.fmp import FMPProvider
+
+            fmp = FMPProvider()
+            if fmp.api_key:
+                words = query_str.split()
+                candidate_tickers = [
+                    w.strip("$,.:;\"'()")
+                    for w in words
+                    if w.strip("$,.:;\"'()").isupper() and 1 <= len(w.strip("$,.:;\"'()")) <= 5
+                ]
+                ticker_to_search = candidate_tickers[0] if candidate_tickers else "LIN"
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    fmp_resp = await client.get(
+                        "https://financialmodelingprep.com/api/v3/stock_news",
+                        params={"tickers": ticker_to_search, "limit": max_results, "apikey": fmp.api_key},
+                    )
+                    if fmp_resp.status_code == 200:
+                        news_items = fmp_resp.json()
+                        if isinstance(news_items, list):
+                            for item in news_items[:max_results]:
+                                results.append(
+                                    {
+                                        "title": item.get("title", ""),
+                                        "snippet": item.get("text", "")[:250] + "...",
+                                        "url": item.get("url", ""),
+                                    }
+                                )
+        except Exception as e:
+            logger.warning(f"FMP news search fallback failed: {e}")
+
+    if not results:
+        return f"No relevant web search results found for '{query_str}'."
+
+    lines = [f"=== WEB SEARCH RESULTS FOR '{query_str}' ==="]
+    for i, r in enumerate(results, 1):
+        url_part = f" ({r['url']})" if r.get("url") else ""
+        lines.append(f"{i}. {r['title']}{url_part}\n   {r['snippet']}")
+
+    return "\n\n".join(lines)

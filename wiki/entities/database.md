@@ -24,9 +24,9 @@ Supabase PostgreSQL instance that powers the entire LLM Market Bench platform. I
 
 ### LLM Predictions & Arena
 - `sector_predictions` – LLM-generated sector and pair predictions with evaluation results
-  - Core fields: `prediction_date`, `target_date`, `timeframe`, `model_name`, `prompt_tag`, `predicted_sector`, `predicted_pair`, `reasoning`, `sector_percentile_score`, `pair_percentile_score`, `status` (`pending`/`evaluated`)
-  - New return columns (2026-07-19 migration): `predicted_sector_return` (float), `predicted_pair_return` (float), `benchmark_spy_return` (float) – actual window returns of the predicted sector, pair basket, and S&P 500 benchmark
-  - Audit data: `evaluation_audit_data` (JSONB) – stores starting prices, ending prices, and percentage returns per ticker for SPY, the sector ETF, and each pair ETF, along with start/end dates
+  - Core fields: `prediction_date`, `target_date`, `timeframe`, `model_name`, `prompt_tag`, `predicted_sector`, `predicted_worst_sector`, `predicted_pair`, `reasoning`, `confidence`, `brier_score`, `sector_percentile_score`, `worst_sector_percentile_score`, `pair_percentile_score`, `status` (`pending`/`evaluated`)
+  - Return columns: `predicted_sector_return` (float), `predicted_worst_sector_return` (float), `predicted_pair_return` (float), `benchmark_spy_return` (float), `sector_sp_diff` (float) – actual window returns of the predicted best sector, worst sector, pair basket, S&P 500 benchmark, and alpha vs SPY
+  - Audit data: `evaluation_audit_data` (JSONB) – stores starting prices, ending prices, and percentage returns per ticker for SPY, the best sector ETF, worst sector ETF, and each pair ETF, along with start/end dates
 - `prompt_experiments` – prompt variant registry for the sector predictor arena and main trading prompts
 
 ### Vector Search & Knowledge

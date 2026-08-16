@@ -866,6 +866,8 @@ export type Database = {
             sector_predictions: {
                 Row: {
                     benchmark_spy_return: number | null;
+                    confidence: number | null;
+                    brier_score: number | null;
                     created_at: string;
                     evaluation_audit_data: Json | null;
                     id: string;
@@ -875,16 +877,22 @@ export type Database = {
                     predicted_pair_return: number | null;
                     predicted_sector: string;
                     predicted_sector_return: number | null;
+                    predicted_worst_sector: string | null;
+                    predicted_worst_sector_return: number | null;
                     prediction_date: string;
                     prompt_tag: string | null;
                     reasoning: string | null;
                     sector_percentile_score: number | null;
+                    sector_sp_diff: number | null;
                     status: string;
                     target_date: string;
                     timeframe: string;
+                    worst_sector_percentile_score: number | null;
                 };
                 Insert: {
                     benchmark_spy_return?: number | null;
+                    confidence?: number | null;
+                    brier_score?: number | null;
                     created_at?: string;
                     evaluation_audit_data?: Json | null;
                     id?: string;
@@ -894,16 +902,22 @@ export type Database = {
                     predicted_pair_return?: number | null;
                     predicted_sector: string;
                     predicted_sector_return?: number | null;
+                    predicted_worst_sector?: string | null;
+                    predicted_worst_sector_return?: number | null;
                     prediction_date: string;
                     prompt_tag?: string | null;
                     reasoning?: string | null;
                     sector_percentile_score?: number | null;
+                    sector_sp_diff?: number | null;
                     status?: string;
                     target_date: string;
                     timeframe: string;
+                    worst_sector_percentile_score?: number | null;
                 };
                 Update: {
                     benchmark_spy_return?: number | null;
+                    confidence?: number | null;
+                    brier_score?: number | null;
                     created_at?: string;
                     evaluation_audit_data?: Json | null;
                     id?: string;
@@ -913,13 +927,17 @@ export type Database = {
                     predicted_pair_return?: number | null;
                     predicted_sector?: string;
                     predicted_sector_return?: number | null;
+                    predicted_worst_sector?: string | null;
+                    predicted_worst_sector_return?: number | null;
                     prediction_date?: string;
                     prompt_tag?: string | null;
                     reasoning?: string | null;
                     sector_percentile_score?: number | null;
+                    sector_sp_diff?: number | null;
                     status?: string;
                     target_date?: string;
                     timeframe?: string;
+                    worst_sector_percentile_score?: number | null;
                 };
                 Relationships: [];
             };

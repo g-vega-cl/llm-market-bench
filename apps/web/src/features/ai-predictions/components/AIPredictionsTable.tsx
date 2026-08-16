@@ -94,7 +94,20 @@ interface AIPredictionTableRowProps {
 
 function PredictionValuesCell({ pred, viewMode }: { pred: SectorPrediction; viewMode: ViewMode }) {
     if (viewMode === 'sector') {
-        return <span className="text-xs font-bold text-white">{pred.predicted_sector}</span>;
+        return (
+            <div className="space-y-0.5">
+                <div className="text-xs font-bold text-white flex items-center gap-1">
+                    <span className="text-blue-400 text-[10px] uppercase">Best:</span>
+                    {pred.predicted_sector}
+                </div>
+                {pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN' && (
+                    <div className="text-xs font-medium text-rose-400 flex items-center gap-1">
+                        <span className="text-rose-400 text-[10px] uppercase">Worst:</span>
+                        {pred.predicted_worst_sector}
+                    </div>
+                )}
+            </div>
+        );
     }
     if (viewMode === 'pair') {
         return (
@@ -109,6 +122,12 @@ function PredictionValuesCell({ pred, viewMode }: { pred: SectorPrediction; view
                 <span className="text-blue-400 text-[10px] uppercase">Sec:</span>
                 {pred.predicted_sector}
             </div>
+            {pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN' && (
+                <div className="text-[11px] text-rose-400 flex items-center gap-1">
+                    <span className="text-rose-400/80 text-[10px] uppercase">Worst:</span>
+                    {pred.predicted_worst_sector}
+                </div>
+            )}
             <div className="text-[11px] text-slate-400 flex items-center gap-1">
                 <span className="text-emerald-400 text-[10px] uppercase">Pair:</span>
                 {pred.predicted_pair.join(' + ')}
@@ -123,6 +142,7 @@ function PerformanceValuesCell({ pred, viewMode }: { pred: SectorPrediction; vie
     }
 
     const secRet = pred.predicted_sector_return;
+    const worstRet = pred.predicted_worst_sector_return;
     const pairRet = pred.predicted_pair_return;
 
     return (
@@ -133,7 +153,18 @@ function PerformanceValuesCell({ pred, viewMode }: { pred: SectorPrediction; vie
                         (secRet ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
                     }`}
                 >
-                    {secRet != null ? `${secRet >= 0 ? '+' : ''}${secRet.toFixed(2)}%` : 'N/A'}
+                    {secRet != null
+                        ? `${secRet >= 0 ? '+' : ''}${secRet.toFixed(2)}% (Best)`
+                        : 'N/A'}
+                </div>
+            )}
+            {(viewMode === 'dual' || viewMode === 'sector') && worstRet != null && (
+                <div
+                    className={`text-[11px] ${
+                        worstRet <= 0 ? 'text-emerald-400/90' : 'text-rose-400/90'
+                    }`}
+                >
+                    {`${worstRet >= 0 ? '+' : ''}${worstRet.toFixed(2)}% (Worst)`}
                 </div>
             )}
             {(viewMode === 'dual' || viewMode === 'pair') && (
@@ -218,10 +249,20 @@ function EvaluationAuditDrawer({
 
                             {auditData.sector && (
                                 <div className="flex justify-between text-slate-300">
-                                    <span>Sector ({auditData.sector.ticker}):</span>
+                                    <span>Best ({auditData.sector.ticker}):</span>
                                     <span className="font-mono text-slate-200">
                                         Start: ${auditData.sector.start_price.toFixed(2)} ➔ End: $
                                         {auditData.sector.end_price.toFixed(2)}
+                                    </span>
+                                </div>
+                            )}
+
+                            {auditData.worst_sector && (
+                                <div className="flex justify-between text-rose-300">
+                                    <span>Worst ({auditData.worst_sector.ticker}):</span>
+                                    <span className="font-mono text-rose-200">
+                                        Start: ${auditData.worst_sector.start_price.toFixed(2)} ➔
+                                        End: ${auditData.worst_sector.end_price.toFixed(2)}
                                     </span>
                                 </div>
                             )}

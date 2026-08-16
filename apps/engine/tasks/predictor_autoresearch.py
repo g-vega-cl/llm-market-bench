@@ -25,30 +25,53 @@ class MetaPromptResponse(BaseModel):
 def calculate_baseline_score(predictions: list[dict]) -> float:
     """Calculate the baseline ratchet score from a set of model predictions.
 
-    Formula: Avg Percentile Score - (Mean Brier Score * 50.0).
+    Formula:
+    For each prediction:
+      - Percentiles: best sector percentile score, worst sector percentile score (if available), pair percentile score.
+      - Base Score = Average of available percentile scores.
+      - S&P Alpha Bonus = max(0.0, sector_sp_diff) if sector_sp_diff is available,
+        else max(0.0, predicted_sector_return - benchmark_spy_return) if both exist, else 0.0.
+      - Prediction Score = Base Score + S&P Alpha Bonus.
+    Ratchet Baseline Score = Avg(Prediction Scores) - (Mean Brier Score * 50.0).
     """
     if not predictions:
         return 0.0
 
-    percentile_scores = []
+    pred_scores = []
     brier_scores = []
 
     for p in predictions:
         s_score = p.get("sector_percentile_score")
+        w_score = p.get("worst_sector_percentile_score")
         p_score = p.get("pair_percentile_score")
-        if s_score is not None and p_score is not None:
-            percentile_scores.append((s_score + p_score) / 2.0)
+
+        components = [s for s in (s_score, w_score, p_score) if s is not None]
+        if not components:
+            continue
+
+        base_score = sum(components) / len(components)
+
+        # Calculate S&P alpha bonus for the picked sector
+        sp_diff = p.get("sector_sp_diff")
+        if sp_diff is None:
+            sec_ret = p.get("predicted_sector_return")
+            spy_ret = p.get("benchmark_spy_return")
+            if sec_ret is not None and spy_ret is not None:
+                sp_diff = sec_ret - spy_ret
+
+        alpha_bonus = max(0.0, float(sp_diff)) if sp_diff is not None else 0.0
+        pred_scores.append(base_score + alpha_bonus)
 
         brier = p.get("brier_score")
         if brier is not None:
             brier_scores.append(float(brier))
 
-    if not percentile_scores:
+    if not pred_scores:
         return 0.0
 
-    avg_percentile = sum(percentile_scores) / len(percentile_scores)
+    avg_pred_score = sum(pred_scores) / len(pred_scores)
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.0
-    final_score = avg_percentile - (mean_brier * 50.0)
+    final_score = avg_pred_score - (mean_brier * 50.0)
     return float(final_score)
 
 

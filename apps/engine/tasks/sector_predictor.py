@@ -21,6 +21,7 @@ from core.llm.predictor_prompts import SECTOR_PREDICTOR_PROMPT
 
 class SectorPredictionResponse(BaseModel):
     predicted_sector: str
+    predicted_worst_sector: str = "UNKNOWN"
     predicted_pair: list[str]
     confidence: float = 75.0
     reasoning: str
@@ -152,7 +153,9 @@ async def run_sector_predictions():
             success = False
             for attempt in range(3):
                 try:
-                    user_msg = f"Data:\n{data_block}\nPredict the best sector and pair for the next {tf}."
+                    user_msg = (
+                        f"Data:\n{data_block}\nPredict the best sector, worst sector, and pair for the next {tf}."
+                    )
                     if attempt > 0 and model["type"] == "minimax":
                         # Add a hint to keep it concise to avoid token limit issues
                         user_msg += "\nNote: Keep your internal reasoning/thinking process concise to avoid token limit truncation."
@@ -177,6 +180,7 @@ async def run_sector_predictions():
                             resp = resp_awaitable
                         result = {
                             "predicted_sector": resp.predicted_sector,
+                            "predicted_worst_sector": resp.predicted_worst_sector,
                             "predicted_pair": resp.predicted_pair,
                             "confidence": resp.confidence,
                             "reasoning": resp.reasoning,
@@ -198,6 +202,7 @@ async def run_sector_predictions():
                             "model_name": model["name"],
                             "prompt_tag": prompt_tag,
                             "predicted_sector": result.get("predicted_sector", "UNKNOWN"),
+                            "predicted_worst_sector": result.get("predicted_worst_sector", "UNKNOWN"),
                             "predicted_pair": result.get("predicted_pair", []),
                             "confidence": float(result.get("confidence", 75.0)),
                             "reasoning": result.get("reasoning", ""),

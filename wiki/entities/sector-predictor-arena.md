@@ -24,8 +24,12 @@ Rather than hardcoding a comparison universe of 14 sector ETFs, the evaluation e
 ### 3. Feedback-Driven Karpathy Ratchet & Calibration Scoring
 The Arena prompt evolution follows a strict feedback loop identical to the main investment engine:
 1. **Weekly Evaluation**: The runner compiles all predictions with `target_date <= today`, calculates binary outcome $y$ (outperformed median sector), computes Brier Score $BS = (p_{\text{confidence}} - y)^2$, and marks them `evaluated`.
-2. **Weekly Scoring & Brier Calibration Penalty**: A single `weekly_score` is computed as the average percentile score minus a Mean Brier calibration penalty:
-   $$\text{Score}_{\text{prediction}} = \frac{\text{sector\_percentile} + \text{pair\_percentile}}{2}$$
+2. **Weekly Scoring & S&P Alpha Bonus**:
+   * Evaluates the best sector percentile score ($S_{\text{best}}$), worst sector percentile score ($S_{\text{worst}}$, where bottom performer in the universe yields 100%), and uncorrelated pair percentile score ($S_{\text{pair}}$).
+   * Computes S&P 500 alpha: $\alpha_{\text{SPY}} = r_{\text{sector}} - r_{\text{SPY}}$.
+   * Rewards the LLM for beating the S&P 500 benchmark by adding positive alpha points directly to the score:
+   $$\text{Base Score} = \text{Average}(S_{\text{best}}, S_{\text{worst}}, S_{\text{pair}})$$
+   $$\text{Score}_{\text{prediction}} = \text{Base Score} + \max(0, \alpha_{\text{SPY}})$$
    $$\text{Score}_{\text{weekly}} = \text{Average}(\text{Score}_{\text{prediction}}) - (\text{Mean Brier} \times 50.0)$$
 3. **Database Metrics Tracking**: The `metrics` JSON column of the prompt variant that was active during that week is updated in `prompt_experiments` with `{"score": weekly_score}`.
 4. **Ratchet Decision**:
@@ -33,7 +37,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
    * If the current week's score beats the baseline, a new baseline is established.
    * If it underperforms, the active prompt variant is reverted to the baseline variant (`revert_to_baseline()`) before mutating.
 5. **Prompt Sandwich Architecture & Mutation Isolation**:
-   * The sector predictor prompt is split into three sections: `SECTOR_PREDICTOR_CONSTRAINTS_HEADER` (role/context), `SECTOR_PREDICTOR_MUTABLE_STRATEGIES` (analytical instructions), and `SECTOR_PREDICTOR_CONSTRAINTS_FOOTER` (required JSON schema).
+   * The sector predictor prompt is split into three sections: `SECTOR_PREDICTOR_CONSTRAINTS_HEADER` (role/context), `SECTOR_PREDICTOR_MUTABLE_STRATEGIES` (analytical instructions), and `SECTOR_PREDICTOR_CONSTRAINTS_FOOTER` (required JSON schema with `predicted_sector`, `predicted_worst_sector`, and `predicted_pair`).
    * The footer schema requests explicit self-assessed probability % (`confidence`).
    * The meta-researcher mutates **only** the middle `MUTABLE_STRATEGIES` section. System header constraints and output format JSON schemas are automatically wrapped around the mutated strategy, preventing schema drift or format hallucinations.
    * Backward-compatible fallback (`split_predictor_prompt`) ensures historical monolithic variants are safely parsed without breaking baseline score comparisons.
@@ -42,13 +46,13 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 ### 4. Robust Frontend Visuals & Audit Transparency
 * **4-Model Scoreboard Grid**: Head-to-head scorecards dynamically calculate and display average percentile scores and top-quartile call rates across all 4 inference models (**DeepSeek Flash**, **MiniMax-M3**, **Gemini 3.5**, and **OpenAI GPT-5.6**).
 * **Top Accuracy Chart & 4-Series Legend**: Historical accuracy trends render 4 distinct D3 color series (DeepSeek `#60a5fa`, MiniMax `#34d399`, Gemini `#f59e0b`, OpenAI `#a855f7`) at the top of the dashboard, supporting timeframe filters (`7d`, `30d`, `60d`, `90d`, `all`).
-* **Interactive Predictions Data Table**: Includes a dedicated data table (`AIPredictionsTable.tsx`) for high-density tracking across all forecast horizons. Features sortable headers (Prediction Date, Target Date, Return, Alpha, Model, Percentile Score), search, filters (Model, Status, Horizon), dual-target display (Single Sector + Pair Combination), Alpha vs S&P 500 calculation, and expandable audit drawers.
-* **S&P 500 Benchmark Window Returns**: Evaluated predictions display actual window returns (`predicted_sector_return`, `predicted_pair_return`, `benchmark_spy_return`) alongside outperformance vs the S&P 500 (SPY) benchmark (e.g. `+2.4% vs S&P 500`).
-* **🔍 Data Audit & Price Verification**: Each evaluated outcome card/row renders an explicit price audit block (`evaluation_audit_data` JSONB) displaying starting prices, ending prices, percentage returns, and date windows for SPY, Sector ETF, and Pair ETFs so users can independently verify data accuracy.
-* **Score Constituents Breakdown**: Each card explicitly exposes its 50/50 constituents (50% Sector Score, 50% Pair Score) and the composite formula $( \text{Sector Score} + \text{Pair Score} ) \div 2$ inline.
+* **Interactive Predictions Data Table**: Includes a dedicated data table (`AIPredictionsTable.tsx`) for high-density tracking across all forecast horizons. Features sortable headers (Prediction Date, Target Date, Return, Alpha, Model, Percentile Score), search, filters (Model, Status, Horizon), multi-target display (Best Sector + Worst Sector + Pair Combination), Alpha vs S&P 500 calculation, and expandable audit drawers.
+* **S&P 500 Benchmark Window Returns**: Evaluated predictions display actual window returns (`predicted_sector_return`, `predicted_worst_sector_return`, `predicted_pair_return`, `benchmark_spy_return`) alongside outperformance vs the S&P 500 (SPY) benchmark (e.g. `+2.4% vs S&P 500`).
+* **🔍 Data Audit & Price Verification**: Each evaluated outcome card/row renders an explicit price audit block (`evaluation_audit_data` JSONB) displaying starting prices, ending prices, percentage returns, and date windows for SPY, Best Sector ETF, Worst Sector ETF, and Pair ETFs so users can independently verify data accuracy.
+* **Score Constituents Breakdown**: Each card explicitly exposes its constituent scores (Best Sector Score, Worst Sector Score, Pair Score) and the composite formula with S&P Alpha bonus inline.
 * **Timeframe Filters**: The dashboard allows filtering/splitting the chart by prediction horizon (e.g., viewing 7d, 30d, 60d, 90d individually) to prevent target date collisions and ensure statistical meaning.
 * **Single Data Point Resilience**: The time scale domain adds a $\pm 1$-day margin when only a single data point is evaluated, preventing D3 coordinate scaling crashes.
-* **Unified Metrics**: Summary card statistics and chart plotting use the same formula (averaging both sector and pair scores).
+* **Unified Metrics**: Summary card statistics and chart plotting use the unified composite formula.
 * **Tabbed View**: Features a tabbed layout separating the forecasting tracker (Arena Dashboard) from the prompt evolution and mutations tracker (Prompt Auto-Research).
 * **Prompt Evolution Details**: Visualises baseline scores, active prompt details, formula breakdowns, and line diffs for mutated variants.
 

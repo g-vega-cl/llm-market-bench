@@ -71,6 +71,34 @@ def calculate_pair_percentile_score(target_pair: list[str], sector_returns: dict
     return float(percentile)
 
 
+def calculate_worst_sector_percentile_score(target_ticker: str, sector_returns: dict[str, float]) -> float:
+    """
+    Calculate the percentile score of a target ticker predicted to be the WORST performing sector.
+    Returns 0.0 to 100.0, where 100.0 means it had the lowest return (perfect call)
+    and 0.0 means it had the highest return (worst call).
+    """
+    if not target_ticker:
+        return 0.0
+
+    target_ticker = target_ticker.upper()
+    normalized_returns = {k.upper(): v for k, v in sector_returns.items()}
+
+    if target_ticker not in normalized_returns:
+        return 0.0
+
+    all_returns = list(normalized_returns.values())
+    if not all_returns:
+        return 0.0
+
+    target_return = normalized_returns[target_ticker]
+    if len(all_returns) <= 1:
+        return 100.0
+    # Rank is how many sectors performed better than target (had higher return)
+    rank = sum(1 for r in all_returns if r > target_return)
+    percentile = (rank / (len(all_returns) - 1)) * 100.0
+    return float(percentile)
+
+
 def calculate_sector_brier_score(confidence: float | None, sector_percentile_score: float) -> float:
     """Calculate Brier Score for sector prediction calibration.
 
@@ -174,14 +202,19 @@ async def run_evaluation():
     tickers_to_fetch = set()
     for p in pending:
         pred_date = p["prediction_date"]
+        # Always include SPY benchmark in tickers to fetch
+        tickers_to_fetch.add("SPY")
         # Add tickers from this prediction's reference universe
         ref_tickers = run_tickers_by_date.get(pred_date, SECTOR_TICKERS)
         for t in ref_tickers:
             tickers_to_fetch.add(t.upper())
-        # Add predicted sector/pair
+        # Add predicted sector/worst sector/pair
         sec = p.get("predicted_sector")
         if sec:
             tickers_to_fetch.add(sec.upper())
+        worst_sec = p.get("predicted_worst_sector")
+        if worst_sec and worst_sec != "UNKNOWN":
+            tickers_to_fetch.add(worst_sec.upper())
         pair = p.get("predicted_pair") or []
         for t in pair:
             if t:
@@ -221,13 +254,20 @@ async def run_evaluation():
         ref_tickers = run_tickers_by_date.get(pred_date_str, SECTOR_TICKERS)
         ref_tickers_upper = {t.upper() for t in ref_tickers}
 
-        # Always include SPY benchmark, predicted sector, and predicted pair in the universe
+        # Always include SPY benchmark, predicted sector, worst sector, and predicted pair in the universe
         ref_tickers_upper.add("SPY")
 
         predicted_sec = p.get("predicted_sector")
         if predicted_sec:
             predicted_sec = predicted_sec.upper()
             ref_tickers_upper.add(predicted_sec)
+
+        predicted_worst_sec = p.get("predicted_worst_sector")
+        if predicted_worst_sec and predicted_worst_sec != "UNKNOWN":
+            predicted_worst_sec = predicted_worst_sec.upper()
+            ref_tickers_upper.add(predicted_worst_sec)
+        else:
+            predicted_worst_sec = None
 
         predicted_pair = p.get("predicted_pair") or []
         predicted_pair = [t.upper() for t in predicted_pair if t]
@@ -263,6 +303,12 @@ async def run_evaluation():
         sec_score = calculate_percentile_score(predicted_sec, sector_returns)
         pair_score = calculate_pair_percentile_score(predicted_pair, sector_returns)
 
+        worst_sec_score = None
+        predicted_worst_sec_ret = None
+        if predicted_worst_sec and predicted_worst_sec in sector_returns:
+            worst_sec_score = calculate_worst_sector_percentile_score(predicted_worst_sec, sector_returns)
+            predicted_worst_sec_ret = sector_returns.get(predicted_worst_sec)
+
         confidence_val = p.get("confidence")
         brier_score = calculate_sector_brier_score(confidence_val, sec_score)
 
@@ -271,12 +317,21 @@ async def run_evaluation():
         predicted_pair_ret = (sum(pair_rets) / len(pair_rets)) if pair_rets else None
         spy_ret = sector_returns.get("SPY")
 
+        sector_sp_diff = (
+            (predicted_sec_ret - spy_ret) if (predicted_sec_ret is not None and spy_ret is not None) else None
+        )
+
         audit_data = {
             "start_date": pred_date_str,
             "end_date": target_date.isoformat(),
             "spy": ticker_prices.get("SPY"),
             "sector": (
                 {"ticker": predicted_sec, **ticker_prices[predicted_sec]} if predicted_sec in ticker_prices else None
+            ),
+            "worst_sector": (
+                {"ticker": predicted_worst_sec, **ticker_prices[predicted_worst_sec]}
+                if predicted_worst_sec and predicted_worst_sec in ticker_prices
+                else None
             ),
             "pair": [{"ticker": t, **ticker_prices[t]} for t in predicted_pair if t in ticker_prices],
         }
@@ -285,17 +340,20 @@ async def run_evaluation():
             client.table("sector_predictions").update(
                 {
                     "sector_percentile_score": sec_score,
+                    "worst_sector_percentile_score": worst_sec_score,
                     "pair_percentile_score": pair_score,
                     "brier_score": brier_score,
                     "predicted_sector_return": predicted_sec_ret,
+                    "predicted_worst_sector_return": predicted_worst_sec_ret,
                     "predicted_pair_return": predicted_pair_ret,
                     "benchmark_spy_return": spy_ret,
+                    "sector_sp_diff": sector_sp_diff,
                     "evaluation_audit_data": audit_data,
                     "status": "evaluated",
                 }
             ).eq("id", pred_id).execute()
             logger.info(
-                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Pair {predicted_pair}: {pair_score:.1f}%, Brier: {brier_score:.4f}, SPY: {spy_ret})"
+                f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Worst Sector {predicted_worst_sec}: {worst_sec_score}, Pair {predicted_pair}: {pair_score:.1f}%, Brier: {brier_score:.4f}, SPY diff: {sector_sp_diff})"
             )
         except Exception as e:
             logger.exception(f"Failed to update prediction {pred_id} in database: {e}")

@@ -76,8 +76,19 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
         evaluated.forEach((item) => {
             const dateStr = new Date(item.target_date).toLocaleDateString();
             const entry = getOrCreateEntry(dateStr, item.target_date);
-            const score =
-                ((item.sector_percentile_score || 0) + (item.pair_percentile_score || 0)) / 2;
+            const scores = [
+                item.sector_percentile_score,
+                item.worst_sector_percentile_score,
+                item.pair_percentile_score,
+            ].filter((s): s is number => s != null);
+            const base = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+            const spDiff =
+                item.sector_sp_diff ??
+                (item.predicted_sector_return != null && item.benchmark_spy_return != null
+                    ? item.predicted_sector_return - item.benchmark_spy_return
+                    : 0);
+            const alphaBonus = Math.max(0, spDiff);
+            const score = base + alphaBonus;
             updateEntryScore(entry, item.model_name, score);
         });
 

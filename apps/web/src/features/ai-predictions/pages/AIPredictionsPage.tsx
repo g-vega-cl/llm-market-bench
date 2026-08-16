@@ -80,8 +80,19 @@ function getModelMetrics(items: SectorPrediction[]) {
         };
     }
     const sum = evaluated.reduce((acc, curr) => {
-        const avg = ((curr.sector_percentile_score || 0) + (curr.pair_percentile_score || 0)) / 2;
-        return acc + avg;
+        const scores = [
+            curr.sector_percentile_score,
+            curr.worst_sector_percentile_score,
+            curr.pair_percentile_score,
+        ].filter((s): s is number => s != null);
+        const base = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+        const spDiff =
+            curr.sector_sp_diff ??
+            (curr.predicted_sector_return != null && curr.benchmark_spy_return != null
+                ? curr.predicted_sector_return - curr.benchmark_spy_return
+                : 0);
+        const alphaBonus = Math.max(0, spDiff);
+        return acc + (base + alphaBonus);
     }, 0);
 
     const topQuartileCalls = evaluated.filter((i) => (i.sector_percentile_score || 0) >= 75).length;
@@ -657,8 +668,24 @@ function getModelBadgeStyle(modelName: string): string {
 function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
     const isPending = pred.status === 'pending';
     const sectorScore = pred.sector_percentile_score ?? 0;
+    const worstSectorScore = pred.worst_sector_percentile_score;
     const pairScore = pred.pair_percentile_score ?? 0;
-    const compositeScore = ((sectorScore + pairScore) / 2).toFixed(1);
+
+    const components = [
+        pred.sector_percentile_score,
+        pred.worst_sector_percentile_score,
+        pred.pair_percentile_score,
+    ].filter((s): s is number => s != null);
+    const baseScore =
+        components.length > 0 ? components.reduce((a, b) => a + b, 0) / components.length : 0;
+
+    const spDiff =
+        pred.sector_sp_diff ??
+        (pred.predicted_sector_return != null && pred.benchmark_spy_return != null
+            ? pred.predicted_sector_return - pred.benchmark_spy_return
+            : 0);
+    const alphaBonus = Math.max(0, spDiff);
+    const compositeScore = (baseScore + alphaBonus).toFixed(1);
 
     const hasBenchmarkData =
         pred.benchmark_spy_return != null && pred.predicted_sector_return != null;
@@ -709,8 +736,9 @@ function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
                             </strong>
                         </span>
                         <span className="text-slate-400 font-mono text-[11px]">
-                            Formula: ({sectorScore.toFixed(1)} Sector + {pairScore.toFixed(1)} Pair)
-                            ÷ 2
+                            Formula: ({components.map((c) => c.toFixed(1)).join(' + ')}) ÷{' '}
+                            {components.length}
+                            {alphaBonus > 0 ? ` + ${alphaBonus.toFixed(1)} S&P Alpha` : ''}
                         </span>
                     </div>
                 </div>
@@ -721,14 +749,18 @@ function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Score Constituents Breakdown
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                    className={`grid grid-cols-1 ${
+                        pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN'
+                            ? 'md:grid-cols-3'
+                            : 'md:grid-cols-2'
+                    } gap-4`}
+                >
                     <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
                         <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-slate-300">
-                                1️⃣ Sector Call: {pred.predicted_sector}
-                            </span>
+                            <span className="font-semibold text-slate-300">1️⃣ Best Sector Call</span>
                             <span className="text-slate-500 font-mono text-[10px]">
-                                Sector Score Weight (50%)
+                                Best Sector Score
                             </span>
                         </div>
                         <div className="text-lg font-bold text-white flex items-center gap-2">
@@ -746,14 +778,41 @@ function PredictionFeedCard({ pred }: PredictionFeedCardProps) {
                         )}
                     </div>
 
+                    {pred.predicted_worst_sector && pred.predicted_worst_sector !== 'UNKNOWN' && (
+                        <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="font-semibold text-slate-300">
+                                    2️⃣ Worst Sector Call
+                                </span>
+                                <span className="text-slate-500 font-mono text-[10px]">
+                                    Worst Sector Score
+                                </span>
+                            </div>
+                            <div className="text-lg font-bold text-rose-400 flex items-center gap-2">
+                                {pred.predicted_worst_sector}
+                                {!isPending && worstSectorScore != null && (
+                                    <span className="text-xs font-semibold text-rose-300">
+                                        ({worstSectorScore.toFixed(1)} score)
+                                    </span>
+                                )}
+                            </div>
+                            {!isPending && (
+                                <div className="text-[11px] text-slate-400">
+                                    Bottom sector performance rank
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-800 space-y-1">
                         <div className="flex justify-between items-center text-xs">
                             <span className="font-semibold text-slate-300">
-                                2️⃣ Uncorrelated Pair Call
+                                {pred.predicted_worst_sector &&
+                                pred.predicted_worst_sector !== 'UNKNOWN'
+                                    ? '3️⃣ Uncorrelated Pair'
+                                    : '2️⃣ Uncorrelated Pair'}
                             </span>
-                            <span className="text-slate-500 font-mono text-[10px]">
-                                Pair Score Weight (50%)
-                            </span>
+                            <span className="text-slate-500 font-mono text-[10px]">Pair Score</span>
                         </div>
                         <div className="text-lg font-bold text-white flex items-center gap-2">
                             {pred.predicted_pair.join(' + ')}
@@ -884,7 +943,9 @@ function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }) {
 
                 {sector && (
                     <div className="flex justify-between items-center bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-850 font-mono">
-                        <span className="text-slate-400 font-sans">Sector ({sector.ticker}):</span>
+                        <span className="text-slate-400 font-sans">
+                            Best Sector ({sector.ticker}):
+                        </span>
                         <span className="text-slate-200">
                             {formatPrice(sector.start_price)} ➔ {formatPrice(sector.end_price)}{' '}
                             <span
@@ -893,6 +954,27 @@ function DataAuditBlock({ auditData }: { auditData: EvaluationAuditData }) {
                                 }
                             >
                                 ({formatRet(sector.return_pct)})
+                            </span>
+                        </span>
+                    </div>
+                )}
+
+                {auditData.worst_sector && (
+                    <div className="flex justify-between items-center bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-850 font-mono">
+                        <span className="text-rose-400 font-sans">
+                            Worst Sector ({auditData.worst_sector.ticker}):
+                        </span>
+                        <span className="text-slate-200">
+                            {formatPrice(auditData.worst_sector.start_price)} ➔{' '}
+                            {formatPrice(auditData.worst_sector.end_price)}{' '}
+                            <span
+                                className={
+                                    auditData.worst_sector.return_pct <= 0
+                                        ? 'text-emerald-400'
+                                        : 'text-rose-400'
+                                }
+                            >
+                                ({formatRet(auditData.worst_sector.return_pct)})
                             </span>
                         </span>
                     </div>

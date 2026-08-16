@@ -35,12 +35,13 @@
 - [[entities/pipeline]] — Full daily pipeline from ingestion to feedback
 - [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop
 - [[entities/macro-tracker]] — 23-ticker global macro regime monitoring
-- [[entities/sector-predictor-arena]] — Weekly top sector predictions and DeepSeek vs MiniMax arena dashboard
+- [[entities/sector-predictor-arena]] — Weekly top and worst sector predictions with S&P 500 alpha scoring and model arena dashboard
 - [[entities/llm-leaderboard]] — LLM ranking and diagnostic screening system (composite scoring, verifier rates, and consistency metrics)
 - [[entities/gemini]] — Project-level mandates, precedence directives, and command reference
 
 ## Concepts
 
+- [[concepts/worst-sector-scoring]] — Two-sided sector prediction, worst sector percentile scoring, and S&P 500 alpha bonus
 - [[concepts/brier-score]] — Brier score calibration metric and autoresearch penalty
 - [[concepts/renko-atr-sizing]] — Auto-indexed page
 - [[concepts/modular-prompt-blocks]] — Reusable trading discipline and reasoning blocks dynamically toggled by the Auto-Researcher

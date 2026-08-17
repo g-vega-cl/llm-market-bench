@@ -65,7 +65,7 @@ async def fetch_active_prompt() -> tuple[str, str]:
         ).execute()
         return tag, SECTOR_PREDICTOR_PROMPT
     except Exception as e:
-        logger.error(f"Error fetching active predictor prompt: {e}")
+        logger.exception(f"Error fetching active predictor prompt: {e}")
 
     return "fallback-base", SECTOR_PREDICTOR_PROMPT
 
@@ -125,7 +125,7 @@ async def get_predictor_data() -> str:
 
         return data_str
     except Exception as e:
-        logger.error(f"Error fetching predictor data: {e}")
+        logger.exception(f"Error fetching predictor data: {e}")
         return "Error loading market correlation and returns data."
 
 
@@ -156,9 +156,8 @@ async def run_sector_predictions():
                     user_msg = (
                         f"Data:\n{data_block}\nPredict the best sector, worst sector, and pair for the next {tf}."
                     )
-                    if attempt > 0 and model["type"] == "minimax":
-                        # Add a hint to keep it concise to avoid token limit issues
-                        user_msg += "\nNote: Keep your internal reasoning/thinking process concise to avoid token limit truncation."
+                    if model["type"] == "minimax":
+                        user_msg += "\nNote: Output only the required JSON response. Keep any internal reasoning concise to avoid token truncation."
 
                     if model["type"] == "instructor":
                         client_inst = model["client"]
@@ -191,7 +190,11 @@ async def run_sector_predictions():
                             {"role": "system", "content": prompt_content},
                             {"role": "user", "content": user_msg},
                         ]
-                        result = await model["client"].chat_with_json_response(messages, model=model["name"])
+                        result = await model["client"].chat_with_json_response(
+                            messages,
+                            model=model["name"],
+                            max_completion_tokens=8192,
+                        )
 
                     # Upsert prediction to prevent duplicates on the same date/model/timeframe
                     client.table("sector_predictions").upsert(
@@ -212,7 +215,7 @@ async def run_sector_predictions():
                     success = True
                     break
                 except Exception as e:
-                    logger.warning(f"Prediction attempt {attempt + 1} failed for {model['name']} on {tf}: {e}")
+                    logger.exception(f"Prediction attempt {attempt + 1} failed for {model['name']} on {tf}: {e}")
                     if attempt < 2:
                         await asyncio.sleep(2)
             if not success:

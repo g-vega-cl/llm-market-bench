@@ -156,7 +156,7 @@ class MiniMaxClient:
         messages: list[dict[str, str]],
         model: str | None = None,
         temperature: float = 0.3,
-        max_completion_tokens: int = 4096,
+        max_completion_tokens: int = 8192,
     ) -> dict[str, Any]:
         """Send a chat request and parse JSON from the response content.
 
@@ -190,17 +190,37 @@ class MiniMaxClient:
         if not content:
             raise ValueError("MiniMax returned empty content")
 
+        # Strip internal thinking tags if present (<think>...</think>)
+        if "<think>" in content and "</think>" in content:
+            import re
+
+            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        elif "<think>" in content:
+            import re
+
+            content = re.sub(r"^<think>.*?(?=\{)", "", content, flags=re.DOTALL).strip()
+
         # Try to extract JSON from markdown code blocks if present
-        if content.startswith("```"):
-            # Remove markdown code block syntax
-            lines = content.split("\n")
-            content = "\n".join(lines[1:-1])  # Remove first (```json) and last (```) lines
+        if "```" in content:
+            import re
+
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+            else:
+                lines = content.split("\n")
+                code_lines = [line for line in lines if not line.strip().startswith("```")]
+                content = "\n".join(code_lines).strip()
+        elif "{" in content and "}" in content:
+            start = content.find("{")
+            end = content.rfind("}") + 1
+            content = content[start:end]
 
         try:
             parsed = json.loads(content, strict=False)
             return parsed
         except json.JSONDecodeError as e:
-            logger.error("Failed to parse JSON from MiniMax response: %s\nContent: %s", e, content[:500])
+            logger.exception("Failed to parse JSON from MiniMax response: %s\nContent: %s", e, content[:500])
             raise ValueError(f"Invalid JSON response from MiniMax: {e}") from e
 
     async def __aenter__(self) -> "MiniMaxClient":

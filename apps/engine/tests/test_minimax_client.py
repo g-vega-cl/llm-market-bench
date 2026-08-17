@@ -105,6 +105,72 @@ class TestMiniMaxChatParsing:
             assert result["sentiment_label"] == "Risk-Off"
 
     @pytest.mark.asyncio
+    async def test_chat_with_json_response_strips_think_tags(self):
+        """Test that <think>...</think> blocks are stripped before parsing."""
+        from core.llm.minimax import MiniMaxClient
+
+        mock_response_data = {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "content": '<think>\nHere is some internal thinking process...\n</think>\n```json\n{"predicted_sector": "XLE", "confidence": 80.0}\n```',
+                        "role": "assistant",
+                    },
+                }
+            ],
+            "model": MINIMAX_MODEL,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
+            client = MiniMaxClient(api_key="test-key")
+            result = await client.chat_with_json_response(messages=[{"role": "user", "content": "test"}])
+
+            assert result["predicted_sector"] == "XLE"
+            assert result["confidence"] == 80.0
+
+    @pytest.mark.asyncio
+    async def test_chat_with_json_response_extracts_inline_json(self):
+        """Test that inline JSON surrounded by plain text is extracted properly."""
+        from core.llm.minimax import MiniMaxClient
+
+        mock_response_data = {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "content": 'Here is my prediction:\n{"predicted_sector": "XLK", "confidence": 90.0}\nHope this helps!',
+                        "role": "assistant",
+                    },
+                }
+            ],
+            "model": MINIMAX_MODEL,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
+            client = MiniMaxClient(api_key="test-key")
+            result = await client.chat_with_json_response(messages=[{"role": "user", "content": "test"}])
+
+            assert result["predicted_sector"] == "XLK"
+            assert result["confidence"] == 90.0
+
+    @pytest.mark.asyncio
     async def test_chat_with_json_response_raises_on_invalid_json(self):
         """Test that invalid JSON raises ValueError."""
         from core.llm.minimax import MiniMaxClient

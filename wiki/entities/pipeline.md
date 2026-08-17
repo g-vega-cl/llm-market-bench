@@ -24,7 +24,7 @@ Cloudflare Worker edge dispatcher fires the pipeline during US market hours (3 t
 
 Before LLM analysis, the engine validates market status and cleans up stale states.
 *   FMP-Verified Market Hours: Checks NYSE/NASDAQ status with 5-minute TTL caching to verify they are open.
-*   Dust Cleanup: Cleans dust positions (<10% equity) before analysis to prevent model confusion.
+*   Dust Cleanup: Cleans dust positions (<10% equity) before analysis to prevent model confusion; writes liquidation trade ledger entries with `reasoning` in `trades` table.
 *   Global Macro Snapshot: Quotes 16 key assets for Risk-On/Risk-Off macro baseline.
 *   Light Context Injection: Injects top-5 trending concepts, anomalies, and historical memories.
 

@@ -98,6 +98,28 @@ describe('TradeActivity nested decision resolution', () => {
         fireEvent.click(screen.getByText('USO'));
         expect(screen.getByText('Nested decision reasoning for USO BUY')).toBeInTheDocument();
     });
+
+    it('resolves reasoning from trade object when decision is null (e.g. system dust cleanup)', () => {
+        const mockTrade = {
+            id: 'trade-dust-1',
+            executed_at: '2026-08-17T14:30:54Z',
+            signal: 'SELL',
+            ticker: 'BX',
+            quantity: 6,
+            price: 135.0,
+            decision_id: null,
+            reasoning:
+                'Automatic dust position cleanup: Position value below 10% of portfolio equity',
+        };
+
+        render(<TradeActivity trades={[mockTrade]} decisions={[]} />);
+        fireEvent.click(screen.getByText('BX'));
+        expect(
+            screen.getByText(
+                'Automatic dust position cleanup: Position value below 10% of portfolio equity',
+            ),
+        ).toBeInTheDocument();
+    });
 });
 
 describe('TradeActivity stats rendering', () => {

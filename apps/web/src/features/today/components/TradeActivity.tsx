@@ -12,6 +12,7 @@ interface TradeItem {
     price: number | string;
     portfolios?: { owner_id?: string };
     decisions?: DecisionItem | DecisionItem[] | null;
+    reasoning?: string | null;
     formattedTime?: string;
 }
 
@@ -74,7 +75,10 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                     ...t,
                     type: 'TRADE' as const,
                     timestamp: t.executed_at,
-                    reasoning: decision?.reasoning || 'No reasoning found for this execution.',
+                    reasoning:
+                        decision?.reasoning ||
+                        t.reasoning ||
+                        'No reasoning found for this execution.',
                     model_name: decision?.model_name || t.portfolios?.owner_id,
                     confidence: decision?.confidence_score,
                     formattedTime: t.formattedTime,

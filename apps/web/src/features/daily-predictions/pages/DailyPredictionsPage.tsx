@@ -663,498 +663,6 @@ function PredictionsTable({
     );
 }
 
-function AutoresearchTab({
-    experiments,
-    predictions,
-}: {
-    experiments: PromptExperiment[];
-    predictions: DailyPrediction[];
-}) {
-    const [showPrompt, setShowPrompt] = useState(false);
-    const evaluated = predictions.filter((p) => p.status === 'evaluated');
-    const totalEvaluated = evaluated.length;
-    const correctCount = evaluated.filter((p) => p.is_correct === true).length;
-    const closeAccPct = totalEvaluated > 0 ? (correctCount / totalEvaluated) * 100.0 : 0.0;
-
-    const intradayHitCount = evaluated.filter(
-        (p) => p.intraday_hit === true || (p.intraday_hit === null && p.is_correct === true),
-    ).length;
-    const intradayHitPct = totalEvaluated > 0 ? (intradayHitCount / totalEvaluated) * 100.0 : 0.0;
-
-    const brierScores = evaluated
-        .map((p) => p.brier_score)
-        .filter((s): s is number => s !== null && s !== undefined);
-    const meanBrier =
-        brierScores.length > 0 ? brierScores.reduce((a, b) => a + b, 0) / brierScores.length : 0.25;
-
-    const liveRatchetScore =
-        totalEvaluated > 0 ? 0.7 * closeAccPct + 0.3 * intradayHitPct - meanBrier * 50.0 : 0.0;
-
-    const lastCalculatedPrediction =
-        evaluated.length > 0
-            ? evaluated.reduce((best, cur) => {
-                  const bestDate = best.prediction_date || best.target_date || '';
-                  const curDate = cur.prediction_date || cur.target_date || '';
-                  return curDate > bestDate ? cur : best;
-              })
-            : null;
-    const lastCalculatedDate = (() => {
-        if (!lastCalculatedPrediction) return 'N/A';
-        const date =
-            lastCalculatedPrediction.prediction_date || lastCalculatedPrediction.target_date || '';
-        const time = lastCalculatedPrediction.created_at
-            ? new Date(lastCalculatedPrediction.created_at).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-              })
-            : '';
-        return time ? `${date} ${time}` : date;
-    })();
-
-    const activeExp =
-        experiments.find((e) => e.status === 'active' || e.status === 'baseline') || experiments[0];
-    const activePromptTag =
-        activeExp?.variant_tag || predictions[0]?.prompt_variant_tag || 'daily-active-1';
-    const activePromptContent = activeExp?.prompt_content || 'N/A';
-
-    const autoresearcherMetaPrompt = `You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.
-
-The current prompt strategy achieved a ratchet score of {baseline_score}.
-Your goal is to rewrite ONLY the strategy / analytical reasoning section of the prompt to be more effective, focusing on macro catalyst extraction, technical level signals, momentum vs gap-fill behavior, and better confidence calibration.
-Do NOT include output formatting rules or JSON schema definitions; the required output structure is automatically enforced by the system.
-
-CURRENT STRATEGY INSTRUCTIONS:
-\`\`\`text
-[Mutable analytical strategy instructions from current active baseline prompt]
-\`\`\`
-
-Output ONLY the raw new strategy instructions text.`;
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Performance Ratchet Score Dashboard Card */}
-            <div
-                style={{
-                    padding: '24px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '16px',
-                    }}
-                >
-                    <div>
-                        <h3
-                            style={{
-                                fontSize: '18px',
-                                fontWeight: '700',
-                                color: '#0f172a',
-                                margin: '0 0 4px 0',
-                            }}
-                        >
-                            Performance Ratchet Score
-                        </h3>
-                        <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-                            Twice-weekly evolution metric evaluating Close Accuracy, Intraday Target
-                            Hit Rate, and Brier calibration penalty.
-                        </p>
-                    </div>
-                    <div
-                        style={{
-                            padding: '8px 16px',
-                            background: '#eff6ff',
-                            borderRadius: '8px',
-                            border: '1px solid #bfdbfe',
-                            textAlign: 'right',
-                        }}
-                    >
-                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#1d4ed8' }}>
-                            LIVE RATCHET SCORE
-                        </div>
-                        <div style={{ fontSize: '24px', fontWeight: '800', color: '#1e40af' }}>
-                            {liveRatchetScore.toFixed(2)}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Calculation Metadata Bar */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '16px',
-                        alignItems: 'center',
-                        padding: '12px 16px',
-                        background: '#f8fafc',
-                        borderRadius: '8px',
-                        border: '1px solid #e2e8f0',
-                        marginBottom: '16px',
-                        fontSize: '13px',
-                    }}
-                >
-                    <div>
-                        <span style={{ color: '#64748b', fontWeight: '600' }}>
-                            Last Day Calculated:{' '}
-                        </span>
-                        <span style={{ fontWeight: '700', color: '#0f172a' }}>
-                            {lastCalculatedDate}
-                        </span>
-                    </div>
-                    <div style={{ color: '#cbd5e1' }}>|</div>
-                    <div>
-                        <span style={{ color: '#64748b', fontWeight: '600' }}>
-                            Active Prompt Variant:{' '}
-                        </span>
-                        <span
-                            style={{
-                                fontFamily: 'monospace',
-                                fontWeight: '700',
-                                color: '#2563eb',
-                                background: '#eff6ff',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                border: '1px solid #bfdbfe',
-                            }}
-                        >
-                            {activePromptTag}
-                        </span>
-                    </div>
-                    {activeExp?.prompt_content && (
-                        <button
-                            type="button"
-                            onClick={() => setShowPrompt((prev) => !prev)}
-                            style={{
-                                marginLeft: 'auto',
-                                fontSize: '12px',
-                                color: '#2563eb',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                textDecoration: 'underline',
-                            }}
-                        >
-                            {showPrompt
-                                ? 'Hide Active Prompt Strategy'
-                                : 'View Active Prompt Strategy'}
-                        </button>
-                    )}
-                </div>
-
-                {showPrompt && activeExp?.prompt_content && (
-                    <div
-                        style={{
-                            marginBottom: '16px',
-                            padding: '16px',
-                            background: '#0f172a',
-                            color: '#f8fafc',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            maxHeight: '300px',
-                            overflowY: 'auto',
-                        }}
-                    >
-                        <div
-                            style={{
-                                color: '#94a3b8',
-                                fontSize: '11px',
-                                marginBottom: '8px',
-                                fontWeight: '700',
-                            }}
-                        >
-                            ACTIVE PROMPT STRATEGY INSTRUCTIONS ({activePromptTag}):
-                        </div>
-                        {activePromptContent}
-                    </div>
-                )}
-
-                <div
-                    style={{
-                        padding: '12px 16px',
-                        background: '#f1f5f9',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontFamily: 'monospace',
-                        color: '#334155',
-                        marginBottom: '16px',
-                    }}
-                >
-                    Ratchet Score Formula = (0.70 × Close Accuracy %) + (0.30 × Intraday Hit %) -
-                    (Mean Brier Score × 50.0)
-                </div>
-
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                        gap: '12px',
-                        fontSize: '13px',
-                    }}
-                >
-                    <div
-                        style={{
-                            padding: '10px 14px',
-                            background: '#ffffff',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                        }}
-                    >
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>
-                            Close Accuracy (70%)
-                        </div>
-                        <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '16px' }}>
-                            +{(0.7 * closeAccPct).toFixed(2)} pts
-                        </div>
-                        <div style={{ color: '#94a3b8', fontSize: '11px' }}>
-                            ({closeAccPct.toFixed(1)}% raw accuracy)
-                        </div>
-                    </div>
-                    <div
-                        style={{
-                            padding: '10px 14px',
-                            background: '#ffffff',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                        }}
-                    >
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>Intraday Hit (30%)</div>
-                        <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '16px' }}>
-                            +{(0.3 * intradayHitPct).toFixed(2)} pts
-                        </div>
-                        <div style={{ color: '#94a3b8', fontSize: '11px' }}>
-                            ({intradayHitPct.toFixed(1)}% target hit)
-                        </div>
-                    </div>
-                    <div
-                        style={{
-                            padding: '10px 14px',
-                            background: '#ffffff',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                        }}
-                    >
-                        <div style={{ color: '#64748b', fontSize: '12px' }}>
-                            Brier Calibration Penalty
-                        </div>
-                        <div style={{ fontWeight: '700', color: '#dc2626', fontSize: '16px' }}>
-                            -{(meanBrier * 50.0).toFixed(2)} pts
-                        </div>
-                        <div style={{ color: '#94a3b8', fontSize: '11px' }}>
-                            ({meanBrier.toFixed(4)} mean Brier)
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Autoresearcher Meta-Prompt Card */}
-            <div
-                style={{
-                    padding: '24px',
-                    borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
-                    background: '#ffffff',
-                }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '12px',
-                    }}
-                >
-                    <h3
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: '700',
-                            color: '#0f172a',
-                            margin: 0,
-                        }}
-                    >
-                        Autoresearcher Meta-Prompt (DeepSeek Flash)
-                    </h3>
-                    <span
-                        style={{
-                            padding: '4px 10px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            background: '#fef3c7',
-                            color: '#92400e',
-                        }}
-                    >
-                        Meta-Researcher Engine
-                    </span>
-                </div>
-                <p style={{ fontSize: '14px', color: '#475569', margin: '0 0 14px 0' }}>
-                    This is the meta-prompt executed twice weekly by DeepSeek Flash
-                    (`deepseek-v4-flash`) to rewrite and evolve the analytical strategy section of
-                    the S&P Daily Predictor prompt based on recent performance:
-                </p>
-                <pre
-                    style={{
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        fontSize: '12px',
-                        background: '#0f172a',
-                        color: '#f8fafc',
-                        padding: '16px',
-                        borderRadius: '8px',
-                        margin: 0,
-                        lineHeight: '1.5',
-                    }}
-                >
-                    {autoresearcherMetaPrompt}
-                </pre>
-            </div>
-
-            {/* Prompt Experiments History */}
-            <div>
-                <h3
-                    style={{
-                        fontSize: '18px',
-                        fontWeight: '700',
-                        color: '#0f172a',
-                        marginBottom: '16px',
-                    }}
-                >
-                    Prompt Variant Mutations & History ({experiments.length})
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {experiments.map((exp) => (
-                        <div
-                            key={exp.id || exp.variant_tag}
-                            style={{
-                                padding: '20px',
-                                borderRadius: '12px',
-                                border: '1px solid #e2e8f0',
-                                background: '#ffffff',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '12px',
-                                }}
-                            >
-                                <div>
-                                    <span
-                                        style={{
-                                            fontWeight: '700',
-                                            fontSize: '16px',
-                                            color: '#0f172a',
-                                            marginRight: '12px',
-                                        }}
-                                    >
-                                        {exp.variant_tag}
-                                    </span>
-                                    <span
-                                        style={{
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
-                                            background:
-                                                exp.status === 'active'
-                                                    ? '#dbeafe'
-                                                    : exp.status === 'baseline'
-                                                      ? '#dcfce7'
-                                                      : '#f1f5f9',
-                                            color:
-                                                exp.status === 'active'
-                                                    ? '#1e40af'
-                                                    : exp.status === 'baseline'
-                                                      ? '#166534'
-                                                      : '#475569',
-                                        }}
-                                    >
-                                        {exp.status.toUpperCase()}
-                                    </span>
-                                </div>
-                                <div style={{ fontSize: '13px', color: '#64748b' }}>
-                                    {exp.created_at
-                                        ? new Date(exp.created_at).toLocaleDateString()
-                                        : ''}
-                                </div>
-                            </div>
-
-                            {exp.change_description && (
-                                <p
-                                    style={{
-                                        margin: '0 0 12px 0',
-                                        fontSize: '14px',
-                                        color: '#475569',
-                                        fontStyle: 'italic',
-                                    }}
-                                >
-                                    "{exp.change_description}"
-                                </p>
-                            )}
-
-                            <details
-                                style={{
-                                    background: '#f8fafc',
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #f1f5f9',
-                                }}
-                            >
-                                <summary
-                                    style={{
-                                        cursor: 'pointer',
-                                        fontWeight: '600',
-                                        fontSize: '13px',
-                                        color: '#2563eb',
-                                    }}
-                                >
-                                    View Full System Prompt Text
-                                </summary>
-                                <pre
-                                    style={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        fontSize: '12px',
-                                        marginTop: '12px',
-                                        color: '#334155',
-                                    }}
-                                >
-                                    {exp.prompt_content}
-                                </pre>
-                            </details>
-                        </div>
-                    ))}
-
-                    {experiments.length === 0 && (
-                        <div
-                            style={{
-                                padding: '24px',
-                                textAlign: 'center',
-                                color: '#94a3b8',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '12px',
-                            }}
-                        >
-                            No prompt experiments recorded yet.
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 function computeDailyPredictionStats(predictions: DailyPrediction[]) {
     const evaluatedPredictions = predictions.filter((p) => p.status === 'evaluated');
     const totalEvaluated = evaluatedPredictions.length;
@@ -1179,32 +687,49 @@ function computeDailyPredictionStats(predictions: DailyPrediction[]) {
     return { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier };
 }
 
-export function DailyPredictionsPage({ initialPredictions, experiments, refreshFn }: Props) {
-    const [predictions, setPredictions] = useState<DailyPrediction[]>(initialPredictions);
-    const [promptExperiments, setPromptExperiments] = useState<PromptExperiment[]>(experiments);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'predictions' | 'autoresearch'>('predictions');
+interface ModelConfig {
+    id: string;
+    label: string;
+    matches: (modelName: string) => boolean;
+}
 
-    const handleRefresh = async () => {
-        if (!refreshFn) return;
-        setIsRefreshing(true);
-        try {
-            const res = await refreshFn();
-            setPredictions(res.predictions);
-            setPromptExperiments(res.experiments);
-        } catch (err) {
-            console.error('Failed to refresh daily predictions data:', err);
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
+const PREDICTOR_MODELS: ModelConfig[] = [
+    {
+        id: 'deepseek-v4-flash',
+        label: 'DeepSeek Flash',
+        matches: (m: string) => m.toLowerCase().includes('deepseek'),
+    },
+    {
+        id: 'MiniMax-M3',
+        label: 'MiniMax M3',
+        matches: (m: string) => m.toLowerCase().includes('minimax'),
+    },
+];
 
-    const latestPrediction = predictions.length > 0 ? predictions[0] : null;
+export function DailyPredictionsPage({ initialPredictions, experiments }: Props) {
+    const [predictions] = useState<DailyPrediction[]>(initialPredictions);
+    const [promptExperiments] = useState<PromptExperiment[]>(experiments);
+    const [selectedModelId, setSelectedModelId] = useState<string>(PREDICTOR_MODELS[0].id);
+
+    // Identify dynamic or configured models
+    const activeModelCfg =
+        PREDICTOR_MODELS.find((m) => m.id === selectedModelId) || PREDICTOR_MODELS[0];
+
+    const modelPredictions = predictions.filter((p) => activeModelCfg.matches(p.model_name));
+    const modelExperiments = promptExperiments.filter((e) =>
+        e.track_id ? activeModelCfg.matches(e.track_id) : true,
+    );
+
+    const latestPrediction = modelPredictions.length > 0 ? modelPredictions[0] : null;
     const { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier } =
-        computeDailyPredictionStats(predictions);
+        computeDailyPredictionStats(modelPredictions);
 
     const activePrompt =
-        promptExperiments.find((e) => e.status === 'active') || promptExperiments[0] || null;
+        modelExperiments.find((e) => e.status === 'active') ||
+        modelExperiments[0] ||
+        promptExperiments.find((e) => e.status === 'active') ||
+        promptExperiments[0] ||
+        null;
 
     return (
         <div
@@ -1217,63 +742,85 @@ export function DailyPredictionsPage({ initialPredictions, experiments, refreshF
         >
             <div
                 style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
                     marginBottom: '24px',
                 }}
             >
-                <div>
-                    <h1
-                        style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            margin: '0 0 8px 0',
-                            color: '#0f172a',
-                        }}
-                    >
-                        Daily S&P Market Predictor
-                    </h1>
-                    <p style={{ margin: 0, color: '#64748b', fontSize: '15px' }}>
-                        9:15 AM ET Intraday (Open to Close) Directional AI Predictions powered by
-                        DeepSeek Flash & Autoresearch.
-                    </p>
+                <h1
+                    style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        margin: '0 0 8px 0',
+                        color: '#0f172a',
+                    }}
+                >
+                    Daily S&P Market Predictor
+                </h1>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '15px' }}>
+                    9:15 AM ET Intraday (Open to Close) Directional AI Predictions powered by
+                    DeepSeek Flash & MiniMax.
+                </p>
+            </div>
+
+            {/* Model Navigation Tabs and Relocated Backtest Arena Button */}
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '2px solid #e2e8f0',
+                    marginBottom: '24px',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                }}
+            >
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {PREDICTOR_MODELS.map((model) => {
+                        const count = predictions.filter((p) => model.matches(p.model_name)).length;
+                        const isSelected = activeModelCfg.id === model.id;
+                        return (
+                            <button
+                                key={model.id}
+                                type="button"
+                                onClick={() => setSelectedModelId(model.id)}
+                                style={{
+                                    padding: '12px 20px',
+                                    border: 'none',
+                                    background: 'none',
+                                    fontWeight: '600',
+                                    fontSize: '15px',
+                                    cursor: 'pointer',
+                                    color: isSelected ? '#2563eb' : '#64748b',
+                                    borderBottom: isSelected
+                                        ? '3px solid #2563eb'
+                                        : '3px solid transparent',
+                                    marginBottom: '-2px',
+                                }}
+                            >
+                                {model.label} ({count})
+                            </button>
+                        );
+                    })}
                 </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+
+                <div style={{ paddingBottom: '8px' }}>
                     <Link
                         to="/daily-predictions-backtest"
                         style={{
                             padding: '8px 16px',
                             borderRadius: '8px',
-                            background: '#f1f5f9',
+                            background: '#f8fafc',
                             color: '#334155',
                             textDecoration: 'none',
                             fontWeight: '600',
                             fontSize: '14px',
                             border: '1px solid #cbd5e1',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
                         }}
                     >
-                        Backtest Arena →
+                        Backtest Arena ↗
                     </Link>
-                    {refreshFn && (
-                        <button
-                            type="button"
-                            onClick={handleRefresh}
-                            disabled={isRefreshing}
-                            style={{
-                                padding: '8px 16px',
-                                borderRadius: '8px',
-                                background: '#2563eb',
-                                color: '#ffffff',
-                                border: 'none',
-                                fontWeight: '600',
-                                cursor: isRefreshing ? 'not-allowed' : 'pointer',
-                                opacity: isRefreshing ? 0.7 : 1,
-                            }}
-                        >
-                            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-                        </button>
-                    )}
                 </div>
             </div>
 
@@ -1283,62 +830,13 @@ export function DailyPredictionsPage({ initialPredictions, experiments, refreshF
                 correctCount={correctCount}
                 totalEvaluated={totalEvaluated}
                 avgBrier={avgBrier}
-                totalPredictions={predictions.length}
+                totalPredictions={modelPredictions.length}
                 activePromptTag={activePrompt?.variant_tag || 'daily-pred-baseline'}
             />
 
             {latestPrediction && <HeroPredictionCard prediction={latestPrediction} />}
 
-            <div
-                style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '24px' }}
-            >
-                <button
-                    type="button"
-                    onClick={() => setActiveTab('predictions')}
-                    style={{
-                        padding: '12px 24px',
-                        border: 'none',
-                        background: 'none',
-                        fontWeight: '600',
-                        fontSize: '15px',
-                        cursor: 'pointer',
-                        color: activeTab === 'predictions' ? '#2563eb' : '#64748b',
-                        borderBottom:
-                            activeTab === 'predictions'
-                                ? '3px solid #2563eb'
-                                : '3px solid transparent',
-                        marginBottom: '-2px',
-                    }}
-                >
-                    Predictions Log
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setActiveTab('autoresearch')}
-                    style={{
-                        padding: '12px 24px',
-                        border: 'none',
-                        background: 'none',
-                        fontWeight: '600',
-                        fontSize: '15px',
-                        cursor: 'pointer',
-                        color: activeTab === 'autoresearch' ? '#2563eb' : '#64748b',
-                        borderBottom:
-                            activeTab === 'autoresearch'
-                                ? '3px solid #2563eb'
-                                : '3px solid transparent',
-                        marginBottom: '-2px',
-                    }}
-                >
-                    Autoresearch & Prompt Evolution ({promptExperiments.length})
-                </button>
-            </div>
-
-            {activeTab === 'predictions' ? (
-                <PredictionsTable predictions={predictions} experiments={promptExperiments} />
-            ) : (
-                <AutoresearchTab experiments={promptExperiments} predictions={predictions} />
-            )}
+            <PredictionsTable predictions={modelPredictions} experiments={promptExperiments} />
         </div>
     );
 }

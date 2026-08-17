@@ -59,32 +59,24 @@ async def test_run_daily_autoresearch_ratchet():
         }
     ]
 
-    all_variants = [
-        {
-            "variant_tag": "daily-baseline-1",
-            "prompt_name": "DAILY_PREDICTOR_PROMPT",
-            "prompt_content": "Baseline content",
-            "metrics": {"score": 60.0},
-        }
-    ]
-
     mock_table = MagicMock()
 
     def mock_table_select(table_name):
         mock_chain = MagicMock()
-        if table_name == "daily_predictions":
-            mock_chain.select.return_value.eq.return_value.gte.return_value.lte.return_value.execute.return_value.data = eval_predictions
-        elif table_name == "prompt_experiments":
-            select_mock = MagicMock()
-            eq_name = MagicMock()
-            eq_status = MagicMock()
-            eq_status.order.return_value.limit.return_value.execute.return_value.data = active_prompt
-            eq_name.eq.return_value = eq_status
-            eq_name.execute.return_value.data = all_variants
-            select_mock.eq.return_value = eq_name
-            mock_chain.select.return_value = select_mock
+        # Allow arbitrary chaining of eq, gte, lte, select, in_, neq, order, limit
+        mock_chain.select.return_value = mock_chain
+        mock_chain.eq.return_value = mock_chain
+        mock_chain.gte.return_value = mock_chain
+        mock_chain.lte.return_value = mock_chain
+        mock_chain.in_.return_value = mock_chain
+        mock_chain.neq.return_value = mock_chain
+        mock_chain.order.return_value = mock_chain
+        mock_chain.limit.return_value = mock_chain
 
-            # Expose insert on prompt_experiments chain
+        if table_name == "daily_predictions":
+            mock_chain.execute.return_value.data = eval_predictions
+        elif table_name == "prompt_experiments":
+            mock_chain.execute.return_value.data = active_prompt
             mock_chain.insert = mock_table.insert
             mock_chain.update = mock_table.update
         return mock_chain
@@ -101,3 +93,5 @@ async def test_run_daily_autoresearch_ratchet():
     ):
         await run_daily_autoresearch()
         assert mock_table.insert.called
+        # Should insert for both models
+        assert mock_table.insert.call_count >= 2

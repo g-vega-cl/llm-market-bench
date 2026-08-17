@@ -15,17 +15,17 @@ from core.llm.daily_predictor_prompts import (
 from core.llm.minimax import MiniMaxClient
 
 
-async def seed_daily_predictor_prompt() -> tuple[str, str]:
-    """Seed the Auto-Researcher optimized prompt as the active live baseline in Supabase."""
+async def seed_daily_predictor_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> tuple[str, str]:
+    """Seed the Auto-Researcher optimized prompt as the active live baseline for a specific model in Supabase."""
     client = get_supabase_client()
     today = datetime.now(UTC).date()
-    tag = "daily-pred-seeded-v2"
+    tag = f"daily-pred-seeded-{model_name}"
 
     try:
-        # Demote previous active/baseline live predictor prompts to saved
+        # Demote previous active/baseline live predictor prompts for this track to saved
         client.table("prompt_experiments").update({"status": "saved"}).eq("prompt_name", "DAILY_PREDICTOR_PROMPT").eq(
-            "status", "active"
-        ).execute()
+            "track_id", model_name
+        ).eq("status", "active").execute()
 
         # Insert new seeded prompt as active baseline
         client.table("prompt_experiments").insert(
@@ -33,30 +33,33 @@ async def seed_daily_predictor_prompt() -> tuple[str, str]:
                 "variant_tag": tag,
                 "prompt_name": "DAILY_PREDICTOR_PROMPT",
                 "prompt_content": DAILY_PREDICTOR_PROMPT,
+                "track_id": model_name,
                 "week_start": today.isoformat(),
                 "week_end": (today + timedelta(days=7)).isoformat(),
                 "status": "active",
                 "experiment_type": "baseline",
-                "change_description": "Seeded symmetric zero-mean anti-bias predictor prompt.",
+                "change_description": f"Seeded symmetric zero-mean anti-bias predictor prompt for {model_name}.",
             }
         ).execute()
 
-        logger.info(f"Successfully seeded and deployed live active prompt variant: {tag}")
+        logger.info(f"Successfully seeded and deployed live active prompt variant for {model_name}: {tag}")
         return tag, DAILY_PREDICTOR_PROMPT
     except Exception as e:
-        logger.error(f"Error seeding daily predictor prompt: {e}")
+        logger.error(f"Error seeding daily predictor prompt for {model_name}: {e}")
 
     return tag, DAILY_PREDICTOR_PROMPT
 
 
-async def fetch_active_daily_prompt() -> tuple[str, str]:
-    """Fetch active DAILY_PREDICTOR_PROMPT from database, or bootstrap baseline."""
+async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> tuple[str, str]:
+    """Fetch active DAILY_PREDICTOR_PROMPT for a specific model track from database, or bootstrap baseline."""
     client = get_supabase_client()
     try:
+        # Try track-specific query first
         response = (
             client.table("prompt_experiments")
             .select("variant_tag, prompt_content")
             .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
             .eq("status", "active")
             .order("created_at", desc=True)
             .limit(1)
@@ -66,12 +69,25 @@ async def fetch_active_daily_prompt() -> tuple[str, str]:
         if response.data:
             return response.data[0]["variant_tag"], response.data[0]["prompt_content"]
 
-        logger.info("No active DAILY_PREDICTOR_PROMPT found. Seeding baseline...")
-        return await seed_daily_predictor_prompt()
-    except Exception as e:
-        logger.error(f"Error fetching active daily predictor prompt: {e}")
+        # Fallback to general active prompt if track_id not yet populated
+        general_resp = (
+            client.table("prompt_experiments")
+            .select("variant_tag, prompt_content")
+            .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
+            .eq("status", "active")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if general_resp.data:
+            return general_resp.data[0]["variant_tag"], general_resp.data[0]["prompt_content"]
 
-    return "fallback-daily-base", DAILY_PREDICTOR_PROMPT
+        logger.info(f"No active DAILY_PREDICTOR_PROMPT found for {model_name}. Seeding baseline...")
+        return await seed_daily_predictor_prompt(model_name=model_name)
+    except Exception as e:
+        logger.error(f"Error fetching active daily predictor prompt for {model_name}: {e}")
+
+    return f"fallback-daily-{model_name}", DAILY_PREDICTOR_PROMPT
 
 
 async def get_daily_market_context(ticker: str = "SPY") -> str:
@@ -162,7 +178,6 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
 async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
     """Run daily predictions at 8:00 AM ET for target ticker across model arena (DeepSeek & MiniMax)."""
     client = get_supabase_client()
-    prompt_tag, prompt_content = await fetch_active_daily_prompt()
     context = await get_daily_market_context(ticker=ticker)
 
     today = datetime.now(UTC).date()
@@ -183,6 +198,7 @@ async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
         model_name = model_cfg["name"]
         m_type = model_cfg["type"]
         provider = model_cfg["provider"]
+        prompt_tag, prompt_content = await fetch_active_daily_prompt(model_name=model_name)
 
         success = False
         for attempt in range(3):

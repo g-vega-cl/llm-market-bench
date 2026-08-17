@@ -5,15 +5,25 @@ import type { DailyPrediction } from '../api/fetch-daily-predictions';
 import { DailyPredictionsPage } from './DailyPredictionsPage';
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-        <a href={to}>{children}</a>
+    Link: ({
+        children,
+        to,
+        style,
+    }: {
+        children: React.ReactNode;
+        to: string;
+        style?: React.CSSProperties;
+    }) => (
+        <a href={to} style={style}>
+            {children}
+        </a>
     ),
 }));
 
 describe('DailyPredictionsPage', () => {
     const mockPredictions: DailyPrediction[] = [
         {
-            id: 'daily-pred-1',
+            id: 'daily-pred-deepseek-1',
             prediction_date: '2026-08-03',
             target_date: '2026-08-03',
             ticker: 'SPY',
@@ -37,6 +47,31 @@ describe('DailyPredictionsPage', () => {
             created_at: '2026-08-03T08:00:00Z',
             updated_at: '2026-08-03T16:15:00Z',
         },
+        {
+            id: 'daily-pred-minimax-1',
+            prediction_date: '2026-08-03',
+            target_date: '2026-08-03',
+            ticker: 'SPY',
+            model_name: 'MiniMax-M3',
+            prompt_variant_tag: 'daily-minimax-v1',
+            predicted_direction: 'DOWN',
+            confidence: 65.0,
+            expected_return_pct: -0.35,
+            rationale: 'Overextended technical indicators and upcoming CPI data.',
+            catalysts: ['CPI Data'],
+            open_price: 450.0,
+            high_price: 456.0,
+            low_price: 449.0,
+            close_price: 455.0,
+            actual_direction: 'UP',
+            is_correct: false,
+            intraday_hit: false,
+            intraday_direction_hit: false,
+            brier_score: 0.4225,
+            status: 'evaluated',
+            created_at: '2026-08-03T08:00:00Z',
+            updated_at: '2026-08-03T16:15:00Z',
+        },
     ];
 
     const mockExperiments: PromptExperiment[] = [
@@ -45,8 +80,8 @@ describe('DailyPredictionsPage', () => {
             prompt_name: 'DAILY_PREDICTOR_PROMPT',
             variant_tag: 'daily-active-1',
             experiment_type: 'baseline',
-            prompt_content: 'Analyze intraday S&P price action.',
-            change_description: 'Initial daily predictor baseline.',
+            prompt_content: 'Analyze intraday S&P price action for DeepSeek.',
+            change_description: 'Initial daily predictor baseline for DeepSeek.',
             metrics: { score: 75.0 },
             status: 'active',
             week_start: '2026-08-03',
@@ -55,81 +90,103 @@ describe('DailyPredictionsPage', () => {
             parent_tag: null,
             research_output: null,
             is_backtest: false,
-            track_id: null,
+            track_id: 'deepseek-v4-flash',
+        },
+        {
+            id: 'exp-daily-2',
+            prompt_name: 'DAILY_PREDICTOR_PROMPT',
+            variant_tag: 'daily-minimax-v1',
+            experiment_type: 'baseline',
+            prompt_content: 'Analyze intraday S&P price action for MiniMax.',
+            change_description: 'Initial daily predictor baseline for MiniMax.',
+            metrics: { score: 55.0 },
+            status: 'active',
+            week_start: '2026-08-03',
+            week_end: '2026-08-10',
+            created_at: '2026-08-03T00:00:00Z',
+            parent_tag: null,
+            research_output: null,
+            is_backtest: false,
+            track_id: 'MiniMax-M3',
         },
     ];
 
-    const refreshFn = vi.fn().mockResolvedValue({
-        predictions: mockPredictions,
-        experiments: mockExperiments,
-    });
-
-    it('renders top metrics dashboard and hero prediction card', () => {
+    it('removes Refresh Data button and relocates Backtest Arena button to tab bar', () => {
         render(
             <DailyPredictionsPage
                 initialPredictions={mockPredictions}
                 experiments={mockExperiments}
-                refreshFn={refreshFn}
+            />,
+        );
+
+        expect(screen.queryByRole('button', { name: /Refresh Data/i })).not.toBeInTheDocument();
+        const backtestLink = screen.getByRole('link', { name: /Backtest Arena/i });
+        expect(backtestLink).toBeInTheDocument();
+        expect(backtestLink.getAttribute('href')).toBe('/daily-predictions-backtest');
+    });
+
+    it('renders independent model tabs and defaults to first model (DeepSeek Flash)', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
             />,
         );
 
         expect(screen.getByText('Daily S&P Market Predictor')).toBeInTheDocument();
-        expect(screen.getByText('Directional Accuracy')).toBeInTheDocument();
-        expect(screen.getByText('Intraday Target Hit (30%)')).toBeInTheDocument();
-        expect(screen.getAllByText('100.0%').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByRole('button', { name: /DeepSeek Flash/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /MiniMax M3/i })).toBeInTheDocument();
+
+        // DeepSeek predictions shown
         expect(screen.getByText('▲ UP')).toBeInTheDocument();
         expect(screen.getByText('80% Confidence')).toBeInTheDocument();
+        expect(
+            screen.getByText(/Overnight futures momentum and strong earnings catalysts/i),
+        ).toBeInTheDocument();
+
+        // MiniMax rationale not shown on DeepSeek tab
+        expect(
+            screen.queryByText(/Overextended technical indicators and upcoming CPI data/i),
+        ).not.toBeInTheDocument();
     });
 
-    it('expands prediction row to display rationale, catalysts, and prompt variant content', () => {
+    it('switches to MiniMax M3 tab and isolates MiniMax predictions, metrics, and hero card', () => {
         render(
             <DailyPredictionsPage
                 initialPredictions={mockPredictions}
                 experiments={mockExperiments}
-                refreshFn={refreshFn}
             />,
         );
 
-        // Click details expand button for historical prediction
+        const minimaxTabBtn = screen.getByRole('button', { name: /MiniMax M3/i });
+        fireEvent.click(minimaxTabBtn);
+
+        // MiniMax prediction now shown in hero and table
+        expect(screen.getByText('▼ DOWN')).toBeInTheDocument();
+        expect(screen.getByText('65% Confidence')).toBeInTheDocument();
+        expect(
+            screen.getByText(/Overextended technical indicators and upcoming CPI data/i),
+        ).toBeInTheDocument();
+
+        // DeepSeek rationale not shown on MiniMax tab
+        expect(
+            screen.queryByText(/Overnight futures momentum and strong earnings catalysts/i),
+        ).not.toBeInTheDocument();
+    });
+
+    it('expands prediction row to display prompt variant content for active model', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
+            />,
+        );
+
         const expandBtn = screen.getByRole('button', { name: /View Details & Prompt/i });
         fireEvent.click(expandBtn);
 
         expect(
-            screen.getAllByText(/Overnight futures momentum and strong earnings catalysts/i).length,
-        ).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText('Tech Earnings').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText('Fed Stance').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText(/Analyze intraday S&P price action/i)).toBeInTheDocument();
-    });
-
-    it('switches tabs to autoresearch and displays ratchet score breakdown & meta-prompt card', () => {
-        render(
-            <DailyPredictionsPage
-                initialPredictions={mockPredictions}
-                experiments={mockExperiments}
-                refreshFn={refreshFn}
-            />,
-        );
-
-        const autoresearchTabBtn = screen.getByRole('button', {
-            name: /Autoresearch & Prompt Evolution/i,
-        });
-        fireEvent.click(autoresearchTabBtn);
-
-        expect(screen.getAllByText('daily-active-1').length).toBeGreaterThan(0);
-        expect(screen.getByText('"Initial daily predictor baseline."')).toBeInTheDocument();
-
-        // Check ratchet score elements
-        expect(screen.getByText('Performance Ratchet Score')).toBeInTheDocument();
-        expect(screen.getByText(/Ratchet Score Formula/i)).toBeInTheDocument();
-        expect(screen.getByText(/Last Day Calculated:/i)).toBeInTheDocument();
-        expect(screen.getAllByText(/2026-08-03/).length).toBeGreaterThan(0);
-        expect(screen.getByText(/Active Prompt Variant:/i)).toBeInTheDocument();
-
-        // Check autoresearcher meta-prompt card
-        expect(screen.getByText('Autoresearcher Meta-Prompt (DeepSeek Flash)')).toBeInTheDocument();
-        expect(
-            screen.getByText(/Meta-Researcher AI optimizing an LLM prompt/i),
+            screen.getByText(/Analyze intraday S&P price action for DeepSeek/i),
         ).toBeInTheDocument();
     });
 });

@@ -11,17 +11,97 @@ from tasks.daily_autoresearch import (
 
 def test_calculate_daily_ratchet_score():
     predictions = [
-        {"is_correct": True, "intraday_hit": True, "brier_score": 0.04},
-        {"is_correct": True, "intraday_hit": True, "brier_score": 0.09},
-        {"is_correct": False, "intraday_hit": True, "brier_score": 0.64},
-        {"is_correct": True, "intraday_hit": True, "brier_score": 0.04},
+        {
+            "is_correct": True,
+            "intraday_hit": True,
+            "expected_return_pct": 0.20,
+            "open_price": 500.0,
+            "high_price": 505.0,
+            "low_price": 499.0,
+            "close_price": 504.0,
+            "brier_score": 0.04,
+        },
+        {
+            "is_correct": True,
+            "intraday_hit": True,
+            "expected_return_pct": 0.80,
+            "open_price": 500.0,
+            "high_price": 505.0,
+            "low_price": 499.0,
+            "close_price": 504.0,
+            "brier_score": 0.09,
+        },
+        {
+            "is_correct": False,
+            "intraday_hit": False,
+            "expected_return_pct": 0.50,
+            "open_price": 500.0,
+            "high_price": 501.0,
+            "low_price": 497.0,
+            "close_price": 498.0,
+            "brier_score": 0.64,
+        },
+        {
+            "is_correct": True,
+            "intraday_hit": True,
+            "expected_return_pct": 0.40,
+            "open_price": 500.0,
+            "high_price": 502.0,
+            "low_price": 499.5,
+            "close_price": 502.0,
+            "brier_score": 0.04,
+        },
     ]
-    # EOD Accuracy = 3/4 = 75.0% -> 0.60 * 75.0 = 45.0
-    # Intraday Hit = 4/4 = 100.0% -> 0.40 * 100.0 = 40.0
+    # EOD Accuracy = 3/4 = 75.0% -> 0.55 * 75.0 = 41.25
+    # Intraday Hit = 3/4 = 75.0% -> 0.35 * 75.0 = 26.25
+    # Magnitude Capture:
+    # Pred 1: Peak return = +1.0%, exp = 0.2% -> capture = 20.0%
+    # Pred 2: Peak return = +1.0%, exp = 0.8% -> capture = 80.0%
+    # Pred 3: Missed -> capture = 0.0%
+    # Pred 4: Peak return = +0.4%, exp = 0.4% -> capture = 100.0%
+    # Mean capture = (20.0 + 80.0 + 0.0 + 100.0) / 4 = 50.0% -> 0.10 * 50.0 = 5.0
     # Mean Brier = 0.2025 -> 0.2025 * 50 = 10.125
-    # Combined Score = 45.0 + 40.0 - 10.125 = 74.875
+    # Combined Score = 41.25 + 26.25 + 5.0 - 10.125 = 62.375
     score = calculate_daily_ratchet_score(predictions)
-    assert pytest.approx(score, 0.01) == 74.875
+    assert pytest.approx(score, 0.01) == 62.375
+
+
+def test_compute_magnitude_postmortem_summary():
+    from tasks.daily_autoresearch import compute_magnitude_postmortem_summary
+
+    predictions = [
+        {
+            "target_date": "2026-08-10",
+            "predicted_direction": "UP",
+            "expected_return_pct": 0.20,
+            "open_price": 500.0,
+            "high_price": 506.0,
+            "low_price": 499.0,
+            "close_price": 505.0,
+            "is_correct": True,
+            "intraday_hit": True,
+            "brier_score": 0.04,
+        },
+        {
+            "target_date": "2026-08-11",
+            "predicted_direction": "UP",
+            "expected_return_pct": 1.20,
+            "open_price": 500.0,
+            "high_price": 502.0,
+            "low_price": 499.0,
+            "close_price": 501.0,
+            "is_correct": True,
+            "intraday_hit": False,
+            "brier_score": 0.16,
+        },
+    ]
+
+    summary = compute_magnitude_postmortem_summary(predictions)
+    assert "Magnitude Calibration Diagnosis" in summary
+    assert "Timid / Underestimated" in summary
+    assert "Overshot / Missed Target" in summary
+    assert "2026-08-10" in summary
+    assert "2026-08-11" in summary
 
 
 @pytest.mark.asyncio
@@ -31,13 +111,32 @@ async def test_generate_new_daily_prompt_success():
     mock_llm.chat.completions.create.return_value = mock_response
 
     old_prompt = "Header\nInstructions\nFooter"
+    predictions = [
+        {
+            "target_date": "2026-08-10",
+            "predicted_direction": "UP",
+            "expected_return_pct": 0.20,
+            "open_price": 500.0,
+            "high_price": 506.0,
+            "low_price": 499.0,
+            "close_price": 505.0,
+            "is_correct": True,
+            "intraday_hit": True,
+            "brier_score": 0.04,
+        }
+    ]
     new_prompt = await generate_new_daily_prompt(
         old_prompt=old_prompt,
         baseline_score=70.0,
+        predictions=predictions,
         meta_researcher=mock_llm,
     )
 
     assert "New strategy instructions" in new_prompt
+    assert mock_llm.chat.completions.create.called
+    call_args = mock_llm.chat.completions.create.call_args
+    meta_prompt_content = call_args.kwargs["messages"][0]["content"]
+    assert "Magnitude Calibration Diagnosis" in meta_prompt_content
 
 
 @pytest.mark.asyncio

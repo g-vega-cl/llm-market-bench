@@ -22,7 +22,10 @@ from core.llm.daily_predictor_prompts import (
     DailyPredictionOutput,
     split_daily_predictor_prompt,
 )
-from tasks.daily_autoresearch import calculate_daily_ratchet_score
+from tasks.daily_autoresearch import (
+    calculate_daily_ratchet_score,
+    compute_magnitude_postmortem_summary,
+)
 
 DB_PATH = ".backtest_daily.db"
 
@@ -449,19 +452,30 @@ async def evaluate_backtest_prediction(
 evaluate_simulated_daily_prediction = evaluate_backtest_prediction
 
 
-async def generate_new_daily_prompt_backtest(old_prompt: str, baseline_score: float) -> str:
+async def generate_new_daily_prompt_backtest(
+    old_prompt: str, baseline_score: float, predictions: list[dict] | None = None
+) -> str:
     """Generate mutated strategy instruction prompt using DeepSeek Flash for backtest."""
     _, mutable_strategies, _ = split_daily_predictor_prompt(old_prompt)
     deepseek_client = get_deepseek_client()
 
+    postmortem_context = (
+        compute_magnitude_postmortem_summary(predictions)
+        if predictions
+        else "No recent prediction postmortem available."
+    )
+
     meta_prompt = (
         "You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.\n\n"
-        f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n"
-        "Your goal is to rewrite ONLY the strategy / analytical reasoning section of the prompt "
-        "to be more effective, focusing on macro catalyst extraction, technical level signals, momentum vs gap-fill behavior, "
-        "and better confidence calibration.\n"
-        "Do NOT include output formatting rules or JSON schema definitions; "
-        "the required output structure is automatically enforced by the system.\n\n"
+        f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n\n"
+        f"{postmortem_context}\n\n"
+        "### OBJECTIVES & MUTATION RULES:\n"
+        "1. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
+        "2. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
+        "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
+        "3. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
+        "4. Rewrite ONLY the strategy / analytical reasoning section of the prompt. "
+        "Do NOT include output formatting rules or JSON schema definitions; the output structure is automatically enforced.\n\n"
         "CURRENT STRATEGY INSTRUCTIONS:\n"
         f"```text\n{mutable_strategies}\n```\n\n"
         "Output ONLY the raw new strategy instructions text."
@@ -546,7 +560,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT is_correct, intraday_hit, brier_score FROM daily_predictions WHERE status = 'evaluated'")
+        cursor.execute("SELECT * FROM daily_predictions WHERE status = 'evaluated'")
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
 
@@ -557,7 +571,11 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
         )
 
         logger.info("Triggering DeepSeek Flash Meta-Researcher mutation...")
-        new_prompt = await generate_new_daily_prompt_backtest(active_prompt, current_ratchet_score)
+        new_prompt = await generate_new_daily_prompt_backtest(
+            old_prompt=active_prompt,
+            baseline_score=current_ratchet_score,
+            predictions=rows,
+        )
 
         new_tag = f"daily-pred-backtest-{uuid.uuid4().hex[:8]}"
         exp_id = str(uuid.uuid4())

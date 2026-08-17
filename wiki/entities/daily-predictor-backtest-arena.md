@@ -30,14 +30,15 @@ These metrics are computed via `compute_intraday_hit_metrics()` in `tasks/evalua
 
 ## Scoring Formula
 
-The composite ratchet score used for prompt mutation is:
+The composite multi-factor ratchet score used for prompt mutation is:
 
 $$
-\text{Ratchet Score} = (0.60 \times \text{close\_accuracy\_pct}) + (0.40 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)
+\text{Ratchet Score} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct}) - (\text{mean\_brier} \times 50.0)
 $$
 
-- **Close Accuracy %** (60% weight): Percentage of predictions where the EOD close direction matched the prediction.
-- **Intraday Hit %** (40% weight): Percentage of predictions where the intraday target was hit (falls back to `is_correct` when `intraday_hit` is null).
+- **Close Accuracy %** (55% weight): Percentage of predictions where the EOD close direction matched the prediction.
+- **Intraday Hit %** (35% weight): Percentage of predictions where the intraday target was hit (falls back to `is_correct` when `intraday_hit` is null).
+- **Magnitude Capture %** (10% weight): Percentage of the actual move captured on correct predictions that hit target ($\min(1.0, |\text{expected}|/\max(|\text{peak}|, |\text{close}|)) \times 100$).
 - **Brier penalty**: Mean Brier score multiplied by 50, subtracted from the weighted sum.
 
 ## Web UI

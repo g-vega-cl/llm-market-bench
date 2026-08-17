@@ -22,14 +22,47 @@ class DailyMetaPromptResponse(BaseModel):
     new_prompt: str
 
 
+def calculate_magnitude_capture(p: dict) -> float:
+    """Calculate magnitude capture percentage (0-100%) for a single prediction."""
+    is_correct = p.get("is_correct") is True
+    intraday_hit = p.get("intraday_hit") is True or (p.get("intraday_hit") is None and is_correct)
+
+    if not is_correct or not intraday_hit:
+        return 0.0
+
+    expected_return_pct = p.get("expected_return_pct")
+    exp_pct = abs(float(expected_return_pct)) if expected_return_pct is not None else 0.0
+
+    open_p = p.get("open_price") or p.get("actual_open_price")
+    high_p = p.get("high_price") or p.get("actual_high_price")
+    low_p = p.get("low_price") or p.get("actual_low_price")
+    close_p = p.get("close_price") or p.get("actual_close_price")
+    predicted_dir = (p.get("predicted_direction") or ("UP" if is_correct else "DOWN")).upper()
+
+    if open_p and open_p > 0:
+        close_return = abs((close_p - open_p) / open_p) * 100.0 if close_p else 0.0
+        if predicted_dir == "UP":
+            peak_return = max(0.0, ((high_p - open_p) / open_p) * 100.0) if high_p else close_return
+        else:
+            peak_return = max(0.0, ((open_p - low_p) / open_p) * 100.0) if low_p else close_return
+
+        actual_move = max(peak_return, close_return)
+        if actual_move > 0:
+            return min(1.0, exp_pct / actual_move) * 100.0
+        return 100.0 if exp_pct == 0 else 0.0
+
+    return 100.0
+
+
 def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     """Calculate the ratchet performance score for daily predictions.
 
     Score is based on:
-    - EOD Close Directional Accuracy % (weight: 0.60)
-    - Intraday Target Hit Rate % (weight: 0.40)
+    - EOD Close Directional Accuracy % (weight: 0.55)
+    - Intraday Target Hit Rate % (weight: 0.35)
+    - Magnitude Capture Ratio % (weight: 0.10)
     - Mean Brier Score penalty (penalty multiplier: 50.0)
-    Combined Score = (0.60 * close_accuracy_pct) + (0.40 * intraday_hit_pct) - (mean_brier * 50.0).
+    Combined Score = (0.55 * close_acc) + (0.35 * hit_rate) + (0.10 * mag_capture) - (mean_brier * 50.0).
     """
     if not predictions:
         return 0.0
@@ -44,25 +77,127 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     )
     intraday_hit_pct = (intraday_hit_count / len(predictions)) * 100.0
 
+    magnitude_captures = [calculate_magnitude_capture(p) for p in predictions]
+    mean_mag_capture = sum(magnitude_captures) / len(magnitude_captures)
+
     brier_scores = [p.get("brier_score") for p in predictions if p.get("brier_score") is not None]
     mean_brier = (sum(brier_scores) / len(brier_scores)) if brier_scores else 0.25
 
-    final_score = (0.60 * close_accuracy_pct) + (0.40 * intraday_hit_pct) - (mean_brier * 50.0)
+    final_score = (
+        (0.55 * close_accuracy_pct) + (0.35 * intraday_hit_pct) + (0.10 * mean_mag_capture) - (mean_brier * 50.0)
+    )
     return float(final_score)
 
 
-async def generate_new_daily_prompt(old_prompt: str, baseline_score: float, meta_researcher) -> str:
+def compute_magnitude_postmortem_summary(predictions: list[dict]) -> str:
+    """Generate a structured markdown postmortem analyzing magnitude calibration and timid vs overshooting errors."""
+    if not predictions:
+        return "No recent prediction history available."
+
+    lines = [
+        "### RECENT PREDICTIONS POSTMORTEM & MAGNITUDE CALIBRATION",
+        "| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+
+    timid_cases = []
+    overshot_cases = []
+
+    for p in predictions:
+        date_str = str(p.get("target_date") or p.get("prediction_date") or "N/A")[:10]
+        direction = str(p.get("predicted_direction") or "N/A").upper()
+        exp_pct = float(p.get("expected_return_pct") or 0.0)
+        open_p = p.get("open_price") or p.get("actual_open_price")
+        high_p = p.get("high_price") or p.get("actual_high_price")
+        low_p = p.get("low_price") or p.get("actual_low_price")
+        close_p = p.get("close_price") or p.get("actual_close_price")
+        is_correct = p.get("is_correct") is True
+        intraday_hit = p.get("intraday_hit") is True or (p.get("intraday_hit") is None and is_correct)
+        brier = float(p.get("brier_score") or 0.0)
+        capture = calculate_magnitude_capture(p)
+
+        peak_pct = 0.0
+        close_pct = 0.0
+        if open_p and open_p > 0:
+            if close_p:
+                close_pct = ((close_p - open_p) / open_p) * 100.0
+            if direction == "UP" and high_p:
+                peak_pct = ((high_p - open_p) / open_p) * 100.0
+            elif direction == "DOWN" and low_p:
+                peak_pct = ((low_p - open_p) / open_p) * 100.0
+            else:
+                peak_pct = close_pct
+
+        diagnosis = "Normal"
+        actual_move = max(abs(peak_pct), abs(close_pct))
+        if is_correct and intraday_hit:
+            if actual_move >= 0.60 and capture < 40.0:
+                diagnosis = "Timid / Underestimated"
+                timid_cases.append(
+                    f"- **{date_str}**: Predicted {direction} {exp_pct:+.2f}%, but market moved {actual_move:+.2f}% (only {capture:.1f}% captured). Strong momentum was left on the table."
+                )
+            else:
+                diagnosis = "Well-Calibrated"
+        elif not intraday_hit and is_correct:
+            if abs(exp_pct) >= 0.60:
+                diagnosis = "Overshot / Missed Target"
+                overshot_cases.append(
+                    f"- **{date_str}**: Target {exp_pct:+.2f}% was too aggressive for actual intraday range (peak {peak_pct:+.2f}%)."
+                )
+            else:
+                diagnosis = "Missed Target"
+        else:
+            diagnosis = "Wrong Direction"
+
+        lines.append(
+            f"| {date_str} | {direction} | {exp_pct:+.2f}% | {peak_pct:+.2f}% | {close_pct:+.2f}% | "
+            f"{'Yes' if is_correct else 'No'} | {'Yes' if intraday_hit else 'No'} | {brier:.3f} | {capture:.1f}% | {diagnosis} |"
+        )
+
+    lines.append("\n#### Magnitude Calibration Diagnosis:")
+    if timid_cases:
+        lines.append(
+            "**Timid / Underestimated Instances (Need more aggressive magnitude on high-conviction catalysts):**"
+        )
+        lines.extend(timid_cases)
+    else:
+        lines.append("- No severe underestimation instances detected in recent sample.")
+
+    if overshot_cases:
+        lines.append("**Overshot / Missed Target Instances (Target was set beyond available volatility):**")
+        lines.extend(overshot_cases)
+    else:
+        lines.append("- No severe overshooting errors detected.")
+
+    return "\n".join(lines)
+
+
+async def generate_new_daily_prompt(
+    old_prompt: str,
+    baseline_score: float,
+    predictions: list[dict] | None = None,
+    meta_researcher=None,
+) -> str:
     """Generate a mutated strategy instruction prompt using DeepSeek Flash."""
     _, mutable_strategies, _ = split_daily_predictor_prompt(old_prompt)
 
+    postmortem_context = (
+        compute_magnitude_postmortem_summary(predictions)
+        if predictions
+        else "No recent prediction postmortem available."
+    )
+
     meta_prompt = (
         "You are a Meta-Researcher AI optimizing an LLM prompt for predicting intraday S&P 500 (SPY) open-to-close price movement.\n\n"
-        f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n"
-        "Your goal is to rewrite ONLY the strategy / analytical reasoning section of the prompt "
-        "to be more effective, focusing on macro catalyst extraction, technical level signals, momentum vs gap-fill behavior, "
-        "and better confidence calibration.\n"
-        "Do NOT include output formatting rules or JSON schema definitions; "
-        "the required output structure is automatically enforced by the system.\n\n"
+        f"The current prompt strategy achieved a ratchet score of {baseline_score:.2f}.\n\n"
+        f"{postmortem_context}\n\n"
+        "### OBJECTIVES & MUTATION RULES:\n"
+        "1. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
+        "2. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
+        "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
+        "3. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
+        "4. Rewrite ONLY the strategy / analytical reasoning section of the prompt. "
+        "Do NOT include output formatting rules or JSON schema definitions; the output structure is automatically enforced.\n\n"
         "CURRENT STRATEGY INSTRUCTIONS:\n"
         f"```text\n{mutable_strategies}\n```\n\n"
         "Output ONLY the raw new strategy instructions text."
@@ -198,7 +333,12 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
         ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
 
     # 5. Mutate prompt using DeepSeek Flash
-    new_prompt = await generate_new_daily_prompt(current_prompt, current_score, deepseek_meta)
+    new_prompt = await generate_new_daily_prompt(
+        old_prompt=current_prompt,
+        baseline_score=current_score,
+        predictions=predictions,
+        meta_researcher=deepseek_meta,
+    )
 
     # 6. Deploy new active prompt variant scoped to track_id
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"

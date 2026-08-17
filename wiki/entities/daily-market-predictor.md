@@ -24,8 +24,9 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 3. **Twice-Weekly Prompt Evolution & Performance Ratchet (Sun & Wed 6:00 PM ET)**:
    - Command: `python main.py daily-autoresearch`
    - **Independent Multi-Model Tracks**: Evaluates recent predictions and evolves system prompt variants independently for each participating model (`deepseek-v4-flash` and `MiniMax-M3`), scoped by `track_id` in `prompt_experiments`.
-   - Combined Ratchet Score formula:
-     $$\text{Ratchet Score} = (0.60 \times \text{close\_accuracy\_pct}) + (0.40 \times \text{intraday\_hit\_pct}) - (\text{mean\_brier} \times 50.0)$$
+   - Combined Multi-Factor Ratchet Score formula:
+     $$\text{Ratchet Score} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct}) - (\text{mean\_brier} \times 50.0)$$
+   - **Magnitude Calibration Postmortem**: Evaluates whether timid targets were set on large breakout/trend days ($\text{capture} = \min(1.0, |\text{expected\_return}| / \max(|\text{peak}|, |\text{close}|)) \times 100$, awarded only on successful target hits). The meta-researcher receives a detailed postmortem breakdown diagnosing timid sizing vs overshooting errors to evolve analytical catalyst recognition rules without compromising baseline target hit reliability.
    - Applies ratchet logic per model: if a model's recent performance beats its historical baseline, establishes a new baseline; if lower, reverts to baseline prompt.
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher per model track.
 

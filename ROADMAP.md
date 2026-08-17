@@ -147,3 +147,4 @@ Also confirm how it's calculated for autoresearcher, it should only use the rece
 - [x] - Benchify: autoresearcher. Make sure do nothing portfolio is properly calculated
     Gemini flash light do nothing is probably wrong?
 - [ ] - Benchify: make/use duckduckgo web search tool?
+- [x] - if on daily predictor, it says "-0.2%" or "+0.2%", and it goes -1% or +1%, we need to update the autoresearcher to show that we should have been more aggressive/confident in the magnitude of the move. BUT the most important thing is still hitting that -0.2/+0.2/+.15%/-.25%/etc...

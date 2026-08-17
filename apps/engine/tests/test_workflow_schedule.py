@@ -119,3 +119,26 @@ def test_cron_dispatcher_wrangler_triggers():
     assert "15 13,14,21 * * MON-FRI" in content or ("15 13,14" in content and "15 21" in content), (
         "Expected wrangler.jsonc to include 15 minute cron triggers for 13:00/14:00 UTC hours"
     )
+
+
+def test_autoresearch_workflow_env_keys():
+    """Verify autoresearch.yml includes MINIMAX_API_KEY for track_openai meta-evaluator LLM routing."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    autoresearch_yml_path = root / ".github" / "workflows" / "autoresearch.yml"
+
+    assert autoresearch_yml_path.exists(), f"Could not find workflow file at {autoresearch_yml_path}"
+
+    with open(autoresearch_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", {})
+    autoresearch_job = jobs.get("auto-research", {})
+    steps = autoresearch_job.get("steps", [])
+
+    run_step = next((s for s in steps if s.get("name") == "Run auto-research cycle"), None)
+    assert run_step is not None, "Could not find 'Run auto-research cycle' step in autoresearch.yml"
+
+    step_env = run_step.get("env", {})
+    assert "MINIMAX_API_KEY" in step_env, f"Expected MINIMAX_API_KEY in step env, found: {list(step_env.keys())}"
+    assert step_env["MINIMAX_API_KEY"] == "${{ secrets.MINIMAX_API_KEY }}"
+

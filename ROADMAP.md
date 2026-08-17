@@ -136,3 +136,14 @@ Feels like I have done that before to no avail
 - [ ] - another step in my LLM after newsletter read to look for related info and news online?
 - [x] - add Brier score to autoresearcher and sector researcher
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
+- [ ] - Benchify: check Brier score with worse predictor too
+- [ ] - Benchify: daily predictor second LLM results.
+
+Also show the score of older benchmarks
+
+Also confirm how it's calculated for autoresearcher, it should only use the recent calcs
+
+- [x] - Benchify: seems like Openai didn't make a new autoresearcher prompt/score
+- [ ] - Benchify: autoresearcher. Make sure do nothing portfolio is properly calculated
+    Gemini flash light do nothing is probably wrong?
+- [ ] - Benchify: make/use duckduckgo web search tool?

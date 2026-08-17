@@ -45,6 +45,8 @@
 - Env vars: `apps/engine/.env.example`
 - DB schema: `supabase/migrations/`
 - DB source of truth is the remote Supabase project (applied via `supabase db push --linked`)
+- **Workflow Secrets**: When adding, updating, or routing models/providers (e.g., in `packages/config/models.json` or `apps/engine/core/config.py`), always ensure corresponding GitHub Actions workflows (`.github/workflows/*.yml`) inject the required API keys (e.g. `MINIMAX_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `FMP_API_KEY`) in their step `env:` blocks.
+
 
 ## Docs
 

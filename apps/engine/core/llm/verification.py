@@ -242,6 +242,8 @@ async def verify_trading_decision(
 
         if provider == "anthropic":
             create_args["max_tokens"] = 4000
+        if provider == "openai":
+            create_args["reasoning_effort"] = "none"
 
         # Retry loop for Instructor extraction — handles both validation errors
         # and empty/None responses by injecting repair prompts.
@@ -397,7 +399,7 @@ async def verify_trading_decision(
         return final_resp
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             f"Verification failed for {decision.ticker} ({provider}): {e}",
             extra={
                 "ticker": decision.ticker,

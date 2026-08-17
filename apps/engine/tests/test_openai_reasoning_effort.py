@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from autoresearch import prompt_store
-from core.llm import analysis, clients, events, handlers
+from autoresearch import prompt_store, researcher
+from core.llm import analysis, clients, events, handlers, verification
+from core.models import DecisionObject, VerificationResult
 
 
 class DummyResponse(BaseModel):
@@ -102,6 +103,95 @@ async def test_openai_handler_tool_loop_injects_reasoning_effort_none():
     )
 
     assert len(recorded_kwargs) > 0, "Expected chat.completions.create call during tool loop"
+    assert recorded_kwargs[0].get("reasoning_effort") == "none", (
+        f"Expected reasoning_effort='none' in kwargs, got {recorded_kwargs[0]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_openai_verification_injects_reasoning_effort_none():
+    """Verify verify_trading_decision passes reasoning_effort='none' for OpenAI."""
+    mock_client = MagicMock()
+    recorded_kwargs = []
+
+    async def mock_create(**kwargs):
+        recorded_kwargs.append(kwargs)
+        return VerificationResult(
+            status="APPROVED",
+            verification_reasoning="Looks good",
+            confidence_score=90,
+        )
+
+    mock_client.chat.completions.create = mock_create
+
+    decision = DecisionObject(
+        ticker="AAPL",
+        signal="BUY",
+        model_provider="openai",
+        model_name="gpt-5.6-luna",
+        quantity=10,
+        confidence=85,
+        reasoning="Strong trend",
+        source_id="src-1",
+    )
+
+    mock_quote = MagicMock(price=150.0, exists=True)
+
+    with (
+        patch.dict(clients.CLIENT_FACTORIES, {"openai": lambda: mock_client}),
+        patch("core.llm.verification.retrieve_for_decision", return_value=""),
+        patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=mock_quote),
+        patch("core.llm.handlers.openai.run_tool_loop", new_callable=AsyncMock),
+        patch("core.llm.verification.log_reasoning_trace", new_callable=AsyncMock),
+    ):
+        result = await verification.verify_trading_decision(
+            decision=decision,
+            portfolio_context="No positions",
+            aggregated_context="Bullish market",
+        )
+
+    assert result.status == "APPROVED"
+    assert len(recorded_kwargs) > 0, "Expected chat.completions.create call during verification extraction"
+    assert recorded_kwargs[0].get("reasoning_effort") == "none", (
+        f"Expected reasoning_effort='none' in kwargs, got {recorded_kwargs[0]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_openai_autoresearch_injects_reasoning_effort_none():
+    """Verify run_research passes reasoning_effort='none' for OpenAI."""
+    mock_client = MagicMock()
+    recorded_kwargs = []
+
+    async def mock_create(**kwargs):
+        recorded_kwargs.append(kwargs)
+        return researcher.PromptResearchResult(
+            new_prompt_text="Updated strategy",
+            selected_tools=["get_stock_quote"],
+            change_description="Testing strategy update",
+            experiment_type="incremental",
+            research_reasoning="Refined prompt",
+            confidence=80,
+        )
+
+    mock_client.chat.completions.create = mock_create
+
+    with (
+        patch(
+            "autoresearch.researcher._get_client_and_provider_for_model",
+            return_value=(mock_client, "openai"),
+        ),
+        patch("autoresearch.researcher._load_research_program", return_value="program content"),
+        patch("autoresearch.tools.query_trade_postmortems", new_callable=AsyncMock, return_value=""),
+    ):
+        result = await researcher.run_research(
+            report="Performance report",
+            track_id="track_openai",
+            model_name="gpt-5.6-luna",
+        )
+
+    assert result is not None
+    assert len(recorded_kwargs) > 0, "Expected chat.completions.create call during autoresearch extraction"
     assert recorded_kwargs[0].get("reasoning_effort") == "none", (
         f"Expected reasoning_effort='none' in kwargs, got {recorded_kwargs[0]}"
     )

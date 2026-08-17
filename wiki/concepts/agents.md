@@ -28,6 +28,7 @@ All agent prompt pairs follow the [[concepts/system-heavy-prompt]] design, decou
 - **Execution Safeguards**:
   - **Case-Insensitive Gates**: Safely bypasses mixed/lowercase `"HOLD"` signals without calling the backend LLM.
   - **Specialized Provider Mapping**: Dynamically updates the client provider (e.g. from `"openai"` to `"deepseek"`) alongside specialized agent model substitutions (like `deepseek_reasoner`) to avoid runtime API mismatches.
+  - **OpenAI Reasoning Compatibility**: Sets `reasoning_effort="none"` on Instructor verification extraction calls to ensure OpenAI reasoning models (`gpt-5.6-luna`) cleanly execute function tools on `/v1/chat/completions`.
   - **Transient Retry Resilience**: Performs up to 3 attempts with exponential backoff for transient HTTP errors (429, timeouts, bad gateways, connection drops) before falling back to fail-safe rejection.
 
 

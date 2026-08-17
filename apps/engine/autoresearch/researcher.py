@@ -139,6 +139,8 @@ async def run_research(
             "max_tokens": 64000,
             "max_retries": 2,
         }
+        if provider == "openai":
+            create_args["reasoning_effort"] = "none"
 
         wrapper = None
         last_error = None

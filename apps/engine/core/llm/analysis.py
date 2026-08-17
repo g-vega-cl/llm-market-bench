@@ -860,6 +860,9 @@ async def analyze_with_provider(
                 if provider == "deepseek" and "deepseek" in model_name.lower():
                     final_args_retry["extra_body"] = {"thinking": {"type": "enabled"}}
 
+                if provider == "openai":
+                    final_args_retry["reasoning_effort"] = "none"
+
                 if provider in ("anthropic", "minimax"):
                     final_args_retry["max_tokens"] = 32000
                     if messages_retry[0]["role"] == "system":

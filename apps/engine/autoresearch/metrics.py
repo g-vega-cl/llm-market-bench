@@ -222,9 +222,26 @@ async def _do_nothing_return(
         if initial_equity <= 0:
             continue
 
+        pos_for_pid = positions.get(pid, {})
+        has_held_positions = any(qty > 0 for qty in pos_for_pid.values())
+
+        if not has_held_positions:
+            # If the portfolio held no stock positions going into the week,
+            # doing nothing simply holds cash with exactly 0.0% return.
+            agent_returns.append(0.0)
+            portfolio_details[pid] = {
+                "owner_id": owner_id,
+                "initial_equity": initial_equity,
+                "initial_cash": initial_equity,
+                "end_equity": initial_equity,
+                "do_nothing_return_pct": 0.0,
+                "positions": {},
+            }
+            continue
+
         end_equity = initial_cash
         pos_details = {}
-        for ticker, qty in positions[pid].items():
+        for ticker, qty in pos_for_pid.items():
             if qty > 0:
                 price = ticker_prices.get(ticker)
                 start_price = ticker_start_prices.get(ticker)
@@ -262,7 +279,7 @@ async def _do_nothing_return(
                         "end_date": end_date,
                     }
 
-        if positions[pid] and sum(positions[pid].values()) > 0 and end_equity == initial_cash:
+        if pos_for_pid and sum(pos_for_pid.values()) > 0 and end_equity == initial_cash:
             agent_returns.append(0.0)
             portfolio_details[pid] = {
                 "owner_id": owner_id,
@@ -288,9 +305,7 @@ async def _do_nothing_return(
     if not agent_returns:
         return 0.0, {}
 
-    return sum(agent_returns) / len(
-        agent_returns
-    ) * 105 / 1.05, portfolio_details  # Wait: keep mathematically: sum(agent_returns) / len(agent_returns) * 100
+    return (sum(agent_returns) / len(agent_returns)) * 100, portfolio_details
 
 
 async def compute_wall_street_metrics(

@@ -556,6 +556,132 @@ class TestDoNothingReturn:
         assert len(details) == 1
 
     @pytest.mark.asyncio
+    async def test_do_nothing_cash_portfolio_trading_on_monday(self, monkeypatch):
+        """Verify that an agent with 100% cash before the week starts has a 0.0% do-nothing return,
+        even if Monday's end-of-day performance snapshot reflects post-trade cash balances.
+        """
+        from autoresearch import metrics
+
+        week_start = date(2026, 8, 10)  # Monday
+        week_end = date(2026, 8, 16)  # Sunday
+
+        class FakeResponse:
+            def __init__(self, data):
+                self.data = data
+
+        class FakeQuery:
+            def __init__(self, table_name, data_map):
+                self.table_name = table_name
+                self.data_map = data_map
+                self.gte_filters = {}
+                self.lte_filters = {}
+                self.lt_filters = {}
+                self.eq_filters = {}
+
+            def select(self, *args, **kwargs):
+                return self
+
+            def in_(self, *args, **kwargs):
+                return self
+
+            def gte(self, col, val):
+                self.gte_filters[col] = val
+                return self
+
+            def lte(self, col, val):
+                self.lte_filters[col] = val
+                return self
+
+            def lt(self, col, val):
+                self.lt_filters[col] = val
+                return self
+
+            def eq(self, col, val):
+                self.eq_filters[col] = val
+                return self
+
+            def order(self, *args, **kwargs):
+                return self
+
+            def limit(self, *args, **kwargs):
+                return self
+
+            async def execute(self):
+                data = self.data_map.get(self.table_name, [])
+                filtered = []
+                for row in data:
+                    keep = True
+                    if self.eq_filters:
+                        for col, val in self.eq_filters.items():
+                            if row.get(col) != val:
+                                keep = False
+                    if self.table_name == "portfolio_performance" and row.get("date"):
+                        d = row["date"]
+                        if "date" in self.gte_filters and d < self.gte_filters["date"]:
+                            keep = False
+                        if "date" in self.lte_filters and d > self.lte_filters["date"]:
+                            keep = False
+                        if "date" in self.lt_filters and d >= self.lt_filters["date"]:
+                            keep = False
+                    if self.table_name == "trades" and row.get("executed_at"):
+                        ex = row["executed_at"]
+                        if "executed_at" in self.lt_filters and ex >= self.lt_filters["executed_at"]:
+                            keep = False
+                    if keep:
+                        filtered.append(row)
+                return FakeResponse(filtered)
+
+        class FakeClient:
+            def __init__(self, data_map):
+                self.data_map = data_map
+
+            def table(self, name):
+                return FakeQuery(name, self.data_map)
+
+        # Gemini Flash Lite starts with $10,000 cash before week_start (no pre-week trades).
+        # On Monday (2026-08-10), it buys $5,000 of NVDA.
+        # Monday EOD portfolio_performance snapshot has total_equity=10000, cash_balance=5000.
+        data_map = {
+            "portfolio_performance": [
+                {
+                    "portfolio_id": "gemini-p1",
+                    "total_equity": 10000.0,
+                    "cash_balance": 5000.0,
+                    "date": "2026-08-10",
+                    "portfolios": {"owner_id": "gemini-3.5-flash-lite"},
+                }
+            ],
+            "trades": [
+                # Trade executed on Monday during trading hours:
+                {
+                    "portfolio_id": "gemini-p1",
+                    "ticker": "NVDA",
+                    "signal": "BUY",
+                    "quantity": 50,
+                    "price": 100.0,
+                    "total_cost": 5000.0,
+                    "executed_at": "2026-08-10T14:30:00",
+                    "portfolios": {"owner_id": "gemini-3.5-flash-lite"},
+                }
+            ],
+            "price_history": [],
+        }
+
+        fake_sb = FakeClient(data_map)
+
+        ret, details = await metrics._do_nothing_return(
+            fake_sb,
+            owner_ids=frozenset({"gemini-3.5-flash-lite"}),
+            week_start=week_start,
+            week_end=week_end,
+        )
+
+        # Do-nothing return MUST be 0.0% because the starting portfolio was 100% cash ($10,000).
+        assert ret == pytest.approx(0.0)
+        assert "gemini-p1" in details
+        assert details["gemini-p1"]["do_nothing_return_pct"] == pytest.approx(0.0)
+
+    @pytest.mark.asyncio
     async def test_do_nothing_pre_populates_price_history(self, monkeypatch):
         """Verify that _do_nothing_return pre-populates price history using MarketDataManager."""
         from autoresearch import metrics

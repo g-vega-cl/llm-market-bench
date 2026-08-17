@@ -144,6 +144,6 @@ Also show the score of older benchmarks
 Also confirm how it's calculated for autoresearcher, it should only use the recent calcs
 
 - [x] - Benchify: seems like Openai didn't make a new autoresearcher prompt/score
-- [ ] - Benchify: autoresearcher. Make sure do nothing portfolio is properly calculated
+- [x] - Benchify: autoresearcher. Make sure do nothing portfolio is properly calculated
     Gemini flash light do nothing is probably wrong?
 - [ ] - Benchify: make/use duckduckgo web search tool?

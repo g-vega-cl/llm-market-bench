@@ -141,4 +141,3 @@ def test_autoresearch_workflow_env_keys():
     step_env = run_step.get("env", {})
     assert "MINIMAX_API_KEY" in step_env, f"Expected MINIMAX_API_KEY in step env, found: {list(step_env.keys())}"
     assert step_env["MINIMAX_API_KEY"] == "${{ secrets.MINIMAX_API_KEY }}"
-

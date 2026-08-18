@@ -220,6 +220,16 @@ class MiniMaxClient:
             parsed = json.loads(content, strict=False)
             return parsed
         except json.JSONDecodeError as e:
+            try:
+                import yaml
+
+                parsed = yaml.safe_load(content)
+                if isinstance(parsed, dict) and len(parsed) > 0:
+                    logger.info("Successfully recovered MiniMax response using YAML fallback parser.")
+                    return parsed
+            except Exception:
+                pass
+
             logger.exception("Failed to parse JSON from MiniMax response: %s\nContent: %s", e, content[:500])
             raise ValueError(f"Invalid JSON response from MiniMax: {e}") from e
 

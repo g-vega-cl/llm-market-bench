@@ -171,6 +171,52 @@ class TestMiniMaxChatParsing:
             assert result["confidence"] == 90.0
 
     @pytest.mark.asyncio
+    async def test_chat_with_json_response_parses_yaml_fallback(self):
+        """Test that unbracketed YAML response is parsed into dict via fallback."""
+        from core.llm.minimax import MiniMaxClient
+
+        yaml_content = (
+            "predicted_direction: DOWN\n"
+            "confidence: 53\n"
+            "expected_return_pct: -0.15\n"
+            "rationale: |\n"
+            "  Starting from the 50% zero-mean base rate, the evidence tilts modestly bearish.\n"
+            "catalysts:\n"
+            "  - Prior session weakness\n"
+            "  - Yield surge\n"
+        )
+        mock_response_data = {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "content": yaml_content,
+                        "role": "assistant",
+                    },
+                }
+            ],
+            "model": MINIMAX_MODEL,
+            "usage": {"prompt_tokens": 120, "completion_tokens": 60},
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = MagicMock()
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+
+        with patch.object(MiniMaxClient, "_get_client", return_value=mock_client):
+            client = MiniMaxClient(api_key="test-key")
+            result = await client.chat_with_json_response(messages=[{"role": "user", "content": "test"}])
+
+            assert result["predicted_direction"] == "DOWN"
+            assert result["confidence"] == 53
+            assert result["expected_return_pct"] == -0.15
+            assert "zero-mean base rate" in result["rationale"]
+            assert result["catalysts"] == ["Prior session weakness", "Yield surge"]
+
+    @pytest.mark.asyncio
     async def test_chat_with_json_response_raises_on_invalid_json(self):
         """Test that invalid JSON raises ValueError."""
         from core.llm.minimax import MiniMaxClient

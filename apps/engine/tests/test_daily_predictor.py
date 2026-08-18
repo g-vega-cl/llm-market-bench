@@ -226,3 +226,74 @@ async def test_get_daily_market_context_premarket_multi_asset():
         assert "- IWM (Russell 2000): $220.00 | Gap: -0.45%" in ctx
         assert "- GLD (Gold): $240.00 | Gap: +0.42%" in ctx
         assert "- USO (WTI Crude Oil): $75.00 | Gap: -1.32%" in ctx
+
+
+def test_daily_predictor_prompt_footer_json_schema():
+    """Verify DAILY_PREDICTOR_CONSTRAINTS_FOOTER specifies explicit JSON structure."""
+    assert "{" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER and "}" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "predicted_direction" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "confidence" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "expected_return_pct" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "rationale" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+    assert "catalysts" in DAILY_PREDICTOR_CONSTRAINTS_FOOTER
+
+
+@pytest.mark.asyncio
+async def test_minimax_daily_prediction_includes_strict_json_prompt_and_tokens():
+    """Verify that MiniMax daily predictor receives explicit JSON directive and 8192 tokens."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
+        {
+            "variant_tag": "daily-pred-tag1",
+            "prompt_content": DAILY_PREDICTOR_PROMPT,
+        }
+    ]
+    mock_supabase.table.return_value.upsert.return_value.execute.return_value.data = [{"id": "test-uuid"}]
+
+    mock_deepseek = MagicMock()
+    mock_prediction = DailyPredictionOutput(
+        predicted_direction="UP",
+        confidence=75.0,
+        expected_return_pct=0.42,
+        rationale="Tech momentum.",
+        catalysts=["Tech earnings"],
+    )
+    mock_deepseek.chat.completions.create.return_value = mock_prediction
+
+    minimax_calls = []
+
+    async def mock_minimax_chat(messages, model=None, max_completion_tokens=None, temperature=0.3):
+        minimax_calls.append(
+            {
+                "messages": messages,
+                "model": model,
+                "max_completion_tokens": max_completion_tokens,
+                "temperature": temperature,
+            }
+        )
+        return {
+            "predicted_direction": "DOWN",
+            "confidence": 60.0,
+            "expected_return_pct": -0.30,
+            "rationale": "Overextended RSI.",
+            "catalysts": ["CPI"],
+        }
+
+    mock_minimax = MagicMock()
+    mock_minimax.chat_with_json_response = mock_minimax_chat
+    mock_minimax.close = AsyncMock()
+
+    with (
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
+        patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
+        patch("tasks.daily_predictor.close_client", new_callable=AsyncMock),
+    ):
+        results = await run_daily_prediction(ticker="SPY")
+        assert len(results) == 2
+        assert len(minimax_calls) == 1
+        call = minimax_calls[0]
+        assert call["max_completion_tokens"] == 8192
+        user_msg = next((m["content"] for m in call["messages"] if m["role"] == "user"), "")
+        assert "json" in user_msg.lower()
+        assert "predicted_direction" in user_msg

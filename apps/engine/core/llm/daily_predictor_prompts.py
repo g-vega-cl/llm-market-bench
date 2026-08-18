@@ -30,12 +30,15 @@ DAILY_PREDICTOR_MUTABLE_STRATEGIES = """=== ANALYTICAL STRATEGY INSTRUCTIONS ===
 Reduce confidence when signals conflict, when VIX > 30, or when high-impact economic data is scheduled mid-session. Never exceed 85% confidence without multi-signal confirmation."""
 
 DAILY_PREDICTOR_CONSTRAINTS_FOOTER = """\n\n=== REQUIRED OUTPUT FORMAT ===
-You MUST return a structured response containing:
-- predicted_direction: 'UP' or 'DOWN'
-- confidence: integer from 50 to 100
-- expected_return_pct: estimated percentage return from Open to Close
-- rationale: detailed analytical reasoning
-- catalysts: list of key market catalysts driving this prediction"""
+You MUST return a valid JSON object (enclosed in { and }) containing:
+{
+  "predicted_direction": "UP" or "DOWN",
+  "confidence": <float from 50.0 to 100.0>,
+  "expected_return_pct": <float estimated percentage return from Open to Close, e.g. +0.45 or -0.30>,
+  "rationale": "<detailed analytical reasoning>",
+  "catalysts": ["<catalyst 1>", "<catalyst 2>"]
+}
+Do not output raw Markdown headers, bullet lists, or YAML."""
 
 DAILY_PREDICTOR_PROMPT = (
     DAILY_PREDICTOR_CONSTRAINTS_HEADER + DAILY_PREDICTOR_MUTABLE_STRATEGIES + DAILY_PREDICTOR_CONSTRAINTS_FOOTER
@@ -79,5 +82,13 @@ def split_daily_predictor_prompt(prompt_text: str) -> tuple[str, str, str]:
     if prompt_text.startswith(header) and prompt_text.endswith(footer):
         mutable = prompt_text[len(header) : -len(footer)]
         return header, mutable, footer
+
+    req_format_marker = "=== REQUIRED OUTPUT FORMAT ==="
+    if req_format_marker in prompt_text:
+        content_before_footer = prompt_text.split(req_format_marker)[0].strip()
+        if content_before_footer.startswith(header.strip()):
+            mutable = content_before_footer[len(header.strip()) :].strip()
+            return header, mutable, footer
+        return header, content_before_footer, footer
 
     return header, prompt_text, footer

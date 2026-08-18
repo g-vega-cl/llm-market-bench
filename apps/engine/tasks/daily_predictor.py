@@ -11,6 +11,7 @@ from core.llm.clients import close_client, get_deepseek_client
 from core.llm.daily_predictor_prompts import (
     DAILY_PREDICTOR_PROMPT,
     DailyPredictionOutput,
+    split_daily_predictor_prompt,
 )
 from core.llm.minimax import MiniMaxClient
 
@@ -231,7 +232,9 @@ async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
         model_name = model_cfg["name"]
         m_type = model_cfg["type"]
         provider = model_cfg["provider"]
-        prompt_tag, prompt_content = await fetch_active_daily_prompt(model_name=model_name)
+        prompt_tag, raw_prompt_content = await fetch_active_daily_prompt(model_name=model_name)
+        header, mutable, footer = split_daily_predictor_prompt(raw_prompt_content)
+        prompt_content = header + mutable + footer
 
         success = False
         for attempt in range(3):
@@ -263,11 +266,19 @@ async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
                 elif m_type == "minimax":
                     minimax_client = MiniMaxClient()
                     try:
+                        minimax_user_msg = (
+                            f"{user_msg}\n\n"
+                            "Note: Output ONLY the required JSON object conforming to the output schema. "
+                            "Do not include Markdown headers or YAML. "
+                            'Example: {"predicted_direction": "UP", "confidence": 65.0, "expected_return_pct": 0.35, "rationale": "...", "catalysts": ["..."]}'
+                        )
                         messages = [
                             {"role": "system", "content": prompt_content},
-                            {"role": "user", "content": user_msg},
+                            {"role": "user", "content": minimax_user_msg},
                         ]
-                        parsed_json = await minimax_client.chat_with_json_response(messages, model=model_name)
+                        parsed_json = await minimax_client.chat_with_json_response(
+                            messages, model=model_name, max_completion_tokens=8192
+                        )
                         pred_dir = str(parsed_json.get("predicted_direction", "UP")).upper()
                         confidence = float(parsed_json.get("confidence", 50.0))
                         expected_return_pct = float(parsed_json.get("expected_return_pct", 0.0))
@@ -303,7 +314,7 @@ async def run_daily_prediction(ticker: str = "SPY") -> list[dict]:
                 success = True
                 break
             except Exception as e:
-                logger.warning(f"Prediction attempt {attempt + 1} failed for {model_name} on {ticker}: {e}")
+                logger.exception(f"Prediction attempt {attempt + 1} failed for {model_name} on {ticker}: {e}")
                 if attempt < 2:
                     await asyncio.sleep(2)
         if not success:

@@ -11,7 +11,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 
 1. **Pre-Market Inference (9:15 AM ET)**:
    - Command: `python main.py daily-predictor [--ticker SPY]`
-   - **Pure Model Arena**: Runs **DeepSeek Flash** (`deepseek-v4-flash` via Instructor) and **MiniMax-M3** (`MiniMax-M3` via MiniMax JSON client) in an isolated model arena, logging predictions independently for each model without reasoning cross-contamination.
+   - **Pure Model Arena**: Runs **DeepSeek Flash** (`deepseek-v4-flash` via Instructor) and **MiniMax-M3** (`MiniMax-M3` via MiniMax JSON client with explicit JSON schema footer, 8,192 token ceiling, and YAML fallback parser) in an isolated model arena, logging predictions independently for each model without reasoning cross-contamination.
    - Context: Synthesizes live pre-market price quotes & overnight gap metrics (via FMP `/aftermarket-quote` and `MarketDataManager.get_premarket_quote` across SPY, QQQ, DIA, IWM, and macro drivers GLD and USO) positioned at the very top of context before technical indicators (SMA20, 5-day return) and canonical tools context (`execute_get_global_macro_context_tool`, `execute_get_volatility_index_details_tool`, `execute_market_health_barometer_tool`, `execute_get_market_feeling_tool`).
    - **Zero-Mean Anti-Bias Mandate**: System prompt enforces a zero-mean distribution baseline (~50/50 UP vs DOWN) to eliminate pre-trained LLM long-term market drift bias. Requires strictly symmetric evaluation of bearish breakdown signals (VWAP resistance, RSI > 70 overbought exhaustion, yield surges) alongside bullish momentum signals.
 

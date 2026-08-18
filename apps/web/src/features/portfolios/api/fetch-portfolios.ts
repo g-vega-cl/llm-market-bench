@@ -39,6 +39,24 @@ export async function fetchPortfolioById(
     };
 }
 
+export async function fetchPortfolioByOwnerId(
+    ownerId: string,
+): Promise<(Portfolio & { is_autoresearch: boolean }) | null> {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+        .from('portfolios')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+    return {
+        ...data,
+        is_autoresearch: isAutoresearchPortfolio(data.owner_id),
+    };
+}
+
 export async function fetchPositions(portfolioId: string): Promise<PositionWithReasoning[]> {
     const supabase = getSupabaseServerClient();
 

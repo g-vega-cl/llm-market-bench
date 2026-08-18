@@ -36,9 +36,14 @@ The agent is implemented in `apps/engine/analysis/lin_agent.py` and `apps/engine
 ## Frontend UI (`/renko`)
 
 The interactive React dashboard route at `apps/web/src/routes/renko.tsx` renders:
-- Interactive D3 Renko brick cascades with Y-axis price coordinate mapping.
-- Visual 2-brick reversal threshold lines ($480.87).
+- Interactive Renko brick cascades with Y-axis price coordinate mapping and ATR brick metrics.
+- Visual 2-brick reversal threshold trigger alerts ($480.87).
 - DeepSeek Flash prompt payload & ChemEng cognitive audit drawers.
+- **Dedicated LIN Renko Portfolio & Ledger Section**:
+  - Live metric tiles: Total Equity, Cash Balance, LIN Equity Value, and Total Return %.
+  - Performance Chart with interactive Benchmark Selector (comparing against SPY, QQQ, LIN, etc.).
+  - Active Positions Table tracking LIN allocation, shares, cost basis, unrealized PnL, and agent reasoning.
+  - Recent Trades Audit Table detailing executed BUY/EXIT orders, quantities, prices, and timestamped decision rationale.
 
 ## Related
 

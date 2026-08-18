@@ -756,6 +756,25 @@ async def execute_stock_tool(ticker: str) -> str:
         data = await manager.get_quote(ticker)
         if not data or not data.exists:
             return f"Error: Ticker '{ticker}' not found."
+
+        is_pm = await manager.is_premarket()
+        if is_pm:
+            pm_quote = await manager.get_premarket_quote(ticker)
+            if pm_quote:
+                pm_price = pm_quote["price"]
+                prev_close = pm_quote["previous_close"]
+                change = pm_quote["change"]
+                change_pct = pm_quote["change_pct"]
+                return (
+                    f"Ticker: {data.ticker}\n"
+                    f"Session: PRE-MARKET\n"
+                    f"Pre-Market Price: ${pm_price:.2f}\n"
+                    f"Previous Close: ${prev_close:.2f}\n"
+                    f"Overnight Gap: {change:+.2f} ({change_pct:+.2f}%)\n"
+                    f"Market Cap: ${data.market_cap / 1e9:.2f}B\n"
+                    f"Status: VALID"
+                )
+
         return (
             f"Ticker: {data.ticker}\n"
             f"Current Price: ${data.price:.2f}\n"

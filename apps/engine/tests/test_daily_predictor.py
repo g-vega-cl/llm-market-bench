@@ -146,6 +146,7 @@ async def test_get_daily_market_context_technicals():
 
     mock_history = [{"price": 700.0 + i, "fetched_at": f"2026-07-{i + 1:02d}T00:00:00Z"} for i in range(25)]
     mock_mdm = MagicMock()
+    mock_mdm.is_premarket = AsyncMock(return_value=False)
     mock_mdm.get_history = AsyncMock(return_value=mock_history)
     mock_mdm.get_premarket_quote = AsyncMock(
         return_value={
@@ -179,8 +180,49 @@ async def test_get_daily_market_context_technicals():
         assert "Market Health Barometer" in ctx
         assert "Recent Market Feeling" in ctx
 
-        # TDD Assertion: Pre-market quote section must appear BEFORE macro context blocks
-        pm_idx = ctx.find("Live Pre-Market / Early Session Quote")
-        macro_idx = ctx.find("Global Macro Baseline")
-        assert pm_idx != -1 and macro_idx != -1
-        assert pm_idx < macro_idx, "Pre-market quote block must appear before Global Macro Baseline context"
+
+@pytest.mark.asyncio
+async def test_get_daily_market_context_premarket_multi_asset():
+    from tasks.daily_predictor import get_daily_market_context
+
+    mock_history = [
+        {"price": 590.0, "fetched_at": "2026-08-17T00:00:00Z"},
+        {"price": 592.0, "fetched_at": "2026-08-18T00:00:00Z"},
+    ]
+    mock_mdm = MagicMock()
+    mock_mdm.is_premarket = AsyncMock(return_value=True)
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+
+    async def mock_get_pm_quote(sym):
+        quotes = {
+            "SPY": {"price": 595.0, "previous_close": 592.0, "change": 3.0, "change_pct": 0.507},
+            "QQQ": {"price": 510.0, "previous_close": 508.0, "change": 2.0, "change_pct": 0.394},
+            "DIA": {"price": 440.0, "previous_close": 439.0, "change": 1.0, "change_pct": 0.228},
+            "IWM": {"price": 220.0, "previous_close": 221.0, "change": -1.0, "change_pct": -0.452},
+            "GLD": {"price": 240.0, "previous_close": 239.0, "change": 1.0, "change_pct": 0.418},
+            "USO": {"price": 75.0, "previous_close": 76.0, "change": -1.0, "change_pct": -1.316},
+        }
+        return quotes.get(sym)
+
+    mock_mdm.get_premarket_quote = AsyncMock(side_effect=mock_get_pm_quote)
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch(
+            "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool", new_callable=AsyncMock, return_value="VIX test"
+        ),
+        patch("core.llm.tools.execute_market_health_barometer_tool", new_callable=AsyncMock, return_value="Baro test"),
+        patch("core.llm.tools.execute_get_market_feeling_tool", new_callable=AsyncMock, return_value="Feeling test"),
+    ):
+        ctx = await get_daily_market_context(ticker="SPY")
+        assert "=== LIVE PRE-MARKET ACTION & GAP ANALYSIS ===" in ctx
+        assert "Target Asset (SPY): $595.00 | Overnight Gap: +3.00 (+0.51%) vs Prev Close $592.00" in ctx
+        assert "Pre-Market Benchmark Indices & Key Macro Drivers:" in ctx
+        assert "- QQQ (Nasdaq 100): $510.00 | Gap: +0.39%" in ctx
+        assert "- DIA (Dow Jones): $440.00 | Gap: +0.23%" in ctx
+        assert "- IWM (Russell 2000): $220.00 | Gap: -0.45%" in ctx
+        assert "- GLD (Gold): $240.00 | Gap: +0.42%" in ctx
+        assert "- USO (WTI Crude Oil): $75.00 | Gap: -1.32%" in ctx

@@ -244,13 +244,60 @@ class MarketDataManager:
         logger.error(f"FATAL: All retrieval attempts failed for {ticker}. No historical data available.")
         return None
 
+    async def is_premarket(self) -> bool:
+        """Checks if currently in US pre-market trading session (Mon-Fri 04:00 - 09:30 ET).
+
+        Returns False on weekends.
+        """
+        import datetime
+
+        try:
+            from zoneinfo import ZoneInfo
+
+            now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
+        except ImportError:
+            now_et = datetime.datetime.now()
+
+        # Weekends
+        if now_et.weekday() >= 5:
+            return False
+
+        premarket_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
+        market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+
+        return premarket_start <= now_et < market_open
+
     async def get_premarket_quote(self, ticker: str) -> dict | None:
         """Fetch fresh pre-market / early session quote and calculate change details vs previous close."""
-        quote = await self.get_quote(ticker, force_refresh=True)
-        if not quote or not quote.price:
+        if not ticker or not isinstance(ticker, str):
             return None
 
-        # Fetch recent history to find the previous session's close price
+        ticker = ticker.strip().upper()
+
+        pm_price = None
+        bid = None
+        ask = None
+        volume = None
+
+        # 1. Try dedicated aftermarket/pre-market quote endpoint from provider
+        if self.provider and hasattr(self.provider, "get_aftermarket_quote"):
+            pm_data = await self.provider.get_aftermarket_quote(ticker)
+            if pm_data and pm_data.get("price"):
+                pm_price = float(pm_data["price"])
+                bid = pm_data.get("bid")
+                ask = pm_data.get("ask")
+                volume = pm_data.get("volume")
+
+        # 2. Fallback to standard quote with forced fresh retrieval
+        if pm_price is None:
+            quote = await self.get_quote(ticker, force_refresh=True)
+            if quote and quote.price:
+                pm_price = quote.price
+
+        if pm_price is None or pm_price <= 0:
+            return None
+
+        # 3. Fetch recent history to find previous session close price
         history = await self.get_history(ticker, days=5)
         prev_close = None
         if history:
@@ -258,17 +305,25 @@ class MarketDataManager:
             prev_close = float(sorted_hist[-1].get("close") or sorted_hist[-1].get("price"))
 
         if not prev_close or prev_close <= 0:
-            prev_close = quote.price
+            prev_close = pm_price
 
-        change = quote.price - prev_close
+        change = pm_price - prev_close
         change_pct = (change / prev_close) * 100.0 if prev_close else 0.0
 
-        return {
-            "price": quote.price,
+        res = {
+            "price": pm_price,
             "previous_close": prev_close,
             "change": change,
             "change_pct": change_pct,
         }
+        if bid is not None:
+            res["bid"] = bid
+        if ask is not None:
+            res["ask"] = ask
+        if volume is not None:
+            res["volume"] = volume
+
+        return res
 
     async def screen_stocks(
         self,

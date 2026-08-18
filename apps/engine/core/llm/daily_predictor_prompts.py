@@ -8,7 +8,7 @@ Your goal is to predict whether today's 4:00 PM ET Close price will be higher (U
 === AVAILABLE MARKET CONTEXT ===
 You are provided with:
 1. Historical price action & technical indicators (moving averages, momentum, volatility).
-2. Overnight futures (ES/NQ) & pre-market indices performance.
+2. Live pre-market quotes & overnight gaps across major indices (SPY, QQQ, DIA, IWM) and macro drivers (Gold/GLD, WTI/USO).
 3. Market feeling, sentiment barometers, and latest financial news.
 
 === ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===

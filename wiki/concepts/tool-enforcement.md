@@ -55,6 +55,7 @@ execution drifts >2% from injected price, trade is `REJECTED_STALE_QUOTE` (this 
 - **Ticker Extraction**: Newsletter chunks are scanned for `$TICKER` patterns using the `_extract_tickers_from_chunks()` helper.
 - **Batch Quote Fetching**: Tickers extracted from news chunks, currently held positions, and major indices (`SPY`, `QQQ`, `DIA`, `IWM`) are combined, and their quotes are batch-fetched in parallel using `MarketDataManager.get_quotes()`.
 - **Block Injection**: A formatted `market_data_block` mapping symbols to their verified prices is injected into the user prompt's `{market_data_block}` placeholder for both the Primary Analysis Agent (in `analyze_chunks` / `analyze_chunks_streaming`) and the Contrarian Agent. This ensures the models reason with up-to-date pricing context and stamps accurate pre-analysis references for JIT drift verification.
+- **Pre-Market Dynamic Tool Awareness**: When agents invoke `get_stock_quote` during pre-market trading hours (04:00–09:30 AM ET), `execute_stock_tool` dynamically queries FMP `/aftermarket-quote` (via `MarketDataManager.is_premarket()` and `MarketDataManager.get_premarket_quote()`), returning explicit `Session: PRE-MARKET` status, pre-market price, previous session close, and overnight gap ($ / %) to prevent models from rejecting trades due to pre-market pricing shifts.
 
 ## Related
 

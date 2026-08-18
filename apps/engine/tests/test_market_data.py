@@ -191,3 +191,72 @@ async def test_market_status_lock_prevents_thundering_herd():
 
         assert all(results)
         assert call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_is_premarket():
+    """Test is_premarket returns True between 4:00 and 9:30 AM ET on weekdays."""
+    from zoneinfo import ZoneInfo
+
+    manager = MarketDataManager()
+
+    # Pre-market time: Wednesday 8:00 AM ET
+    wed_8am = datetime.datetime(2026, 8, 19, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+    with patch("datetime.datetime") as mock_dt:
+        mock_dt.now.return_value = wed_8am
+        mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
+        assert await manager.is_premarket() is True
+
+    # Market hours: Wednesday 10:30 AM ET
+    wed_1030am = datetime.datetime(2026, 8, 19, 10, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+    with patch("datetime.datetime") as mock_dt:
+        mock_dt.now.return_value = wed_1030am
+        mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
+        assert await manager.is_premarket() is False
+
+    # Weekend: Saturday 8:00 AM ET
+    sat_8am = datetime.datetime(2026, 8, 22, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+    with patch("datetime.datetime") as mock_dt:
+        mock_dt.now.return_value = sat_8am
+        mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
+        assert await manager.is_premarket() is False
+
+
+@pytest.mark.asyncio
+async def test_get_aftermarket_quote_fmp():
+    """Test FMPProvider get_aftermarket_quote parsing."""
+    from execution.providers.fmp import FMPProvider
+
+    provider = FMPProvider()
+    provider.api_key = "dummy_key"
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [{"symbol": "SPY", "price": 595.50, "bid": 595.40, "ask": 595.60, "volume": 120000}]
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        quote = await provider.get_aftermarket_quote("SPY")
+        assert quote is not None
+        assert quote["symbol"] == "SPY"
+        assert quote["price"] == 595.50
+        assert quote["volume"] == 120000
+
+
+@pytest.mark.asyncio
+async def test_get_premarket_quote_with_aftermarket():
+    """Test MarketDataManager.get_premarket_quote combines aftermarket quote with previous close."""
+    manager = MarketDataManager()
+    manager.provider = MagicMock()
+    manager.provider.get_aftermarket_quote = AsyncMock(
+        return_value={"symbol": "AAPL", "price": 230.00, "bid": 229.90, "ask": 230.10, "volume": 50000}
+    )
+    manager.get_history = AsyncMock(
+        return_value=[{"price": 225.00, "close": 225.00, "fetched_at": "2026-08-17T00:00:00Z"}]
+    )
+
+    result = await manager.get_premarket_quote("AAPL")
+    assert result is not None
+    assert result["price"] == 230.00
+    assert result["previous_close"] == 225.00
+    assert result["change"] == 5.00
+    assert abs(result["change_pct"] - 2.222) < 0.01

@@ -106,17 +106,50 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
     # 1. Price Action, Technicals & Pre-Market Live Quote via MarketDataManager (FMP)
     try:
         mdm = MarketDataManager()
+        is_pm = await mdm.is_premarket()
 
-        # Pre-Market Live Quote
-        pm_quote = await mdm.get_premarket_quote(ticker)
-        if pm_quote:
-            pm_price = pm_quote["price"]
-            pm_change = pm_quote["change"]
-            pm_change_pct = pm_quote["change_pct"]
-            context_lines.append(
-                f"Live Pre-Market / Early Session Quote: ${pm_price:.2f} | "
-                f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
-            )
+        if is_pm:
+            context_lines.append("=== LIVE PRE-MARKET ACTION & GAP ANALYSIS ===")
+            # Pre-Market Live Quote for Target
+            pm_quote = await mdm.get_premarket_quote(ticker)
+            if pm_quote:
+                pm_price = pm_quote["price"]
+                pm_change = pm_quote["change"]
+                pm_change_pct = pm_quote["change_pct"]
+                context_lines.append(
+                    f"Target Asset ({ticker}): ${pm_price:.2f} | "
+                    f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
+                )
+
+            # Benchmark Equities & Key Macro Drivers (Gold, WTI Crude Oil)
+            macro_proxies = [
+                ("QQQ", "Nasdaq 100"),
+                ("DIA", "Dow Jones"),
+                ("IWM", "Russell 2000"),
+                ("GLD", "Gold"),
+                ("USO", "WTI Crude Oil"),
+            ]
+            proxy_lines = []
+            for sym, label in macro_proxies:
+                if sym == ticker:
+                    continue
+                q = await mdm.get_premarket_quote(sym)
+                if q:
+                    proxy_lines.append(f"- {sym} ({label}): ${q['price']:.2f} | Gap: {q['change_pct']:+.2f}%")
+            if proxy_lines:
+                context_lines.append("Pre-Market Benchmark Indices & Key Macro Drivers:")
+                context_lines.extend(proxy_lines)
+            context_lines.append("=============================================")
+        else:
+            pm_quote = await mdm.get_premarket_quote(ticker)
+            if pm_quote:
+                pm_price = pm_quote["price"]
+                pm_change = pm_quote["change"]
+                pm_change_pct = pm_quote["change_pct"]
+                context_lines.append(
+                    f"Live Pre-Market / Early Session Quote: ${pm_price:.2f} | "
+                    f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
+                )
 
         history = await mdm.get_history(ticker, days=30)
         if history and len(history) >= 2:

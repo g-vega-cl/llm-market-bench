@@ -675,3 +675,50 @@ class FMPProvider(FinancialProvider):
 
         logger.error(f"All attempts failed fetching hourly history for {ticker} via FMP.")
         return []
+
+    async def get_aftermarket_quote(self, ticker: str) -> dict | None:
+        """Fetch real-time aftermarket / pre-market quote for a ticker."""
+        if not self.api_key or not ticker:
+            return None
+
+        ticker = ticker.strip().upper()
+
+        for attempt in range(1, MARKET_DATA_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=FMP_TIMEOUT) as client:
+                    resp = await client.get(
+                        f"{self.BASE_URL}/aftermarket-quote",
+                        params={"symbol": ticker, "apikey": self.api_key},
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+
+                    if not data or not isinstance(data, list):
+                        return None
+
+                    for candidate in data:
+                        if str(candidate.get("symbol")).upper() == ticker:
+                            price = candidate.get("price")
+                            if price is not None and float(price) > 0:
+                                return {
+                                    "symbol": ticker,
+                                    "price": float(price),
+                                    "bid": float(candidate.get("bid")) if candidate.get("bid") is not None else None,
+                                    "ask": float(candidate.get("ask")) if candidate.get("ask") is not None else None,
+                                    "volume": int(candidate.get("volume"))
+                                    if candidate.get("volume") is not None
+                                    else None,
+                                }
+                    return None
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 402:
+                    logger.debug(f"FMP aftermarket-quote not available on current plan (402) for {ticker}")
+                    return None
+                logger.warning(f"HTTP error fetching aftermarket quote from FMP for {ticker}: {e}")
+            except Exception as e:
+                logger.warning(f"Error fetching aftermarket quote from FMP for {ticker}: {e}")
+
+            if attempt < MARKET_DATA_RETRIES:
+                await asyncio.sleep(1)
+
+        return None

@@ -78,6 +78,14 @@ class FinancialProvider(ABC):
         """
         pass
 
+    async def get_aftermarket_quote(self, ticker: str) -> dict | None:
+        """Fetch real-time aftermarket / pre-market quote for a ticker.
+
+        Returns:
+            Dict containing price, bid, ask, volume if available, else None.
+        """
+        return None
+
     async def get_hourly_history(self, ticker: str, from_date: str, to_date: str) -> list[HourlyBar]:
         """Fetch hourly historical chart/bars for a ticker.
 

@@ -9,9 +9,25 @@ The Brier score measures the accuracy of probabilistic predictions. In LLM Marke
 
 ## Formula
 
-Brier Score = (p - y)², where:
-- p = model confidence expressed as probability (0.0–1.0), with a fallback of 0.5 when confidence is missing
-- y = 1.0 if the predicted sector outperformed the median sector return, else 0.0
+For two-sided predictions (best and worst sectors):
+
+$$
+BS_{\text{best}} = (p - y_{\text{best}})^2, \quad y_{\text{best}} = 1.0 \text{ if } S_{\text{best}} \ge 50\% \text{ else } 0.0
+$$
+
+$$
+BS_{\text{worst}} = (p - y_{\text{worst}})^2, \quad y_{\text{worst}} = 1.0 \text{ if } S_{\text{worst}} \ge 50\% \text{ else } 0.0
+$$
+
+$$
+\text{Brier Score} = \frac{BS_{\text{best}} + BS_{\text{worst}}}{2}
+$$
+
+Where:
+- $p$ = model confidence expressed as probability (0.0–1.0), with a fallback of 0.5 when confidence is missing
+- $y_{\text{best}} = 1.0$ if the predicted best sector outperformed the median sector return, else 0.0
+- $y_{\text{worst}} = 1.0$ if the predicted worst sector underperformed the median sector return (i.e. was in the bottom half of performers), else 0.0
+- For legacy predictions without worst sector evaluations, Brier score falls back to single-sided $BS_{\text{best}}$.
 
 Lower is better; 0.0 is perfect calibration.
 

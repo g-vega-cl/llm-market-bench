@@ -23,7 +23,7 @@ Rather than hardcoding a comparison universe of 14 sector ETFs, the evaluation e
 
 ### 3. Feedback-Driven Karpathy Ratchet & Calibration Scoring
 The Arena prompt evolution follows a strict feedback loop identical to the main investment engine:
-1. **Weekly Evaluation**: The runner compiles all predictions with `target_date <= today`, calculates binary outcome $y$ (outperformed median sector), computes Brier Score $BS = (p_{\text{confidence}} - y)^2$, and marks them `evaluated`.
+1. **Weekly Evaluation**: The runner compiles all predictions with `target_date <= today`, calculates binary outcomes $y_{\text{best}}$ and $y_{\text{worst}}$ (relative to median sector performance), computes two-sided Brier Score $BS = \frac{(p_{\text{confidence}} - y_{\text{best}})^2 + (p_{\text{confidence}} - y_{\text{worst}})^2}{2}$, and marks them `evaluated`.
 2. **Weekly Scoring & S&P Alpha Bonus**:
    * Evaluates the best sector percentile score ($S_{\text{best}}$), worst sector percentile score ($S_{\text{worst}}$, where bottom performer in the universe yields 100%), and uncorrelated pair percentile score ($S_{\text{pair}}$).
    * Computes S&P 500 alpha: $\alpha_{\text{SPY}} = r_{\text{sector}} - r_{\text{SPY}}$.

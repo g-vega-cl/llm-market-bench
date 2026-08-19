@@ -26,6 +26,48 @@ def test_calculate_sector_brier_score_legacy_fallback():
     assert score == pytest.approx(0.25)
 
 
+def test_calculate_sector_brier_score_with_worst_sector_both_success():
+    """Verify Brier score calculation when both best and worst sector calls succeed."""
+    # p = 0.8, y_best = 1.0 (100% >= 50), y_worst = 1.0 (90% >= 50)
+    # BS_best = (0.8 - 1.0)^2 = 0.04
+    # BS_worst = (0.8 - 1.0)^2 = 0.04
+    # BS_composite = (0.04 + 0.04) / 2 = 0.04
+    score = calculate_sector_brier_score(
+        confidence=80.0,
+        sector_percentile_score=100.0,
+        worst_sector_percentile_score=90.0,
+    )
+    assert score == pytest.approx(0.04)
+
+
+def test_calculate_sector_brier_score_with_worst_sector_mixed():
+    """Verify Brier score calculation when best succeeds but worst sector fails."""
+    # p = 0.8, y_best = 1.0 (100% >= 50), y_worst = 0.0 (30% < 50)
+    # BS_best = (0.8 - 1.0)^2 = 0.04
+    # BS_worst = (0.8 - 0.0)^2 = 0.64
+    # BS_composite = (0.04 + 0.64) / 2 = 0.34
+    score = calculate_sector_brier_score(
+        confidence=80.0,
+        sector_percentile_score=100.0,
+        worst_sector_percentile_score=30.0,
+    )
+    assert score == pytest.approx(0.34)
+
+
+def test_calculate_sector_brier_score_with_worst_sector_both_failed():
+    """Verify Brier score calculation when both best and worst sector calls fail."""
+    # p = 0.8, y_best = 0.0 (20% < 50), y_worst = 0.0 (10% < 50)
+    # BS_best = (0.8 - 0.0)^2 = 0.64
+    # BS_worst = (0.8 - 0.0)^2 = 0.64
+    # BS_composite = 0.64
+    score = calculate_sector_brier_score(
+        confidence=80.0,
+        sector_percentile_score=20.0,
+        worst_sector_percentile_score=10.0,
+    )
+    assert score == pytest.approx(0.64)
+
+
 def test_calculate_baseline_score_with_brier_penalty():
     """Verify sector predictor autoresearch baseline score includes mean Brier penalty."""
     predictions = [

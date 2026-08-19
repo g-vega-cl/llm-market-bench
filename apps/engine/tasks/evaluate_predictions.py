@@ -99,17 +99,32 @@ def calculate_worst_sector_percentile_score(target_ticker: str, sector_returns: 
     return float(percentile)
 
 
-def calculate_sector_brier_score(confidence: float | None, sector_percentile_score: float) -> float:
+def calculate_sector_brier_score(
+    confidence: float | None,
+    sector_percentile_score: float,
+    worst_sector_percentile_score: float | None = None,
+) -> float:
     """Calculate Brier Score for sector prediction calibration.
 
     Brier Score = (p - y)^2. Lower score is better (0.0 is perfect calibration).
     - p: Model confidence as probability (0.0 to 1.0). Fallback to 0.5 if missing/None.
-    - y: 1.0 if sector_percentile_score >= 50.0 (outperformed median sector), else 0.0.
+    - y_best: 1.0 if sector_percentile_score >= 50.0 (outperformed median sector), else 0.0.
+    - y_worst: 1.0 if worst_sector_percentile_score >= 50.0 (underperformed median sector), else 0.0.
+
+    If worst_sector_percentile_score is provided, Brier score is the mean calibration error
+    across both the best and worst sector predictions. Otherwise, falls back to best sector only.
     """
     p = (float(confidence) / 100.0) if confidence is not None else 0.5
     p = max(0.0, min(1.0, p))
-    y = 1.0 if sector_percentile_score >= 50.0 else 0.0
-    return float((p - y) ** 2)
+    y_best = 1.0 if sector_percentile_score >= 50.0 else 0.0
+    bs_best = (p - y_best) ** 2
+
+    if worst_sector_percentile_score is not None:
+        y_worst = 1.0 if worst_sector_percentile_score >= 50.0 else 0.0
+        bs_worst = (p - y_worst) ** 2
+        return float((bs_best + bs_worst) / 2.0)
+
+    return float(bs_best)
 
 
 def get_price_for_date(history: list[dict], target_date) -> float | None:
@@ -310,7 +325,7 @@ async def run_evaluation():
             predicted_worst_sec_ret = sector_returns.get(predicted_worst_sec)
 
         confidence_val = p.get("confidence")
-        brier_score = calculate_sector_brier_score(confidence_val, sec_score)
+        brier_score = calculate_sector_brier_score(confidence_val, sec_score, worst_sec_score)
 
         predicted_sec_ret = sector_returns.get(predicted_sec)
         pair_rets = [sector_returns.get(t) for t in predicted_pair if t in sector_returns]

@@ -31,8 +31,9 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher per model track.
 
 4. **Web Frontend (`/daily-predictions`)**:
-   - **Independent Model Tabs**: Dedicated navigation tabs for **DeepSeek Flash** and **MiniMax M3** (with dynamic prediction counts). Selecting a tab isolates overview metrics, latest hero forecast, and prediction log table strictly to that model.
-   - **Metrics Overview & Hero Card**: Scoped Directional Accuracy %, Intraday Target Hit Rate (40%), Brier Calibration stats, and active prompt variant badge.
+   - **Independent Model Tabs**: Dedicated navigation tabs for **DeepSeek Flash** and **MiniMax M3** (with dynamic prediction counts). Selecting a tab isolates overview metrics, latest hero forecast, prediction log table, and autoresearch history strictly to that model.
+   - **Dual Sub-Views**: Seamless toggle switch between **Predictions Log** (live forecasts, hero card, and evaluated accuracy table) and **Autoresearch & Benchmark History** (ratchet score progression, baseline threshold milestones, and prompt mutation lineage).
+   - **Autoresearch Milestone Cards & Lineage Inspector**: In the Autoresearch view, shows active ratchet score, all-time best baseline score, score progression deltas ($\pm\Delta$ vs parent baseline), and an interactive master-detail variant browser with full mutated system prompt strategy text and mutation rationales.
    - **Predictions Log & Prompt Inspector**: Expandable prediction rows with full quantitative rationale, market catalyst tags, Open/High/Low/Close prices, expected return %, confidence, and matched active system prompt text per prediction.
    - **Relocated Backtest Arena Navigation**: Direct 1-click link to Backtest Arena located on the right side of the model tabs bar.
 

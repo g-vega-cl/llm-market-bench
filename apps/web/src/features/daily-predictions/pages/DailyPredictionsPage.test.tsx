@@ -189,4 +189,65 @@ describe('DailyPredictionsPage', () => {
             screen.getByText(/Analyze intraday S&P price action for DeepSeek/i),
         ).toBeInTheDocument();
     });
+
+    it('toggles between Predictions Log and Autoresearch & Benchmark History views', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
+            />,
+        );
+
+        // View toggle buttons are present
+        const predictionsToggle = screen.getByRole('button', { name: /Predictions Log/i });
+        const autoresearchToggle = screen.getByRole('button', {
+            name: /Autoresearch & Benchmark History/i,
+        });
+        expect(predictionsToggle).toBeInTheDocument();
+        expect(autoresearchToggle).toBeInTheDocument();
+
+        // Switch to Autoresearch view
+        fireEvent.click(autoresearchToggle);
+
+        // Milestone cards and experiment arena are rendered
+        expect(screen.getByText('Active Ratchet Score')).toBeInTheDocument();
+        expect(screen.getAllByText('75.00').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('All-Time Best Baseline')).toBeInTheDocument();
+        expect(screen.getByText('Mutated Variants Tracked')).toBeInTheDocument();
+        expect(screen.getByText('Experiment Lineage')).toBeInTheDocument();
+        expect(screen.getAllByText('daily-active-1').length).toBeGreaterThanOrEqual(1);
+
+        // Predictions table is hidden in Autoresearch view
+        expect(screen.queryByText('Directional Accuracy')).not.toBeInTheDocument();
+
+        // Switch back to Predictions view
+        fireEvent.click(predictionsToggle);
+        expect(screen.getByText('Directional Accuracy')).toBeInTheDocument();
+    });
+
+    it('switches models in Autoresearch view and updates experiment details', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
+            />,
+        );
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        // DeepSeek active prompt shown
+        expect(
+            screen.getByText(/Initial daily predictor baseline for DeepSeek/i),
+        ).toBeInTheDocument();
+
+        // Switch to MiniMax model tab
+        fireEvent.click(screen.getByRole('button', { name: /MiniMax M3/i }));
+
+        // MiniMax active prompt shown
+        expect(
+            screen.getByText(/Initial daily predictor baseline for MiniMax/i),
+        ).toBeInTheDocument();
+        expect(screen.getAllByText('55.00').length).toBeGreaterThanOrEqual(1);
+    });
 });

@@ -706,10 +706,460 @@ const PREDICTOR_MODELS: ModelConfig[] = [
     },
 ];
 
+interface AutoresearchMilestonesProps {
+    experiments: PromptExperiment[];
+}
+
+function computeExperimentMilestones(experiments: PromptExperiment[]) {
+    const activeExp = experiments.find((e) => e.status === 'active') || experiments[0] || null;
+    const activeScore = activeExp?.metrics?.score ?? null;
+
+    let bestBaselineScore: number | null = null;
+    for (const exp of experiments) {
+        const s = exp.metrics?.score;
+        if (typeof s === 'number' && (bestBaselineScore === null || s > bestBaselineScore)) {
+            bestBaselineScore = s;
+        }
+    }
+
+    const parentExp = experiments.find((e) => e.variant_tag === activeExp?.parent_tag);
+    const parentScore = parentExp?.metrics?.score ?? null;
+    const delta =
+        activeScore !== null && parentScore !== null
+            ? Number(activeScore) - Number(parentScore)
+            : null;
+
+    return { activeExp, activeScore, bestBaselineScore, delta };
+}
+
+interface MilestoneCardProps {
+    title: string;
+    value: React.ReactNode;
+    subtitle: string;
+    valueColor?: string;
+    fontSize?: string;
+}
+
+function MilestoneCard({
+    title,
+    value,
+    subtitle,
+    valueColor = '#0f172a',
+    fontSize = '28px',
+}: MilestoneCardProps) {
+    return (
+        <div
+            style={{
+                padding: '20px',
+                background: '#f8fafc',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+            }}
+        >
+            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>{title}</div>
+            <div
+                style={{
+                    fontSize,
+                    fontWeight: '700',
+                    color: valueColor,
+                    marginTop: '4px',
+                }}
+            >
+                {value}
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{subtitle}</div>
+        </div>
+    );
+}
+
+function formatDeltaText(delta: number | null): string {
+    if (delta === null) return 'Baseline Initialized';
+    const sign = delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : '';
+    return `${sign}${delta.toFixed(2)} vs Parent`;
+}
+
+function getDeltaColor(delta: number | null): string {
+    if (delta === null) return '#0f172a';
+    if (delta > 0) return '#16a34a';
+    if (delta < 0) return '#dc2626';
+    return '#0f172a';
+}
+
+function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps) {
+    const { activeExp, activeScore, bestBaselineScore, delta } =
+        computeExperimentMilestones(experiments);
+
+    const deltaColor = getDeltaColor(delta);
+    const deltaText = formatDeltaText(delta);
+
+    const isScorePositive = activeScore !== null && Number(activeScore) > 0;
+    const activeScoreColor = isScorePositive ? '#16a34a' : '#0f172a';
+    const activeScoreDisplay = activeScore !== null ? Number(activeScore).toFixed(2) : 'N/A';
+    const bestBaselineDisplay = bestBaselineScore !== null ? bestBaselineScore.toFixed(2) : 'N/A';
+    const statusSubtitle =
+        activeExp?.status === 'active'
+            ? 'Active mutation undergoing evaluation'
+            : `Status: ${activeExp?.status || 'baseline'}`;
+
+    return (
+        <div
+            style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '16px',
+                marginBottom: '24px',
+            }}
+        >
+            <MilestoneCard
+                title="Active Ratchet Score"
+                value={activeScoreDisplay}
+                subtitle="Weighted accuracy, target hit & Brier"
+                valueColor={activeScoreColor}
+            />
+            <MilestoneCard
+                title="All-Time Best Baseline"
+                value={bestBaselineDisplay}
+                subtitle="Highest performance benchmark"
+                valueColor="#4f46e5"
+            />
+            <MilestoneCard
+                title="Score Progression"
+                value={deltaText}
+                subtitle={statusSubtitle}
+                valueColor={deltaColor}
+                fontSize="24px"
+            />
+            <MilestoneCard
+                title="Mutated Variants Tracked"
+                value={experiments.length}
+                subtitle="Evolution iterations for model"
+            />
+        </div>
+    );
+}
+
+interface VariantSidebarItemProps {
+    exp: PromptExperiment;
+    isSelected: boolean;
+    onSelect: () => void;
+}
+
+function VariantSidebarItem({ exp, isSelected, onSelect }: VariantSidebarItemProps) {
+    const score = exp.metrics?.score;
+    const isScorePositive = typeof score === 'number' && score > 0;
+    const statusBg =
+        exp.status === 'active' ? '#dbeafe' : exp.status === 'baseline' ? '#ede9fe' : '#f1f5f9';
+    const statusColor =
+        exp.status === 'active' ? '#1e40af' : exp.status === 'baseline' ? '#6b21a8' : '#475569';
+
+    return (
+        <button
+            type="button"
+            onClick={onSelect}
+            style={{
+                padding: '12px',
+                borderRadius: '8px',
+                border: isSelected ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+                background: isSelected ? '#eff6ff' : '#ffffff',
+                textAlign: 'left',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+            }}
+        >
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '8px',
+                }}
+            >
+                <span
+                    style={{
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        color: isSelected ? '#1d4ed8' : '#0f172a',
+                        wordBreak: 'break-all',
+                    }}
+                >
+                    {exp.variant_tag}
+                </span>
+                {typeof score === 'number' && (
+                    <span
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            color: isScorePositive ? '#15803d' : '#b91c1c',
+                            background: isScorePositive ? '#dcfce7' : '#fee2e2',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                        }}
+                    >
+                        {score.toFixed(1)}
+                    </span>
+                )}
+            </div>
+            <div
+                style={{
+                    display: 'flex',
+                    gap: '6px',
+                    marginTop: '6px',
+                    flexWrap: 'wrap',
+                }}
+            >
+                <span
+                    style={{
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        background: statusBg,
+                        color: statusColor,
+                    }}
+                >
+                    {exp.status.toUpperCase()}
+                </span>
+                <span
+                    style={{
+                        fontSize: '11px',
+                        color: '#64748b',
+                        alignSelf: 'center',
+                    }}
+                >
+                    {exp.experiment_type || 'incremental'}
+                </span>
+            </div>
+        </button>
+    );
+}
+
+function AutoresearchHistoryArena({
+    experiments,
+    selectedExpId,
+    onSelectExp,
+}: {
+    experiments: PromptExperiment[];
+    selectedExpId: string | null;
+    onSelectExp: (id: string) => void;
+}) {
+    const selectedExperiment =
+        experiments.find((e) => e.id === selectedExpId) || experiments[0] || null;
+
+    if (experiments.length === 0) {
+        return (
+            <div
+                style={{
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    padding: '32px',
+                    textAlign: 'center',
+                    color: '#64748b',
+                }}
+            >
+                No prompt experiments or autoresearch runs recorded for this model track yet. Runs
+                execute twice weekly (Sun & Wed 6:00 PM ET).
+            </div>
+        );
+    }
+
+    return (
+        <div
+            style={{
+                background: '#ffffff',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                padding: '24px',
+            }}
+        >
+            <h2
+                style={{
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#0f172a',
+                    marginBottom: '16px',
+                    margin: 0,
+                }}
+            >
+                Autoresearch Prompt Lineage & Benchmarks
+            </h2>
+
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(280px, 340px) 1fr',
+                    gap: '24px',
+                    marginTop: '16px',
+                }}
+            >
+                {/* Variant List Sidebar */}
+                <div style={{ borderRight: '1px solid #f1f5f9', paddingRight: '16px' }}>
+                    <div
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            color: '#94a3b8',
+                            marginBottom: '10px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                        }}
+                    >
+                        Experiment Lineage
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {experiments.map((exp) => (
+                            <VariantSidebarItem
+                                key={exp.id}
+                                exp={exp}
+                                isSelected={exp.id === selectedExperiment?.id}
+                                onSelect={() => onSelectExp(exp.id)}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Variant Details & Prompt Inspector */}
+                {selectedExperiment && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '8px',
+                                    marginBottom: '8px',
+                                }}
+                            >
+                                <h3
+                                    style={{
+                                        fontSize: '16px',
+                                        fontWeight: '700',
+                                        color: '#0f172a',
+                                        margin: 0,
+                                    }}
+                                >
+                                    {selectedExperiment.variant_tag}
+                                </h3>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <span
+                                        style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '6px',
+                                            fontSize: '12px',
+                                            fontWeight: '700',
+                                            background:
+                                                selectedExperiment.status === 'active'
+                                                    ? '#dbeafe'
+                                                    : selectedExperiment.status === 'baseline'
+                                                      ? '#ede9fe'
+                                                      : '#f1f5f9',
+                                            color:
+                                                selectedExperiment.status === 'active'
+                                                    ? '#1e40af'
+                                                    : selectedExperiment.status === 'baseline'
+                                                      ? '#6b21a8'
+                                                      : '#475569',
+                                        }}
+                                    >
+                                        {selectedExperiment.status.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    gap: '16px',
+                                    fontSize: '13px',
+                                    color: '#64748b',
+                                    flexWrap: 'wrap',
+                                    marginTop: '8px',
+                                }}
+                            >
+                                <div>
+                                    <strong>Score:</strong>{' '}
+                                    {selectedExperiment.metrics?.score !== undefined
+                                        ? Number(selectedExperiment.metrics.score).toFixed(2)
+                                        : 'Pending'}
+                                </div>
+                                {selectedExperiment.parent_tag && (
+                                    <div>
+                                        <strong>Parent Variant:</strong>{' '}
+                                        <code>{selectedExperiment.parent_tag}</code>
+                                    </div>
+                                )}
+                                {selectedExperiment.week_start && (
+                                    <div>
+                                        <strong>Period:</strong> {selectedExperiment.week_start}
+                                        {selectedExperiment.week_end
+                                            ? ` → ${selectedExperiment.week_end}`
+                                            : ''}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {selectedExperiment.change_description && (
+                            <div
+                                style={{
+                                    background: '#f8fafc',
+                                    padding: '12px 16px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '13px',
+                                    color: '#334155',
+                                }}
+                            >
+                                <strong>Mutation Rationale:</strong>{' '}
+                                {selectedExperiment.change_description}
+                            </div>
+                        )}
+
+                        <div>
+                            <div
+                                style={{
+                                    fontSize: '13px',
+                                    fontWeight: '700',
+                                    color: '#475569',
+                                    marginBottom: '6px',
+                                }}
+                            >
+                                SYSTEM PROMPT STRATEGY CONTENT:
+                            </div>
+                            <pre
+                                style={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                    fontSize: '12px',
+                                    background: '#0f172a',
+                                    color: '#f8fafc',
+                                    padding: '16px',
+                                    borderRadius: '8px',
+                                    lineHeight: '1.5',
+                                    maxHeight: '400px',
+                                    overflowY: 'auto',
+                                    margin: 0,
+                                }}
+                            >
+                                {selectedExperiment.prompt_content}
+                            </pre>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function DailyPredictionsPage({ initialPredictions, experiments }: Props) {
     const [predictions] = useState<DailyPrediction[]>(initialPredictions);
     const [promptExperiments] = useState<PromptExperiment[]>(experiments);
     const [selectedModelId, setSelectedModelId] = useState<string>(PREDICTOR_MODELS[0].id);
+    const [viewMode, setViewMode] = useState<'predictions' | 'autoresearch'>('predictions');
+    const [selectedExpId, setSelectedExpId] = useState<string | null>(null);
 
     // Identify dynamic or configured models
     const activeModelCfg =
@@ -768,7 +1218,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     borderBottom: '2px solid #e2e8f0',
-                    marginBottom: '24px',
+                    marginBottom: '20px',
                     gap: '16px',
                     flexWrap: 'wrap',
                 }}
@@ -824,19 +1274,84 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
                 </div>
             </div>
 
-            <DailyMetricsOverview
-                accuracyPct={accuracyPct}
-                intradayHitPct={intradayHitPct}
-                correctCount={correctCount}
-                totalEvaluated={totalEvaluated}
-                avgBrier={avgBrier}
-                totalPredictions={modelPredictions.length}
-                activePromptTag={activePrompt?.variant_tag || 'daily-pred-baseline'}
-            />
+            {/* Sub-view Switcher: Predictions Log vs Autoresearch & Benchmark History */}
+            <div
+                style={{
+                    display: 'inline-flex',
+                    background: '#f1f5f9',
+                    padding: '4px',
+                    borderRadius: '10px',
+                    marginBottom: '24px',
+                    gap: '4px',
+                }}
+            >
+                <button
+                    type="button"
+                    onClick={() => setViewMode('predictions')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        background: viewMode === 'predictions' ? '#ffffff' : 'transparent',
+                        color: viewMode === 'predictions' ? '#0f172a' : '#64748b',
+                        fontWeight: '600',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow:
+                            viewMode === 'predictions' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                >
+                    Predictions Log
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setViewMode('autoresearch')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        background: viewMode === 'autoresearch' ? '#ffffff' : 'transparent',
+                        color: viewMode === 'autoresearch' ? '#0f172a' : '#64748b',
+                        fontWeight: '600',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow:
+                            viewMode === 'autoresearch' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                >
+                    Autoresearch & Benchmark History
+                </button>
+            </div>
 
-            {latestPrediction && <HeroPredictionCard prediction={latestPrediction} />}
+            {viewMode === 'predictions' ? (
+                <>
+                    <DailyMetricsOverview
+                        accuracyPct={accuracyPct}
+                        intradayHitPct={intradayHitPct}
+                        correctCount={correctCount}
+                        totalEvaluated={totalEvaluated}
+                        avgBrier={avgBrier}
+                        totalPredictions={modelPredictions.length}
+                        activePromptTag={activePrompt?.variant_tag || 'daily-pred-baseline'}
+                    />
 
-            <PredictionsTable predictions={modelPredictions} experiments={promptExperiments} />
+                    {latestPrediction && <HeroPredictionCard prediction={latestPrediction} />}
+
+                    <PredictionsTable
+                        predictions={modelPredictions}
+                        experiments={promptExperiments}
+                    />
+                </>
+            ) : (
+                <>
+                    <AutoresearchMilestoneCards experiments={modelExperiments} />
+                    <AutoresearchHistoryArena
+                        experiments={modelExperiments}
+                        selectedExpId={selectedExpId}
+                        onSelectExp={(id) => setSelectedExpId(id)}
+                    />
+                </>
+            )}
         </div>
     );
 }

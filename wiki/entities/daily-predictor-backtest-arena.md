@@ -43,4 +43,11 @@ $$
 
 ## Web UI
 
-The `/daily-predictions` page displays a metrics dashboard including the new Intraday Target Hit card (40% weight), and a predictions table with an 
+The `/daily-predictions` page displays a metrics dashboard, a dual-view toggle between Predictions Log and Autoresearch & Benchmark History, and expandable prediction rows. The `/daily-predictions-backtest` route provides the temporal sandbox interface for browsing simulated historical prompt variants.
+
+## Related
+
+- [[entities/daily-market-predictor]] — Production daily predictor and live autoresearch loop
+- [[concepts/magnitude-calibration]] — Magnitude calibration and sizing diagnostics
+- [[concepts/intraday-hit-metrics]] — Intraday price target evaluation rules
+

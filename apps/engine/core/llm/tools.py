@@ -706,6 +706,44 @@ GET_VERIFIER_REJECTIONS_TOOL = {
 }
 
 
+GET_MACRO_ECONOMIC_SERIES_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_macro_economic_series",
+        "description": (
+            "Fetch official macroeconomic time series data from Federal Reserve Economic Data (FRED) "
+            "with historical observations, trends, and change metrics. Supports high-level aliases "
+            "(e.g. 'fed_funds', 'yield_curve_10y2y', 'treasury_10y', 'treasury_2y', 'cpi', 'core_cpi', "
+            "'unemployment', 'high_yield_spread', 'm2', 'fed_balance_sheet', 'reverse_repo', "
+            "'nonfarm_payrolls', 'initial_claims', 'real_gdp', 'retail_sales', 'pce', 'consumer_sentiment', "
+            "'breakeven_5y', 'breakeven_10y') as well as any raw FRED series ID (e.g. 'WALCL', 'PCEPI')."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "series_id_or_alias": {
+                    "type": "string",
+                    "description": "Macro indicator alias (e.g. 'fed_funds', 'yield_curve_10y2y', 'cpi', 'unemployment', 'high_yield_spread') or raw FRED series ID (e.g. 'FEDFUNDS', 'T10Y2Y', 'WALCL').",
+                },
+                "lookback_periods": {
+                    "type": "integer",
+                    "description": "Number of recent historical observation periods to retrieve (default: 12).",
+                },
+                "units": {
+                    "type": "string",
+                    "description": "Data transformation unit: 'lin' (Levels/default), 'chg' (Change), 'ch1' (Change from 1 year ago), 'pch' (% Change), 'pc1' (% Change from 1 year ago).",
+                },
+                "frequency": {
+                    "type": "string",
+                    "description": "Optional frequency aggregation: 'd' (Daily), 'w' (Weekly), 'm' (Monthly), 'q' (Quarterly), 'a' (Annual).",
+                },
+            },
+            "required": ["series_id_or_alias"],
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -733,6 +771,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_global_macro_context": GET_GLOBAL_MACRO_CONTEXT_TOOL,
     "get_volatility_index_details": GET_VOLATILITY_INDEX_DETAILS_TOOL,
     "get_verifier_rejections": GET_VERIFIER_REJECTIONS_TOOL,
+    "get_macro_economic_series": GET_MACRO_ECONOMIC_SERIES_TOOL,
     "web_search": WEB_SEARCH_TOOL,
 }
 
@@ -2433,3 +2472,34 @@ async def execute_web_search_tool(query: str, max_results: int = 5) -> str:
         lines.append(f"{i}. {r['title']}{url_part}\n   {r['snippet']}")
 
     return "\n\n".join(lines)
+
+
+async def execute_macro_economic_series_tool(
+    series_id_or_alias: str,
+    lookback_periods: int = 12,
+    units: str = "lin",
+    frequency: str | None = None,
+) -> str:
+    """Executes the get_macro_economic_series tool to fetch and format FRED macroeconomic data."""
+    from core.fred import fetch_fred_series_observations, format_fred_observations_markdown
+
+    try:
+        data = await fetch_fred_series_observations(
+            series_id_or_alias=series_id_or_alias,
+            lookback_periods=lookback_periods,
+            units=units,
+            frequency=frequency,
+        )
+        if "error" in data and not data.get("observations"):
+            return f"Error retrieving FRED series '{series_id_or_alias}': {data['error']}"
+
+        return format_fred_observations_markdown(
+            series_id=data.get("series_id", series_id_or_alias),
+            title=data.get("title", series_id_or_alias),
+            units=data.get("units", units),
+            frequency=data.get("frequency", frequency or "N/A"),
+            observations=data.get("observations", []),
+        )
+    except Exception as e:
+        logger.exception("Error executing get_macro_economic_series tool: %s", e)
+        return f"Error fetching macroeconomic series '{series_id_or_alias}': {str(e)}"

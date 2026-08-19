@@ -15,6 +15,7 @@ executing trades, and running feedback loops.
 - **Ingestion** (`ingest/`) — Gmail API fetching, ad removal, calendar scraping
 - **Analysis** (`analysis/`) — LLM orchestration, Discovery Agent, momentum tracking, [[sources/correlation-matrix-source]]
 - **Macro Tracker** (`core/macro_tracker.py`) — 23-ticker global regime monitoring (equities, intl, commodities, fixed income, FX/risk, crypto)
+- **FRED Macro Client** (`core/fred.py`) — Federal Reserve Economic Data time series client with Supabase database caching (`fred_series_cache`), alias maps across 4 indicator packs, and `get_macro_economic_series` tool integration (see [[concepts/macroeconomic-data-fred]])
 - **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax-M3 (via Anthropic SDK on MiniMax's Anthropic-compatible endpoint; see [[concepts/minimax-portfolio]])
 - **LLM Client Factories** (`core/llm/clients.py`) — registry mapping each provider name to an `instructor`-wrapped SDK client. SDK choice is non-obvious and follows the upstream provider's compatible SDK:
 
@@ -52,5 +53,6 @@ executing trades, and running feedback loops.
 - [[concepts/minimax-portfolio]]
 - [[concepts/memory-feedback]]
 - [[concepts/auto-research-prompt-improver]]
+- [[concepts/macroeconomic-data-fred]]
 - [[entities/autoresearch]]
 - [[sources/correlation-matrix-source]]

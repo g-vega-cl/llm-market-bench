@@ -108,6 +108,21 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
         return await tools.execute_get_verifier_rejections_tool(
             ticker=args.get("ticker"), limit=args.get("limit", 5), model_name=model_name
         )
+    elif name == "get_thematic_flows":
+        return await tools.execute_get_thematic_flows_tool(limit=args.get("limit", 5))
+    elif name == "add_thematic_flow":
+        return await tools.execute_add_thematic_flow_tool(
+            content=args["content"],
+            importance_score=args.get("importance_score", 8),
+            category=args.get("category"),
+        )
+    elif name == "get_macro_economic_series":
+        return await tools.execute_macro_economic_series_tool(
+            args["series_id_or_alias"],
+            lookback_periods=args.get("lookback_periods", 12),
+            units=args.get("units", "lin"),
+            frequency=args.get("frequency"),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

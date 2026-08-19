@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from core.config import DEEPSEEK_FLASH_MODEL
 from core.db import bulk_upsert_newsletter_snapshots, get_supabase_client
+from core.fred import get_curated_macro_dashboard
 from core.llm import clients
 from ingest.newsletter import ingest_newsletters
 
@@ -30,13 +31,19 @@ class GeneratedNewsletterOutput(BaseModel):
     read_time_minutes: int = Field(default=6, description="Estimated read time in minutes (typically 6).")
 
 
-async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time: str) -> GeneratedNewsletterOutput:
-    """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters into a proper newsletter."""
+async def _call_deepseek_flash(
+    chunks: list[dict],
+    session: str,
+    formatted_time: str,
+    macro_context: str = "",
+) -> GeneratedNewsletterOutput:
+    """Invokes DeepSeek V4 Flash to synthesize ingested daily newsletters and FRED macro indicators into a proper newsletter."""
     session_label = "Morning Market Open Briefing" if session == "open" else "Evening Market Close Briefing"
     now_date_str = datetime.now(ZoneInfo("America/New_York")).strftime("%B %d, %Y")
 
     if not chunks:
         # Fallback response when no newsletter snapshots exist for the session
+        macro_text = f"\n\n**Key Economic Readings (FRED):**\n{macro_context}" if macro_context else ""
         return GeneratedNewsletterOutput(
             title=f"{session_label} — {now_date_str}",
             summary=f"No new financial newsletters were ingested prior to the {session} session.",
@@ -50,7 +57,7 @@ async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time:
                 f"**Creation Time:** {formatted_time}\n\n"
                 f"### 🌐 The Macro & Cross-Asset Narrative\n\n"
                 f"No raw financial newsletters were ingested during this session window. "
-                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.\n\n"
+                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.{macro_text}\n\n"
                 f"### 🔬 Sector & Earnings Spotlight\n\n"
                 f"- **Sector Rotation**: Broad market breadth remains balanced with defensive and cyclical sectors trading in narrow ranges.\n"
                 f"- **Earnings Radar**: Corporate earnings calendar and earnings call transcripts continue to guide fundamental expectations.\n\n"
@@ -80,25 +87,28 @@ async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time:
 
     system_prompt = (
         "You are the Lead Editor of LLM Market Bench Daily Newsletter. "
-        "Your task is to write a top-tier, highly engaging, comprehensive 6-minute daily market newsletter (~1,200-1,500 words) based on the ingested financial briefings of the day.\n\n"
+        "Your task is to write a top-tier, highly engaging, comprehensive 6-minute daily market newsletter (~1,200-1,500 words) based on the ingested financial briefings and official FRED macroeconomic data of the day.\n\n"
         "Requirements:\n"
         "1. **Title**: Actionable, punchy, and professional headline capturing the overarching market theme.\n"
         "2. **Summary**: A crisp 2-3 sentence executive overview summarizing directional drivers and key themes.\n"
         "3. **Bullet Points**: 4-5 high-impact key takeaways with emojis highlighting crucial market numbers and developments.\n"
         "4. **Content**: A complete, in-depth Markdown newsletter (~1,200-1,500 words, ~6 min read).\n"
         "   Must include the following structured section headings (`###`):\n"
-        "   - `### 🌐 The Macro & Cross-Asset Narrative`: Detailed synthesis of index action, Treasury yields (10Y/2Y), FX/US Dollar (DXY), commodities (Crude, Gold), and crypto.\n"
+        "   - `### 🌐 The Macro & Cross-Asset Narrative`: Detailed synthesis of index action, Treasury yields (10Y/2Y), yield curve spreads, inflation (CPI/PCE), FX/US Dollar (DXY), commodities (Crude, Gold), and crypto.\n"
         "   - `### 🔬 Sector & Earnings Spotlight`: Deep dive into sector rotation, mega-cap tech/AI trends, corporate earnings beats/misses, and company-specific catalysts.\n"
-        "   - `### 📈 Market Internals, Sentiment & Flows`: Analysis of market breadth, volatility (VIX), institutional positioning, and options/sentiment indicators.\n"
+        "   - `### 📈 Market Internals, Sentiment & Flows`: Analysis of market breadth, volatility (VIX), institutional positioning, liquidity indicators, and options/sentiment indicators.\n"
         "   - `### 💡 Trade Ideas & Scenarios to Watch`: Detailed actionable setups with catalyst, entry/triggers, key support/resistance, invalidation levels, and explicit Bull/Bear scenario branching.\n"
         "   - `### 🗓️ The Catalyst Radar & Key Levels`: Upcoming economic data releases, earnings calendar timeline, and critical technical pivot levels.\n"
-        "   Use subheadings, bullet points, and bold key tickers and metrics (e.g., **NVDA**, **SPX**, **10Y Yield 4.25%**, **CPI +0.2%**).\n"
+        "   Use subheadings, bullet points, and bold key tickers and metrics (e.g., **NVDA**, **SPX**, **10Y Yield 4.25%**, **CPI +0.2%**, **Fed Funds 5.25%**).\n"
         "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff."
     )
+
+    macro_block = f"Official Macro & Economic Data (FRED Indicators):\n{macro_context}\n\n" if macro_context else ""
 
     user_prompt = (
         f"Session Window: {session.upper()} ({session_label})\n"
         f"Date & Time: {now_date_str} at {formatted_time}\n\n"
+        f"{macro_block}"
         f"Ingested Newsletters ({len(chunks)} sources):\n"
         f"{compiled_sources}"
     )
@@ -167,8 +177,15 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
 
     logger.info(f"Ingested snapshots count for 24h window: {len(snapshots)}")
 
+    # Step 3: Fetch curated macroeconomic indicators from FRED
+    macro_context = ""
+    try:
+        macro_context = await get_curated_macro_dashboard()
+    except Exception as e:
+        logger.warning(f"Could not fetch FRED macro context for newsletter: {e}")
+
     # Generate newsletter content via DeepSeek V4 Flash
-    output = await _call_deepseek_flash(snapshots, session, formatted_time)
+    output = await _call_deepseek_flash(snapshots, session, formatted_time, macro_context=macro_context)
 
     # Insert into generated_newsletters table
     record = {

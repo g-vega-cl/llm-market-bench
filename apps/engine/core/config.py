@@ -129,6 +129,8 @@ MOMENTUM_DECAY_HALF_LIFE_DAYS = 28  # Velocity halves every 14 days of inactivit
 
 # --- Financial Data Configuration ---
 FMP_API_KEY = os.getenv("FMP_API_KEY")
+FRED_API_KEY = os.getenv("FRED_API_KEY", "")
+FRED_CACHE_TTL_HOURS = int(os.getenv("FRED_CACHE_TTL_HOURS", 12))
 FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "fmp")
 
 # --- Validation Guardrails ---

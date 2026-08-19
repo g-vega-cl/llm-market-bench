@@ -28,6 +28,7 @@ A living document of features and improvements in progress or planned for the pl
   - Decided it was a bit inconvenient and not worth it.
 - [ ] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.**
 - [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
+- [x] **FRED API Integration** - Federal Reserve Economic Data time series client with Supabase DB caching (`fred_series_cache`), on-demand LLM tool `get_macro_economic_series` for trading agents & Autoresearcher, and structured macroeconomic context injection for daily newsletter generation.
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
@@ -129,7 +130,6 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: move all newsletters to dedicated email
 - [ ] - Benchify: "hyperfocus on a mid size company?
 - [ ] - https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/honcho.md
-- [ ] - Benchify: FRED api fed api
 - [ ] - Benchify: Toronto stock market
 - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
 - [ ] - another step in my LLM after newsletter read to look for related info and news online?

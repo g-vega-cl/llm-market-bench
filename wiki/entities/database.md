@@ -1,54 +1,68 @@
 ---
-tags: [database, supabase, schema, postgres, pgvector]
+tags: [database, supabase, postgresql, schema]
 category: entity
 ---
 
 # Database
 
-Supabase PostgreSQL instance that powers the entire LLM Market Bench platform. It stores everything from real-time portfolio snapshots and trade audit logs to LLM predictions, raw analysis outputs, and vector embeddings for RAG.
+Supabase PostgreSQL instance serving as the persistent data layer for the LLM Market Bench platform. Uses pgvector for semantic search, Row Level Security (RLS) for access control, and custom PostgREST endpoints for API access.
 
-## Core Tables
+## Schema
 
-### Portfolios & Trading
-- `portfolios` – current holdings, cash, and equity for each agent
-- `trades` – normalized trade history with linking to analysis sessions
-- `portfolio_snapshots` – daily portfolio state (PnL, positions, benchmark)
-- `orders` – order lifecycle (from planned to Alpaca-submitted to filled)
+### Trading & Portfolio
 
-### Analysis Pipeline
-- `analysis_sessions` – low-level LLM outputs, tool calls, and execution traces
-- `newsletter_ingestions` – raw scraped/processed newsletter content
-- `market_data_cache` – cached price histories and reference data
-- `economic_events` – economic calendar events and government data
-- `feedback_analyses` – post-mortem contrarian analysis and cause–effect records
+- `portfolios` — managed portfolio definitions (type, model, status, cash/equity split)
+- `portfolio_ledger` — trade journal with thesis, execution, timestamps
+- `portfolio_performance` — daily snapshots of equity, cash, returns
+- `portfolio_holdings` — current holdings per portfolio
+- `orders` — raw alpaca order records
+- `pnl_cache` — P&L aggregation cache
 
-### LLM Predictions & Arena
-- `sector_predictions` – LLM-generated sector and pair predictions with evaluation results
-  - Core fields: `prediction_date`, `target_date`, `timeframe`, `model_name`, `prompt_tag`, `predicted_sector`, `predicted_worst_sector`, `predicted_pair`, `reasoning`, `confidence`, `brier_score`, `sector_percentile_score`, `worst_sector_percentile_score`, `pair_percentile_score`, `status` (`pending`/`evaluated`)
-  - Return columns: `predicted_sector_return` (float), `predicted_worst_sector_return` (float), `predicted_pair_return` (float), `benchmark_spy_return` (float), `sector_sp_diff` (float) – actual window returns of the predicted best sector, worst sector, pair basket, S&P 500 benchmark, and alpha vs SPY
-  - Audit data: `evaluation_audit_data` (JSONB) – stores starting prices, ending prices, and percentage returns per ticker for SPY, the best sector ETF, worst sector ETF, and each pair ETF, along with start/end dates
-- `prompt_experiments` – prompt variant registry for the sector predictor arena and main trading prompts
+### Analysis & Consensus
 
-### Vector Search & Knowledge
-- `knowledge_base` – chunked and embedded documents (academic papers, manuals, market heuristics)
-- `market_anomalies` – catalog of documented market patterns
+- `analysis_state` — per-agent analysis results (signal, catalyst, impact, context)
+- `consensus_state` — aggregated agent consensus (event records, debate trails)
+- `trading_consensus` — merged trading consensus with voting
+- `event_ledger` — promoted events and trend tracking
 
-### Meta & Configuration
-- `pipeline_runs` – daily pipeline run logs and phase status
-- `agent_configs` – per-agent settings and model assignments
-- `research_loops` – autonomous prompt improvement cycles
+### Macro & Market Data
 
-## Migrations
-All schema changes are tracked via timestamped migration files in `supabase/migrations/`. Recent additions include:
+- `macro_tracker` — 23-ticker global regime monitoring cache
+- `price_history` — historical price data for backtesting and display
+- `correlation_cache` — inter-asset correlation matrix
+- `fred_series_cache` — cached FRED macroeconomic time series observations (configurable TTL, used by `get_macro_economic_series` tool and newsletter macro context)
 
-- `20260719000000_add_returns_to_sector_predictions.sql` – adds actual return columns to `sector_predictions`
-- `20260719010000_add_evaluation_audit_data_to_sector_predictions.sql` – adds `evaluation_audit_data` JSONB column
+### Memory & Feedback
+
+- `memory_entries` — long-term memory store for agent recall
+- `agent_memory_context` — per-agent memory summaries
+- `post_mortem` — post-trade analysis records
+
+### Autoresearch
+
+- `prompt_experiments` — experiment tracking for prompt mutation
+- `backtest_results` — backtest outcome records
+
+### Newsletters & Content
+
+- `newsletter_snapshots` — ingested raw newsletter content
+- `generated_newsletters` — synthesized daily market briefings
+
+### System
+
+- `migrations` — schema version tracking
+
+## Key Features
+
+- **pgvector**: Semantic search across memory and analysis contexts
+- **RLS**: Row-level security with anon, authenticated, and service_role policies
+- **PostgREST**: Auto-generated REST API from schema
+- **Migration-based**: All schema changes via Supabase migrations
 
 ## Related
 
-- [[entities/pipeline]]
+- [[concepts/macroeconomic-data-fred]] — FRED economic data caching and tool integration
 - [[entities/engine]]
-- [[entities/sector-predictor-arena]]
-- [[concepts/auditability]]
+- [[entities/autoresearch]]
 - [[concepts/supabase-grant-convention]]
-- [[sources/database-schema-source]]
+- [[concepts/supabase-redirect-whitelisting]]

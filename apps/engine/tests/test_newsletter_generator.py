@@ -1,6 +1,6 @@
 """Tests for the Daily Generated Newsletter pipeline using DeepSeek V4 Flash."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -172,3 +172,33 @@ def test_generated_newsletter_output_defaults():
         content="Test content",
     )
     assert output.read_time_minutes == 6
+
+
+@pytest.mark.asyncio
+async def test_generate_daily_newsletter_with_fred_macro_context():
+    """Test that generate_daily_newsletter fetches FRED macro dashboard and passes it to LLM."""
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.gte.return_value.execute.return_value.data = []
+    mock_sb.table.return_value.insert.return_value.execute.return_value.data = [{"id": "macro-gen-id"}]
+
+    mock_llm_response = GeneratedNewsletterOutput(
+        title="Macro Daily Briefing",
+        summary="Rates steady at 5.25%",
+        bullet_points=["Yield curve at 0.15%"],
+        content="Briefing content with FRED data",
+        read_time_minutes=6,
+    )
+
+    with (
+        patch("tasks.newsletter_generator.ingest_newsletters", return_value=[]),
+        patch("tasks.newsletter_generator.get_curated_macro_dashboard", new_callable=AsyncMock) as mock_fred_dash,
+        patch("tasks.newsletter_generator._call_deepseek_flash", return_value=mock_llm_response) as mock_llm_call,
+    ):
+        mock_fred_dash.return_value = "=== Macro & Economic Context (FRED) ===\n- Fed Funds: 5.25%"
+        result = await generate_daily_newsletter(session="open", sb_client=mock_sb)
+
+        assert result is not None
+        mock_fred_dash.assert_called_once()
+        mock_llm_call.assert_called_once()
+        assert "macro_context" in mock_llm_call.call_args.kwargs
+        assert "Fed Funds: 5.25%" in mock_llm_call.call_args.kwargs["macro_context"]

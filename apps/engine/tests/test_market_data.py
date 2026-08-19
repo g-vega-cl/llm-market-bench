@@ -224,15 +224,16 @@ async def test_is_premarket():
 
 @pytest.mark.asyncio
 async def test_get_aftermarket_quote_fmp():
-    """Test FMPProvider get_aftermarket_quote parsing."""
+    """Test FMPProvider get_aftermarket_quote parsing with price or bid/ask."""
     from execution.providers.fmp import FMPProvider
 
     provider = FMPProvider()
     provider.api_key = "dummy_key"
 
+    # Test with bidPrice / askPrice
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = [{"symbol": "SPY", "price": 595.50, "bid": 595.40, "ask": 595.60, "volume": 120000}]
+    mock_resp.json.return_value = [{"symbol": "SPY", "bidPrice": 595.40, "askPrice": 595.60, "volume": 120000}]
 
     with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
         quote = await provider.get_aftermarket_quote("SPY")
@@ -243,12 +244,77 @@ async def test_get_aftermarket_quote_fmp():
 
 
 @pytest.mark.asyncio
-async def test_get_premarket_quote_with_aftermarket():
-    """Test MarketDataManager.get_premarket_quote combines aftermarket quote with previous close."""
+async def test_get_ticker_data_fmp_extracts_previous_close_and_change():
+    """Test that FMPProvider.get_ticker_data parses previousClose, change, changePercentage, and volume."""
+    from execution.providers.fmp import FMPProvider
+
+    provider = FMPProvider()
+    provider.api_key = "dummy_key"
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "symbol": "SPY",
+            "price": 770.20,
+            "marketCap": 820000000000.0,
+            "previousClose": 767.45,
+            "change": 2.75,
+            "changePercentage": 0.3583,
+            "volume": 3500000,
+            "currency": "USD",
+            "exchange": "AMEX",
+        }
+    ]
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        data = await provider.get_ticker_data("SPY")
+        assert data is not None
+        assert data.ticker == "SPY"
+        assert data.price == 770.20
+        assert data.previous_close == 767.45
+        assert data.change == 2.75
+        assert data.change_pct == 0.3583
+        assert data.volume == 3500000
+
+
+@pytest.mark.asyncio
+async def test_get_premarket_quote_using_quote_previous_close():
+    """Test MarketDataManager.get_premarket_quote directly uses quote's previous_close and change_pct."""
     manager = MarketDataManager()
-    manager.provider = MagicMock()
-    manager.provider.get_aftermarket_quote = AsyncMock(
-        return_value={"symbol": "AAPL", "price": 230.00, "bid": 229.90, "ask": 230.10, "volume": 50000}
+    manager.get_quote = AsyncMock(
+        return_value=TickerData(
+            ticker="SPY",
+            price=770.20,
+            market_cap=820e9,
+            exists=True,
+            previous_close=767.45,
+            change=2.75,
+            change_pct=0.3583,
+            volume=3500000,
+        )
+    )
+
+    result = await manager.get_premarket_quote("SPY")
+    assert result is not None
+    assert result["price"] == 770.20
+    assert result["previous_close"] == 767.45
+    assert result["change"] == 2.75
+    assert result["change_pct"] == 0.3583
+    assert result["volume"] == 3500000
+
+
+@pytest.mark.asyncio
+async def test_get_premarket_quote_fallback_to_history():
+    """Test MarketDataManager.get_premarket_quote falls back to history if previous_close is missing on quote."""
+    manager = MarketDataManager()
+    manager.get_quote = AsyncMock(
+        return_value=TickerData(
+            ticker="AAPL",
+            price=230.00,
+            market_cap=3e12,
+            exists=True,
+        )
     )
     manager.get_history = AsyncMock(
         return_value=[{"price": 225.00, "close": 225.00, "fetched_at": "2026-08-17T00:00:00Z"}]

@@ -103,6 +103,10 @@ class FMPProvider(FinancialProvider):
                         exists=True,
                         currency=q.get("currency", "USD"),
                         exchange=q.get("exchange"),
+                        previous_close=float(q["previousClose"]) if q.get("previousClose") is not None else None,
+                        change=float(q["change"]) if q.get("change") is not None else None,
+                        change_pct=float(q["changePercentage"]) if q.get("changePercentage") is not None else None,
+                        volume=int(q["volume"]) if q.get("volume") is not None else None,
                     )
 
             except httpx.HTTPStatusError as e:
@@ -698,13 +702,34 @@ class FMPProvider(FinancialProvider):
 
                     for candidate in data:
                         if str(candidate.get("symbol")).upper() == ticker:
-                            price = candidate.get("price")
-                            if price is not None and float(price) > 0:
+                            bid = (
+                                float(candidate["bidPrice"])
+                                if candidate.get("bidPrice") is not None
+                                else (float(candidate["bid"]) if candidate.get("bid") is not None else None)
+                            )
+                            ask = (
+                                float(candidate["askPrice"])
+                                if candidate.get("askPrice") is not None
+                                else (float(candidate["ask"]) if candidate.get("ask") is not None else None)
+                            )
+                            raw_price = candidate.get("price")
+                            if raw_price is not None and float(raw_price) > 0:
+                                price = float(raw_price)
+                            elif bid is not None and ask is not None and (bid + ask) > 0:
+                                price = (bid + ask) / 2.0
+                            elif bid is not None and bid > 0:
+                                price = bid
+                            elif ask is not None and ask > 0:
+                                price = ask
+                            else:
+                                price = None
+
+                            if price is not None and price > 0:
                                 return {
                                     "symbol": ticker,
                                     "price": float(price),
-                                    "bid": float(candidate.get("bid")) if candidate.get("bid") is not None else None,
-                                    "ask": float(candidate.get("ask")) if candidate.get("ask") is not None else None,
+                                    "bid": bid,
+                                    "ask": ask,
                                     "volume": int(candidate.get("volume"))
                                     if candidate.get("volume") is not None
                                     else None,

@@ -15,6 +15,10 @@ class TickerData(BaseModel):
     exists: bool = True
     currency: str = "USD"
     exchange: str | None = None
+    previous_close: float | None = None
+    change: float | None = None
+    change_pct: float | None = None
+    volume: int | None = None
 
 
 class HistoryData(TypedDict, total=False):

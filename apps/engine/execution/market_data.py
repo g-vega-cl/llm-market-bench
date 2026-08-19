@@ -274,41 +274,31 @@ class MarketDataManager:
 
         ticker = ticker.strip().upper()
 
-        pm_price = None
-        bid = None
-        ask = None
-        volume = None
-
-        # 1. Try dedicated aftermarket/pre-market quote endpoint from provider
-        if self.provider and hasattr(self.provider, "get_aftermarket_quote"):
-            pm_data = await self.provider.get_aftermarket_quote(ticker)
-            if pm_data and pm_data.get("price"):
-                pm_price = float(pm_data["price"])
-                bid = pm_data.get("bid")
-                ask = pm_data.get("ask")
-                volume = pm_data.get("volume")
-
-        # 2. Fallback to standard quote with forced fresh retrieval
-        if pm_price is None:
-            quote = await self.get_quote(ticker, force_refresh=True)
-            if quote and quote.price:
-                pm_price = quote.price
-
-        if pm_price is None or pm_price <= 0:
+        # 1. Fetch fresh quote from provider (returns live/delayed price and previousClose)
+        quote = await self.get_quote(ticker, force_refresh=True)
+        if not quote or not quote.price or quote.price <= 0:
             return None
 
-        # 3. Fetch recent history to find previous session close price
-        history = await self.get_history(ticker, days=5)
-        prev_close = None
-        if history:
-            sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
-            prev_close = float(sorted_hist[-1].get("close") or sorted_hist[-1].get("price"))
+        pm_price = quote.price
+        prev_close = quote.previous_close
+        change = quote.change
+        change_pct = quote.change_pct
+        volume = quote.volume
+
+        # 2. If previous close is missing on quote object, fall back to recent history
+        if prev_close is None or prev_close <= 0:
+            history = await self.get_history(ticker, days=5)
+            if history:
+                sorted_hist = sorted(history, key=lambda x: x.get("fetched_at", ""))
+                prev_close = float(sorted_hist[-1].get("close") or sorted_hist[-1].get("price"))
 
         if not prev_close or prev_close <= 0:
             prev_close = pm_price
 
-        change = pm_price - prev_close
-        change_pct = (change / prev_close) * 100.0 if prev_close else 0.0
+        if change is None:
+            change = pm_price - prev_close
+        if change_pct is None:
+            change_pct = (change / prev_close) * 100.0 if prev_close else 0.0
 
         res = {
             "price": pm_price,
@@ -316,10 +306,6 @@ class MarketDataManager:
             "change": change,
             "change_pct": change_pct,
         }
-        if bid is not None:
-            res["bid"] = bid
-        if ask is not None:
-            res["ask"] = ask
         if volume is not None:
             res["volume"] = volume
 

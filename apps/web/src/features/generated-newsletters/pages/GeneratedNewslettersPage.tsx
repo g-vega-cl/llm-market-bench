@@ -56,7 +56,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                         Daily Market Intelligence Briefings
                     </SectionHeading>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl font-light">
-                        Synthesized ~3 minute reads based on ingested daily newsletters, generated
+                        Synthesized ~6 minute reads based on ingested daily newsletters, generated
                         twice daily at market open (09:15 ET) and market close (17:00 ET).
                     </p>
                 </div>
@@ -181,7 +181,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                         <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
                                             <span>{newsletter.formattedDate}</span>
                                             <span>
-                                                ⏱️ {newsletter.read_time_minutes ?? 2} min read
+                                                ⏱️ {newsletter.read_time_minutes ?? 6} min read
                                             </span>
                                         </div>
                                     </button>
@@ -217,7 +217,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                             🕒 Created at {activeNewsletter.displayTime}
                                         </span>
                                         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-electric-blue-50 dark:bg-electric-blue-950/40 text-electric-blue-600 dark:text-electric-blue-400 border border-electric-blue-200 dark:border-electric-blue-800/50">
-                                            ⏱️ {activeNewsletter.read_time_minutes ?? 2} min read
+                                            ⏱️ {activeNewsletter.read_time_minutes ?? 6} min read
                                         </span>
                                     </div>
                                     <span className="text-xs text-zinc-400 font-mono">

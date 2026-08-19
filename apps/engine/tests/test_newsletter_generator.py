@@ -43,16 +43,23 @@ async def test_generate_daily_newsletter_success():
 
 Markets opened on a bullish footing today, propelled by massive momentum in the semiconductor industry and encouraging macroeconomic commentary.
 
-### 🚀 Key Market Dynamics
+### 🌐 The Macro & Cross-Asset Narrative
+- **Index Performance**: S&P 500 up 0.8%, Nasdaq 100 gaining 1.2%.
+- **Rates & FX**: 10-Year yield steady at 4.20%, DXY flat at 103.4.
+
+### 🔬 Sector & Earnings Spotlight
 - **Tech Sector Rally**: Hardware manufacturers continue to see elevated volume.
+
+### 📈 Market Internals, Sentiment & Flows
+- **VIX**: Volatility compressed to 14.2.
 
 ### 💡 Trade Ideas & Scenarios to Watch
 - **NVDA Breakout**: Watch $135 resistance for upside momentum toward $145.
 - **Bear Scenario**: CPI surprise above expectations could pressure tech valuations.
 
-### What to Watch
-Overall, investor sentiment is leaning constructive as earnings season continues to exceed baseline expectations.""",
-        read_time_minutes=3,
+### 🗓️ The Catalyst Radar & Key Levels
+- **What to Watch**: CPI release tomorrow at 08:30 ET.""",
+        read_time_minutes=6,
     )
 
     with (
@@ -64,7 +71,7 @@ Overall, investor sentiment is leaning constructive as earnings season continues
         assert result is not None
         assert result["title"] == "Morning Market Pulse: Tech Surge & Fed Signals"
         assert result["session"] == "open"
-        assert result["read_time_minutes"] == 3
+        assert result["read_time_minutes"] == 6
         assert "formatted_time" in result
         assert "ET" in result["formatted_time"]
         assert mock_llm_call.called
@@ -157,11 +164,11 @@ async def test_generate_daily_newsletter_triggers_ingest_and_uses_12h_date_windo
 
 
 def test_generated_newsletter_output_defaults():
-    """Test that GeneratedNewsletterOutput defaults to 3 minutes read time."""
+    """Test that GeneratedNewsletterOutput defaults to 6 minutes read time."""
     output = GeneratedNewsletterOutput(
         title="Test Briefing",
         summary="Test Summary",
         bullet_points=["Point 1"],
         content="Test content",
     )
-    assert output.read_time_minutes == 3
+    assert output.read_time_minutes == 6

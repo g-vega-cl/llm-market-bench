@@ -18,15 +18,16 @@ class GeneratedNewsletterOutput(BaseModel):
     """Structured response model for the generated newsletter."""
 
     title: str = Field(description="Catchy, professional title for the daily market briefing.")
-    summary: str = Field(description="Concise 1-2 sentence executive summary of today's key news.")
-    bullet_points: list[str] = Field(description="2 to 4 bullet points highlighting critical takeaways.")
+    summary: str = Field(description="Concise 2-3 sentence executive summary of today's key news.")
+    bullet_points: list[str] = Field(description="4 to 5 bullet points highlighting critical takeaways with emojis.")
     content: str = Field(
         description=(
-            "Full newsletter article formatted in Markdown (~500-700 words, ~3 min read). "
-            "Includes subheadings, bolded tickers/metrics, macro context, Trade Ideas & Scenarios to Watch, and market impact."
+            "Full newsletter article formatted in Markdown (~1,200-1,500 words, ~6 min read). "
+            "Includes comprehensive subheadings, bolded tickers/metrics, macro and cross-asset context, "
+            "sector and earnings spotlight, market internals and flows, actionable trade ideas & scenarios to watch, and catalyst radar."
         )
     )
-    read_time_minutes: int = Field(default=3, description="Estimated read time in minutes (typically 3).")
+    read_time_minutes: int = Field(default=6, description="Estimated read time in minutes (typically 6).")
 
 
 async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time: str) -> GeneratedNewsletterOutput:
@@ -42,18 +43,29 @@ async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time:
             bullet_points=[
                 f"Quiet news flow reported for {now_date_str}.",
                 "Markets operating within normal historical volatility bounds.",
+                "Cross-asset positioning remains steady ahead of upcoming economic releases.",
             ],
             content=(
                 f"# {session_label} — {now_date_str}\n\n"
                 f"**Creation Time:** {formatted_time}\n\n"
+                f"### 🌐 The Macro & Cross-Asset Narrative\n\n"
                 f"No raw financial newsletters were ingested during this session window. "
-                f"Market participants are monitoring upcoming earnings announcements and macroeconomic releases. "
-                f"Full quantitative analysis and portfolio rebalancing continue as scheduled.\n\n"
+                f"Major indices, benchmark Treasury yields, and currency pairs are holding steady as market participants await upcoming macroeconomic catalysts.\n\n"
+                f"### 🔬 Sector & Earnings Spotlight\n\n"
+                f"- **Sector Rotation**: Broad market breadth remains balanced with defensive and cyclical sectors trading in narrow ranges.\n"
+                f"- **Earnings Radar**: Corporate earnings calendar and earnings call transcripts continue to guide fundamental expectations.\n\n"
+                f"### 📈 Market Internals, Sentiment & Flows\n\n"
+                f"- **Volatility**: Implied volatility indices reflect a low-stress regime with standard risk premia.\n"
+                f"- **Breadth & Positioning**: Systematic funds and institutional flows maintain baseline allocations.\n\n"
                 f"### 💡 Trade Ideas & Scenarios to Watch\n\n"
-                f"- **Range-Bound Strategy**: Monitor key support/resistance levels during low-volume sessions.\n"
-                f"- **Catalyst Watch**: Macro economic releases expected in upcoming sessions."
+                f"- **Range-Bound Setup**: Monitor key index pivot and support/resistance levels during low-volume sessions.\n"
+                f"- **Bull Scenario**: Upside continuation if upcoming macro data shows resilient growth with moderating inflation.\n"
+                f"- **Bear Scenario**: Watch downside support levels if unexpected catalyst drives volatility expansion.\n\n"
+                f"### 🗓️ The Catalyst Radar & Key Levels\n\n"
+                f"- **Economic Calendar**: Key macroeconomic releases and central bank commentary scheduled for upcoming sessions.\n"
+                f"- **Pivot Levels**: Watch SPX and NDX key support and resistance zones for directional confirmation."
             ),
-            read_time_minutes=3,
+            read_time_minutes=6,
         )
 
     # Compile raw newsletter context for prompt
@@ -68,19 +80,20 @@ async def _call_deepseek_flash(chunks: list[dict], session: str, formatted_time:
 
     system_prompt = (
         "You are the Lead Editor of LLM Market Bench Daily Newsletter. "
-        "Your task is to write a top-tier, highly engaging, 3-minute daily market newsletter based on the ingested financial briefings of the day.\n\n"
+        "Your task is to write a top-tier, highly engaging, comprehensive 6-minute daily market newsletter (~1,200-1,500 words) based on the ingested financial briefings of the day.\n\n"
         "Requirements:\n"
-        "1. **Title**: Actionable and punchy headline.\n"
-        "2. **Summary**: A crisp 1-2 sentence executive overview.\n"
-        "3. **Bullet Points**: 2-4 critical key takeaways with emojis.\n"
-        "4. **Content**: A complete, rich Markdown newsletter (~500-700 words, ~3 min read).\n"
-        "   Must include the following structured section headings:\n"
-        "   - `### Key Developments`\n"
-        "   - `### Market & Macro Impact`\n"
-        "   - `### 💡 Trade Ideas & Scenarios to Watch` (Dedicated section highlighting actionable trade setups, key catalyst levels/triggers, and bull/bear market scenarios).\n"
-        "   - `### What to Watch`\n"
-        "   Use subheadings (`###`), bullet points, bold key tickers/metrics (e.g. **NVDA**, **CPI +0.2%**).\n"
-        "5. Tone must be professional, objective, smart, and developer/investor friendly."
+        "1. **Title**: Actionable, punchy, and professional headline capturing the overarching market theme.\n"
+        "2. **Summary**: A crisp 2-3 sentence executive overview summarizing directional drivers and key themes.\n"
+        "3. **Bullet Points**: 4-5 high-impact key takeaways with emojis highlighting crucial market numbers and developments.\n"
+        "4. **Content**: A complete, in-depth Markdown newsletter (~1,200-1,500 words, ~6 min read).\n"
+        "   Must include the following structured section headings (`###`):\n"
+        "   - `### 🌐 The Macro & Cross-Asset Narrative`: Detailed synthesis of index action, Treasury yields (10Y/2Y), FX/US Dollar (DXY), commodities (Crude, Gold), and crypto.\n"
+        "   - `### 🔬 Sector & Earnings Spotlight`: Deep dive into sector rotation, mega-cap tech/AI trends, corporate earnings beats/misses, and company-specific catalysts.\n"
+        "   - `### 📈 Market Internals, Sentiment & Flows`: Analysis of market breadth, volatility (VIX), institutional positioning, and options/sentiment indicators.\n"
+        "   - `### 💡 Trade Ideas & Scenarios to Watch`: Detailed actionable setups with catalyst, entry/triggers, key support/resistance, invalidation levels, and explicit Bull/Bear scenario branching.\n"
+        "   - `### 🗓️ The Catalyst Radar & Key Levels`: Upcoming economic data releases, earnings calendar timeline, and critical technical pivot levels.\n"
+        "   Use subheadings, bullet points, and bold key tickers and metrics (e.g., **NVDA**, **SPX**, **10Y Yield 4.25%**, **CPI +0.2%**).\n"
+        "5. Tone must be professional, analytical, objective, and developer/investor friendly, delivering deep substance without fluff."
     )
 
     user_prompt = (

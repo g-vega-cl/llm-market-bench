@@ -7,7 +7,7 @@
 ## Entities
 
 - [[entities/lin-renko-agent]] — Auto-indexed page
-- [[entities/generated-newsletters]] — Auto-generated daily market briefings with 3-minute read target (~500–700 words) and dedicated Trade Ideas & Scenarios section
+- [[entities/generated-newsletters]] — Auto-generated daily market briefings with 6-minute read target (~1,200–1,500 words) and 5-section macro/sector/internals/trade/catalyst structure
 - [[entities/cron-dispatcher]] — Cloudflare Worker edge cron dispatcher for GitHub Actions workflows
 - [[entities/daily-predictor-backtest-arena]] — Web UI and engine backtest system for S&P 500 daily open-to-close predictions with prompt mutation
 - [[entities/daily-market-predictor]] — Auto-indexed page

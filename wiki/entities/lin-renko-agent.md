@@ -26,6 +26,7 @@ The agent is implemented in `apps/engine/analysis/lin_agent.py` and `apps/engine
    - CLI command: `./.venv/bin/python3 main.py lin-renko`.
    - Automated Ingestion Hook: Runs automatically post-consensus in `apps/engine/main.py` (`run_ingest()`).
    - Operates dedicated `$10,000` portfolio `lin-renko-agent-deepseek-flash` restricted strictly to `LIN` equity and cash.
+   - Target Position Rebalancing: Computes total portfolio equity (`cash_balance + held_equity`) and sizes orders toward target allocation ($\le 25\%$ equity cap). Repeated `BUY_LONG` signals are idempotent and only buy delta shares ($\Delta = \text{target\_shares} - \text{held\_shares}$), preventing redundant 1-share churn when target allocation is already satisfied.
    - Single-Stock Guard: Enforces strict ticker validation (`symbol == "LIN"`) and executes BUY_LONG / EXIT_LONG order allocations.
    - Isolation: Excluded from `/portfolios` benchmark view; exclusively monitored via `/renko`.
 

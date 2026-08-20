@@ -44,10 +44,25 @@ async def execute_lin_trade_decision(
         return None
 
     if action in ("BUY_LONG", "BUY"):
-        # Position sizing: up to target_position_pct (capped at 25% max) based on total cash
+        # Position sizing: rebalance toward target_position_pct (capped at 25% max) based on total equity
+        held_pos = portfolio.positions.get("LIN")
+        held_qty = held_pos.quantity if held_pos else 0
+        total_equity = portfolio.cash_balance + (held_qty * current_price)
+
         alloc_pct = min(target_pos_pct, 0.25)
-        usd_to_spend = portfolio.cash_balance * alloc_pct
-        quantity = int(usd_to_spend / current_price)
+        target_val = total_equity * alloc_pct
+        target_shares = int(target_val / current_price)
+        shares_to_buy = target_shares - held_qty
+
+        if shares_to_buy <= 0:
+            logger.info(
+                f"LIN position already meets or exceeds target allocation ({held_qty}/{target_shares} shares, target_pct: {alloc_pct:.1%}). Holding."
+            )
+            return None
+
+        # Ensure we do not exceed available cash balance
+        max_affordable = int(portfolio.cash_balance / current_price)
+        quantity = min(shares_to_buy, max_affordable)
 
         if quantity >= 1 and portfolio.cash_balance >= (quantity * current_price):
             logger.info(f"Executing BUY for {quantity} LIN shares (${quantity * current_price:,.2f})...")
@@ -59,7 +74,9 @@ async def execute_lin_trade_decision(
                 skip_alpaca_mirror=True,
             )
         else:
-            logger.info(f"Insufficient cash or fractional size for BUY {quantity} LIN shares @ ${current_price:.2f}.")
+            logger.info(
+                f"Insufficient cash for BUY {shares_to_buy} LIN shares @ ${current_price:.2f} (cash: ${portfolio.cash_balance:,.2f})."
+            )
             return None
 
     elif action in ("EXIT_LONG", "SELL", "SHORT"):

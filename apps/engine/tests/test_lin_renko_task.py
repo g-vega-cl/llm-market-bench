@@ -121,6 +121,61 @@ async def test_execute_lin_trade_decision_buy():
 
 
 @pytest.mark.asyncio
+async def test_execute_lin_trade_decision_buy_idempotent_when_target_met():
+    """Verify repeated BUY_LONG signals do not buy extra shares if target position is already held."""
+    mock_portfolio = AsyncMock()
+    mock_portfolio.owner_id = "lin-renko-agent-deepseek-flash"
+    mock_portfolio.cash_balance = 8000.0
+    mock_portfolio.positions = {"LIN": Position(ticker="LIN", quantity=4, average_cost_basis=500.0)}
+    mock_portfolio.execute_trade = AsyncMock()
+
+    decision = {
+        "decision": "BUY_LONG",
+        "confidence": 0.90,
+        "target_position_pct": 0.20,
+        "reasoning": "Continuing bullish trend",
+    }
+
+    # Total equity = $8,000 cash + (4 * $500) = $10,000.
+    # Target 20% = $2,000 / $500 = 4 shares. Already hold 4 shares -> shares_to_buy = 0.
+    trade_id = await execute_lin_trade_decision(mock_portfolio, decision, current_price=500.0)
+
+    assert trade_id is None
+    mock_portfolio.execute_trade.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_lin_trade_decision_buy_incremental_upsize():
+    """Verify BUY_LONG with increased target_position_pct only buys the delta shares."""
+    mock_portfolio = AsyncMock()
+    mock_portfolio.owner_id = "lin-renko-agent-deepseek-flash"
+    mock_portfolio.cash_balance = 8000.0
+    mock_portfolio.positions = {"LIN": Position(ticker="LIN", quantity=4, average_cost_basis=500.0)}
+    mock_trade_id = uuid4()
+    mock_portfolio.execute_trade = AsyncMock(return_value=mock_trade_id)
+
+    decision = {
+        "decision": "BUY_LONG",
+        "confidence": 0.95,
+        "target_position_pct": 0.25,
+        "reasoning": "Strong catalyst, increasing target allocation to 25%",
+    }
+
+    # Total equity = $8,000 cash + (4 * $500) = $10,000.
+    # Target 25% = $2,500 / $500 = 5 shares. Already hold 4 shares -> shares_to_buy = 1.
+    trade_id = await execute_lin_trade_decision(mock_portfolio, decision, current_price=500.0)
+
+    assert trade_id == mock_trade_id
+    mock_portfolio.execute_trade.assert_awaited_once_with(
+        ticker="LIN",
+        quantity=1,
+        price=500.0,
+        signal="BUY",
+        skip_alpaca_mirror=True,
+    )
+
+
+@pytest.mark.asyncio
 async def test_execute_lin_trade_decision_sell():
     """Verify execute_lin_trade_decision executes SELL order when holding LIN."""
     mock_portfolio = AsyncMock()

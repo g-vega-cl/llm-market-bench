@@ -100,7 +100,7 @@ To prevent context window pollution and reasoning degradation while retaining ke
 ### The "Sleep Cycle" (Weekly Memory Consolidation)
 An offline weekly consolidation pipeline groups overlapping memories to compound knowledge and reduce redundancy:
 1. **Clustering**: Active memories are retrieved (capped at the **500 most recent active memories** for scaling safety), and an adjacency graph is built by mapping pairs with a cosine similarity metric `>= 0.85`. Connected components are identified using depth-first search (DFS).
-2. **Synthesis**: For clusters of 2 or more overlapping memories, the system invokes DeepSeek (`DEEPSEEK_MODEL` from `core.config`) using `instructor` to guarantee a structured Pydantic schema response.
+2. **Synthesis**: For clusters of 2 or more overlapping memories, the system invokes DeepSeek Flash (`DEEPSEEK_FLASH_MODEL` from `core.config`) using `instructor` to guarantee a structured Pydantic schema response.
 3. **Canonical Record Creation**: A single canonical consolidated memory is inserted with `status='ACTIVE'`, `relationship_type='UPDATE'`, and `parent_id` pointing to the primary parent.
 4. **Supersedence**: The original memories in the cluster are updated to `status='SUPERSEDED'`, maintaining reference links while removing them from the active analysis hot path.
 

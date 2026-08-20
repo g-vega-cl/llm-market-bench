@@ -704,7 +704,7 @@ async def consolidate_overlapping_memories(similarity_threshold: float = 0.85):
         from pydantic import BaseModel, Field
 
         from analysis.consensus import cosine_similarity
-        from core.config import DEEPSEEK_MODEL
+        from core.config import DEEPSEEK_FLASH_MODEL
         from core.llm import get_deepseek_client
         from core.llm.prompt_factory import PromptFactory
 
@@ -796,9 +796,9 @@ async def consolidate_overlapping_memories(similarity_threshold: float = 0.85):
                 provider="deepseek", overlapping_memories=overlapping_text
             )
 
-            # Call DeepSeek (via config.DEEPSEEK_MODEL) via instructor
+            # Call DeepSeek (via config.DEEPSEEK_FLASH_MODEL) via instructor
             resp_awaitable = deepseek.chat.completions.create(
-                model=DEEPSEEK_MODEL, response_model=ConsolidationResponse, messages=messages
+                model=DEEPSEEK_FLASH_MODEL, response_model=ConsolidationResponse, messages=messages
             )
 
             if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):

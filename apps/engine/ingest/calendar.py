@@ -9,7 +9,7 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup
 
-from core.config import DEEPSEEK_MODEL, logger
+from core.config import DEEPSEEK_FLASH_MODEL, logger
 from core.db import get_supabase_client
 from core.llm.clients import get_deepseek_client
 from core.models import DecisionsResponse
@@ -146,7 +146,7 @@ class CalendarPipeline:
 
         try:
             res = await self.client.chat.completions.create(
-                model=DEEPSEEK_MODEL,
+                model=DEEPSEEK_FLASH_MODEL,
                 response_model=DecisionsResponse,
                 messages=[
                     {

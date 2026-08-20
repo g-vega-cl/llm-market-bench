@@ -47,11 +47,11 @@ async def verify_trading_decision(
     model_name = decision.model_name or "gpt-4o"
 
     # --- Specialized Agent Model Mapping ---
-    from core.config import ANTHROPIC_MODEL, DEEPSEEK_MODEL
+    from core.config import ANTHROPIC_MODEL, DEEPSEEK_FLASH_MODEL
 
     AGENT_MODEL_MAPPING = {
         "post_mortem_agent": ANTHROPIC_MODEL,
-        "deepseek_reasoner": DEEPSEEK_MODEL,
+        "deepseek_reasoner": DEEPSEEK_FLASH_MODEL,
     }
 
     AGENT_PROVIDER_MAPPING = {
@@ -62,6 +62,9 @@ async def verify_trading_decision(
     if model_name in AGENT_MODEL_MAPPING:
         provider = AGENT_PROVIDER_MAPPING[model_name]
         model_name = AGENT_MODEL_MAPPING[model_name]
+    elif provider == "deepseek" or "deepseek" in model_name.lower():
+        provider = "deepseek"
+        model_name = DEEPSEEK_FLASH_MODEL
 
     factory = clients.CLIENT_FACTORIES.get(provider)
     if not factory:

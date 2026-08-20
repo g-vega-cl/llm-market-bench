@@ -110,7 +110,6 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: free APIs to the LLMs chat?
 - [ ] - Benchify, time to add your own portfolio? What about your agents portfolio?
 - [ ] - Benchify: What about making a benchmark for day trading/investing?
-- [ ] - Benchify: let winners run? cut losers concept?
 - [ ] - Statistically, in X regime, indicated by X indicator. What percentage of X timeframe candles are X% up vs X% down vs not reaching that %? And can that be made a strategy?
 
 Feels like I have done that before to no avail
@@ -123,8 +122,6 @@ Feels like I have done that before to no avail
 - [ ] - Chart based on candle volatility not time - RENKO
 - [ ] - Single company focused llm
 - [ ] - Look for statistical analysis for markets
-- [x] - Predict daily S&P or whichever move, either up or down.
-- [x] - Add more LLMs to sector researcher.
 - [ ] - backtest sector researcher.
 - [ ] - What about a "visual" screenshot of charts and ask for candlestick/trading patterns?
 - [ ] - Benchify: move all newsletters to dedicated email

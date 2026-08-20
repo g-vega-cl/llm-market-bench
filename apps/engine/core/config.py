@@ -165,8 +165,8 @@ MINIMAX_ANTHROPIC_BASE_URL = os.getenv("MINIMAX_ANTHROPIC_BASE_URL", "https://ap
 
 # --- Auto-Research Configuration ---
 # Model used for the weekly meta-evaluation (prompt improvement).
-# Defaults to DeepSeek; override via AUTORESEARCH_MODEL env var.
-AUTORESEARCH_MODEL = os.getenv("AUTORESEARCH_MODEL", DEEPSEEK_MODEL)
+# Defaults to DeepSeek Flash; override via AUTORESEARCH_MODEL env var.
+AUTORESEARCH_MODEL = os.getenv("AUTORESEARCH_MODEL", DEEPSEEK_FLASH_MODEL)
 
 # Which agent portfolios receive auto-researched prompts (experiment group).
 # The remaining agents use the hardcoded baseline prompt (control group).
@@ -180,7 +180,7 @@ AUTORESEARCH_TRACK_MODELS = dict(
     _models.get(
         "AUTORESEARCH_TRACK_MODELS",
         {
-            "track_default": DEEPSEEK_MODEL,
+            "track_default": DEEPSEEK_FLASH_MODEL,
             "track_claude": DEEPSEEK_FLASH_MODEL,
             "track_openai": MINIMAX_MODEL,
         },

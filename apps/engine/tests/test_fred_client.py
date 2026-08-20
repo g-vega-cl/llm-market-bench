@@ -1,5 +1,4 @@
-"""Tests for the FRED API macroeconomic client and Supabase caching layer."""
-
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -53,7 +52,7 @@ async def test_fetch_fred_series_cache_hit():
             "latest_date": "2026-07-01",
             "latest_value": 5.25,
             "observations": [{"date": "2026-07-01", "value": 5.25}],
-            "fetched_at": "2026-08-19T10:00:00Z",
+            "fetched_at": datetime.now(UTC).isoformat(),
         }
     ]
 

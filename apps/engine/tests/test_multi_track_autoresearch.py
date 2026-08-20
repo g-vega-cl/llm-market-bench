@@ -208,7 +208,7 @@ async def test_runner_run_all_executes_all_tracks():
 async def test_track_models_config():
     """Verify AUTORESEARCH_TRACK_MODELS maps tracks to their respective meta-researcher models."""
     assert hasattr(config, "AUTORESEARCH_TRACK_MODELS")
-    assert config.AUTORESEARCH_TRACK_MODELS.get("track_default") == "deepseek-v4-pro"
+    assert config.AUTORESEARCH_TRACK_MODELS.get("track_default") == "deepseek-v4-flash"
     assert config.AUTORESEARCH_TRACK_MODELS.get("track_claude") == "deepseek-v4-flash"
     assert config.AUTORESEARCH_TRACK_MODELS.get("track_openai") == "MiniMax-M3"
 
@@ -250,10 +250,10 @@ async def test_run_research_uses_track_specific_model():
         assert res_openai is not None
         assert mock_mm_completion.call_args.kwargs.get("model") == "MiniMax-M3"
 
-        # 3. Test track_default (should resolve to deepseek-v4-pro)
+        # 3. Test track_default (should resolve to deepseek-v4-flash)
         res_default = await researcher.run_research(report="Report", track_id="track_default")
         assert res_default is not None
-        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-pro"
+        assert mock_ds_completion.call_args.kwargs.get("model") == "deepseek-v4-flash"
 
 
 @pytest.mark.asyncio

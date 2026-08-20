@@ -38,7 +38,7 @@ The `run_cleanup()` function in `apps/engine/core/cleanup.py` connects to Supaba
    - **Action**: Integrates memory decay on each cleanup run, applying adaptive multipliers to `MARKET_EVENT` (decreased by 50%) and `GOVERNMENT_INCENTIVE` (decreased by 25%), while completely protecting core strategic insights like `LESSON_LEARNED` and `UNCROWDED_TRADE` (0% decay).
 6. **Memory Consolidation ("Sleep" Cycle)**:
    - **Retention**: Ongoing consolidation of active entries.
-   - **Action**: Caps active memories retrieval to the 500 most recent records (for $O(N^2)$ scaling safety), groups entries with cosine similarity `>= 0.85` using a DFS adjacency graph, synthesizes clusters using instructor-wrapped DeepSeek (`DEEPSEEK_MODEL` from `core.config`), inserts the single canonical consolidated record as `ACTIVE`, and updates the parent records to `SUPERSEDED`.
+   - **Action**: Caps active memories retrieval to the 500 most recent records (for $O(N^2)$ scaling safety), groups entries with cosine similarity `>= 0.85` using a DFS adjacency graph, synthesizes clusters using instructor-wrapped DeepSeek Flash (`DEEPSEEK_FLASH_MODEL` from `core.config`), inserts the single canonical consolidated record as `ACTIVE`, and updates the parent records to `SUPERSEDED`.
 
 ## Usage
 

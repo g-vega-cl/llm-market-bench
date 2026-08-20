@@ -32,7 +32,7 @@
     "deepseek-v4-flash"
   ],
   "AUTORESEARCH_TRACK_MODELS": {
-    "track_default": "deepseek-v4-pro",
+    "track_default": "deepseek-v4-flash",
     "track_claude": "deepseek-v4-flash",
     "track_openai": "MiniMax-M3"
   }

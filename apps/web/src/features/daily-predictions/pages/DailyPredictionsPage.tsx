@@ -149,8 +149,28 @@ function DailyMetricsOverview({
                     border: '1px solid #e2e8f0',
                 }}
             >
-                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>
-                    Active Prompt Variant
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    }}
+                >
+                    <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>
+                        Active Prompt Variant
+                    </span>
+                    <span
+                        style={{
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: '#dcfce7',
+                            color: '#15803d',
+                        }}
+                    >
+                        🟢 ACTIVE
+                    </span>
                 </div>
                 <div
                     style={{
@@ -158,6 +178,7 @@ function DailyMetricsOverview({
                         fontWeight: '700',
                         color: '#2563eb',
                         marginTop: '8px',
+                        wordBreak: 'break-all',
                     }}
                 >
                     {activePromptTag}
@@ -708,11 +729,53 @@ const PREDICTOR_MODELS: ModelConfig[] = [
 
 interface AutoresearchMilestonesProps {
     experiments: PromptExperiment[];
+    allExperiments?: PromptExperiment[];
 }
 
-function computeExperimentMilestones(experiments: PromptExperiment[]) {
-    const activeExp = experiments.find((e) => e.status === 'active') || experiments[0] || null;
-    const activeScore = activeExp?.metrics?.score ?? null;
+function resolveActiveDailyPrompt(
+    modelExperiments: PromptExperiment[],
+    allExperiments: PromptExperiment[] = [],
+): { activePrompt: PromptExperiment | null; isFallback: boolean; isBaselineAnchor: boolean } {
+    // 1. Model-specific track active prompt
+    const trackActive = modelExperiments.find((e) => e.status === 'active');
+    if (trackActive) {
+        return { activePrompt: trackActive, isFallback: false, isBaselineAnchor: false };
+    }
+
+    // 2. Global active prompt across tracks (e.g. shared arena fallback)
+    const globalActive = allExperiments.find((e) => e.status === 'active');
+    if (globalActive) {
+        return { activePrompt: globalActive, isFallback: true, isBaselineAnchor: false };
+    }
+
+    // 3. Fall back to best baseline prompt in model track
+    const trackBaseline = modelExperiments.find((e) => e.status === 'baseline');
+    if (trackBaseline) {
+        return { activePrompt: trackBaseline, isFallback: false, isBaselineAnchor: true };
+    }
+
+    // 4. Fall back to global baseline prompt
+    const globalBaseline = allExperiments.find((e) => e.status === 'baseline');
+    if (globalBaseline) {
+        return { activePrompt: globalBaseline, isFallback: true, isBaselineAnchor: true };
+    }
+
+    return {
+        activePrompt: modelExperiments[0] || allExperiments[0] || null,
+        isFallback: false,
+        isBaselineAnchor: false,
+    };
+}
+
+function computeExperimentMilestones(
+    experiments: PromptExperiment[],
+    allExperiments: PromptExperiment[] = [],
+) {
+    const { activePrompt, isFallback, isBaselineAnchor } = resolveActiveDailyPrompt(
+        experiments,
+        allExperiments,
+    );
+    const activeScore = activePrompt?.metrics?.score ?? null;
 
     let bestBaselineScore: number | null = null;
     for (const exp of experiments) {
@@ -722,14 +785,21 @@ function computeExperimentMilestones(experiments: PromptExperiment[]) {
         }
     }
 
-    const parentExp = experiments.find((e) => e.variant_tag === activeExp?.parent_tag);
+    const parentExp = experiments.find((e) => e.variant_tag === activePrompt?.parent_tag);
     const parentScore = parentExp?.metrics?.score ?? null;
     const delta =
         activeScore !== null && parentScore !== null
             ? Number(activeScore) - Number(parentScore)
             : null;
 
-    return { activeExp, activeScore, bestBaselineScore, delta };
+    return {
+        activeExp: activePrompt,
+        activeScore,
+        bestBaselineScore,
+        delta,
+        isFallback,
+        isBaselineAnchor,
+    };
 }
 
 interface MilestoneCardProps {
@@ -785,9 +855,37 @@ function getDeltaColor(delta: number | null): string {
     return '#0f172a';
 }
 
-function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps) {
-    const { activeExp, activeScore, bestBaselineScore, delta } =
-        computeExperimentMilestones(experiments);
+function getActiveBadge(status?: string) {
+    if (status === 'active') {
+        return { text: '🟢 ACTIVE', bg: '#dcfce7', color: '#15803d' };
+    }
+    if (status === 'baseline') {
+        return { text: '🏆 BASELINE', bg: '#ede9fe', color: '#6b21a8' };
+    }
+    return {
+        text: `📦 ${status?.toUpperCase() || 'BASELINE'}`,
+        bg: '#f1f5f9',
+        color: '#475569',
+    };
+}
+
+function getMilestoneSubtitle(
+    isFallback: boolean,
+    isBaselineAnchor: boolean,
+    status?: string,
+): string {
+    if (isFallback) return 'Track mutation discarded; relying on arena active fallback';
+    if (isBaselineAnchor) return 'Ratchet-reverted to all-time benchmark';
+    if (status === 'active') return 'Live mutated strategy undergoing evaluation';
+    return `Status: ${status || 'baseline'}`;
+}
+
+function AutoresearchMilestoneCards({
+    experiments,
+    allExperiments = [],
+}: AutoresearchMilestonesProps) {
+    const { activeExp, activeScore, bestBaselineScore, delta, isFallback, isBaselineAnchor } =
+        computeExperimentMilestones(experiments, allExperiments);
 
     const deltaColor = getDeltaColor(delta);
     const deltaText = formatDeltaText(delta);
@@ -796,10 +894,10 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
     const activeScoreColor = isScorePositive ? '#16a34a' : '#0f172a';
     const activeScoreDisplay = activeScore !== null ? Number(activeScore).toFixed(2) : 'N/A';
     const bestBaselineDisplay = bestBaselineScore !== null ? bestBaselineScore.toFixed(2) : 'N/A';
-    const statusSubtitle =
-        activeExp?.status === 'active'
-            ? 'Active mutation undergoing evaluation'
-            : `Status: ${activeExp?.status || 'baseline'}`;
+
+    const activeTagDisplay = activeExp?.variant_tag || 'daily-pred-baseline';
+    const activeBadge = getActiveBadge(activeExp?.status);
+    const activeSubtitle = getMilestoneSubtitle(isFallback, isBaselineAnchor, activeExp?.status);
 
     return (
         <div
@@ -810,6 +908,43 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
                 marginBottom: '24px',
             }}
         >
+            <MilestoneCard
+                title="Current Active Prompt"
+                value={
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flexWrap: 'wrap',
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: '15px',
+                                fontWeight: '700',
+                                color: '#2563eb',
+                                wordBreak: 'break-all',
+                            }}
+                        >
+                            {activeTagDisplay}
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: activeBadge.bg,
+                                color: activeBadge.color,
+                            }}
+                        >
+                            {activeBadge.text}
+                        </span>
+                    </div>
+                }
+                subtitle={activeSubtitle}
+            />
             <MilestoneCard
                 title="Active Ratchet Score"
                 value={activeScoreDisplay}
@@ -825,7 +960,7 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
             <MilestoneCard
                 title="Score Progression"
                 value={deltaText}
-                subtitle={statusSubtitle}
+                subtitle={activeSubtitle}
                 valueColor={deltaColor}
                 fontSize="24px"
             />
@@ -841,16 +976,33 @@ function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps
 interface VariantSidebarItemProps {
     exp: PromptExperiment;
     isSelected: boolean;
+    isActiveVariant?: boolean;
     onSelect: () => void;
 }
 
-function VariantSidebarItem({ exp, isSelected, onSelect }: VariantSidebarItemProps) {
+function getSidebarStatusBadge(status: string) {
+    if (status === 'active') return { bg: '#dcfce7', color: '#15803d', label: '🟢 ACTIVE' };
+    if (status === 'baseline') return { bg: '#ede9fe', color: '#6b21a8', label: '🏆 BASELINE' };
+    if (status === 'discarded') return { bg: '#fee2e2', color: '#b91c1c', label: '❌ DISCARDED' };
+    return { bg: '#f1f5f9', color: '#475569', label: '📦 SAVED' };
+}
+
+function VariantSidebarItem({
+    exp,
+    isSelected,
+    isActiveVariant,
+    onSelect,
+}: VariantSidebarItemProps) {
     const score = exp.metrics?.score;
     const isScorePositive = typeof score === 'number' && score > 0;
-    const statusBg =
-        exp.status === 'active' ? '#dbeafe' : exp.status === 'baseline' ? '#ede9fe' : '#f1f5f9';
-    const statusColor =
-        exp.status === 'active' ? '#1e40af' : exp.status === 'baseline' ? '#6b21a8' : '#475569';
+    const statusBadge = getSidebarStatusBadge(exp.status);
+
+    const borderStyle = isSelected
+        ? '2px solid #3b82f6'
+        : isActiveVariant
+          ? '2px solid #22c55e'
+          : '1px solid #e2e8f0';
+    const bgStyle = isSelected ? '#eff6ff' : isActiveVariant ? '#f0fdf4' : '#ffffff';
 
     return (
         <button
@@ -859,8 +1011,8 @@ function VariantSidebarItem({ exp, isSelected, onSelect }: VariantSidebarItemPro
             style={{
                 padding: '12px',
                 borderRadius: '8px',
-                border: isSelected ? '1px solid #3b82f6' : '1px solid #e2e8f0',
-                background: isSelected ? '#eff6ff' : '#ffffff',
+                border: borderStyle,
+                background: bgStyle,
                 textAlign: 'left',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
@@ -912,12 +1064,12 @@ function VariantSidebarItem({ exp, isSelected, onSelect }: VariantSidebarItemPro
                         padding: '2px 6px',
                         borderRadius: '4px',
                         fontSize: '11px',
-                        fontWeight: '600',
-                        background: statusBg,
-                        color: statusColor,
+                        fontWeight: '700',
+                        background: statusBadge.bg,
+                        color: statusBadge.color,
                     }}
                 >
-                    {exp.status.toUpperCase()}
+                    {statusBadge.label}
                 </span>
                 <span
                     style={{
@@ -933,13 +1085,108 @@ function VariantSidebarItem({ exp, isSelected, onSelect }: VariantSidebarItemPro
     );
 }
 
+function SelectedVariantHeader({
+    experiment,
+    isActiveVariant,
+}: {
+    experiment: PromptExperiment;
+    isActiveVariant: boolean;
+}) {
+    const statusBadge = getSidebarStatusBadge(experiment.status);
+
+    return (
+        <div>
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    marginBottom: '8px',
+                }}
+            >
+                <h3
+                    style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: '#0f172a',
+                        margin: 0,
+                    }}
+                >
+                    {experiment.variant_tag}
+                </h3>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {isActiveVariant && (
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                background: '#dcfce7',
+                                color: '#15803d',
+                            }}
+                        >
+                            🟢 CURRENT ACTIVE
+                        </span>
+                    )}
+                    <span
+                        style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            background: statusBadge.bg,
+                            color: statusBadge.color,
+                        }}
+                    >
+                        {statusBadge.label}
+                    </span>
+                </div>
+            </div>
+
+            <div
+                style={{
+                    display: 'flex',
+                    gap: '16px',
+                    fontSize: '13px',
+                    color: '#64748b',
+                    flexWrap: 'wrap',
+                    marginTop: '8px',
+                }}
+            >
+                <div>
+                    <strong>Score:</strong>{' '}
+                    {experiment.metrics?.score !== undefined
+                        ? Number(experiment.metrics.score).toFixed(2)
+                        : 'Pending'}
+                </div>
+                {experiment.parent_tag && (
+                    <div>
+                        <strong>Parent Variant:</strong> <code>{experiment.parent_tag}</code>
+                    </div>
+                )}
+                {experiment.week_start && (
+                    <div>
+                        <strong>Period:</strong> {experiment.week_start}
+                        {experiment.week_end ? ` → ${experiment.week_end}` : ''}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function AutoresearchHistoryArena({
     experiments,
     selectedExpId,
+    activePromptTag,
     onSelectExp,
 }: {
     experiments: PromptExperiment[];
     selectedExpId: string | null;
+    activePromptTag?: string | null;
     onSelectExp: (id: string) => void;
 }) {
     const selectedExperiment =
@@ -973,17 +1220,48 @@ function AutoresearchHistoryArena({
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
         >
-            <h2
+            <div
                 style={{
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    color: '#0f172a',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px',
                     marginBottom: '16px',
-                    margin: 0,
                 }}
             >
-                Autoresearch Prompt Lineage & Benchmarks
-            </h2>
+                <h2
+                    style={{
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        color: '#0f172a',
+                        margin: 0,
+                    }}
+                >
+                    Autoresearch Prompt Lineage & Benchmarks
+                </h2>
+                {activePromptTag && (
+                    <div
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            color: '#15803d',
+                            fontWeight: '600',
+                        }}
+                    >
+                        <span>🟢 Active Runtime:</span>
+                        <code style={{ fontFamily: 'monospace', fontWeight: '700' }}>
+                            {activePromptTag}
+                        </code>
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 mt-4">
                 {/* Variant List Sidebar */}
@@ -1006,6 +1284,7 @@ function AutoresearchHistoryArena({
                                 key={exp.id}
                                 exp={exp}
                                 isSelected={exp.id === selectedExperiment?.id}
+                                isActiveVariant={exp.variant_tag === activePromptTag}
                                 onSelect={() => onSelectExp(exp.id)}
                             />
                         ))}
@@ -1015,85 +1294,10 @@ function AutoresearchHistoryArena({
                 {/* Variant Details & Prompt Inspector */}
                 {selectedExperiment && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    flexWrap: 'wrap',
-                                    gap: '8px',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                <h3
-                                    style={{
-                                        fontSize: '16px',
-                                        fontWeight: '700',
-                                        color: '#0f172a',
-                                        margin: 0,
-                                    }}
-                                >
-                                    {selectedExperiment.variant_tag}
-                                </h3>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <span
-                                        style={{
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            fontSize: '12px',
-                                            fontWeight: '700',
-                                            background:
-                                                selectedExperiment.status === 'active'
-                                                    ? '#dbeafe'
-                                                    : selectedExperiment.status === 'baseline'
-                                                      ? '#ede9fe'
-                                                      : '#f1f5f9',
-                                            color:
-                                                selectedExperiment.status === 'active'
-                                                    ? '#1e40af'
-                                                    : selectedExperiment.status === 'baseline'
-                                                      ? '#6b21a8'
-                                                      : '#475569',
-                                        }}
-                                    >
-                                        {selectedExperiment.status.toUpperCase()}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    gap: '16px',
-                                    fontSize: '13px',
-                                    color: '#64748b',
-                                    flexWrap: 'wrap',
-                                    marginTop: '8px',
-                                }}
-                            >
-                                <div>
-                                    <strong>Score:</strong>{' '}
-                                    {selectedExperiment.metrics?.score !== undefined
-                                        ? Number(selectedExperiment.metrics.score).toFixed(2)
-                                        : 'Pending'}
-                                </div>
-                                {selectedExperiment.parent_tag && (
-                                    <div>
-                                        <strong>Parent Variant:</strong>{' '}
-                                        <code>{selectedExperiment.parent_tag}</code>
-                                    </div>
-                                )}
-                                {selectedExperiment.week_start && (
-                                    <div>
-                                        <strong>Period:</strong> {selectedExperiment.week_start}
-                                        {selectedExperiment.week_end
-                                            ? ` → ${selectedExperiment.week_end}`
-                                            : ''}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <SelectedVariantHeader
+                            experiment={selectedExperiment}
+                            isActiveVariant={selectedExperiment.variant_tag === activePromptTag}
+                        />
 
                         {selectedExperiment.change_description && (
                             <div
@@ -1167,12 +1371,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
     const { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier } =
         computeDailyPredictionStats(modelPredictions);
 
-    const activePrompt =
-        modelExperiments.find((e) => e.status === 'active') ||
-        modelExperiments[0] ||
-        promptExperiments.find((e) => e.status === 'active') ||
-        promptExperiments[0] ||
-        null;
+    const { activePrompt } = resolveActiveDailyPrompt(modelExperiments, promptExperiments);
 
     return (
         <div
@@ -1337,10 +1536,14 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
                 </>
             ) : (
                 <>
-                    <AutoresearchMilestoneCards experiments={modelExperiments} />
+                    <AutoresearchMilestoneCards
+                        experiments={modelExperiments}
+                        allExperiments={promptExperiments}
+                    />
                     <AutoresearchHistoryArena
                         experiments={modelExperiments}
                         selectedExpId={selectedExpId}
+                        activePromptTag={activePrompt?.variant_tag}
                         onSelectExp={(id) => setSelectedExpId(id)}
                     />
                 </>

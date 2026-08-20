@@ -263,7 +263,8 @@ describe('DailyPredictionsPage', () => {
         fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
 
         const lineageHeading = screen.getByText('Autoresearch Prompt Lineage & Benchmarks');
-        const gridContainer = lineageHeading.nextElementSibling as HTMLElement;
+        const gridContainer = (lineageHeading.parentElement?.nextElementSibling ||
+            lineageHeading.nextElementSibling) as HTMLElement;
         expect(gridContainer).not.toBeNull();
         expect(gridContainer.className).toContain('grid-cols-1');
         expect(gridContainer.className).toContain('lg:grid-cols-[minmax(280px,340px)_1fr]');
@@ -273,5 +274,79 @@ describe('DailyPredictionsPage', () => {
         expect(sidebar.className).toContain('border-b');
         expect(sidebar.className).toContain('lg:border-b-0');
         expect(sidebar.className).toContain('lg:border-r');
+    });
+
+    it('correctly handles discarded track mutations and displays active fallback prompt with explicit status icons', () => {
+        const discardedAndFallbackExperiments: PromptExperiment[] = [
+            {
+                id: 'exp-discarded-1',
+                prompt_name: 'DAILY_PREDICTOR_PROMPT',
+                variant_tag: 'daily-pred-deepseek-v4-flash-3c78dc15',
+                experiment_type: 'incremental',
+                prompt_content: 'Discarded strategy for deepseek.',
+                change_description: 'Failed ratchet score.',
+                metrics: { score: 64.84 },
+                status: 'discarded',
+                week_start: '2026-08-19',
+                week_end: '2026-08-26',
+                created_at: '2026-08-19T22:01:48Z',
+                parent_tag: 'daily-pred-f90bec3b',
+                research_output: null,
+                is_backtest: false,
+                track_id: 'deepseek-v4-flash',
+            },
+            {
+                id: 'exp-baseline-1',
+                prompt_name: 'DAILY_PREDICTOR_PROMPT',
+                variant_tag: 'daily-pred-f90bec3b',
+                experiment_type: 'baseline',
+                prompt_content: 'All-time best baseline prompt.',
+                change_description: 'All-time high performance.',
+                metrics: { score: 91.73 },
+                status: 'baseline',
+                week_start: '2026-08-12',
+                week_end: '2026-08-19',
+                created_at: '2026-08-12T22:01:37Z',
+                parent_tag: null,
+                research_output: null,
+                is_backtest: false,
+                track_id: 'track_default',
+            },
+            {
+                id: 'exp-active-fallback',
+                prompt_name: 'DAILY_PREDICTOR_PROMPT',
+                variant_tag: 'daily-pred-MiniMax-M3-8dd2e664',
+                experiment_type: 'incremental',
+                prompt_content: 'Active fallback prompt.',
+                change_description: 'Active on MiniMax track.',
+                metrics: {},
+                status: 'active',
+                week_start: '2026-08-19',
+                week_end: '2026-08-26',
+                created_at: '2026-08-19T22:02:50Z',
+                parent_tag: 'daily-pred-a79b3908',
+                research_output: null,
+                is_backtest: false,
+                track_id: 'MiniMax-M3',
+            },
+        ];
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={discardedAndFallbackExperiments}
+            />,
+        );
+
+        // In Predictions overview, active prompt falls back to active variant instead of discarded one
+        expect(screen.getByText('daily-pred-MiniMax-M3-8dd2e664')).toBeInTheDocument();
+        expect(screen.queryByText('daily-pred-deepseek-v4-flash-3c78dc15')).not.toBeInTheDocument();
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        // Check for active prompt banner / indicator
+        expect(screen.getByText(/Current Active Prompt/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/DISCARDED/i).length).toBeGreaterThan(0);
     });
 });

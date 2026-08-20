@@ -43,7 +43,7 @@ $$
 
 ## Web UI
 
-The `/daily-predictions` page displays a metrics dashboard, a dual-view toggle between Predictions Log and Autoresearch & Benchmark History, and expandable prediction rows. The `/daily-predictions-backtest` route provides the temporal sandbox interface for browsing simulated historical prompt variants.
+The `/daily-predictions` page displays a metrics dashboard, a dual-view toggle between Predictions Log and Autoresearch & Benchmark History, and expandable prediction rows with responsive mobile-first stacked lineage browsing. The `/daily-predictions-backtest` route provides the temporal sandbox interface for browsing simulated historical prompt variants with matching responsive layout adaptation.
 
 ## Related
 

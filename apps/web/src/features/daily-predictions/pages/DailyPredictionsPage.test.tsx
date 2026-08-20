@@ -250,4 +250,28 @@ describe('DailyPredictionsPage', () => {
         ).toBeInTheDocument();
         expect(screen.getAllByText('55.00').length).toBeGreaterThanOrEqual(1);
     });
+
+    it('renders Autoresearch Prompt Lineage & Benchmarks with responsive mobile-first stacked layout classes', () => {
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={mockExperiments}
+            />,
+        );
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        const lineageHeading = screen.getByText('Autoresearch Prompt Lineage & Benchmarks');
+        const gridContainer = lineageHeading.nextElementSibling as HTMLElement;
+        expect(gridContainer).not.toBeNull();
+        expect(gridContainer.className).toContain('grid-cols-1');
+        expect(gridContainer.className).toContain('lg:grid-cols-[minmax(280px,340px)_1fr]');
+
+        const sidebar = gridContainer.firstElementChild as HTMLElement;
+        expect(sidebar).not.toBeNull();
+        expect(sidebar.className).toContain('border-b');
+        expect(sidebar.className).toContain('lg:border-b-0');
+        expect(sidebar.className).toContain('lg:border-r');
+    });
 });

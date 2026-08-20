@@ -383,15 +383,9 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                         No prompt experiments recorded in backtest database.
                     </div>
                 ) : (
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: '300px 1fr',
-                            gap: '24px',
-                        }}
-                    >
+                    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
                         {/* Variant List Sidebar */}
-                        <div style={{ borderRight: '1px solid #f1f5f9', paddingRight: '16px' }}>
+                        <div className="border-b lg:border-b-0 lg:border-r border-slate-100 pb-6 lg:pb-0 lg:pr-4">
                             <div
                                 style={{
                                     fontSize: '12px',

@@ -965,12 +965,12 @@ function AutoresearchHistoryArena({
 
     return (
         <div
+            className="p-4 sm:p-6"
             style={{
                 background: '#ffffff',
                 borderRadius: '12px',
                 border: '1px solid #e2e8f0',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                padding: '24px',
             }}
         >
             <h2
@@ -985,16 +985,9 @@ function AutoresearchHistoryArena({
                 Autoresearch Prompt Lineage & Benchmarks
             </h2>
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(280px, 340px) 1fr',
-                    gap: '24px',
-                    marginTop: '16px',
-                }}
-            >
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 mt-4">
                 {/* Variant List Sidebar */}
-                <div style={{ borderRight: '1px solid #f1f5f9', paddingRight: '16px' }}>
+                <div className="border-b lg:border-b-0 lg:border-r border-slate-100 pb-6 lg:pb-0 lg:pr-4">
                     <div
                         style={{
                             fontSize: '12px',

@@ -63,7 +63,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 ### Engine Tasks
 * **Prediction Generation (`apps/engine/tasks/sector_predictor.py`)**: Runs prediction inference across DeepSeek Flash, Gemini 3.5 Flash Lite, and GPT-5.6 Luna (via instructor proxy with `reasoning_effort="none"` for OpenAI reasoning compatibility) and MiniMax-M3 (via direct HTTP payload with an expanded 8,192 token ceiling, proactive conciseness prompt injection, `<think>` tag stripping, and resilient regex JSON extraction). Inserts predictions into `sector_predictions` table. Uses `logger.exception` across retry loops to preserve complete tracebacks for automated log audits. Scheduled weekly via `.github/workflows/sector-predictions.yml` with full provider API keys (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`).
 * **Auto-Research Evolution (`apps/engine/tasks/predictor_autoresearch.py`)**: Orchestrates the weekly prompt evolution, updates database metrics, applies the ratchet revert step, and mutates the system prompt using a hybrid async/sync completions handler to prevent runtime await crashes.
-* **Inference Evaluation (`apps/engine/tasks/evaluate_predictions.py`)**: Computes percentile performance metrics against the corresponding weekly correlation run assets.
+* **Inference Evaluation (`apps/engine/tasks/evaluate_predictions.py`)**: Computes percentile performance metrics against the corresponding weekly correlation run assets and triggers mechanical weekly rebalancing for the consensus sector long/short portfolio (`sys-sector-ls-consensus`).
 
 ### Web Front-End
 * **Route**: `apps/web/src/routes/ai-predictions/index.tsx` using `createServerFn` and TanStack Start to load both predictions and predictor experiments.
@@ -75,6 +75,7 @@ The Arena prompt evolution follows a strict feedback loop identical to the main 
 ---
 
 ## Related
+- [[concepts/system-portfolios]] — mechanical sector long/short and daily SPY portfolios
 - [[entities/autoresearch]] — the parent autonomous prompt improvement engine
 - [[entities/web-app]] — parent dashboard
 - [[entities/database]] — details about Supabase database tables

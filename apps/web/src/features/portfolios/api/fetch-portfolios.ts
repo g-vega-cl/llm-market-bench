@@ -5,10 +5,15 @@ import type {
     TradeWithReasoning,
 } from '@llm-market-bench/database';
 import { getSupabaseServerClient } from '~/lib/supabase';
-import { getActiveOwnerIds, isAutoresearchPortfolio, normalizeOwnerId } from '../lib/config';
+import {
+    getActiveOwnerIds,
+    isAutoresearchPortfolio,
+    isSystemPortfolio,
+    normalizeOwnerId,
+} from '../lib/config';
 
 export async function fetchPortfolios(): Promise<
-    (Portfolio & { is_active: boolean; is_autoresearch: boolean })[]
+    (Portfolio & { is_active: boolean; is_autoresearch: boolean; is_system: boolean })[]
 > {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
@@ -19,11 +24,15 @@ export async function fetchPortfolios(): Promise<
     if (error) throw error;
 
     const activeIds = new Set(getActiveOwnerIds());
-    return data.map((p) => ({
-        ...p,
-        is_active: activeIds.has(normalizeOwnerId(p.owner_id)),
-        is_autoresearch: isAutoresearchPortfolio(p.owner_id),
-    }));
+    return data.map((p) => {
+        const isSystem = isSystemPortfolio(p.owner_id);
+        return {
+            ...p,
+            is_active: isSystem || activeIds.has(normalizeOwnerId(p.owner_id)),
+            is_autoresearch: isAutoresearchPortfolio(p.owner_id),
+            is_system: isSystem,
+        };
+    });
 }
 
 export async function fetchPortfolioById(

@@ -41,6 +41,7 @@
 
 ## Concepts
 
+- [[concepts/system-portfolios]] — Auto-indexed page
 - [[concepts/macroeconomic-data-fred]] — Auto-indexed page
 - [[concepts/magnitude-calibration]] — Magnitude capture ratio and postmortem diagnosis for daily S&P prediction prompt evolution
 - [[concepts/deepseek-web-search]] — Live web search tool integration for DeepSeek agents with DuckDuckGo/FMP hybrid backend

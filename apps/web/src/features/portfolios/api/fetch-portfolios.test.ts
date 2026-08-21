@@ -27,6 +27,7 @@ vi.mock('../lib/config', () => ({
     isAutoresearchPortfolio: vi.fn((id) =>
         ['gemini-3.5-flash-lite', 'deepseek-v4-pro'].includes(id),
     ),
+    isSystemPortfolio: vi.fn((id) => (id ? id.startsWith('sys-') : false)),
     normalizeOwnerId: vi.fn((id) => id.toLowerCase().replace(/\s+/g, '-')),
 }));
 

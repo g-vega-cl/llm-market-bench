@@ -109,7 +109,9 @@ async def get_global_macro_context(market_data_manager) -> str:
         cache_map = {}
 
     context_lines = ["\n--- GLOBAL MACRO ENVIRONMENT (PRIOR SESSION CLOSE) ---"]
-    context_lines.append("The following indicators describe the underlying market 'regime' from the previous regular session close:")
+    context_lines.append(
+        "The following indicators describe the underlying market 'regime' from the previous regular session close:"
+    )
     if barometer_block:
         context_lines.append(barometer_block)
 

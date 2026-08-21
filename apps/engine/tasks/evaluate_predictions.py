@@ -259,6 +259,7 @@ async def run_evaluation():
     await asyncio.gather(*tasks)
 
     # Evaluate each prediction
+    evaluated_windows: dict[tuple[str, str], dict] = {}
     for p in pending:
         pred_id = p["id"]
         pred_date_str = p["prediction_date"]
@@ -370,8 +371,29 @@ async def run_evaluation():
             logger.info(
                 f"Successfully evaluated prediction {pred_id} (Sector {predicted_sec}: {sec_score:.1f}%, Worst Sector {predicted_worst_sec}: {worst_sec_score}, Pair {predicted_pair}: {pair_score:.1f}%, Brier: {brier_score:.4f}, SPY diff: {sector_sp_diff})"
             )
+            # Group predictions for system sector portfolio rebalance
+            window_key = (pred_date_str, target_date.isoformat())
+            if window_key not in evaluated_windows:
+                evaluated_windows[window_key] = {"predictions": [], "price_map": {}}
+            evaluated_windows[window_key]["predictions"].append(p)
+            evaluated_windows[window_key]["price_map"].update(ticker_prices)
         except Exception as e:
             logger.exception(f"Failed to update prediction {pred_id} in database: {e}")
+
+    # Trigger systematic sector long/short portfolio rebalance for evaluated windows
+    if evaluated_windows:
+        try:
+            from execution.system_portfolios import execute_system_sector_rebalance
+
+            for (w_start, w_end), w_data in evaluated_windows.items():
+                await execute_system_sector_rebalance(
+                    week_start_date=w_start,
+                    week_end_date=w_end,
+                    predictions=w_data["predictions"],
+                    price_map=w_data["price_map"],
+                )
+        except Exception as e:
+            logger.exception(f"Failed to execute system sector rebalance: {e}")
 
 
 if __name__ == "__main__":

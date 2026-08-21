@@ -152,6 +152,17 @@ describe('Portfolio Config Utils', () => {
             expect(configModule.hasVerifier('')).toBe(false);
         });
     });
+
+    describe('isSystemPortfolio', () => {
+        it('identifies system portfolios correctly', () => {
+            expect(configModule.isSystemPortfolio('sys-sector-ls-consensus')).toBe(true);
+            expect(configModule.isSystemPortfolio('SYS-DAILY-SPY-DEEPSEEK')).toBe(true);
+            expect(configModule.isSystemPortfolio('sys_daily_spy_minimax')).toBe(true);
+            expect(configModule.isSystemPortfolio('gpt-5.4-nano')).toBe(false);
+            expect(configModule.isSystemPortfolio(null)).toBe(false);
+            expect(configModule.isSystemPortfolio('')).toBe(false);
+        });
+    });
 });
 
 describe('Portfolio Config Utils Error Handling', () => {

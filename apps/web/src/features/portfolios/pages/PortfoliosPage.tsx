@@ -14,10 +14,14 @@ import * as React from 'react';
 import type { BenchmarkDataPoint, PortfolioPerformanceItem } from '../api/fetch-portfolios';
 import { BenchmarkSelector } from '../components/BenchmarkSelector';
 import { PortfolioComparisonChart } from '../components/PortfolioComparisonChart';
-import { getPortfolioTrack, hasVerifier } from '../lib/config';
+import { getPortfolioTrack, hasVerifier, isSystemPortfolio } from '../lib/config';
 import { portfolioQueries } from '../queries/options';
 
-type PortfolioWithActive = Portfolio & { is_active: boolean; is_autoresearch: boolean };
+type PortfolioWithActive = Portfolio & {
+    is_active: boolean;
+    is_autoresearch: boolean;
+    is_system?: boolean;
+};
 
 interface PortfoliosPageProps {
     initialData: PortfolioWithActive[];
@@ -38,6 +42,7 @@ function PortfolioCard({
     deprecated?: boolean;
 }) {
     const track = getPortfolioTrack(portfolio.owner_id);
+    const isSystem = portfolio.is_system ?? isSystemPortfolio(portfolio.owner_id);
 
     return (
         <Link
@@ -71,6 +76,11 @@ function PortfolioCard({
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-4">
+                    {isSystem && !deprecated && (
+                        <Badge variant="glass" size="xs" colorScheme="warning" showDot>
+                            System
+                        </Badge>
+                    )}
                     {portfolio.is_autoresearch && !deprecated && (
                         <Badge variant="glass" size="xs" colorScheme="info" showDot>
                             Auto-Research
@@ -81,7 +91,7 @@ function PortfolioCard({
                             Track: {track.trackLabel}
                         </Badge>
                     )}
-                    {!hasVerifier(portfolio.owner_id) && !deprecated && (
+                    {!isSystem && !hasVerifier(portfolio.owner_id) && !deprecated && (
                         <Badge variant="glass" size="xs" colorScheme="warning">
                             No Verifier
                         </Badge>

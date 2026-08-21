@@ -37,6 +37,14 @@ export function getActiveOwnerIds(): string[] {
     }
 }
 
+/**
+ * Returns true if an owner ID represents a mechanical/system portfolio (starts with 'sys-').
+ */
+export function isSystemPortfolio(ownerId: string | null): boolean {
+    if (!ownerId) return false;
+    return normalizeOwnerId(ownerId).startsWith('sys-');
+}
+
 let cachedAutoresearchOwnerIds: string[] | null = null;
 
 function addOwnerIds(set: Set<string>, ids: unknown) {

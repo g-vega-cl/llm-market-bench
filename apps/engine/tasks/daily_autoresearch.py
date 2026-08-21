@@ -353,9 +353,9 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
     week_end = today + timedelta(days=7)
 
     # Demote all existing active variants for this model track to saved
-    client.table("prompt_experiments").update({"status": "saved"}).eq(
-        "prompt_name", "DAILY_PREDICTOR_PROMPT"
-    ).eq("track_id", model_name).eq("status", "active").execute()
+    client.table("prompt_experiments").update({"status": "saved"}).eq("prompt_name", "DAILY_PREDICTOR_PROMPT").eq(
+        "track_id", model_name
+    ).eq("status", "active").execute()
 
     client.table("prompt_experiments").insert(
         {

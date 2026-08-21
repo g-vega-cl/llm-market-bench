@@ -334,4 +334,3 @@ async def test_fetch_active_daily_prompt_model_track_isolation():
         assert tag == "daily-pred-seeded-deepseek-v4-flash"
         assert mock_seed.called
         mock_seed.assert_called_once_with(model_name="deepseek-v4-flash")
-

@@ -20,6 +20,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close via FMP `MarketDataManager` (skips evaluation if target date hasn't closed yet).
    - Calculates **Directional Accuracy** (`is_correct`), **Intraday Target Hit Rate** (`intraday_hit`), **Intraday Direction Hit Rate** (`intraday_direction_hit`), and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
    - `intraday_hit` evaluates whether the stock reached or surpassed the predicted target return percentage (`expected_return_pct`) at any point between Open and Close (e.g. hitting +0.35% intraday high even if it closed at -0.20%).
+   - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for each model's systematic portfolio (`sys-daily-spy-{model_name}`), logging trade records and updating portfolio equity/performance snapshots based on profit target hits or 3:30 PM time-based exits.
 
 3. **Twice-Weekly Prompt Evolution & Performance Ratchet (Sun & Wed 6:00 PM ET)**:
    - Command: `python main.py daily-autoresearch`
@@ -60,6 +61,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 
 ## Related
 
+- [[concepts/system-portfolios]] — mechanical sector long/short and daily SPY portfolios
 - [[entities/sector-predictor-arena]] — Sector predictor arena comparison
 - [[entities/autoresearch]] — Portfolio auto-research subsystem
 - [[entities/database]] — Core database schema and prompt tracking tables

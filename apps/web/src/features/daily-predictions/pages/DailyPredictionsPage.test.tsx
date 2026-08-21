@@ -276,8 +276,8 @@ describe('DailyPredictionsPage', () => {
         expect(sidebar.className).toContain('lg:border-r');
     });
 
-    it('correctly handles discarded track mutations and displays active fallback prompt with explicit status icons', () => {
-        const discardedAndFallbackExperiments: PromptExperiment[] = [
+    it('maintains strict model track prompt isolation and never falls back across models', () => {
+        const isolatedModelExperiments: PromptExperiment[] = [
             {
                 id: 'exp-discarded-1',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
@@ -296,13 +296,13 @@ describe('DailyPredictionsPage', () => {
                 track_id: 'deepseek-v4-flash',
             },
             {
-                id: 'exp-baseline-1',
+                id: 'exp-deepseek-baseline',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
-                variant_tag: 'daily-pred-f90bec3b',
+                variant_tag: 'daily-pred-seeded-deepseek-v4-flash',
                 experiment_type: 'baseline',
-                prompt_content: 'All-time best baseline prompt.',
-                change_description: 'All-time high performance.',
-                metrics: { score: 91.73 },
+                prompt_content: 'Seeded baseline for deepseek.',
+                change_description: 'Initial baseline for deepseek.',
+                metrics: { score: 75.0 },
                 status: 'baseline',
                 week_start: '2026-08-12',
                 week_end: '2026-08-19',
@@ -310,15 +310,32 @@ describe('DailyPredictionsPage', () => {
                 parent_tag: null,
                 research_output: null,
                 is_backtest: false,
-                track_id: 'track_default',
+                track_id: 'deepseek-v4-flash',
             },
             {
-                id: 'exp-active-fallback',
+                id: 'exp-minimax-old-active',
+                prompt_name: 'DAILY_PREDICTOR_PROMPT',
+                variant_tag: 'daily-pred-MiniMax-M3-2a91e57c',
+                experiment_type: 'incremental',
+                prompt_content: 'Older active prompt for MiniMax.',
+                change_description: 'Older mutation for MiniMax.',
+                metrics: {},
+                status: 'active',
+                week_start: '2026-08-19',
+                week_end: '2026-08-26',
+                created_at: '2026-08-19T22:02:06Z',
+                parent_tag: 'daily-pred-a79b3908',
+                research_output: null,
+                is_backtest: false,
+                track_id: 'MiniMax-M3',
+            },
+            {
+                id: 'exp-minimax-latest-active',
                 prompt_name: 'DAILY_PREDICTOR_PROMPT',
                 variant_tag: 'daily-pred-MiniMax-M3-8dd2e664',
                 experiment_type: 'incremental',
-                prompt_content: 'Active fallback prompt.',
-                change_description: 'Active on MiniMax track.',
+                prompt_content: 'Latest active prompt for MiniMax.',
+                change_description: 'Latest mutation for MiniMax.',
                 metrics: {},
                 status: 'active',
                 week_start: '2026-08-19',
@@ -334,19 +351,25 @@ describe('DailyPredictionsPage', () => {
         render(
             <DailyPredictionsPage
                 initialPredictions={mockPredictions}
-                experiments={discardedAndFallbackExperiments}
+                experiments={isolatedModelExperiments}
             />,
         );
 
-        // In Predictions overview, active prompt falls back to active variant instead of discarded one
-        expect(screen.getByText('daily-pred-MiniMax-M3-8dd2e664')).toBeInTheDocument();
-        expect(screen.queryByText('daily-pred-deepseek-v4-flash-3c78dc15')).not.toBeInTheDocument();
+        // On DeepSeek Flash tab, active prompt must be DeepSeek's baseline and NOT MiniMax
+        expect(screen.getByText('daily-pred-seeded-deepseek-v4-flash')).toBeInTheDocument();
+        expect(screen.queryByText('daily-pred-MiniMax-M3-8dd2e664')).not.toBeInTheDocument();
 
-        // Switch to Autoresearch view
+        // Switch to MiniMax tab
+        fireEvent.click(screen.getByRole('button', { name: /MiniMax M3/i }));
+
+        // On MiniMax tab, latest active prompt is shown
+        expect(screen.getByText('daily-pred-MiniMax-M3-8dd2e664')).toBeInTheDocument();
+        expect(screen.queryByText('daily-pred-seeded-deepseek-v4-flash')).not.toBeInTheDocument();
+
+        // Switch to Autoresearch view on MiniMax tab
         fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
 
-        // Check for active prompt banner / indicator
-        expect(screen.getByText(/Current Active Prompt/i)).toBeInTheDocument();
-        expect(screen.getAllByText(/DISCARDED/i).length).toBeGreaterThan(0);
+        // Active runtime badge shows only the latest active variant
+        expect(screen.getAllByText('🟢 CURRENT ACTIVE').length).toBe(1);
     });
 });

@@ -55,7 +55,7 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
     """Fetch active DAILY_PREDICTOR_PROMPT for a specific model track from database, or bootstrap baseline."""
     client = get_supabase_client()
     try:
-        # Try track-specific query first
+        # 1. Try track-specific active prompt
         response = (
             client.table("prompt_experiments")
             .select("variant_tag, prompt_content")
@@ -70,18 +70,19 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
         if response.data:
             return response.data[0]["variant_tag"], response.data[0]["prompt_content"]
 
-        # Fallback to general active prompt if track_id not yet populated
-        general_resp = (
+        # 2. Try track-specific baseline prompt
+        baseline_resp = (
             client.table("prompt_experiments")
             .select("variant_tag, prompt_content")
             .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
-            .eq("status", "active")
+            .eq("track_id", model_name)
+            .eq("status", "baseline")
             .order("created_at", desc=True)
             .limit(1)
             .execute()
         )
-        if general_resp.data:
-            return general_resp.data[0]["variant_tag"], general_resp.data[0]["prompt_content"]
+        if baseline_resp.data:
+            return baseline_resp.data[0]["variant_tag"], baseline_resp.data[0]["prompt_content"]
 
         logger.info(f"No active DAILY_PREDICTOR_PROMPT found for {model_name}. Seeding baseline...")
         return await seed_daily_predictor_prompt(model_name=model_name)

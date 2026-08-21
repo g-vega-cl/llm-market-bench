@@ -729,52 +729,44 @@ const PREDICTOR_MODELS: ModelConfig[] = [
 
 interface AutoresearchMilestonesProps {
     experiments: PromptExperiment[];
-    allExperiments?: PromptExperiment[];
 }
 
-function resolveActiveDailyPrompt(
-    modelExperiments: PromptExperiment[],
-    allExperiments: PromptExperiment[] = [],
-): { activePrompt: PromptExperiment | null; isFallback: boolean; isBaselineAnchor: boolean } {
-    // 1. Model-specific track active prompt
-    const trackActive = modelExperiments.find((e) => e.status === 'active');
+function resolveActiveDailyPrompt(modelExperiments: PromptExperiment[]): {
+    activePrompt: PromptExperiment | null;
+    isBaselineAnchor: boolean;
+} {
+    // Sort by created_at desc so newest variants take precedence
+    const sorted = [...modelExperiments].sort((a, b) => {
+        if (!a.created_at || !b.created_at) return 0;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    // 1. Track-specific active prompt (newest active)
+    const trackActive = sorted.find((e) => e.status === 'active');
     if (trackActive) {
-        return { activePrompt: trackActive, isFallback: false, isBaselineAnchor: false };
+        return { activePrompt: trackActive, isBaselineAnchor: false };
     }
 
-    // 2. Global active prompt across tracks (e.g. shared arena fallback)
-    const globalActive = allExperiments.find((e) => e.status === 'active');
-    if (globalActive) {
-        return { activePrompt: globalActive, isFallback: true, isBaselineAnchor: false };
-    }
-
-    // 3. Fall back to best baseline prompt in model track
-    const trackBaseline = modelExperiments.find((e) => e.status === 'baseline');
+    // 2. Fall back to best baseline prompt in model track
+    const trackBaseline = sorted.find((e) => e.status === 'baseline');
     if (trackBaseline) {
-        return { activePrompt: trackBaseline, isFallback: false, isBaselineAnchor: true };
+        return { activePrompt: trackBaseline, isBaselineAnchor: true };
     }
 
-    // 4. Fall back to global baseline prompt
-    const globalBaseline = allExperiments.find((e) => e.status === 'baseline');
-    if (globalBaseline) {
-        return { activePrompt: globalBaseline, isFallback: true, isBaselineAnchor: true };
+    // 3. Fall back to model-specific saved baseline
+    const trackSaved = sorted.find((e) => e.status === 'saved');
+    if (trackSaved) {
+        return { activePrompt: trackSaved, isBaselineAnchor: true };
     }
 
     return {
-        activePrompt: modelExperiments[0] || allExperiments[0] || null,
-        isFallback: false,
+        activePrompt: sorted[0] || null,
         isBaselineAnchor: false,
     };
 }
 
-function computeExperimentMilestones(
-    experiments: PromptExperiment[],
-    allExperiments: PromptExperiment[] = [],
-) {
-    const { activePrompt, isFallback, isBaselineAnchor } = resolveActiveDailyPrompt(
-        experiments,
-        allExperiments,
-    );
+function computeExperimentMilestones(experiments: PromptExperiment[]) {
+    const { activePrompt, isBaselineAnchor } = resolveActiveDailyPrompt(experiments);
     const activeScore = activePrompt?.metrics?.score ?? null;
 
     let bestBaselineScore: number | null = null;
@@ -797,7 +789,6 @@ function computeExperimentMilestones(
         activeScore,
         bestBaselineScore,
         delta,
-        isFallback,
         isBaselineAnchor,
     };
 }
@@ -869,23 +860,15 @@ function getActiveBadge(status?: string) {
     };
 }
 
-function getMilestoneSubtitle(
-    isFallback: boolean,
-    isBaselineAnchor: boolean,
-    status?: string,
-): string {
-    if (isFallback) return 'Track mutation discarded; relying on arena active fallback';
+function getMilestoneSubtitle(isBaselineAnchor: boolean, status?: string): string {
     if (isBaselineAnchor) return 'Ratchet-reverted to all-time benchmark';
     if (status === 'active') return 'Live mutated strategy undergoing evaluation';
     return `Status: ${status || 'baseline'}`;
 }
 
-function AutoresearchMilestoneCards({
-    experiments,
-    allExperiments = [],
-}: AutoresearchMilestonesProps) {
-    const { activeExp, activeScore, bestBaselineScore, delta, isFallback, isBaselineAnchor } =
-        computeExperimentMilestones(experiments, allExperiments);
+function AutoresearchMilestoneCards({ experiments }: AutoresearchMilestonesProps) {
+    const { activeExp, activeScore, bestBaselineScore, delta, isBaselineAnchor } =
+        computeExperimentMilestones(experiments);
 
     const deltaColor = getDeltaColor(delta);
     const deltaText = formatDeltaText(delta);
@@ -897,7 +880,7 @@ function AutoresearchMilestoneCards({
 
     const activeTagDisplay = activeExp?.variant_tag || 'daily-pred-baseline';
     const activeBadge = getActiveBadge(activeExp?.status);
-    const activeSubtitle = getMilestoneSubtitle(isFallback, isBaselineAnchor, activeExp?.status);
+    const activeSubtitle = getMilestoneSubtitle(isBaselineAnchor, activeExp?.status);
 
     return (
         <div
@@ -980,8 +963,9 @@ interface VariantSidebarItemProps {
     onSelect: () => void;
 }
 
-function getSidebarStatusBadge(status: string) {
-    if (status === 'active') return { bg: '#dcfce7', color: '#15803d', label: '🟢 ACTIVE' };
+function getSidebarStatusBadge(status: string, isActiveVariant?: boolean) {
+    if (isActiveVariant) return { bg: '#dcfce7', color: '#15803d', label: '🟢 ACTIVE' };
+    if (status === 'active') return { bg: '#f1f5f9', color: '#475569', label: '📦 SAVED' };
     if (status === 'baseline') return { bg: '#ede9fe', color: '#6b21a8', label: '🏆 BASELINE' };
     if (status === 'discarded') return { bg: '#fee2e2', color: '#b91c1c', label: '❌ DISCARDED' };
     return { bg: '#f1f5f9', color: '#475569', label: '📦 SAVED' };
@@ -995,7 +979,7 @@ function VariantSidebarItem({
 }: VariantSidebarItemProps) {
     const score = exp.metrics?.score;
     const isScorePositive = typeof score === 'number' && score > 0;
-    const statusBadge = getSidebarStatusBadge(exp.status);
+    const statusBadge = getSidebarStatusBadge(exp.status, isActiveVariant);
 
     const borderStyle = isSelected
         ? '2px solid #3b82f6'
@@ -1092,7 +1076,7 @@ function SelectedVariantHeader({
     experiment: PromptExperiment;
     isActiveVariant: boolean;
 }) {
-    const statusBadge = getSidebarStatusBadge(experiment.status);
+    const statusBadge = getSidebarStatusBadge(experiment.status, isActiveVariant);
 
     return (
         <div>
@@ -1190,7 +1174,10 @@ function AutoresearchHistoryArena({
     onSelectExp: (id: string) => void;
 }) {
     const selectedExperiment =
-        experiments.find((e) => e.id === selectedExpId) || experiments[0] || null;
+        experiments.find((e) => e.id === selectedExpId) ||
+        experiments.find((e) => e.variant_tag === activePromptTag) ||
+        experiments[0] ||
+        null;
 
     if (experiments.length === 0) {
         return (
@@ -1371,7 +1358,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
     const { correctCount, totalEvaluated, accuracyPct, intradayHitPct, avgBrier } =
         computeDailyPredictionStats(modelPredictions);
 
-    const { activePrompt } = resolveActiveDailyPrompt(modelExperiments, promptExperiments);
+    const { activePrompt } = resolveActiveDailyPrompt(modelExperiments);
 
     return (
         <div
@@ -1536,10 +1523,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
                 </>
             ) : (
                 <>
-                    <AutoresearchMilestoneCards
-                        experiments={modelExperiments}
-                        allExperiments={promptExperiments}
-                    />
+                    <AutoresearchMilestoneCards experiments={modelExperiments} />
                     <AutoresearchHistoryArena
                         experiments={modelExperiments}
                         selectedExpId={selectedExpId}

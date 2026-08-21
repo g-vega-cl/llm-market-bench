@@ -262,14 +262,29 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
     )
 
     if not prompt_response.data:
-        # Fallback to un-tracked active prompt if not yet track-isolated
+        # Fallback to model track baseline
         prompt_response = (
             client.table("prompt_experiments")
             .select("*")
             .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
-            .eq("status", "active")
+            .eq("track_id", model_name)
+            .eq("status", "baseline")
             .order("created_at", desc=True)
             .limit(1)
+            .execute()
+        )
+
+    if not prompt_response.data:
+        # If no variants exist yet for this model, seed the baseline
+        from tasks.daily_predictor import seed_daily_predictor_prompt
+
+        tag, content = await seed_daily_predictor_prompt(model_name=model_name)
+        prompt_response = (
+            client.table("prompt_experiments")
+            .select("*")
+            .eq("prompt_name", "DAILY_PREDICTOR_PROMPT")
+            .eq("track_id", model_name)
+            .eq("variant_tag", tag)
             .execute()
         )
 
@@ -285,7 +300,7 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
         {"metrics": {"score": current_score, "predictions_evaluated": len(predictions)}}
     ).eq("variant_tag", parent_tag).execute()
 
-    # 4. Fetch baseline variants to perform ratchet comparison
+    # 4. Fetch baseline variants to perform ratchet comparison strictly within this model track
     all_variants_resp = (
         client.table("prompt_experiments")
         .select("*")
@@ -293,11 +308,7 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
         .eq("track_id", model_name)
         .execute()
     )
-    all_variants = all_variants_resp.data
-    if not all_variants:
-        all_variants = (
-            client.table("prompt_experiments").select("*").eq("prompt_name", "DAILY_PREDICTOR_PROMPT").execute().data
-        )
+    all_variants = all_variants_resp.data or []
 
     baseline_score = -100.0
     baseline_tag = parent_tag
@@ -328,9 +339,6 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
             f"Establishing {parent_tag} as new baseline."
         )
         client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
-        client.table("prompt_experiments").update({"status": "saved"}).in_("status", ["active", "baseline"]).eq(
-            "prompt_name", "DAILY_PREDICTOR_PROMPT"
-        ).eq("track_id", model_name).neq("variant_tag", parent_tag).execute()
 
     # 5. Mutate prompt using DeepSeek Flash
     new_prompt = await generate_new_daily_prompt(
@@ -340,9 +348,14 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
         meta_researcher=deepseek_meta,
     )
 
-    # 6. Deploy new active prompt variant scoped to track_id
+    # 6. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
     week_end = today + timedelta(days=7)
+
+    # Demote all existing active variants for this model track to saved
+    client.table("prompt_experiments").update({"status": "saved"}).eq(
+        "prompt_name", "DAILY_PREDICTOR_PROMPT"
+    ).eq("track_id", model_name).eq("status", "active").execute()
 
     client.table("prompt_experiments").insert(
         {

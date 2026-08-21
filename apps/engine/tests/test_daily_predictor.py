@@ -297,3 +297,30 @@ async def test_minimax_daily_prediction_includes_strict_json_prompt_and_tokens()
         user_msg = next((m["content"] for m in call["messages"] if m["role"] == "user"), "")
         assert "json" in user_msg.lower()
         assert "predicted_direction" in user_msg
+
+
+@pytest.mark.asyncio
+async def test_fetch_active_daily_prompt_model_track_isolation():
+    """Verify that fetch_active_daily_prompt never falls back across model tracks."""
+    from tasks.daily_predictor import fetch_active_daily_prompt
+
+    mock_supabase = MagicMock()
+    # Mock query returning empty data for deepseek track
+    query_mock = MagicMock()
+    query_mock.execute.return_value.data = []
+    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value = query_mock
+
+    with (
+        patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
+        patch(
+            "tasks.daily_predictor.seed_daily_predictor_prompt",
+            new_callable=AsyncMock,
+            return_value=("daily-pred-seeded-deepseek-v4-flash", DAILY_PREDICTOR_PROMPT),
+        ) as mock_seed,
+    ):
+        tag, content = await fetch_active_daily_prompt("deepseek-v4-flash")
+        assert "minimax" not in tag.lower()
+        assert tag == "daily-pred-seeded-deepseek-v4-flash"
+        assert mock_seed.called
+        mock_seed.assert_called_once_with(model_name="deepseek-v4-flash")
+

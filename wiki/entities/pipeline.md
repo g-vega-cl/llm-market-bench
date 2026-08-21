@@ -87,9 +87,18 @@ The pipeline closes the loop by auditing historical results and updating system 
 *   Market Feeling: Runs sentiment analysis after execution to capture the daily market vibe.
 *   Isolated Single-Stock Execution: Executes the [[entities/lin-renko-agent]] pipeline on its dedicated `$10,000` isolated ledger.
 
+## Auto-Research Sub-Pipeline
+
+Twice-weekly (Sun & Wed 6:00 PM ET), the pipeline runs `daily-autoresearch` which:
+- Evaluates recent predictions per model track.
+- Mutates prompts with strict track isolation (no cross-track fallback).
+- Deploys new active variants, demoting prior active variants for that track.
+
 ## Related
 
 - [[concepts/consensus]]
 - [[concepts/ingestion]]
 - [[entities/engine]]
+- [[entities/autoresearch]]
+- [[entities/daily-market-predictor]]
 - [[entities/lin-renko-agent]]

@@ -175,7 +175,7 @@ async def test_get_daily_market_context_technicals():
         assert "Live Pre-Market / Early Session Quote" in ctx
         assert "Overnight Gap: +1.50 (+0.21%)" in ctx
         assert "$725.50" in ctx
-        assert "Global Macro Baseline" in ctx
+        assert "Prior Session Macro Baseline" in ctx
         assert "Volatility Index Details" in ctx
         assert "Market Health Barometer" in ctx
         assert "Recent Market Feeling" in ctx
@@ -199,8 +199,13 @@ async def test_get_daily_market_context_premarket_multi_asset():
             "QQQ": {"price": 510.0, "previous_close": 508.0, "change": 2.0, "change_pct": 0.394},
             "DIA": {"price": 440.0, "previous_close": 439.0, "change": 1.0, "change_pct": 0.228},
             "IWM": {"price": 220.0, "previous_close": 221.0, "change": -1.0, "change_pct": -0.452},
+            "EWJ": {"price": 75.0, "previous_close": 74.5, "change": 0.5, "change_pct": 0.671},
+            "VGK": {"price": 68.0, "previous_close": 67.8, "change": 0.2, "change_pct": 0.30},
+            "TLT": {"price": 92.0, "previous_close": 92.5, "change": -0.5, "change_pct": -0.541},
+            "IEF": {"price": 95.0, "previous_close": 95.2, "change": -0.2, "change_pct": -0.210},
             "GLD": {"price": 240.0, "previous_close": 239.0, "change": 1.0, "change_pct": 0.418},
             "USO": {"price": 75.0, "previous_close": 76.0, "change": -1.0, "change_pct": -1.316},
+            "UUP": {"price": 28.5, "previous_close": 28.4, "change": 0.1, "change_pct": 0.352},
         }
         return quotes.get(sym)
 
@@ -220,12 +225,18 @@ async def test_get_daily_market_context_premarket_multi_asset():
         ctx = await get_daily_market_context(ticker="SPY")
         assert "=== LIVE PRE-MARKET ACTION & GAP ANALYSIS ===" in ctx
         assert "Target Asset (SPY): $595.00 | Overnight Gap: +3.00 (+0.51%) vs Prev Close $592.00" in ctx
-        assert "Pre-Market Benchmark Indices & Key Macro Drivers:" in ctx
-        assert "- QQQ (Nasdaq 100): $510.00 | Gap: +0.39%" in ctx
-        assert "- DIA (Dow Jones): $440.00 | Gap: +0.23%" in ctx
-        assert "- IWM (Russell 2000): $220.00 | Gap: -0.45%" in ctx
-        assert "- GLD (Gold): $240.00 | Gap: +0.42%" in ctx
-        assert "- USO (WTI Crude Oil): $75.00 | Gap: -1.32%" in ctx
+        assert "Pre-Market Benchmark Indices & Key Macro Drivers" in ctx
+        assert "- QQQ (Nasdaq 100)" in ctx and "+0.39%" in ctx
+        assert "- DIA (Dow Jones)" in ctx and "+0.23%" in ctx
+        assert "- IWM (Russell 2000)" in ctx and "-0.45%" in ctx
+        assert "- EWJ (Japan MSCI)" in ctx and "+0.67%" in ctx
+        assert "- VGK (Europe FTSE)" in ctx and "+0.30%" in ctx
+        assert "- TLT (20+yr Treasury" in ctx and "-0.54%" in ctx
+        assert "- IEF (7-10yr Treasury" in ctx and "-0.21%" in ctx
+        assert "- GLD (Gold)" in ctx and "+0.42%" in ctx
+        assert "- USO (WTI Crude Oil)" in ctx and "-1.32%" in ctx
+        assert "- UUP (US Dollar Index)" in ctx and "+0.35%" in ctx
+        assert "Prior Session Macro Baseline" in ctx
 
 
 def test_daily_predictor_prompt_footer_json_schema():

@@ -123,13 +123,18 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
                     f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
                 )
 
-            # Benchmark Equities & Key Macro Drivers (Gold, WTI Crude Oil)
+            # Benchmark Equities, International Proxies, Fixed Income / Yields & Commodities/FX
             macro_proxies = [
                 ("QQQ", "Nasdaq 100"),
                 ("DIA", "Dow Jones"),
                 ("IWM", "Russell 2000"),
+                ("EWJ", "Japan MSCI"),
+                ("VGK", "Europe FTSE"),
+                ("TLT", "20+yr Treasury / Long Yields"),
+                ("IEF", "7-10yr Treasury / Intermediate Yields"),
                 ("GLD", "Gold"),
                 ("USO", "WTI Crude Oil"),
+                ("UUP", "US Dollar Index"),
             ]
             proxy_lines = []
             for sym, label in macro_proxies:
@@ -137,9 +142,9 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
                     continue
                 q = await mdm.get_premarket_quote(sym)
                 if q:
-                    proxy_lines.append(f"- {sym} ({label}): ${q['price']:.2f} | Gap: {q['change_pct']:+.2f}%")
+                    proxy_lines.append(f"- {sym} ({label}): ${q['price']:.2f} | Overnight Gap: {q['change_pct']:+.2f}%")
             if proxy_lines:
-                context_lines.append("Pre-Market Benchmark Indices & Key Macro Drivers:")
+                context_lines.append("Pre-Market Benchmark Indices & Key Macro Drivers (Live Overnight Gaps):")
                 context_lines.extend(proxy_lines)
             context_lines.append("=============================================")
         else:
@@ -181,7 +186,7 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
     try:
         macro_str = await execute_get_global_macro_context_tool()
         if macro_str and not macro_str.startswith("Error"):
-            context_lines.append(f"Global Macro Baseline:\n{macro_str}")
+            context_lines.append(f"Prior Session Macro Baseline:\n{macro_str}")
     except Exception as e:
         logger.warning(f"Error fetching global macro context: {e}")
 

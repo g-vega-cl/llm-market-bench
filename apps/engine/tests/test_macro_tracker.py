@@ -115,8 +115,9 @@ class TestGetGlobalMacroContext:
         result = await get_global_macro_context(mock_mdm)
 
         assert isinstance(result, str)
-        assert "GLOBAL MACRO ENVIRONMENT" in result
+        assert "GLOBAL MACRO ENVIRONMENT (PRIOR SESSION CLOSE)" in result
         assert "S&P 500" in result
+        assert "prior close" in result
         assert "Instruction" not in result
 
     @pytest.mark.asyncio

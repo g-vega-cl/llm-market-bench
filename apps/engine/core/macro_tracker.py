@@ -108,8 +108,8 @@ async def get_global_macro_context(market_data_manager) -> str:
         logger.error(f"Failed to fetch pre-calculated macro statistics: {e}")
         cache_map = {}
 
-    context_lines = ["\n--- GLOBAL MACRO ENVIRONMENT ---"]
-    context_lines.append("The following indicators describe the underlying market 'regime' for today:")
+    context_lines = ["\n--- GLOBAL MACRO ENVIRONMENT (PRIOR SESSION CLOSE) ---"]
+    context_lines.append("The following indicators describe the underlying market 'regime' from the previous regular session close:")
     if barometer_block:
         context_lines.append(barometer_block)
 
@@ -132,10 +132,10 @@ async def get_global_macro_context(market_data_manager) -> str:
 
                 context_lines.append(
                     f"{name} ({ticker}): {price:.2f} "
-                    f"[{today_pct_change:+.2f}% today] "
+                    f"[{today_pct_change:+.2f}% prior close] "
                     f"| {flag_text} (30d stdev: {stdev_pct:.2f}%)"
                 )
             else:
-                context_lines.append(f"{name} ({ticker}): {price:.2f} [{today_pct_change:+.2f}% today]")
+                context_lines.append(f"{name} ({ticker}): {price:.2f} [{today_pct_change:+.2f}% prior close]")
 
     return "\n".join(context_lines)

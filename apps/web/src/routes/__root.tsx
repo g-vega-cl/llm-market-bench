@@ -85,6 +85,7 @@ export const navItems = [
     { to: '/leaderboard', label: 'Leaderboard' },
     { to: '/', label: 'Home', exact: true },
     { to: '/today', label: 'Today' },
+    { to: '/generated-newsletters', label: 'Newsletters' },
     { to: '/concepts', label: 'Concepts' },
     { to: '/how-it-works', label: 'How it Works' },
     { to: '/reasoning', label: 'Reasoning' },

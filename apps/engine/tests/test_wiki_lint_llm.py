@@ -110,11 +110,30 @@ def test_call_openrouter_reasoning_exhausted_handled():
         assert "token limit was exhausted during reasoning" in str(excinfo.value)
 
 
-def test_call_openrouter_payload_settings():
+def test_call_openrouter_http_error_extracts_message():
     """
-    Verify that payload includes increased max_tokens and reasoning controls.
+    Verify that HTTP 4xx/5xx errors extract and surface OpenRouter's error message.
     """
     mock_response = MagicMock()
+    mock_response.ok = False
+    mock_response.status_code = 400
+    mock_response.json.return_value = {"error": {"message": "Invalid reasoning effort: low"}}
+    mock_response.raise_for_status.side_effect = requests.HTTPError("400 Client Error: Bad Request")
+
+    with patch("requests.post", return_value=mock_response):
+        with pytest.raises(requests.RequestException) as excinfo:
+            call_openrouter("fake content", "deepseek/deepseek-v4-flash", "fake-key")
+
+        assert "Invalid reasoning effort: low" in str(excinfo.value)
+        assert "400" in str(excinfo.value)
+
+
+def test_call_openrouter_payload_settings():
+    """
+    Verify that payload includes increased max_tokens and reasoning controls without invalid effort.
+    """
+    mock_response = MagicMock()
+    mock_response.ok = True
     mock_response.json.return_value = {"choices": [{"message": {"content": '{"findings": [], "summary": "OK"}'}}]}
     mock_response.raise_for_status.return_value = None
 
@@ -124,3 +143,5 @@ def test_call_openrouter_payload_settings():
         payload = mock_post.call_args[1]["json"]
         assert payload["max_tokens"] >= 8192
         assert "reasoning" in payload
+        assert "effort" not in payload["reasoning"]
+        assert payload["reasoning"].get("max_tokens") == 4096

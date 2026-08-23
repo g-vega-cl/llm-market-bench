@@ -1,44 +1,38 @@
 ---
-tags: [linting, wiki, documentation, pre-commit]
+tags: [wiki, lint, quality, automation]
 category: entity
 ---
 
 # Wiki Linter
 
-Automated quality assurance for the project wiki. Combines two layers: a fast structural linter that runs on every commit, and a weekly LLM-powered deep lint for semantic contradictions and stale claims.
+Automated quality assurance for the project wiki, with two layers: structural lint (fast, pre-commit) and LLM-powered deep lint (weekly, OpenRouter).
 
-## Structural Lint (`wiki_lint.py`)
+## Structural Lint
 
-Executed via pre-commit hook in under 20ms. Checks:
-- **Frontmatter completeness**: ensures every page has `tags` and `category`.
-- **Broken wiki-links**: validates that all wiki-style cross-references point to existing pages.
-- **Orphan detection**: flags pages with no incoming links (excluding scaffold files).
-- **Index coverage** (optional): confirms all pages are listed in `index.md`.
-- **Code reference validation** (NEW): scans page content for backticked or linked paths under `apps/`, `packages/`, `scripts/`, `supabase/`, `wiki/`, `.github/` and verifies they exist on disk. Prevents stale documentation references. Implemented via `validate_codebase_references()` in `wiki_lint.py`, with exclusions for template files and placeholders.
+Runs on every commit via pre-commit hook (`apps/engine/wiki_lint.py`). Checks:
+- Frontmatter completeness (tags, category)
+- Broken wiki-links (cross-references to non-existent pages)
+- Orphan pages (no inbound links from other pages or index)
+- Index coverage gaps (pages missing from index.md)
 
-Errors are reported with tags like `[orphan]`, `[broken-link]`, `[broken-code-ref]`.
+Runs in ~20ms with no API cost.
 
-## LLM-Powered Deep Lint (`wiki_lint_llm.py`)
+## LLM Deep Lint
 
-Runs weekly via GitHub Actions (Saturday 10:00 ET) or manually. Sends all wiki pages to an LLM (DeepSeek or other via OpenRouter) to detect:
+Runs weekly via GitHub Actions (Saturday 10:00 ET) or manually. Sends all wiki pages to DeepSeek via OpenRouter to check for:
 - Contradictions between pages
-- Stale claims outdated by recent code changes
-- Missing concept pages or weak cross-references
+- Stale claims (outdated code references)
+- Missing concept pages
 - Data gaps and thin pages
 
 Recent improvements:
-- **Reasoning Token Headroom & Flash Model Default** (2026-08-16): Switched default deep lint model to DeepSeek v4 Flash (`deepseek/deepseek-v4-flash`), increased response token budget (`max_tokens: 16384`), and capped reasoning tokens (`effort: low`, `max_tokens: 4096`) to prevent chain-of-thought token exhaustion on large prompt payloads.
+- **Reasoning Token Headroom & Flash Model Default** (2026-08-16): Switched default deep lint model to DeepSeek v4 Flash (`deepseek/deepseek-v4-flash`), increased response token budget (`max_tokens: 16384`), and capped reasoning tokens (`max_tokens: 4096`) to prevent chain-of-thought token exhaustion on large prompt payloads without sending unsupported effort levels.
+- **Improved Error Handling** (2026-08-16): HTTP errors from OpenRouter now extract and surface the API's error message (e.g., invalid reasoning effort) instead of a generic status code, aiding debugging.
 - **File manifest injection** (2026-07-10): the prompt now includes a JSON manifest of all wiki files, preventing false-positive "missing page" errors caused by text truncation.
 - **Increased input size**: max input raised from 75k to 120k chars to accommodate more files.
-
-## Files
-
-- `apps/engine/wiki_lint.py` – structural linter
-- `apps/engine/wiki_lint_llm.py` – LLM-based deep lint
-- `apps/engine/tests/test_code_reference_validation.py` – unit tests for path validation
 
 ## Related
 
 - [[concepts/project-linting]]
-- [[concepts/code-reference-validation]]
 - [[entities/auto-wiki]]
+- [[entities/engine]]

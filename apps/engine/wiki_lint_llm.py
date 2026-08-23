@@ -22,7 +22,7 @@ from pathlib import Path
 import requests
 
 # Configure logging using the centralized engine logger
-from apps.engine.core.config import logger
+from core.config import logger
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
@@ -109,7 +109,6 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
         "temperature": 0.1,  # Lower temperature for more stable JSON
         "max_tokens": 16384,  # Provide sufficient headroom for reasoning + JSON output
         "reasoning": {
-            "effort": "low",
             "max_tokens": 4096,
         },
     }
@@ -123,7 +122,15 @@ def call_openrouter(content: str, model: str, api_key: str, all_files: list[str]
 
     logger.info(f"Calling OpenRouter model: {model}")
     resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=120)
-    resp.raise_for_status()
+    if not resp.ok:
+        try:
+            err_data = resp.json()
+            error_msg = err_data.get("error", {}).get("message") or resp.text
+        except Exception:
+            error_msg = resp.text
+        logger.error(f"OpenRouter API error response ({resp.status_code}): {error_msg}")
+        raise requests.RequestException(f"OpenRouter API error ({resp.status_code}): {error_msg}")
+
     data = resp.json()
 
     if "error" in data:

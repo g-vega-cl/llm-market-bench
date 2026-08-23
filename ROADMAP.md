@@ -131,3 +131,4 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: just trade one ETF on one auto researcher. Maybe the Focus on a single company related to this?
 - [ ] - another step in my LLM after newsletter read to look for related info and news online?
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
+- [ ] - check if the daily SPY and sector portfolios are working

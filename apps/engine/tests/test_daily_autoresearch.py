@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from tasks.daily_autoresearch import (
+    calculate_daily_ratchet_metrics,
     calculate_daily_ratchet_score,
     generate_new_daily_prompt,
     run_daily_autoresearch,
@@ -64,6 +65,22 @@ def test_calculate_daily_ratchet_score():
     # Combined Score = 41.25 + 26.25 + 5.0 - 10.125 = 62.375
     score = calculate_daily_ratchet_score(predictions)
     assert pytest.approx(score, 0.01) == 62.375
+
+    metrics = calculate_daily_ratchet_metrics(predictions)
+    assert pytest.approx(metrics["score"], 0.01) == 62.375
+    assert metrics["close_accuracy_pct"] == 75.0
+    assert metrics["intraday_hit_pct"] == 75.0
+    assert metrics["magnitude_capture_pct"] == 50.0
+    assert pytest.approx(metrics["mean_brier"], 0.0001) == 0.2025
+    assert metrics["predictions_evaluated"] == 4
+    assert metrics["correct_count"] == 3
+    assert metrics["intraday_hit_count"] == 3
+
+
+def test_calculate_daily_ratchet_metrics_empty():
+    metrics = calculate_daily_ratchet_metrics([])
+    assert metrics["score"] == 0.0
+    assert metrics["predictions_evaluated"] == 0
 
 
 def test_compute_magnitude_postmortem_summary():

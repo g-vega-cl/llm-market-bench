@@ -54,8 +54,8 @@ def calculate_magnitude_capture(p: dict) -> float:
     return 100.0
 
 
-def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
-    """Calculate the ratchet performance score for daily predictions.
+def calculate_daily_ratchet_metrics(predictions: list[dict]) -> dict:
+    """Calculate the full ratchet performance metrics breakdown for daily predictions.
 
     Score is based on:
     - EOD Close Directional Accuracy % (weight: 0.55)
@@ -65,7 +65,16 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     Combined Score = (0.55 * close_acc) + (0.35 * hit_rate) + (0.10 * mag_capture) - (mean_brier * 50.0).
     """
     if not predictions:
-        return 0.0
+        return {
+            "score": 0.0,
+            "close_accuracy_pct": 0.0,
+            "intraday_hit_pct": 0.0,
+            "magnitude_capture_pct": 0.0,
+            "mean_brier": 0.25,
+            "predictions_evaluated": 0,
+            "correct_count": 0,
+            "intraday_hit_count": 0,
+        }
 
     correct_count = sum(1 for p in predictions if p.get("is_correct") is True)
     close_accuracy_pct = (correct_count / len(predictions)) * 100.0
@@ -86,7 +95,21 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     final_score = (
         (0.55 * close_accuracy_pct) + (0.35 * intraday_hit_pct) + (0.10 * mean_mag_capture) - (mean_brier * 50.0)
     )
-    return float(final_score)
+    return {
+        "score": round(float(final_score), 4),
+        "close_accuracy_pct": round(float(close_accuracy_pct), 2),
+        "intraday_hit_pct": round(float(intraday_hit_pct), 2),
+        "magnitude_capture_pct": round(float(mean_mag_capture), 2),
+        "mean_brier": round(float(mean_brier), 4),
+        "predictions_evaluated": len(predictions),
+        "correct_count": correct_count,
+        "intraday_hit_count": intraday_hit_count,
+    }
+
+
+def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
+    """Calculate the ratchet performance score for daily predictions."""
+    return float(calculate_daily_ratchet_metrics(predictions)["score"])
 
 
 def compute_magnitude_postmortem_summary(predictions: list[dict]) -> str:
@@ -247,7 +270,8 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
         logger.info(f"No evaluated daily predictions found for {model_name} in recent days. Skipping autoresearch.")
         return
 
-    current_score = calculate_daily_ratchet_score(predictions)
+    current_metrics = calculate_daily_ratchet_metrics(predictions)
+    current_score = current_metrics["score"]
 
     # 2. Fetch active prompt variant for this model track
     prompt_response = (
@@ -295,10 +319,8 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
     current_prompt = prompt_response.data[0]["prompt_content"]
     parent_tag = prompt_response.data[0]["variant_tag"]
 
-    # 3. Update active prompt metrics
-    client.table("prompt_experiments").update(
-        {"metrics": {"score": current_score, "predictions_evaluated": len(predictions)}}
-    ).eq("variant_tag", parent_tag).execute()
+    # 3. Update active prompt metrics with full breakdown
+    client.table("prompt_experiments").update({"metrics": current_metrics}).eq("variant_tag", parent_tag).execute()
 
     # 4. Fetch baseline variants to perform ratchet comparison strictly within this model track
     all_variants_resp = (

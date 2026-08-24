@@ -2,6 +2,7 @@ import type { PromptExperiment } from '@llm-market-bench/database';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { DailyPrediction } from '../api/fetch-daily-predictions';
+import { DailyScoreBreakdown } from '../components/DailyScoreBreakdown';
 
 interface Props {
     initialPredictions: DailyPrediction[];
@@ -1164,11 +1165,13 @@ function SelectedVariantHeader({
 
 function AutoresearchHistoryArena({
     experiments,
+    predictions,
     selectedExpId,
     activePromptTag,
     onSelectExp,
 }: {
     experiments: PromptExperiment[];
+    predictions?: DailyPrediction[];
     selectedExpId: string | null;
     activePromptTag?: string | null;
     onSelectExp: (id: string) => void;
@@ -1284,6 +1287,12 @@ function AutoresearchHistoryArena({
                         <SelectedVariantHeader
                             experiment={selectedExperiment}
                             isActiveVariant={selectedExperiment.variant_tag === activePromptTag}
+                        />
+
+                        {/* Interactive Score Calculation & Breakdown */}
+                        <DailyScoreBreakdown
+                            experiment={selectedExperiment}
+                            predictions={predictions}
                         />
 
                         {selectedExperiment.change_description && (
@@ -1526,6 +1535,7 @@ export function DailyPredictionsPage({ initialPredictions, experiments }: Props)
                     <AutoresearchMilestoneCards experiments={modelExperiments} />
                     <AutoresearchHistoryArena
                         experiments={modelExperiments}
+                        predictions={modelPredictions}
                         selectedExpId={selectedExpId}
                         activePromptTag={activePrompt?.variant_tag}
                         onSelectExp={(id) => setSelectedExpId(id)}

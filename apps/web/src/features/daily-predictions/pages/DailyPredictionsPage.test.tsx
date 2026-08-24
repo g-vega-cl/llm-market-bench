@@ -372,4 +372,54 @@ describe('DailyPredictionsPage', () => {
         // Active runtime badge shows only the latest active variant
         expect(screen.getAllByText('🟢 CURRENT ACTIVE').length).toBe(1);
     });
+
+    it('renders the detailed score breakdown when viewing autoresearch history tab', () => {
+        const enrichedExperiments: PromptExperiment[] = [
+            {
+                id: 'exp-deepseek-enriched',
+                prompt_name: 'DAILY_PREDICTOR_PROMPT',
+                variant_tag: 'daily-pred-seeded-deepseek-v4-flash',
+                experiment_type: 'baseline',
+                prompt_content: 'DeepSeek system prompt content.',
+                change_description: 'Evaluated seeded variant.',
+                metrics: {
+                    score: 14.8,
+                    close_accuracy_pct: 33.33,
+                    intraday_hit_pct: 33.33,
+                    magnitude_capture_pct: 0.0,
+                    mean_brier: 0.304,
+                    predictions_evaluated: 3,
+                    correct_count: 1,
+                    intraday_hit_count: 1,
+                },
+                status: 'active',
+                week_start: '2026-08-20',
+                week_end: '2026-08-24',
+                created_at: '2026-08-20T00:00:00Z',
+                parent_tag: null,
+                research_output: null,
+                is_backtest: false,
+                track_id: 'deepseek-v4-flash',
+            },
+        ];
+
+        render(
+            <DailyPredictionsPage
+                initialPredictions={mockPredictions}
+                experiments={enrichedExperiments}
+            />,
+        );
+
+        // Switch to Autoresearch view
+        fireEvent.click(screen.getByRole('button', { name: /Autoresearch & Benchmark History/i }));
+
+        // Verify DailyScoreBreakdown rendered
+        expect(screen.getByText('Daily Ratchet Score Calculation & Breakdown')).toBeInTheDocument();
+        expect(screen.getAllByText('14.80').length).toBeGreaterThan(0);
+        expect(screen.getByText('EOD Directional Acc (55%)')).toBeInTheDocument();
+        expect(screen.getByText('Intraday Target Hit (35%)')).toBeInTheDocument();
+        expect(screen.getByText('Magnitude Capture (10%)')).toBeInTheDocument();
+        expect(screen.getByText('Brier Penalty (50.0×)')).toBeInTheDocument();
+        expect(screen.getByText(/FORMULA SUBSTITUTION:/)).toBeInTheDocument();
+    });
 });

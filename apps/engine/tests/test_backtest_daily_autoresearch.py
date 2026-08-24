@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import tasks.backtest_daily_autoresearch as backtest_module
 from tasks.backtest_daily_autoresearch import (
-    DB_PATH,
     evaluate_simulated_daily_prediction,
     init_backtest_daily_db,
     reset_backtest_daily_db,
@@ -14,11 +14,19 @@ from tasks.backtest_daily_autoresearch import (
 )
 
 
+@pytest.fixture(autouse=True)
+def isolate_test_db(tmp_path, monkeypatch):
+    test_db_file = str(tmp_path / "backtest_test.db")
+    monkeypatch.setattr(backtest_module, "DB_PATH", test_db_file)
+    init_backtest_daily_db()
+    yield test_db_file
+
+
 def test_init_and_reset_backtest_daily_db():
     """Verify SQLite database initialization and reset for daily predictor backtests."""
     init_backtest_daily_db()
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(backtest_module.DB_PATH)
     cursor = conn.cursor()
 
     # Verify tables exist
@@ -32,7 +40,7 @@ def test_init_and_reset_backtest_daily_db():
 
     reset_backtest_daily_db()
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(backtest_module.DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM daily_predictions")
     assert cursor.fetchone()[0] == 0
@@ -73,7 +81,7 @@ async def test_run_simulated_daily_prediction():
     assert pred["model_name"] == "deepseek-v4-flash"
 
     # Verify saved in SQLite DB
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(backtest_module.DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM daily_predictions WHERE target_date = ?", ("2026-04-27",))
@@ -92,7 +100,7 @@ async def test_evaluate_simulated_daily_prediction():
 
     t_sim = datetime(2026, 4, 27, 17, 15, 0, tzinfo=UTC)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(backtest_module.DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -121,7 +129,7 @@ async def test_evaluate_simulated_daily_prediction():
     assert eval_result["brier_score"] == pytest.approx((0.8 - 1.0) ** 2)
 
     # Check updated SQLite row
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(backtest_module.DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT status, is_correct FROM daily_predictions WHERE id = 'pred-1'")
@@ -160,7 +168,7 @@ async def test_run_backtest_daily_autoresearch_1_week():
     assert summary["final_ratchet_score"] is not None
 
     # Check SQLite for saved backtest prompt experiment
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(backtest_module.DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM prompt_experiments WHERE prompt_name = 'DAILY_PREDICTOR_PROMPT'")

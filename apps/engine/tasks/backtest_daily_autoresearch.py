@@ -23,7 +23,7 @@ from core.llm.daily_predictor_prompts import (
     split_daily_predictor_prompt,
 )
 from tasks.daily_autoresearch import (
-    calculate_daily_ratchet_score,
+    calculate_daily_ratchet_metrics,
     compute_magnitude_postmortem_summary,
 )
 
@@ -564,7 +564,8 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
 
-        current_ratchet_score = calculate_daily_ratchet_score(rows)
+        current_metrics = calculate_daily_ratchet_metrics(rows)
+        current_ratchet_score = current_metrics["score"]
         logger.info(
             f"End of Week {week_idx + 1} Ratchet Evaluation: "
             f"Score = {current_ratchet_score:.2f} (from {len(rows)} evaluated predictions)"
@@ -589,7 +590,7 @@ async def run_backtest_daily_autoresearch(start_date_str: str = "2026-04-27", we
             "week_end": week_end.date().isoformat(),
             "status": "active",
             "experiment_type": "incremental",
-            "metrics": {"score": current_ratchet_score, "predictions": len(rows)},
+            "metrics": current_metrics,
             "parent_tag": active_tag,
             "change_description": f"Backtest mutation week {week_idx + 1} score {current_ratchet_score:.2f}",
             "is_backtest": True,

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/daily-score-breakdown]] — Interactive score calculation and breakdown component for daily ratchet score auditability
 - [[entities/lin-renko-agent]] — Auto-indexed page
 - [[entities/generated-newsletters]] — Auto-generated daily market briefings with 6-minute read target (~1,200–1,500 words) and 5-section macro/sector/internals/trade/catalyst structure
 - [[entities/cron-dispatcher]] — Cloudflare Worker edge cron dispatcher for GitHub Actions workflows

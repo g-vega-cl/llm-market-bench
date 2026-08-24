@@ -11,12 +11,13 @@ Karpathy-style autonomous prompt improvement loop that runs twice weekly (Sun & 
 
 Located in `apps/engine/tasks/daily_autoresearch.py`. The `run_daily_autoresearch_for_model` function:
 
-1. Fetches predictions for the past 3 days for a specific model track.
-2. Fetches the current active prompt for that model track (strictly by `track_id` and `status`). Falls back to baseline, then seeds a new baseline if none exist.
-3. Updates parent variant metrics with the current ratchet score.
-4. Compares current score against the best baseline within the same model track. If current exceeds best baseline, promotes to `baseline`.
-5. Mutates the prompt using DeepSeek Flash meta-researcher.
-6. Deploys a new active variant, demoting all prior `active` variants for that track to `saved`.
+1. Fetches predictions for the past 3-4 days for a specific model track.
+2. Fetches context-enriched market postmortems via `fetch_autoresearch_context`, querying `newsletter_snapshots`, `memories` (market events, post-mortems, resolutions), and `concept_metrics` (thematic velocity).
+3. Fetches the current active prompt for that model track (strictly by `track_id` and `status`). Falls back to baseline, then seeds a new baseline if none exist.
+4. Updates parent variant metrics with the current ratchet score.
+5. Compares current score against the best baseline within the same model track. If current exceeds best baseline, promotes to `baseline`.
+6. Mutates the prompt using DeepSeek Flash meta-researcher, feeding it the day-by-day catalyst context and active thematic playbooks.
+7. Deploys a new active variant, demoting all prior `active` variants for that track to `saved`.
 
 ## Track Isolation
 

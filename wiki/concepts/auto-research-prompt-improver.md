@@ -9,12 +9,19 @@ Weekly autonomous prompt iteration via a meta-researcher LLM (DeepSeek Flash). T
 
 ## Pipeline (Twice-Weekly: Sun & Wed 6:00 PM ET)
 
-1. **Fetch predictions** for the past 3 days for a specific model track.
-2. **Fetch current active prompt** for that model track (strictly scoped by `track_id`). If none exists, fall back to the model's baseline, then seed a new baseline if needed.
-3. **Update parent variant metrics** with the current ratchet score.
-4. **Ratchet comparison**: Compare current score against the best baseline score within the same model track. If the current score exceeds the best baseline, promote it to `baseline` status.
-5. **Mutate prompt** using DeepSeek Flash meta-researcher, generating a new variant.
-6. **Deploy new active variant**: Insert a new `active` record for the model track, demoting all prior `active` variants for that track to `saved`.
+1. **Fetch predictions** for the past 3-4 days for a specific model track.
+2. **Fetch context-enriched postmortems**: Queries `newsletter_snapshots`, `memories` (market events, post-mortems, resolutions), and `concept_metrics` (thematic velocity & mention counts) across the evaluation date window via `fetch_autoresearch_context`.
+3. **Fetch current active prompt** for that model track (strictly scoped by `track_id`). If none exists, fall back to the model's baseline, then seed a new baseline if needed.
+4. **Update parent variant metrics** with the current ratchet score.
+5. **Ratchet comparison**: Compare current score against the best baseline score within the same model track. If the current score exceeds the best baseline, promote it to `baseline` status; if lower, revert to the best baseline prompt.
+6. **Mutate prompt** using DeepSeek Flash meta-researcher, feeding it the enriched postmortem with day-by-day catalyst context, timid vs overshooting diagnosis, and active thematic playbooks.
+7. **Deploy new active variant**: Insert a new `active` record for the model track, demoting all prior `active` variants for that track to `saved`.
+
+## Context-Enriched Postmortems & Thematic Learning
+
+Rather than evaluating raw numerical predictions in isolation, the meta-researcher receives an event-enriched postmortem table:
+- **Daily Catalyst Alignment**: Cross-references prediction dates with ingested newsletters and market events to identify why magnitude was timid or overshooting on high-impact catalyst days.
+- **Thematic Playbooks**: Injects top active narrative clusters from `concept_metrics` (with velocity scores) to allow the meta-researcher to discover cause-and-effect market dynamics autonomously.
 
 ## Ratchet Score Formula
 

@@ -33,18 +33,20 @@ $$
 - Intraday hit rate weight reduced from 0.40 to **0.35**.
 - Magnitude capture added at **0.10** weight.
 
-## Postmortem Diagnosis
+## Postmortem Diagnosis & Catalyst Context
 
-The meta-researcher receives a `compute_magnitude_postmortem_summary()` Markdown table before each mutation cycle:
+The meta-researcher receives an event-enriched `compute_magnitude_postmortem_summary()` Markdown table before each mutation cycle, cross-referencing prediction results with that day's newsletters and market events:
 
-| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis |
-|---|---|---|---|---|---|---|---|---|---|
+| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis | Key Catalysts / News |
+|---|---|---|---|---|---|---|---|---|---|---|
 
 Key diagnoses:
-- **Timid / Underestimated**: Correct predictions where actual move ≥ 0.60% but capture < 40% — the LLM left momentum on the table.
+- **Timid / Underestimated**: Correct predictions where actual move ≥ 0.60% but capture < 40% — the LLM left momentum on the table. Postmortem context provides the specific news/catalysts (e.g. rate announcements or earnings surprises) driving the breakout move.
 - **Overshot / Missed Target**: Correct direction but failed to hit target because `expected_return` **≥ 0.60%** was too aggressive for the actual intraday range.
 - **Well-Calibrated**: Correct and on target with reasonable magnitude.
 - **Wrong Direction**: Prediction was directionally incorrect.
+
+Additionally, active thematic concept clusters and their velocity metrics from `concept_metrics` are appended to provide structural playbook context to the meta-researcher.
 
 ## Mutation Rules
 

@@ -112,16 +112,102 @@ def calculate_daily_ratchet_score(predictions: list[dict]) -> float:
     return float(calculate_daily_ratchet_metrics(predictions)["score"])
 
 
-def compute_magnitude_postmortem_summary(predictions: list[dict]) -> str:
+def fetch_autoresearch_context(client, start_date_str: str, end_date_str: str) -> dict:
+    """Fetch recent newsletters, market events, and active concept themes within the evaluation date window."""
+    context = {
+        "daily_events": {},
+        "active_concepts": [],
+    }
+
+    try:
+        # 1. Fetch newsletter snapshots within the date window
+        news_resp = (
+            client.table("newsletter_snapshots")
+            .select("date, sender, subject, content")
+            .gte("date", f"{start_date_str}T00:00:00Z")
+            .lte("date", f"{end_date_str}T23:59:59Z")
+            .order("date", desc=True)
+            .limit(20)
+            .execute()
+        )
+        if news_resp and news_resp.data:
+            for item in news_resp.data:
+                d_str = str(item.get("date") or "")[:10]
+                if not d_str:
+                    continue
+                sender = item.get("sender", "Unknown")
+                subject = item.get("subject", "No Subject")
+                snippet = (item.get("content") or "").strip().replace("\n", " ")[:150]
+                entry = f"{sender}: {subject}" + (f" ({snippet}...)" if snippet else "")
+                context["daily_events"].setdefault(d_str, {"newsletters": [], "events": []})["newsletters"].append(
+                    entry
+                )
+    except Exception as e:
+        logger.warning(f"Error fetching newsletters for autoresearch context: {e}")
+
+    try:
+        # 2. Fetch market events / resolved memories within the date window
+        events_resp = (
+            client.table("memories")
+            .select("id, content, metadata, memory_type, created_at")
+            .in_("memory_type", ["MARKET_EVENT", "POST_MORTEM", "RESOLUTION"])
+            .gte("created_at", f"{start_date_str}T00:00:00Z")
+            .lte("created_at", f"{end_date_str}T23:59:59Z")
+            .order("created_at", desc=True)
+            .limit(15)
+            .execute()
+        )
+        if events_resp and events_resp.data:
+            for item in events_resp.data:
+                d_str = str(item.get("created_at") or "")[:10]
+                if not d_str:
+                    continue
+                content = (item.get("content") or "").strip().replace("\n", " ")[:160]
+                entry = f"[{item.get('memory_type', 'EVENT')}] {content}"
+                context["daily_events"].setdefault(d_str, {"newsletters": [], "events": []})["events"].append(entry)
+    except Exception as e:
+        logger.warning(f"Error fetching events for autoresearch context: {e}")
+
+    try:
+        # 3. Fetch top active concept metrics
+        concepts_resp = (
+            client.table("concept_metrics")
+            .select("concept_name, velocity_score, mention_count, last_mention_at")
+            .order("velocity_score", desc=True)
+            .limit(8)
+            .execute()
+        )
+        if concepts_resp and concepts_resp.data:
+            for c in concepts_resp.data:
+                c_name = c.get("concept_name")
+                if c_name:
+                    vel = float(c.get("velocity_score") or 0.0)
+                    mentions = int(c.get("mention_count") or 0)
+                    context["active_concepts"].append(f"- **{c_name}** (Velocity: {vel:.1f}, Mentions: {mentions})")
+    except Exception as e:
+        logger.warning(f"Error fetching active concepts for autoresearch context: {e}")
+
+    return context
+
+
+def compute_magnitude_postmortem_summary(
+    predictions: list[dict],
+    macro_context: dict | None = None,
+) -> str:
     """Generate a structured markdown postmortem analyzing magnitude calibration and timid vs overshooting errors."""
     if not predictions:
         return "No recent prediction history available."
 
-    lines = [
+    daily_events = macro_context.get("daily_events", {}) if macro_context else {}
+    has_catalysts = bool(daily_events)
+
+    headers = [
         "### RECENT PREDICTIONS POSTMORTEM & MAGNITUDE CALIBRATION",
-        "| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| Date | Dir | Pred % | Peak % | Close % | Correct? | Hit? | Brier | Capture % | Diagnosis |"
+        + (" Key Catalysts / News |" if has_catalysts else ""),
+        "|---|---|---|---|---|---|---|---|---|---|" + ("---|" if has_catalysts else ""),
     ]
+    lines = list(headers)
 
     timid_cases = []
     overshot_cases = []
@@ -153,11 +239,18 @@ def compute_magnitude_postmortem_summary(predictions: list[dict]) -> str:
 
         diagnosis = "Normal"
         actual_move = max(abs(peak_pct), abs(close_pct))
+
+        # Build day's catalyst summary
+        day_news = daily_events.get(date_str, {}).get("newsletters", [])
+        day_evts = daily_events.get(date_str, {}).get("events", [])
+        all_day_catalysts = day_news + day_evts
+        catalyst_snippet = "; ".join(all_day_catalysts[:2]) if all_day_catalysts else "None recorded"
+
         if is_correct and intraday_hit:
             if actual_move >= 0.60 and capture < 40.0:
                 diagnosis = "Timid / Underestimated"
                 timid_cases.append(
-                    f"- **{date_str}**: Predicted {direction} {exp_pct:+.2f}%, but market moved {actual_move:+.2f}% (only {capture:.1f}% captured). Strong momentum was left on the table."
+                    f"- **{date_str}**: Predicted {direction} {exp_pct:+.2f}%, but market moved {actual_move:+.2f}% (only {capture:.1f}% captured). Catalyst context: {catalyst_snippet}. Strong momentum was left on the table."
                 )
             else:
                 diagnosis = "Well-Calibrated"
@@ -165,17 +258,20 @@ def compute_magnitude_postmortem_summary(predictions: list[dict]) -> str:
             if abs(exp_pct) >= 0.60:
                 diagnosis = "Overshot / Missed Target"
                 overshot_cases.append(
-                    f"- **{date_str}**: Target {exp_pct:+.2f}% was too aggressive for actual intraday range (peak {peak_pct:+.2f}%)."
+                    f"- **{date_str}**: Target {exp_pct:+.2f}% was too aggressive for actual intraday range (peak {peak_pct:+.2f}%). Catalyst context: {catalyst_snippet}."
                 )
             else:
                 diagnosis = "Missed Target"
         else:
             diagnosis = "Wrong Direction"
 
-        lines.append(
+        row = (
             f"| {date_str} | {direction} | {exp_pct:+.2f}% | {peak_pct:+.2f}% | {close_pct:+.2f}% | "
             f"{'Yes' if is_correct else 'No'} | {'Yes' if intraday_hit else 'No'} | {brier:.3f} | {capture:.1f}% | {diagnosis} |"
         )
+        if has_catalysts:
+            row += f" {catalyst_snippet} |"
+        lines.append(row)
 
     lines.append("\n#### Magnitude Calibration Diagnosis:")
     if timid_cases:
@@ -192,6 +288,12 @@ def compute_magnitude_postmortem_summary(predictions: list[dict]) -> str:
     else:
         lines.append("- No severe overshooting errors detected.")
 
+    # Append Active Concepts & Narrative Playbooks section if present
+    active_concepts = macro_context.get("active_concepts", []) if macro_context else []
+    if active_concepts:
+        lines.append("\n#### ACTIVE THEMATIC CONCEPTS & MARKET PLAYBOOKS:")
+        lines.extend(active_concepts)
+
     return "\n".join(lines)
 
 
@@ -199,13 +301,14 @@ async def generate_new_daily_prompt(
     old_prompt: str,
     baseline_score: float,
     predictions: list[dict] | None = None,
+    macro_context: dict | None = None,
     meta_researcher=None,
 ) -> str:
     """Generate a mutated strategy instruction prompt using DeepSeek Flash."""
     _, mutable_strategies, _ = split_daily_predictor_prompt(old_prompt)
 
     postmortem_context = (
-        compute_magnitude_postmortem_summary(predictions)
+        compute_magnitude_postmortem_summary(predictions, macro_context=macro_context)
         if predictions
         else "No recent prediction postmortem available."
     )
@@ -216,10 +319,12 @@ async def generate_new_daily_prompt(
         f"{postmortem_context}\n\n"
         "### OBJECTIVES & MUTATION RULES:\n"
         "1. Prioritize Directional Accuracy (55% weight) and Intraday Hit Rate (35% weight) first and foremost.\n"
-        "2. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
+        "2. Learn from Cause & Effect: Analyze the correlation between recent market catalysts, newsletters, and prediction failures/successes. "
+        "Incorporate concrete cause-and-effect reasoning heuristics (e.g., how SPY reacts to yield shifts, tech capex surges, or pre-market gap-downs).\n"
+        "3. Optimize Magnitude Calibration (10% weight): When high-impact catalysts or strong trend conditions align, "
         "instruct the predictor to be more confident and aggressive in expected_return_pct magnitude (e.g. +0.50% to +1.20% instead of timid +0.20%).\n"
-        "3. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
-        "4. Rewrite ONLY the strategy / analytical reasoning section of the prompt. "
+        "4. On rangebound, ambiguous, or high-VIX days, keep expected_return_pct conservative (+0.15% to +0.25%) to ensure target hit reliability.\n"
+        "5. Rewrite ONLY the strategy / analytical reasoning section of the prompt. "
         "Do NOT include output formatting rules or JSON schema definitions; the output structure is automatically enforced.\n\n"
         "CURRENT STRATEGY INSTRUCTIONS:\n"
         f"```text\n{mutable_strategies}\n```\n\n"
@@ -362,15 +467,19 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
         )
         client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
 
-    # 5. Mutate prompt using DeepSeek Flash
+    # 5. Fetch macro, newsletter, and concepts context
+    macro_context = fetch_autoresearch_context(client, four_days_ago.isoformat(), today.isoformat())
+
+    # 6. Mutate prompt using DeepSeek Flash with enriched context
     new_prompt = await generate_new_daily_prompt(
         old_prompt=current_prompt,
         baseline_score=current_score,
         predictions=predictions,
+        macro_context=macro_context,
         meta_researcher=deepseek_meta,
     )
 
-    # 6. Deploy new active prompt variant scoped to track_id, demoting prior active variants
+    # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
     week_end = today + timedelta(days=7)
 

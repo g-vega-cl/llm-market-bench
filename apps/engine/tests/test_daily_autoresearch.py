@@ -211,3 +211,96 @@ async def test_run_daily_autoresearch_ratchet():
         assert mock_table.insert.called
         # Should insert for both models
         assert mock_table.insert.call_count >= 2
+
+
+def test_fetch_autoresearch_context():
+    from tasks.daily_autoresearch import fetch_autoresearch_context
+
+    mock_supabase = MagicMock()
+    mock_news = [
+        {
+            "date": "2026-08-10T12:00:00Z",
+            "sender": "Macro Daily",
+            "subject": "Tech capex accelerates",
+            "content": "Full content of tech acceleration...",
+        }
+    ]
+    mock_events = [
+        {
+            "id": "evt-1",
+            "content": "Fed signals rate pause at Jackson Hole",
+            "created_at": "2026-08-10T14:00:00Z",
+            "memory_type": "MARKET_EVENT",
+            "metadata": {"tags": ["fed", "rates"]},
+        }
+    ]
+    mock_concepts = [
+        {
+            "concept_name": "AI Infrastructure Surge",
+            "velocity_score": 4.5,
+            "mention_count": 12,
+            "last_mention_at": "2026-08-10T10:00:00Z",
+        }
+    ]
+
+    def mock_table_select(table_name):
+        mock_chain = MagicMock()
+        mock_chain.select.return_value = mock_chain
+        mock_chain.gte.return_value = mock_chain
+        mock_chain.lte.return_value = mock_chain
+        mock_chain.in_.return_value = mock_chain
+        mock_chain.order.return_value = mock_chain
+        mock_chain.limit.return_value = mock_chain
+
+        if table_name == "newsletter_snapshots":
+            mock_chain.execute.return_value.data = mock_news
+        elif table_name == "memories":
+            mock_chain.execute.return_value.data = mock_events
+        elif table_name == "concept_metrics":
+            mock_chain.execute.return_value.data = mock_concepts
+        else:
+            mock_chain.execute.return_value.data = []
+        return mock_chain
+
+    mock_supabase.table.side_effect = mock_table_select
+
+    context = fetch_autoresearch_context(mock_supabase, "2026-08-08", "2026-08-12")
+    assert "2026-08-10" in context["daily_events"]
+    assert "Tech capex accelerates" in context["daily_events"]["2026-08-10"]["newsletters"][0]
+    assert "Fed signals rate pause" in context["daily_events"]["2026-08-10"]["events"][0]
+    assert len(context["active_concepts"]) == 1
+    assert "AI Infrastructure Surge" in context["active_concepts"][0]
+
+
+def test_compute_magnitude_postmortem_summary_with_macro():
+    from tasks.daily_autoresearch import compute_magnitude_postmortem_summary
+
+    predictions = [
+        {
+            "target_date": "2026-08-10",
+            "predicted_direction": "UP",
+            "expected_return_pct": 0.20,
+            "open_price": 500.0,
+            "high_price": 506.0,
+            "low_price": 499.0,
+            "close_price": 505.0,
+            "is_correct": True,
+            "intraday_hit": True,
+            "brier_score": 0.04,
+        }
+    ]
+    macro_context = {
+        "daily_events": {
+            "2026-08-10": {
+                "newsletters": ["Macro Daily: Tech capex surge"],
+                "events": ["Fed dovish tone"],
+            }
+        },
+        "active_concepts": ["AI Infrastructure Surge (Velocity: 4.5)"],
+    }
+
+    summary = compute_magnitude_postmortem_summary(predictions, macro_context=macro_context)
+    assert "Key Catalysts" in summary
+    assert "Tech capex surge" in summary
+    assert "ACTIVE THEMATIC CONCEPTS & MARKET PLAYBOOKS" in summary
+    assert "AI Infrastructure Surge" in summary

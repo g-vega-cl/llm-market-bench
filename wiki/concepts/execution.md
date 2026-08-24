@@ -1,56 +1,39 @@
 ---
-tags: [execution, validation, trades, settlement]
+tags: [execution, trading, validation, settlement]
 category: concept
 ---
 
-# Execution & Trade Settlement
+# Execution
 
-Validates and executes trades with defense-in-depth guardrails.
+The execution phase handles pre-market validation, Reg T checks, trade settlement, and attribution. It ensures that all trades are valid, margin-compliant, and properly recorded.
 
 ## Pre-Market Validation
 
-| Guardrail | Logic |
-|-----------|-------|
-| Existence | Ticker found via FMP |
-| Liquidity | Market cap above floor |
-| Staleness | JIT price vs prompt-injected ≤ 2% (Bypassed for MiniMax) |
-| Buying Power | Cost fits within Reg T limits |
-| Minimum Value | Trade cost above floor |
-| SMA Floor | Projected SMA above safety threshold |
+Before any trade is executed, the system validates market conditions and fetches live pre-market quotes. This is handled by `MarketDataManager.get_premarket_quote()`.
 
-## Reg T Margin
+### Aftermarket Quote Provider
 
-Validates Initial Margin, Maintenance Margin, Buying Power, and SMA. 10% minimum
-position rule enforced by quantity calculation tools.
+`get_premarket_quote()` now uses a two-tier approach:
+1. **Primary**: If the data provider exposes a `get_aftermarket_quote(ticker)` method, it is called first. This returns a dedicated aftermarket quote with `price`, `bid`, `ask`, and `volume`.
+2. **Fallback**: If the provider method is unavailable, returns `None`, or raises an exception, the standard quote from `get_quote()` is used.
+
+The pre-market price is then compared to the previous close (from the quote's `previous_close` field, or from historical data as fallback) to compute the overnight gap percentage.
+
+### Concurrent Proxy Fetching
+
+For the daily predictor's market context, pre-market quotes for macro proxies (QQQ, DIA, IWM, IEF, GLD, USO, UUP) are fetched concurrently using `asyncio.gather`. Partial failures are handled gracefully — failed proxies are skipped without breaking the entire context. This ensures robustness against transient API failures.
+
+## Reg T Checks
+
+Regulation T margin requirements are enforced before trade settlement. The system checks that the portfolio has sufficient buying power and that the trade does not exceed margin limits. See [[sources/reg-t-calculations-source]] for detailed formulas.
 
 ## Trade Settlement
 
-"Commit at the End" atomic pattern: save decision → UPSERT position → INSERT
-trade → update cash/SMA. Prevents phantom deductions on DB failure. Alpaca paper
-mirroring via fire-and-forget DAY limit orders (or mirror limit orders set to the buffered execution price for MiniMax's simulated market orders).
-
-- **MiniMax Simplified Execution**: Rather than placing standard limit orders, the MiniMax portfolio places JIT simulated **Market Orders** using a **±0.5% slippage buffer** (BUY = `price * 1.005`, SELL = `price * 0.995`). Bypasses the verifier, stale price checks, tool loops, and semantic redundancy checks. Hard stops still apply for unheld short-selling (capped to held position size).
-
-## Attribution Locking
-
-Two-phase commit: pre-trade decision save assigns `decision_id`, trade executes with FK (`trades.decision_id`), and post-trade status is updated to `EXECUTED` with `decisions.trade_id` set. 
-
-Result: Bidirectional linking `News → Reasoning → Decision ↔ Trade`.
-* **Forward Link**: `decisions.trade_id` points to the primary trade record.
-* **Backward Link**: `trades.decision_id` points back to the initiating decision.
-
-> [!NOTE]
-> **Historical Database Anomaly (Feb/Mar 2026)**: Early pipeline code failed to populate the backward reference `trades.decision_id` at execution time, leaving it as `NULL` despite the forward reference being locked. This triggered system audits for "Executed Decisions Without Trade Record". A retroactive database repair script was run to restore referential integrity by populating the missing `decision_id` values for these 13 historical trades. Current execution code correctly populates both links atomically.
-
-## Rejection Preservation
-
-Every rejection is saved with a status code. Types: MARGIN, OWNERSHIP,
-REDUNDANCY, TOOL_USAGE, VERIFICATION, HALLUCINATION, LIQUIDITY, MARKET_CLOSED,
-STALE_QUOTE, ERROR_PROVIDER, REJECTED_OWNERSHIP.
+Trades are settled using the "Commit at the End" pattern to prevent phantom deductions. Orders are placed via Alpaca's API, and order status is synced asynchronously via [[concepts/alpaca-order-sync]].
 
 ## Related
 
-- [[entities/pipeline]]
-- [[concepts/consensus]]
-- [[concepts/tool-enforcement]]
-- [[concepts/minimax-portfolio]]
+- [[entities/engine]]
+- [[entities/daily-market-predictor]]
+- [[concepts/alpaca-order-sync]]
+- [[sources/reg-t-calculations-source]]

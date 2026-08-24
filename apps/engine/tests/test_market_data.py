@@ -282,6 +282,8 @@ async def test_get_ticker_data_fmp_extracts_previous_close_and_change():
 async def test_get_premarket_quote_using_quote_previous_close():
     """Test MarketDataManager.get_premarket_quote directly uses quote's previous_close and change_pct."""
     manager = MarketDataManager()
+    manager.provider = MagicMock()
+    manager.provider.get_aftermarket_quote = AsyncMock(return_value=None)
     manager.get_quote = AsyncMock(
         return_value=TickerData(
             ticker="SPY",
@@ -308,6 +310,8 @@ async def test_get_premarket_quote_using_quote_previous_close():
 async def test_get_premarket_quote_fallback_to_history():
     """Test MarketDataManager.get_premarket_quote falls back to history if previous_close is missing on quote."""
     manager = MarketDataManager()
+    manager.provider = MagicMock()
+    manager.provider.get_aftermarket_quote = AsyncMock(return_value=None)
     manager.get_quote = AsyncMock(
         return_value=TickerData(
             ticker="AAPL",
@@ -326,3 +330,37 @@ async def test_get_premarket_quote_fallback_to_history():
     assert result["previous_close"] == 225.00
     assert result["change"] == 5.00
     assert abs(result["change_pct"] - 2.222) < 0.01
+
+
+@pytest.mark.asyncio
+async def test_get_premarket_quote_prefers_aftermarket_quote():
+    """Test MarketDataManager.get_premarket_quote uses provider.get_aftermarket_quote if available."""
+    manager = MarketDataManager()
+    mock_provider = MagicMock()
+    mock_provider.get_aftermarket_quote = AsyncMock(
+        return_value={
+            "symbol": "SPY",
+            "price": 596.50,
+            "bid": 596.40,
+            "ask": 596.60,
+            "volume": 120000,
+        }
+    )
+    manager.provider = mock_provider
+    manager.get_quote = AsyncMock(
+        return_value=TickerData(
+            ticker="SPY",
+            price=592.00,
+            market_cap=820e9,
+            exists=True,
+            previous_close=592.00,
+        )
+    )
+
+    result = await manager.get_premarket_quote("SPY")
+    assert result is not None
+    assert result["price"] == 596.50
+    assert result["previous_close"] == 592.00
+    assert result["change"] == 4.50
+    assert abs(result["change_pct"] - (4.50 / 592.00 * 100.0)) < 0.001
+    assert result["volume"] == 120000

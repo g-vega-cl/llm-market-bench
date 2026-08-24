@@ -122,6 +122,8 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
                     f"Target Asset ({ticker}): ${pm_price:.2f} | "
                     f"Overnight Gap: {pm_change:+.2f} ({pm_change_pct:+.2f}%) vs Prev Close ${pm_quote['previous_close']:.2f}"
                 )
+            else:
+                logger.warning(f"Could not retrieve live pre-market quote for target asset {ticker}")
 
             # Benchmark Equities, International Proxies, Fixed Income / Yields & Commodities/FX
             macro_proxies = [
@@ -136,13 +138,17 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
                 ("USO", "WTI Crude Oil"),
                 ("UUP", "US Dollar Index"),
             ]
+            active_proxies = [(sym, label) for sym, label in macro_proxies if sym != ticker]
+            proxy_quotes = await asyncio.gather(
+                *[mdm.get_premarket_quote(sym) for sym, _ in active_proxies],
+                return_exceptions=True,
+            )
             proxy_lines = []
-            for sym, label in macro_proxies:
-                if sym == ticker:
-                    continue
-                q = await mdm.get_premarket_quote(sym)
-                if q:
+            for (sym, label), q in zip(active_proxies, proxy_quotes, strict=False):
+                if isinstance(q, dict) and q.get("price") is not None and q.get("change_pct") is not None:
                     proxy_lines.append(f"- {sym} ({label}): ${q['price']:.2f} | Overnight Gap: {q['change_pct']:+.2f}%")
+                elif isinstance(q, Exception):
+                    logger.debug(f"Failed to fetch pre-market quote for proxy {sym}: {q}")
             if proxy_lines:
                 context_lines.append("Pre-Market Benchmark Indices & Key Macro Drivers (Live Overnight Gaps):")
                 context_lines.extend(proxy_lines)

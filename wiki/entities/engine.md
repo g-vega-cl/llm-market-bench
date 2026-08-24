@@ -1,58 +1,39 @@
 ---
-tags: [engine, python, pipeline]
+tags: [engine, python, pipeline, data]
 category: entity
 ---
 
 # Engine
 
-The Python data engine at `apps/engine/` is the core of the platform. It
-orchestrates the entire daily pipeline: ingesting financial newsletters,
-distributing them to LLMs for analysis, building consensus, validating and
-executing trades, and running feedback loops.
+The Python data engine (`apps/engine/`) is the core pipeline that ingests financial news, runs LLM analysis, builds consensus, validates trades, and executes them. It is organized into modules under `apps/engine/` with a `main.py` entry point.
 
-## Key Subsystems
+## Modules
 
-- **Ingestion** (`ingest/`) — Gmail API fetching, ad removal, calendar scraping
-- **Analysis** (`analysis/`) — LLM orchestration, Discovery Agent, momentum tracking, [[sources/correlation-matrix-source]]
-- **Macro Tracker** (`core/macro_tracker.py`) — 23-ticker global regime monitoring (equities, intl, commodities, fixed income, FX/risk, crypto)
-- **FRED Macro Client** (`core/fred.py`) — Federal Reserve Economic Data time series client with Supabase database caching (`fred_series_cache`), alias maps across 4 indicator packs, and `get_macro_economic_series` tool integration (see [[concepts/macroeconomic-data-fred]])
-- **LLM Handlers** (`core/llm/handlers/`) — provider-specific tool-calling with OpenAI, Anthropic, Gemini, DeepSeek, and MiniMax-M3 (via Anthropic SDK on MiniMax's Anthropic-compatible endpoint; see [[concepts/minimax-portfolio]])
-- **LLM Client Factories** (`core/llm/clients.py`) — registry mapping each provider name to an `instructor`-wrapped SDK client. SDK choice is non-obvious and follows the upstream provider's compatible SDK:
+- **`core/`** — Configuration, LLM client wrappers, tool definitions, and prompt templates
+- **`execution/`** — Market data management, order placement, portfolio operations, and trade settlement
+- **`tasks/`** — Orchestrated pipeline tasks (daily predictor, ingestion, analysis, consensus, execution, feedback)
+- **`tests/`** — Test suite with zero-warning policy and dependency injection patterns
 
-  | Provider | Model | SDK | Reason |
-  |---|---|---|---|
-  | `openai` | GPT-4o / GPT-5.6 Luna | `AsyncOpenAI` | native (requires `reasoning_effort="none"` when using tool schemas on `/v1/chat/completions`) |
-  | `anthropic` | Claude | `AsyncAnthropic` | native |
-  | `deepseek` | DeepSeek | `AsyncOpenAI` | DeepSeek exposes an OpenAI-compatible API |
-  | `gemini` | Gemini | `google.genai.Client` | native |
-  | `minimax` | MiniMax-M3 | `AsyncAnthropic` | MiniMax exposes an Anthropic-compatible API; gives us native `tool_use` blocks + thinking control |
+## Market Data Management
 
-  `CLIENT_FACTORIES` is populated at import time, so tests must patch the dict (not the module-level factory functions) — see `tests/test_call_counts.py` for the established pattern.
-- **Execution** (`execution/`) — validation, Reg T checks, portfolio management (and the simplified market-order pipeline for MiniMax)
-- **Memory** (`memory/`) — pgvector embeddings, RAG retrieval, deduplication
-- **Attribution** (`attribution/`) — decision persistence and trade linking
-- **Auto-Research** (`autoresearch/`) — weekly autonomous prompt improvement via meta-researcher LLM (`prompt_store.py` handles PostgREST single-row query exceptions gracefully)
+The `execution/market_data.py` module provides `MarketDataManager`, the central class for fetching live and historical market data. It supports multiple data providers via a provider abstraction.
 
-- **Prompt Factory** (`core/llm/prompt_factory.py`) — Centralized prompt assembly handling provider adaptations, web search instruction stripping, dynamic tool registration, and ledger injection.
+### Aftermarket / Pre-Market Quote Provider
 
-## Design Principles
+`MarketDataManager` now supports an optional provider with a `get_aftermarket_quote(ticker)` method. When available, `get_premarket_quote()` first attempts to fetch a dedicated aftermarket quote from this provider. If the provider returns a valid price (>0), that price is used as the pre-market price. Otherwise, it falls back to the standard quote from `get_quote()`. This ensures the most accurate pre-market pricing is used for gap analysis.
 
-- **Provider-agnostic**: Each LLM provider has a dedicated handler that normalizes tool-calling idiosyncrasies
-- **Cache-first**: Market data heavily cached to reduce API costs
-- **Defense in depth**: Four layers of hallucination prevention (prompt, context, verification, isolation) — bypassed for the MiniMax model to allow high-velocity raw cognitive output
-- **Deterministic state**: Source IDs are hash-based for idempotent UPSERTs
+Key behavior:
+- Provider method `get_aftermarket_quote` returns a dict with `price`, `bid`, `ask`, `volume`
+- If provider returns `None` or raises an exception, fallback to standard quote
+- Previous close is extracted from the standard quote's `previous_close` field, with fallback to historical data
+
+### Concurrent Proxy Quote Fetching
+
+In `tasks/daily_predictor.py`, the `get_daily_market_context` function now fetches pre-market quotes for macro proxies (QQQ, DIA, IWM, IEF, GLD, USO, UUP) concurrently using `asyncio.gather`. Partial failures (e.g., a single proxy API timeout) are handled gracefully — the failed proxy is skipped without breaking the entire context generation. This improves reliability and speed.
 
 ## Related
 
-- [[entities/pipeline]]
-- [[entities/database]]
-- [[concepts/ingestion]]
-- [[concepts/reasoning]]
 - [[concepts/execution]]
-- [[concepts/tool-enforcement]]
-- [[concepts/minimax-portfolio]]
-- [[concepts/memory-feedback]]
-- [[concepts/auto-research-prompt-improver]]
-- [[concepts/macroeconomic-data-fred]]
-- [[entities/autoresearch]]
-- [[sources/correlation-matrix-source]]
+- [[entities/daily-market-predictor]]
+- [[entities/macro-tracker]]
+- [[concepts/ingestion]]

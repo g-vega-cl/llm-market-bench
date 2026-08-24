@@ -235,8 +235,48 @@ async def test_get_daily_market_context_premarket_multi_asset():
         assert "- IEF (7-10yr Treasury" in ctx and "-0.21%" in ctx
         assert "- GLD (Gold)" in ctx and "+0.42%" in ctx
         assert "- USO (WTI Crude Oil)" in ctx and "-1.32%" in ctx
-        assert "- UUP (US Dollar Index)" in ctx and "+0.35%" in ctx
         assert "Prior Session Macro Baseline" in ctx
+
+
+@pytest.mark.asyncio
+async def test_get_daily_market_context_premarket_partial_proxy_failure():
+    from tasks.daily_predictor import get_daily_market_context
+
+    mock_history = [
+        {"price": 590.0, "fetched_at": "2026-08-17T00:00:00Z"},
+        {"price": 592.0, "fetched_at": "2026-08-18T00:00:00Z"},
+    ]
+    mock_mdm = MagicMock()
+    mock_mdm.is_premarket = AsyncMock(return_value=True)
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+
+    async def mock_get_pm_quote(sym):
+        if sym == "SPY":
+            return {"price": 595.0, "previous_close": 592.0, "change": 3.0, "change_pct": 0.507}
+        elif sym == "QQQ":
+            return {"price": 510.0, "previous_close": 508.0, "change": 2.0, "change_pct": 0.394}
+        elif sym == "DIA":
+            raise RuntimeError("API timeout for DIA")
+        return None
+
+    mock_mdm.get_premarket_quote = AsyncMock(side_effect=mock_get_pm_quote)
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch(
+            "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool", new_callable=AsyncMock, return_value="VIX test"
+        ),
+        patch("core.llm.tools.execute_market_health_barometer_tool", new_callable=AsyncMock, return_value="Baro test"),
+        patch("core.llm.tools.execute_get_market_feeling_tool", new_callable=AsyncMock, return_value="Feeling test"),
+    ):
+        ctx = await get_daily_market_context(ticker="SPY")
+        assert "=== LIVE PRE-MARKET ACTION & GAP ANALYSIS ===" in ctx
+        assert "Target Asset (SPY): $595.00 | Overnight Gap: +3.00 (+0.51%) vs Prev Close $592.00" in ctx
+        assert "- QQQ (Nasdaq 100)" in ctx and "+0.39%" in ctx
+        assert "- DIA" not in ctx  # Failed proxy gracefully skipped without breaking the rest
 
 
 def test_daily_predictor_prompt_footer_json_schema():

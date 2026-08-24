@@ -274,18 +274,39 @@ class MarketDataManager:
 
         ticker = ticker.strip().upper()
 
-        # 1. Fetch fresh quote from provider (returns live/delayed price and previousClose)
+        # 1. Try dedicated aftermarket / pre-market quote from provider if supported
+        pm_price = None
+        prev_close = None
+        change = None
+        change_pct = None
+        volume = None
+
+        provider = self.provider
+        if provider and hasattr(provider, "get_aftermarket_quote"):
+            try:
+                aftermarket_quote = await provider.get_aftermarket_quote(ticker)
+                if aftermarket_quote and aftermarket_quote.get("price") and float(aftermarket_quote["price"]) > 0:
+                    pm_price = float(aftermarket_quote["price"])
+                    volume = aftermarket_quote.get("volume")
+            except Exception as e:
+                logger.debug(f"Provider aftermarket quote lookup failed for {ticker}: {e}")
+
+        # 2. Fall back to standard quote if aftermarket quote wasn't available
         quote = await self.get_quote(ticker, force_refresh=True)
-        if not quote or not quote.price or quote.price <= 0:
+        if quote:
+            if pm_price is None and quote.price and quote.price > 0:
+                pm_price = quote.price
+                change = quote.change
+                change_pct = quote.change_pct
+                if volume is None:
+                    volume = quote.volume
+            if quote.previous_close and quote.previous_close > 0:
+                prev_close = quote.previous_close
+
+        if pm_price is None or pm_price <= 0:
             return None
 
-        pm_price = quote.price
-        prev_close = quote.previous_close
-        change = quote.change
-        change_pct = quote.change_pct
-        volume = quote.volume
-
-        # 2. If previous close is missing on quote object, fall back to recent history
+        # 3. If previous close is still missing, fall back to recent history
         if prev_close is None or prev_close <= 0:
             history = await self.get_history(ticker, days=5)
             if history:

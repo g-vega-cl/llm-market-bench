@@ -45,7 +45,7 @@
 - Env vars: `apps/engine/.env.example`
 - DB schema: `supabase/migrations/`
 - DB source of truth is the remote Supabase project (applied via `supabase db push --linked`)
-- **Workflow Secrets**: When adding, updating, or routing models/providers (e.g., in `packages/config/models.json` or `apps/engine/core/config.py`), always ensure corresponding GitHub Actions workflows (`.github/workflows/*.yml`) inject the required API keys (e.g. `MINIMAX_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `FMP_API_KEY`) in their step `env:` blocks.
+- **Workflow Secrets & Environment Variables (MANDATORY)**: Every GitHub Actions workflow YAML (`.github/workflows/*.yml`) invoking engine tasks (`python main.py <command>`) MUST explicitly declare and inject all required environment variables and secrets in its step `env:` blocks (e.g. `FMP_API_KEY`, `FRED_API_KEY`, `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and model provider keys `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). When adding, updating, or routing models/providers (e.g., in `packages/config/models.json` or `apps/engine/core/config.py`), you MUST ensure every corresponding workflow YAML includes its proper environment variables. Omitting keys like `FMP_API_KEY` in workflow YAMLs causes live data fetching and pre-market analysis to fail on CI runners.
 
 
 ## Docs

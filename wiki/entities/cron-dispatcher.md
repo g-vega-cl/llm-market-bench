@@ -44,10 +44,17 @@ When accessed via HTTP, the Worker accepts query parameters:
 - `target` or `workflow` — if set to `'ingest'` or `'ingest.yml'`, dispatches `ingest.yml` directly with no inputs.
 - Returns JSON with dispatched workflow file name, inputs (if any), and status.
 
-## Architecture Benefits
-
-- **Eliminates Queue Bottlenecks**: No wait for GitHub-provided scheduler queuing; workflow is triggered instantly via API.
 - **Edge Reliability**: Cloudflare Workers run globally with minimal cold start.
+
+## Workflow Secrets & Environment Variables Protocol
+
+Every GitHub Actions workflow YAML targeted by the dispatcher (`.github/workflows/*.yml`) executing python commands must explicitly declare all required runtime environment variables and secrets in its step `env:` block. For example:
+- Financial & Macro Data: `FMP_API_KEY`, `FRED_API_KEY`
+- Database: `SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- LLM Providers: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`
+
+Omitting API keys like `FMP_API_KEY` in workflow YAMLs causes live pre-market price quotes, gap analysis, and market data queries to fail silently on CI runners.
+
 ## Deployment & Operational Protocol
 
 > [!IMPORTANT]

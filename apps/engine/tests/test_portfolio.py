@@ -154,6 +154,48 @@ async def test_initialize_existing_portfolio():
 
 
 @pytest.mark.asyncio
+async def test_initialize_existing_portfolio_with_null_metrics_fields():
+    """Test loading a portfolio where margin metrics columns in DB are NULL (None)."""
+    p = Portfolio("null_metrics_agent")
+
+    mock_db = MagicMock()
+    mock_res_portfolio = MagicMock()
+    mock_res_portfolio.data = [
+        {
+            "id": "uuid-null-fields",
+            "cash_balance": 10000.00,
+            "buying_power": 40000.00,
+            "total_equity": None,
+            "maintenance_margin": None,
+            "excess_liquidity": None,
+            "sma": None,
+            "realized": None,
+        }
+    ]
+
+    mock_res_positions = MagicMock()
+    mock_res_positions.data = []
+
+    mock_db.table.return_value.select.return_value.eq.return_value.execute.side_effect = [
+        mock_res_portfolio,
+        mock_res_positions,
+    ]
+
+    with patch("execution.portfolio.get_supabase_client", return_value=mock_db):
+        await p.initialize()
+
+    assert p.id == "uuid-null-fields"
+    assert p.cash_balance == 10000.00
+    assert p.sma == 0.0
+    assert p.metrics is not None
+    assert p.metrics.buying_power == 40000.00
+    assert p.metrics.maintenance_margin_req == 0.0
+    assert p.metrics.total_equity == 0.0
+    assert p.metrics.excess_liquidity == 0.0
+    assert p.metrics.realized == 10000.00
+
+
+@pytest.mark.asyncio
 async def test_initialize_new_portfolio():
     """Test creating a new portfolio if none exists."""
     p = Portfolio("new_agent")

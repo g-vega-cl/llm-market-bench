@@ -164,20 +164,20 @@ def get_price_for_date(history: list[dict], target_date) -> float | None:
     return closest_price
 
 
-async def run_evaluation():
-    """Find pending sector predictions whose target_date has passed, fetch returns, and score them."""
+async def run_evaluation(force: bool = False):
+    """Find pending sector predictions whose target_date has passed, fetch returns, and score them.
+
+    If force is True, re-evaluates all predictions whose target_date <= today regardless of status.
+    """
     client = get_supabase_client()
     today = datetime.now(UTC).date()
 
     try:
         # Fetch pending predictions OR evaluated predictions missing evaluation_audit_data where target_date <= today
-        response = (
-            client.table("sector_predictions")
-            .select("*")
-            .or_("status.eq.pending,evaluation_audit_data.is.null")
-            .lte("target_date", today.isoformat())
-            .execute()
-        )
+        query = client.table("sector_predictions").select("*")
+        if not force:
+            query = query.or_("status.eq.pending,evaluation_audit_data.is.null")
+        response = query.lte("target_date", today.isoformat()).execute()
     except Exception as e:
         logger.exception(f"Failed to query predictions to evaluate/backfill from DB: {e}")
         return
@@ -397,4 +397,10 @@ async def run_evaluation():
 
 
 if __name__ == "__main__":
-    asyncio.run(run_evaluation())
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Evaluate sector predictions")
+    parser.add_argument("--force", action="store_true", help="Force re-evaluation of all mature predictions")
+    args = parser.parse_args()
+
+    asyncio.run(run_evaluation(force=args.force))

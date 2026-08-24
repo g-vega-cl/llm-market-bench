@@ -110,3 +110,61 @@ async def test_run_evaluation_runner():
 
     # Check that it updated the correct ID
     mock_chain.eq.assert_any_call("id", "mock-uuid-123456")
+
+
+@pytest.mark.asyncio
+async def test_run_evaluation_runner_force():
+    """Test that run_evaluation with force=True does not add or_ filter and evaluates rows."""
+    today = datetime.now(UTC).date()
+    target_date = today - timedelta(days=1)
+    prediction_date = target_date - timedelta(days=7)
+
+    mock_prediction = {
+        "id": "mock-uuid-force-1",
+        "prediction_date": prediction_date.isoformat(),
+        "target_date": target_date.isoformat(),
+        "timeframe": "7d",
+        "model_name": "force-model",
+        "prompt_tag": "force-tag",
+        "predicted_sector": "XLK",
+        "predicted_pair": ["XLK", "XLU"],
+        "reasoning": "Force test.",
+        "status": "evaluated",
+    }
+
+    mock_client = MagicMock()
+    mock_chain = MagicMock()
+    mock_select_execute = MagicMock()
+    mock_select_execute.data = [mock_prediction]
+
+    mock_update_execute = MagicMock()
+    mock_update_execute.data = [{"id": "mock-uuid-force-1"}]
+
+    mock_chain.select.return_value = mock_chain
+    mock_chain.eq.return_value = mock_chain
+    mock_chain.lte.return_value = mock_chain
+    mock_chain.update.return_value = mock_chain
+
+    def mock_execute_side_effect():
+        if mock_chain.update.called:
+            return mock_update_execute
+        return mock_select_execute
+
+    mock_chain.execute = mock_execute_side_effect
+    mock_client.table.return_value = mock_chain
+
+    mock_provider = AsyncMock()
+    mock_provider.get_history.return_value = [
+        {"price": 110.0, "fetched_at": target_date.isoformat()},
+        {"price": 100.0, "fetched_at": prediction_date.isoformat()},
+    ]
+
+    with (
+        patch("tasks.evaluate_predictions.get_supabase_client", return_value=mock_client),
+        patch("tasks.evaluate_predictions.get_financial_provider", return_value=mock_provider),
+    ):
+        await run_evaluation(force=True)
+
+    # In force mode, .or_() should NOT be called on the query chain
+    mock_chain.or_.assert_not_called()
+    mock_chain.update.assert_called_once()

@@ -19,7 +19,7 @@ System portfolios are automated, rule-based investment and trading strategies th
   - 50% of available equity is allocated equally across clean Short sectors.
 - **Execution Timing**: Entered at Monday Market Open and liquidated at Friday Market Close.
 - **Execution Friction**: 5 bps (0.05%) slippage on entries and exits.
-- **Trigger**: Integrated into the sector predictor evaluation rebalance pipeline.
+- **Trigger**: Integrated into the sector predictor evaluation rebalance pipeline (`apps/engine/tasks/evaluate_predictions.py`). Supports `--force` flag for manual backfilling. State hydration is robust to `NULL` margin metrics via fallback coercion in `Portfolio.initialize()`.
 
 ### 2. Daily S&P Intraday Trader (`sys-daily-spy-{model}`)
 - **Signal**: Daily 9:30 AM – 4:00 PM ET S&P 500 predictions (`UP` or `DOWN`, `expected_return_pct`, `confidence`) from `daily_predictions` table.

@@ -14,6 +14,7 @@ from core.db import get_supabase_client
 from execution.portfolio import Portfolio
 
 SYS_SECTOR_LS_OWNER_ID = "sys-sector-ls-consensus"
+SYS_SECTOR_START_DATE = "2026-08-17"
 SYS_DAILY_SPY_OWNER_PREFIX = "sys-daily-spy-"
 DEFAULT_SLIPPAGE_BPS = 5.0  # 5 bps = 0.05%
 INITIAL_PORTFOLIO_CASH = 10000.00
@@ -143,6 +144,15 @@ async def execute_system_sector_rebalance(
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
 ) -> dict[str, Any]:
     """Execute weekly rebalance for the sector long/short portfolio (50% long, 50% short)."""
+    if week_start_date < SYS_SECTOR_START_DATE:
+        logger.info(
+            f"Skipping sector rebalance for window starting {week_start_date} (before portfolio start date {SYS_SECTOR_START_DATE})"
+        )
+        return {
+            "status": "skipped",
+            "reason": f"Window start date {week_start_date} is before portfolio start date {SYS_SECTOR_START_DATE}",
+        }
+
     long_sectors, short_sectors = resolve_sector_predictions(predictions)
 
     if not long_sectors and not short_sectors:

@@ -10,11 +10,16 @@ sys.path.append(os.path.join(os.getcwd(), "apps", "engine"))
 
 from execution.system_portfolios import (
     SYS_SECTOR_LS_OWNER_ID,
+    SYS_SECTOR_START_DATE,
     compute_daily_trade_execution,
     execute_system_daily_trade,
     execute_system_sector_rebalance,
     resolve_sector_predictions,
 )
+
+
+def test_sys_sector_start_date_constant():
+    assert SYS_SECTOR_START_DATE == "2026-08-17"
 
 
 def test_resolve_sector_predictions_basic():
@@ -183,6 +188,36 @@ def create_mock_supabase(owner_id: str, initial_cash: float = 10000.0):
 
 
 @pytest.mark.asyncio
+async def test_execute_system_sector_rebalance_before_start_date_skipped():
+    mock_supabase = create_mock_supabase(SYS_SECTOR_LS_OWNER_ID, 10000.0)
+
+    predictions = [
+        {"predicted_sector": "XLE", "predicted_worst_sector": "XLU"},
+    ]
+    price_map = {
+        "XLE": {"start_price": 100.0, "end_price": 102.0, "return_pct": 2.0},
+        "XLU": {"start_price": 80.0, "end_price": 80.8, "return_pct": 1.0},
+    }
+
+    with (
+        patch(
+            "execution.system_portfolios.get_supabase_client",
+            return_value=mock_supabase,
+        ),
+        patch("execution.portfolio.get_supabase_client", return_value=mock_supabase),
+    ):
+        res = await execute_system_sector_rebalance(
+            week_start_date="2026-08-10",
+            week_end_date="2026-08-14",
+            predictions=predictions,
+            price_map=price_map,
+        )
+
+        assert res["status"] == "skipped"
+        assert "before portfolio start date" in res["reason"]
+
+
+@pytest.mark.asyncio
 async def test_execute_system_sector_rebalance_flow():
     mock_supabase = create_mock_supabase(SYS_SECTOR_LS_OWNER_ID, 10000.0)
 
@@ -206,8 +241,8 @@ async def test_execute_system_sector_rebalance_flow():
         patch("execution.portfolio.get_supabase_client", return_value=mock_supabase),
     ):
         res = await execute_system_sector_rebalance(
-            week_start_date="2026-08-10",
-            week_end_date="2026-08-14",
+            week_start_date="2026-08-17",
+            week_end_date="2026-08-21",
             predictions=predictions,
             price_map=price_map,
         )

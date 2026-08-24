@@ -10,6 +10,7 @@ System portfolios are automated, rule-based investment and trading strategies th
 ## Implemented Strategies
 
 ### 1. Weekly Sector Long/Short Strategy (`sys-sector-ls-consensus`)
+- **Inception / Start Date**: `2026-08-17` (`SYS_SECTOR_START_DATE`). Prior historical prediction windows are evaluated for scores and calibration but skipped for portfolio trade rebalancing.
 - **Signal**: 7-day predictions from `sector_predictions` table generated weekly by multi-model sector predictors.
 - **Universe**: Major US Sector ETFs (`XLE`, `XLF`, `XLK`, `XLI`, `XLP`, `XLY`, `XLU`, `XLV`, `XLB`, `XLC`, `XBI`, `XOP`).
 - **Position Sizing & Rebalancing**:

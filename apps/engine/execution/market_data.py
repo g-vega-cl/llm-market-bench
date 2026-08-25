@@ -294,14 +294,23 @@ class MarketDataManager:
         # 2. Fall back to standard quote if aftermarket quote wasn't available
         quote = await self.get_quote(ticker, force_refresh=True)
         if quote:
-            if pm_price is None and quote.price and quote.price > 0:
-                pm_price = quote.price
-                change = quote.change
-                change_pct = quote.change_pct
+            if pm_price is not None:
+                # We have a dedicated aftermarket/premarket quote (pm_price).
+                # In pre-market, quote.price represents the prior regular session close.
+                if quote.price and quote.price > 0:
+                    prev_close = quote.price
+                elif quote.previous_close and quote.previous_close > 0:
+                    prev_close = quote.previous_close
+            else:
+                # No dedicated aftermarket quote available; use standard quote
+                if quote.price and quote.price > 0:
+                    pm_price = quote.price
+                    change = quote.change
+                    change_pct = quote.change_pct
+                if quote.previous_close and quote.previous_close > 0:
+                    prev_close = quote.previous_close
                 if volume is None:
                     volume = quote.volume
-            if quote.previous_close and quote.previous_close > 0:
-                prev_close = quote.previous_close
 
         if pm_price is None or pm_price <= 0:
             return None

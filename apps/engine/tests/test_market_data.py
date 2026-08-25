@@ -353,14 +353,16 @@ async def test_get_premarket_quote_prefers_aftermarket_quote():
             price=592.00,
             market_cap=820e9,
             exists=True,
-            previous_close=592.00,
+            previous_close=590.00,  # distinct two-day-old close
         )
     )
 
     result = await manager.get_premarket_quote("SPY")
     assert result is not None
     assert result["price"] == 596.50
+    # Baseline for overnight gap should be yesterday's regular close (quote.price 592.00), not quote.previous_close (590.00)
     assert result["previous_close"] == 592.00
     assert result["change"] == 4.50
     assert abs(result["change_pct"] - (4.50 / 592.00 * 100.0)) < 0.001
     assert result["volume"] == 120000
+

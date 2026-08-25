@@ -17,7 +17,7 @@ Before any trade is executed, the system validates market conditions and fetches
 1. **Primary**: If the data provider exposes a `get_aftermarket_quote(ticker)` method, it is called first. This returns a dedicated aftermarket quote with `price`, `bid`, `ask`, and `volume`.
 2. **Fallback**: If the provider method is unavailable, returns `None`, or raises an exception, the standard quote from `get_quote()` is used.
 
-The pre-market price is then compared to the previous close (from the quote's `previous_close` field, or from historical data as fallback) to compute the overnight gap percentage.
+The pre-market price is then compared to the previous close to compute the overnight gap percentage. When a dedicated aftermarket quote is available, the prior session's regular close is taken from `quote.price` (since `/quote` has not yet rolled over to today during pre-market); in fallback scenarios without aftermarket data, `quote.previous_close` or historical bar data is used.
 
 ### Concurrent Proxy Fetching
 

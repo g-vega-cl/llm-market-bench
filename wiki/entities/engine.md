@@ -25,7 +25,7 @@ The `execution/market_data.py` module provides `MarketDataManager`, the central 
 Key behavior:
 - Provider method `get_aftermarket_quote` returns a dict with `price`, `bid`, `ask`, `volume`
 - If provider returns `None` or raises an exception, fallback to standard quote
-- Previous close is extracted from the standard quote's `previous_close` field, with fallback to historical data
+- When an aftermarket quote is present, the previous close is extracted from `quote.price` (prior regular session close), with fallback to `quote.previous_close` or historical data when aftermarket pricing is absent
 
 ### Concurrent Proxy Quote Fetching
 

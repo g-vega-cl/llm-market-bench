@@ -27,8 +27,24 @@ The plugin packages two connection options in `mcp_config.json`:
 agy plugin install ./packages/mcp-posthog
 ```
 
-Verify with `agy plugin list`. The server appears as `posthog` in the MCP ecosystem.
+## Querying Pageviews via HogQL
+
+PostHog analytics can be queried via HogQL to analyze traffic patterns and optimize navigation:
+
+```sql
+SELECT
+    properties.$pathname AS pathname,
+    count() AS total_views,
+    count(DISTINCT distinct_id) AS unique_visitors
+FROM events
+WHERE event = '$pageview'
+GROUP BY pathname
+ORDER BY total_views DESC
+```
+
+This data is used to optimize navbar routing layout (`apps/web/src/routes/__root.tsx`) to prioritize high-traffic destinations.
 
 ## Related
 
 - [[concepts/mcp-setup]]
+- [[concepts/posthog-stealth-proxy]]

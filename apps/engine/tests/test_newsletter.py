@@ -397,3 +397,47 @@ def test_get_gmail_service_resilient_parsing():
         service = get_gmail_service()
         assert service is not None
         mock_build.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_ingest_newsletters_query_retry_on_502():
+    """Test that ingest_newsletters retries when service.users().messages().list() returns 502 Bad Gateway."""
+    from googleapiclient.errors import HttpError
+
+    mock_resp = MagicMock()
+    mock_resp.status = 502
+    mock_resp.reason = "Bad Gateway"
+    http_err_502 = HttpError(resp=mock_resp, content=b"Bad Gateway")
+
+    mock_service = MagicMock()
+    mock_list = mock_service.users().messages().list()
+    # First attempt raises 502, second attempt succeeds
+    mock_list.execute.side_effect = [
+        http_err_502,
+        {"messages": [{"id": "msg-123"}]},
+    ]
+
+    with (
+        patch("ingest.newsletter.get_gmail_service", return_value=mock_service),
+        patch("ingest.newsletter._fetch_raw_message") as mock_fetch,
+        patch("ingest.newsletter.clean_newsletter_content", side_effect=lambda c: c),
+        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+    ):
+        mock_fetch.return_value = (
+            NewsletterSnapshot(
+                source_id="id1",
+                chunk_hash="hash1",
+                sender="crew@morningbrew.com",
+                date="2026-08-26T12:00:00",
+                subject="Daily Brew",
+                content="Sample content",
+                ingested_at="2026-08-26T12:00:00",
+            ),
+            "crew@morningbrew.com",
+        )
+
+        snapshots = await ingest_newsletters(newer_than_days=1)
+        assert len(snapshots) == 1
+        assert snapshots[0]["source_id"] == "id1"
+        assert mock_list.execute.call_count == 2
+        mock_sleep.assert_called_once()

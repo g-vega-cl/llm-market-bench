@@ -391,19 +391,38 @@ async def ingest_newsletters(newer_than_days: int = 1) -> list[dict[str, Any]]:
     query = f"from:({sender_filter}) newer_than:{newer_than_days}d"
     logger.info(f"Fetching newsletters with query: {query}")
 
-    try:
-        results = service.users().messages().list(userId="me", q=query, maxResults=20).execute()
-        messages = results.get("messages", [])
-        if not messages:
-            logger.info(
-                f"No messages found matching query. "
-                f"Senders checked: {len(NEWSLETTER_SENDERS)}, "
-                f"Time window: {newer_than_days} day(s)."
+    max_query_attempts = 3
+    messages = []
+    for attempt in range(1, max_query_attempts + 1):
+        try:
+            results = await asyncio.to_thread(
+                service.users().messages().list(userId="me", q=query, maxResults=20).execute
             )
-            return []
+            messages = results.get("messages", [])
+            break
+        except Exception as error:
+            if attempt < max_query_attempts:
+                wait_seconds = attempt * 1.5
+                logger.warning(
+                    f"Attempt {attempt}/{max_query_attempts} failed querying Gmail messages: {error}. "
+                    f"Retrying in {wait_seconds}s..."
+                )
+                await asyncio.sleep(wait_seconds)
+            else:
+                logger.error(f"An error occurred fetching from Gmail after {max_query_attempts} attempts: {error}")
+                return []
 
-        logger.info(f"Found {len(messages)} messages. Starting processing...")
+    if not messages:
+        logger.info(
+            f"No messages found matching query. "
+            f"Senders checked: {len(NEWSLETTER_SENDERS)}, "
+            f"Time window: {newer_than_days} day(s)."
+        )
+        return []
 
+    logger.info(f"Found {len(messages)} messages. Starting processing...")
+
+    try:
         # Phase 1: Fetch all raw message bodies (Gmail API calls locked to protect thread-unsafe service)
         raw_results = []
         attempted_senders = set()

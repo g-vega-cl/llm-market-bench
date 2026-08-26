@@ -95,11 +95,13 @@ function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
   }
 
   if (nyHour === 9 && nyMinute === 15) {
-    // 9:15 AM ET -> Market open prediction & Market open newsletter
-    return [
-      { workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } },
-      { workflowFile: 'generate-newsletter.yml', inputs: { session: 'open' } },
-    ];
+    // 9:15 AM ET -> Market open newsletter synthesis
+    return [{ workflowFile: 'generate-newsletter.yml', inputs: { session: 'open' } }];
+  }
+
+  if (nyHour === 9 && nyMinute === 20) {
+    // 9:20 AM ET -> Market open prediction (runs with fresh synthesized newsletter)
+    return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-predictor' } }];
   }
 
   if (nyHour === 17 && nyMinute === 0) {

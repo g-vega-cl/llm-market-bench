@@ -504,6 +504,32 @@ GET_PREDICTION_MARKET_ODDS_TOOL = {
 }
 
 
+FETCH_DAILY_NEWSLETTER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "fetch_daily_newsletter",
+        "description": "Fetch the AI Wall Street synthesized daily market newsletter briefing (market open or close) containing executive summary, bullet points, macro narrative, and trade scenarios.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "session": {
+                    "type": "string",
+                    "enum": ["open", "close", "latest"],
+                    "description": "Newsletter session window ('open' for morning briefing, 'close' for market wrap, or 'latest'). Default 'latest'.",
+                },
+                "target_date": {
+                    "type": "string",
+                    "description": "Optional ISO date (YYYY-MM-DD) to fetch the newsletter for. If omitted, returns the most recent newsletter.",
+                },
+                "include_full_content": {
+                    "type": "boolean",
+                    "description": "Whether to include the full ~1,500-word Markdown article content or just the executive summary and bullet points (default true).",
+                },
+            },
+        },
+    },
+}
+
 FETCH_NEWSLETTER_CONTENT_TOOL = {
     "type": "function",
     "function": {
@@ -761,6 +787,7 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_earnings_history": GET_EARNINGS_HISTORY_TOOL,
     "search_prediction_markets": SEARCH_PREDICTION_MARKETS_TOOL,
     "get_prediction_market_odds": GET_PREDICTION_MARKET_ODDS_TOOL,
+    "fetch_daily_newsletter": FETCH_DAILY_NEWSLETTER_TOOL,
     "fetch_newsletter_content": FETCH_NEWSLETTER_CONTENT_TOOL,
     "search_past_memories": SEARCH_PAST_MEMORIES_TOOL,
     "get_thematic_flows": GET_THEMATIC_FLOWS_TOOL,
@@ -1945,6 +1972,84 @@ async def execute_financial_valuation_tool(
     except Exception as e:
         logger.exception(f"Error executing valuation audit for {ticker}: {str(e)}")
         return f"Error executing valuation audit for {ticker}: {str(e)}"
+
+
+async def execute_fetch_daily_newsletter_tool(
+    session: str = "latest",
+    target_date: str | None = None,
+    include_full_content: bool = True,
+) -> str:
+    """Retrieves the synthesized daily market newsletter from `generated_newsletters`.
+
+    Args:
+        session: 'open', 'close', or 'latest'.
+        target_date: Optional YYYY-MM-DD string.
+        include_full_content: Whether to include the full markdown content.
+
+    Returns:
+        Formatted string containing newsletter title, summary, bullets, and content.
+    """
+    try:
+        client = get_supabase_client()
+        query = client.table("generated_newsletters").select("*")
+        if session in ("open", "close"):
+            query = query.eq("session", session)
+        if target_date:
+            query = query.gte("created_at", f"{target_date}T00:00:00").lte("created_at", f"{target_date}T23:59:59")
+
+        query = query.order("created_at", desc=True).limit(1)
+        response = query.execute()
+
+        record = None
+        if response and hasattr(response, "data") and response.data:
+            record = response.data[0]
+        elif target_date:
+            # Fallback to latest available newsletter if target_date query yielded no results
+            fallback_query = client.table("generated_newsletters").select("*")
+            if session in ("open", "close"):
+                fallback_query = fallback_query.eq("session", session)
+            fallback_resp = fallback_query.order("created_at", desc=True).limit(1).execute()
+            if fallback_resp and hasattr(fallback_resp, "data") and fallback_resp.data:
+                record = fallback_resp.data[0]
+                logger.warning(
+                    f"No generated newsletter found for target date {target_date}; "
+                    f"fell back to latest available ({record.get('created_at')})"
+                )
+
+        if not record:
+            return (
+                f"No generated daily newsletters found in database "
+                f"(session: {session}, target_date: {target_date or 'latest'})."
+            )
+
+        title = record.get("title", "Daily Newsletter Briefing")
+        summary = record.get("summary", "")
+        bullet_points = record.get("bullet_points") or []
+        bullets_text = "\n".join([f"- {bp}" for bp in bullet_points])
+        formatted_time = record.get("formatted_time", "")
+        sess = record.get("session", session)
+        created_at = str(record.get("created_at", ""))
+
+        lines = [
+            "=== AI WALL STREET SYNTHESIZED DAILY NEWSLETTER ===",
+            f"Title: {title}",
+            f"Session: {sess.upper()} ({formatted_time}) | Published: {created_at}",
+            f"Executive Summary: {summary}",
+        ]
+        if bullets_text:
+            lines.append(f"Key Takeaways:\n{bullets_text}")
+
+        if include_full_content:
+            content = record.get("content", "")
+            if content:
+                lines.append(f"\nFull Briefing Content:\n{content}")
+
+        lines.append("==================================================")
+        return "\n".join(lines)
+
+    except Exception as e:
+        logger.exception(f"Error executing fetch_daily_newsletter tool: {e}")
+        return f"Error fetching daily newsletter: {str(e)}"
 
 
 async def execute_fetch_newsletter_content_tool(source_ids: list[str]) -> str:

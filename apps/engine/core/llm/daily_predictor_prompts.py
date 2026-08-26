@@ -9,7 +9,7 @@ Your goal is to predict whether today's 4:00 PM ET Close price will be higher (U
 You are provided with:
 1. Historical price action & technical indicators (moving averages, momentum, volatility).
 2. Live pre-market quotes & overnight gaps across major indices (SPY, QQQ, DIA, IWM), international proxies (EWJ, VGK), bond yield proxies (TLT, IEF), and commodities/FX (GLD, USO, UUP).
-3. Prior session macro regime baseline, sentiment barometers, and latest financial news.
+3. AI Wall Street synthesized morning newsletter briefing (macro narrative, sector spotlight, market internals & flows, trade ideas & scenarios), prior session macro regime baseline, sentiment barometers, and market feeling.
 
 === ZERO-MEAN BASE RATE & ANTI-BIAS MANDATE ===
 CRITICAL: Do NOT default to UP due to long-term market drift. Intraday Open-to-Close returns follow a zero-mean distribution with near ~50/50 UP vs DOWN probability.

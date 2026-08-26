@@ -84,10 +84,22 @@ The original design was "fire-and-forget" — Alpaca was treated as an audit mir
 
 A separate cron job is simpler, more reliable, and survives engine restarts.
 
+## Alpaca Portfolio Reconciliation Audit
+
+**Location**: `apps/engine/audit/alpaca_audit.py`
+**CLI Command**: `python main.py audit-alpaca [--model <model_name>] [--days <N>] [--json]`
+
+The reconciliation tool audits an agent's simulated Supabase portfolio against Alpaca brokerage fills:
+1. **Performance Verification**: Compares the frontend chart metrics (`portfolio_performance` snapshots) against mark-to-market trade calculations and Alpaca fills.
+2. **Trade Matching & Slippage**: Matches each trade ID with Alpaca orders (`client_order_id = {agent_id}__{ticker}__{signal}__{trade_id}`), calculating execution price slippage.
+3. **Position Reconciliation**: Compares Supabase holding quantities against reconstructed Alpaca share counts.
+4. **Root-Cause Discrepancy Detection**: Surfaces skipped orders (`SKIPPED_NO_POSITION`), rejected orders, or timing lags.
+
 ## Related Files
 
 - `apps/engine/execution/alpaca_broker.py` — Sets `SUBMITTED` at order placement
 - `apps/engine/scripts/sync_alpaca_orders.py` — Standalone sync script
+- `apps/engine/audit/alpaca_audit.py` — Portfolio reconciliation audit engine
 - `.github/workflows/sync-alpaca.yml` — Daily cron trigger
 - `supabase/migrations/20260423000000_add_alpaca_columns_to_trades.sql` — Schema (original alpaca columns)
 - `supabase/migrations/20260514000000_add_alpaca_filled_at_to_trades.sql` — Schema (alpaca_filled_at)

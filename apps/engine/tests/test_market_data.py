@@ -365,4 +365,3 @@ async def test_get_premarket_quote_prefers_aftermarket_quote():
     assert result["change"] == 4.50
     assert abs(result["change_pct"] - (4.50 / 592.00 * 100.0)) < 0.001
     assert result["volume"] == 120000
-

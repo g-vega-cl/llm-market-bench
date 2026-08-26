@@ -95,6 +95,7 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
 async def get_daily_market_context(ticker: str = "SPY") -> str:
     """Fetch recent market data context using canonical MarketDataManager (FMP) and pre-made tools."""
     from core.llm.tools import (
+        execute_fetch_daily_newsletter_tool,
         execute_get_global_macro_context_tool,
         execute_get_market_feeling_tool,
         execute_get_volatility_index_details_tool,
@@ -104,6 +105,16 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
 
     context_lines = [f"Asset: {ticker} (S&P 500 ETF)"]
     today_str = datetime.now(UTC).date().isoformat()
+
+    # 1. AI Wall Street Synthesized Morning Newsletter Briefing
+    try:
+        newsletter_str = await execute_fetch_daily_newsletter_tool(
+            session="open", target_date=today_str, include_full_content=True
+        )
+        if newsletter_str and not newsletter_str.startswith("Error"):
+            context_lines.append(f"Morning Newsletter Briefing:\n{newsletter_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching morning newsletter briefing: {e}")
 
     # 1. Price Action, Technicals & Pre-Market Live Quote via MarketDataManager (FMP)
     try:

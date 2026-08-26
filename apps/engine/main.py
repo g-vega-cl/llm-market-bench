@@ -20,6 +20,7 @@ from attribution.service import save_decision
 from core.audit import run_audit
 from core.config import (
     COMMAND_AUDIT,
+    COMMAND_AUDIT_ALPACA,
     COMMAND_AUTORESEARCH,
     COMMAND_BACKTEST_DAILY_AUTORESEARCH,
     COMMAND_BOOTSTRAP_AUTORESEARCH,
@@ -954,6 +955,7 @@ def main():
             COMMAND_SEED_DAILY_PREDICTOR,
             COMMAND_GENERATE_NEWSLETTER,
             COMMAND_LIN_RENKO,
+            COMMAND_AUDIT_ALPACA,
         ],
         help="Action to perform",
     )
@@ -969,6 +971,23 @@ def main():
     )
     parser.add_argument("--cold-start", action="store_true", help="Trigger a cold-start reset for autoresearch")
     parser.add_argument("--ticker", type=str, default="SPY", help="Ticker for daily predictor (default: SPY)")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="MiniMax-M3",
+        help="Target model name for audit/tasks (default: MiniMax-M3)",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=7,
+        help="Lookback period in days for audit (default: 7)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output audit results in JSON format",
+    )
     parser.add_argument(
         "--session",
         type=str,
@@ -1044,6 +1063,10 @@ def main():
         from tasks.lin_renko_task import run_lin_renko_flow
 
         asyncio.run(run_lin_renko_flow())
+    elif args.command == COMMAND_AUDIT_ALPACA:
+        from audit.alpaca_audit import run_alpaca_audit
+
+        asyncio.run(run_alpaca_audit(model_name=args.model, days=args.days, json_output=args.json))
 
 
 if __name__ == "__main__":

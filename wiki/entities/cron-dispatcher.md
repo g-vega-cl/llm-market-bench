@@ -15,7 +15,8 @@ The dispatcher supports multiple workflows beyond `daily-predictor.yml`. It eval
 
 | UTC Time | ET Time (EDT / EST) | Minute | Workflow File | Inputs |
 |----------|----------------------|--------|---------------|--------|
-| 13:15 / 14:15 | 9:15 AM ET | 15 | `daily-predictor.yml` & `generate-newsletter.yml` | `{"action": "daily-predictor"}` / `{"session": "open"}` |
+| 13:15 / 14:15 | 9:15 AM ET | 15 | `generate-newsletter.yml` | `{"session": "open"}` |
+| 13:20 / 14:20 | 9:20 AM ET | 20 | `daily-predictor.yml` | `{"action": "daily-predictor"}` |
 | 13:35, 14:35, 15:35, 16:35 | 9:35, 11:35 AM ET | 35 | `ingest.yml` | none |
 | 19:30 / 20:30 | 3:30 PM ET | 30 | `ingest.yml` | none |
 | 21:00 / 22:00 | 5:00 PM ET | 0 | `generate-newsletter.yml` | `{"session": "close"}` |
@@ -29,7 +30,8 @@ The Worker exposes these edge cron expressions:
 - `0 21,22 * * MON-FRI` — 5:00 PM ET (EDT & EST offsets for market close newsletter)
 - `35 13-16 * * MON-FRI` — 9:35, 11:35 AM ET (ingest)
 - `30 19,20 * * MON-FRI` — 3:30 PM ET (ingest)
-- `15 13,14,21 * * MON-FRI` — 9:15 AM, 5:15 PM ET (daily-predictor, generate-newsletter open, evaluate daily predictions)
+- `15 13,14,21 * * MON-FRI` — 9:15 AM, 5:15 PM ET (generate-newsletter open, evaluate daily predictions)
+- `20 13,14 * * MON-FRI` — 9:20 AM ET (daily-predictor with fresh newsletter briefing)
 - `0 22 * * SUN,WED` — 6:00 PM ET (daily-autoresearch on Sundays and Wednesdays)
 
 ## Dispatch Request Structure

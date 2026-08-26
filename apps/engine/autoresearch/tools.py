@@ -79,3 +79,50 @@ async def search_wiki_concepts(query: str) -> str:
     except Exception as e:
         logger.exception("Error searching wiki concepts: %s", e)
         return f"Error searching wiki concepts: {str(e)}"
+
+
+async def query_past_newsletters(limit: int = 5, session: str = "open") -> str:
+    """Fetch recent AI Wall Street daily newsletters to analyze market regime narrative trends.
+
+    Args:
+        limit: Max past newsletters to retrieve (default 5).
+        session: 'open', 'close', or 'all'.
+
+    Returns:
+        Formatted summary of recent newsletter titles, summaries, and key takeaways.
+    """
+    try:
+        from core.db import get_async_supabase_client
+
+        sb_client = await get_async_supabase_client()
+        query = sb_client.table("generated_newsletters").select(
+            "title, summary, bullet_points, session, formatted_time, created_at"
+        )
+        if session in ("open", "close"):
+            query = query.eq("session", session)
+
+        res = await query.order("created_at", desc=True).limit(limit).execute()
+
+        if not res or not hasattr(res, "data") or not res.data:
+            return "No past generated daily newsletters found in database."
+
+        lines = [f"=== RECENT DAILY NEWSLETTERS (Session: {session.upper()}, Limit: {limit}) ==="]
+        for row in res.data:
+            title = row.get("title", "Daily Briefing")
+            summary = row.get("summary", "")
+            bullets = row.get("bullet_points") or []
+            sess = str(row.get("session", "")).upper()
+            time_str = row.get("formatted_time", "")
+            date_str = str(row.get("created_at", ""))[:10]
+
+            lines.append(f"\n[{date_str} {sess} ({time_str})] {title}")
+            if summary:
+                lines.append(f"Summary: {summary}")
+            if bullets:
+                lines.append("Takeaways: " + " | ".join(bullets[:3]))
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        logger.exception("Error querying past newsletters for autoresearcher: %s", e)
+        return f"Error querying past newsletters: {str(e)}"

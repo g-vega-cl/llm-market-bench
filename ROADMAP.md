@@ -132,3 +132,14 @@ Feels like I have done that before to no avail
 - [ ] - another step in my LLM after newsletter read to look for related info and news online?
 - [ ] - in finance is better to be 100% confident and right in one prediction that usually confident and right on many predictions/What's the best way to set up an autoresearcher about this?
 - [ ] - check if the daily SPY and sector portfolios are working
+- [ ] -  Benchify: an autoresearch autoresearcher?
+- [x] - Benchify: pass daily newsletter to daily predictor? Or give it a tool that can access it? And run it after the newsletter. And same for the portfolio autoresearch
+    - Added canonical `fetch_daily_newsletter` tool in `core/llm/tools.py` for trading LLMs (OpenAI, Claude, Gemini).
+    - Added `query_past_newsletters` in `autoresearch/tools.py` for the weekly Autoresearch meta-agent.
+    - Updated `get_daily_market_context` in `daily_predictor.py` to fetch today's morning briefing with graceful fallback.
+    - Updated `DAILY_PREDICTOR_PROMPT` constraints header to document synthesized newsletter context.
+    - Updated Cron Dispatcher to trigger `generate-newsletter.yml` at 9:15 AM ET and `daily-predictor.yml` at 9:20 AM ET.
+- [ ] -  Benchify: daily trades for sector predictor audit
+- [ ] - Benchify: a bond trader?
+- [ ] - Benchify : do we get volume alongside price? Volume deviations?
+- [x] - Benchify, audit with alpaca. Like, a single portfolio see if it matches alpaca moves and equity movement

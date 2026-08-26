@@ -21,6 +21,22 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
    - `### 🗓️ The Catalyst Radar & Key Levels`
 6. **Storage**: The generated newsletter is inserted into the `generated_newsletters` table with a unique ID and `read_time_minutes` (default 6).
 
+## Downstream Consumers & Tooling Integration
+
+1. **Daily S&P Market Predictor**:
+   - [`get_daily_market_context()`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/daily_predictor.py) automatically queries the fresh morning newsletter from `generated_newsletters` via `execute_fetch_daily_newsletter_tool(session="open")` and injects the full synthesized Markdown briefing into the pre-market context block.
+   - Falls back gracefully to the most recent available newsletter if the target date's morning briefing is delayed.
+
+2. **Autonomous Portfolio LLM Trading Agents**:
+   - Exposed as a canonical OpenAI/Anthropic/Gemini tool `fetch_daily_newsletter` in `core/llm/tools.py` (`DEFAULT_OPENAI_TOOLS`, `DEFAULT_ANTHROPIC_TOOLS`, `DEFAULT_GEMINI_TOOLS`).
+   - Allows trading decision agents to pull morning/evening briefs dynamically.
+
+3. **Weekly Autoresearch Meta-Agent**:
+   - In `autoresearch/tools.py`, `query_past_newsletters(limit=5, session="open")` enables the prompt optimization meta-researcher to inspect past market briefs to diagnose macroeconomic regime shifts.
+
+4. **Sequencing & Edge Dispatch**:
+   - The morning newsletter generates at **9:15 AM ET**, providing a 5-minute window before the Daily S&P Predictor executes at **9:20 AM ET** (see [[entities/cron-dispatcher]]).
+
 ## UI Presentation
 
 - **Web Route**: `/generated-newsletters` (component: `GeneratedNewslettersPage.tsx`). Synthesized ~6 minute reads.
@@ -30,5 +46,7 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 
 - [[concepts/ingestion]]
 - [[entities/cron-dispatcher]]
+- [[entities/daily-market-predictor]]
 - [[entities/pipeline]]
+- [[entities/autoresearch]]
 

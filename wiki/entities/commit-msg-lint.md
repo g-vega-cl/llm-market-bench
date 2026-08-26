@@ -1,27 +1,29 @@
 ---
-tags: [commit, lint, conventional-commits, git]
+tags: [commit, lint, pre-commit, conventional-commits]
 category: entity
 ---
 
 # Commit Message Lint
 
-A pre-commit hook (`commit-msg`) that enforces [Conventional Commits](https://www.conventionalcommits.org/) formatting for all commit messages. Implemented in `apps/engine/commit_msg_lint.py`.
+A custom Python script (`apps/engine/commit_msg_lint.py`) that enforces [Conventional Commits](https://www.conventionalcommits.org/) format in the pre-commit hook (`.husky/commit-msg`).
 
-## Enforcement Rules
+## Validation Rules
 
-- **Subject line** must match `<type>(optional-scope): <description>` format
-- **Valid types**: `feat`, `fix`, `perf`, `docs`, `doc`, `refactor`, `style`, `test`, `build`, `ci`, `chore`, `revert`
-- **Body required** for `feat`, `fix`, `perf`, and `refactor` commits (minimum 15 characters)
-- **Subject length**: minimum 5 characters, maximum 100 characters
-- **Blank line** required between subject and body
-- **Merge and revert commits** are whitelisted and bypass validation
+- **Subject Line Format**: Must match `<type>(<scope>): <description>` pattern.
+  - Valid types: `feat`, `fix`, `perf`, `docs`, `refactor`, `style`, `test`, `build`, `ci`, `chore`, `revert`.
+  - Subject length: ≤ 100 characters, with description ≥ 5 characters.
+- **Body Requirement**: For types `feat`, `fix`, `perf`, `refactor`, a body is mandatory with at least 15 characters and must have a blank line separating it from the subject.
+- **Rejection**: Commits that fail validation are rejected entirely with a clear error message.
 
 ## Integration
 
-Installed as a Husky hook at `.husky/commit-msg`, which calls the Python script with the commit message file path. The hook blocks commits that don't conform, providing clear error messages and examples.
+- Invoked automatically by the `commit-msg` Git hook at `.husky/commit-msg`.
+- Script location: `apps/engine/commit_msg_lint.py`.
+- For full protocol details, see [[entities/gemini]].
 
 ## Related
 
+- [[entities/gemini]] — project-level mandates including Commit Message Protocol
 - [[concepts/project-linting]]
-- [[entities/ruff-linter]]
 - [[entities/biome-linter]]
+- [[entities/ruff-linter]]

@@ -354,3 +354,46 @@ def test_newsletter_senders_config():
     ]
     for sender in required_senders:
         assert sender in NEWSLETTER_SENDERS, f"Expected {sender} in NEWSLETTER_SENDERS"
+
+
+def test_parse_json_secret():
+    """Test safe parsing of JSON secrets with unescaped control characters and wrapping quotes."""
+    from ingest.newsletter import _parse_json_secret
+
+    # Standard valid JSON
+    valid_json = '{"client_id": "123", "client_secret": "abc"}'
+    assert _parse_json_secret(valid_json, "TEST") == {"client_id": "123", "client_secret": "abc"}
+
+    # Unescaped control character (newline inside string literal)
+    json_with_control_chars = '{"token": "line1\nline2", "refresh_token": "ref\ttok"}'
+    parsed = _parse_json_secret(json_with_control_chars, "TEST")
+    assert parsed == {"token": "line1\nline2", "refresh_token": "ref\ttok"}
+
+    # Single-quote wrapped JSON string
+    wrapped_json = '\'{"installed": {"client_id": "cid", "client_secret": "csec"}}\''
+    assert _parse_json_secret(wrapped_json, "TEST") == {"installed": {"client_id": "cid", "client_secret": "csec"}}
+
+    # Invalid / empty strings
+    assert _parse_json_secret("", "TEST") is None
+    assert _parse_json_secret(None, "TEST") is None
+    assert _parse_json_secret("not a json {", "TEST") is None
+
+
+def test_get_gmail_service_resilient_parsing():
+    """Test get_gmail_service handles unescaped control characters and flat credentials."""
+    from ingest.newsletter import get_gmail_service
+
+    raw_creds = (
+        '{\n  "installed": {\n    "client_id": "test-client-id",\n    "client_secret": "test-client-secret"\n  }\n}'
+    )
+    raw_token = '{"token": "token-with\nnewline", "refresh_token": "refresh-123", "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]}'
+
+    with (
+        patch("ingest.newsletter.GMAIL_CREDENTIALS_JSON", raw_creds),
+        patch("ingest.newsletter.GMAIL_TOKEN_JSON", raw_token),
+        patch("ingest.newsletter.build") as mock_build,
+    ):
+        mock_build.return_value = MagicMock()
+        service = get_gmail_service()
+        assert service is not None
+        mock_build.assert_called_once()

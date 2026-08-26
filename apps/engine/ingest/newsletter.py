@@ -55,6 +55,46 @@ class NewsletterSnapshot:
     ingested_at: str
 
 
+def _parse_json_secret(secret_str: str | None, var_name: str) -> dict[str, Any] | None:
+    """Safely parse a JSON secret string from environment variables.
+
+    Handles unescaped control characters (newlines, tabs) and outer wrapping quotes.
+
+    Args:
+        secret_str: Raw JSON string from environment.
+        var_name: Name of the environment variable for diagnostic logging.
+
+    Returns:
+        Parsed dictionary or None if parsing failed.
+    """
+    if not secret_str or not isinstance(secret_str, str):
+        return None
+
+    cleaned = secret_str.strip()
+    if cleaned.startswith("'") and cleaned.endswith("'") and len(cleaned) >= 2:
+        cleaned = cleaned[1:-1].strip()
+
+    try:
+        data = json.loads(cleaned)
+        if isinstance(data, dict):
+            return data
+        logger.error(f"AUTHENTICATION FAILURE: {var_name} parsed to {type(data).__name__}, expected dict.")
+        return None
+    except json.JSONDecodeError:
+        try:
+            data = json.loads(cleaned, strict=False)
+            if isinstance(data, dict):
+                return data
+            logger.error(f"AUTHENTICATION FAILURE: {var_name} parsed to {type(data).__name__}, expected dict.")
+            return None
+        except Exception as e:
+            logger.error(f"AUTHENTICATION FAILURE: Error parsing {var_name}: {e}")
+            return None
+    except Exception as e:
+        logger.error(f"AUTHENTICATION FAILURE: Error parsing {var_name}: {e}")
+        return None
+
+
 def get_gmail_service():
     """Authenticate with Google and return a Gmail service object.
 
@@ -67,21 +107,30 @@ def get_gmail_service():
 
     creds = None
     if GMAIL_TOKEN_JSON:
-        try:
-            secret_data = json.loads(GMAIL_CREDENTIALS_JSON)
-            secrets = secret_data.get("installed") or secret_data.get("web")
-            token_data = json.loads(GMAIL_TOKEN_JSON)
+        secret_data = _parse_json_secret(GMAIL_CREDENTIALS_JSON, "GMAIL_CREDENTIALS_JSON")
+        token_data = _parse_json_secret(GMAIL_TOKEN_JSON, "GMAIL_TOKEN_JSON")
 
-            creds = Credentials(
-                token=token_data.get("token"),
-                refresh_token=token_data.get("refresh_token"),
-                token_uri="https://oauth2.googleapis.com/token",
-                client_id=secrets["client_id"],
-                client_secret=secrets["client_secret"],
-                scopes=token_data.get("scopes", GMAIL_SCOPES),
-            )
-        except Exception as e:
-            logger.error(f"AUTHENTICATION FAILURE: Error parsing GMAIL credentials or token: {e}")
+        if secret_data and token_data:
+            try:
+                secrets = secret_data.get("installed") or secret_data.get("web") or secret_data
+                client_id = secrets.get("client_id")
+                client_secret = secrets.get("client_secret")
+
+                if not client_id or not client_secret:
+                    logger.error(
+                        "NO VALID GMAIL CREDENTIALS: Missing client_id or client_secret in GMAIL_CREDENTIALS_JSON."
+                    )
+                else:
+                    creds = Credentials(
+                        token=token_data.get("token"),
+                        refresh_token=token_data.get("refresh_token"),
+                        token_uri="https://oauth2.googleapis.com/token",
+                        client_id=client_id,
+                        client_secret=client_secret,
+                        scopes=token_data.get("scopes", GMAIL_SCOPES),
+                    )
+            except Exception as e:
+                logger.error(f"AUTHENTICATION FAILURE: Error creating Credentials object: {e}")
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:

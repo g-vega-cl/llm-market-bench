@@ -27,6 +27,23 @@
 
 **After every code change, verify lint and coverage pass before marking work complete.** The pre-commit hook will block commits with lint errors or low coverage. Run `ruff check` on changed Python files and `biome check` on changed TS files. Use `ruff check --fix` / `ruff check --fix --unsafe-fixes` / `biome check --write` to auto-fix before resorting to manual edits. A passing test suite with failing lint or low coverage is not done.
 
+## Commit Message Protocol (MANDATORY)
+
+All commit messages are strictly validated by `.husky/commit-msg` via `apps/engine/commit_msg_lint.py`. When drafting or suggesting git commits:
+
+1. **Subject Line Format**: `<type>(<scope>): <description>` (e.g. `feat(daily-predictor): pass daily newsletter to predictor`)
+   - **Valid `<type>`**: `feat`, `fix`, `perf`, `docs`, `refactor`, `style`, `test`, `build`, `ci`, `chore`, `revert`.
+   - **Subject Length**: Must be strictly $\le 72$ characters recommended (hard limit $\le 100$ characters, $\ge 5$ characters description).
+2. **Body Requirement**:
+   - Commits of type `feat`, `fix`, `perf`, and `refactor` **MUST include a body** ($\ge 15$ characters) explaining the context and changes.
+   - Must contain a **blank line** between the subject and the body.
+3. **Drafting Template**:
+   ```bash
+   git commit -m "<type>(<scope>): <short imperative subject under 72 chars>" -m "- <Bullet 1 explaining what changed>
+   - <Bullet 2 explaining why or rationale>
+   - <Bullet 3 mentioning tests and docs>"
+   ```
+
 ## Principles (MANDATORY)
 
 1. **Search First (QMD)**: Before answering any question or starting any task, YOU MUST search the wiki using `qmd` (query, search, or vsearch). The wiki is the "compiled" project memory; do not rely on general knowledge.

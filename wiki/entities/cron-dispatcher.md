@@ -36,6 +36,12 @@ The Worker exposes these edge cron expressions:
 
 `dispatchWorkflow(target: DispatchTarget, env: Env)` constructs a `POST` to `https://api.github.com/repos/g-vega-cl/llm-market-bench/actions/workflows/{target.workflowFile}/dispatches` with a JSON body containing `ref: 'main'` and optional `inputs`.
 
+### Retry Resilience
+To prevent failures from transient network drops, rate-limiting, or temporary GitHub API downtime, `dispatchWorkflow` implements a retry loop:
+- **Max Attempts**: 3
+- **Backoff**: Exponential backoff with a base of 1 second (`1000ms * attempt` delay between retries)
+- **Silent Failures Prevention**: If all 3 attempts fail, the worker logs the errors and throws an unhandled exception, ensuring visibility in the Cloudflare Worker console.
+
 ### Fetch Endpoint
 
 When accessed via HTTP, the Worker accepts query parameters:

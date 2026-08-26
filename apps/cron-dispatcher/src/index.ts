@@ -9,7 +9,9 @@ interface DispatchTarget {
 
 async function dispatchWorkflow(
   target: DispatchTarget,
-  env: Env
+  env: Env,
+  maxRetries = 3,
+  delayMs = 1000
 ): Promise<{ success: boolean; status: number; message: string }> {
   const workflowUrl = `https://api.github.com/repos/g-vega-cl/llm-market-bench/actions/workflows/${target.workflowFile}/dispatches`;
 
@@ -18,27 +20,47 @@ async function dispatchWorkflow(
     payload.inputs = target.inputs;
   }
 
-  const response = await fetch(workflowUrl, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${env.GITHUB_PAT}`,
-      'User-Agent': 'Cloudflare-Cron-Dispatcher',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  let lastError = '';
+  let lastStatus = 500;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    return { success: false, status: response.status, message: errorText };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(workflowUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${env.GITHUB_PAT}`,
+          'User-Agent': 'Cloudflare-Cron-Dispatcher',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          status: response.status,
+          message: `Dispatched ${target.workflowFile} successfully on attempt ${attempt}.`,
+        };
+      }
+
+      lastStatus = response.status;
+      lastError = await response.text();
+      console.warn(
+        `[Cron Dispatcher] Dispatch attempt ${attempt} failed with status ${lastStatus}: ${lastError}`
+      );
+    } catch (err: any) {
+      lastStatus = 500;
+      lastError = err.message || String(err);
+      console.warn(`[Cron Dispatcher] Dispatch attempt ${attempt} encountered error: ${lastError}`);
+    }
+
+    if (attempt < maxRetries) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
   }
 
-  return {
-    success: true,
-    status: response.status,
-    message: `Dispatched ${target.workflowFile} successfully.`,
-  };
+  return { success: false, status: lastStatus, message: lastError };
 }
 
 function getNewYorkTime(date: Date): { hour: number; minute: number; day: number } {

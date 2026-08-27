@@ -121,22 +121,23 @@ def reset_backtest_daily_db():
 
 
 async def fetch_historical_spy_prices(target_date_str: str) -> tuple[float, float, float, float]:
-    """Fetch or simulate historical Open, High, Low, and Close prices for SPY on target_date."""
+    """Fetch historical Open, High, Low, and Close prices for SPY on target_date via MarketDataManager or fallback."""
     try:
-        import yfinance as yf
+        from execution.market_data import MarketDataManager
 
-        dt = datetime.strptime(target_date_str, "%Y-%m-%d")
-        next_day = dt + timedelta(days=1)
-        data = yf.download("SPY", start=dt.strftime("%Y-%m-%d"), end=next_day.strftime("%Y-%m-%d"), progress=False)
-
-        if not data.empty and "Open" in data.columns and "Close" in data.columns:
-            open_val = float(data["Open"].values.flat[0])
-            close_val = float(data["Close"].values.flat[0])
-            high_val = float(data["High"].values.flat[0]) if "High" in data.columns else max(open_val, close_val)
-            low_val = float(data["Low"].values.flat[0]) if "Low" in data.columns else min(open_val, close_val)
-            return open_val, high_val, low_val, close_val
+        mdm = MarketDataManager()
+        history = await mdm.get_history("SPY", days=10)
+        if history:
+            for entry in history:
+                fetched_at = entry.get("fetched_at", "")
+                if fetched_at[:10] == target_date_str:
+                    close_val = float(entry["price"])
+                    open_val = float(entry.get("open", close_val))
+                    high_val = float(entry.get("high", max(open_val, close_val)))
+                    low_val = float(entry.get("low", min(open_val, close_val)))
+                    return open_val, high_val, low_val, close_val
     except Exception as e:
-        logger.warning(f"Could not fetch yfinance price for {target_date_str}: {e}. Using simulated prices.")
+        logger.warning(f"Could not fetch MarketDataManager prices for {target_date_str}: {e}. Using simulated prices.")
 
     # Synthetic fallback for deterministic testing/offline mode
     open_price = 500.0
@@ -325,7 +326,7 @@ async def evaluate_backtest_prediction(
     close_price: float | None = None,
 ) -> dict | None:
     """Evaluate daily prediction against actual market open, high, low, close prices."""
-    if open_price is None or close_price is None or high_price is None or low_price is None:
+    if open_price is None or close_price is None:
         fetched = await fetch_historical_spy_prices(target_date)
         if len(fetched) == 2:
             f_open, f_close = fetched
@@ -334,10 +335,17 @@ async def evaluate_backtest_prediction(
         else:
             f_open, f_high, f_low, f_close = fetched
 
-        open_price = open_price if open_price is not None else f_open
-        close_price = close_price if close_price is not None else f_close
-        high_price = high_price if high_price is not None else f_high
-        low_price = low_price if low_price is not None else f_low
+        open_price = f_open
+        close_price = f_close
+        if high_price is None:
+            high_price = f_high
+        if low_price is None:
+            low_price = f_low
+    else:
+        if high_price is None:
+            high_price = max(open_price, close_price)
+        if low_price is None:
+            low_price = min(open_price, close_price)
 
     actual_direction = "UP" if close_price >= open_price else "DOWN"
 

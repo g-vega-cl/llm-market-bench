@@ -144,3 +144,4 @@ Feels like I have done that before to no avail
 - [ ] - Benchify : do we get volume alongside price? Volume deviations?
 - [x] - Benchify, audit with alpaca. Like, a single portfolio see if it matches alpaca moves and equity movement
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
+- [ ] - Give autoresearch a way to make "memories" 

@@ -42,6 +42,7 @@
 
 ## Concepts
 
+- [[concepts/wayfinder]] — Planning methodology for decomposing large work into tracked decision tickets
 - [[concepts/system-portfolios]] — Auto-indexed page
 - [[concepts/macroeconomic-data-fred]] — Auto-indexed page
 - [[concepts/magnitude-calibration]] — Magnitude capture ratio and postmortem diagnosis for daily S&P prediction prompt evolution

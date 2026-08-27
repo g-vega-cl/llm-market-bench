@@ -15,7 +15,7 @@ The backtest system lives in `apps/engine/tasks/backtest_daily_autoresearch.py` 
 
 - **`init_backtest_daily_db()`** — Creates SQLite tables (`daily_predictions`, `prompt_experiments`). Includes **auto-migration**: if columns are missing from previous runs (e.g., `actual_high_price`, `actual_low_price`, `intraday_hit`, `intraday_direction_hit`), they are added via `ALTER TABLE`.
 - **`reset_backtest_daily_db()`** — Drops and recreates tables for a clean slate.
-- **`fetch_historical_spy_prices(target_date)`** — Fetches Open, High, Low, and Close prices via yfinance, with a deterministic fallback when data is unavailable.
+- **`fetch_historical_spy_prices(target_date)`** — Fetches Open, High, Low, and Close prices via MarketDataManager, with a deterministic fallback when data is unavailable.
 - **`evaluate_backtest_prediction()`** (formerly `evaluate_simulated_daily_prediction`) — Evaluates a single prediction against actual OHLC prices, computing `is_correct`, `intraday_hit`, `intraday_direction_hit`, and `brier_score`. The old name is preserved as an alias for backward compatibility.
 - **`run_backtest_daily_autoresearch()`** — Runs the full backtest cycle: generates predictions via simulated trading day, evaluates them, computes aggregate scores, and triggers prompt mutation if performance beats baseline.
 

@@ -19,7 +19,6 @@
 - [[entities/ai-feeling-card]] — AI market sentiment card on the Today dashboard with buy/sell split, confidence bar, and stale detection
 - [[entities/market-barometer-audit]] — S&P 500 Market Health Barometer audit page with constituent-level data browser
 - [[entities/global-background]] — Fixed ambient background with dot grid and glowing orbs for the full application
-- [[entities/mcp-posthog]] — Local plugin wrapper for the hosted PostHog MCP server
 - [[entities/shader-background]] — WebGL shader background component with 4 animated visual themes mapped to a PostHog A/B test
 - [[entities/mcp-knowledge-rag]] — Local MCP server for semantic search (RAG) against external Supabase knowledge base via Gemini embeddings
 - [[entities/academic-paper-seeding]] — Seeds top 10 empirical asset pricing papers into pgvector memory store for RAG grounding

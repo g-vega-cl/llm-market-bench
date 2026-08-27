@@ -21,18 +21,19 @@ The dispatcher supports multiple workflows beyond `daily-predictor.yml`. It eval
 | 19:30 / 20:30 | 3:30 PM ET | 30 | `ingest.yml` | none |
 | 21:00 / 22:00 | 5:00 PM ET | 0 | `generate-newsletter.yml` | `{"session": "close"}` |
 | 21:15 | 5:15 PM ET | 15 | `daily-predictor.yml` | `{"action": "evaluate-daily-predictions"}` |
-| 22:00 (Sun & Wed) | 6:00 PM ET (Sun & Wed) | 0 | `daily-predictor.yml` | `{"action": "daily-autoresearch"}` |
+
+> [!NOTE]
+> All weekly and weekend auto-research tasks (Sunday & Wednesday 6:00 PM ET prompt autoresearch, Sunday macro autoresearch) run natively via GitHub Actions schedules (`daily-predictor.yml` and `autoresearch.yml`), decoupling background research jobs from Cloudflare edge triggers.
 
 ## Cron Triggers (wrangler.jsonc)
 
-The Worker exposes these edge cron expressions:
+The Worker exposes 5 consolidated edge cron expressions (respecting Cloudflare Free plan's 5 cron trigger limit), covering strictly intraday market workflows:
 
 - `0 21,22 * * MON-FRI` — 5:00 PM ET (EDT & EST offsets for market close newsletter)
 - `35 13-16 * * MON-FRI` — 9:35, 11:35 AM ET (ingest)
 - `30 19,20 * * MON-FRI` — 3:30 PM ET (ingest)
 - `15 13,14,21 * * MON-FRI` — 9:15 AM, 5:15 PM ET (generate-newsletter open, evaluate daily predictions)
 - `20 13,14 * * MON-FRI` — 9:20 AM ET (daily-predictor with fresh newsletter briefing)
-- `0 22 * * SUN,WED` — 6:00 PM ET (daily-autoresearch on Sundays and Wednesdays)
 
 ## Dispatch Request Structure
 

@@ -1,5 +1,4 @@
-"""Unit tests for Alpaca portfolio audit and reconciliation engine."""
-
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,6 +8,11 @@ from audit.alpaca_audit import AlpacaAuditReconciler, run_alpaca_audit
 
 @pytest.fixture
 def mock_supabase_data():
+    now = datetime.now(UTC)
+    date_6d_ago = (now - timedelta(days=6)).strftime("%Y-%m-%d")
+    date_5d_ago = (now - timedelta(days=5)).strftime("%Y-%m-%d")
+    date_today = now.strftime("%Y-%m-%d")
+
     portfolio = {
         "id": "port-123",
         "owner_id": "claude-haiku-4-5",
@@ -28,10 +32,10 @@ def mock_supabase_data():
             "quantity": 25,
             "price": 180.0,
             "total_cost": 4500.0,
-            "executed_at": "2026-08-20T10:00:00Z",
+            "executed_at": f"{date_6d_ago}T10:00:00Z",
             "alpaca_order_id": "alpaca-ord-1",
             "alpaca_status": "FILLED",
-            "alpaca_filled_at": "2026-08-20T10:00:05Z",
+            "alpaca_filled_at": f"{date_6d_ago}T10:00:05Z",
         },
         {
             "id": "trade-2",
@@ -41,10 +45,10 @@ def mock_supabase_data():
             "quantity": 10,
             "price": 100.0,
             "total_cost": 1000.0,
-            "executed_at": "2026-08-21T10:00:00Z",
+            "executed_at": f"{date_5d_ago}T10:00:00Z",
             "alpaca_order_id": "alpaca-ord-2",
             "alpaca_status": "FILLED",
-            "alpaca_filled_at": "2026-08-21T10:00:05Z",
+            "alpaca_filled_at": f"{date_5d_ago}T10:00:05Z",
         },
         {
             "id": "trade-3",
@@ -54,16 +58,16 @@ def mock_supabase_data():
             "quantity": 2,
             "price": 110.0,
             "total_cost": 220.0,
-            "executed_at": "2026-08-22T10:00:00Z",
+            "executed_at": f"{date_today}T10:00:00Z",
             "alpaca_order_id": "alpaca-ord-3",
             "alpaca_status": "SKIPPED_NO_POSITION",
             "alpaca_filled_at": None,
         },
     ]
     performance = [
-        {"date": "2026-08-19", "total_equity": 10000.0, "cash_balance": 10000.0},
-        {"date": "2026-08-20", "total_equity": 10050.0, "cash_balance": 5500.0},
-        {"date": "2026-08-26", "total_equity": 10500.0, "cash_balance": 5000.0},
+        {"date": date_6d_ago, "total_equity": 10000.0, "cash_balance": 10000.0},
+        {"date": date_5d_ago, "total_equity": 10050.0, "cash_balance": 5500.0},
+        {"date": date_today, "total_equity": 10500.0, "cash_balance": 5000.0},
     ]
     return {
         "portfolio": portfolio,

@@ -105,21 +105,16 @@ function resolveScheduledTargets(scheduledTime: Date): DispatchTarget[] {
   }
 
   if (nyHour === 17 && nyMinute === 0) {
-    // 5:00 PM ET -> Market close newsletter
-    return [{ workflowFile: 'generate-newsletter.yml', inputs: { session: 'close' } }];
+    // 5:00 PM ET -> Market close newsletter (Mon-Fri)
+    if (day >= 1 && day <= 5) {
+      return [{ workflowFile: 'generate-newsletter.yml', inputs: { session: 'close' } }];
+    }
+    return [];
   }
 
   if (nyHour === 17 && nyMinute === 15) {
     // 5:15 PM ET -> Evaluate daily predictions
     return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'evaluate-daily-predictions' } }];
-  }
-
-  if (nyHour === 18 && nyMinute === 0) {
-    // 6:00 PM ET on Sun (0) & Wed (3) -> Prompt autoresearch 2x a week
-    if (day === 0 || day === 3) {
-      return [{ workflowFile: 'daily-predictor.yml', inputs: { action: 'daily-autoresearch' } }];
-    }
-    return [];
   }
 
   // Default fallback (no action for non-matching schedule triggers)

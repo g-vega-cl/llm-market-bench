@@ -42,6 +42,7 @@
 
 ## Concepts
 
+- [[concepts/unslop-editing]] — Structured editing skill for removing AI pattern tells and injecting human voice
 - [[concepts/wayfinder]] — Planning methodology for decomposing large work into tracked decision tickets
 - [[concepts/system-portfolios]] — Auto-indexed page
 - [[concepts/macroeconomic-data-fred]] — Auto-indexed page

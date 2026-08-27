@@ -91,3 +91,31 @@ describe('calculateMacroStats', () => {
         expect(result.regimeFlag).toBe('❗ UNUSUAL');
     });
 });
+
+describe('MACRO_TICKERS config', () => {
+    it('includes a balanced mix of key indicators in Market default view', async () => {
+        const { MACRO_TICKERS } = await import('./macro-tickers');
+        const marketTickers = Object.keys(MACRO_TICKERS.Market);
+
+        // Equity
+        expect(marketTickers).toContain('SPY');
+        expect(marketTickers).toContain('QQQ');
+        // Bond Yields
+        expect(marketTickers).toContain('TLT');
+        // International
+        expect(marketTickers).toContain('VGK');
+        expect(marketTickers).toContain('EWJ');
+        // Gold
+        expect(marketTickers).toContain('GLD');
+        // WTI Crude Oil
+        expect(marketTickers).toContain('USO');
+        // VIX Volatility
+        expect(marketTickers).toContain('VIXY');
+    });
+
+    it('deduplicates MACRO_TICKERS_LIST across categories', async () => {
+        const { MACRO_TICKERS_LIST } = await import('./macro-tickers');
+        const uniqueSet = new Set(MACRO_TICKERS_LIST);
+        expect(MACRO_TICKERS_LIST.length).toBe(uniqueSet.size);
+    });
+});

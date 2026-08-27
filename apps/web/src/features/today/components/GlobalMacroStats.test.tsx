@@ -15,6 +15,16 @@ const mockMacroStats: MacroStat[] = [
         hasHistory: true,
     },
     {
+        ticker: 'QQQ',
+        name: 'Nasdaq 100',
+        category: 'Market',
+        price: 440.2,
+        todayPctChange: 0.8,
+        stdevPct: 0.65,
+        regimeFlag: 'Normal',
+        hasHistory: true,
+    },
+    {
         ticker: 'TLT',
         name: '20+yr Treasury',
         category: 'Market',
@@ -25,12 +35,52 @@ const mockMacroStats: MacroStat[] = [
         hasHistory: true,
     },
     {
-        ticker: 'QQQ',
-        name: 'Nasdaq 100',
-        category: 'Equities',
-        price: 400.2,
-        todayPctChange: 0.15,
-        stdevPct: 0.85,
+        ticker: 'VGK',
+        name: 'Europe',
+        category: 'Market',
+        price: 68.4,
+        todayPctChange: 0.2,
+        stdevPct: 0.4,
+        regimeFlag: 'Normal',
+        hasHistory: true,
+    },
+    {
+        ticker: 'EWJ',
+        name: 'Japan',
+        category: 'Market',
+        price: 72.15,
+        todayPctChange: 0.6,
+        stdevPct: 0.5,
+        regimeFlag: 'Normal',
+        hasHistory: true,
+    },
+    {
+        ticker: 'GLD',
+        name: 'Gold',
+        category: 'Market',
+        price: 215.3,
+        todayPctChange: 1.1,
+        stdevPct: 0.7,
+        regimeFlag: 'Normal',
+        hasHistory: true,
+    },
+    {
+        ticker: 'USO',
+        name: 'Oil (WTI)',
+        category: 'Market',
+        price: 78.5,
+        todayPctChange: -1.4,
+        stdevPct: 0.9,
+        regimeFlag: 'Normal',
+        hasHistory: true,
+    },
+    {
+        ticker: 'VIXY',
+        name: 'Volatility Index',
+        category: 'Market',
+        price: 13.2,
+        todayPctChange: -2.8,
+        stdevPct: 1.2,
         regimeFlag: 'Normal',
         hasHistory: true,
     },
@@ -67,16 +117,22 @@ describe('GlobalMacroStats Component', () => {
         expect(screen.getByText('Bonds & Treasury Yields')).toBeInTheDocument();
     });
 
-    it('filters cards by default active category tab (Market)', () => {
+    it('filters cards by default active category tab (Market) with complete multi-asset indicators', () => {
         render(<GlobalMacroStats macroStats={mockMacroStats} />);
 
-        // In Market category: SPY & TLT cards should be in the document
+        // In Market category: SPY, QQQ, TLT, VGK, EWJ, GLD, USO, VIXY should all be displayed
         expect(screen.getByText('SPY')).toBeInTheDocument();
+        expect(screen.getByText('QQQ')).toBeInTheDocument();
         expect(screen.getByText('TLT')).toBeInTheDocument();
+        expect(screen.getByText('VGK')).toBeInTheDocument();
+        expect(screen.getByText('EWJ')).toBeInTheDocument();
+        expect(screen.getByText('GLD')).toBeInTheDocument();
+        expect(screen.getByText('USO')).toBeInTheDocument();
+        expect(screen.getByText('VIXY')).toBeInTheDocument();
 
-        // QQQ (Equities) & BTCUSD (Crypto) are NOT in the active "Market" grid list
-        expect(screen.queryByText('QQQ')).not.toBeInTheDocument();
+        // BTCUSD (Crypto) and IEF (Bonds & Treasury Yields) are NOT in the active "Market" grid list
         expect(screen.queryByText('BTCUSD')).not.toBeInTheDocument();
+        expect(screen.queryByText('IEF')).not.toBeInTheDocument();
     });
 
     it('allows switching categories via button click and renders bonds explanatory banner', () => {

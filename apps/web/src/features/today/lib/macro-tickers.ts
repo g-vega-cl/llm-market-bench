@@ -5,13 +5,19 @@
 export const MACRO_TICKERS = {
     Market: {
         SPY: 'S&P 500',
+        QQQ: 'Nasdaq 100',
         TLT: '20+yr Treasury',
-        IWM: 'Russell 2000',
+        VGK: 'Europe',
+        EWJ: 'Japan',
+        GLD: 'Gold',
+        USO: 'Oil (WTI)',
         VIXY: 'Volatility Index',
     },
     Equities: {
+        SPY: 'S&P 500',
         QQQ: 'Nasdaq 100',
         DIA: 'Dow Jones',
+        IWM: 'Russell 2000',
     },
     International: {
         EWJ: 'Japan',
@@ -32,10 +38,12 @@ export const MACRO_TICKERS = {
     },
     'Bonds & Treasury Yields': {
         IEF: '7-10yr Treasury',
+        TLT: '20+yr Treasury',
         TIP: 'TIPS (Inflation)',
     },
     'FX & Risk': {
         UUP: 'US Dollar Index',
+        VIXY: 'Volatility Index',
     },
     Crypto: {
         BTCUSD: 'Bitcoin',
@@ -45,9 +53,9 @@ export const MACRO_TICKERS = {
 export type MacroCategory = keyof typeof MACRO_TICKERS;
 export type MacroTickerSymbol = keyof (typeof MACRO_TICKERS)[MacroCategory];
 
-// Flat array of all tickers for DB fetching
-export const MACRO_TICKERS_LIST = Object.values(MACRO_TICKERS).flatMap((cat) =>
-    Object.keys(cat),
+// Flat array of all unique tickers for DB fetching
+export const MACRO_TICKERS_LIST = Array.from(
+    new Set(Object.values(MACRO_TICKERS).flatMap((cat) => Object.keys(cat))),
 ) as MacroTickerSymbol[];
 
 export interface HistoricalPricePoint {

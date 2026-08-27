@@ -9,9 +9,11 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 
 ## Key Features
 
+- **Today Page** (`/today`): Dashboard overview featuring dynamic standard deviations, current price shifts, and regime shift signals (`GlobalMacroStats`). Default "Market" price shower displays a balanced multi-asset mix of key economic indicators (`SPY`, `QQQ`, `TLT`, `VGK`, `EWJ`, `GLD`, `USO`, `VIXY`), with tab-level filtering for asset-specific classes.
 - **Daily Predictions Page** (`/daily-predictions`): Independent model tabs (DeepSeek Flash, MiniMax M3) with strict track isolation. The `resolveActiveDailyPrompt` function now only considers experiments filtered to the selected model — no cross-track fallback. The `allExperiments` prop and `isFallback` flag have been removed. Status badges: `active` status only shows `🟢 ACTIVE` for the single active variant; other `active` records display `📦 SAVED`. The Autoresearch view defaults to inspecting the current active variant.
 - **Autoresearch Milestone Cards**: Shows active ratchet score, best baseline score, delta, and baseline anchor status. No fallback indicator.
 - **Variant Sidebar**: Lists all experiments for the selected model with status badges (`🟢 ACTIVE`, `🏆 BASELINE`, `❌ DISCARDED`, `📦 SAVED`).
+
 
 ## Architecture
 

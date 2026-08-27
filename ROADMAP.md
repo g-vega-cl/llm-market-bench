@@ -145,3 +145,8 @@ Feels like I have done that before to no avail
 - [x] - Benchify, audit with alpaca. Like, a single portfolio see if it matches alpaca moves and equity movement
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Give autoresearch a way to make "memories" 
+- [ ] - Benchify: get options data tool
+- [ ] - Benchify: follow the crowd strategy? Like using options and volume data?
+- [ ] - Benchify: in today page, make the default price shower show a mix of important indicators like bond yields, equity, international, gold, wti, vix
+- [ ] - Benchify: train small model?
+- [ ] - benchify: fine tune the autoresearcher rather than the model?

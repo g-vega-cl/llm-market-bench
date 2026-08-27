@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 from analysis.discovery_service import DiscoveryService
-from core.config import MODEL_WEIGHTS
+from core.config import MEMORY_DEDUP_THRESHOLD, MODEL_WEIGHTS
 from core.llm import analyze_event_relationship, synthesize_event
 from core.models import DecisionObject, MacroEvent
 from memory.embeddings import get_embeddings_batch
@@ -141,6 +141,9 @@ async def _synthesize_and_promote_group(
     occurrences: list[MacroEvent], discovery_service: DiscoveryService, sim_threshold: float
 ):
     """Synthesize a group of events and promote to memory if consensus is reached."""
+    # sim_threshold is retained for API compatibility (grouping threshold);
+    # dedup uses config.MEMORY_DEDUP_THRESHOLD (0.90) to avoid false collisions.
+    _ = sim_threshold
     unique_models = set()
     cumulative_weight = 0.0
     models_seen_for_weight = set()
@@ -333,7 +336,7 @@ async def _synthesize_and_promote_group(
         relationship_type=rel_type,
         target_date=consensus_data.get("future_date"),
         check_similarity=True,
-        similarity_threshold=sim_threshold,
+        similarity_threshold=MEMORY_DEDUP_THRESHOLD,
         lookback_hours=24,
     )
 

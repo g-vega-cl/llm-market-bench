@@ -88,6 +88,7 @@ When a new memory is ingested with `check_similarity=True`, the system performs 
 - Instead of creating a redundant record or silently skipping it, the system **bumps** the existing memory.
 - Bumping resets the `relevance_score` to `1.0` and updates the `created_at` timestamp to the current UTC time, keeping high-signal recurring concepts fresh in the retrieval window.
 - The duplicate check utilizes an extended **168-hour (7 days) lookback window** to prevent redundant database inserts across weekends and weekly schedules.
+- **Consensus promotion exception (fix 2026-08-27):** the consensus pipeline (`analysis/consensus.py`) uses a stricter `168h→24h` lookback with `MEMORY_DEDUP_THRESHOLD=0.90` (`core/config.py`), **decoupled** from semantic grouping `0.75`. The previous coupling at `0.75` caused false dedup at Sim `0.77-0.80` (IDs `4685e74f`, `b2174ca9` collisions on 2026-08-27). General `memory/store.add_memory` default remains `0.90`/`168h`.
 
 ### Tiered Memory Decay
 To prevent context window pollution and reasoning degradation while retaining key long-term lessons, the system applies adaptive tiered decay rates during weekly cleanups:

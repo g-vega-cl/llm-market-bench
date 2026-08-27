@@ -55,12 +55,23 @@ AUTORESEARCH_TRACKS: dict[str, list[str]] = _models.get("AUTORESEARCH_TRACKS", {
 ACTIVE_OWNER_IDS: list[str] = list(_models.values())
 
 # Weights for consensus protocol (higher = more influence)
+# Explicitly covers all models in packages/config/models.json — see P1 fix
 MODEL_WEIGHTS = {
     OPENAI_MODEL: 1.0,
     ANTHROPIC_MODEL: 1.0,
     GEMINI_MODEL: 1.0,
     DEEPSEEK_MODEL: 1.0,
+    DEEPSEEK_FLASH_MODEL: 1.0,
+    MINIMAX_MODEL: 1.0,
 }
+
+# Guard: ensure every active model has a weight entry
+assert MINIMAX_MODEL in MODEL_WEIGHTS, "MODEL_WEIGHTS missing MINIMAX_MODEL"
+assert DEEPSEEK_FLASH_MODEL in MODEL_WEIGHTS, "MODEL_WEIGHTS missing DEEPSEEK_FLASH_MODEL"
+
+# Dedup threshold for memory promotion — decoupled from semantic grouping (0.75)
+# Using 0.90 prevents false collisions like Sim 0.77 (Gas Pipeline vs AI Chips) seen 2026-08-27
+MEMORY_DEDUP_THRESHOLD = 0.90
 
 # --- Gmail Configuration ---
 GMAIL_CREDENTIALS_JSON = os.getenv("GMAIL_CREDENTIALS_JSON")

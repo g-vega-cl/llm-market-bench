@@ -76,7 +76,10 @@ describe('Chat Server Handler (handleChatMessage)', () => {
         const body = JSON.parse(fetchCall[1].body);
 
         expect(body.tools).toBeDefined();
-        expect(body.tools[0].function.name).toBe('query_database_table');
+        const toolNames = body.tools.map((t: { function: { name: string } }) => t.function.name);
+        expect(toolNames).toContain('query_database_table');
+        expect(toolNames).toContain('search_memories_and_theses');
+        expect(toolNames).toContain('get_stock_context_and_trades');
 
         // Verify system prompt includes database table catalog
         expect(body.messages[0].role).toBe('system');
@@ -148,9 +151,130 @@ describe('Chat Server Handler (handleChatMessage)', () => {
         });
 
         expect(global.fetch).toHaveBeenCalledTimes(2);
-        expect(result).toEqual({
-            role: 'assistant',
-            content: 'Found 1 recent trade for NVDA in the database.',
+        expect(result.role).toBe('assistant');
+        expect(result.content).toBe('Found 1 recent trade for NVDA in the database.');
+        expect(result.tool_traces).toBeDefined();
+        expect(result.tool_traces?.[0].tool_name).toBe('query_database_table');
+    });
+
+    it('should execute search_memories_and_theses tool call and return tool traces', async () => {
+        mockGetUser.mockResolvedValue({
+            data: { user: { email: 'g.vega.cl@gmail.com' } },
+            error: null,
         });
+
+        const mockStep1Response = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content: null,
+                        tool_calls: [
+                            {
+                                id: 'call_mem_123',
+                                type: 'function',
+                                function: {
+                                    name: 'search_memories_and_theses',
+                                    arguments: JSON.stringify({
+                                        ticker: 'NVO',
+                                        limit: 5,
+                                    }),
+                                },
+                            },
+                        ],
+                    },
+                },
+            ],
+        };
+
+        const mockStep2Response = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content: 'NVO shows solid GLP-1 demand in memory records.',
+                    },
+                },
+            ],
+        };
+
+        (global.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockStep1Response,
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockStep2Response,
+            });
+
+        const result = await handleChatMessage({
+            messages: [{ role: 'user', content: 'Should I invest in NVO?' }],
+        });
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result.content).toBe('NVO shows solid GLP-1 demand in memory records.');
+        expect(result.tool_traces).toBeDefined();
+        expect(result.tool_traces?.[0].tool_name).toBe('search_memories_and_theses');
+    });
+
+    it('should execute get_stock_context_and_trades tool call', async () => {
+        mockGetUser.mockResolvedValue({
+            data: { user: { email: 'g.vega.cl@gmail.com' } },
+            error: null,
+        });
+
+        const mockStep1Response = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content: null,
+                        tool_calls: [
+                            {
+                                id: 'call_stock_123',
+                                type: 'function',
+                                function: {
+                                    name: 'get_stock_context_and_trades',
+                                    arguments: JSON.stringify({
+                                        ticker: 'AAPL',
+                                    }),
+                                },
+                            },
+                        ],
+                    },
+                },
+            ],
+        };
+
+        const mockStep2Response = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content: 'Retrieved 2 recent trades for AAPL.',
+                    },
+                },
+            ],
+        };
+
+        (global.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockStep1Response,
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockStep2Response,
+            });
+
+        const result = await handleChatMessage({
+            messages: [{ role: 'user', content: 'Tell me about AAPL trades' }],
+        });
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result.content).toBe('Retrieved 2 recent trades for AAPL.');
+        expect(result.tool_traces).toBeDefined();
+        expect(result.tool_traces?.[0].tool_name).toBe('get_stock_context_and_trades');
     });
 });

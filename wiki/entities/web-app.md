@@ -13,6 +13,7 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 - **Daily Predictions Page** (`/daily-predictions`): Independent model tabs (DeepSeek Flash, MiniMax M3) with strict track isolation. The `resolveActiveDailyPrompt` function now only considers experiments filtered to the selected model — no cross-track fallback. The `allExperiments` prop and `isFallback` flag have been removed. Status badges: `active` status only shows `🟢 ACTIVE` for the single active variant; other `active` records display `📦 SAVED`. The Autoresearch view defaults to inspecting the current active variant.
 - **Autoresearch Milestone Cards**: Shows active ratchet score, best baseline score, delta, and baseline anchor status. No fallback indicator.
 - **Variant Sidebar**: Lists all experiments for the selected model with status badges (`🟢 ACTIVE`, `🏆 BASELINE`, `❌ DISCARDED`, `📦 SAVED`).
+- **Investment Chat Gateway** (`/chat`): Gated conversational research interface with live database query tools, memory search, and ticker context deep-dives. See [[entities/investment-chat-gateway]].
 
 
 ## Architecture
@@ -24,6 +25,7 @@ TanStack Start dashboard (React + TypeScript) providing real-time portfolio data
 ## Related
 
 - [[entities/daily-market-predictor]]
+- [[entities/investment-chat-gateway]]
 - [[concepts/multi-track-autoresearch]]
 - [[concepts/tanstack-query]]
 - [[concepts/type-safety]]

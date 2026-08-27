@@ -239,17 +239,37 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                     )}
                 </div>
 
-                <span className="text-xs text-zinc-400 font-mono">
-                    {memory.created_at
-                        ? new Date(memory.created_at).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                          })
-                        : '-'}
-                </span>
+                <div className="ml-auto flex items-center gap-3">
+                    <Link
+                        to="/chat"
+                        search={{
+                            q: memory.metadata?.ticker
+                                ? `Should I invest in ${memory.metadata.ticker} based on this memory: "${memory.content.slice(0, 120)}..."?`
+                                : `Analyze this market memory thesis and recent trades: "${memory.content.slice(0, 120)}..."`,
+                            ticker:
+                                typeof memory.metadata?.ticker === 'string'
+                                    ? memory.metadata.ticker
+                                    : undefined,
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-xs"
+                        title="Discuss this memory in AI Chat Gateway"
+                    >
+                        <span>💬</span>
+                        <span>Discuss in Chat</span>
+                    </Link>
+
+                    <span className="text-xs text-zinc-400 font-mono">
+                        {memory.created_at
+                            ? new Date(memory.created_at).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                              })
+                            : '-'}
+                    </span>
+                </div>
             </div>
 
             {/* Content */}
@@ -789,6 +809,13 @@ export function MemoryCard({ memory }: MemoryCardProps) {
 
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-3 mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                                <Link
+                                    to="/chat"
+                                    search={{ ticker: selectedAsset.ticker }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded transition-colors shadow-sm"
+                                >
+                                    Ask AI Gateway (${selectedAsset.ticker}) →
+                                </Link>
                                 <a
                                     href={`https://finance.yahoo.com/quote/${selectedAsset.ticker}`}
                                     target="_blank"

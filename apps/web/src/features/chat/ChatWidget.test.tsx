@@ -2,9 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatWidget } from './ChatWidget';
 
-vi.mock('./chat-types', () => ({
-    ALLOWED_CHAT_EMAILS: ['g.vega.cl@gmail.com'],
-}));
+vi.mock('./chat-types', async () => {
+    const actual = await vi.importActual('./chat-types');
+    return {
+        ...actual,
+        ALLOWED_CHAT_EMAILS: ['g.vega.cl@gmail.com'],
+    };
+});
 
 vi.mock('./chat-server', () => ({
     sendChatMessageFn: vi.fn(),
@@ -62,7 +66,7 @@ describe('ChatWidget Component', () => {
         fireEvent.click(screen.getByRole('button', { name: /chat/i }));
 
         // Type input
-        const input = screen.getByPlaceholderText(/type a message/i);
+        const input = screen.getByPlaceholderText(/ask about a stock ticker/i);
         fireEvent.change(input, { target: { value: 'What is the market consensus?' } });
 
         // Submit form

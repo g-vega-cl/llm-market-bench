@@ -1,0 +1,100 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatPage } from './ChatPage';
+
+vi.mock('@tanstack/react-router', async () => {
+    const actual = await vi.importActual('@tanstack/react-router');
+    return {
+        ...actual,
+        Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+            <a {...props}>{children}</a>
+        ),
+    };
+});
+
+vi.mock('./chat-types', () => ({
+    ALLOWED_CHAT_EMAILS: ['g.vega.cl@gmail.com'],
+    SUGGESTED_RESEARCH_PROMPTS: [
+        'Should I invest in NVO based on current memories and trades?',
+        'What is the current market feeling and today’s morning briefing?',
+    ],
+}));
+
+vi.mock('./chat-server', () => ({
+    sendChatMessageFn: vi.fn(),
+}));
+
+import { sendChatMessageFn } from './chat-server';
+
+describe('ChatPage Component', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        localStorage.clear();
+    });
+
+    it('renders gated private beta banner when user is not authorized', () => {
+        render(<ChatPage user={null} />);
+        expect(screen.getAllByText(/Investment Chat Gateway/i).length).toBeGreaterThan(0);
+        expect(screen.getByText(/Private Beta/i)).toBeInTheDocument();
+        expect(screen.getByText(/Sign In to Access/i)).toBeInTheDocument();
+    });
+
+    it('renders gated private beta banner when user is signed in with unauthorized email', () => {
+        render(<ChatPage user={{ email: 'outsider@example.com' }} />);
+        expect(screen.getByText(/Signed in as outsider@example.com/i)).toBeInTheDocument();
+        expect(screen.getByText(/Sign In to Access/i)).toBeInTheDocument();
+    });
+
+    it('renders interactive terminal for authorized users with suggestions', () => {
+        render(<ChatPage user={{ email: 'g.vega.cl@gmail.com' }} />);
+        expect(screen.getByText(/Benchify AI Gateway/i)).toBeInTheDocument();
+        expect(screen.getByText(/Live DB Connected/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Should I invest in NVO based on current memories and trades?/i),
+        ).toBeInTheDocument();
+    });
+
+    it('handles clicking suggested prompt chip and displays tool traces', async () => {
+        (sendChatMessageFn as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+            role: 'assistant',
+            content: 'NVO shows strong GLP-1 momentum and past positive agent trades.',
+            tool_traces: [
+                {
+                    tool_name: 'search_memories_and_theses',
+                    summary: 'Retrieved 3 memories for NVO',
+                },
+            ],
+        });
+
+        render(<ChatPage user={{ email: 'g.vega.cl@gmail.com' }} />);
+
+        const chip = screen.getByText(
+            /Should I invest in NVO based on current memories and trades?/i,
+        );
+        fireEvent.click(chip);
+
+        await waitFor(() => {
+            expect(
+                screen.getByText(
+                    /NVO shows strong GLP-1 momentum and past positive agent trades./i,
+                ),
+            ).toBeInTheDocument();
+        });
+
+        // Check tool trace accordion
+        const traceToggle = screen.getByText(/1 tool call executed/i);
+        expect(traceToggle).toBeInTheDocument();
+
+        fireEvent.click(traceToggle);
+        expect(screen.getByText('Retrieved 3 memories for NVO')).toBeInTheDocument();
+    });
+
+    it('clears conversation history when Clear button is clicked', async () => {
+        render(<ChatPage user={{ email: 'g.vega.cl@gmail.com' }} />);
+
+        const clearBtn = screen.getByRole('button', { name: /clear/i });
+        fireEvent.click(clearBtn);
+
+        expect(screen.getByText(/Welcome to the/i)).toBeInTheDocument();
+    });
+});

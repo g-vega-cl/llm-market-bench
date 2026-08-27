@@ -6,6 +6,9 @@
 
 ## Entities
 
+- [[entities/investment-chat-gateway]] — Gated conversational agent with real-time memory and database access
+- [[entities/chat-tools]] — Server-side tool definitions and handlers for the Investment Chat Gateway
+- [[entities/investment-chat-gateway]] — Auto-indexed page
 - [[entities/alpaca-audit]] — Alpaca portfolio reconciliation audit engine
 - [[entities/daily-score-breakdown]] — Interactive score calculation and breakdown component for daily ratchet score auditability
 - [[entities/lin-renko-agent]] — Auto-indexed page

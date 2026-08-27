@@ -61,16 +61,11 @@ export const Route = createRootRoute({
     component: RootComponent,
 });
 
-import { ChatWidget } from '~/features/chat/ChatWidget';
-
 function RootComponent() {
-    const { user } = Route.useRouteContext();
-
     return (
         <RootDocument>
             <QueryClientProviderWrapper>
                 <Outlet />
-                <ChatWidget user={user} />
             </QueryClientProviderWrapper>
         </RootDocument>
     );
@@ -82,6 +77,7 @@ export const navItems = [
     { to: '/memories', label: 'Memories' },
     { to: '/today', label: 'Today' },
     { to: '/autoresearch', label: 'Auto-Research' },
+    { to: '/chat', label: 'AI Chat Gateway' },
     { to: '/daily-predictions', label: 'Daily Predictor' },
     { to: '/ai-predictions', label: 'AI Sector Predictions' },
     { to: '/generated-newsletters', label: 'Newsletters' },

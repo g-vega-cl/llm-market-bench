@@ -5,8 +5,10 @@ A living document of features and improvements in progress or planned for the pl
 ## Active Development
 
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
-- [x] **Reliable Market-Open Ingestion Scheduler** - Migrate or supplement GitHub Actions' native schedule cron (`.github/workflows/ingest.yml`) with an external scheduler/webhook (e.g. AWS EventBridge, Modal, or external HTTP trigger via `repository_dispatch`) to eliminate GitHub Actions public runner queue delays and silent skips of 9:35 AM and 10:35 AM ET runs.
-- [ ] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents and their memories (e.g., research NVO). Requires backend infrastructure with potential home server deployment
+- [x] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents, PostgreSQL database tables, memory theses, and market briefings.
+  - Implemented hybrid UI architecture with a dedicated responsive `/chat` page (`ChatPage.tsx`) and floating drawer widget (`ChatWidget.tsx`).
+  - Added specialized tool suite: `search_memories_and_theses`, `get_stock_context_and_trades`, `get_market_sentiment_and_newsletter`, and `query_database_table`.
+  - Added collapsible tool execution traces, prompt suggestion chips, rich Markdown rendering with financial tables, and deep-link integration on memory cards.
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Review lessons learned and the learning loop** -

@@ -220,9 +220,22 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
                                             ⏱️ {activeNewsletter.read_time_minutes ?? 6} min read
                                         </span>
                                     </div>
-                                    <span className="text-xs text-zinc-400 font-mono">
-                                        {activeNewsletter.formattedDate}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <Link
+                                            to="/chat"
+                                            search={{
+                                                q: `Analyze market newsletter briefing "${activeNewsletter.title}": ${activeNewsletter.summary.slice(0, 150)}...`,
+                                            }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm transition-all"
+                                            title="Discuss this briefing in AI Chat Gateway"
+                                        >
+                                            <span>💬</span>
+                                            <span>Discuss in AI Chat</span>
+                                        </Link>
+                                        <span className="text-xs text-zinc-400 font-mono">
+                                            {activeNewsletter.formattedDate}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {/* Newsletter Title */}

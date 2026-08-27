@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
 import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BarometerAuditRouteImport } from './routes/barometer-audit'
 import { Route as AutoresearchBacktestRouteImport } from './routes/autoresearch-backtest'
 import { Route as AuthedRouteImport } from './routes/_authed'
@@ -78,6 +79,11 @@ const DailyPredictionsBacktestRoute =
     path: '/daily-predictions-backtest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BarometerAuditRoute = BarometerAuditRouteImport.update({
   id: '/barometer-audit',
   path: '/barometer-audit',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/chat': typeof ChatRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/chat': typeof ChatRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
+  '/chat': typeof ChatRoute
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/chat'
     | '/daily-predictions-backtest'
     | '/generated-newsletters'
     | '/how-it-works'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/chat'
     | '/daily-predictions-backtest'
     | '/generated-newsletters'
     | '/how-it-works'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/autoresearch-backtest'
     | '/barometer-audit'
+    | '/chat'
     | '/daily-predictions-backtest'
     | '/generated-newsletters'
     | '/how-it-works'
@@ -352,6 +364,7 @@ export interface RootRouteChildren {
   AuthedRoute: typeof AuthedRouteWithChildren
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
+  ChatRoute: typeof ChatRoute
   DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       path: '/daily-predictions-backtest'
       fullPath: '/daily-predictions-backtest'
       preLoaderRoute: typeof DailyPredictionsBacktestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/barometer-audit': {
@@ -586,6 +606,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthedRoute: AuthedRouteWithChildren,
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
+  ChatRoute: ChatRoute,
   DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,

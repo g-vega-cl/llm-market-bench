@@ -7,11 +7,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
 import math
+from datetime import UTC, datetime
 
 from core.config import logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
 from execution.market_data import MarketDataManager
 from execution.portfolio import Portfolio
+from execution.providers.base import TickerData
 
 BENCHMARK_TICKERS = [
     "SPY",
@@ -158,6 +160,79 @@ async def update_prices():
     await fetch_benchmark_history(mdm)
 
 
+def compute_ticker_macro_metrics(
+    ticker: str,
+    history: list[dict],
+    live_ticker_data: TickerData | None = None,
+    today_date_str: str | None = None,
+) -> dict | None:
+    """Compute rolling volatility, today's price, percentage change, and regime flag for a ticker."""
+    if not history or len(history) < 2:
+        return None
+
+    if today_date_str is None:
+        today_date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+
+    # History is ordered descending (newest first)
+    history_0_date = str(history[0].get("fetched_at", ""))[:10]
+
+    # Check if history[0] already represents today's date
+    if history_0_date == today_date_str:
+        today_px = float(history[0]["price"])
+        yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
+        fetched_at = history[0]["fetched_at"]
+    else:
+        # history[0] is yesterday's close (EOD lag during active trading hours)
+        if live_ticker_data and live_ticker_data.price > 0:
+            today_px = float(live_ticker_data.price)
+            yesterday_close = (
+                float(live_ticker_data.previous_close)
+                if live_ticker_data.previous_close and live_ticker_data.previous_close > 0
+                else float(history[0]["price"])
+            )
+            fetched_at = datetime.now(UTC).isoformat()
+        else:
+            today_px = float(history[0]["price"])
+            yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
+            fetched_at = history[0]["fetched_at"]
+
+    if live_ticker_data and live_ticker_data.change_pct is not None and history_0_date != today_date_str:
+        today_pct_change = float(live_ticker_data.change_pct)
+    else:
+        today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
+
+    # Calculate returns and 30-day volatility metrics
+    history_30 = history[:30]
+    returns = []
+    for i in range(len(history_30) - 1):
+        prev = float(history_30[i + 1]["price"])
+        curr = float(history_30[i]["price"])
+        if prev > 0:
+            returns.append((curr - prev) / prev)
+
+    stdev_pct = 0.0
+    regime_flag = "Normal"
+    if len(returns) > 2:
+        mean_return = sum(returns) / len(returns)
+        variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
+        stdev_pct = math.sqrt(variance) * 100
+
+        # Match exact logic for high/unusual/normal regime flags
+        if abs(today_pct_change) > (2.0 * stdev_pct):
+            regime_flag = "⚠️ HIGHLY UNUSUAL"
+        elif abs(today_pct_change) > (1.5 * stdev_pct):
+            regime_flag = "❗ UNUSUAL"
+
+    return {
+        "ticker": ticker,
+        "price": today_px,
+        "fetched_at": fetched_at,
+        "today_pct_change": today_pct_change,
+        "stdev_pct": stdev_pct,
+        "regime_flag": regime_flag,
+    }
+
+
 async def fetch_benchmark_history(mdm: MarketDataManager):
     """Fetch 90-day history for benchmark tickers and macro tickers, and store in price_history table."""
     from core.macro_tracker import MACRO_TICKERS
@@ -174,6 +249,14 @@ async def fetch_benchmark_history(mdm: MarketDataManager):
         f"Fetching {BENCHMARK_HISTORY_DAYS}-day history for {len(all_sync_tickers)} sync tickers (benchmarks + macro)..."
     )
 
+    # Fetch live quotes in batch for all sync tickers
+    live_quotes = {}
+    if mdm.provider:
+        try:
+            live_quotes = await mdm.provider.get_ticker_data_batch(all_sync_tickers)
+        except Exception as e:
+            logger.warning(f"Failed to fetch live quotes batch for sync tickers: {e}")
+
     success_count = 0
     for ticker in all_sync_tickers:
         try:
@@ -182,31 +265,15 @@ async def fetch_benchmark_history(mdm: MarketDataManager):
                 logger.info(f"Stored {len(history)} price points for ticker {ticker}")
                 success_count += 1
 
-                # Calculate returns and 30-day volatility metrics
-                history_30 = history[:30]
-                returns = []
-                for i in range(len(history_30) - 1):
-                    prev = float(history_30[i + 1]["price"])
-                    curr = float(history_30[i]["price"])
-                    if prev > 0:
-                        returns.append((curr - prev) / prev)
+                live_data = live_quotes.get(ticker)
+                metrics = compute_ticker_macro_metrics(
+                    ticker=ticker,
+                    history=history,
+                    live_ticker_data=live_data,
+                )
 
-                today_px = float(history[0]["price"])
-                yesterday_close = float(history[1]["price"]) if len(history) > 1 else today_px
-                today_pct_change = (today_px - yesterday_close) / yesterday_close * 100 if yesterday_close > 0 else 0.0
-
-                stdev_pct = 0.0
-                regime_flag = "Normal"
-                if len(returns) > 2:
-                    mean_return = sum(returns) / len(returns)
-                    variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
-                    stdev_pct = math.sqrt(variance) * 100
-
-                    # Match exact logic for high/unusual/normal regime flags
-                    if abs(today_pct_change) > (2.0 * stdev_pct):
-                        regime_flag = "⚠️ HIGHLY UNUSUAL"
-                    elif abs(today_pct_change) > (1.5 * stdev_pct):
-                        regime_flag = "❗ UNUSUAL"
+                if not metrics:
+                    continue
 
                 # Keep existing market_cap if present in database cache
                 try:
@@ -218,16 +285,16 @@ async def fetch_benchmark_history(mdm: MarketDataManager):
                 # Upsert pre-calculated metrics to market_data_cache
                 cache_payload = {
                     "ticker": ticker,
-                    "price": today_px,
+                    "price": metrics["price"],
                     "market_cap": market_cap,
-                    "fetched_at": history[0]["fetched_at"],
-                    "today_pct_change": today_pct_change,
-                    "stdev_pct": stdev_pct,
-                    "regime_flag": regime_flag,
+                    "fetched_at": metrics["fetched_at"],
+                    "today_pct_change": metrics["today_pct_change"],
+                    "stdev_pct": metrics["stdev_pct"],
+                    "regime_flag": metrics["regime_flag"],
                 }
                 mdm.client.table("market_data_cache").upsert(cache_payload).execute()
                 logger.info(
-                    f"Pre-calculated metrics saved for {ticker}: {today_pct_change:+.2f}%, {stdev_pct:.2f}% stdev, {regime_flag}"
+                    f"Pre-calculated metrics saved for {ticker}: {metrics['today_pct_change']:+.2f}%, {metrics['stdev_pct']:.2f}% stdev, {metrics['regime_flag']}"
                 )
             else:
                 logger.warning(f"Insufficient data for ticker {ticker}: {len(history) if history else 0} points")

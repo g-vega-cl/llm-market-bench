@@ -62,6 +62,7 @@ For pull-based agents (e.g., candidate variants managed by the auto-researcher),
 
 ## History
 
+- **2026-08-27**: Fixed intraday macro percentage returns lag where `update_prices.py` computed percentage changes comparing yesterday against two days prior when EOD data had not yet closed. Refactored `compute_ticker_macro_metrics` to batch-fetch live quotes and compare live price vs previous close when EOD history lag occurs, and updated `_save_batch_to_cache` in `market_data.py` to persist `today_pct_change`.
 - **2026-08-27**: Enhanced Today page default "Market" price shower to render a comprehensive cross-asset indicator mix (`SPY`, `QQQ`, `TLT`, `VGK`, `EWJ`, `GLD`, `USO`, `VIXY`), providing instant visibility into equity benchmarks, bond yields, international markets, gold, crude oil, and VIX volatility directly on initial load.
 - **2026-08-21**: Clarified macro regime baseline output to explicitly specify `(PRIOR SESSION CLOSE)` and `[...% prior close]` to eliminate LLM confusion during pre-market inference. Expanded Daily Predictor's live pre-market multi-asset quoting loop to include international proxies (`EWJ`, `VGK`), yield proxies (`TLT`, `IEF`), and currency (`UUP`) alongside `SPY`, `QQQ`, `DIA`, `IWM`, `GLD`, and `USO`.
 

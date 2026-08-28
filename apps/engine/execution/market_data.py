@@ -609,6 +609,11 @@ class MarketDataManager:
                     "market_cap": data.market_cap,
                     "fetched_at": now_iso,
                 }
+                if data.change_pct is not None:
+                    payload["today_pct_change"] = data.change_pct
+                elif data.previous_close is not None and data.previous_close > 0:
+                    payload["today_pct_change"] = ((data.price - data.previous_close) / data.previous_close) * 100
+
                 cache_payloads.append(payload)
 
             if cache_payloads:

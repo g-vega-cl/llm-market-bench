@@ -63,16 +63,29 @@ async def fetch_intraday_prices(
         mdm = MarketDataManager()
         history = await mdm.get_history(ticker, days=10)
 
+        found_entry = None
         if history:
             for entry in history:
                 fetched_at = entry.get("fetched_at", "")
-                date_part = fetched_at[:10]
-                if date_part == target_date_str:
-                    close_price = float(entry["price"])
-                    open_price = float(entry.get("open", close_price))
-                    high_price = float(entry.get("high", max(open_price, close_price)))
-                    low_price = float(entry.get("low", min(open_price, close_price)))
-                    return open_price, high_price, low_price, close_price
+                if fetched_at[:10] == target_date_str:
+                    found_entry = entry
+                    break
+
+        if not found_entry:
+            history = await mdm.get_history(ticker, days=10, force_refresh=True)
+            if history:
+                for entry in history:
+                    fetched_at = entry.get("fetched_at", "")
+                    if fetched_at[:10] == target_date_str:
+                        found_entry = entry
+                        break
+
+        if found_entry:
+            close_price = float(found_entry["price"])
+            open_price = float(found_entry.get("open", close_price))
+            high_price = float(found_entry.get("high", max(open_price, close_price)))
+            low_price = float(found_entry.get("low", min(open_price, close_price)))
+            return open_price, high_price, low_price, close_price
 
     except Exception as e:
         logger.warning(f"Error fetching intraday prices via MarketDataManager for {ticker} on {target_date_str}: {e}")

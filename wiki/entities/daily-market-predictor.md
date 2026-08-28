@@ -17,7 +17,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 
 2. **Post-Market Evaluation (5:15 PM EDT / 4:15 PM EST)**:
    - Command: `python main.py evaluate-daily-predictions`
-   - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close via FMP `MarketDataManager` (skips evaluation if target date hasn't closed yet).
+   - Scopes today's 9:30 AM Open, High, Low, and 4:00 PM Close prices safely after market close via FMP `MarketDataManager` (using `/historical-price-eod/full` to strictly isolate the regular trading session from post-market noise, with automatic `force_refresh=True` fallback if the newly closed candle is not yet present in the local database cache).
    - Calculates **Directional Accuracy** (`is_correct`), **Intraday Target Hit Rate** (`intraday_hit`), **Intraday Direction Hit Rate** (`intraday_direction_hit`), and **Brier Calibration Score** ($\text{Brier} = (p - y)^2$, where $p = \text{confidence}/100.0$).
    - `intraday_hit` evaluates whether the stock reached or surpassed the predicted target return percentage (`expected_return_pct`) at any point between Open and Close (e.g. hitting +0.35% intraday high even if it closed at -0.20%).
    - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for each model's systematic portfolio (`sys-daily-spy-{model_name}`), logging trade records and updating portfolio equity/performance snapshots based on profit target hits or 3:30 PM time-based exits.

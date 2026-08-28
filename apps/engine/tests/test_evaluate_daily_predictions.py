@@ -76,6 +76,33 @@ async def test_evaluate_daily_predictions_success():
 
 
 @pytest.mark.asyncio
+async def test_fetch_intraday_prices_forces_refresh_when_missing_from_cache():
+    """Test that fetch_intraday_prices forces a provider refresh when target date is missing from cached history."""
+    from unittest.mock import AsyncMock
+
+    from tasks.evaluate_daily_predictions import fetch_intraday_prices
+
+    cached_history = [{"price": 765.0, "open": 764.0, "high": 766.0, "low": 763.0, "fetched_at": "2026-08-26"}]
+    fresh_history = [
+        {"price": 771.10, "open": 768.50, "high": 772.36, "low": 767.16, "fetched_at": "2026-08-27"},
+        {"price": 765.0, "open": 764.0, "high": 766.0, "low": 763.0, "fetched_at": "2026-08-26"},
+    ]
+
+    mock_mdm = MagicMock()
+    mock_mdm.get_history = AsyncMock(side_effect=[cached_history, fresh_history])
+
+    with patch("execution.market_data.MarketDataManager", return_value=mock_mdm):
+        open_p, high_p, low_p, close_p = await fetch_intraday_prices("SPY", "2026-08-27")
+
+        assert open_p == 768.50
+        assert high_p == 772.36
+        assert low_p == 767.16
+        assert close_p == 771.10
+        assert mock_mdm.get_history.call_count == 2
+        mock_mdm.get_history.assert_called_with("SPY", days=10, force_refresh=True)
+
+
+@pytest.mark.asyncio
 async def test_fetch_intraday_open_close_missing_date():
     from unittest.mock import AsyncMock
 

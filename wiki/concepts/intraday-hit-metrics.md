@@ -23,39 +23,36 @@ The function `compute_intraday_hit_metrics()` in `tasks/evaluate_daily_predictio
 OHLC prices flow through the following chain to reach `compute_intraday_hit_metrics()`:
 
 ```
-FMPProvider.get_history()          → HistoryData (has open, high, low, price)
+FMPProvider.get_history()          → HistoryData (official 4:00 PM EOD bar: open, high, low, close)
     ↓
-MarketDataManager.get_history()    → list[dict] (must include open, high, low)
+MarketDataManager.get_history()    → list[dict] (persists and reads open, high, low, close)
     ↓
-fetch_intraday_prices()            → (open, high, low, close) tuple
+fetch_intraday_prices()            → (open, high, low, close) tuple (force_refresh fallback if missing)
     ↓
 compute_intraday_hit_metrics()     → (intraday_hit, intraday_direction_hit)
 ```
 
-The `price_history` DB table now includes `open`, `high`, `low`, `close` columns (nullable) so cached reads preserve OHLC for future evaluations.
+The `price_history` DB table includes `open`, `high`, `low`, `close` columns so cached reads preserve OHLC for future evaluations.
 
-## Known Bug (Fixed 2026-08-08)
+### Regular Session (4:00 PM ET) Price Guarantee
 
-**Symptom**: `intraday_hit` was always `False` for non-zero targets despite prices genuinely reaching the target.
+Historical price fetching uses FMP's `/historical-price-eod/full` endpoint rather than real-time quote feeds. This isolates evaluation metrics from extended-hours and after-hours volatility, ensuring that `open`, `high`, `low`, and `close` strictly reflect the official 9:30 AM to 4:00 PM ET regular trading session.
 
-**Root cause**: `MarketDataManager.get_history()` was stripping `open`/`high`/`low` from `HistoryData` in two places:
-1. The DB read path returned only `{price, fetched_at}`.
-2. The DB write path only persisted `price`, `market_cap`, `fetched_at` to `price_history`.
+If the target session date is not present in the local database cache window at evaluation time (5:15 PM ET), `fetch_intraday_prices()` automatically issues `force_refresh=True` to the provider to fetch and cache the newly settled 4:00 PM EOD candle.
 
-As a result, `fetch_intraday_prices()` fell back to `max(open, close)` / `min(open, close)` — which collapsed all four OHLC values to the same close price, making the max intraday return 0%.
+## Known Bugs & Fixes
 
-**Fix**:
-- Migration `20260808000000_add_ohlc_to_price_history.sql` adds `open`, `high`, `low`, `close` nullable columns to `price_history`.
-- `MarketDataManager.get_history()` now reads and writes all four OHLC fields.
-- Existing rows and callers that only use `price` are unaffected (nullable, additive dict keys).
+### 1. OHLC Field Stripping (Fixed 2026-08-08)
+- `MarketDataManager.get_history()` previously stripped OHLC fields from HistoryData on read/write. Fixed by persisting all four fields to `price_history`.
 
-**Confirmed instance**: SPY prediction for 2026-08-07 (expected +0.25% UP). Actual high was +0.375% above open — correctly recorded as `intraday_hit = true` after the fix.
+### 2. Cache Staleness False-Positive on EOD Close (Fixed 2026-08-27)
+- `MarketDataManager.get_history()` treated 1-day old DB cache as valid (`age <= 4`), preventing `fetch_intraday_prices()` from seeing the new day's EOD bar. Fixed by adding an automatic fallback to `get_history(ticker, days=10, force_refresh=True)` when `target_date_str` is not in the cached results.
 
 ## Usage
 
 - **Live evaluation** (`evaluate_daily_predictions`): Fetches Open, High, Low, Close prices via `MarketDataManager` and stores the metrics in the `daily_predictions` table.
 - **Backtest evaluation** (`evaluate_backtest_prediction`): Uses the same function with FMP-based OHLC data.
-- **Scoring**: The daily ratchet score formula uses intraday hit rate as a 30% weighted component alongside 70% close accuracy, minus a Brier penalty.
+- **Scoring**: The daily ratchet score formula uses intraday hit rate as a 35% weighted component alongside 55% close accuracy and 10% magnitude capture, minus a 50x Brier penalty.
 
 ## Related
 

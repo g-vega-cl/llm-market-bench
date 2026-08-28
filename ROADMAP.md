@@ -152,3 +152,7 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: in today page, make the default price shower show a mix of important indicators like bond yields, equity, international, gold, wti, vix
 - [ ] - Benchify: train small model?
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
+- [ ] - Benchify: 2 week sector predictor and check how different are the weekly/monthly/90d predictions from each other..
+- [ ] - Benchify: ingest latest 2 newsletters instead of just last one?
+- [ ] - Benchify: should autoresearch ingest newsletters?
+- [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good

@@ -144,28 +144,43 @@ async def test_query_past_newsletters():
                     "session": "open",
                     "formatted_time": "09:15 ET",
                     "created_at": "2026-08-26T09:15:00Z",
+                    "content": "Full detailed article body for briefing 1.",
                 }
             ]
         )
     )
 
     with patch("core.db.get_async_supabase_client", new=AsyncMock(return_value=mock_sb)):
-        res = await query_past_newsletters(limit=1, session="open")
-        assert "Briefing 1" in res
-        assert "Summary 1" in res
+        res_summary = await query_past_newsletters(limit=1, session="open", include_full_content=False)
+        assert "Briefing 1" in res_summary
+        assert "Summary 1" in res_summary
+        assert "Full detailed article body" not in res_summary
+
+        res_full = await query_past_newsletters(limit=1, session="open", include_full_content=True)
+        assert "Briefing 1" in res_full
+        assert "Summary 1" in res_full
+        assert "Full detailed article body for briefing 1." in res_full
 
 
 @pytest.mark.asyncio
-async def test_get_daily_market_context_includes_newsletter():
-    mock_newsletter_str = (
-        "=== MORNING NEWSLETTER BRIEFING ===\n"
-        "Title: Morning Market Briefing\n"
-        "Summary: Test summary\n"
-        "Full Briefing Content:\nTest full content"
-    )
+async def test_get_daily_market_context_dual_newsletters_default():
+    async def mock_fetch_newsletter(session="latest", target_date=None, include_full_content=True):
+        if session == "close":
+            return (
+                "=== PREVIOUS SESSION CLOSE BRIEFING ===\n"
+                "Title: Evening Market Close Briefing\n"
+                "Summary: Tech led rally into close\n"
+                "Key Takeaways:\n- Tech +1.4%"
+            )
+        return (
+            "=== TODAY'S PRE-MARKET OPEN BRIEFING ===\n"
+            "Title: Morning Market Open Briefing\n"
+            "Summary: Futures steady\n"
+            "Full Briefing Content:\nFull morning article details"
+        )
 
     with (
-        patch("core.llm.tools.execute_fetch_daily_newsletter_tool", new=AsyncMock(return_value=mock_newsletter_str)),
+        patch("core.llm.tools.execute_fetch_daily_newsletter_tool", side_effect=mock_fetch_newsletter) as mock_fetch,
         patch("execution.market_data.MarketDataManager") as mock_mdm_cls,
         patch("core.llm.tools.execute_get_global_macro_context_tool", new=AsyncMock(return_value="Macro test")),
         patch("core.llm.tools.execute_get_volatility_index_details_tool", new=AsyncMock(return_value="Vol test")),
@@ -179,6 +194,49 @@ async def test_get_daily_market_context_includes_newsletter():
         mock_mdm_cls.return_value = mock_mdm
 
         context = await get_daily_market_context(ticker="SPY")
-        assert "Morning Newsletter Briefing:" in context
-        assert "Morning Market Briefing" in context
-        assert "Test full content" in context
+        assert "Evening Market Close Briefing" in context
+        assert "Morning Market Open Briefing" in context
+        assert "Full morning article details" in context
+
+        # Verify calls to execute_fetch_daily_newsletter_tool:
+        # First call for close (summary only: include_full_content=False)
+        # Second call for open (full content: include_full_content=True)
+        assert mock_fetch.call_count == 2
+        calls = mock_fetch.call_args_list
+        assert calls[0].kwargs.get("session") == "close"
+        assert calls[0].kwargs.get("include_full_content") is False
+        assert calls[1].kwargs.get("session") == "open"
+        assert calls[1].kwargs.get("include_full_content") is True
+
+
+@pytest.mark.asyncio
+async def test_get_daily_market_context_dual_newsletters_option_b():
+    async def mock_fetch_newsletter(session="latest", target_date=None, include_full_content=True):
+        if session == "close":
+            return "Evening Close Content"
+        return "Morning Open Content"
+
+    with (
+        patch("core.llm.tools.execute_fetch_daily_newsletter_tool", side_effect=mock_fetch_newsletter) as mock_fetch,
+        patch("execution.market_data.MarketDataManager") as mock_mdm_cls,
+        patch("core.llm.tools.execute_get_global_macro_context_tool", new=AsyncMock(return_value="")),
+        patch("core.llm.tools.execute_get_volatility_index_details_tool", new=AsyncMock(return_value="")),
+        patch("core.llm.tools.execute_market_health_barometer_tool", new=AsyncMock(return_value="")),
+        patch("core.llm.tools.execute_get_market_feeling_tool", new=AsyncMock(return_value="")),
+    ):
+        mock_mdm = AsyncMock()
+        mock_mdm.is_premarket.return_value = False
+        mock_mdm.get_premarket_quote.return_value = None
+        mock_mdm.get_history.return_value = []
+        mock_mdm_cls.return_value = mock_mdm
+
+        context = await get_daily_market_context(ticker="SPY", include_full_prior_close=True)
+        assert "Evening Close Content" in context
+        assert "Morning Open Content" in context
+
+        assert mock_fetch.call_count == 2
+        calls = mock_fetch.call_args_list
+        assert calls[0].kwargs.get("session") == "close"
+        assert calls[0].kwargs.get("include_full_content") is True
+        assert calls[1].kwargs.get("session") == "open"
+        assert calls[1].kwargs.get("include_full_content") is True

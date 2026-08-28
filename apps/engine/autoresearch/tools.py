@@ -81,23 +81,30 @@ async def search_wiki_concepts(query: str) -> str:
         return f"Error searching wiki concepts: {str(e)}"
 
 
-async def query_past_newsletters(limit: int = 5, session: str = "open") -> str:
+async def query_past_newsletters(
+    limit: int = 5,
+    session: str = "open",
+    include_full_content: bool = False,
+) -> str:
     """Fetch recent AI Wall Street daily newsletters to analyze market regime narrative trends.
 
     Args:
         limit: Max past newsletters to retrieve (default 5).
         session: 'open', 'close', or 'all'.
+        include_full_content: Whether to include the full article Markdown body or just summaries/bullets.
 
     Returns:
-        Formatted summary of recent newsletter titles, summaries, and key takeaways.
+        Formatted summary or full text of recent newsletters.
     """
     try:
         from core.db import get_async_supabase_client
 
         sb_client = await get_async_supabase_client()
-        query = sb_client.table("generated_newsletters").select(
-            "title, summary, bullet_points, session, formatted_time, created_at"
-        )
+        cols = "title, summary, bullet_points, session, formatted_time, created_at"
+        if include_full_content:
+            cols += ", content"
+
+        query = sb_client.table("generated_newsletters").select(cols)
         if session in ("open", "close"):
             query = query.eq("session", session)
 
@@ -120,6 +127,10 @@ async def query_past_newsletters(limit: int = 5, session: str = "open") -> str:
                 lines.append(f"Summary: {summary}")
             if bullets:
                 lines.append("Takeaways: " + " | ".join(bullets[:3]))
+            if include_full_content:
+                content = row.get("content", "")
+                if content:
+                    lines.append(f"Full Content:\n{content}")
 
         return "\n".join(lines)
 

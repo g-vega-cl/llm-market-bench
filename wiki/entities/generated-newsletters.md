@@ -24,7 +24,9 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 ## Downstream Consumers & Tooling Integration
 
 1. **Daily S&P Market Predictor**:
-   - [`get_daily_market_context()`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/daily_predictor.py) automatically queries the fresh morning newsletter from `generated_newsletters` via `execute_fetch_daily_newsletter_tool(session="open")` and injects the full synthesized Markdown briefing into the pre-market context block.
+   - [`get_daily_market_context()`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/tasks/daily_predictor.py) automatically queries dual newsletters from `generated_newsletters`:
+     - **Prior Close Briefing**: `execute_fetch_daily_newsletter_tool(session="close", include_full_content=False)` injects the previous session's closing headline, executive summary, and key takeaways without token bloat (or full content if `include_full_prior_close=True`).
+     - **Today's Open Briefing**: `execute_fetch_daily_newsletter_tool(session="open", include_full_content=True)` injects the full synthesized Markdown morning briefing into the pre-market context block.
    - Falls back gracefully to the most recent available newsletter if the target date's morning briefing is delayed.
 
 2. **Autonomous Portfolio LLM Trading Agents**:
@@ -32,7 +34,7 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
    - Allows trading decision agents to pull morning/evening briefs dynamically.
 
 3. **Weekly Autoresearch Meta-Agent**:
-   - In `autoresearch/tools.py`, `query_past_newsletters(limit=5, session="open")` enables the prompt optimization meta-researcher to inspect past market briefs to diagnose macroeconomic regime shifts.
+   - In `autoresearch/tools.py`, `query_past_newsletters(limit=5, session="open", include_full_content=False)` enables the prompt optimization meta-researcher to inspect past market briefs (either executive summaries or full Markdown articles via `include_full_content=True`) to diagnose macroeconomic regime shifts.
 
 4. **Sequencing & Chained Dispatch**:
    - The morning newsletter generates at **9:12 AM ET** via Cloudflare Worker edge dispatch (see [[entities/cron-dispatcher]]).

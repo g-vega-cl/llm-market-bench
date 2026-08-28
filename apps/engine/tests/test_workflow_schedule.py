@@ -109,7 +109,14 @@ def test_generate_newsletter_chains_daily_predictor():
     job = jobs.get("generate-newsletter", {})
     steps = job.get("steps", [])
 
-    trigger_step = next((s for s in steps if "daily-predictor" in s.get("name", "").lower() or "daily predictor" in s.get("name", "").lower()), None)
+    trigger_step = next(
+        (
+            s
+            for s in steps
+            if "daily-predictor" in s.get("name", "").lower() or "daily predictor" in s.get("name", "").lower()
+        ),
+        None,
+    )
     assert trigger_step is not None, "Could not find step triggering daily-predictor in generate-newsletter.yml"
     assert "daily-predictor" in trigger_step.get("run", "")
 

@@ -92,7 +92,7 @@ async def fetch_active_daily_prompt(model_name: str = DEEPSEEK_FLASH_MODEL) -> t
     return f"fallback-daily-{model_name}", DAILY_PREDICTOR_PROMPT
 
 
-async def get_daily_market_context(ticker: str = "SPY") -> str:
+async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close: bool = False) -> str:
     """Fetch recent market data context using canonical MarketDataManager (FMP) and pre-made tools."""
     from core.llm.tools import (
         execute_fetch_daily_newsletter_tool,
@@ -106,13 +106,30 @@ async def get_daily_market_context(ticker: str = "SPY") -> str:
     context_lines = [f"Asset: {ticker} (S&P 500 ETF)"]
     today_str = datetime.now(UTC).date().isoformat()
 
-    # 1. AI Wall Street Synthesized Morning Newsletter Briefing
+    # 1. AI Wall Street Synthesized Newsletters (Previous Close + Today Open)
     try:
-        newsletter_str = await execute_fetch_daily_newsletter_tool(
+        prior_close_str = await execute_fetch_daily_newsletter_tool(
+            session="close", include_full_content=include_full_prior_close
+        )
+        if (
+            prior_close_str
+            and not prior_close_str.startswith("Error")
+            and not prior_close_str.startswith("No generated")
+        ):
+            context_lines.append(f"Previous Session Close Briefing:\n{prior_close_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching previous close newsletter briefing: {e}")
+
+    try:
+        open_newsletter_str = await execute_fetch_daily_newsletter_tool(
             session="open", target_date=today_str, include_full_content=True
         )
-        if newsletter_str and not newsletter_str.startswith("Error"):
-            context_lines.append(f"Morning Newsletter Briefing:\n{newsletter_str}")
+        if (
+            open_newsletter_str
+            and not open_newsletter_str.startswith("Error")
+            and not open_newsletter_str.startswith("No generated")
+        ):
+            context_lines.append(f"Morning Newsletter Briefing:\n{open_newsletter_str}")
     except Exception as e:
         logger.warning(f"Error fetching morning newsletter briefing: {e}")
 

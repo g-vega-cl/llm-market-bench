@@ -34,8 +34,9 @@ Auto-generated daily market newsletters produced by the engine. The newsletter g
 3. **Weekly Autoresearch Meta-Agent**:
    - In `autoresearch/tools.py`, `query_past_newsletters(limit=5, session="open")` enables the prompt optimization meta-researcher to inspect past market briefs to diagnose macroeconomic regime shifts.
 
-4. **Sequencing & Edge Dispatch**:
-   - The morning newsletter generates at **9:15 AM ET**, providing a 5-minute window before the Daily S&P Predictor executes at **9:20 AM ET** (see [[entities/cron-dispatcher]]).
+4. **Sequencing & Chained Dispatch**:
+   - The morning newsletter generates at **9:12 AM ET** via Cloudflare Worker edge dispatch (see [[entities/cron-dispatcher]]).
+   - Upon completion, `generate-newsletter.yml` automatically triggers `daily-predictor.yml` (`session: open` triggers `daily-predictor` and `session: close` triggers `evaluate-daily-predictions`), ensuring the predictor runs immediately after newsletter synthesis without race conditions.
 
 ## UI Presentation
 

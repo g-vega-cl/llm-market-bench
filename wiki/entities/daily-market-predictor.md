@@ -43,9 +43,10 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
 
 ## Execution & Dispatch Architecture
 
-1. **High-Precision Edge Cron Dispatcher (`apps/cron-dispatcher`)**:
-   - Cloudflare Worker running 5 consolidated edge cron triggers (`0 21,22 * * MON-FRI`, `35 13-16 * * MON-FRI`, `30 19,20 * * MON-FRI`, `15 13,14,21 * * MON-FRI`, `20 13,14 * * MON-FRI`).
-   - Unified dispatcher routing intraday market workflows: `generate-newsletter.yml` (9:15 AM & 5:00 PM ET), `daily-predictor.yml` (9:20 AM prediction & 5:15 PM evaluation), and `ingest.yml` (9:35 AM, 11:35 AM, 3:30 PM ET).
+1. **High-Precision Edge Cron Dispatcher (`apps/cron-dispatcher`) & Chained Execution**:
+   - Cloudflare Worker running 4 consolidated edge cron triggers (`12 13,14 * * MON-FRI`, `35 13-16 * * MON-FRI`, `30 19,20 * * MON-FRI`, `0 21,22 * * MON-FRI`), respecting Cloudflare Free plan's 5 cron trigger limit.
+   - Unified dispatcher routing intraday market workflows: `generate-newsletter.yml` (9:12 AM & 5:00 PM ET) and `ingest.yml` (9:35 AM, 11:35 AM, 3:30 PM ET).
+   - **Downstream Chaining**: `generate-newsletter.yml` automatically triggers `daily-predictor.yml` upon completion (`daily-predictor` after the 9:12 AM morning brief and `evaluate-daily-predictions` after the 5:00 PM close brief), eliminating race conditions and saving 2 edge triggers.
    - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials without executing LLM code directly on the edge worker.
    - Bypasses GitHub Actions scheduled queue delays, launching workflows in < 5 seconds.
    - Decoupled from weekend/midweek prompt optimization: `daily-autoresearch` runs 2x/week (Sun & Wed 6:00 PM ET) directly via native GitHub Actions schedule (`0 22 * * SUN,WED` in `daily-predictor.yml`).

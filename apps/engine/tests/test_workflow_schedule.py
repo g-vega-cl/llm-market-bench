@@ -95,33 +95,61 @@ def test_generate_newsletter_workflow_schedule():
     assert not schedule, f"Expected no native schedule in generate-newsletter.yml, found: {schedule}"
 
 
-def test_cron_dispatcher_915_schedule():
-    """Verify apps/cron-dispatcher/src/index.ts targets 9:15 AM ET for daily-predictor & newsletter."""
+def test_generate_newsletter_chains_daily_predictor():
+    """Verify generate-newsletter.yml triggers daily-predictor.yml upon completion."""
+    root = Path(__file__).resolve().parent.parent.parent.parent
+    newsletter_yml_path = root / ".github" / "workflows" / "generate-newsletter.yml"
+
+    assert newsletter_yml_path.exists(), f"Could not find workflow file at {newsletter_yml_path}"
+
+    with open(newsletter_yml_path) as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", {})
+    job = jobs.get("generate-newsletter", {})
+    steps = job.get("steps", [])
+
+    trigger_step = next((s for s in steps if "daily-predictor" in s.get("name", "").lower() or "daily predictor" in s.get("name", "").lower()), None)
+    assert trigger_step is not None, "Could not find step triggering daily-predictor in generate-newsletter.yml"
+    assert "daily-predictor" in trigger_step.get("run", "")
+
+
+def test_cron_dispatcher_912_schedule():
+    """Verify apps/cron-dispatcher/src/index.ts targets 9:12 AM ET for open newsletter synthesis and no longer has 9:20 or 5:15 branches."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     index_ts_path = root / "apps" / "cron-dispatcher" / "src" / "index.ts"
 
     assert index_ts_path.exists(), f"Could not find index.ts file at {index_ts_path}"
 
     content = index_ts_path.read_text()
-    assert "nyHour === 9 && nyMinute === 15" in content, (
-        "Expected index.ts to check for nyHour === 9 && nyMinute === 15"
+    assert "nyHour === 9 && nyMinute === 12" in content, (
+        "Expected index.ts to check for nyHour === 9 && nyMinute === 12"
     )
-    assert "nyHour === 9 && nyMinute === 0" not in content, (
-        "Did not expect index.ts to check for 9:00 AM (nyMinute === 0)"
+    assert "nyHour === 9 && nyMinute === 20" not in content, (
+        "Did not expect index.ts to have standalone 9:20 AM check (now chained from newsletter)"
+    )
+    assert "nyHour === 17 && nyMinute === 15" not in content, (
+        "Did not expect index.ts to have standalone 5:15 PM check (now chained from close newsletter)"
     )
 
 
 def test_cron_dispatcher_wrangler_triggers():
-    """Verify apps/cron-dispatcher/wrangler.jsonc includes minute 15 cron trigger for 9:15 AM ET (13:15 / 14:15 UTC)."""
+    """Verify apps/cron-dispatcher/wrangler.jsonc has <= 5 triggers including 9:12 AM ET (13:12 / 14:12 UTC)."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     wrangler_path = root / "apps" / "cron-dispatcher" / "wrangler.jsonc"
 
     assert wrangler_path.exists(), f"Could not find wrangler.jsonc at {wrangler_path}"
 
-    content = wrangler_path.read_text()
-    assert "15 13,14,21 * * MON-FRI" in content or ("15 13,14" in content and "15 21" in content), (
-        "Expected wrangler.jsonc to include 15 minute cron triggers for 13:00/14:00 UTC hours"
-    )
+    with open(wrangler_path) as f:
+        # wrangler.jsonc is JSON with comments/schema, but loads cleanly as yaml
+        config = yaml.safe_load(f)
+
+    crons = config.get("triggers", {}).get("crons", [])
+    assert len(crons) <= 5, f"Expected at most 5 cron triggers for Workers Free plan, found {len(crons)}: {crons}"
+    assert "12 13,14 * * MON-FRI" in crons, f"Expected '12 13,14 * * MON-FRI' in crons, found: {crons}"
+    assert "0 21,22 * * MON-FRI" in crons, f"Expected '0 21,22 * * MON-FRI' in crons, found: {crons}"
+    assert "35 13-16 * * MON-FRI" in crons, f"Expected '35 13-16 * * MON-FRI' in crons, found: {crons}"
+    assert "30 19,20 * * MON-FRI" in crons, f"Expected '30 19,20 * * MON-FRI' in crons, found: {crons}"
 
 
 def test_autoresearch_workflow_env_keys():

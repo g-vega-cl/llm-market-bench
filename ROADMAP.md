@@ -140,7 +140,7 @@ Feels like I have done that before to no avail
     - Added `query_past_newsletters` in `autoresearch/tools.py` for the weekly Autoresearch meta-agent.
     - Updated `get_daily_market_context` in `daily_predictor.py` to fetch today's morning briefing with graceful fallback.
     - Updated `DAILY_PREDICTOR_PROMPT` constraints header to document synthesized newsletter context.
-    - Updated Cron Dispatcher to trigger `generate-newsletter.yml` at 9:15 AM ET and `daily-predictor.yml` at 9:20 AM ET.
+    - Updated Cron Dispatcher to trigger `generate-newsletter.yml` at 9:12 AM ET with automatic chained downstream dispatch to `daily-predictor.yml`.
 - [ ] -  Benchify: daily trades for sector predictor audit
 - [ ] - Benchify: a bond trader?
 - [ ] - Benchify : do we get volume alongside price? Volume deviations?

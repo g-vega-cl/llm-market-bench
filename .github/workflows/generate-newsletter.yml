@@ -59,3 +59,29 @@ jobs:
         run: |
           cd apps/engine
           PYTHONPATH=. ./venv/bin/python3 main.py generate-newsletter --session ${{ steps.sess.outputs.session }}
+
+      - name: Trigger Downstream Daily Predictor
+        if: always() && !cancelled()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_PAT || secrets.GITHUB_TOKEN }}
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+        run: |
+          if [ "${{ steps.sess.outputs.session }}" = "open" ]; then
+            ACTION="daily-predictor"
+          else
+            ACTION="evaluate-daily-predictions"
+          fi
+
+          echo "Triggering daily-predictor.yml with action=$ACTION..."
+          if [ -n "$GITHUB_PAT" ]; then
+            curl -s -f -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_PAT" \
+              -H "User-Agent: GitHub-Actions-Chaining" \
+              https://api.github.com/repos/${{ github.repository }}/actions/workflows/daily-predictor.yml/dispatches \
+              -d "{\"ref\":\"main\",\"inputs\":{\"action\":\"$ACTION\"}}" && echo "Dispatched daily-predictor.yml successfully via GitHub API." || echo "Failed to dispatch via API."
+          elif [ -n "$GH_TOKEN" ]; then
+            gh workflow run daily-predictor.yml -f action="$ACTION" || echo "Failed to dispatch via gh CLI."
+          else
+            echo "No auth token available, skipping downstream daily-predictor dispatch."
+          fi

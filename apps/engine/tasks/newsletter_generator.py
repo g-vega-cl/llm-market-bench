@@ -143,7 +143,7 @@ async def generate_daily_newsletter(session: str = "open", sb_client=None) -> di
     """Main pipeline task to generate and store a daily newsletter.
 
     Args:
-        session: 'open' (9:15 AM ET) or 'close' (17:00 ET)
+        session: 'open' (9:12 AM ET) or 'close' (17:00 ET)
         sb_client: Optional Supabase client instance
 
     Returns:

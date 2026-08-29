@@ -156,3 +156,6 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: ingest latest 2 newsletters instead of just last one?
 - [ ] - Benchify: should autoresearch ingest newsletters?
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
+- [ ] - Benchify: insider trading tracker, congress, CEO, whales , 13Fs?Canada insider trader specifically?
+
+

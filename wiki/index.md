@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/hotspots]] — Git churn forensics and code hotspot analyzer
 - [[entities/investment-chat-gateway]] — Gated conversational agent with real-time memory and database access
 - [[entities/chat-tools]] — Server-side tool definitions and handlers for the Investment Chat Gateway
 - [[entities/investment-chat-gateway]] — Auto-indexed page
@@ -45,6 +46,7 @@
 
 ## Concepts
 
+- [[concepts/code-hotspots]] — Auto-indexed page
 - [[concepts/unslop-editing]] — Structured editing skill for removing AI pattern tells and injecting human voice
 - [[concepts/wayfinder]] — Planning methodology for decomposing large work into tracked decision tickets
 - [[concepts/system-portfolios]] — Auto-indexed page

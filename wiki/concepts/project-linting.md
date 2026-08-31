@@ -105,5 +105,6 @@ pnpm biome check --write --unsafe
 - [[entities/wiki-linter]] — Detailed wiki linting (structural + LLM)
 - [[entities/ruff-linter]] — Python linter details
 - [[entities/biome-linter]] — TypeScript/JS linter details
+- [[concepts/code-hotspots]] — Churn forensics and bug hotspot analyzer
 - [[entities/engine]]
 - `AGENTS.md` — canonical command reference

@@ -16,6 +16,7 @@
 - Structural Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` (use `--fix` to auto-index new pages)
 - LLM Wiki Lint: `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint_llm.py --model <model_name>`
 - Auto-wiki dry: `./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file <(git diff --cached) --dry-run`
+- Code Hotspot & Churn Forensics: `./apps/engine/.venv/bin/python3 apps/engine/hotspots.py` (use `--write-wiki` to refresh wiki page)
 
 ## Linting & Testing
 
@@ -55,6 +56,7 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
 3. **TDD First**: Every implementation plan MUST include a step for creating a reproduction test first. Verification requires a test that fails without your change and passes with it.
 4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting — don't assume.
 5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
+6. **Hotspot Awareness**: Before modifying high-risk areas, check hotspots with `apps/engine/hotspots.py`. Files flagged as CRITICAL or HIGH risk with high bug ratios require defensive editing, regression tests, and verification before changes are made.
 
 ## Config
 

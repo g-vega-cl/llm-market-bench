@@ -13,6 +13,7 @@ The Python data engine (`apps/engine/`) is the core pipeline that ingests financ
 - **`execution/`** — Market data management, order placement, portfolio operations, and trade settlement
 - **`tasks/`** — Orchestrated pipeline tasks (daily predictor, ingestion, analysis, consensus, execution, feedback)
 - **`tests/`** — Test suite with zero-warning policy and dependency injection patterns
+- **`hotspots.py`** — Git churn forensics and temporal coupling analyzer
 
 ## Market Data Management
 
@@ -37,3 +38,4 @@ In `tasks/daily_predictor.py`, the `get_daily_market_context` function now fetch
 - [[entities/daily-market-predictor]]
 - [[entities/macro-tracker]]
 - [[concepts/ingestion]]
+- [[concepts/code-hotspots]]

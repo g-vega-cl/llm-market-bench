@@ -158,5 +158,12 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: should autoresearch ingest newsletters?
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [ ] - Benchify: insider trading tracker, congress, CEO, whales , 13Fs?Canada insider trader specifically?
+- [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
+- [ ] - Benchify; tool for think about related winners? Memory/energy/etc... in AI, clothes GLP, etc...
+- [ ] - Benchify: daily predictor autoresearch probably best weekly
+- [ ] - Benchify: something I can autoresearch daily?
 
+Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
+- [ ] - Benchify: AI auto research says using 23/20 tools, why?
+- [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 

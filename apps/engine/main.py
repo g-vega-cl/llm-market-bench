@@ -1046,7 +1046,7 @@ def main():
     elif args.command == COMMAND_DAILY_AUTORESEARCH:
         from tasks.daily_autoresearch import run_daily_autoresearch
 
-        asyncio.run(run_daily_autoresearch())
+        asyncio.run(run_daily_autoresearch(dry_run=args.dry_run))
     elif args.command == COMMAND_BACKTEST_DAILY_AUTORESEARCH:
         from tasks.backtest_daily_autoresearch import run_backtest_daily_autoresearch
 

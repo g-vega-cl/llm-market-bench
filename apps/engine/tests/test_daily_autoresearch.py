@@ -304,3 +304,70 @@ def test_compute_magnitude_postmortem_summary_with_macro():
     assert "Tech capex surge" in summary
     assert "ACTIVE THEMATIC CONCEPTS & MARKET PLAYBOOKS" in summary
     assert "AI Infrastructure Surge" in summary
+
+
+@pytest.mark.asyncio
+async def test_run_daily_autoresearch_weekly_lookbacks():
+    mock_supabase = MagicMock()
+    mock_llm = MagicMock()
+    mock_llm.chat.completions.create.return_value = MagicMock(new_prompt="Mutated weekly strategy")
+
+    called_query_ranges = {}
+
+    def mock_table_select(table_name):
+        mock_chain = MagicMock()
+        mock_chain.select.return_value = mock_chain
+        mock_chain.eq.return_value = mock_chain
+
+        def mock_gte(column, val):
+            called_query_ranges[f"{table_name}_{column}_gte"] = val
+            return mock_chain
+
+        def mock_lte(column, val):
+            called_query_ranges[f"{table_name}_{column}_lte"] = val
+            return mock_chain
+
+        mock_chain.gte.side_effect = mock_gte
+        mock_chain.lte.side_effect = mock_lte
+        mock_chain.in_.return_value = mock_chain
+        mock_chain.neq.return_value = mock_chain
+        mock_chain.order.return_value = mock_chain
+        mock_chain.limit.return_value = mock_chain
+
+        if table_name == "daily_predictions":
+            mock_chain.execute.return_value.data = [
+                {"is_correct": True, "brier_score": 0.04, "target_date": "2026-08-30"}
+            ]
+        elif table_name == "prompt_experiments":
+            mock_chain.execute.return_value.data = [
+                {
+                    "variant_tag": "daily-active-1",
+                    "prompt_name": "DAILY_PREDICTOR_PROMPT",
+                    "prompt_content": "Active prompt content",
+                    "status": "active",
+                }
+            ]
+            mock_chain.insert.return_value.execute.return_value = MagicMock(data=[])
+            mock_chain.update.return_value.execute.return_value = MagicMock(data=[])
+        else:
+            mock_chain.execute.return_value.data = []
+        return mock_chain
+
+    mock_supabase.table.side_effect = mock_table_select
+
+    with (
+        patch("tasks.daily_autoresearch.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.daily_autoresearch.get_deepseek_client", return_value=mock_llm),
+        patch("tasks.daily_autoresearch.close_client", new_callable=AsyncMock),
+    ):
+        await run_daily_autoresearch()
+
+    # Predictions query should be 7 days back
+    from datetime import UTC, datetime, timedelta
+
+    today = datetime.now(UTC).date()
+    seven_days_ago = (today - timedelta(days=7)).isoformat()
+    fourteen_days_ago = (today - timedelta(days=14)).isoformat()
+
+    assert called_query_ranges.get("daily_predictions_target_date_gte") == seven_days_ago
+    assert called_query_ranges.get("newsletter_snapshots_date_gte") == f"{fourteen_days_ago}T00:00:00Z"

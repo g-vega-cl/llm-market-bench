@@ -22,15 +22,15 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - `intraday_hit` evaluates whether the stock reached or surpassed the predicted target return percentage (`expected_return_pct`) at any point between Open and Close (e.g. hitting +0.35% intraday high even if it closed at -0.20%).
    - **System Portfolio Execution**: Automatically triggers mechanical 100% equity day trading execution for each model's systematic portfolio (`sys-daily-spy-{model_name}`), logging trade records and updating portfolio equity/performance snapshots based on profit target hits or 3:30 PM time-based exits.
 
-3. **Twice-Weekly Prompt Evolution & Performance Ratchet (Sun & Wed 6:00 PM ET)**:
+3. **Weekly Prompt Evolution & Performance Ratchet (Sunday 6:00 PM ET / 10:00 PM UTC)**:
    - Command: `python main.py daily-autoresearch`
-   - **Independent Multi-Model Tracks**: Evaluates recent predictions and evolves system prompt variants independently for each participating model (`deepseek-v4-flash` and `MiniMax-M3`), strictly scoped by `track_id` in `prompt_experiments`. Models never share or cross-pollinate prompt strategies or baselines.
+   - **Independent Multi-Model Tracks**: Evaluates recent predictions over the prior 7 days (all available trading sessions) and evolves system prompt variants independently for each participating model (`deepseek-v4-flash` and `MiniMax-M3`), strictly scoped by `track_id` in `prompt_experiments`. Models never share or cross-pollinate prompt strategies or baselines.
    - **Single Active Variant Enforcement**: Deploying a new active variant for a model track automatically demotes all prior `active` variants for that `track_id` to `saved`, guaranteeing a single live active strategy per model track.
    - Combined Multi-Factor Ratchet Score formula:
      $$\text{Ratchet Score} = (0.55 \times \text{close\_accuracy\_pct}) + (0.35 \times \text{intraday\_hit\_pct}) + (0.10 \times \text{magnitude\_capture\_pct}) - (\text{mean\_brier} \times 50.0)$$
    - **Granular Metrics Persistence**: Persists full score factor breakdowns in `prompt_experiments.metrics` (`close_accuracy_pct`, `intraday_hit_pct`, `magnitude_capture_pct`, `mean_brier`, `predictions_evaluated`, `correct_count`, `intraday_hit_count`) for transparent audits.
-   - **Magnitude Calibration Postmortem & Catalyst Enrichment**: Evaluates whether timid targets were set on large breakout/trend days ($\text{capture} = \min(1.0, |\text{expected\_return}| / \max(|\text{peak}|, |\text{close}|)) \times 100$, awarded only on successful target hits). The meta-researcher receives a detailed postmortem breakdown diagnosing timid sizing vs overshooting errors cross-referenced with ingested newsletters, market events, and active thematic concepts from `concept_metrics` to evolve analytical catalyst recognition rules without compromising baseline target hit reliability.
-   - Applies ratchet logic per model: if a model's recent performance beats its historical baseline, establishes a new baseline; if lower, reverts to baseline prompt.
+   - **Magnitude Calibration Postmortem & Catalyst Enrichment**: Evaluates whether timid targets were set on large breakout/trend days ($\text{capture} = \min(1.0, |\text{expected\_return}| / \max(|\text{peak}|, |\text{close}|)) \times 100$, awarded only on successful target hits). The meta-researcher receives a detailed postmortem breakdown diagnosing timid sizing vs overshooting errors cross-referenced with 14 days of ingested newsletters, market events, and active thematic concepts from `concept_metrics` to evolve analytical catalyst recognition rules without compromising baseline target hit reliability.
+   - Applies ratchet logic per model: if a model's recent 7-day performance beats its historical baseline, establishes a new baseline; if lower, reverts to baseline prompt content for mutation.
    - Mutates mutable strategy section using DeepSeek Flash meta-researcher per model track.
 
 4. **Web Frontend (`/daily-predictions`)**:
@@ -49,7 +49,7 @@ The **Daily S&P Market Predictor** generates 9:15 AM ET pre-market predictions f
    - **Downstream Chaining**: `generate-newsletter.yml` automatically triggers `daily-predictor.yml` upon completion (`daily-predictor` after the 9:12 AM morning brief and `evaluate-daily-predictions` after the 5:00 PM close brief), eliminating race conditions and saving 2 edge triggers.
    - Dispatches on-demand `workflow_dispatch` requests to GitHub's REST API using secure `GITHUB_PAT` credentials without executing LLM code directly on the edge worker.
    - Bypasses GitHub Actions scheduled queue delays, launching workflows in < 5 seconds.
-   - Decoupled from weekend/midweek prompt optimization: `daily-autoresearch` runs 2x/week (Sun & Wed 6:00 PM ET) directly via native GitHub Actions schedule (`0 22 * * SUN,WED` in `daily-predictor.yml`).
+   - Decoupled from intraday trading workflows: `daily-autoresearch` runs weekly (Sunday 6:00 PM ET / 10:00 PM UTC) directly via native GitHub Actions schedule (`0 22 * * SUN` in `daily-predictor.yml`).
 
 2. **Runner Environment & API Key Injection**:
    - `.github/workflows/daily-predictor.yml` provisions secrets for financial data (`FMP_API_KEY`, `FRED_API_KEY`), database access (`SUPABASE_PROJECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`), and all participating models (`DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`).

@@ -357,22 +357,30 @@ async def generate_new_daily_prompt(
         return old_prompt
 
 
-async def run_daily_autoresearch_for_model(model_name: str, client, today, four_days_ago, deepseek_meta):
-    """Run prompt evolution and ratchet check for a single daily predictor model track."""
-    # 1. Fetch evaluated daily predictions for this model over recent 3-4 days
+async def run_daily_autoresearch_for_model(
+    model_name: str,
+    client,
+    today,
+    seven_days_ago,
+    fourteen_days_ago,
+    deepseek_meta,
+    dry_run: bool = False,
+):
+    """Run weekly prompt evolution and ratchet check for a single daily predictor model track."""
+    # 1. Fetch evaluated daily predictions for this model over the past 7 days (all available trading sessions)
     response = (
         client.table("daily_predictions")
         .select("*")
         .eq("status", "evaluated")
         .eq("model_name", model_name)
-        .gte("target_date", four_days_ago.isoformat())
+        .gte("target_date", seven_days_ago.isoformat())
         .lte("target_date", today.isoformat())
         .execute()
     )
 
     predictions = response.data
     if not predictions:
-        logger.info(f"No evaluated daily predictions found for {model_name} in recent days. Skipping autoresearch.")
+        logger.info(f"No evaluated daily predictions found for {model_name} in the past week. Skipping autoresearch.")
         return
 
     current_metrics = calculate_daily_ratchet_metrics(predictions)
@@ -425,7 +433,10 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
     parent_tag = prompt_response.data[0]["variant_tag"]
 
     # 3. Update active prompt metrics with full breakdown
-    client.table("prompt_experiments").update({"metrics": current_metrics}).eq("variant_tag", parent_tag).execute()
+    if dry_run:
+        logger.info(f"[DRY RUN] Would update metrics for {parent_tag}: {current_metrics}")
+    else:
+        client.table("prompt_experiments").update({"metrics": current_metrics}).eq("variant_tag", parent_tag).execute()
 
     # 4. Fetch baseline variants to perform ratchet comparison strictly within this model track
     all_variants_resp = (
@@ -457,7 +468,8 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
             f"DAILY RATCHET ({model_name}): Score {current_score:.2f} failed to beat baseline {baseline_score:.2f}. "
             f"Reverting to baseline {baseline_tag}."
         )
-        client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
+        if not dry_run:
+            client.table("prompt_experiments").update({"status": "discarded"}).eq("variant_tag", parent_tag).execute()
         current_prompt = baseline_content
         parent_tag = baseline_tag
     else:
@@ -465,10 +477,11 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
             f"DAILY RATCHET ({model_name}): Score {current_score:.2f} beats/equals baseline {baseline_score:.2f}. "
             f"Establishing {parent_tag} as new baseline."
         )
-        client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
+        if not dry_run:
+            client.table("prompt_experiments").update({"status": "baseline"}).eq("variant_tag", parent_tag).execute()
 
-    # 5. Fetch macro, newsletter, and concepts context
-    macro_context = fetch_autoresearch_context(client, four_days_ago.isoformat(), today.isoformat())
+    # 5. Fetch 14-day rich macro, newsletter, and concepts context
+    macro_context = fetch_autoresearch_context(client, fourteen_days_ago.isoformat(), today.isoformat())
 
     # 6. Mutate prompt using DeepSeek Flash with enriched context
     new_prompt = await generate_new_daily_prompt(
@@ -482,6 +495,14 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
     # 7. Deploy new active prompt variant scoped to track_id, demoting prior active variants
     new_tag = f"daily-pred-{model_name}-{uuid.uuid4().hex[:8]}"
     week_end = today + timedelta(days=7)
+
+    if dry_run:
+        logger.info(
+            f"[DRY RUN] Would deploy new active prompt variant for {model_name}: {new_tag}\n"
+            f"[DRY RUN] Parent Tag: {parent_tag}\n"
+            f"[DRY RUN] Mutated Strategy Content Preview:\n{new_prompt[:300]}..."
+        )
+        return
 
     # Demote all existing active variants for this model track to saved
     client.table("prompt_experiments").update({"status": "saved"}).eq("prompt_name", "DAILY_PREDICTOR_PROMPT").eq(
@@ -499,18 +520,19 @@ async def run_daily_autoresearch_for_model(model_name: str, client, today, four_
             "status": "active",
             "experiment_type": "incremental",
             "parent_tag": parent_tag,
-            "change_description": f"Daily autoresearch mutation for {model_name} from score {current_score:.2f}",
+            "change_description": f"Weekly daily autoresearch mutation for {model_name} from score {current_score:.2f}",
         }
     ).execute()
 
     logger.info(f"Successfully mutated and deployed new daily predictor prompt variant for {model_name}: {new_tag}")
 
 
-async def run_daily_autoresearch():
-    """Run twice-weekly prompt evolution and ratchet check independently for both predictor models."""
+async def run_daily_autoresearch(dry_run: bool = False):
+    """Run weekly prompt evolution and ratchet check independently for both predictor models on Sunday."""
     client = get_supabase_client()
     today = datetime.now(UTC).date()
-    four_days_ago = today - timedelta(days=4)
+    seven_days_ago = today - timedelta(days=7)
+    fourteen_days_ago = today - timedelta(days=14)
 
     target_models = [DEEPSEEK_FLASH_MODEL, MINIMAX_MODEL]
     deepseek_meta = get_deepseek_client()
@@ -521,8 +543,10 @@ async def run_daily_autoresearch():
                 model_name=model_name,
                 client=client,
                 today=today,
-                four_days_ago=four_days_ago,
+                seven_days_ago=seven_days_ago,
+                fourteen_days_ago=fourteen_days_ago,
                 deepseek_meta=deepseek_meta,
+                dry_run=dry_run,
             )
     finally:
         await close_client(deepseek_meta, "deepseek")

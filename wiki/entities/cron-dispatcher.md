@@ -21,7 +21,7 @@ The dispatcher supports multiple workflows beyond `daily-predictor.yml`. It eval
 | 21:00 / 22:00 | 5:00 PM ET | 0 | `generate-newsletter.yml` | `{"session": "close"}` | Triggers `daily-predictor.yml` (`evaluate-daily-predictions`) on completion |
 
 > [!NOTE]
-> All weekly and weekend auto-research tasks (Sunday & Wednesday 6:00 PM ET prompt autoresearch, Sunday macro autoresearch) run natively via GitHub Actions schedules (`daily-predictor.yml` and `autoresearch.yml`), decoupling background research jobs from Cloudflare edge triggers.
+> All weekly and weekend auto-research tasks (Sunday 6:00 PM ET prompt autoresearch, Sunday macro autoresearch) run natively via GitHub Actions schedules (`daily-predictor.yml` and `autoresearch.yml`), decoupling background research jobs from Cloudflare edge triggers.
 
 ## Cron Triggers (wrangler.jsonc)
 

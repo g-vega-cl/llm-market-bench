@@ -7,10 +7,10 @@ category: concept
 
 Weekly autonomous prompt iteration via a meta-researcher LLM (DeepSeek Flash). The system evaluates recent prediction performance, computes a multi-factor ratchet score, and mutates the trading prompt to improve future predictions.
 
-## Pipeline (Twice-Weekly: Sun & Wed 6:00 PM ET)
+## Pipeline (Weekly: Sunday 6:00 PM ET / 10:00 PM UTC)
 
-1. **Fetch predictions** for the past 3-4 days for a specific model track.
-2. **Fetch context-enriched postmortems**: Queries `newsletter_snapshots`, `memories` (market events, post-mortems, resolutions), and `concept_metrics` (thematic velocity & mention counts) across the evaluation date window via `fetch_autoresearch_context`.
+1. **Fetch predictions** for the prior 7 days for a specific model track (evaluating all available trading sessions).
+2. **Fetch context-enriched postmortems**: Queries `newsletter_snapshots`, `memories` (market events, post-mortems, resolutions), and `concept_metrics` (thematic velocity & mention counts) across the prior 14 days via `fetch_autoresearch_context`.
 3. **Fetch current active prompt** for that model track (strictly scoped by `track_id`). If none exists, fall back to the model's baseline, then seed a new baseline if needed.
 4. **Update parent variant metrics** with the current ratchet score.
 5. **Ratchet comparison**: Compare current score against the best baseline score within the same model track. If the current score exceeds the best baseline, promote it to `baseline` status; if lower, revert to the best baseline prompt.

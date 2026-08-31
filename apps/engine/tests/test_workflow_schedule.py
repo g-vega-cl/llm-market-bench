@@ -41,7 +41,7 @@ def test_update_prices_workflow_schedule():
 
 
 def test_daily_predictor_workflow_schedule():
-    """Verify daily-predictor.yml has native Sun & Wed 10 PM UTC schedule for autoresearch."""
+    """Verify daily-predictor.yml has native Sunday 10 PM UTC schedule for autoresearch."""
     root = Path(__file__).resolve().parent.parent.parent.parent
     predictor_yml_path = root / ".github" / "workflows" / "daily-predictor.yml"
 
@@ -53,8 +53,8 @@ def test_daily_predictor_workflow_schedule():
     on_key = "on" if "on" in config else True
     schedule = config.get(on_key, {}).get("schedule", [])
     cron_triggers = [trigger.get("cron") for trigger in schedule if isinstance(trigger, dict) and "cron" in trigger]
-    assert "0 22 * * SUN,WED" in cron_triggers, (
-        f"Expected '0 22 * * SUN,WED' in cron triggers for daily-predictor.yml, found: {cron_triggers}"
+    assert "0 22 * * SUN" in cron_triggers, (
+        f"Expected '0 22 * * SUN' in cron triggers for daily-predictor.yml, found: {cron_triggers}"
     )
 
 

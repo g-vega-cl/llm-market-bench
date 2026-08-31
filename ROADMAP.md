@@ -154,7 +154,6 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: train small model?
 - [ ] - benchify: fine tune the autoresearcher rather than the model?
 - [ ] - Benchify: 2 week sector predictor and check how different are the weekly/monthly/90d predictions from each other..
-- [ ] - Benchify: ingest latest 2 newsletters instead of just last one?
 - [ ] - Benchify: should autoresearch ingest newsletters?
 - [ ] - Benchify: avoid JS for designs, use CSS whenever possible. Grid flex are so good
 - [ ] - Benchify: insider trading tracker, congress, CEO, whales , 13Fs?Canada insider trader specifically?
@@ -164,6 +163,5 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: something I can autoresearch daily?
 
 Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
-- [ ] - Benchify: AI auto research says using 23/20 tools, why?
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 

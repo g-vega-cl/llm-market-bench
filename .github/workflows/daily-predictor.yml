@@ -2,8 +2,8 @@ name: Daily S&P Predictor and Autoresearch
 
 on:
   schedule:
-    # Sunday & Wednesday 10 PM UTC (6 PM EDT) - Prompt Autoresearch
-    - cron: '0 22 * * SUN,WED'
+    # Sunday 10 PM UTC (6 PM EDT) - Prompt Autoresearch
+    - cron: '0 22 * * SUN'
   workflow_dispatch:
     inputs:
       action:

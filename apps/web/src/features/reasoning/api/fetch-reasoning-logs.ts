@@ -9,6 +9,39 @@ export interface PaginatedReasoningLogs {
     nextCursor: string | null;
 }
 
+const ARCHIVE_DB_URL =
+    process.env.NEXT_PUBLIC_ARCHIVE_DB_URL || 'https://benchify-archive-db.clvg.uk';
+
+async function fetchFromArchive(
+    cursor?: string | null,
+    limit: number = PAGE_SIZE + 1,
+): Promise<LLMReasoningLog[]> {
+    try {
+        const url = new URL(`${ARCHIVE_DB_URL}/llm_reasoning_logs`);
+        url.searchParams.set('order', 'created_at.desc');
+        url.searchParams.set('limit', String(limit));
+        if (cursor) {
+            url.searchParams.set('created_at', `lt.${cursor}`);
+        }
+
+        const res = await fetch(url.toString(), {
+            headers: {
+                Accept: 'application/json',
+            },
+            signal: AbortSignal.timeout(5000),
+        });
+
+        if (!res.ok) {
+            return [];
+        }
+
+        const json = await res.json();
+        return Array.isArray(json) ? (json as LLMReasoningLog[]) : [];
+    } catch {
+        return [];
+    }
+}
+
 export async function fetchReasoningLogs(
     cursor?: string,
     pageSize: number = PAGE_SIZE,
@@ -25,15 +58,30 @@ export async function fetchReasoningLogs(
         query = query.lt('created_at', cursor);
     }
 
-    const { data, error } = await query;
+    const { data: supabaseData, error } = await query;
 
     if (error) {
         console.error('Error fetching reasoning logs:', error);
         throw error;
     }
 
-    const hasMore = data.length > pageSize;
-    const paginatedData = hasMore ? data.slice(0, pageSize) : data;
+    let combinedData: LLMReasoningLog[] = (supabaseData || []) as LLMReasoningLog[];
+
+    // If Supabase has fewer than requested (or none because cursor is older than hot retention),
+    // seamlessly query the archive database
+    if (combinedData.length < pageSize + 1) {
+        const remainingNeeded = pageSize + 1 - combinedData.length;
+        const archiveCursor =
+            combinedData.length > 0 ? combinedData[combinedData.length - 1].created_at : cursor;
+
+        const archiveLogs = await fetchFromArchive(archiveCursor, remainingNeeded);
+        if (archiveLogs.length > 0) {
+            combinedData = [...combinedData, ...archiveLogs];
+        }
+    }
+
+    const hasMore = combinedData.length > pageSize;
+    const paginatedData = hasMore ? combinedData.slice(0, pageSize) : combinedData;
 
     const nextCursor =
         hasMore && paginatedData.length > 0
@@ -58,5 +106,7 @@ export async function fetchAllReasoningLogs(): Promise<LLMReasoningLog[]> {
         console.error('Error fetching reasoning logs:', error);
         throw error;
     }
-    return data as LLMReasoningLog[];
+
+    const archiveLogs = await fetchFromArchive(undefined, 10000);
+    return [...(data || []), ...archiveLogs] as LLMReasoningLog[];
 }

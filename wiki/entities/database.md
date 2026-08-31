@@ -61,6 +61,7 @@ Supabase PostgreSQL instance serving as the persistent data layer for the LLM Ma
 
 ## Related
 
+- [[concepts/hybrid-database-archival]] — Hot/cold data partitioning and local PostgREST archive
 - [[concepts/macroeconomic-data-fred]] — FRED economic data caching and tool integration
 - [[entities/engine]]
 - [[entities/autoresearch]]

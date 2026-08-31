@@ -82,8 +82,21 @@ cd apps/cron-dispatcher
 npx wrangler deployments list
 ```
 
+## Cloudflare Account Topology
+
+The project's Cloudflare infrastructure currently spans two distinct accounts:
+
+| Component | Cloudflare Account | Purpose |
+|:---|:---|:---|
+| **Cron Dispatcher Worker** (`market-bench-cron-dispatcher`) | `*******l@gmail.com` | Deployed via `wrangler deploy` to host the edge serverless cron triggers that dispatch GitHub Actions workflows. |
+| **Zero Trust Tunnel & Ingress** (`fedora-home` / `clvg.uk`) | `**********r@gmail.com` | Manages the root DNS zone `clvg.uk` and Cloudflare Tunnel routing (`benchify-archive-db.clvg.uk` -> local Fedora PC). |
+
+> [!NOTE]
+> These systems operate independently without direct inter-service authentication. If desired, the worker can be migrated to the primary domain account in the future by running `npx wrangler login` with the primary account credentials followed by `npx wrangler deploy`.
+
 ## Related
 
+- [[concepts/hybrid-database-archival]] — Local storage and Cloudflare Tunnel routing
 - [[entities/daily-market-predictor]] — predictions and evaluation workflow
 - [[concepts/ingestion]] — ingest workflow and timing
 - [[entities/pipeline]] — full pipeline overview

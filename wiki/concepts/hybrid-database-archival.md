@@ -79,5 +79,6 @@ When Supabase storage grows near limits:
 ## Related
 
 - [[entities/database]] — Core database schema and entity reference
+- [[entities/cron-dispatcher]] — Cloudflare Worker edge dispatcher and account topology
 - [[entities/engine]] — Engine pipeline and data logging
 - [[concepts/performance-auditing-strategy]] — Zero-load query optimization

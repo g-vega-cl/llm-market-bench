@@ -61,6 +61,7 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
 ## Config
 
 - Model names: `packages/config/models.json`
+- Toolbox definitions: `packages/config/tools.json`
 - Env vars: `apps/engine/.env.example`
 - DB schema: `supabase/migrations/`
 - DB source of truth is the remote Supabase project (applied via `supabase db push --linked`)

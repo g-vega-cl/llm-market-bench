@@ -139,7 +139,7 @@ export function DailyPredictionsBacktestPage({ initialPredictions, experiments }
                     </div>
                     <p style={{ color: '#64748b', fontSize: '14px', marginTop: '6px', margin: 0 }}>
                         Temporal sandbox audit of S&P 500 (SPY) daily open-to-close predictions and
-                        twice-weekly prompt mutations.
+                        weekly prompt mutations.
                     </p>
                 </div>
 

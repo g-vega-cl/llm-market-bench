@@ -531,9 +531,9 @@ export function DailyScoreBreakdown({ experiment, predictions }: DailyScoreBreak
                         <strong>
                             Low Sample Window Notice (N = {metrics.predictionsEvaluated}):
                         </strong>{' '}
-                        Twice-weekly autoresearch evaluates recent 3-4 day windows (2-3 trading
-                        sessions). A single high-confidence miss heavily penalizes accuracy and
-                        deducts up to 32 Brier penalty points, creating sharp short-term score
+                        Weekly autoresearch evaluates 7-day windows (all available trading sessions
+                        in the week). A single high-confidence miss heavily penalizes accuracy and
+                        deducts up to 32 Brier penalty points, creating short-term score
                         fluctuations compared to multi-week backtest baselines.
                     </div>
                 </div>

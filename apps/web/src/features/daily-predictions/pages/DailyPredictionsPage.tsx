@@ -185,7 +185,7 @@ function DailyMetricsOverview({
                     {activePromptTag}
                 </div>
                 <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
-                    Mutates twice weekly
+                    Mutates weekly (Sundays)
                 </div>
             </div>
         </div>
@@ -1195,7 +1195,7 @@ function AutoresearchHistoryArena({
                 }}
             >
                 No prompt experiments or autoresearch runs recorded for this model track yet. Runs
-                execute twice weekly (Sun & Wed 6:00 PM ET).
+                execute weekly (Sun 6:00 PM ET / 10:00 PM UTC).
             </div>
         );
     }

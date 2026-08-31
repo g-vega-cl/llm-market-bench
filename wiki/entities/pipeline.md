@@ -89,8 +89,8 @@ The pipeline closes the loop by auditing historical results and updating system 
 
 ## Auto-Research Sub-Pipeline
 
-Twice-weekly (Sun & Wed 6:00 PM ET), the pipeline runs `daily-autoresearch` which:
-- Evaluates recent predictions per model track.
+Weekly (Sunday 6:00 PM ET / 10:00 PM UTC), the pipeline runs `daily-autoresearch` which:
+- Evaluates recent predictions over the prior 7-day window per model track.
 - Mutates prompts with strict track isolation (no cross-track fallback).
 - Deploys new active variants, demoting prior active variants for that track.
 

@@ -1,0 +1,106 @@
+[
+  {
+    "name": "get_portfolio_ledger",
+    "desc": "Pull portfolio ledger XML, cash, SMA & positions"
+  },
+  {
+    "name": "get_todays_news_menu",
+    "desc": "Summarized menu of today's news headlines"
+  },
+  {
+    "name": "fetch_newsletter_content",
+    "desc": "Fetch full-text of newsletters by source IDs"
+  },
+  {
+    "name": "get_market_feeling",
+    "desc": "Retrieve qualitative daily AI market feeling"
+  },
+  {
+    "name": "search_past_memories",
+    "desc": "Semantic pgvector search of lessons learned"
+  },
+  {
+    "name": "get_stock_quote",
+    "desc": "Real-time stock price lookup"
+  },
+  {
+    "name": "get_price_history",
+    "desc": "Historical price tracking"
+  },
+  {
+    "name": "get_position_pnl",
+    "desc": "Detailed profit & loss statistics"
+  },
+  {
+    "name": "get_volatility_metrics",
+    "desc": "Calculates asset price volatility"
+  },
+  {
+    "name": "get_sector_alternatives",
+    "desc": "Identifies sector-based alternatives"
+  },
+  {
+    "name": "search_related_tickers",
+    "desc": "Thematic keyword stock searches"
+  },
+  {
+    "name": "run_stock_screener",
+    "desc": "Screens assets by ratios and volumes"
+  },
+  {
+    "name": "find_uncorrelated_assets",
+    "desc": "Screens for uncorrelated portfolio assets"
+  },
+  {
+    "name": "get_key_metrics",
+    "desc": "Financial ratio extraction"
+  },
+  {
+    "name": "get_market_health_barometer",
+    "desc": "Cap-weighted index valuation check"
+  },
+  {
+    "name": "get_earnings_history",
+    "desc": "Earnings calendar events"
+  },
+  {
+    "name": "search_prediction_markets",
+    "desc": "Kalshi/Polymarket event lookup"
+  },
+  {
+    "name": "get_prediction_market_odds",
+    "desc": "Event resolution probability odds"
+  },
+  {
+    "name": "audit_financial_valuation",
+    "desc": "Quarterly financial/DCF audit models"
+  },
+  {
+    "name": "web_search",
+    "desc": "General web search grounding"
+  },
+  {
+    "name": "get_global_macro_context",
+    "desc": "Global macroeconomic snapshot (indices, yields, commodities, DXY)"
+  },
+  {
+    "name": "get_volatility_index_details",
+    "desc": "VIX ETF term structure, percentile tracking, and volatility regime"
+  },
+  {
+    "name": "get_verifier_rejections",
+    "desc": "Past trade compliance rejection logs and verifier feedback"
+  },
+  {
+    "name": "get_macro_economic_series",
+    "desc": "Macroeconomic time series from FRED"
+  },
+  {
+    "name": "get_thematic_flows",
+    "desc": "Retrieve active thematic and narrative flows"
+  },
+  {
+    "name": "add_thematic_flow",
+    "desc": "Register new thematic narrative flow signal"
+  }
+]

@@ -6,6 +6,7 @@ import {
     SectionHeading,
     SubHeading,
 } from '@llm-market-bench/ui-design-system';
+import toolsConfig from '@repo/config/tools.json';
 import { splitPromptSections } from '../utils/promptSections';
 import { BacktestTradesAudit } from './BacktestTradesAudit';
 import { DailyScoreDisplay } from './DailyScoreDisplay';
@@ -83,58 +84,18 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
 
                 if (selectedTools.length === 0) return null;
 
-                const allToolboxTools = [
-                    {
-                        name: 'get_portfolio_ledger',
-                        desc: 'Pull portfolio ledger XML, cash, SMA & positions',
-                    },
-                    {
-                        name: 'get_todays_news_menu',
-                        desc: "Summarized menu of today's news headlines",
-                    },
-                    {
-                        name: 'get_market_feeling',
-                        desc: 'Retrieve qualitative daily AI market feeling',
-                    },
-                    {
-                        name: 'search_past_memories',
-                        desc: 'Semantic pgvector search of lessons learned',
-                    },
-                    { name: 'web_search', desc: 'General web search grounding' },
-                    { name: 'get_stock_quote', desc: 'Real-time stock price lookup' },
-                    { name: 'get_price_history', desc: 'Historical price tracking' },
-                    { name: 'get_position_pnl', desc: 'Detailed profit & loss statistics' },
-                    { name: 'get_volatility_metrics', desc: 'Calculates asset price volatility' },
-                    {
-                        name: 'get_sector_alternatives',
-                        desc: 'Identifies sector-based alternatives',
-                    },
-                    { name: 'search_related_tickers', desc: 'Thematic keyword stock searches' },
-                    { name: 'run_stock_screener', desc: 'Screens assets by ratios and volumes' },
-                    {
-                        name: 'find_uncorrelated_assets',
-                        desc: 'Screens for uncorrelated portfolio assets',
-                    },
-                    { name: 'get_key_metrics', desc: 'Financial ratio extraction' },
-                    {
-                        name: 'get_market_health_barometer',
-                        desc: 'Cap-weighted index valuation check',
-                    },
-                    { name: 'get_earnings_history', desc: 'Earnings calendar events' },
-                    { name: 'search_prediction_markets', desc: 'Kalshi/Polymarket event lookup' },
-                    {
-                        name: 'get_prediction_market_odds',
-                        desc: 'Event resolution probability odds',
-                    },
-                    {
-                        name: 'audit_financial_valuation',
-                        desc: 'Quarterly financial/DCF audit models',
-                    },
-                    {
-                        name: 'fetch_newsletter_content',
-                        desc: 'Fetch full-text of newsletters by source IDs',
-                    },
-                ];
+                const catalogTools: { name: string; desc: string }[] = toolsConfig;
+                const knownToolNames = new Set(catalogTools.map((t) => t.name));
+
+                // Dynamically absorb any unknown or newly introduced tools in the experiment
+                const extraTools = selectedTools
+                    .filter((name) => !knownToolNames.has(name))
+                    .map((name) => ({
+                        name,
+                        desc: 'Trading agent cognitive tool',
+                    }));
+
+                const allToolboxTools = [...catalogTools, ...extraTools];
 
                 const added = selectedTools.filter((t) => !parentSelectedTools.includes(t));
                 const removed = parentSelectedTools.filter((t) => !selectedTools.includes(t));

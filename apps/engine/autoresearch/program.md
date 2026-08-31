@@ -75,6 +75,9 @@ The trading agent has a comprehensive set of tools. You must choose which of the
 21. **get_global_macro_context**: Fetch a broad, clean snapshot of the global macroeconomic environment (indices, yields, commodities, DXY, volatility regime classifications).
 22. **get_volatility_index_details**: Fetch historical stats, percentiles, trends, and curve structure (contango/backwardation) for the VIX index ETFs (VIXY and VIXM) to detect volatility expansion/contraction.
 23. **get_verifier_rejections**: Retrieve recent trade rejection logs and verifier feedback reasons for past decisions to understand why proposed trades failed verification or compliance checks.
+24. **get_macro_economic_series**: Fetches macroeconomic time-series data from FRED (Federal Reserve Economic Data) for deep economic cycle analysis.
+25. **get_thematic_flows**: Retrieves active market thematic and narrative flows.
+26. **add_thematic_flow**: Registers a new emergent thematic narrative or sector rotation flow signal.
 
 *Note: Execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') are always force-injected by the system. Do NOT list them.*
 

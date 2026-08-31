@@ -16,6 +16,9 @@ jobs:
   generate-newsletter:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
 
     steps:
       - uses: actions/checkout@v4

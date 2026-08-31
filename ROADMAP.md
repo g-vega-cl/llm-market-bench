@@ -10,6 +10,7 @@ A living document of features and improvements in progress or planned for the pl
   - Added specialized tool suite: `search_memories_and_theses`, `get_stock_context_and_trades`, `get_market_sentiment_and_newsletter`, and `query_database_table`.
   - Added collapsible tool execution traces, prompt suggestion chips, rich Markdown rendering with financial tables, and deep-link integration on memory cards.
 - [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
+     - https://piechowski.io/post/git-commands-before-reading-code/
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [ ] **Review lessons learned and the learning loop** -
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.

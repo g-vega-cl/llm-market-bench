@@ -35,6 +35,7 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
     });
 
     it('should pass QQQ benchmark data to the comparison chart when QQQ is selected', async () => {
+        const today = new Date().toISOString().split('T')[0];
         const mockPortfolios = [
             {
                 id: 'p1',
@@ -44,8 +45,8 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
                 buying_power: 100000,
                 is_active: true,
                 is_autoresearch: true,
-                created_at: '2026-05-25T12:00:00.000Z',
-                updated_at: '2026-05-25T12:00:00.000Z',
+                created_at: `${today}T12:00:00.000Z`,
+                updated_at: `${today}T12:00:00.000Z`,
             },
         ];
 
@@ -54,14 +55,14 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
                 {
                     portfolioId: 'p1',
                     ownerId: 'agent-1',
-                    performance: [{ date: '2026-06-01', value: 0, totalEquity: 100000 }],
+                    performance: [{ date: today, value: 0, totalEquity: 100000 }],
                 },
             ],
-            startDate: '2026-06-01',
-            endDate: '2026-06-01',
+            startDate: today,
+            endDate: today,
             benchmarkData: {
-                SPY: [{ date: '2026-06-01', price: 500 }],
-                QQQ: [{ date: '2026-06-01', price: 400 }],
+                SPY: [{ date: today, price: 500 }],
+                QQQ: [{ date: today, price: 400 }],
             },
         });
 
@@ -98,6 +99,7 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
     });
 
     it('should not remount the chart when the benchmark changes (no flash)', async () => {
+        const today = new Date().toISOString().split('T')[0];
         render(
             <QueryClientProvider client={queryClient}>
                 <PortfoliosPage
@@ -111,8 +113,8 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
                                 buying_power: 100000,
                                 is_active: true,
                                 is_autoresearch: true,
-                                created_at: '2026-05-25T12:00:00.000Z',
-                                updated_at: '2026-05-25T12:00:00.000Z',
+                                created_at: `${today}T12:00:00.000Z`,
+                                updated_at: `${today}T12:00:00.000Z`,
                             },
                             // biome-ignore lint/suspicious/noExplicitAny: mock data
                         ] as unknown as any
@@ -123,16 +125,14 @@ describe('PortfoliosPage QQQ Benchmark Bug', () => {
                             {
                                 portfolioId: 'p1',
                                 ownerId: 'agent-1',
-                                performance: [
-                                    { date: '2026-06-01', value: 0, totalEquity: 100000 },
-                                ],
+                                performance: [{ date: today, value: 0, totalEquity: 100000 }],
                             },
                         ],
-                        startDate: '2026-06-01',
-                        endDate: '2026-06-01',
+                        startDate: today,
+                        endDate: today,
                         benchmarkData: {
-                            SPY: [{ date: '2026-06-01', price: 500 }],
-                            QQQ: [{ date: '2026-06-01', price: 500 }],
+                            SPY: [{ date: today, price: 500 }],
+                            QQQ: [{ date: today, price: 500 }],
                         },
                     })}
                 />

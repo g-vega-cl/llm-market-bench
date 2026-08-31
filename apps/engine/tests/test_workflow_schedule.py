@@ -107,6 +107,9 @@ def test_generate_newsletter_chains_daily_predictor():
 
     jobs = config.get("jobs", {})
     job = jobs.get("generate-newsletter", {})
+    permissions = job.get("permissions", {})
+    assert permissions.get("actions") == "write", f"Expected actions: write in job permissions, found: {permissions}"
+
     steps = job.get("steps", [])
 
     trigger_step = next(

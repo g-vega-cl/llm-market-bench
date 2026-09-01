@@ -277,4 +277,55 @@ describe('MemoryCard scenario rendering', () => {
             expect(screen.getByText(/Why It Resolved/i)).toBeInTheDocument();
         });
     });
+
+    it('renders adversarial debate stress-test badge and details when expanded', async () => {
+        const memory = makeMemory();
+        memory.metadata = {
+            type: 'consensus_event',
+            impact: 'BULLISH',
+            scenarios: [
+                {
+                    cleanHeader: 'Scenario A: Expansion',
+                    percentage: '60%',
+                    outcome: 'Datacenters expand rapidly.',
+                    tradingPlan: 'Long power utilities.',
+                },
+                {
+                    cleanHeader: 'Scenario B: Bottleneck',
+                    percentage: '40%',
+                    outcome: 'Power queues delay construction.',
+                    tradingPlan: 'Long grid equipment.',
+                },
+            ],
+            debate: {
+                counter_thesis: 'Grid queues will delay energization by 3+ years.',
+                pre_mortem: 'Capex stalled because local utilities refused hookups.',
+                key_risks: ['3-5 year grid queue', 'State regulatory friction'],
+                adversary_model: 'gpt-5.6-luna',
+                arbiter_model: 'gpt-5.6-luna',
+                stress_tested: true,
+            },
+        };
+
+        renderWithClient(<MemoryCard memory={memory} />);
+
+        // Header stress-tested badge
+        expect(screen.getByText(/🛡️ Stress-Tested/i)).toBeInTheDocument();
+
+        // Expand analysis
+        fireEvent.click(screen.getByText('Show Analysis'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Adversarial Red-Team Stress-Test/i)).toBeInTheDocument();
+            expect(screen.getByText(/Challenger: gpt-5.6-luna/i)).toBeInTheDocument();
+            expect(
+                screen.getByText(/Grid queues will delay energization by 3\+ years./i),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/Capex stalled because local utilities refused hookups./i),
+            ).toBeInTheDocument();
+            expect(screen.getByText(/3-5 year grid queue/i)).toBeInTheDocument();
+            expect(screen.getByText(/State regulatory friction/i)).toBeInTheDocument();
+        });
+    });
 });

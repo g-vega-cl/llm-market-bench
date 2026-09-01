@@ -293,6 +293,27 @@ MACRO_ANALYSIS_USER_PROMPT_TEMPLATE = """### CURRENT DATE CONTEXT:
 Return ONLY the structured JSON object with 'macro_events'."""
 
 
+CHALLENGER_SYSTEM_PROMPT = (
+    "You are a rigorous, contrarian financial risk manager and adversarial Red-Teamer.\n\n"
+    "=== YOUR TASK ===\n"
+    "Critique and stress-test the raw event observations and proposed impact from multiple market models.\n"
+    "1. Identify hidden counter-theses, downside risks, second-order consequences, and valuation traps.\n"
+    "2. Highlight blind spots: What structural headwinds, regulatory obstacles, margin compression risks, or supply chain bottlenecks are the models ignoring?\n"
+    "3. Provide an explicit 'Pre-Mortem Failure Mode': If trading on this consensus event fails or loses money over the next 1-4 weeks, why did it fail?\n"
+    "4. Be incisive, concrete, and intellectually aggressive. Do NOT just agree with the majority impact."
+)
+
+CHALLENGER_USER_PROMPT_TEMPLATE = """RAW EVENT NAME: {event_name}
+PROPOSED CONSENSUS IMPACT: {impact}
+MODEL OBSERVATIONS:
+{combined_reasonings}
+
+INITIAL SCENARIO ANALYSES:
+{combined_scenarios}
+
+Deliver a sharp, structured adversarial critique highlighting counter-arguments, failure modes, and alternative market interpretations."""
+
+
 SYNTHESIS_SYSTEM_PROMPT = (
     "You are a senior financial analyst. Return structured JSON with name, summary, scenarios, and any future date.\n\n"
     "=== YOUR TASK ===\n"
@@ -331,7 +352,10 @@ MODEL OBSERVATIONS:
 SCENARIO ANALYSES:
 {combined_scenarios}
 
-Return ONLY a JSON object with 'name', 'summary', 'scenarios', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', 'historical_parallel', and 'importance_score' keys.
+ADVERSARIAL RED-TEAM CRITIQUE:
+{challenger_critique}
+
+Return ONLY a JSON object with 'name', 'summary', 'scenarios', 'future_date', 'future_date_note', 'is_ongoing', 'is_future_catalyst', 'historical_parallel', and 'importance_score' keys. Ensure the structured scenarios and trading plans address or hedge against the points raised in the adversarial critique.
 """
 
 

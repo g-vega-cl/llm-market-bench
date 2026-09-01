@@ -46,18 +46,24 @@ def _normalize_future_date(date_str: str | None, note_str: str | None) -> tuple[
 
 async def synthesize_event(
     event_name: str, impact: str, reasonings: list[str], scenarios: list[str] = None
-) -> dict[str, str]:
-    """Synthesizes a unified event name and summary from model perspectives.
+) -> dict[str, Any]:
+    """Synthesizes a unified event name, summary, and stress-tested scenarios via a 2-stage debate.
+
+    Stage 1: Adversarial Red-Team Challenger (gpt-5.6-luna) identifies counter-theses and failure modes.
+    Stage 2: Arbiter / Synthesizer (gpt-5.6-luna) crafts balanced scenarios and hedged trading plans.
 
     Args:
         event_name: The raw representative event name.
         impact: The majority impact (BULLISH/BEARISH/NEUTRAL).
         reasonings: A list of reasoning strings from different models.
+        scenarios: A list of initial scenario strings from different models.
 
     Returns:
-        A dictionary with 'name' and 'summary' keys.
+        A dictionary with 'name', 'summary', 'scenarios', 'importance_score', and 'debate' keys.
     """
-    client = clients.get_gemini_client()
+    import asyncio
+
+    client = clients.get_openai_client()
 
     try:
         combined_reasonings = "\n".join([f"- {r}" for r in reasonings])
@@ -65,14 +71,63 @@ async def synthesize_event(
             "\n".join([f"- {s}" for s in scenarios]) if scenarios else "No explicit scenario analysis provided."
         )
 
-        messages = PromptFactory.build_synthesis_messages(
-            provider="gemini",
+        # --- Stage 1: Adversarial Red-Team Challenger ---
+        class ChallengerResponse(BaseModel):
+            counter_thesis: str = Field(..., description="Main counter-thesis and alternative interpretation")
+            pre_mortem_failure_mode: str = Field(
+                ..., description="Why this trade/event could fail or reverse over 1-4 weeks"
+            )
+            key_risks: list[str] = Field(
+                default_factory=list, description="Key unaddressed structural risks or headwinds"
+            )
+
+        challenger_messages = PromptFactory.build_challenger_messages(
+            provider="openai",
             event_name=event_name,
             impact=impact,
             combined_reasonings=combined_reasonings,
             combined_scenarios=combined_scenarios,
         )
 
+        challenger_awaitable = client.chat.completions.create(
+            model=config.OPENAI_MODEL,
+            response_model=ChallengerResponse,
+            messages=challenger_messages,
+            reasoning_effort="none",
+            max_retries=2,
+        )
+
+        if hasattr(challenger_awaitable, "__await__") or asyncio.iscoroutine(challenger_awaitable):
+            challenger_resp = await challenger_awaitable
+        else:
+            challenger_resp = challenger_awaitable
+
+        if not challenger_resp:
+            challenger_resp = ChallengerResponse(
+                counter_thesis="No explicit counter-thesis generated.",
+                pre_mortem_failure_mode="General market regime shift or liquidity shock.",
+                key_risks=[],
+            )
+
+        await log_reasoning_trace(
+            task_type="CONSENSUS_CHALLENGE",
+            model_provider="openai",
+            model_name=config.OPENAI_MODEL,
+            prompt=challenger_messages,
+            response=challenger_resp,
+            metadata={
+                "event_name": event_name,
+                "impact": impact,
+            },
+        )
+
+        challenger_critique_text = (
+            f"Counter-Thesis: {challenger_resp.counter_thesis}\n"
+            f"Pre-Mortem Failure Mode: {challenger_resp.pre_mortem_failure_mode}\n"
+            f"Key Unaddressed Risks: {', '.join(challenger_resp.key_risks) if challenger_resp.key_risks else 'None highlighted'}"
+        )
+
+        # --- Stage 2: Arbiter & Scenario Synthesizer ---
         class ScenarioDetail(BaseModel):
             cleanHeader: str = Field(..., description="The title of the scenario, e.g. 'Scenario A: Cut'")
             percentage: str | None = Field(None, description="Estimated probability percentage, e.g. '70%'")
@@ -93,19 +148,27 @@ async def synthesize_event(
             )
             importance_score: int = 5
 
-        resp_awaitable = client.chat.completions.create(
-            model=config.GEMINI_MODEL,
+        synthesis_messages = PromptFactory.build_synthesis_messages(
+            provider="openai",
+            event_name=event_name,
+            impact=impact,
+            combined_reasonings=combined_reasonings,
+            combined_scenarios=combined_scenarios,
+            challenger_critique=challenger_critique_text,
+        )
+
+        synthesis_awaitable = client.chat.completions.create(
+            model=config.OPENAI_MODEL,
             response_model=SynthesisResponse,
-            messages=messages,
+            messages=synthesis_messages,
+            reasoning_effort="none",
             max_retries=2,
         )
 
-        import asyncio
-
-        if hasattr(resp_awaitable, "__await__") or asyncio.iscoroutine(resp_awaitable):
-            resp = await resp_awaitable
+        if hasattr(synthesis_awaitable, "__await__") or asyncio.iscoroutine(synthesis_awaitable):
+            resp = await synthesis_awaitable
         else:
-            resp = resp_awaitable
+            resp = synthesis_awaitable
 
         if not resp:
             resp = SynthesisResponse(name=event_name, summary="Synthesis failed")
@@ -115,10 +178,10 @@ async def synthesize_event(
 
         # Log completion
         await log_reasoning_trace(
-            task_type="CONSENSUS",
-            model_provider="gemini",  # Hardcoded since synthesize_event uses gemini client
-            model_name=config.GEMINI_MODEL,
-            prompt=messages,
+            task_type="CONSENSUS_SYNTHESIS",
+            model_provider="openai",
+            model_name=config.OPENAI_MODEL,
+            prompt=synthesis_messages,
             response=resp,
             metadata={
                 "event_name": event_name,
@@ -137,6 +200,16 @@ async def synthesize_event(
                 parts.append(f"{s.cleanHeader}{pct}: {s.outcome} -> Trading Plan: {s.tradingPlan or 'None'}")
             fallback_str = " ".join(parts)
 
+        debate_payload = {
+            "challenger_critique": challenger_critique_text,
+            "counter_thesis": challenger_resp.counter_thesis,
+            "pre_mortem": challenger_resp.pre_mortem_failure_mode,
+            "key_risks": challenger_resp.key_risks,
+            "adversary_model": config.OPENAI_MODEL,
+            "arbiter_model": config.OPENAI_MODEL,
+            "stress_tested": True,
+        }
+
         return {
             "name": resp.name,
             "summary": resp.summary,
@@ -148,6 +221,7 @@ async def synthesize_event(
             "scenarios": [s.model_dump() for s in resp.scenarios] if resp.scenarios else [],
             "scenario_analysis": fallback_str,
             "importance_score": resp.importance_score,
+            "debate": debate_payload,
         }
     except Exception as e:
         logger.error("Event synthesis failed: %s", e)
@@ -162,10 +236,12 @@ async def synthesize_event(
             "historical_parallel": None,
             "scenarios": [],
             "scenario_analysis": None,
+            "importance_score": 5,
+            "debate": None,
         }
     finally:
         # Ensure client is properly closed
-        await clients.close_client(client, "gemini")
+        await clients.close_client(client, "openai")
 
 
 async def analyze_event_relationship(new_event: str, potential_ancestors: list[dict]) -> dict[str, Any]:

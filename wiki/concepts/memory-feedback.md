@@ -36,14 +36,14 @@ To close the loop on historical predictions and learn from resolved market event
    - **Why It Resolved**: The actual market price outcome (with classification confidence rating) and full causal analysis playbook.
    - **Performance Tags**: Categorized tags (e.g. `energy-prices`, `geopolitics`) associated with the causal playbook.
 
-## Structured Scenarios & Ticker Mapping
+## Structured Scenarios, Adversarial Debate & Ticker Mapping
 
-To make scenario analysis highly actionable, memories support a strict **Gold Standard** structured scenarios schema inside their database `metadata`:
-1. **Pydantic Scenarios List**: Instead of a flat markdown string, the backend Gemini synthesis returns a structured `scenarios` array containing individual scenario objects (`cleanHeader`, `percentage`, `outcome`, `tradingPlan`).
-2. **Targeted Ticker Discovery**: For each synthesized scenario, the consensus engine runs the `DiscoveryService` specifically against that scenario's individual `tradingPlan` context (invoking FMP company screeners and web search). Verified tickers are tagged by scenario and saved directly inside the respective scenario object (`scenarios.assets`).
-3. **Structured UI Rendering**: The frontend memories UI (`MemoryCard.tsx`) bypasses all regex text parsing and fuzzy asset-matching loops, standardizing 100% on rendering this structured typed list. Clicking nested scenario tickers selects and launches the FMP asset details modal. In addition, to prevent redundant layout boxes, the "Other Investable Assets" section is cleanly hidden if all discovered assets are already mapped directly to scenarios (resulting in 0 remaining global assets).
-4. **Resilient Fallback**: The backend continues to populate a unified flat string `scenario_analysis` fallback in the database to ensure legacy consumer pages (e.g. `FutureCatalysts.tsx` timeline) remain fully operational.
-5. **Consensus Persistence Fix (2026-06-03)**: Resolved a bug where the `scenarios` structured array was omitted from the `metadata` dict passed to `add_memory` in the consensus promotion logic, causing the UI to show an empty Scenario Analysis. The pipeline now correctly persists both the legacy `scenario_analysis` text fallback and the structured `scenarios` array. All historical entries since the initial schema rollout have been retroactively repaired.
+To make scenario analysis and consensus memories highly actionable and stress-tested, memories support a strict **Gold Standard** structured scenarios and debate schema inside their database `metadata`:
+1. **Two-Stage Adversarial Debate (`gpt-5.6-luna`)**: Before final synthesis, `gpt-5.6-luna` runs as an Adversarial Red-Team Challenger to discover counter-theses, pre-mortem failure modes, and unaddressed risks. The Arbiter then synthesizes hedged scenarios and trading plans addressing these failure modes. The resulting critique is stored in `metadata.debate` and rendered with a `🛡️ Stress-Tested` badge.
+2. **Pydantic Scenarios List**: The synthesis returns a typed `scenarios` array containing individual scenario objects (`cleanHeader`, `percentage`, `outcome`, `tradingPlan`).
+3. **Targeted Ticker Discovery**: For each synthesized scenario, the consensus engine runs the `DiscoveryService` specifically against that scenario's individual `tradingPlan` context (invoking FMP company screeners and web search). Verified tickers are tagged by scenario and saved directly inside the respective scenario object (`scenarios.assets`).
+4. **Structured UI Rendering**: The frontend memories UI (`MemoryCard.tsx`) renders the Adversarial Red-Team Stress-Test panel alongside the structured scenarios and nested ticker pills. Clicking nested scenario tickers selects and launches the FMP asset details modal. In addition, the "Other Investable Assets" section is cleanly hidden if all discovered assets are already mapped directly to scenarios (resulting in 0 remaining global assets).
+5. **Resilient Fallback**: The backend continues to populate a unified flat string `scenario_analysis` fallback in the database to ensure legacy consumer pages (e.g. `FutureCatalysts.tsx` timeline) remain fully operational.
 
 ## Market Feeling
 

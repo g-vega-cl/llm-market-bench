@@ -197,8 +197,17 @@ class PromptFactory:
         )
 
     @classmethod
+    def build_challenger_messages(cls, provider: str, **kwargs) -> list[dict[str, Any]]:
+        """Builds messages for adversarial challenger red-teaming."""
+        return cls._build_messages(
+            provider, prompts.CHALLENGER_SYSTEM_PROMPT, prompts.CHALLENGER_USER_PROMPT_TEMPLATE, **kwargs
+        )
+
+    @classmethod
     def build_synthesis_messages(cls, provider: str, **kwargs) -> list[dict[str, Any]]:
         """Builds messages for synthesizing events."""
+        if "challenger_critique" not in kwargs:
+            kwargs["challenger_critique"] = "No explicit adversarial critique provided."
         return cls._build_messages(
             provider, prompts.SYNTHESIS_SYSTEM_PROMPT, prompts.SYNTHESIS_USER_PROMPT_TEMPLATE, **kwargs
         )

@@ -12,7 +12,7 @@ A living document of features and improvements in progress or planned for the pl
   - Couldn't find any.
 - [ ] **A programming buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [ ] **An "AI" debate or consensus on different ways to invest in different events?**
+- [x] **An "AI" debate or consensus on different ways to invest in different events?** - 2-stage adversarial debate pipeline using `gpt-5.6-luna` (Adversarial Red-Team Challenger + Arbiter Synthesizer) with stress-tested scenarios, pre-mortem failure mode discovery, and interactive UI stress-test panel on `/memories`.
 - [ ] **Post trade analysis re-visit.** And add the model that made it. And more details of memory. Make it so it's easy to use as learning.
 - [ ] **Recheck calendar events**
 - [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**

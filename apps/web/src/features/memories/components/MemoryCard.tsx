@@ -14,6 +14,16 @@ export interface DiscoveredAsset {
     scenario?: string;
 }
 
+export interface DebateRecord {
+    challenger_critique?: string;
+    counter_thesis?: string;
+    pre_mortem?: string;
+    key_risks?: string[];
+    adversary_model?: string;
+    arbiter_model?: string;
+    stress_tested?: boolean;
+}
+
 export interface StructuredScenario {
     cleanHeader: string;
     percentage: string | null;
@@ -237,6 +247,12 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             Match: {Math.round(memory.similarity * 100)}%
                         </Badge>
                     )}
+
+                    {memory.metadata?.debate?.stress_tested && (
+                        <Badge variant="soft" colorScheme="warning" size="sm">
+                            🛡️ Stress-Tested
+                        </Badge>
+                    )}
                 </div>
 
                 <div className="ml-auto flex items-center gap-3">
@@ -330,7 +346,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                 isResolved ||
                 !!childResolution ||
                 !!parentCauseAndEffect ||
-                !!childCauseAndEffect) && (
+                !!childCauseAndEffect ||
+                !!memory.metadata?.debate) && (
                 <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <button
                         type="button"
@@ -451,6 +468,70 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Adversarial Red-Team Stress-Test Section */}
+                            {memory.metadata?.debate && (
+                                <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-amber-500 text-lg">🛡️</span>
+                                            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                                                Adversarial Red-Team Stress-Test
+                                            </h4>
+                                        </div>
+                                        {memory.metadata.debate.adversary_model && (
+                                            <Badge variant="soft" colorScheme="neutral" size="xs">
+                                                Challenger: {memory.metadata.debate.adversary_model}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    {memory.metadata.debate.counter_thesis && (
+                                        <div className="space-y-1">
+                                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                                                Counter-Thesis:
+                                            </span>
+                                            <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                                                {memory.metadata.debate.counter_thesis}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {memory.metadata.debate.pre_mortem && (
+                                        <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide">
+                                                Pre-Mortem Failure Mode:
+                                            </span>
+                                            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono bg-zinc-900/10 dark:bg-zinc-900/40 p-2.5 rounded-md border border-zinc-200 dark:border-zinc-800">
+                                                {memory.metadata.debate.pre_mortem}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {memory.metadata.debate.key_risks &&
+                                        memory.metadata.debate.key_risks.length > 0 && (
+                                            <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
+                                                    Key Unaddressed Risks:
+                                                </span>
+                                                <ul className="list-disc list-inside text-xs text-zinc-600 dark:text-zinc-400 space-y-0.5">
+                                                    {memory.metadata.debate.key_risks.map(
+                                                        (risk: string, rIdx: number) => (
+                                                            <li key={rIdx}>{risk}</li>
+                                                        ),
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                    {!memory.metadata.debate.counter_thesis &&
+                                        memory.metadata.debate.challenger_critique && (
+                                            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                                                {memory.metadata.debate.challenger_critique}
+                                            </p>
+                                        )}
                                 </div>
                             )}
 

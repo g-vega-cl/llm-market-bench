@@ -19,7 +19,10 @@ The Event Consensus Protocol is executed between the two analysis passes of the 
 3. **Temporal Deduplication & Pre-Discovery Dedup**: New events checked against `memories` table within recency window. **Decoupled thresholds (fix 2026-08-27):** semantic grouping uses `0.75` (`MOMENTUM_SIMILARITY_THRESHOLD`) while memory promotion dedup uses `0.90` (`core/config.py:MEMORY_DEDUP_THRESHOLD`, `analysis/consensus.py:336`). Lookback remains `24h` for consensus (vs `168h` for general `store.add_memory`).
    * **Pre-Discovery Early Deduplication (fix 2026-09-01)**: Before delegating to `DiscoveryAgent`, `_synthesize_and_promote_group` checks if the synthesized event already exists as a recent memory duplicate. If duplicate is detected, DiscoveryAgent calls are skipped, saving API quota and execution latency, and the preliminary embedding is reused directly during `add_memory` reinforcement.
 4. **Relationship Analysis**: Links to ancestor events as REVERSAL, RESOLUTION, or UPDATE
-5. **LLM Synthesis**: Unifies naming, extracts catalyst dates and historical parallels
+5. **Two-Stage Adversarial Debate (`gpt-5.6-luna`)**:
+   * **Stage 1 (Adversarial Red-Team Challenger)**: `gpt-5.6-luna` acts as a contrarian risk manager, stress-testing the consensus observations against blind spots, regulatory/supply headwinds, and generating an explicit *Pre-Mortem Failure Mode*.
+   * **Stage 2 (Arbiter / Synthesizer)**: `gpt-5.6-luna` ingests the initial observations and the adversarial critique to generate balanced, hedged scenario outcomes and actionable trading plans.
+   * **Debate Trace & UI Persistence**: The full critique and failure modes are persisted under `metadata.debate` (`stress_tested: true`) and surfaced on `/memories` cards with the `🛡️ Stress-Tested` badge.
 6. **Scenario Analysis**: Requires ≥2 distinct outcomes with specific trading plans
 7. **Alpha Discovery**: Promoted events trigger DiscoveryAgent for investable assets
 

@@ -319,6 +319,7 @@ async def _synthesize_and_promote_group(
         "importance_score": synthesis.get(
             "importance_score", int(sum(importance_scores) / len(importance_scores)) if importance_scores else 5
         ),
+        "debate": synthesis.get("debate"),
     }
 
     # Analyze Relationship & Link Memory
@@ -374,6 +375,7 @@ async def _synthesize_and_promote_group(
             "importance_score": consensus_data["importance_score"],
             "participating_agents": list(unique_models),
             "models_involved": list(unique_models),
+            "debate": consensus_data.get("debate"),
         },
         parent_id=parent_id,
         relationship_type=rel_type,

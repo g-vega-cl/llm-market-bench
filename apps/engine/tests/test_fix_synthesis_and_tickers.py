@@ -7,9 +7,14 @@ from core.llm.events import synthesize_event
 
 
 @pytest.mark.asyncio
-async def test_gemini_synthesis_model_direct():
+async def test_openai_synthesis_model_direct():
     """Test that event synthesis uses SynthesisResponse directly and closes correctly."""
     mock_client = MagicMock()
+    mock_challenger = MagicMock()
+    mock_challenger.counter_thesis = "Counter thesis"
+    mock_challenger.pre_mortem_failure_mode = "Pre-mortem mode"
+    mock_challenger.key_risks = ["Risk 1"]
+
     mock_resp = MagicMock()
     mock_resp.name = "Test Event"
     mock_resp.summary = "Test Summary"
@@ -21,12 +26,11 @@ async def test_gemini_synthesis_model_direct():
     mock_resp.scenarios = []
     mock_resp.importance_score = 5
 
-    # Mock completions.create
-    # Under GENAI_TOOLS or direct wrapper, Instructor returns the object directly
-    mock_client.chat.completions.create.return_value = mock_resp
+    # Mock completions.create for both Challenger and Synthesis stages
+    mock_client.chat.completions.create.side_effect = [mock_challenger, mock_resp]
 
     with (
-        patch("core.llm.clients.get_gemini_client", return_value=mock_client),
+        patch("core.llm.clients.get_openai_client", return_value=mock_client),
         patch("core.llm.clients.close_client") as mock_close_client,
     ):
         result = await synthesize_event(
@@ -40,8 +44,8 @@ async def test_gemini_synthesis_model_direct():
         assert result["summary"] == "Test Summary"
         assert result["future_date"] == "2026-07-08"
 
-        # Verify chat.completions.create was called with response_model=SynthesisResponse directly
-        call_args, call_kwargs = mock_client.chat.completions.create.call_args
+        # Verify chat.completions.create was called with response_model=SynthesisResponse on the 2nd call
+        call_args, call_kwargs = mock_client.chat.completions.create.call_args_list[1]
         from pydantic import BaseModel
 
         response_model = call_kwargs.get("response_model")
@@ -50,9 +54,9 @@ async def test_gemini_synthesis_model_direct():
         assert issubclass(response_model, BaseModel)
         assert response_model.__name__ == "SynthesisResponse"
 
-        # Verify clients.close_client was called with 'gemini'
+        # Verify clients.close_client was called with 'openai'
         mock_close_client.assert_called_once()
-        assert mock_close_client.call_args[0][1] == "gemini"
+        assert mock_close_client.call_args[0][1] == "openai"
 
 
 def test_ticker_false_positives_political():

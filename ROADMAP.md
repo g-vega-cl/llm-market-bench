@@ -5,14 +5,7 @@ A living document of features and improvements in progress or planned for the pl
 ## Active Development
 
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
-- [x] **Investment Chat Gateway** - Gated "Should I invest in this stock?" chat interface connecting users with LLM agents, PostgreSQL database tables, memory theses, and market briefings.
-  - Implemented hybrid UI architecture with a dedicated responsive `/chat` page (`ChatPage.tsx`) and floating drawer widget (`ChatWidget.tsx`).
-  - Added specialized tool suite: `search_memories_and_theses`, `get_stock_context_and_trades`, `get_market_sentiment_and_newsletter`, and `query_database_table`.
-  - Added collapsible tool execution traces, prompt suggestion chips, rich Markdown rendering with financial tables, and deep-link integration on memory cards.
-- [ ] **Code Hotspot Finder** - Automated tool to identify code areas needing refactoring or optimization
-     - https://piechowski.io/post/git-commands-before-reading-code/
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
-- [ ] **Review lessons learned and the learning loop** -
 - [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
 - [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
 - [x] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
@@ -56,7 +49,7 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] -benchify: a second website where the code is managed by AI mostly autonomously?
 - [x] -Benchify: audit price fetching and how we pass it to LLMs
 - [ ] - Benchify: for the "question answerer LLM.that I want to implement, what's the best way of RAG?"
-- [x] Benchify: audit the verifier.
+- [ ] - Benchify: remove the verifier from mose agents. And make an autoresearcher for the verifier too.
 - [ ] - Benchify: Allow portfolios to "invest cash" in "bonds" and get a return for unused cash.
 - [x] - Audit memories and make sure they are added to the agents in the best way possible. Maybe aufit the RAG too.
 - [ ] - Benchify allow people yo use their own models/keys/prompts and compete.
@@ -91,7 +84,6 @@ Many of these things should be able to be picked up by autoresearch, I guess the
 - [ ] - Benchify: find the cheapest models and make a little autoresearch army that uses weekly rolling to update.
 - [ ] - Benchify: per user log and reasons tracker. This ties to the LLM chat. Each user can track their own trades too and their reasoning.
 - [ ] - Benchify: it's stock analysis also part of my sources?
-- [ ] - Get option information. Like Greeks, implied volatility, etc... Maybe from FMP?
 - [ ] - Benchify: check if "today vibes" also includes the emails. Also maybe add the FMP summary to it too.
 - [ ] - Benchify: Autoresearch, make it so it can decide if it should remove data from emails or others. Allow it to see the input blocks and decide if it should remove or add inputs.
 - [ ] - Try to track government stuff again, but make it explicit, make it maybe outside ingestion and consensus.
@@ -148,7 +140,6 @@ Feels like I have done that before to no avail
 - [x] - Benchify, audit with alpaca. Like, a single portfolio see if it matches alpaca moves and equity movement
 - [ ] - My site looks just like every other LLM-made site. Let's improve it.
 - [ ] - Give autoresearch a way to make "memories" 
-- [ ] - Benchify: get options data tool
 - [ ] - Benchify: follow the crowd strategy? Like using options and volume data?
 - [ ] - Benchify: in today page, make the default price shower show a mix of important indicators like bond yields, equity, international, gold, wti, vix
 - [ ] - Benchify: train small model?

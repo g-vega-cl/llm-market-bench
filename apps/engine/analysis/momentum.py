@@ -182,7 +182,6 @@ def update_concept_metrics(sb_client: Client, concept_name: str, embedding: list
         ).execute()
 
         now = datetime.now(UTC).isoformat()
-        _get_90d_mentions(sb_client, embedding)
 
         if match_res.data:
             # Semantic match found - merge!

@@ -105,18 +105,11 @@ def test_update_concept_metrics_new_record(mock_supabase):
 
 def test_update_concept_metrics_semantic_merge(mock_supabase):
     """Test updating metrics with a semantic match (merging)."""
-    # RPC 1 (match_concepts): Match
+    # RPC 1 (match_concepts): Match (90d helper removed – single RPC now)
     match_res = MagicMock()
     match_res.data = [{"id": "uuid-999", "concept_name": "AI Surge", "mention_count": 5, "similarity": 0.95}]
 
-    # RPC 2 (90d mentions): 10
-    history_res = MagicMock()
-    history_res.data = [{"id": i} for i in range(10)]
-
-    mock_supabase.rpc.side_effect = [
-        MagicMock(execute=MagicMock(return_value=match_res)),
-        MagicMock(execute=MagicMock(return_value=history_res)),
-    ]
+    mock_supabase.rpc.return_value.execute.return_value = match_res
 
     update_concept_metrics(mock_supabase, "AI Boom", [0.1] * 768, 4.0)
 
@@ -146,7 +139,7 @@ async def test_analyze_momentum(mock_supabase):
 
     with patch("analysis.momentum.get_embeddings_batch", return_value=mock_embeddings):
         await analyze_momentum(mock_supabase, consensus_events)
-        # 1 concept * (2 velocity calls + 2 update calls) = 4 RPC calls total
+        # 1 concept * (2 velocity calls + 1 update call) = 3 RPC calls total
         # Velocity calls: 1 for recent 7d, 1 for baseline 37d
-        # Update calls: 1 for match_concepts, 1 for 90d mentions
-        assert mock_supabase.rpc.call_count == 4
+        # Update calls: 1 for match_concepts (90d helper removed – dead RPC)
+        assert mock_supabase.rpc.call_count == 3

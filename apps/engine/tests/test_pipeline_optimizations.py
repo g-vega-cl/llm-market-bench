@@ -160,6 +160,8 @@ async def test_scenario_parallel_discovery():
 
     with (
         patch("analysis.consensus.synthesize_event", new_callable=AsyncMock, return_value=mock_synthesis),
+        patch("analysis.consensus.get_embedding", return_value=[0.1] * 768),
+        patch("analysis.consensus.find_similar_memory", return_value=None),
         patch("analysis.consensus.find_potential_ancestors", return_value=[]),
         patch("analysis.consensus.analyze_event_relationship", new_callable=AsyncMock, return_value={}),
         patch("analysis.consensus.add_memory", return_value="mem1"),

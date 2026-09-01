@@ -13,10 +13,11 @@ The Event Consensus Protocol is executed between the two analysis passes of the 
 
 1. **Semantic Grouping**: Embeddings cluster events by cosine similarity across LLMs (threshold 0.75).
 
-   * **API Rate-Limit Resilience**: Uses `tenacity` exponential backoff retries (3 max attempts) to absorb transient errors like `429 RESOURCE_EXHAUSTED`.
+   * **API Rate-Limit Resilience**: Uses `tenacity` exponential backoff retries (4 max attempts, max 30s) and an explicit 1.2s minimum call interval throttle (`_EMBED_MIN_INTERVAL`) to stay safely under Vertex AI's 60 req/min quota and absorb transient `429 RESOURCE_EXHAUSTED` errors.
    * **Exact-Match Fallback**: If the embedding API fails or mismatches, the engine gracefully falls back to exact string-based grouping to prevent pipeline crashes.
 2. **Weighted Consensus**: Cumulative model weight must exceed promotion threshold (default 2.0). Weights are explicit per `packages/config/models.json` in `core/config.py:MODEL_WEIGHTS` — all 6 models (`gpt-5.6-luna`, `claude-haiku-4-5`, `gemini-3.5-flash-lite`, `deepseek-v4-pro`, `deepseek-v4-flash`, `MiniMax-M3`) carry `1.0`. Fix 2026-08-27 added the missing `MiniMax-M3`/`deepseek-v4-flash` entries with an assertion guard; implicit fallback is no longer relied upon.
-3. **Temporal Deduplication**: New events checked against `memories` table within recency window. **Decoupled thresholds (fix 2026-08-27):** semantic grouping uses `0.75` (`MOMENTUM_SIMILARITY_THRESHOLD`) while memory promotion dedup uses `0.90` (`core/config.py:MEMORY_DEDUP_THRESHOLD`, `analysis/consensus.py:336`). Previously both used `0.75`, causing false collisions (e.g., `Custom AI Chips` vs `US Gas Power Pipeline` at Sim 0.77 sharing ID `4685e74f`). Lookback remains `24h` for consensus (vs `168h` for general `store.add_memory`).
+3. **Temporal Deduplication & Pre-Discovery Dedup**: New events checked against `memories` table within recency window. **Decoupled thresholds (fix 2026-08-27):** semantic grouping uses `0.75` (`MOMENTUM_SIMILARITY_THRESHOLD`) while memory promotion dedup uses `0.90` (`core/config.py:MEMORY_DEDUP_THRESHOLD`, `analysis/consensus.py:336`). Lookback remains `24h` for consensus (vs `168h` for general `store.add_memory`).
+   * **Pre-Discovery Early Deduplication (fix 2026-09-01)**: Before delegating to `DiscoveryAgent`, `_synthesize_and_promote_group` checks if the synthesized event already exists as a recent memory duplicate. If duplicate is detected, DiscoveryAgent calls are skipped, saving API quota and execution latency, and the preliminary embedding is reused directly during `add_memory` reinforcement.
 4. **Relationship Analysis**: Links to ancestor events as REVERSAL, RESOLUTION, or UPDATE
 5. **LLM Synthesis**: Unifies naming, extracts catalyst dates and historical parallels
 6. **Scenario Analysis**: Requires ≥2 distinct outcomes with specific trading plans
@@ -27,7 +28,8 @@ The Event Consensus Protocol is executed between the two analysis passes of the 
 Concept velocity tracked via hybrid formula: `Momentum = Intensity × Growth`.
 - Intensity: log-scaled mention count
 - Growth: short-vs-long window mention rate
-- Stale concepts decay via half-life
+- **Concept Merging**: Semantic merging threshold is set to `0.85` (`MOMENTUM_CONCEPT_MERGE_THRESHOLD`) to prevent distinct concepts from prematurely coalescing into a single entity, while velocity counting maintains a permissive `0.75` threshold (`MOMENTUM_SIMILARITY_THRESHOLD`).
+- Stale concepts decay via half-life (28 days)
 - **PCA Dimensionality Reduction**: PCA reduces embedding vectors to 2D coordinates for semantic tracking (viewable in narrative details). The coordinate calculation ensures vector parsing alignment to prevent index-shifting/data-corruption if a concept vector is malformed or skipped.
 
 ## Horizon Watch

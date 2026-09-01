@@ -522,6 +522,7 @@ def add_memory(
     similarity_threshold: float = 0.90,
     lookback_hours: int = 168,
     importance_score: int = 5,
+    embedding: list[float] | None = None,
 ) -> str | None:
     """Adds a new text chunk to the memory store.
 
@@ -540,7 +541,8 @@ def add_memory(
         The ID of the new memory if successful, None otherwise.
     """
     try:
-        embedding = get_embedding(content)
+        if embedding is None:
+            embedding = get_embedding(content)
         if not embedding:
             return None
 

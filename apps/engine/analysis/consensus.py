@@ -14,8 +14,8 @@ from analysis.discovery_service import DiscoveryService
 from core.config import MEMORY_DEDUP_THRESHOLD, MODEL_WEIGHTS
 from core.llm import analyze_event_relationship, synthesize_event
 from core.models import DecisionObject, MacroEvent
-from memory.embeddings import get_embeddings_batch
-from memory.store import add_memory, find_potential_ancestors, update_memory_status
+from memory.embeddings import get_embedding, get_embeddings_batch
+from memory.store import add_memory, find_potential_ancestors, find_similar_memory, update_memory_status
 
 logger = logging.getLogger("engine")
 
@@ -197,6 +197,43 @@ async def _synthesize_and_promote_group(
     is_future_catalyst = synthesis.get("is_future_catalyst", catalyst_votes > (cumulative_weight / 2))
     historical_parallel = synthesis.get("historical_parallel") or (parallels[0] if parallels else None)
 
+    # --- Early dedup check to avoid wasted DiscoveryAgent calls & save embedding quota ---
+    # Memory content does not include discovered assets, so we can check duplicate before discovery.
+    prelim_parallel_str = f" [Historical Parallel: {historical_parallel}]" if historical_parallel else ""
+    prelim_ongoing_str = " [ONGOING]" if is_ongoing else ""
+    prelim_summary_text = (synthesis["name"] + " " + synthesis["summary"]).lower()
+    prelim_is_thematic = any(
+        kw in prelim_summary_text
+        for kw in [
+            "rotation",
+            "capital flow",
+            "picks and shovels",
+            "picks-and-shovels",
+            "adjacent trade",
+            "flow shift",
+            "sector shift",
+            "capex rotation",
+            "head fake",
+        ]
+    )
+    prelim_prefix = "THEMATIC FLOW" if prelim_is_thematic else "MARKET EVENT"
+    prelim_content = f"{prelim_prefix}: {synthesis['name']}{prelim_ongoing_str} | IMPACT: {majority_impact} | SUMMARY: {synthesis['summary']}{prelim_parallel_str}"
+    prelim_embedding = None
+    should_skip_discovery = False
+    try:
+        prelim_embedding = get_embedding(prelim_content)
+        if prelim_embedding:
+            dup_id = find_similar_memory(
+                prelim_content, threshold=MEMORY_DEDUP_THRESHOLD, hours=24, embedding=prelim_embedding
+            )
+            if dup_id:
+                logger.info(
+                    f"Duplicate detected for '{synthesis['name']}' (ID: {dup_id}) – skipping DiscoveryAgent to save quota"
+                )
+                should_skip_discovery = True
+    except Exception as e:
+        logger.debug(f"Early dedup check failed for '{synthesis['name']}': {e}")
+
     # Discover real assets specifically per scenario (parallelized)
     import asyncio
 
@@ -223,7 +260,11 @@ async def _synthesize_and_promote_group(
         }
 
     scenarios = synthesis.get("scenarios", [])
-    if scenarios:
+    if should_skip_discovery:
+        # Duplicate – no need to discover, keep assets empty (metadata will still reinforce)
+        scenarios_data = []
+        global_discovered_assets = []
+    elif scenarios:
         discovery_tasks = [discover_scenario_assets(s) for s in scenarios]
         scenarios_results = await asyncio.gather(*discovery_tasks)
         for s_data in scenarios_results:
@@ -238,7 +279,7 @@ async def _synthesize_and_promote_group(
             scenarios_data.append(s_data)
 
     # For backward-compatibility fallback if no scenarios were returned by Gemini
-    if not scenarios_data:
+    if not should_skip_discovery and not scenarios_data:
         # Fallback to old global discovery theme
         global_discovered_assets = await discovery_service.discover_assets(synthesis["summary"])
 
@@ -311,6 +352,8 @@ async def _synthesize_and_promote_group(
     prefix = "THEMATIC FLOW" if is_thematic_flow else "MARKET EVENT"
     memory_content = f"{prefix}: {consensus_data['event_name']}{ongoing_str} | IMPACT: {consensus_data['impact']} | SUMMARY: {consensus_data['reasoning']}{parallel_str}"
 
+    # Reuse prelim embedding if content matches to save quota (one fewer API call)
+    reuse_embedding = prelim_embedding if prelim_embedding and memory_content == prelim_content else None
     new_memory_id = add_memory(
         content=memory_content,
         memory_type=mem_type,
@@ -338,6 +381,7 @@ async def _synthesize_and_promote_group(
         check_similarity=True,
         similarity_threshold=MEMORY_DEDUP_THRESHOLD,
         lookback_hours=24,
+        embedding=reuse_embedding,
     )
 
     if new_memory_id:

@@ -35,9 +35,10 @@ Before LLM analysis, the engine validates market status and cleans up stale stat
 
 The first pass of LLM analysis extracts and clusters macroeconomic events.
 *   Asynchronous Chunk Batching: Splits newsletter content into parallel batches of 20 chunks.
-*   Semantic Grouping: Embeds and clusters events via pgvector cosine similarity (threshold `0.75`).
+*   Semantic Grouping: Embeds and clusters events via pgvector cosine similarity (threshold `0.75`), protected by `1.2s` call-interval throttling and 4-attempt exponential backoff.
 *   Weighted Consensus: Promotes events based on cumulative model weight and voting (threshold `2.0`; weights explicit for all 6 models per `core/config.py:MODEL_WEIGHTS`, including `MiniMax-M3` — fixed 2026-08-27).
 *   Temporal Deduplication: Discards duplicate events within a recency window — dedup now `0.90` via `MEMORY_DEDUP_THRESHOLD`, decoupled from grouping `0.75` (fix 2026-08-27 for ID-collision bug `4685e74f`/`b2174ca9`).
+*   Pre-Discovery Early Dedup: Checks for duplicates before launching `DiscoveryAgent`, skipping redundant asset searches and reusing vector embeddings (fix 2026-09-01).
 *   Relationship Analysis: Maps parent/child relationships in the event graph.
 
 ## Phase 4: Trading Decisions

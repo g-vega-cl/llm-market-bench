@@ -11,6 +11,8 @@ from core.config import GEMINI_EMBEDDING_MODEL
 logger = logging.getLogger("engine")
 
 _client = None
+_last_embed_time = 0.0
+_EMBED_MIN_INTERVAL = 1.2  # ~50 req/min to stay under Vertex 60/min quota
 
 
 def get_client():
@@ -24,8 +26,8 @@ def get_client():
 
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(4),
+    wait=wait_exponential(multiplier=2, min=4, max=30),
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
@@ -64,6 +66,16 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
 
     try:
         client = get_client()
+        # Throttle to stay under Vertex per-minute quota
+        import time
+
+        global _last_embed_time
+        now = time.time()
+        elapsed = now - _last_embed_time
+        if elapsed < _EMBED_MIN_INTERVAL:
+            time.sleep(_EMBED_MIN_INTERVAL - elapsed)
+        _last_embed_time = time.time()
+
         # Gemini's embed_content naturally supports lists of strings
         logger.info(f"Calling Gemini embeddings for {len(texts)} texts")
         response = _call_embed_with_retry(

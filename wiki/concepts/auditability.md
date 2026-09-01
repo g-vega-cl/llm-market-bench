@@ -43,6 +43,7 @@ Our logs are actively audited:
 
 ## Related
 
+- [[concepts/hallucination-audit]]
 - [[concepts/observability-standard]]
 - [[concepts/agent-workflow]]
 - [[entities/pipeline]]

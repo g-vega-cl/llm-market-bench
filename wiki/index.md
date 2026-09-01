@@ -48,6 +48,7 @@
 
 ## Concepts
 
+- [[concepts/hallucination-audit]] — Auto-indexed page
 - [[concepts/release-and-canary-deployments]] — Auto-indexed page
 - [[concepts/hybrid-database-archival]] — Auto-indexed page
 - [[concepts/code-hotspots]] — Auto-indexed page

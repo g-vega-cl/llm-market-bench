@@ -6,8 +6,6 @@ A living document of features and improvements in progress or planned for the pl
 
 - [ ] **Money Flow Model** - Make a model (based on financial papers) to track money flows.
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
-- [ ] **Canary deployment** - Make sure you can roll out to X% of users or get a staging env.
-- [ ] **Larn why it hallucinates numbers so much And how to fix.** - Maybe some kind of calculation forward tool. Like, give the price up front and ask it "is this a good number to buy", rather than asking it to come up with the number itself.
 - [x] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
   - This is basically what "Jules" does already, and I don not like Jules results....
 - [ ] **Best way to simulate a QA department**
@@ -35,7 +33,8 @@ A living document of features and improvements in progress or planned for the pl
 - [x] manage prompt size with increasing memory/lessons learned database.
 - [x] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
 - [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
-- [ ] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
+- [x] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
+    - Resolved via 4-layer Tool Enforcement and Price Pre-Injection architecture (`core/llm/tools.py`, `core/llm/prompts.py`). Verified across 200 production logs (0 ungrounded numbers found). See `[[concepts/hallucination-audit]]`.
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).
 - [ ] - check if this repo would help: https://github.com/anthropics/financial-services
 - [ ] - alongside Karpathy wiki https://claude.com/blog/new-in-claude-managed-agents https://platform.claude.com/docs/en/managed-agents/define-outcomes

@@ -59,6 +59,7 @@ execution drifts >2% from injected price, trade is `REJECTED_STALE_QUOTE` (this 
 
 ## Related
 
+- [[concepts/hallucination-audit]]
 - [[entities/engine]]
 - [[entities/pipeline]]
 - [[concepts/reasoning]]

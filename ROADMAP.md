@@ -8,9 +8,6 @@ A living document of features and improvements in progress or planned for the pl
 - [ ] **Statistical Predictions** - Implement Monte Carlo simulations, Random Forest, and other ML-based prediction models
 - [x] **A proactive codebase checker and task maker connected to Posthog?** - An agent that's a user that gives feedback and proposes improvements running 24/7
   - This is basically what "Jules" does already, and I don not like Jules results....
-- [ ] **Best way to simulate a QA department**
-  - We could use backStopJS and other tools, but for now it's not necessary.
-- [ ] **Roll out/deploy a branch to prod. But not master? Like % deployment?**
 - [x] **Find trading papers not just investing** - But low sell high?
   - Couldn't find any.
 - [ ] **A programming buddy?**

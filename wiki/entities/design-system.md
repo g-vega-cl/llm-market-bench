@@ -62,9 +62,17 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 3. **Clashing Styles Pitfall (`truncate` + `bg-clip-text`)**: Never apply the Tailwind `truncate` class directly to headings or elements using `bg-clip-text` and text transparency. Browsers render the resulting ellipsis (`…`) using the transparent fill color, making it invisible and causing background gradient bleed. Always wrap the text inside a separate `overflow-hidden` container, using `whitespace-nowrap` on the gradient text element.
 4. **Card Performance Heatmap**: On dashboard overview grids, cards apply performance-based dynamic styles mapping the daily return percentage (`todayPct`) to visual indicators. High-gain cards shift toward gold/amber, mild gains to emerald, neutral states to sky blue, mild losses to rose, and high losses to deep crimson. This styling overrides the glass border/glow in a standardized fashion to create a natural heatmap effect.
 
+## Governance & Verification Protocol
+
+1. **No Arbitrary Values**: Avoid square-bracket utility escapes (such as `w-[230px]` or `bg-[#1a2b3c]`) in web application code. All styles must use defined theme spacing, typography, and color tokens.
+2. **Typecheck Gate**: Any update to `@llm-market-bench/ui-design-system` requires running `pnpm run typecheck` across `apps/web` to ensure no downstream breaking changes or missing props.
+3. **Closed Variant Props**: Components must accept only design-system-defined variants and color schemes. Do not override background colors, borders, or text sizing with ad-hoc `className` utilities.
+4. **Mandatory State Coverage**: Any new primitive or pattern component must account for empty, loading, error, and long-text overflow states.
+
 ## Related
 
 - [[entities/web-app]] — The dashboard that consumes this design system
 - [[concepts/type-safety]] — All components are strictly typed without `any`
 - [[sources/web-design-system-source]] — Original design spec
+
 

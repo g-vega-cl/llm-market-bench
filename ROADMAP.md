@@ -142,7 +142,7 @@ Feels like I have done that before to no avail
     - Updated `get_daily_market_context` in `daily_predictor.py` to fetch today's morning briefing with graceful fallback.
     - Updated `DAILY_PREDICTOR_PROMPT` constraints header to document synthesized newsletter context.
     - Updated Cron Dispatcher to trigger `generate-newsletter.yml` at 9:12 AM ET with automatic chained downstream dispatch to `daily-predictor.yml`.
-- [ ] -  Benchify: daily trades for sector predictor audit
+- [ ] - Benchify: daily trades for sector predictor audit
 - [ ] - Benchify: a bond trader?
 - [ ] - Benchify : do we get volume alongside price? Volume deviations?
 - [x] - Benchify, audit with alpaca. Like, a single portfolio see if it matches alpaca moves and equity movement
@@ -159,9 +159,7 @@ Feels like I have done that before to no avail
 - [ ] - Benchify: insider trading tracker, congress, CEO, whales , 13Fs?Canada insider trader specifically?
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
 - [ ] - Benchify; tool for think about related winners? Memory/energy/etc... in AI, clothes GLP, etc...
-- [ ] - Benchify: daily predictor autoresearch probably best weekly
 - [ ] - Benchify: something I can autoresearch daily?
-
-Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
+        Maybe 4h candles and statistics with news context? Maybe the news can be summarized from the newsletters and that can also be autoresearched optimized
 - [ ] - Benchify: sector predictor prompt also separate into things that can change and things that shouldn't
 

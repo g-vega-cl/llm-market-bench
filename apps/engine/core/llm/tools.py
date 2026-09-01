@@ -770,6 +770,74 @@ GET_MACRO_ECONOMIC_SERIES_TOOL = {
 }
 
 
+GET_OPTIONS_SENTIMENT_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_options_sentiment",
+        "description": (
+            "Fetch options market sentiment, Put/Call ratios (by volume and open interest), "
+            "ATM implied volatility, 25-delta volatility skew, Max Pain strike price, and unusual options activity alerts."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., AAPL, NVDA, TSLA, SPY).",
+                },
+                "expiration_date": {
+                    "type": "string",
+                    "description": "Optional specific expiration date (YYYY-MM-DD). If omitted, aggregates across active cycles.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+GET_OPTION_CHAIN_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_option_chain",
+        "description": (
+            "Fetch a compact near-the-money options chain table with bid, ask, last price, volume, "
+            "open interest, implied volatility, and option Greeks (Delta, Gamma, Theta, Vega)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "The stock ticker symbol (e.g., AAPL, NVDA, TSLA).",
+                },
+                "expiration_date": {
+                    "type": "string",
+                    "description": "Optional specific expiration date (YYYY-MM-DD).",
+                },
+                "contract_type": {
+                    "type": "string",
+                    "enum": ["all", "call", "put"],
+                    "description": "Filter by contract type ('all', 'call', 'put'). Default 'all'.",
+                },
+                "strike_range_pct": {
+                    "type": "number",
+                    "description": "Strike range percentage around current price (default 10.0 for +/- 10%).",
+                },
+                "min_dte": {
+                    "type": "integer",
+                    "description": "Minimum days to expiration.",
+                },
+                "max_dte": {
+                    "type": "integer",
+                    "description": "Maximum days to expiration.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
+}
+
+
 CANONICAL_TOOLS_REGISTRY = {
     "get_stock_quote": STOCK_TOOL,
     "get_price_history": PRICE_HISTORY_TOOL,
@@ -799,6 +867,8 @@ CANONICAL_TOOLS_REGISTRY = {
     "get_volatility_index_details": GET_VOLATILITY_INDEX_DETAILS_TOOL,
     "get_verifier_rejections": GET_VERIFIER_REJECTIONS_TOOL,
     "get_macro_economic_series": GET_MACRO_ECONOMIC_SERIES_TOOL,
+    "get_options_sentiment": GET_OPTIONS_SENTIMENT_TOOL,
+    "get_option_chain": GET_OPTION_CHAIN_TOOL,
     "web_search": WEB_SEARCH_TOOL,
 }
 
@@ -2608,3 +2678,81 @@ async def execute_macro_economic_series_tool(
     except Exception as e:
         logger.exception("Error executing get_macro_economic_series tool: %s", e)
         return f"Error fetching macroeconomic series '{series_id_or_alias}': {str(e)}"
+
+
+async def execute_get_options_sentiment_tool(
+    ticker: str,
+    expiration_date: str | None = None,
+) -> str:
+    """Executes the get_options_sentiment tool to fetch and format options market sentiment."""
+    from execution.providers.massive import (
+        MassiveOptionsClient,
+        calculate_options_sentiment,
+        format_options_sentiment_markdown,
+    )
+
+    try:
+        manager = MarketDataManager()
+        quote = await manager.get_quote(ticker)
+        current_price = quote.price if quote and quote.exists else None
+
+        client = MassiveOptionsClient()
+        snapshot = await client.get_options_snapshot(ticker, current_price=current_price)
+
+        if snapshot.get("status") != "OK" or not snapshot.get("contracts"):
+            return f"No options data available for ticker '{ticker}'."
+
+        contracts = snapshot.get("contracts", [])
+        if expiration_date:
+            contracts = [c for c in contracts if c.get("details", {}).get("expiration_date") == expiration_date]
+            if not contracts:
+                return f"No options contracts found for {ticker} on expiration {expiration_date}."
+
+        metrics = calculate_options_sentiment(ticker, contracts, current_price=current_price)
+        return format_options_sentiment_markdown(metrics)
+    except Exception as e:
+        logger.exception("Error executing get_options_sentiment tool for %s: %s", ticker, e)
+        return f"Error fetching options sentiment for '{ticker}': {str(e)}"
+
+
+async def execute_get_option_chain_tool(
+    ticker: str,
+    expiration_date: str | None = None,
+    contract_type: str = "all",
+    strike_range_pct: float = 10.0,
+    min_dte: int | None = None,
+    max_dte: int | None = None,
+) -> str:
+    """Executes the get_option_chain tool to fetch and format a compact near-the-money options board."""
+    from execution.providers.massive import (
+        MassiveOptionsClient,
+        filter_option_chain,
+        format_option_chain_markdown,
+    )
+
+    try:
+        manager = MarketDataManager()
+        quote = await manager.get_quote(ticker)
+        current_price = quote.price if quote and quote.exists else None
+
+        client = MassiveOptionsClient()
+        snapshot = await client.get_options_snapshot(ticker, current_price=current_price)
+
+        if snapshot.get("status") != "OK" or not snapshot.get("contracts"):
+            return f"No options chain data available for ticker '{ticker}'."
+
+        contracts = snapshot.get("contracts", [])
+        filtered = filter_option_chain(
+            contracts=contracts,
+            current_price=current_price,
+            expiration_date=expiration_date,
+            contract_type=contract_type,
+            strike_range_pct=strike_range_pct,
+            min_dte=min_dte,
+            max_dte=max_dte,
+        )
+
+        return format_option_chain_markdown(ticker, filtered, current_price=current_price)
+    except Exception as e:
+        logger.exception("Error executing get_option_chain tool for %s: %s", ticker, e)
+        return f"Error fetching option chain for '{ticker}': {str(e)}"

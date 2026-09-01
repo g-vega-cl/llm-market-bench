@@ -48,11 +48,11 @@ const baseExperiment: PromptExperiment = {
 };
 
 describe('ExperimentDetails Toolbox Configuration', () => {
-    it('renders 23 / 26 Tools Enabled badge when 23 tools are selected from 26 canonical tools', () => {
+    it('renders 23 / 28 Tools Enabled badge when 23 tools are selected from 28 canonical tools', () => {
         render(<ExperimentDetails experiment={baseExperiment} />);
 
         expect(screen.getByText('Weekly Toolbox Configuration')).toBeInTheDocument();
-        expect(screen.getByText('23 / 26 Tools Enabled')).toBeInTheDocument();
+        expect(screen.getByText('23 / 28 Tools Enabled')).toBeInTheDocument();
         expect(screen.getByText('get_global_macro_context')).toBeInTheDocument();
         expect(screen.getByText('get_volatility_index_details')).toBeInTheDocument();
         expect(screen.getByText('get_verifier_rejections')).toBeInTheDocument();
@@ -68,8 +68,8 @@ describe('ExperimentDetails Toolbox Configuration', () => {
 
         render(<ExperimentDetails experiment={customExperiment} />);
 
-        // 26 canonical tools + 1 unknown extra tool = 27 total
-        expect(screen.getByText('2 / 27 Tools Enabled')).toBeInTheDocument();
+        // 28 canonical tools + 1 unknown extra tool = 29 total
+        expect(screen.getByText('2 / 29 Tools Enabled')).toBeInTheDocument();
         expect(screen.getByText('future_hypothetical_quantum_tool')).toBeInTheDocument();
     });
 });

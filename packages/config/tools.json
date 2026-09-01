@@ -102,5 +102,13 @@
   {
     "name": "add_thematic_flow",
     "desc": "Register new thematic narrative flow signal"
+  },
+  {
+    "name": "get_options_sentiment",
+    "desc": "Options market sentiment, Put/Call ratios, ATM IV, skew, and max pain"
+  },
+  {
+    "name": "get_option_chain",
+    "desc": "Near-the-money options board with bid/ask, volume, OI, and Greeks"
   }
 ]

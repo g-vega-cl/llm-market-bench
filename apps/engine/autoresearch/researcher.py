@@ -62,7 +62,7 @@ class PromptResearchResult(BaseModel):
             "'get_thematic_flows', 'add_thematic_flow', "
             "'get_portfolio_ledger', 'get_todays_news_menu', 'get_market_feeling', "
             "'get_global_macro_context', 'get_volatility_index_details', 'get_verifier_rejections', "
-            "'get_macro_economic_series', 'web_search'. "
+            "'get_macro_economic_series', 'get_options_sentiment', 'get_option_chain', 'web_search'. "
             "Do NOT include execution tools ('calculate_buy_quantity', 'calculate_sell_quantity') "
             "as they are automatically force-injected by the system."
         ),

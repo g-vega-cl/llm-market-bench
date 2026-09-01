@@ -143,6 +143,9 @@ MOMENTUM_DECAY_HALF_LIFE_DAYS = 28  # Velocity halves every 14 days of inactivit
 FMP_API_KEY = os.getenv("FMP_API_KEY")
 FRED_API_KEY = os.getenv("FRED_API_KEY", "")
 FRED_CACHE_TTL_HOURS = int(os.getenv("FRED_CACHE_TTL_HOURS", 12))
+MASSIVE_API_KEY = os.getenv("MASSIVE_API_KEY") or os.getenv("POLYGON_API_KEY", "")
+MASSIVE_BASE_URL = os.getenv("MASSIVE_BASE_URL", "https://api.polygon.io").rstrip("/")
+OPTIONS_CACHE_TTL_SECONDS = int(os.getenv("OPTIONS_CACHE_TTL_SECONDS", 3600))  # 1 hour default
 FINANCIAL_PROVIDER = os.getenv("FINANCIAL_PROVIDER", "fmp")
 
 # --- Validation Guardrails ---

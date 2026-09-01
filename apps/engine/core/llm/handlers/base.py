@@ -123,6 +123,20 @@ async def execute_tool(name: str, args: dict, model_name: str) -> str:
             units=args.get("units", "lin"),
             frequency=args.get("frequency"),
         )
+    elif name == "get_options_sentiment":
+        return await tools.execute_get_options_sentiment_tool(
+            ticker=args["ticker"],
+            expiration_date=args.get("expiration_date"),
+        )
+    elif name == "get_option_chain":
+        return await tools.execute_get_option_chain_tool(
+            ticker=args["ticker"],
+            expiration_date=args.get("expiration_date"),
+            contract_type=args.get("contract_type", "all"),
+            strike_range_pct=args.get("strike_range_pct", 10.0),
+            min_dte=args.get("min_dte"),
+            max_dte=args.get("max_dte"),
+        )
     elif name == "web_search":
         return await tools.execute_web_search_tool(args.get("query", ""))
     return "Unknown tool"

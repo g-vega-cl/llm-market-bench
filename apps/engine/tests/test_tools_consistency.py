@@ -16,6 +16,8 @@ from core.llm.tools import (
     GET_MACRO_ECONOMIC_SERIES_TOOL,
     GET_MARKET_FEELING_TOOL,
     GET_MARKET_HEALTH_BAROMETER_TOOL,
+    GET_OPTION_CHAIN_TOOL,
+    GET_OPTIONS_SENTIMENT_TOOL,
     GET_PORTFOLIO_LEDGER_TOOL,
     GET_PREDICTION_MARKET_ODDS_TOOL,
     GET_THEMATIC_FLOWS_TOOL,
@@ -92,6 +94,8 @@ def test_tools_json_matches_engine_tool_definitions():
         GET_VOLATILITY_INDEX_DETAILS_TOOL,
         GET_VERIFIER_REJECTIONS_TOOL,
         GET_MACRO_ECONOMIC_SERIES_TOOL,
+        GET_OPTIONS_SENTIMENT_TOOL,
+        GET_OPTION_CHAIN_TOOL,
     ]
     registered_names = {t["function"]["name"] for t in registered_canonical_tools}
 

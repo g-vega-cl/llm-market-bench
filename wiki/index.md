@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/massive-options]] — Auto-indexed page
 - [[entities/tool-registry]] — Centralized canonical tool registry (packages/config/tools.json)
 - [[entities/hotspots]] — Git churn forensics and code hotspot analyzer
 - [[entities/investment-chat-gateway]] — Gated conversational agent with real-time memory and database access

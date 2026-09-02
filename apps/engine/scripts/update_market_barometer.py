@@ -190,25 +190,20 @@ async def fetch_constituent_data(
     estimates_data = await fetch_with_retry(
         client,
         f"{FMP_STABLE_URL}/analyst-estimates",
-        {"symbol": symbol, "period": "annual", "limit": 2, "apikey": api_key},
+        {"symbol": symbol, "period": "annual", "limit": 8, "apikey": api_key},
         semaphore,
     )
-    # Get the next fiscal year's EPS estimate
+    # Get the next fiscal year's EPS estimate (FY1)
     next_eps_est = None
     if estimates_data and isinstance(estimates_data, list):
-        now_year = datetime.now().year
-        for est in estimates_data:
-            est_date = est.get("date")
-            if est_date:
-                try:
-                    est_year = int(est_date.split("-")[0])
-                    if est_year >= now_year:
-                        next_eps_est = est.get("epsAvg")
-                        break
-                except ValueError:
-                    pass
-        if next_eps_est is None and estimates_data:
-            next_eps_est = estimates_data[0].get("epsAvg")
+        valid_estimates = [est for est in estimates_data if est.get("date") and est.get("epsAvg") is not None]
+        if valid_estimates:
+            # Sort chronologically ascending
+            valid_estimates.sort(key=lambda x: str(x["date"]))
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            # Select the earliest future estimate (FY1)
+            future_estimates = [est for est in valid_estimates if str(est["date"]) >= today_str]
+            next_eps_est = future_estimates[0].get("epsAvg") if future_estimates else valid_estimates[-1].get("epsAvg")
 
     # 4. Fetch earnings surprises (for beat rate)
     earnings_data = await fetch_with_retry(
@@ -257,7 +252,7 @@ async def fetch_constituent_data(
         "pe": ratios.get("priceToEarningsRatio"),
         "pb": ratios.get("priceToBookRatio"),
         "ps": ratios.get("priceToSalesRatio"),
-        "pfcf": ratios.get("priceToFreeCashFlowsRatio"),
+        "pfcf": ratios.get("priceToFreeCashFlowRatio") or ratios.get("priceToFreeCashFlowsRatio"),
         "next_eps_est": next_eps_est,
         "beat": beat,
         "eps_actual": eps_actual,

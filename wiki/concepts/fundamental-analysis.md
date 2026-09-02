@@ -74,10 +74,10 @@ To track broader economic health and market valuation regimes, the system implem
 
 A daily background script (`update_market_barometer.py`) gathers fundamental and pricing data for S&P 500 constituents (falling back to a curated top-100 list representing ~80% of S&P 500 cap to stay under FMP rate limits). It computes cap-weighted index aggregates:
 - **Aggregate Trailing P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Net Income}}$
-- **Aggregate Forward P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Estimated Net Income}}$
+- **Aggregate Forward P/E**: $\frac{\sum \text{Market Cap}}{\sum \text{Estimated Net Income}}$ (calculated strictly using the immediate Next Fiscal Year (FY1) consensus EPS estimate, sorting multi-year projections chronologically to avoid taking distant outer-year estimates)
 - **Aggregate P/S (Price-to-Sales)**: $\frac{\sum \text{Market Cap}}{\sum \text{Revenue}}$ (a distortion-free metric that includes loss-making companies)
 - **Aggregate P/B (Price-to-Book)**: $\frac{\sum \text{Market Cap}}{\sum \text{Book Value}}$
-- **Aggregate Price-to-FCF**: $\frac{\sum \text{Market Cap}}{\sum \text{Free Cash Flow}}$ (mathematically computed from FCF yields, excluding companies with negative or zero free cash flow to avoid skewing valuation metrics)
+- **Aggregate Price-to-FCF**: $\frac{\sum \text{Market Cap}}{\sum \text{Free Cash Flow}}$ (mathematically computed from constituent Price-to-Free-Cash-Flow multiples `priceToFreeCashFlowRatio`, excluding companies with negative or zero free cash flow to avoid skewing valuation metrics)
 - **Earnings Beat Rate**: Percentage of constituents whose most recent earnings report exceeded estimates.
 
 These daily snapshots are saved to `market_barometer_history` in Supabase. The latest snapshot is injected into the system prompt's global macroeconomic context (`macro_context`), the LLMs can call `get_market_health_barometer` to check historical valuation trends, and the metrics are displayed to users in a premium glassmorphism card on the dashboard [HomePage](file:///Users/cesarvega/Documents/p-code/llm-market-bench/apps/web/src/features/home/pages/HomePage.tsx) (visualizing trailing/forward multiples and an animated earnings surprise beat rate progress bar).

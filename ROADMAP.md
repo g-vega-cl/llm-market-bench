@@ -10,13 +10,8 @@ A living document of features and improvements in progress or planned for the pl
   - This is basically what "Jules" does already, and I don not like Jules results....
 - [x] **Find trading papers not just investing** - But low sell high?
   - Couldn't find any.
-- [ ] **A programming buddy?**
+- [ ] **A programming/business buddy?**
   - Clippy (I already have something similar ) but that suggests improvements to the app. Just brainstorming the concept
-- [x] **An "AI" debate or consensus on different ways to invest in different events?** - 2-stage adversarial debate pipeline using `gpt-5.6-luna` (Adversarial Red-Team Challenger + Arbiter Synthesizer) with stress-tested scenarios, pre-mortem failure mode discovery, and interactive UI stress-test panel on `/memories`.
-- [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
-  - Decided it was a bit inconvenient and not worth it.
-- [x] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.** - Created `.agents/skills/creative-ideation/SKILL.md` skill and `[[concepts/creative-ideation]]` wiki page to exhaust 3 baseline textbook answers, generate 10 non-repeating lateral alternatives, and surface 5 downstream build levers.
-- [x] **FRED API Integration** - Federal Reserve Economic Data time series client with Supabase DB caching (`fred_series_cache`), on-demand LLM tool `get_macro_economic_series` for trading agents & Autoresearcher, and structured macroeconomic context injection for daily newsletter generation.
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**

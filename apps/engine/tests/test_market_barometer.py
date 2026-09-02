@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scripts.update_market_barometer import calculate_barometer
+from scripts.update_market_barometer import calculate_barometer, fetch_constituent_data
 
 
 @pytest.mark.asyncio
@@ -216,3 +216,97 @@ async def test_fetch_with_retry_releases_semaphore_during_backoff():
 
     await asyncio.gather(run_task_a(), run_task_b())
     assert task_b_completed_early, "Task B was blocked by Task A holding the semaphore during sleep"
+
+
+@pytest.mark.asyncio
+async def test_fetch_constituent_data_estimates_and_pfcf():
+    import asyncio
+
+    mock_client = MagicMock()
+    semaphore = asyncio.Semaphore(1)
+
+    # Responses for endpoints:
+    # 1. /profile
+    # 2. /ratios
+    # 3. /analyst-estimates (descending order from FMP)
+    # 4. /earnings
+    async def mock_fetch_with_retry(client, url, params, sem, retries=3):
+        if "profile" in url:
+            return [
+                {"symbol": "MSFT", "companyName": "Microsoft Corp", "marketCap": 3_000_000_000_000.0, "price": 500.0}
+            ]
+        elif "ratios" in url:
+            return [
+                {
+                    "symbol": "MSFT",
+                    "priceToEarningsRatio": 25.0,
+                    "priceToBookRatio": 10.0,
+                    "priceToSalesRatio": 12.0,
+                    "priceToFreeCashFlowRatio": 35.5,  # Standard FMP key
+                }
+            ]
+        elif "analyst-estimates" in url:
+            # Multi-year descending estimates
+            return [
+                {"symbol": "MSFT", "date": "2031-06-30", "epsAvg": 45.0},
+                {"symbol": "MSFT", "date": "2030-06-30", "epsAvg": 35.0},
+                {"symbol": "MSFT", "date": "2027-06-30", "epsAvg": 20.0},  # Next FY estimate
+                {"symbol": "MSFT", "date": "2025-06-30", "epsAvg": 14.0},  # Historical
+            ]
+        elif "earnings" in url:
+            return [
+                {
+                    "symbol": "MSFT",
+                    "date": "2026-07-29",
+                    "epsActual": 4.50,
+                    "epsEstimated": 4.20,
+                    "revenueActual": 65000000000.0,
+                    "revenueEstimated": 64000000000.0,
+                }
+            ]
+        return None
+
+    with patch("scripts.update_market_barometer.fetch_with_retry", side_effect=mock_fetch_with_retry):
+        result = await fetch_constituent_data(mock_client, "MSFT", "dummy_key", semaphore)
+
+    assert result is not None
+    assert result["symbol"] == "MSFT"
+    assert result["pfcf"] == 35.5, f"Expected pfcf 35.5, got {result.get('pfcf')}"
+    # Must select 20.0 (FY 2027), NOT 45.0 (FY 2031)
+    assert result["next_eps_est"] == 20.0, f"Expected FY1 estimate 20.0, got {result.get('next_eps_est')}"
+    assert result["beat"] is True
+    assert result["revenue_beat"] is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_constituent_data_fallback_past_estimates():
+    import asyncio
+
+    mock_client = MagicMock()
+    semaphore = asyncio.Semaphore(1)
+
+    async def mock_fetch_with_retry(client, url, params, sem, retries=3):
+        if "profile" in url:
+            return [{"symbol": "OLD", "companyName": "Old Corp", "marketCap": 100_000_000_000.0, "price": 100.0}]
+        elif "ratios" in url:
+            return [
+                {"symbol": "OLD", "priceToEarningsRatio": 15.0, "priceToFreeCashFlowsRatio": 20.0}
+            ]  # fallback plural key
+        elif "analyst-estimates" in url:
+            # Only past estimates available
+            return [
+                {"symbol": "OLD", "date": "2024-12-31", "epsAvg": 5.0},
+                {"symbol": "OLD", "date": "2023-12-31", "epsAvg": 4.0},
+            ]
+        elif "earnings" in url:
+            return []
+        return None
+
+    with patch("scripts.update_market_barometer.fetch_with_retry", side_effect=mock_fetch_with_retry):
+        result = await fetch_constituent_data(mock_client, "OLD", "dummy_key", semaphore)
+
+    assert result is not None
+    assert result["symbol"] == "OLD"
+    assert result["pfcf"] == 20.0
+    # Should fallback to the latest available (2024: 5.0)
+    assert result["next_eps_est"] == 5.0

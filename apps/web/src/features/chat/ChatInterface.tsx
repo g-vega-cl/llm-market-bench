@@ -3,7 +3,12 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { MarkdownContent } from '~/components/ui/MarkdownContent';
 import { sendChatMessageFn } from './chat-server';
-import { ALLOWED_CHAT_EMAILS, type ChatMessage, SUGGESTED_RESEARCH_PROMPTS } from './chat-types';
+import {
+    ALLOWED_CHAT_EMAILS,
+    type ChatMessage,
+    SUGGESTED_RESEARCH_PROMPTS,
+    type ToolTrace,
+} from './chat-types';
 
 const STORAGE_KEY = 'benchify_chat_messages_v2';
 
@@ -18,6 +23,128 @@ export interface ChatInterfaceProps {
     initialPrompt?: string;
     isFullPage?: boolean;
     onClose?: () => void;
+}
+
+function ToolTracesView({
+    traces,
+    isOpen,
+    onToggle,
+}: {
+    traces: ToolTrace[];
+    isOpen: boolean;
+    onToggle: () => void;
+}) {
+    if (!traces.length) return null;
+    return (
+        <div className="mt-1.5 max-w-[90%] md:max-w-[85%] pl-1">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="flex items-center gap-1.5 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/40 border border-cyan-800/40 rounded-lg px-2.5 py-1"
+            >
+                <span>⚡</span>
+                <span>
+                    {traces.length} tool {traces.length === 1 ? 'call' : 'calls'} executed
+                </span>
+                <span>{isOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {isOpen && (
+                <div className="mt-1.5 space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/70 p-2.5 text-[11px] text-zinc-400">
+                    {traces.map((trace) => (
+                        <div
+                            key={`${trace.tool_name}-${trace.summary}`}
+                            className="flex items-start gap-2 border-b border-zinc-800/60 pb-1 last:border-b-0 last:pb-0"
+                        >
+                            <Badge variant="outline" size="sm" colorScheme="accent">
+                                {trace.tool_name}
+                            </Badge>
+                            <span className="text-zinc-300 flex-1">{trace.summary}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SuggestedQuestionsView({
+    questions,
+    onSelect,
+}: {
+    questions?: string[];
+    onSelect: (q: string) => void;
+}) {
+    if (!questions || questions.length === 0) return null;
+
+    return (
+        <div className="mt-2.5 w-full max-w-[90%] md:max-w-[85%] pl-1 space-y-1.5">
+            <p className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5">
+                <span className="text-cyan-400">💡</span>
+                <span>Next best questions:</span>
+            </p>
+            <div className="flex flex-col gap-1.5">
+                {questions.map((question) => (
+                    <button
+                        key={question}
+                        type="button"
+                        onClick={() => onSelect(question)}
+                        className="text-left rounded-xl border border-cyan-900/50 bg-cyan-950/20 hover:bg-cyan-900/40 hover:border-cyan-500/60 p-2.5 text-xs text-zinc-200 hover:text-cyan-100 transition-all shadow-sm flex items-start gap-2 group"
+                    >
+                        <span className="text-cyan-400 shrink-0 font-mono text-[11px] group-hover:translate-x-0.5 transition-transform">
+                            ↳
+                        </span>
+                        <span className="flex-1">{question}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function MessageBubble({
+    msg,
+    isUser,
+    isTraceOpen,
+    onToggleTrace,
+    showSuggestions,
+    onSelectSuggestion,
+}: {
+    msg: ChatMessage;
+    isUser: boolean;
+    isTraceOpen: boolean;
+    onToggleTrace: () => void;
+    showSuggestions: boolean;
+    onSelectSuggestion: (q: string) => void;
+}) {
+    const traces = msg.tool_traces || [];
+
+    return (
+        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+            <div
+                className={`rounded-2xl px-4 py-3 text-xs leading-relaxed max-w-[90%] md:max-w-[85%] ${
+                    isUser
+                        ? 'bg-cyan-600 text-white rounded-br-none shadow-md'
+                        : 'bg-zinc-900/90 text-zinc-200 border border-zinc-800 rounded-bl-none shadow-sm'
+                }`}
+            >
+                {isUser ? (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                ) : (
+                    <MarkdownContent content={msg.content || ''} />
+                )}
+            </div>
+
+            <ToolTracesView traces={traces} isOpen={isTraceOpen} onToggle={onToggleTrace} />
+
+            {showSuggestions && (
+                <SuggestedQuestionsView
+                    questions={msg.suggested_questions}
+                    onSelect={onSelectSuggestion}
+                />
+            )}
+        </div>
+    );
 }
 
 export function ChatInterface({
@@ -191,6 +318,8 @@ export function ChatInterface({
         );
     }
 
+    const visibleMessages = messages.filter((msg) => msg.role !== 'tool' && msg.content);
+
     return (
         <div
             className={`flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-950/90 shadow-2xl backdrop-blur-xl transition-all ${
@@ -246,74 +375,22 @@ export function ChatInterface({
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-700">
-                {messages
-                    .filter((msg) => msg.role !== 'tool' && msg.content)
-                    .map((msg, idx) => {
-                        const isUser = msg.role === 'user';
-                        const traces = msg.tool_traces || [];
-                        const isTraceOpen = expandedTraces[idx] ?? false;
+                {visibleMessages.map((msg, idx) => {
+                    const isUser = msg.role === 'user';
+                    const isLatestAssistant = !isUser && idx === visibleMessages.length - 1;
 
-                        return (
-                            <div
-                                key={`${msg.role}-${msg.content?.slice(0, 30)}-${traces.length}`}
-                                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
-                            >
-                                <div
-                                    className={`rounded-2xl px-4 py-3 text-xs leading-relaxed max-w-[90%] md:max-w-[85%] ${
-                                        isUser
-                                            ? 'bg-cyan-600 text-white rounded-br-none shadow-md'
-                                            : 'bg-zinc-900/90 text-zinc-200 border border-zinc-800 rounded-bl-none shadow-sm'
-                                    }`}
-                                >
-                                    {isUser ? (
-                                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                                    ) : (
-                                        <MarkdownContent content={msg.content || ''} />
-                                    )}
-                                </div>
-
-                                {/* Tool Traces Collapsible */}
-                                {traces.length > 0 && (
-                                    <div className="mt-1.5 max-w-[90%] md:max-w-[85%] pl-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleTrace(idx)}
-                                            className="flex items-center gap-1.5 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/40 border border-cyan-800/40 rounded-lg px-2.5 py-1"
-                                        >
-                                            <span>⚡</span>
-                                            <span>
-                                                {traces.length} tool{' '}
-                                                {traces.length === 1 ? 'call' : 'calls'} executed
-                                            </span>
-                                            <span>{isTraceOpen ? '▲' : '▼'}</span>
-                                        </button>
-
-                                        {isTraceOpen && (
-                                            <div className="mt-1.5 space-y-1 rounded-xl border border-zinc-800 bg-zinc-900/70 p-2.5 text-[11px] text-zinc-400">
-                                                {traces.map((trace) => (
-                                                    <div
-                                                        key={`${trace.tool_name}-${trace.summary}`}
-                                                        className="flex items-start gap-2 border-b border-zinc-800/60 pb-1 last:border-b-0 last:pb-0"
-                                                    >
-                                                        <Badge
-                                                            variant="outline"
-                                                            size="sm"
-                                                            colorScheme="accent"
-                                                        >
-                                                            {trace.tool_name}
-                                                        </Badge>
-                                                        <span className="text-zinc-300 flex-1">
-                                                            {trace.summary}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    return (
+                        <MessageBubble
+                            key={`${msg.role}-${msg.content?.slice(0, 30)}-${msg.tool_traces?.length ?? 0}`}
+                            msg={msg}
+                            isUser={isUser}
+                            isTraceOpen={expandedTraces[idx] ?? false}
+                            onToggleTrace={() => toggleTrace(idx)}
+                            showSuggestions={Boolean(isLatestAssistant && !isLoading)}
+                            onSelectSuggestion={handleChipClick}
+                        />
+                    );
+                })}
 
                 {/* Loading indicator */}
                 {isLoading && (

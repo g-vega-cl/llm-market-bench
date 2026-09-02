@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 let mockSupabaseClient: Record<string, unknown> | null = null;
 vi.mock('~/lib/supabase-client', () => ({
@@ -8,6 +8,14 @@ vi.mock('~/lib/supabase-client', () => ({
 import { fetchReasoningLogs } from './fetch-reasoning-logs';
 
 describe('fetchReasoningLogs', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => [],
+        });
+    });
+
     it('applies the limit parameter to the query + 1 for pagination', async () => {
         let appliedLimit: number | undefined;
         const fromSpy = vi.fn().mockImplementation(() => {

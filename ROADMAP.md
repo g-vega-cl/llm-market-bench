@@ -16,18 +16,17 @@ A living document of features and improvements in progress or planned for the pl
 - [x] **Setup local agent managing dashboard? Split screens and stuff in vim or terminals**
   - Decided it was a bit inconvenient and not worth it.
 - [x] **When building something, ask for three ways this could work. Also, when brainstorming and building something, ask for the next ten things on how this could be made or the next five things after the first question.** - Created `.agents/skills/creative-ideation/SKILL.md` skill and `[[concepts/creative-ideation]]` wiki page to exhaust 3 baseline textbook answers, generate 10 non-repeating lateral alternatives, and surface 5 downstream build levers.
-- [ ] **I like the chatgpt setup of "ask the next best question" like**. Show me a couple of options of what the next best thing to ask would be
 - [x] **FRED API Integration** - Federal Reserve Economic Data time series client with Supabase DB caching (`fred_series_cache`), on-demand LLM tool `get_macro_economic_series` for trading agents & Autoresearcher, and structured macroeconomic context injection for daily newsletter generation.
 - [ ] **Include extra sources of "true" not subjective data? Satellite images, weather, etc... research what's usually used for this.**
 - [ ] **Company earnings not really (that's a different point) but a way of predicting the earnings?**
 - [ ] **Some kind of small/mid-cap ETF, but that doesn't remove the companies that grow. Custom, probably.**
 - [ ] **Set up a 'global' agent hook/env for my projects?**
-- [ ] A live suggestion maker in chat? - recording like granola but that suggests questions or finds werid things live and shows it as some kind of popup dialogue. - What I'm envisioning is chat suggestions for what best ask next like chatgpt does. <- Might have been for pocket. But could be used for LLM chat once I have that too. - Maybe add a button that adds suggestion.
+- [x] **A live suggestion maker in chat / next best questions** - Assistant generates 2-3 contextual follow-up research questions in `<suggested_questions>` tags rendered as interactive prompt chips on `/chat`. See `[[entities/investment-chat-gateway]]`.
 - [ ] **LLM chat, but for everywhere? Like click on a memory card and load that into context and start the chat then and there.** Allow it to make database fetches/etc...
 - [x] add metrics add CAPE, PE, forward PE, book-to-market Etc.... ? Do I already have them? P/free cash flow
 - [x] manage prompt size with increasing memory/lessons learned database.
 - [x] - Benchify : include reasons for rejections in the audit and make sure we improve why we are getting so many rejections for trades
-- [ ] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
+- [x] - Both poket, benchify, and terminal: Send whole convo to agent so it suggests best next questions/prompts.
 - [x] - Benchify: LLMs struggle with numbers/limit prices, how can I fix
     - Resolved via 4-layer Tool Enforcement and Price Pre-Injection architecture (`core/llm/tools.py`, `core/llm/prompts.py`). Verified across 200 production logs (0 ungrounded numbers found). See `[[concepts/hallucination-audit]]`.
 - [x] - benchify: Make a "style vibe" ... — The design system (semantic gradients, typography: Space Grotesk + Satoshi + JetBrains Mono, component primitives) is in `packages/ui-design-system/`. Applied across all feature pages. See [DESIGN_SYSTEM.md](./raw/docs/web/DESIGN_SYSTEM.md).

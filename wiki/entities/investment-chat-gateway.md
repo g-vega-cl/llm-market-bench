@@ -34,18 +34,19 @@ The chat agent (DeepSeek Flash) uses these read-only tools against Supabase:
 - Only the email `g.vega.cl@gmail.com` is whitelisted via `ALLOWED_CHAT_EMAILS`.
 - Unauthorized users see a gated banner with a sign-in button listing available capabilities.
 
-### Conversation History
+### Conversation History & Next Best Questions
 - Messages are persisted to `localStorage` under key `benchify_chat_messages_v2`.
-- Greeting message is prepended on fresh conversation.
+- Greeting message is prepended on fresh conversation with static suggested inquiries.
+- **Contextual Follow-up Questions**: On each turn, the assistant generates 2-3 tailored follow-up queries enclosed in `<suggested_questions>` tags. The server sanitizes the text, extracts the questions array, and the UI renders interactive prompt chips below the latest assistant message.
 - A "Clear" button resets history.
 
 ## Tool Execution Flow
 
-1. **System prompt** instructs the LLM to use tools and format responses with Markdown.
+1. **System prompt** instructs the LLM to use tools, format responses with Markdown, and end responses with structured `<suggested_questions>` blocks.
 2. **executeSingleStep**: Sends messages to DeepSeek API with tool definitions.
 3. **processToolCalls**: For each tool call, executes the appropriate backend function, accumulates a `ToolTrace` with tool name and summary.
 4. **MAX_TOOL_STEPS = 4**: Up to 4 back-and-forth rounds of tool calls allowed.
-5. **ToolTraces** are returned with the final assistant message for collapsible UI display.
+5. **ToolTraces and Suggested Questions** are extracted and returned with the final assistant message for interactive UI display.
 
 ## Related
 

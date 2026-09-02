@@ -19,6 +19,7 @@ export interface ChatMessage {
     tool_call_id?: string;
     tool_calls?: ToolCall[];
     tool_traces?: ToolTrace[];
+    suggested_questions?: string[];
 }
 
 export const ALLOWED_CHAT_EMAILS = ['g.vega.cl@gmail.com'];

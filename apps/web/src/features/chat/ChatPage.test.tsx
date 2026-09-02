@@ -97,4 +97,45 @@ describe('ChatPage Component', () => {
 
         expect(screen.getByText(/Welcome to the/i)).toBeInTheDocument();
     });
+
+    it('renders next best question chips and dispatches message when clicked', async () => {
+        (sendChatMessageFn as unknown as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({
+                role: 'assistant',
+                content: 'Analysis for NVDA completed.',
+                suggested_questions: [
+                    'Compare NVDA against AMD in recent trades',
+                    'Check NVDA causal memories for volatility risks',
+                ],
+            })
+            .mockResolvedValueOnce({
+                role: 'assistant',
+                content: 'NVDA vs AMD comparison details.',
+            });
+
+        render(<ChatPage user={{ email: 'g.vega.cl@gmail.com' }} />);
+
+        const chip = screen.getByText(
+            /Should I invest in NVO based on current memories and trades?/i,
+        );
+        fireEvent.click(chip);
+
+        await waitFor(() => {
+            expect(screen.getByText('Next best questions:')).toBeInTheDocument();
+            expect(
+                screen.getByText('Compare NVDA against AMD in recent trades'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('Check NVDA causal memories for volatility risks'),
+            ).toBeInTheDocument();
+        });
+
+        const followUpChip = screen.getByText('Compare NVDA against AMD in recent trades');
+        fireEvent.click(followUpChip);
+
+        await waitFor(() => {
+            expect(sendChatMessageFn).toHaveBeenCalledTimes(2);
+            expect(screen.getByText('NVDA vs AMD comparison details.')).toBeInTheDocument();
+        });
+    });
 });

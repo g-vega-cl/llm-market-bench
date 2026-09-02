@@ -19,7 +19,61 @@ You have access to specialized read-only tools:
 - query_database_table: Execute safe read queries against any Supabase PostgreSQL table.
 
 Always use these tools to pull facts, memory theses, and trade logs from the database before delivering answers.
-Format your responses with clean Markdown, bullet points, and tables where applicable. Be concise, analytical, professional, and clear.`;
+Format your responses with clean Markdown, bullet points, and tables where applicable. Be concise, analytical, professional, and clear.
+
+At the very end of your final response to the user, suggest 2-3 concise follow-up research questions or next steps directly relevant to the topic. Output them in this exact format:
+<suggested_questions>
+["Question 1", "Question 2", "Question 3"]
+</suggested_questions>`;
+}
+
+function extractQuotedStrings(rawText: string): string[] {
+    return [...rawText.matchAll(/"([^"\n\r]+)"/g)]
+        .map((m) => m[1].trim())
+        .filter((s) => s.length > 0);
+}
+
+function parseQuestionsBlock(rawBlock: string): string[] | undefined {
+    try {
+        const parsed = JSON.parse(rawBlock);
+        if (Array.isArray(parsed)) {
+            const strings = parsed
+                .filter(
+                    (item): item is string => typeof item === 'string' && item.trim().length > 0,
+                )
+                .map((item) => item.trim());
+            if (strings.length > 0) return strings;
+        }
+    } catch {
+        // Fall back to regex parsing of quotes
+    }
+
+    const extracted = extractQuotedStrings(rawBlock);
+    return extracted.length > 0 ? extracted : undefined;
+}
+
+export function extractSuggestedQuestions(rawContent: string | null): {
+    content: string | null;
+    suggested_questions?: string[];
+} {
+    if (!rawContent) {
+        return { content: rawContent, suggested_questions: undefined };
+    }
+
+    const tagMatch = /<suggested_questions>([\s\S]*?)<\/suggested_questions>/i.exec(rawContent);
+    const partialMatch = !tagMatch ? /<suggested_questions>([\s\S]*)$/i.exec(rawContent) : null;
+    const targetBlock = tagMatch?.[1] ?? partialMatch?.[1];
+
+    const suggested_questions = targetBlock ? parseQuestionsBlock(targetBlock.trim()) : undefined;
+
+    const cleanContent = rawContent
+        .replace(/<suggested_questions>[\s\S]*?(<\/suggested_questions>|$)/gi, '')
+        .trim();
+
+    return {
+        content: cleanContent.length > 0 ? cleanContent : rawContent.trim(),
+        suggested_questions,
+    };
 }
 
 async function executeSingleStep(apiKey: string, messages: ChatMessage[]): Promise<ChatMessage> {
@@ -122,8 +176,13 @@ export async function handleChatMessage(payload: {
         messagesToSend.push(assistantMsg);
 
         if (!assistantMsg.tool_calls || assistantMsg.tool_calls.length === 0) {
+            const { content: cleanContent, suggested_questions } = extractSuggestedQuestions(
+                assistantMsg.content,
+            );
             return {
                 ...assistantMsg,
+                content: cleanContent,
+                suggested_questions,
                 tool_traces: accumulatedTraces.length > 0 ? accumulatedTraces : undefined,
             };
         }
@@ -132,12 +191,16 @@ export async function handleChatMessage(payload: {
     }
 
     const lastMsg = messagesToSend[messagesToSend.length - 1];
+    const rawContent =
+        lastMsg.role === 'assistant' && lastMsg.content
+            ? lastMsg.content
+            : 'Completed database analysis and memory lookup.';
+    const { content: cleanContent, suggested_questions } = extractSuggestedQuestions(rawContent);
+
     return {
         role: 'assistant',
-        content:
-            lastMsg.role === 'assistant' && lastMsg.content
-                ? lastMsg.content
-                : 'Completed database analysis and memory lookup.',
+        content: cleanContent,
+        suggested_questions,
         tool_traces: accumulatedTraces.length > 0 ? accumulatedTraces : undefined,
     };
 }

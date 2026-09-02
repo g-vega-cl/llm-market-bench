@@ -277,4 +277,72 @@ describe('Chat Server Handler (handleChatMessage)', () => {
         expect(result.tool_traces).toBeDefined();
         expect(result.tool_traces?.[0].tool_name).toBe('get_stock_context_and_trades');
     });
+
+    it('should parse suggested_questions from assistant response and strip tags from content', async () => {
+        mockGetUser.mockResolvedValue({
+            data: { user: { email: 'g.vega.cl@gmail.com' } },
+            error: null,
+        });
+
+        const mockDeepSeekResponse = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content:
+                            'Here is the analysis for NVO.\n\n<suggested_questions>\n["Compare NVO win rate against LLY in portfolio trades", "What causal risk factor triggered our last stop-loss?"]\n</suggested_questions>',
+                    },
+                },
+            ],
+        };
+
+        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+            ok: true,
+            json: async () => mockDeepSeekResponse,
+        });
+
+        const result = await handleChatMessage({
+            messages: [{ role: 'user', content: 'Should I invest in NVO?' }],
+        });
+
+        expect(result.content).toBe('Here is the analysis for NVO.');
+        expect(result.suggested_questions).toEqual([
+            'Compare NVO win rate against LLY in portfolio trades',
+            'What causal risk factor triggered our last stop-loss?',
+        ]);
+    });
+
+    it('should handle malformed suggested_questions tag gracefully and sanitize output', async () => {
+        mockGetUser.mockResolvedValue({
+            data: { user: { email: 'g.vega.cl@gmail.com' } },
+            error: null,
+        });
+
+        const mockDeepSeekResponse = {
+            choices: [
+                {
+                    message: {
+                        role: 'assistant',
+                        content:
+                            'Analysis complete.<suggested_questions>["Broken JSON without closing',
+                    },
+                },
+            ],
+        };
+
+        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+            ok: true,
+            json: async () => mockDeepSeekResponse,
+        });
+
+        const result = await handleChatMessage({
+            messages: [{ role: 'user', content: 'Tell me about AAPL' }],
+        });
+
+        expect(result.content).toBe('Analysis complete.');
+        // Should extract any valid quoted strings or fall back safely
+        expect(
+            Array.isArray(result.suggested_questions) || result.suggested_questions === undefined,
+        ).toBe(true);
+    });
 });

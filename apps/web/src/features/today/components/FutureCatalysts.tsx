@@ -64,7 +64,8 @@ export function FutureCatalysts({ events }: FutureCatalystsProps) {
                 <div className="space-y-4">
                     {visibleEvents.map((event, idx) => {
                         const dateNote = event.metadata?.future_date_note;
-                        const importanceScore = event.metadata?.importance_score || 7;
+                        const importanceScore =
+                            event.importance_score ?? event.metadata?.importance_score ?? 7;
 
                         return (
                             <div

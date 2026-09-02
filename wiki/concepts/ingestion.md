@@ -17,7 +17,11 @@ Ingestion is the first phase of the daily pipeline. It fetches raw data from mul
 
 ## Economic Calendar
 
-… (existing content)
+The economic calendar ingestion pipeline (`apps/engine/ingest/calendar.py`) runs semi-weekly via GitHub Actions (`.github/workflows/calendar.yml`) on Sunday and Wednesday at 00:00 UTC:
+- **Scraping**: Fetches upcoming macro events from Trading Economics using non-recursive top-level table cell parsing to capture 7 structured columns (`Time`, `Country`, `Event`, `Actual`, `Previous`, `Consensus`, and `Forecast`).
+- **Deterministic Tag Indexing**: Ingested events are formatted with numerical index tags (`[#N]`). DeepSeek Flash analyzes the batch to identify high-importance events ($\ge 8/10$) or calendar anomalies (Pre-ECB/Fed Drift, Pre-Holiday Effect, Payday/Turn-of-the-Month), setting `source_id = "[#N]"`.
+- **Target Date & Catalyst Storage**: Resolves event date and time deterministically in $O(1)$ from the source table, storing high-importance records in Supabase `memories` with `memory_type = 'CALENDAR_EVENT'`, `is_future_catalyst = true`, and `target_date = YYYY-MM-DD`.
+- **Frontend Integration**: Displayed on the Today dashboard in the **Horizon Watch** timeline (`FutureCatalysts.tsx`) with dynamic Critical/High badges and chronological sequencing.
 
 ## Government Data
 

@@ -116,9 +116,9 @@ AUDIT_CHECKS = [
             SELECT row_to_json(t)::jsonb FROM (
                 SELECT id, target_date, memory_type
                 FROM memories
-                WHERE is_future_catalyst = true
+                WHERE (metadata->>'is_future_catalyst')::boolean = true
                 AND target_date IS NOT NULL
-                AND target_date < CURRENT_DATE
+                AND target_date < CURRENT_DATE::text
             ) t
         """,
         "severity": "MEDIUM",

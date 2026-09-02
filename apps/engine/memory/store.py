@@ -106,6 +106,7 @@ def retrieve_top_memories(limit: int = 5, min_importance: int = 7) -> str:
                 "UNCROWDED_TRADE": "UNCROWDED TRADE",
                 "POST_MORTEM": "POST MORTEM",
                 "ACADEMIC_PAPER": "ACADEMIC PRINCIPLE",
+                "CALENDAR_EVENT": "CALENDAR EVENT",
             }
             label = label_map.get(mt, "MARKET EVENT")
             items.append(
@@ -219,6 +220,7 @@ def retrieve_for_decision(
                     "UNCROWDED_TRADE": "UNCROWDED TRADE",
                     "POST_MORTEM": "POST_MORTEM",
                     "ACADEMIC_PAPER": "ACADEMIC PRINCIPLE",
+                    "CALENDAR_EVENT": "CALENDAR EVENT",
                 }
                 label = label_map.get(mt, "MARKET EVENT")
                 items.append(

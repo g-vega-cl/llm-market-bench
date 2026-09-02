@@ -4,6 +4,7 @@ This module fetches economic data from Trading Economics, parses it,
 and uses DeepSeek to identify high-importance events for Horizon Watch.
 """
 
+import re
 import subprocess
 from datetime import datetime
 
@@ -25,12 +26,18 @@ class CalendarPipeline:
         self.url = "https://tradingeconomics.com/calendar"
 
     def fetch_html(self) -> str:
-        """Fetches HTML from Trading Economics using curl."""
+        """Fetches HTML from Trading Economics using curl with a 60s timeout."""
         logger.info(f"Fetching calendar data from {self.url} using curl...")
         try:
-            result = subprocess.run(["curl", "-L", self.url], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["curl", "-L", self.url],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=60,
+            )
             return result.stdout
-        except subprocess.CalledProcessError as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             logger.error(f"Failed to fetch calendar HTML: {e}")
             return ""
 
@@ -59,13 +66,9 @@ class CalendarPipeline:
                 for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             ):
                 date_text = header.get_text(strip=True)
-                # Remove any extra text like "Actual Previous Consensus Forecast" if it's in the same header
-                # We only want the date part which is usually at the start.
-                # Trading Economics usually has just the date in that specific <th>.
                 try:
-                    # Clean up date text (sometimes it has extra whitespace or text)
+                    # Clean up date text (extract the first 4 parts: "Wednesday September 02 2026")
                     if " " in date_text:
-                        # Extract the first 4 parts: "Wednesday March 11 2026"
                         parts = date_text.split()
                         if len(parts) >= 4:
                             date_text = " ".join(parts[:4])
@@ -76,20 +79,41 @@ class CalendarPipeline:
                 continue
 
             # Event rows have 'data-event' attributes
-            event_name = row.get("data-event")
-            if event_name:
-                cells = row.find_all("td")
+            event_name_attr = row.get("data-event")
+            if event_name_attr:
+                # Critical: recursive=False avoids grabbing nested <td> inside the country table
+                cells = row.find_all("td", recursive=False)
                 if len(cells) < 6:
                     continue
+
+                # Country extraction: check data attribute first, then fallback to cell text
+                country = (row.get("data-country") or cells[1].get_text(strip=True)).title()
+
+                # Event title: prefer cell text with reference period if present, fallback to attribute
+                cell_event_text = cells[2].get_text(" ", strip=True) if len(cells) > 2 else ""
+                event_title = cell_event_text if cell_event_text else event_name_attr.strip()
+
+                if len(cells) >= 7:
+                    actual = cells[3].get_text(strip=True)
+                    previous = cells[4].get_text(strip=True)
+                    consensus = cells[5].get_text(strip=True)
+                    forecast = cells[6].get_text(strip=True)
+                else:
+                    # 6-cell fallback
+                    actual = cells[3].get_text(strip=True)
+                    previous = cells[4].get_text(strip=True)
+                    consensus = ""
+                    forecast = cells[5].get_text(strip=True)
 
                 event_data = {
                     "date": current_date,
                     "time": cells[0].get_text(strip=True),
-                    "country": row.get("data-country", cells[1].get_text(strip=True)).title(),
-                    "event": event_name.strip(),
-                    "actual": cells[3].get_text(strip=True),
-                    "previous": cells[4].get_text(strip=True),
-                    "forecast": cells[5].get_text(strip=True),
+                    "country": country,
+                    "event": event_title,
+                    "actual": actual,
+                    "previous": previous,
+                    "consensus": consensus,
+                    "forecast": forecast,
                 }
                 # Only add if we have a valid date
                 if current_date:
@@ -111,12 +135,11 @@ class CalendarPipeline:
         logger.info(f"Parsed {len(events)} events. Sending to DeepSeek for relevance analysis...")
 
         # DeepSeek to identify high-importance events
-        # We'll batch the events to stay within context limits if needed,
-        # but for a weekly calendar it should fit.
         events_text = "\n".join(
             [
-                f"- [{e['date']} {e['time']}] {e['country']}: {e['event']} (Forecast: {e['forecast']}, Previous: {e['previous']})"
-                for e in events
+                f"- [#{idx}] [{e.get('date', '')} {e.get('time', '')}] {e.get('country', 'Global')}: {e.get('event', '')} "
+                f"(Actual: {e.get('actual', '')}, Forecast: {e.get('forecast', '')}, Previous: {e.get('previous', '')}, Consensus: {e.get('consensus', '')})"
+                for idx, e in enumerate(events)
             ]
         )
 
@@ -136,9 +159,11 @@ class CalendarPipeline:
         - If an event is a major market holiday, it aligns with 'Pre-Holiday Effect'.
         - If an event occurs on the 1st, 15th, or last day of the month, highlight its 'Payday' or 'ToM' relevance.
 
-        For each relevant event, provide a structured MacroEvent entry.
-        IMPORTANT: Set 'is_future_catalyst' to true and 'target_date' to the event's date (YYYY-MM-DD).
-        In the reasoning, explicitly mention if it aligns with a known calendar strategy.
+        For each relevant event, provide a structured MacroEvent entry:
+        - Set 'source_id' to the event ID tag (e.g., '[#12]' or '12').
+        - Set 'is_future_catalyst' to true.
+        - Set 'target_date' to the event's date (YYYY-MM-DD).
+        - In the reasoning, explicitly mention if it aligns with a known calendar strategy.
 
         EVENTS:
         {events_text}
@@ -162,31 +187,41 @@ class CalendarPipeline:
                 if event.importance_score < 8:
                     continue
 
-                # Map relevant date back - DeepSeek should have put it in target_date or similar
-                # We'll use event.expiry_date as a proxy if it's set, or the date we parsed
-                target_date = event.expiry_date if event.expiry_date else None
+                # 1. Deterministic Index Lookup via source_id
+                source_event = None
+                if event.source_id:
+                    match = re.search(r"\d+", event.source_id)
+                    if match:
+                        idx = int(match.group(0))
+                        if 0 <= idx < len(events):
+                            source_event = events[idx]
 
-                # Check if we can find the original time and exact date from our parsed events
-                # Matches by fuzzy event name
-                original_time = "N/A"
-                source_date = None
-                for e in events:
-                    # Fuzzy match: one is contained in the other
-                    if e["event"].lower() in event.event_name.lower() or event.event_name.lower() in e["event"].lower():
-                        original_time = e["time"]
-                        source_date = e["date"]
-                        break
+                # 2. Fallback to fuzzy substring search if index lookup fails
+                if not source_event:
+                    for e in events:
+                        if (
+                            e["event"].lower() in event.event_name.lower()
+                            or event.event_name.lower() in e["event"].lower()
+                        ):
+                            source_event = e
+                            break
 
-                # Critical Fix: If target_date is missing or unknown, use the source_date we parsed from HTML
-                if (not target_date or target_date == "unknown") and source_date:
-                    target_date = source_date
+                # Resolve target_date deterministically
+                target_date = (
+                    event.target_date
+                    or (source_event["date"] if source_event else None)
+                    or event.expiry_date
+                )
+                if target_date == "unknown" or not target_date:
+                    target_date = source_event["date"] if source_event else None
 
-                if original_time == "N/A":
-                    # Fallback to source_id if it looks like a time or just use what we have
-                    original_time = event.source_id if ":" in event.source_id else "N/A"
+                original_time = source_event["time"] if source_event and source_event.get("time") else "N/A"
+                if original_time == "N/A" and event.source_id and ":" in event.source_id:
+                    original_time = event.source_id
 
-                # Content for memory - ensure the date is explicitly in the content for extraction safety
-                display_date = target_date if target_date else (event.expiry_date or "unknown")
+                country = getattr(event, "country", None) or (source_event["country"] if source_event else "Global")
+
+                display_date = target_date if target_date else "unknown"
                 memory_content = (
                     f"[CALENDAR EVENT] ({original_time}) {display_date}: {event.event_name}: {event.reasoning} | "
                     f"Impact: {event.impact} | Date: {display_date}"
@@ -201,7 +236,7 @@ class CalendarPipeline:
                         "is_calendar_event": True,
                         "is_future_catalyst": True,
                         "event_time": original_time,
-                        "country": getattr(event, "country", "Global"),
+                        "country": country,
                         "reach": "Global" if event.importance_score > 8 else "Regional",
                         "impact": event.impact,
                     },
@@ -222,3 +257,4 @@ async def run_calendar_pipeline():
     """Entry point for the calendar pipeline."""
     pipeline = CalendarPipeline()
     await pipeline.run()
+

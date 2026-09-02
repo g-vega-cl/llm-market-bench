@@ -152,9 +152,13 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
 
                                         <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 text-[10px]">
                                             <div className="flex items-center gap-3 flex-wrap">
-                                                {m.metadata?.importance_score && (
+                                                {(m.importance_score != null ||
+                                                    m.metadata?.importance_score != null) && (
                                                     <span className="font-bold text-zinc-400 uppercase tracking-wider">
-                                                        Importance: {m.metadata.importance_score}/10
+                                                        Importance:{' '}
+                                                        {m.importance_score ??
+                                                            m.metadata?.importance_score}
+                                                        /10
                                                     </span>
                                                 )}
                                                 {m.metadata?.tickers &&
@@ -362,11 +366,15 @@ export function AgentInsights({ memories }: AgentInsightsProps) {
 
                                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex-wrap gap-2">
                                         <div className="flex items-center gap-4 flex-wrap">
-                                            {m.metadata?.importance_score && (
+                                            {(m.importance_score != null ||
+                                                m.metadata?.importance_score != null) && (
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-2 h-2 bg-deep-purple-500 rounded-full shadow-lg" />
                                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                                        Importance: {m.metadata.importance_score}/10
+                                                        Importance:{' '}
+                                                        {m.importance_score ??
+                                                            m.metadata?.importance_score}
+                                                        /10
                                                     </span>
                                                 </div>
                                             )}

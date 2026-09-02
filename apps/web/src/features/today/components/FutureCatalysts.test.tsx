@@ -1,5 +1,65 @@
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { parseScenarioPercentages } from '~/lib/parse-scenario-percentages';
+import { FutureCatalysts } from './FutureCatalysts';
+
+describe('FutureCatalysts Component', () => {
+    it('renders Critical badge when importance_score is 9', () => {
+        const events = [
+            {
+                id: 'evt-1',
+                content:
+                    '[CALENDAR EVENT] (12:30 PM) 2026-09-11: US CPI Print: Inflation report | Impact: BEARISH | Date: 2026-09-11',
+                created_at: '2026-09-02T12:00:00Z',
+                memory_type: 'CALENDAR_EVENT',
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: 1.0,
+                importance_score: 9,
+                target_date: '2026-09-11',
+                metadata: {
+                    is_calendar_event: true,
+                    is_future_catalyst: true,
+                    event_time: '12:30 PM',
+                },
+            },
+        ];
+
+        render(<FutureCatalysts events={events} />);
+
+        expect(screen.getByText('Critical')).toBeInTheDocument();
+        expect(screen.getByText(/US CPI Print/)).toBeInTheDocument();
+        expect(screen.getAllByText(/12:30 PM/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('renders High badge when importance_score is 8', () => {
+        const events = [
+            {
+                id: 'evt-2',
+                content:
+                    '[CALENDAR EVENT] (01:30 AM) 2026-09-03: Australia GDP: Strong growth | Impact: BULLISH | Date: 2026-09-03',
+                created_at: '2026-09-02T12:00:00Z',
+                memory_type: 'CALENDAR_EVENT',
+                status: 'ACTIVE',
+                parent_id: null,
+                relationship_type: null,
+                relevance_score: 1.0,
+                importance_score: 8,
+                target_date: '2026-09-03',
+                metadata: {
+                    is_calendar_event: true,
+                    is_future_catalyst: true,
+                    event_time: '01:30 AM',
+                },
+            },
+        ];
+
+        render(<FutureCatalysts events={events} />);
+
+        expect(screen.getByText('High')).toBeInTheDocument();
+    });
+});
 
 describe('parseScenarioPercentages', () => {
     it('extracts basic percentage (40%)', () => {

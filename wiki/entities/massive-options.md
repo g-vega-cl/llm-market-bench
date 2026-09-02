@@ -79,14 +79,17 @@ Registered in `packages/config/tools.json` and canonicalized in `apps/engine/cor
 
 ---
 
-## Architectural Principle: Pure Pull-Based Data Access
+## Architectural Principle: Pure Quantitative Data & Explicit Session Staleness
 
-A foundational design principle of the options data integration is **zero forced injection**:
+A foundational design principle of the options data integration is **zero editorial bias and strict temporal transparency**:
 
-1. **Pull-Based On-Demand Fetching**: Options data is **never hardcoded or pre-injected** into trading agent prompts, the S&P 500 Daily Predictor, or the Sector Predictor. 
-2. **Autonomous Tool Selection**: All LLM trading models (DeepSeek, MiniMax, OpenAI, Anthropic, Gemini) and predictors are registered with canonical function calling declarations. The models independently assess their market thesis and determine whether and when to invoke `get_options_sentiment(ticker="...")` or `get_option_chain(ticker="...")`.
-3. **Autoresearch Alpha Discovery**: In the [[entities/autoresearch]] loop, the meta-researcher is equipped with both options tools in its toolbox (`#27` and `#28` in `program.md`). It autonomously evaluates whether allocating options inspection tools to specific candidate agent variants improves trading performance and Brier calibration scores.
-4. **Token & Rate Efficiency**: By allowing models to pull only the specific tickers and strikes they care about, the pipeline avoids token window bloat and respects API rate limits.
+1. **Uninterpreted Quantitative Output**: `format_options_sentiment_markdown` outputs purely numerical derivatives positioning metrics (Put/Call volume and OI ratios, ATM IV, 25-delta volatility skew, Max Pain strike, and outlier activity alerts) with **zero subjective bias labels** (no editorial "BULLISH" or "BEARISH" tags).
+2. **Explicit Session & Staleness Marking**: To prevent LLMs from confusing pre-market / prior close settlements with live intraday 0DTE flow, every options snapshot embeds:
+   - `As-Of Timestamp` (ISO UTC)
+   - `Market Session` (`PRE_MARKET`, `REGULAR_HOURS`, `POST_MARKET`, `WEEKEND`)
+   - `Staleness Note` describing settlement context (e.g. pre-market prior close settlement vs live trading hours).
+3. **Daily S&P Market Predictor Integration**: In [[entities/daily-market-predictor]], `get_daily_market_context(ticker="SPY")` automatically retrieves and injects the clean options derivatives positioning block into the pre-market reasoning context, equipping models and the prompt autoresearcher with options positioning signals.
+4. **Autonomous Multi-Turn Trading Agents**: LLM trading agents and the [[entities/autoresearch]] loop retain full pull-based access to `get_options_sentiment` (#27) and `get_option_chain` (#28) in their toolbox.
 
 ---
 
@@ -104,6 +107,7 @@ Also accepts `POLYGON_API_KEY` as a backwards-compatible fallback alias.
 
 ## Related
 
+- [[entities/daily-market-predictor]] — Intraday S&P 500 predictor and weekly prompt autoresearch
 - [[entities/tool-registry]] — Canonical tools definition registry
 - [[entities/autoresearch]] — Karpathy-style prompt improvement loop using options tools
 - [[entities/database]] — Supabase schema and caching layers

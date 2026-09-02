@@ -79,6 +79,7 @@ async def test_run_daily_prediction_arena_success():
     mock_minimax.close = AsyncMock()
 
     with (
+        patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
         patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
@@ -127,6 +128,7 @@ async def test_run_daily_prediction_partial_failure():
     mock_minimax.close = AsyncMock()
 
     with (
+        patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
         patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
@@ -159,6 +161,16 @@ async def test_get_daily_market_context_technicals():
 
     with (
         patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch(
+            "core.llm.tools.execute_fetch_daily_newsletter_tool",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
         patch(
             "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
         ),
@@ -214,6 +226,16 @@ async def test_get_daily_market_context_premarket_multi_asset():
     with (
         patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
         patch(
+            "core.llm.tools.execute_fetch_daily_newsletter_tool",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
             "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
         ),
         patch(
@@ -263,6 +285,16 @@ async def test_get_daily_market_context_premarket_partial_proxy_failure():
 
     with (
         patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch(
+            "core.llm.tools.execute_fetch_daily_newsletter_tool",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
         patch(
             "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
         ),
@@ -335,6 +367,7 @@ async def test_minimax_daily_prediction_includes_strict_json_prompt_and_tokens()
     mock_minimax.close = AsyncMock()
 
     with (
+        patch("tasks.daily_predictor.get_daily_market_context", new_callable=AsyncMock, return_value="Mock context"),
         patch("tasks.daily_predictor.get_supabase_client", return_value=mock_supabase),
         patch("tasks.daily_predictor.get_deepseek_client", return_value=mock_deepseek),
         patch("tasks.daily_predictor.MiniMaxClient", return_value=mock_minimax),
@@ -374,3 +407,62 @@ async def test_fetch_active_daily_prompt_model_track_isolation():
         assert tag == "daily-pred-seeded-deepseek-v4-flash"
         assert mock_seed.called
         mock_seed.assert_called_once_with(model_name="deepseek-v4-flash")
+
+
+@pytest.mark.asyncio
+async def test_get_daily_market_context_options_derivatives_injection():
+    """Verify that get_daily_market_context fetches and attaches SPY options derivatives data."""
+    from tasks.daily_predictor import get_daily_market_context
+
+    mock_history = [{"price": 590.0, "fetched_at": "2026-08-18T00:00:00Z"}]
+    mock_mdm = MagicMock()
+    mock_mdm.is_premarket = AsyncMock(return_value=False)
+    mock_mdm.get_history = AsyncMock(return_value=mock_history)
+    mock_mdm.get_premarket_quote = AsyncMock(
+        return_value={"price": 595.0, "previous_close": 590.0, "change": 5.0, "change_pct": 0.85}
+    )
+
+    sample_options_md = (
+        "### 📊 Options Derivatives Positioning: SPY (Ref Price: $595.00)\n"
+        "- **As-Of Timestamp**: 2026-09-02T13:15:00Z\n"
+        "- **Market Session**: PRE_MARKET\n"
+        "- **Staleness Note**: Pre-Market Session. Data reflects prior session close settlement.\n"
+        "- **Put/Call Volume Ratio**: 0.85\n"
+        "- **ATM Implied Volatility**: 14.5%\n"
+        "- **25-Delta Skew (Put IV - Call IV)**: +2.10%\n"
+        "- **Max Pain Strike**: $590.00"
+    )
+
+    with (
+        patch("execution.market_data.MarketDataManager", return_value=mock_mdm),
+        patch(
+            "core.llm.tools.execute_fetch_daily_newsletter_tool", new_callable=AsyncMock, return_value="Newsletter test"
+        ),
+        patch(
+            "core.llm.tools.execute_get_options_sentiment_tool", new_callable=AsyncMock, return_value=sample_options_md
+        ) as mock_options_tool,
+        patch(
+            "core.llm.tools.execute_get_global_macro_context_tool", new_callable=AsyncMock, return_value="Macro test"
+        ),
+        patch(
+            "core.llm.tools.execute_get_volatility_index_details_tool", new_callable=AsyncMock, return_value="VIX test"
+        ),
+        patch("core.llm.tools.execute_market_health_barometer_tool", new_callable=AsyncMock, return_value="Baro test"),
+        patch("core.llm.tools.execute_get_market_feeling_tool", new_callable=AsyncMock, return_value="Feeling test"),
+    ):
+        ctx = await get_daily_market_context(ticker="SPY")
+        assert "Options Derivatives Positioning (SPY):" in ctx
+        assert "Put/Call Volume Ratio" in ctx
+        assert "0.85" in ctx
+        assert "Staleness Note" in ctx
+        assert mock_options_tool.called
+        mock_options_tool.assert_called_once_with(ticker="SPY")
+
+
+def test_daily_predictor_prompt_header_includes_options():
+    """Verify that DAILY_PREDICTOR_CONSTRAINTS_HEADER mentions options positioning and volatility skew."""
+    assert "options" in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()
+    assert (
+        "volatility skew" in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()
+        or "skew" in DAILY_PREDICTOR_CONSTRAINTS_HEADER.lower()
+    )

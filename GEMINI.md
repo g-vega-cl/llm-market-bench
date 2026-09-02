@@ -57,6 +57,10 @@ All commit messages are strictly validated by `.husky/commit-msg` via `apps/engi
 4. **Code is Truth**: Docs are hints. When they conflict, trust the code. Read the code before acting — don't assume.
 5. **Observability**: Prioritize tracebacks over raw error strings. Use `logger.exception("Contextual message")` in `except` blocks. This ensures the automated log audit system can perform root-cause analysis on failures.
 6. **Hotspot Awareness**: Before modifying high-risk areas, check hotspots with `apps/engine/hotspots.py`. Files flagged as CRITICAL or HIGH risk with high bug ratios require defensive editing, regression tests, and verification before changes are made.
+7. **API Integration Sanity & HTTP Validation**: When introducing, configuring, or debugging external API integrations (e.g. Polygon/Massive, FMP, FRED, Supabase, LLM providers):
+   - Always verify that the live response contains **realistic, financially sound values** (e.g., bounds checking on IV, non-zero Put/Call distributions, correct spot prices).
+   - Ensure **zero unhandled HTTP error codes** (e.g., 401/403 subscription tier blocks, 429 rate limit errors, 400 bad requests).
+   - Never assume free-tier or default endpoint responses match paid schema assumptions without end-to-end dry runs and reproduction tests.
 
 ## Config
 

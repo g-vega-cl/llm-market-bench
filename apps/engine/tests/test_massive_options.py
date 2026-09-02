@@ -129,6 +129,9 @@ def test_calculate_options_sentiment(sample_options_snapshot):
     sentiment = calculate_options_sentiment("AAPL", sample_options_snapshot["results"], current_price=200.0)
 
     assert sentiment["ticker"] == "AAPL"
+    assert "as_of_timestamp" in sentiment
+    assert "session_status" in sentiment
+    assert "staleness_note" in sentiment
     assert sentiment["put_call_volume_ratio"] == pytest.approx((3000 + 6000) / (5000 + 12000 + 8000 + 4000), 0.01)
     assert sentiment["put_call_oi_ratio"] == pytest.approx((5000 + 8000) / (2000 + 15000 + 1000 + 9000), 0.01)
     assert sentiment["atm_implied_volatility"] is not None
@@ -136,6 +139,25 @@ def test_calculate_options_sentiment(sample_options_snapshot):
     assert sentiment["max_pain"] is not None
     assert len(sentiment["unusual_activity"]) >= 1
     assert any(u["strike"] == 220.0 for u in sentiment["unusual_activity"])
+
+
+def test_format_options_sentiment_markdown_uninterpreted_and_staleness(sample_options_snapshot):
+    """Test format_options_sentiment_markdown outputs timestamp, staleness notes, and raw metrics without subjective bias."""
+    from execution.providers.massive import format_options_sentiment_markdown
+
+    sentiment = calculate_options_sentiment("AAPL", sample_options_snapshot["results"], current_price=200.0)
+    output = format_options_sentiment_markdown(sentiment)
+
+    assert "Options Derivatives Positioning: AAPL" in output or "Options Sentiment Snapshot: AAPL" in output
+    assert "As-Of Timestamp" in output
+    assert "Market Session" in output
+    assert "Staleness Note" in output
+    assert "Put/Call Volume Ratio" in output
+    assert "Max Pain Strike" in output
+    # Must NOT contain subjective interpretation labels like BULLISH or BEARISH
+    assert "Options Bias:" not in output
+    assert "BULLISH" not in output
+    assert "BEARISH" not in output
 
 
 def test_filter_option_chain(sample_options_snapshot):
@@ -201,9 +223,10 @@ async def test_execute_tools_integration(sample_options_snapshot):
 
         # 1. Test get_options_sentiment tool execution
         res_sentiment = await execute_tool("get_options_sentiment", {"ticker": "AAPL"}, model_name="test_model")
-        assert "Options Sentiment Snapshot: AAPL" in res_sentiment
+        assert "AAPL" in res_sentiment
         assert "Put/Call Volume Ratio" in res_sentiment
         assert "Max Pain" in res_sentiment
+        assert "Staleness Note" in res_sentiment
 
         # 2. Test get_option_chain tool execution
         res_chain = await execute_tool(
@@ -242,3 +265,80 @@ async def test_options_tools_empty_or_error_handling():
 
         res_chain = await execute_tool("get_option_chain", {"ticker": "XYZ"}, model_name="test_model")
         assert "No options chain data available for ticker 'XYZ'" in res_chain
+
+
+@pytest.mark.asyncio
+async def test_free_tier_fallback_queries_calls_and_puts_near_spot():
+    """Test that free tier fallback queries both calls and puts near the spot price and computes realistic IV and P/C ratios."""
+    client = MassiveOptionsClient(api_key="test_key")
+
+    mock_calls = [
+        {
+            "ticker": "O:SPY260902C00200000",
+            "contract_type": "call",
+            "strike_price": 200.0,
+            "expiration_date": "2026-09-02",
+        }
+    ]
+    mock_puts = [
+        {
+            "ticker": "O:SPY260902P00200000",
+            "contract_type": "put",
+            "strike_price": 200.0,
+            "expiration_date": "2026-09-02",
+        }
+    ]
+
+    async def mock_get(url, params=None):
+        resp = MagicMock()
+        resp.status_code = 200
+        if "reference/options/contracts" in url:
+            if params and params.get("contract_type") == "call":
+                resp.json.return_value = {"results": mock_calls}
+            else:
+                resp.json.return_value = {"results": mock_puts}
+        elif "aggs/ticker" in url:
+            # Prev bar for call ($2.50) and put ($2.40)
+            c_val = 2.50 if "C00200000" in url else 2.40
+            v_val = 1000 if "C00200000" in url else 800
+            resp.json.return_value = {"results": [{"c": c_val, "v": v_val, "o": c_val, "h": c_val, "l": c_val}]}
+        return resp
+
+    with patch("httpx.AsyncClient.get", side_effect=mock_get):
+        contracts = await client._fetch_free_tier_contracts("SPY", current_price=200.0)
+        assert len(contracts) == 2
+        types = {c["details"]["contract_type"] for c in contracts}
+        assert types == {"call", "put"}
+
+        metrics = calculate_options_sentiment("SPY", contracts, current_price=200.0)
+        assert metrics["total_call_volume"] == 1000
+        assert metrics["total_put_volume"] == 800
+        assert metrics["put_call_volume_ratio"] == 0.8
+        assert metrics["atm_implied_volatility"] is not None
+        # Must be realistic (between 5% and 100%) and NOT 500%
+        assert 0.05 <= metrics["atm_implied_volatility"] <= 1.0
+
+
+@pytest.mark.asyncio
+async def test_get_options_snapshot_auto_resolves_spot_price():
+    """Test get_options_snapshot automatically resolves spot price if current_price is None."""
+    client = MassiveOptionsClient(api_key="test_key")
+
+    mock_quote = MagicMock()
+    mock_quote.price = 590.0
+
+    mock_sb = MagicMock()
+    mock_sb.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
+
+    with (
+        patch.object(client, "_get_supabase", return_value=mock_sb),
+        patch("execution.market_data.MarketDataManager.get_quote", new_callable=AsyncMock, return_value=mock_quote),
+        patch.object(client, "_fetch_from_api", new_callable=AsyncMock) as mock_fetch,
+    ):
+        mock_fetch.return_value = {"status": "OK", "results": []}
+
+        await client.get_options_snapshot("SPY", current_price=None)
+        assert mock_fetch.called
+        # Check current_price was populated with resolved quote
+        _, kwargs = mock_fetch.call_args
+        assert kwargs.get("current_price") == 590.0

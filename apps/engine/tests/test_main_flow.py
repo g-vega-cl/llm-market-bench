@@ -385,4 +385,3 @@ def test_main_evaluate_daily_predictions_cli():
     ):
         main()
         mock_eval.assert_awaited_once_with(target_date="2026-09-01", force_recalc=True)
-

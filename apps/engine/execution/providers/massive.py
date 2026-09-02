@@ -218,12 +218,58 @@ def calculate_max_pain(contracts: list[dict]) -> float | None:
     return max_pain_strike
 
 
+def get_options_market_session(dt_utc: datetime.datetime | None = None) -> tuple[str, str, str]:
+    """Determine market session status and staleness note for US equity options.
+
+    Returns:
+        tuple: (session_status, staleness_note, as_of_iso)
+    """
+    now_utc = dt_utc or datetime.datetime.now(datetime.UTC)
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=datetime.UTC)
+
+    try:
+        import zoneinfo
+
+        et_zone = zoneinfo.ZoneInfo("America/New_York")
+    except Exception:
+        et_zone = datetime.timezone(datetime.timedelta(hours=-4))
+
+    now_et = now_utc.astimezone(et_zone)
+    as_of_iso = now_utc.isoformat()
+
+    # Weekend check
+    if now_et.weekday() >= 5:
+        session_status = "WEEKEND"
+        staleness_note = "Market Closed (Weekend). Data reflects prior Friday closing settlement."
+    else:
+        et_time = now_et.time()
+        market_open = datetime.time(9, 30)
+        market_close = datetime.time(16, 0)
+
+        if et_time < market_open:
+            session_status = "PRE_MARKET"
+            staleness_note = (
+                "Pre-Market Session. Data reflects prior trading day closing settlement & overnight open interest. "
+                "Intraday 0DTE trading begins at 9:30 AM ET."
+            )
+        elif et_time <= market_close:
+            session_status = "REGULAR_HOURS"
+            staleness_note = "Regular Trading Hours (Live / 15-minute delayed options snapshot)."
+        else:
+            session_status = "POST_MARKET"
+            staleness_note = "Post-Market Session. Data reflects today's final closing settlement."
+
+    return session_status, staleness_note, as_of_iso
+
+
 def calculate_options_sentiment(
     ticker: str,
     contracts: list[dict],
     current_price: float | None = None,
+    as_of_timestamp: str | None = None,
 ) -> dict[str, Any]:
-    """Calculate high-level options market sentiment, IV, skew, and unusual activity."""
+    """Calculate high-level options market sentiment, IV, skew, and unusual activity with explicit session timestamps."""
     call_volume = 0
     put_volume = 0
     call_oi = 0
@@ -301,9 +347,20 @@ def calculate_options_sentiment(
     max_pain = calculate_max_pain(contracts)
     unusual_activity.sort(key=lambda x: x["volume"], reverse=True)
 
+    dt_obj = None
+    if as_of_timestamp:
+        try:
+            dt_obj = datetime.datetime.fromisoformat(as_of_timestamp.replace("Z", "+00:00"))
+        except Exception:
+            dt_obj = None
+    session_status, staleness_note, as_of_iso = get_options_market_session(dt_obj)
+
     return {
         "ticker": ticker.upper(),
         "underlying_price": ref_price,
+        "as_of_timestamp": as_of_iso,
+        "session_status": session_status,
+        "staleness_note": staleness_note,
         "total_contracts_analyzed": len(contracts),
         "total_call_volume": call_volume,
         "total_put_volume": put_volume,
@@ -392,9 +449,12 @@ def filter_option_chain(
 
 
 def format_options_sentiment_markdown(metrics: dict) -> str:
-    """Formats options sentiment dictionary into a compact Markdown summary."""
+    """Formats options sentiment dictionary into a compact Markdown summary with explicit staleness and zero bias."""
     ticker = metrics.get("ticker", "UNKNOWN")
     px_str = f"${metrics['underlying_price']:.2f}" if metrics.get("underlying_price") else "N/A"
+    as_of = metrics.get("as_of_timestamp", "N/A")
+    session = metrics.get("session_status", "N/A")
+    staleness = metrics.get("staleness_note", "N/A")
     pv_ratio = metrics.get("put_call_volume_ratio", "N/A")
     poi_ratio = metrics.get("put_call_oi_ratio", "N/A")
     atm_iv = f"{metrics['atm_implied_volatility'] * 100:.1f}%" if metrics.get("atm_implied_volatility") else "N/A"
@@ -405,19 +465,11 @@ def format_options_sentiment_markdown(metrics: dict) -> str:
         else "N/A"
     )
 
-    if isinstance(pv_ratio, float):
-        if pv_ratio < 0.7:
-            bias = "BULLISH (Heavy call volume)"
-        elif pv_ratio > 1.2:
-            bias = "BEARISH (Heavy put volume)"
-        else:
-            bias = "NEUTRAL / BALANCED"
-    else:
-        bias = "NEUTRAL"
-
     lines = [
-        f"### 📊 Options Sentiment Snapshot: {ticker} (Ref Price: {px_str})",
-        f"- **Options Bias**: {bias}",
+        f"### 📊 Options Derivatives Positioning: {ticker} (Ref Price: {px_str})",
+        f"- **As-Of Timestamp**: {as_of}",
+        f"- **Market Session**: {session}",
+        f"- **Staleness Note**: {staleness}",
         f"- **Put/Call Volume Ratio**: {pv_ratio} (Calls: {metrics.get('total_call_volume', 0):,}, Puts: {metrics.get('total_put_volume', 0):,})",
         f"- **Put/Call Open Interest Ratio**: {poi_ratio} (Calls: {metrics.get('total_call_oi', 0):,}, Puts: {metrics.get('total_put_oi', 0):,})",
         f"- **ATM Implied Volatility**: {atm_iv}",
@@ -499,50 +551,79 @@ class MassiveOptionsClient:
         ticker: str,
         current_price: float | None = None,
     ) -> list[dict[str, Any]]:
-        """Fallback for Free Tier accounts: fetches contracts reference + EOD bars, then calculates IV & Greeks locally."""
+        """Fallback for Free Tier accounts: fetches contracts reference for calls and puts near spot + EOD bars, then calculates IV & Greeks locally."""
         today = datetime.datetime.now(datetime.UTC).date()
         today_str = today.isoformat()
 
-        # Step 1: Query contracts reference
-        await self._limiter.acquire()
-        url = f"{self.base_url}/v3/reference/options/contracts"
-        params = {
-            "underlying_ticker": ticker.upper(),
-            "expiration_date.gte": today_str,
-            "limit": 100,
-            "apiKey": self.api_key,
-        }
+        ref_px = current_price
+        if not ref_px or ref_px <= 0:
+            try:
+                from execution.market_data import MarketDataManager
 
+                mdm = MarketDataManager()
+                quote = await mdm.get_quote(ticker)
+                if quote and quote.price:
+                    ref_px = float(quote.price)
+            except Exception as e:
+                logger.debug(f"Could not resolve spot price for {ticker} in free tier fallback: {e}")
+
+        # Step 1: Query contracts reference for CALLS and PUTS near spot
+        min_strike = ref_px * 0.96 if ref_px else None
+        max_strike = ref_px * 1.04 if ref_px else None
+
+        ref_contracts = []
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(url, params=params)
-            if resp.status_code != 200:
-                logger.warning(f"Failed to fetch options reference contracts for {ticker}: {resp.status_code}")
-                return []
+            for c_type in ("call", "put"):
+                await self._limiter.acquire()
+                url = f"{self.base_url}/v3/reference/options/contracts"
+                params = {
+                    "underlying_ticker": ticker.upper(),
+                    "contract_type": c_type,
+                    "expiration_date.gte": today_str,
+                    "limit": 50,
+                    "apiKey": self.api_key,
+                }
+                if min_strike is not None:
+                    params["strike_price.gte"] = min_strike
+                if max_strike is not None:
+                    params["strike_price.lte"] = max_strike
 
-            data = resp.json()
-            ref_contracts = data.get("results", [])
+                resp = await client.get(url, params=params)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    contracts_batch = data.get("results", [])
+                    ref_contracts.extend(contracts_batch)
+                elif resp.status_code == 429:
+                    logger.warning(
+                        f"Rate limit querying {c_type} reference contracts for {ticker}; retrying after wait..."
+                    )
+                    await asyncio.sleep(12.0)
+                    await self._limiter.acquire()
+                    resp = await client.get(url, params=params)
+                    if resp.status_code == 200:
+                        ref_contracts.extend(resp.json().get("results", []))
+
             if not ref_contracts:
                 return []
 
             # Step 2: Target nearest 1-2 active expirations
             exp_dates = sorted({c["expiration_date"] for c in ref_contracts if "expiration_date" in c})
-            target_exps = exp_dates[:2] if exp_dates else []
+            target_exps = exp_dates[:1] if exp_dates else []
 
-            # Step 3: Find strikes nearest to current price (or median strike)
             active_refs = [c for c in ref_contracts if c.get("expiration_date") in target_exps]
-            ref_px = current_price or (
-                sum(c["strike_price"] for c in active_refs) / len(active_refs) if active_refs else 100.0
-            )
+            if not ref_px and active_refs:
+                ref_px = sum(c["strike_price"] for c in active_refs) / len(active_refs)
 
-            # Sort by distance from current price
-            active_refs.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
+            # Separate calls and puts, sort by distance to spot price
+            calls = [c for c in active_refs if c.get("contract_type") == "call"]
+            puts = [c for c in active_refs if c.get("contract_type") == "put"]
+            calls.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
+            puts.sort(key=lambda c: abs(c.get("strike_price", 0) - ref_px))
 
-            # Pick top 2 calls and top 2 puts
-            selected_calls = [c for c in active_refs if c.get("contract_type") == "call"][:2]
-            selected_puts = [c for c in active_refs if c.get("contract_type") == "put"][:2]
-            target_selection = selected_calls + selected_puts
+            # Pick top 2 closest calls and top 2 closest puts
+            target_selection = calls[:2] + puts[:2]
 
-            # Step 4: Fetch previous day bars for selected target contracts
+            # Step 3: Fetch previous day bars for selected target contracts
             results = []
             for target in target_selection:
                 sym = target["ticker"]
@@ -551,6 +632,15 @@ class MassiveOptionsClient:
                     f"{self.base_url}/v2/aggs/ticker/{sym}/prev",
                     params={"apiKey": self.api_key},
                 )
+                if bar_resp.status_code == 429:
+                    logger.warning(f"Rate limit fetching prev bar for {sym}; retrying after wait...")
+                    await asyncio.sleep(12.0)
+                    await self._limiter.acquire()
+                    bar_resp = await client.get(
+                        f"{self.base_url}/v2/aggs/ticker/{sym}/prev",
+                        params={"apiKey": self.api_key},
+                    )
+
                 bar = {}
                 if bar_resp.status_code == 200:
                     bar_data = bar_resp.json().get("results", [])
@@ -563,7 +653,7 @@ class MassiveOptionsClient:
                 exp_date_str = target.get("expiration_date", today_str)
                 ctype = target.get("contract_type", "call")
 
-                # Step 5: Compute local Black-Scholes IV and Greeks
+                # Step 4: Compute local Black-Scholes IV and Greeks
                 exp_date = datetime.date.fromisoformat(exp_date_str)
                 dte = max(1, (exp_date - today).days)
                 t_years = dte / 365.0
@@ -612,7 +702,7 @@ class MassiveOptionsClient:
                         },
                         "implied_volatility": iv,
                         "greeks": greeks,
-                        "open_interest": vol,  # Volume proxy for free tier
+                        "open_interest": vol,
                     }
                 )
 
@@ -684,6 +774,11 @@ class MassiveOptionsClient:
                         now = datetime.datetime.now(datetime.UTC)
                         if (now - fetched_at).total_seconds() < self.cache_ttl_seconds:
                             metrics = row.get("metrics", {})
+                            if "as_of_timestamp" not in metrics or "staleness_note" not in metrics:
+                                sess, note, as_of_iso = get_options_market_session(fetched_at)
+                                metrics["as_of_timestamp"] = metrics.get("as_of_timestamp") or as_of_iso
+                                metrics["session_status"] = metrics.get("session_status") or sess
+                                metrics["staleness_note"] = metrics.get("staleness_note") or note
                             contracts = row.get("contracts", [])
                             res_payload = {
                                 "status": "OK",
@@ -697,6 +792,18 @@ class MassiveOptionsClient:
             except Exception as e:
                 logger.warning(f"Error checking options_data_cache table in Supabase: {e}")
 
+        # Ensure spot price is resolved if missing
+        if not current_price or current_price <= 0:
+            try:
+                from execution.market_data import MarketDataManager
+
+                mdm = MarketDataManager()
+                quote = await mdm.get_quote(ticker)
+                if quote and quote.price:
+                    current_price = float(quote.price)
+            except Exception as e:
+                logger.debug(f"Could not resolve market quote for {ticker}: {e}")
+
         # 3. Fetch fresh snapshot from API (with automatic Free Tier fallback)
         raw_data = await self._fetch_from_api(ticker, current_price=current_price)
         results = raw_data.get("results", [])
@@ -709,7 +816,8 @@ class MassiveOptionsClient:
             }
 
         # 4. Compute derived metrics
-        metrics = calculate_options_sentiment(ticker, results, current_price=current_price)
+        now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+        metrics = calculate_options_sentiment(ticker, results, current_price=current_price, as_of_timestamp=now_iso)
 
         payload = {
             "status": "OK",
@@ -728,7 +836,7 @@ class MassiveOptionsClient:
                         "ticker": ticker,
                         "metrics": metrics,
                         "contracts": results,
-                        "fetched_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                        "fetched_at": now_iso,
                     }
                 ).execute()
             except Exception as e:

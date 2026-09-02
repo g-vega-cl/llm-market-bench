@@ -98,6 +98,7 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
         execute_fetch_daily_newsletter_tool,
         execute_get_global_macro_context_tool,
         execute_get_market_feeling_tool,
+        execute_get_options_sentiment_tool,
         execute_get_volatility_index_details_tool,
         execute_market_health_barometer_tool,
     )
@@ -216,7 +217,15 @@ async def get_daily_market_context(ticker: str = "SPY", include_full_prior_close
             f"Error fetching technical indicators & pre-market quote via MarketDataManager for {ticker}: {e}"
         )
 
-    # 2. Macro & Market Feeling Context via Canonical Tools
+    # 2. Options Derivatives Positioning & Volatility Skew (Massive Tool)
+    try:
+        options_str = await execute_get_options_sentiment_tool(ticker=ticker)
+        if options_str and not options_str.startswith("Error") and not options_str.startswith("No options"):
+            context_lines.append(f"Options Derivatives Positioning ({ticker}):\n{options_str}")
+    except Exception as e:
+        logger.warning(f"Error fetching options derivatives context for {ticker}: {e}")
+
+    # 3. Macro & Market Feeling Context via Canonical Tools
     try:
         macro_str = await execute_get_global_macro_context_tool()
         if macro_str and not macro_str.startswith("Error"):

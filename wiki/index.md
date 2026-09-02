@@ -48,6 +48,7 @@
 
 ## Concepts
 
+- [[concepts/api-data-verification]] — Auto-indexed page
 - [[concepts/hallucination-audit]] — Auto-indexed page
 - [[concepts/release-and-canary-deployments]] — Auto-indexed page
 - [[concepts/hybrid-database-archival]] — Auto-indexed page
